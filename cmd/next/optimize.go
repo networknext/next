@@ -10,7 +10,7 @@ import (
 )
 
 func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32) {
-	
+
 	var costMatrix routing.CostMatrix
 
 	costFile, err := os.Open(costFilename)

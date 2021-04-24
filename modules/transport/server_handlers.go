@@ -6,7 +6,7 @@ import (
 	"io"
 	"math"
 	"net"
-	"sort"
+	// "sort"
 	"strings"
 	"time"
 
@@ -34,18 +34,15 @@ func writeServerInitResponse(w io.Writer, packet *ServerInitRequestPacket, respo
 		RequestID: packet.RequestID,
 		Response:  response,
 	}
-
 	responsePacketData, err := MarshalPacket(&responsePacket)
 	if err != nil {
 		return err
 	}
-
 	packetHeader := append([]byte{PacketTypeServerInitResponse}, make([]byte, crypto.PacketHashSize)...)
 	responseData := append(packetHeader, responsePacketData...)
 	if _, err := w.Write(responseData); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -54,88 +51,24 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	if err != nil {
 		return err
 	}
-
 	if len(sessionDataBuffer) > MaxSessionDataSize {
 		return fmt.Errorf("session data of %d exceeds limit of %d bytes", len(sessionDataBuffer), MaxSessionDataSize)
 	}
-
 	response.SessionDataBytes = int32(len(sessionDataBuffer))
 	copy(response.SessionData[:], sessionDataBuffer)
-
 	responsePacketData, err := MarshalPacket(response)
 	if err != nil {
 		return err
 	}
-
 	packetHeader := append([]byte{PacketTypeSessionResponse}, make([]byte, crypto.PacketHashSize)...)
 	responseData := append(packetHeader, responsePacketData...)
 	if _, err := w.Write(responseData); err != nil {
 		return err
 	}
-
 	return nil
 }
 
-/*
-func getDatacenter(database *routing.DatabaseBinWrapper, buyerID uint64, datacenterID uint64, datacenterName string) (routing.Datacenter, error) {
-	// We should always support the "local" datacenter, even without a datacenter mapping
-	if crypto.HashID("local") == datacenterID {
-		return routing.Datacenter{
-			ID:   crypto.HashID("local"),
-			Name: "local",
-		}, nil
-	}
-
-	// enforce that whatever datacenter the server says it's in, we have a mapping for it
-	datacenterAliases, ok := database.DatacenterMaps[buyerID]
-	if !ok {
-		fmt.Printf("BuyerID %016x does not have a Datacenter map\n", buyerID)
-		return routing.UnknownDatacenter, ErrDatacenterMapNotFound{buyerID, datacenterID, datacenterName}
-	}
-
-	for _, dcMap := range datacenterAliases {
-		if datacenterID == dcMap.DatacenterID {
-			// We found the datacenter
-			datacenter, exists := database.DatacenterMap[datacenterID]
-			if !exists {
-				// The datacenter map is misconfigured in our database
-				fmt.Printf("Datacenter map misconfigured: BuyerID: %016x, DatacenterMap: %s\n", buyerID, dcMap.String())
-				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
-			}
-
-			return datacenter, nil
-		}
-
-		if datacenterID == crypto.HashID(dcMap.Alias) {
-			// We found the datacenter from the mapped alias
-			datacenter, exists := database.DatacenterMap[datacenterID]
-			if !exists {
-				// The datacenter map is misconfigured in our database
-				fmt.Printf("Datacenter map misconfigured: BuyerID: %016x, DatacenterMap: %s\n", buyerID, dcMap.String())
-				return routing.UnknownDatacenter, ErrDatacenterMapMisconfigured{buyerID, dcMap}
-			}
-
-			datacenter.AliasName = dcMap.Alias
-			return datacenter, nil
-		}
-	}
-
-	// We couldn't find the datacenter, check if it is a datacenter that we have in our database
-	_, exists := database.DatacenterMap[datacenterID]
-	if !exists {
-		// This isn't a datacenter we know about. It's either brand new and not configured yet
-		// or there is a typo in the server's integration of the SDK
-		fmt.Printf("Datacenter not found: DatacenterID: %016x, BuyerID: %016x, DatacenterName: %s\n", datacenterID, buyerID, datacenterName)
-		return routing.UnknownDatacenter, ErrDatacenterNotFound{buyerID, datacenterID, datacenterName}
-	}
-
-	// This is a datacenter we know about, but the buyer isn't configured to use it
-	fmt.Printf("Datacenter use not allowed: DatacenterID: %016x, BuyerID: %016x, DatacenterName: %s\n", datacenterID, buyerID, datacenterName)
-	return routing.UnknownDatacenter, ErrDatacenterNotAllowed{buyerID, datacenterID, datacenterName}
-}
-*/
-
-func isStaleRouteMatrix(routeMatrix *routing.RouteMatrix, staleDuration time.Duration) bool {
+func routeMatrixIsStale(routeMatrix *routing.RouteMatrix, staleDuration time.Duration) bool {
 	return routeMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix())
 }
 
@@ -165,7 +98,8 @@ func getDatacenter(database *routing.DatabaseBinWrapper, datacenterID uint64) ro
 }
 
 type nearRelayGroup struct {
-	Count        int32
+	Count int32
+	// todo: allocation here is bad. we should instead make these fixed sized arrays and have this all on the stack
 	IDs          []uint64
 	Addrs        []net.UDPAddr
 	Names        []string
@@ -187,6 +121,9 @@ func newNearRelayGroup(count int32) nearRelayGroup {
 }
 
 func (n nearRelayGroup) Copy(other *nearRelayGroup) {
+
+	// todo: allocations galore. we don't want this!
+
 	other.Count = n.Count
 	other.IDs = make([]uint64, n.Count)
 	other.Addrs = make([]net.UDPAddr, n.Count)
@@ -260,6 +197,520 @@ func handleNearAndDestRelays(
 
 	return false, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
+
+func HandleNextToken(
+	sessionData *SessionData,
+	database *routing.DatabaseBinWrapper,
+	buyer *routing.Buyer,
+	packet *SessionUpdatePacket,
+	routeNumRelays int32,
+	routeRelays []int32,
+	allRelayIDs []uint64,
+	routerPrivateKey [crypto.KeySize]byte,
+	response *SessionResponsePacket,
+) {
+	// todo: initial should only be set when the network next route *changes*
+
+	// Add another 10 seconds to the slice and increment the session version
+	sessionData.Initial = true
+	sessionData.ExpireTimestamp += billing.BillingSliceSeconds
+	sessionData.SessionVersion++
+
+	numTokens := routeNumRelays + 2 // relays + client + server
+	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
+	if routeAddresses == nil || routePublicKeys == nil {
+		response.RouteType = routing.RouteTypeDirect
+		response.NumTokens = 0
+		response.Tokens = nil
+		return
+	}
+
+	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
+	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
+	response.RouteType = routing.RouteTypeNew
+	response.NumTokens = numTokens
+	response.Tokens = tokenData
+}
+
+func HandleContinueToken(
+	sessionData *SessionData,
+	database *routing.DatabaseBinWrapper,
+	buyer *routing.Buyer,
+	packet *SessionUpdatePacket,
+	routeNumRelays int32,
+	routeRelays []int32,
+	allRelayIDs []uint64,
+	routerPrivateKey [crypto.KeySize]byte,
+	response *SessionResponsePacket,
+) {
+	numTokens := routeNumRelays + 2 // relays + client + server
+	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
+	if routeAddresses == nil || routePublicKeys == nil {
+		response.RouteType = routing.RouteTypeDirect
+		response.NumTokens = 0
+		response.Tokens = nil
+		return
+	}
+	tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
+	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
+	response.RouteType = routing.RouteTypeContinue
+	response.NumTokens = numTokens
+	response.Tokens = tokenData
+}
+
+func GetRouteAddressesAndPublicKeys(
+	clientAddress *net.UDPAddr,
+	clientPublicKey []byte,
+	serverAddress *net.UDPAddr,
+	serverPublicKey []byte,
+	numTokens int32,
+	routeRelays []int32,
+	allRelayIDs []uint64,
+	database *routing.DatabaseBinWrapper,
+) ([]*net.UDPAddr, [][]byte) {
+
+	routeAddresses := make([]*net.UDPAddr, numTokens)
+	routePublicKeys := make([][]byte, numTokens)
+
+	routeAddresses[0] = clientAddress
+	routePublicKeys[0] = clientPublicKey
+	routeAddresses[numTokens-1] = serverAddress
+	routePublicKeys[numTokens-1] = serverPublicKey
+
+	totalNumRelays := int32(len(allRelayIDs))
+	foundRelayCount := int32(0)
+
+	enableInternalIPs, _ := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
+
+	for i := int32(0); i < numTokens-2; i++ {
+		relayIndex := routeRelays[i]
+		if relayIndex < totalNumRelays {
+			relayID := allRelayIDs[relayIndex]
+			relay, exists := database.RelayMap[relayID]
+			if !exists {
+				continue
+			}
+
+			routeAddresses = AddAddress(enableInternalIPs, i, relay, allRelayIDs, database, routeRelays, routeAddresses)
+
+			routePublicKeys[i+1] = relay.PublicKey
+			foundRelayCount++
+		}
+	}
+
+	if foundRelayCount != numTokens-2 {
+		return nil, nil
+	}
+
+	return routeAddresses, routePublicKeys
+}
+
+func AddAddress(enableInternalIPs bool, index int32, relay routing.Relay, allRelayIDs []uint64, database *routing.DatabaseBinWrapper, routeRelays []int32, routeAddresses []*net.UDPAddr) []*net.UDPAddr {
+	totalNumRelays := int32(len(allRelayIDs))
+	routeAddresses[index+1] = &relay.Addr
+	if enableInternalIPs {
+		// check if the previous relay is the same seller
+		if index >= 1 {
+			prevRelayIndex := routeRelays[index-1]
+			if prevRelayIndex < totalNumRelays {
+				prevID := allRelayIDs[prevRelayIndex]
+				prev, exists := database.RelayMap[prevID]
+				if exists && prev.Seller.ID == relay.Seller.ID && prev.InternalAddr.String() != ":0" && relay.InternalAddr.String() != ":0" {
+					routeAddresses[index+1] = &relay.InternalAddr
+				}
+			}
+		}
+	}
+	return routeAddresses
+}
+
+func PostSessionUpdate(
+	postSessionHandler *PostSessionHandler,
+	packet *SessionUpdatePacket,
+	sessionData *SessionData,
+	buyer *routing.Buyer,
+	multipathVetoHandler storage.MultipathVetoHandler,
+	routeRelayNames [core.MaxRelaysPerRoute]string,
+	routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller,
+	nearRelays nearRelayGroup,
+	datacenter *routing.Datacenter,
+	routeDiversity int32,
+	slicePacketLossClientToServer float32,
+	slicePacketLossServerToClient float32,
+	debug *string,
+	unknownDatacenter bool,
+	datacenterNotEnabled bool,
+	buyerNotLive bool,
+	staleRouteMatrix bool,
+) {
+	// todo: move the function below into its own "build billing entry" function
+
+	sliceDuration := uint64(billing.BillingSliceSeconds)
+	if sessionData.Initial {
+		sliceDuration *= 2
+	}
+	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(packet.NextKbpsUp), uint64(packet.NextKbpsDown), sliceDuration)
+	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
+	totalPrice := CalculateTotalPriceNibblins(int(sessionData.RouteNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+	routeRelayPrices := CalculateRouteRelaysPrice(int(sessionData.RouteNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+
+	// Check if we should multipath veto the user
+	if packet.Next && sessionData.RouteState.MultipathOverload {
+		if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
+			level.Error(postSessionHandler.logger).Log("err", err)
+		}
+	}
+
+	nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
+	for i := 0; i < core.MaxRelaysPerRoute; i++ {
+		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
+	}
+
+	var routeCost int32 = sessionData.RouteCost
+	if sessionData.RouteCost == math.MaxInt32 {
+		routeCost = 0
+	}
+
+	var nearRelayRTT float32
+	if sessionData.RouteNumRelays > 0 {
+		for i, nearRelayID := range nearRelays.IDs {
+			if nearRelayID == sessionData.RouteRelayIDs[0] {
+				nearRelayRTT = float32(nearRelays.RTTs[i])
+				break
+			}
+		}
+	}
+
+	debugString := ""
+	if debug != nil {
+		debugString = *debug
+	}
+
+	var numNearRelays uint8
+	nearRelayIDs := [billing.BillingEntryMaxNearRelays]uint64{}
+	nearRelayRTTs := [billing.BillingEntryMaxNearRelays]float32{}
+	nearRelayJitters := [billing.BillingEntryMaxNearRelays]float32{}
+	nearRelayPacketLosses := [billing.BillingEntryMaxNearRelays]float32{}
+
+	if buyer.Debug {
+		numNearRelays = uint8(nearRelays.Count)
+		for i := uint8(0); i < numNearRelays; i++ {
+			nearRelayIDs[i] = nearRelays.IDs[i]
+			nearRelayRTTs[i] = float32(nearRelays.RTTs[i])
+			nearRelayJitters[i] = float32(nearRelays.Jitters[i])
+			nearRelayPacketLosses[i] = float32(nearRelays.PacketLosses[i])
+		}
+	}
+
+	slicePacketLoss := slicePacketLossClientToServer
+	if slicePacketLossServerToClient > slicePacketLossClientToServer {
+		slicePacketLoss = slicePacketLossServerToClient
+	}
+
+	// Clamp jitter between client <-> server at 1000 (it is meaningless beyond that)
+	if packet.JitterClientToServer > 1000.0 {
+		packet.JitterClientToServer = float32(1000)
+	}
+	if packet.JitterServerToClient > 1000.0 {
+		packet.JitterServerToClient = float32(1000)
+	}
+
+	billingEntry := &billing.BillingEntry{
+		Timestamp:                       uint64(time.Now().Unix()),
+		BuyerID:                         packet.CustomerID,
+		UserHash:                        packet.UserHash,
+		SessionID:                       packet.SessionID,
+		SliceNumber:                     packet.SliceNumber,
+		DirectRTT:                       packet.DirectRTT,
+		DirectJitter:                    packet.DirectJitter,
+		DirectPacketLoss:                packet.DirectPacketLoss,
+		Next:                            packet.Next,
+		NextRTT:                         packet.NextRTT,
+		NextJitter:                      packet.NextJitter,
+		NextPacketLoss:                  packet.NextPacketLoss,
+		NumNextRelays:                   uint8(sessionData.RouteNumRelays),
+		NextRelays:                      sessionData.RouteRelayIDs,
+		TotalPrice:                      uint64(totalPrice),
+		ClientToServerPacketsLost:       packet.PacketsLostClientToServer,
+		ServerToClientPacketsLost:       packet.PacketsLostServerToClient,
+		Committed:                       packet.Committed,
+		Flagged:                         packet.Reported,
+		Multipath:                       sessionData.RouteState.Multipath,
+		Initial:                         sessionData.Initial,
+		NextBytesUp:                     nextBytesUp,
+		NextBytesDown:                   nextBytesDown,
+		EnvelopeBytesUp:                 nextEnvelopeBytesUp,
+		EnvelopeBytesDown:               nextEnvelopeBytesDown,
+		DatacenterID:                    datacenter.ID,
+		RTTReduction:                    sessionData.RouteState.ReduceLatency,
+		PacketLossReduction:             sessionData.RouteState.ReducePacketLoss,
+		NextRelaysPrice:                 nextRelaysPrice,
+		Latitude:                        float32(sessionData.Location.Latitude),
+		Longitude:                       float32(sessionData.Location.Longitude),
+		ISP:                             sessionData.Location.ISP,
+		ABTest:                          sessionData.RouteState.ABTest,
+		RouteDecision:                   0, // todo: deprecated
+		ConnectionType:                  uint8(packet.ConnectionType),
+		PlatformType:                    uint8(packet.PlatformType),
+		SDKVersion:                      packet.Version.String(),
+		PacketLoss:                      slicePacketLoss,
+		PredictedNextRTT:                float32(routeCost),
+		MultipathVetoed:                 sessionData.RouteState.MultipathOverload,
+		UseDebug:                        buyer.Debug,
+		Debug:                           debugString,
+		FallbackToDirect:                packet.FallbackToDirect,
+		ClientFlags:                     packet.Flags,
+		UserFlags:                       packet.UserFlags,
+		NearRelayRTT:                    nearRelayRTT,
+		PacketsOutOfOrderClientToServer: packet.PacketsOutOfOrderClientToServer,
+		PacketsOutOfOrderServerToClient: packet.PacketsOutOfOrderServerToClient,
+		JitterClientToServer:            packet.JitterClientToServer,
+		JitterServerToClient:            packet.JitterServerToClient,
+		NumNearRelays:                   numNearRelays,
+		NearRelayIDs:                    nearRelayIDs,
+		NearRelayRTTs:                   nearRelayRTTs,
+		NearRelayJitters:                nearRelayJitters,
+		NearRelayPacketLosses:           nearRelayPacketLosses,
+		RelayWentAway:                   sessionData.RouteState.RelayWentAway,
+		RouteLost:                       sessionData.RouteState.RouteLost,
+		NumTags:                         uint8(packet.NumTags),
+		Tags:                            packet.Tags,
+		Mispredicted:                    sessionData.RouteState.Mispredict,
+		Vetoed:                          sessionData.RouteState.Veto,
+		LatencyWorse:                    sessionData.RouteState.LatencyWorse,
+		NoRoute:                         sessionData.RouteState.NoRoute,
+		NextLatencyTooHigh:              sessionData.RouteState.NextLatencyTooHigh,
+		RouteChanged:                    sessionData.RouteChanged,
+		CommitVeto:                      sessionData.RouteState.CommitVeto,
+		RouteDiversity:                  uint32(routeDiversity),
+		LackOfDiversity:                 sessionData.RouteState.LackOfDiversity,
+		Pro:                             buyer.RouteShader.ProMode && !sessionData.RouteState.MultipathRestricted,
+		MultipathRestricted:             sessionData.RouteState.MultipathRestricted,
+		ClientToServerPacketsSent:       packet.PacketsSentClientToServer,
+		ServerToClientPacketsSent:       packet.PacketsSentServerToClient,
+		BuyerNotLive:                    buyerNotLive,
+		UnknownDatacenter:               unknownDatacenter,
+		DatacenterNotEnabled:            datacenterNotEnabled,
+		StaleRouteMatrix:                staleRouteMatrix,
+	}
+
+	// send to the billing system (non-realtime path)
+
+	postSessionHandler.SendBillingEntry(billingEntry)
+
+	// send to vanity metrics (real-time path)
+
+	if postSessionHandler.useVanityMetrics {
+		postSessionHandler.SendVanityMetric(billingEntry)
+	}
+
+	// send data to the portal (real-time path)
+
+	// todo
+	/*
+		var portalData SessionPortalData
+
+		buildPortalData(&portalData,
+			packet,
+			sessionData,
+			buyer,
+			routeRelayNames,
+			routeRelaySellers,
+			nearRelays,
+			datacenter,
+			routeDiversity,
+			slicePacketLossClientToServer,
+			slicePacketLossServerToClient,
+			debug,
+			unknownDatacenter,
+			datacenterNotEnabled,
+			buyerNotLive,
+			staleRouteMatrix,
+		)
+
+		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+			postSessionHandler.SendPortalData(&portalData)
+		}
+	*/
+}
+
+func CalculateNextBytesUpAndDown(kbpsUp uint64, kbpsDown uint64, sliceDuration uint64) (uint64, uint64) {
+	bytesUp := (((1000 * kbpsUp) / 8) * sliceDuration)
+	bytesDown := (((1000 * kbpsDown) / 8) * sliceDuration)
+	return bytesUp, bytesDown
+}
+
+func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
+
+	if routeNumRelays == 0 {
+		return 0
+	}
+
+	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
+	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
+
+	sellerPriceNibblinsPerGB := routing.Nibblin(0)
+	for _, seller := range relaySellers {
+		sellerPriceNibblinsPerGB += seller.EgressPriceNibblinsPerGB
+	}
+
+	nextPriceNibblinsPerGB := routing.Nibblin(1e9)
+	totalPriceNibblins := float64(sellerPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+
+	return routing.Nibblin(totalPriceNibblins)
+}
+
+func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) [core.MaxRelaysPerRoute]routing.Nibblin {
+	relayPrices := [core.MaxRelaysPerRoute]routing.Nibblin{}
+
+	if routeNumRelays == 0 {
+		return relayPrices
+	}
+
+	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
+	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
+
+	for i := 0; i < len(relayPrices); i++ {
+		relayPriceNibblins := float64(relaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
+	}
+
+	return relayPrices
+}
+
+type SessionHandlerState struct {
+	datacenter           routing.Datacenter
+	database             *routing.DatabaseBinWrapper
+	debug                *string
+	unknownDatacenter    bool
+	datacenterNotEnabled bool
+	buyerNotLive         bool
+	staleRouteMatrix     bool
+
+	/*
+		postSessionHandler *PostSessionHandler
+		packet *SessionUpdatePacket
+		sessionData *SessionData
+		buyer *routing.Buyer
+		multipathVetoHandler storage.MultipathVetoHandler
+		routeRelayNames [core.MaxRelaysPerRoute]string
+		routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller
+		nearRelays nearRelayGroup
+		datacenter *routing.Datacenter
+		routeDiversity int32
+		slicePacketLossClientToServer float32
+		slicePacketLossServerToClient float32
+	*/
+}
+
+func buildPortalData(state *SessionHandlerState, portalData *SessionPortalData) {
+
+	// todo: switch to using session handler state
+
+	/*
+		// todo: we should try to avoid allocation here
+		hops := make([]RelayHop, sessionData.RouteNumRelays)
+		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
+			hops[i] = RelayHop{
+				ID:   sessionData.RouteRelayIDs[i],
+				Name: routeRelayNames[i],
+			}
+		}
+
+		// todo: we should try to avoid allocation here
+		nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
+		for i := range nearRelayPortalData {
+			nearRelayPortalData[i] = NearRelayPortalData{
+				ID:   nearRelays.IDs[i],
+				Name: nearRelays.Names[i],
+				ClientStats: routing.Stats{
+					RTT:        float64(nearRelays.RTTs[i]),
+					Jitter:     float64(nearRelays.Jitters[i]),
+					PacketLoss: float64(nearRelays.PacketLosses[i]),
+				},
+			}
+		}
+
+		// todo: sorting below should be done by the portal instead. here we are in hot path and must do as little work as possible
+
+		// Sort the near relays for display purposes
+		sort.Slice(nearRelayPortalData, func(i, j int) bool {
+			return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
+		})
+
+		var deltaRTT float32
+		if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
+			deltaRTT = packet.DirectRTT - packet.NextRTT
+		}
+
+		predictedRTT := float64(sessionData.RouteCost)
+		if sessionData.RouteCost >= routing.InvalidRouteValue {
+			predictedRTT = 0
+		}
+
+		*portalData = SessionPortalData{
+			Meta: SessionMeta{
+				ID:              packet.SessionID,
+				UserHash:        packet.UserHash,
+				DatacenterName:  datacenter.Name,
+				DatacenterAlias: datacenter.AliasName,
+				OnNetworkNext:   packet.Next,
+				NextRTT:         float64(packet.NextRTT),
+				DirectRTT:       float64(packet.DirectRTT),
+				DeltaRTT:        float64(deltaRTT),
+				Location:        sessionData.Location,
+				ClientAddr:      packet.ClientAddress.String(),
+				ServerAddr:      packet.ServerAddress.String(),
+				Hops:            hops,
+				SDK:             packet.Version.String(),
+				Connection:      uint8(packet.ConnectionType),
+				NearbyRelays:    nearRelayPortalData,
+				Platform:        uint8(packet.PlatformType),
+				BuyerID:         packet.CustomerID,
+			},
+			Slice: SessionSlice{
+				Timestamp: time.Now(),
+				Next: routing.Stats{
+					RTT:        float64(packet.NextRTT),
+					Jitter:     float64(packet.NextJitter),
+					PacketLoss: float64(packet.NextPacketLoss),
+				},
+				Direct: routing.Stats{
+					RTT:        float64(packet.DirectRTT),
+					Jitter:     float64(packet.DirectJitter),
+					PacketLoss: float64(packet.DirectPacketLoss),
+				},
+				Predicted: routing.Stats{
+					RTT: predictedRTT,
+				},
+				ClientToServerStats: routing.Stats{
+					Jitter:     float64(packet.JitterClientToServer),
+					PacketLoss: float64(slicePacketLossClientToServer),
+				},
+				ServerToClientStats: routing.Stats{
+					Jitter:     float64(packet.JitterServerToClient),
+					PacketLoss: float64(slicePacketLossServerToClient),
+				},
+				RouteDiversity: uint32(routeDiversity),
+				Envelope: routing.Envelope{
+					Up:   int64(packet.NextKbpsUp),
+					Down: int64(packet.NextKbpsDown),
+				},
+				IsMultiPath:       sessionData.RouteState.Multipath,
+				IsTryBeforeYouBuy: !sessionData.RouteState.Committed,
+				OnNetworkNext:     packet.Next,
+			},
+			Point: SessionMapPoint{
+				Latitude:  float64(sessionData.Location.Latitude),
+				Longitude: float64(sessionData.Location.Longitude),
+			},
+			LargeCustomer: buyer.InternalConfig.LargeCustomer,
+			EverOnNext:    sessionData.EverOnNext,
+		}
+	*/
+}
+
+// ----------------------------------------------------------------------------
 
 func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.DatabaseBinWrapper, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 
@@ -342,10 +793,12 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 		}
 
 		core.Debug("server is in datacenter \"%s\" [%x]", packet.DatacenterName, packet.DatacenterID)
-		
+
 		core.Debug("server initialized successfully")
 	}
 }
+
+// ----------------------------------------------------------------------------
 
 func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.DatabaseBinWrapper, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 
@@ -425,6 +878,8 @@ func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.Data
 	}
 }
 
+// ----------------------------------------------------------------------------
+
 func SessionUpdateHandlerFunc(
 	logger log.Logger,
 	getIPLocator func(sessionID uint64) routing.IPLocator,
@@ -445,6 +900,8 @@ func SessionUpdateHandlerFunc(
 
 		metrics.HandlerMetrics.Invocations.Add(1)
 
+		// make sure we track the length of session update handlers
+
 		timeStart := time.Now()
 		defer func() {
 			milliseconds := float64(time.Since(timeStart).Milliseconds())
@@ -455,6 +912,8 @@ func SessionUpdateHandlerFunc(
 			core.Debug("session update duration: %fms\n-----------------------------------------", milliseconds)
 		}()
 
+		// read in the session update packet
+
 		var packet SessionUpdatePacket
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
 			core.Debug("could not read session update packet:\n\n%v\n", err)
@@ -462,13 +921,28 @@ func SessionUpdateHandlerFunc(
 			return
 		}
 
+		// log out key stuff we want to see with each session update (debug only)
+
 		core.Debug("customer id is %x", packet.CustomerID)
 		core.Debug("datacenter id is %x", packet.DatacenterID)
 		core.Debug("session id is %x", packet.SessionID)
 		core.Debug("slice number is %d", packet.SliceNumber)
 		core.Debug("retry number is %d", packet.RetryNumber)
 
+		// if slice number is 0, this is a new session
+
 		newSession := packet.SliceNumber == 0
+
+		// build session handler state
+
+		var state SessionHandlerState
+
+		state.database = getDatabase()
+		state.datacenter = routing.UnknownDatacenter
+
+		// ...
+
+		// blah stuff that needs to be cleaned up
 
 		var sessionData SessionData
 		var prevSessionData SessionData
@@ -490,16 +964,19 @@ func SessionUpdateHandlerFunc(
 		var slicePacketLossServerToClient float32
 		var slicePacketLoss float32
 
-		var debug *string
-
-		datacenter := routing.UnknownDatacenter
-
 		signatureCheckFailed := false
 		unknownDatacenter := false
 		datacenterNotEnabled := false
 		buyerNotFound := false
 		buyerNotLive := false
 		staleRouteMatrix := false
+
+		// todo
+		_ = unknownDatacenter
+		_ = datacenterNotEnabled
+		_ = buyerNotFound
+		_ = buyerNotLive
+		_ = staleRouteMatrix
 
 		// If we've gotten this far, use a deferred function so that we always at least return a direct response
 		// and run the post session update logic
@@ -583,30 +1060,34 @@ func SessionUpdateHandlerFunc(
 			}
 
 			if !packet.ClientPingTimedOut {
-				go PostSessionUpdate(postSessionHandler,
-					&packet,
-					&prevSessionData,
-					&buyer,
-					multipathVetoHandler,
-					routeRelayNames,
-					routeRelaySellers,
-					nearRelays,
-					&datacenter,
-					routeDiversity,
-					slicePacketLossClientToServer,
-					slicePacketLossServerToClient,
-					debug,
-					unknownDatacenter,
-					datacenterNotEnabled,
-					buyerNotLive,
-					staleRouteMatrix,
-				)
+
+				// todo: pass in routing state not individual methods
+
+				/*
+					go PostSessionUpdate(postSessionHandler,
+						&packet,
+						&prevSessionData,
+						&buyer,
+						multipathVetoHandler,
+						routeRelayNames,
+						routeRelaySellers,
+						nearRelays,
+						&datacenter,
+						routeDiversity,
+						slicePacketLossClientToServer,
+						slicePacketLossServerToClient,
+						debug,
+						unknownDatacenter,
+						datacenterNotEnabled,
+						buyerNotLive,
+						staleRouteMatrix,
+					)
+				*/
 			}
 		}()
 
-		if isStaleRouteMatrix(routeMatrix, staleDuration) {
-			// Don't serve next routes with a stale route matrix
-			// Metric incremented in during route matrix sync
+		if routeMatrixIsStale(routeMatrix, staleDuration) {
+			core.Debug("stale route matrix")
 			staleRouteMatrix = true
 			return
 		}
@@ -641,7 +1122,7 @@ func SessionUpdateHandlerFunc(
 
 		if buyer.Debug {
 			core.Debug("debug enabled")
-			debug = new(string)
+			state.debug = new(string)
 		}
 
 		for i := int32(0); i < packet.NumTags; i++ {
@@ -666,7 +1147,7 @@ func SessionUpdateHandlerFunc(
 			return
 		}
 
-		datacenter = getDatacenter(database, packet.DatacenterID)
+		state.datacenter = getDatacenter(state.database, packet.DatacenterID)
 
 		var err error
 
@@ -790,7 +1271,7 @@ func SessionUpdateHandlerFunc(
 			return
 		}
 
-		destRelayIDs := routeMatrix.GetDatacenterRelayIDs(datacenter.ID)
+		destRelayIDs := routeMatrix.GetDatacenterRelayIDs(state.datacenter.ID)
 		if len(destRelayIDs) == 0 {
 			core.Debug("no relays in datacenter")
 			metrics.NoRelaysInDatacenter.Add(1)
@@ -807,6 +1288,7 @@ func SessionUpdateHandlerFunc(
 			// The SDK doesn't send up the relay name or relay address, so we have to get those from the route matrix
 			relayIndex, ok := routeMatrix.RelayIDsToIndices[packet.NearRelayIDs[i]]
 			if !ok {
+				// todo: we should catch this condition with  metric
 				continue
 			}
 
@@ -823,8 +1305,8 @@ func SessionUpdateHandlerFunc(
 			newSession,
 			sessionData.Location.Latitude,
 			sessionData.Location.Longitude,
-			datacenter.Location.Latitude,
-			datacenter.Location.Longitude,
+			state.datacenter.Location.Latitude,
+			state.datacenter.Location.Longitude,
 			maxNearRelays,
 			int32(math.Ceil(float64(packet.DirectRTT))),
 			int32(math.Ceil(float64(packet.DirectJitter))),
@@ -832,7 +1314,7 @@ func SessionUpdateHandlerFunc(
 			int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
 			sessionData.RouteRelayIDs[0],
 			destRelayIDs,
-			debug,
+			state.debug,
 		)
 
 		response.NumNearRelays = nearRelays.Count
@@ -854,7 +1336,6 @@ func SessionUpdateHandlerFunc(
 			return
 		}
 
-		// First slice always direct
 		if newSession {
 			core.Debug("first slice always goes direct")
 			return
@@ -891,7 +1372,7 @@ func SessionUpdateHandlerFunc(
 
 		if !sessionData.RouteState.Next || sessionData.RouteNumRelays == 0 {
 			sessionData.RouteState.Next = false
-			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), slicePacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, debug) {
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), slicePacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, state.debug) {
 				HandleNextToken(&sessionData, database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 			}
 		} else {
@@ -912,7 +1393,7 @@ func SessionUpdateHandlerFunc(
 
 			} else {
 				var stay bool
-				if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, slicePacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], debug); stay {
+				if stay, nextRouteSwitched = core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, slicePacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], state.debug); stay {
 
 					// stay on network next
 
@@ -968,8 +1449,8 @@ func SessionUpdateHandlerFunc(
 			sessionData.RouteRelayIDs[i] = relayID
 		}
 
-		if debug != nil {
-			response.Debug = *debug
+		if state.debug != nil {
+			response.Debug = *state.debug
 			if response.Debug != "" {
 				response.HasDebug = true
 			}
@@ -979,447 +1460,4 @@ func SessionUpdateHandlerFunc(
 	}
 }
 
-func HandleNextToken(
-	sessionData *SessionData,
-	database *routing.DatabaseBinWrapper,
-	buyer *routing.Buyer,
-	packet *SessionUpdatePacket,
-	routeNumRelays int32,
-	routeRelays []int32,
-	allRelayIDs []uint64,
-	routerPrivateKey [crypto.KeySize]byte,
-	response *SessionResponsePacket,
-) {
-	// Add another 10 seconds to the slice and increment the session version
-	sessionData.Initial = true
-	sessionData.ExpireTimestamp += billing.BillingSliceSeconds
-	sessionData.SessionVersion++
-
-	numTokens := routeNumRelays + 2 // relays + client + server
-	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
-	if routeAddresses == nil || routePublicKeys == nil {
-		response.RouteType = routing.RouteTypeDirect
-		response.NumTokens = 0
-		response.Tokens = nil
-		return
-	}
-
-	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
-	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
-	response.RouteType = routing.RouteTypeNew
-	response.NumTokens = numTokens
-	response.Tokens = tokenData
-}
-
-func HandleContinueToken(
-	sessionData *SessionData,
-	database *routing.DatabaseBinWrapper,
-	buyer *routing.Buyer,
-	packet *SessionUpdatePacket,
-	routeNumRelays int32,
-	routeRelays []int32,
-	allRelayIDs []uint64,
-	routerPrivateKey [crypto.KeySize]byte,
-	response *SessionResponsePacket,
-) {
-	numTokens := routeNumRelays + 2 // relays + client + server
-	// empty string array b/c don't care for internal ips here
-	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
-	if routeAddresses == nil || routePublicKeys == nil {
-		response.RouteType = routing.RouteTypeDirect
-		response.NumTokens = 0
-		response.Tokens = nil
-		return
-	}
-
-	tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
-	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
-	response.RouteType = routing.RouteTypeContinue
-	response.NumTokens = numTokens
-	response.Tokens = tokenData
-}
-
-func GetRouteAddressesAndPublicKeys(
-	clientAddress *net.UDPAddr,
-	clientPublicKey []byte,
-	serverAddress *net.UDPAddr,
-	serverPublicKey []byte,
-	numTokens int32,
-	routeRelays []int32,
-	allRelayIDs []uint64,
-	database *routing.DatabaseBinWrapper,
-) ([]*net.UDPAddr, [][]byte) {
-	routeAddresses := make([]*net.UDPAddr, numTokens)
-	routePublicKeys := make([][]byte, numTokens)
-
-	routeAddresses[0] = clientAddress
-	routePublicKeys[0] = clientPublicKey
-	routeAddresses[numTokens-1] = serverAddress
-	routePublicKeys[numTokens-1] = serverPublicKey
-
-	totalNumRelays := int32(len(allRelayIDs))
-	foundRelayCount := int32(0)
-
-	enableInternalIPs, _ := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
-
-	for i := int32(0); i < numTokens-2; i++ {
-		relayIndex := routeRelays[i]
-		if relayIndex < totalNumRelays {
-			relayID := allRelayIDs[relayIndex]
-			relay, exists := database.RelayMap[relayID]
-			if !exists {
-				continue
-			}
-
-			routeAddresses = AddAddress(enableInternalIPs, i, relay, allRelayIDs, database, routeRelays, routeAddresses)
-
-			routePublicKeys[i+1] = relay.PublicKey
-			foundRelayCount++
-		}
-	}
-
-	if foundRelayCount != numTokens-2 {
-		return nil, nil
-	}
-
-	return routeAddresses, routePublicKeys
-}
-
-func AddAddress(enableInternalIPs bool, index int32, relay routing.Relay, allRelayIDs []uint64, database *routing.DatabaseBinWrapper, routeRelays []int32, routeAddresses []*net.UDPAddr) []*net.UDPAddr {
-	totalNumRelays := int32(len(allRelayIDs))
-	routeAddresses[index+1] = &relay.Addr
-	if enableInternalIPs {
-		// check if the previous relay is the same seller
-		if index >= 1 {
-			prevRelayIndex := routeRelays[index-1]
-			if prevRelayIndex < totalNumRelays {
-				prevID := allRelayIDs[prevRelayIndex]
-				prev, exists := database.RelayMap[prevID]
-				if exists && prev.Seller.ID == relay.Seller.ID && prev.InternalAddr.String() != ":0" && relay.InternalAddr.String() != ":0" {
-					routeAddresses[index+1] = &relay.InternalAddr
-				}
-			}
-		}
-	}
-
-	return routeAddresses
-}
-
-func PostSessionUpdate(
-	postSessionHandler *PostSessionHandler,
-	packet *SessionUpdatePacket,
-	sessionData *SessionData,
-	buyer *routing.Buyer,
-	multipathVetoHandler storage.MultipathVetoHandler,
-	routeRelayNames [core.MaxRelaysPerRoute]string,
-	routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller,
-	nearRelays nearRelayGroup,
-	datacenter *routing.Datacenter,
-	routeDiversity int32,
-	slicePacketLossClientToServer float32,
-	slicePacketLossServerToClient float32,
-	debug *string,
-	unknownDatacenter bool,
-	datacenterNotEnabled bool,
-	buyerNotLive bool,
-	staleRouteMatrix bool,
-) {
-	sliceDuration := uint64(billing.BillingSliceSeconds)
-	if sessionData.Initial {
-		sliceDuration *= 2
-	}
-	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(packet.NextKbpsUp), uint64(packet.NextKbpsDown), sliceDuration)
-	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
-	totalPrice := CalculateTotalPriceNibblins(int(sessionData.RouteNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
-	routeRelayPrices := CalculateRouteRelaysPrice(int(sessionData.RouteNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
-
-	// Check if we should multipath veto the user
-	if packet.Next && sessionData.RouteState.MultipathOverload {
-		if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
-			level.Error(postSessionHandler.logger).Log("err", err)
-		}
-	}
-
-	nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
-	for i := 0; i < core.MaxRelaysPerRoute; i++ {
-		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
-	}
-
-	var routeCost int32 = sessionData.RouteCost
-	if sessionData.RouteCost == math.MaxInt32 {
-		routeCost = 0
-	}
-
-	var nearRelayRTT float32
-	if sessionData.RouteNumRelays > 0 {
-		for i, nearRelayID := range nearRelays.IDs {
-			if nearRelayID == sessionData.RouteRelayIDs[0] {
-				nearRelayRTT = float32(nearRelays.RTTs[i])
-				break
-			}
-		}
-	}
-
-	debugString := ""
-	if debug != nil {
-		debugString = *debug
-	}
-
-	var numNearRelays uint8
-	nearRelayIDs := [billing.BillingEntryMaxNearRelays]uint64{}
-	nearRelayRTTs := [billing.BillingEntryMaxNearRelays]float32{}
-	nearRelayJitters := [billing.BillingEntryMaxNearRelays]float32{}
-	nearRelayPacketLosses := [billing.BillingEntryMaxNearRelays]float32{}
-
-	if buyer.Debug {
-		numNearRelays = uint8(nearRelays.Count)
-		for i := uint8(0); i < numNearRelays; i++ {
-			nearRelayIDs[i] = nearRelays.IDs[i]
-			nearRelayRTTs[i] = float32(nearRelays.RTTs[i])
-			nearRelayJitters[i] = float32(nearRelays.Jitters[i])
-			nearRelayPacketLosses[i] = float32(nearRelays.PacketLosses[i])
-		}
-	}
-
-	slicePacketLoss := slicePacketLossClientToServer
-	if slicePacketLossServerToClient > slicePacketLossClientToServer {
-		slicePacketLoss = slicePacketLossServerToClient
-	}
-
-	// Clamp jitter between client <-> server at 1000 (it is meaningless beyond that)
-	if packet.JitterClientToServer > 1000.0 {
-		packet.JitterClientToServer = float32(1000)
-	}
-	if packet.JitterServerToClient > 1000.0 {
-		packet.JitterServerToClient = float32(1000)
-	}
-
-	billingEntry := &billing.BillingEntry{
-		Timestamp:                       uint64(time.Now().Unix()),
-		BuyerID:                         packet.CustomerID,
-		UserHash:                        packet.UserHash,
-		SessionID:                       packet.SessionID,
-		SliceNumber:                     packet.SliceNumber,
-		DirectRTT:                       packet.DirectRTT,
-		DirectJitter:                    packet.DirectJitter,
-		DirectPacketLoss:                packet.DirectPacketLoss,
-		Next:                            packet.Next,
-		NextRTT:                         packet.NextRTT,
-		NextJitter:                      packet.NextJitter,
-		NextPacketLoss:                  packet.NextPacketLoss,
-		NumNextRelays:                   uint8(sessionData.RouteNumRelays),
-		NextRelays:                      sessionData.RouteRelayIDs,
-		TotalPrice:                      uint64(totalPrice),
-		ClientToServerPacketsLost:       packet.PacketsLostClientToServer,
-		ServerToClientPacketsLost:       packet.PacketsLostServerToClient,
-		Committed:                       packet.Committed,
-		Flagged:                         packet.Reported,
-		Multipath:                       sessionData.RouteState.Multipath,
-		Initial:                         sessionData.Initial,
-		NextBytesUp:                     nextBytesUp,
-		NextBytesDown:                   nextBytesDown,
-		EnvelopeBytesUp:                 nextEnvelopeBytesUp,
-		EnvelopeBytesDown:               nextEnvelopeBytesDown,
-		DatacenterID:                    datacenter.ID,
-		RTTReduction:                    sessionData.RouteState.ReduceLatency,
-		PacketLossReduction:             sessionData.RouteState.ReducePacketLoss,
-		NextRelaysPrice:                 nextRelaysPrice,
-		Latitude:                        float32(sessionData.Location.Latitude),
-		Longitude:                       float32(sessionData.Location.Longitude),
-		ISP:                             sessionData.Location.ISP,
-		ABTest:                          sessionData.RouteState.ABTest,
-		RouteDecision:                   0,
-		ConnectionType:                  uint8(packet.ConnectionType),
-		PlatformType:                    uint8(packet.PlatformType),
-		SDKVersion:                      packet.Version.String(),
-		PacketLoss:                      slicePacketLoss,
-		PredictedNextRTT:                float32(routeCost),
-		MultipathVetoed:                 sessionData.RouteState.MultipathOverload,
-		UseDebug:                        buyer.Debug,
-		Debug:                           debugString,
-		FallbackToDirect:                packet.FallbackToDirect,
-		ClientFlags:                     packet.Flags,
-		UserFlags:                       packet.UserFlags,
-		NearRelayRTT:                    nearRelayRTT,
-		PacketsOutOfOrderClientToServer: packet.PacketsOutOfOrderClientToServer,
-		PacketsOutOfOrderServerToClient: packet.PacketsOutOfOrderServerToClient,
-		JitterClientToServer:            packet.JitterClientToServer,
-		JitterServerToClient:            packet.JitterServerToClient,
-		NumNearRelays:                   numNearRelays,
-		NearRelayIDs:                    nearRelayIDs,
-		NearRelayRTTs:                   nearRelayRTTs,
-		NearRelayJitters:                nearRelayJitters,
-		NearRelayPacketLosses:           nearRelayPacketLosses,
-		RelayWentAway:                   sessionData.RouteState.RelayWentAway,
-		RouteLost:                       sessionData.RouteState.RouteLost,
-		NumTags:                         uint8(packet.NumTags),
-		Tags:                            packet.Tags,
-		Mispredicted:                    sessionData.RouteState.Mispredict,
-		Vetoed:                          sessionData.RouteState.Veto,
-		LatencyWorse:                    sessionData.RouteState.LatencyWorse,
-		NoRoute:                         sessionData.RouteState.NoRoute,
-		NextLatencyTooHigh:              sessionData.RouteState.NextLatencyTooHigh,
-		RouteChanged:                    sessionData.RouteChanged,
-		CommitVeto:                      sessionData.RouteState.CommitVeto,
-		RouteDiversity:                  uint32(routeDiversity),
-		LackOfDiversity:                 sessionData.RouteState.LackOfDiversity,
-		Pro:                             buyer.RouteShader.ProMode && !sessionData.RouteState.MultipathRestricted,
-		MultipathRestricted:             sessionData.RouteState.MultipathRestricted,
-		ClientToServerPacketsSent:       packet.PacketsSentClientToServer,
-		ServerToClientPacketsSent:       packet.PacketsSentServerToClient,
-		BuyerNotLive:                    buyerNotLive,
-		UnknownDatacenter:               unknownDatacenter,
-		DatacenterNotEnabled:            datacenterNotEnabled,
-		StaleRouteMatrix:                staleRouteMatrix,
-	}
-
-	postSessionHandler.SendBillingEntry(billingEntry)
-
-	if postSessionHandler.useVanityMetrics {
-		postSessionHandler.SendVanityMetric(billingEntry)
-	}
-
-	hops := make([]RelayHop, sessionData.RouteNumRelays)
-	for i := int32(0); i < sessionData.RouteNumRelays; i++ {
-		hops[i] = RelayHop{
-			ID:   sessionData.RouteRelayIDs[i],
-			Name: routeRelayNames[i],
-		}
-	}
-
-	nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
-	for i := range nearRelayPortalData {
-		nearRelayPortalData[i] = NearRelayPortalData{
-			ID:   nearRelays.IDs[i],
-			Name: nearRelays.Names[i],
-			ClientStats: routing.Stats{
-				RTT:        float64(nearRelays.RTTs[i]),
-				Jitter:     float64(nearRelays.Jitters[i]),
-				PacketLoss: float64(nearRelays.PacketLosses[i]),
-			},
-		}
-	}
-
-	// Sort the near relays for display purposes
-	sort.Slice(nearRelayPortalData, func(i, j int) bool {
-		return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
-	})
-
-	var deltaRTT float32
-	if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
-		deltaRTT = packet.DirectRTT - packet.NextRTT
-	}
-
-	predictedRTT := float64(sessionData.RouteCost)
-	if sessionData.RouteCost >= routing.InvalidRouteValue {
-		predictedRTT = 0
-	}
-
-	portalData := &SessionPortalData{
-		Meta: SessionMeta{
-			ID:              packet.SessionID,
-			UserHash:        packet.UserHash,
-			DatacenterName:  datacenter.Name,
-			DatacenterAlias: datacenter.AliasName,
-			OnNetworkNext:   packet.Next,
-			NextRTT:         float64(packet.NextRTT),
-			DirectRTT:       float64(packet.DirectRTT),
-			DeltaRTT:        float64(deltaRTT),
-			Location:        sessionData.Location,
-			ClientAddr:      packet.ClientAddress.String(),
-			ServerAddr:      packet.ServerAddress.String(),
-			Hops:            hops,
-			SDK:             packet.Version.String(),
-			Connection:      uint8(packet.ConnectionType),
-			NearbyRelays:    nearRelayPortalData,
-			Platform:        uint8(packet.PlatformType),
-			BuyerID:         packet.CustomerID,
-		},
-		Slice: SessionSlice{
-			Timestamp: time.Now(),
-			Next: routing.Stats{
-				RTT:        float64(packet.NextRTT),
-				Jitter:     float64(packet.NextJitter),
-				PacketLoss: float64(packet.NextPacketLoss),
-			},
-			Direct: routing.Stats{
-				RTT:        float64(packet.DirectRTT),
-				Jitter:     float64(packet.DirectJitter),
-				PacketLoss: float64(packet.DirectPacketLoss),
-			},
-			Predicted: routing.Stats{
-				RTT: predictedRTT,
-			},
-			ClientToServerStats: routing.Stats{
-				Jitter:     float64(packet.JitterClientToServer),
-				PacketLoss: float64(slicePacketLossClientToServer),
-			},
-			ServerToClientStats: routing.Stats{
-				Jitter:     float64(packet.JitterServerToClient),
-				PacketLoss: float64(slicePacketLossServerToClient),
-			},
-			RouteDiversity: uint32(routeDiversity),
-			Envelope: routing.Envelope{
-				Up:   int64(packet.NextKbpsUp),
-				Down: int64(packet.NextKbpsDown),
-			},
-			IsMultiPath:       sessionData.RouteState.Multipath,
-			IsTryBeforeYouBuy: !sessionData.RouteState.Committed,
-			OnNetworkNext:     packet.Next,
-		},
-		Point: SessionMapPoint{
-			Latitude:  float64(sessionData.Location.Latitude),
-			Longitude: float64(sessionData.Location.Longitude),
-		},
-		LargeCustomer: buyer.InternalConfig.LargeCustomer,
-		EverOnNext:    sessionData.EverOnNext,
-	}
-
-	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-		postSessionHandler.SendPortalData(portalData)
-	}
-}
-
-func CalculateNextBytesUpAndDown(kbpsUp uint64, kbpsDown uint64, sliceDuration uint64) (uint64, uint64) {
-	bytesUp := (((1000 * kbpsUp) / 8) * sliceDuration)
-	bytesDown := (((1000 * kbpsDown) / 8) * sliceDuration)
-	return bytesUp, bytesDown
-}
-
-func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
-
-	if routeNumRelays == 0 {
-		return 0
-	}
-
-	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
-	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
-
-	sellerPriceNibblinsPerGB := routing.Nibblin(0)
-	for _, seller := range relaySellers {
-		sellerPriceNibblinsPerGB += seller.EgressPriceNibblinsPerGB
-	}
-
-	nextPriceNibblinsPerGB := routing.Nibblin(1e9)
-	totalPriceNibblins := float64(sellerPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
-
-	return routing.Nibblin(totalPriceNibblins)
-}
-
-func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) [core.MaxRelaysPerRoute]routing.Nibblin {
-	relayPrices := [core.MaxRelaysPerRoute]routing.Nibblin{}
-
-	if routeNumRelays == 0 {
-		return relayPrices
-	}
-
-	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
-	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
-
-	for i := 0; i < len(relayPrices); i++ {
-		relayPriceNibblins := float64(relaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
-		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
-	}
-
-	return relayPrices
-}
+// ----------------------------------------------------------------------------

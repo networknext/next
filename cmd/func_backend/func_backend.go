@@ -819,7 +819,7 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
-	
+
 	fmt.Printf("relay update\n")
 
 	body, err := ioutil.ReadAll(request.Body)
@@ -921,13 +921,13 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	_, ok := backend.relayMap.GetRelayData(relay.Addr.String())
 	if !ok {
 		backend.dirty = true
-	} 
+	}
 
 	relayData := routing.RelayData{
-	       ID:             crypto.HashID(relay_address),
-	       Addr:           *udpAddr,
-	       PublicKey:      crypto.RelayPublicKey[:],
-	       LastUpdateTime: time.Now(),
+		ID:             crypto.HashID(relay_address),
+		Addr:           *udpAddr,
+		PublicKey:      crypto.RelayPublicKey[:],
+		LastUpdateTime: time.Now(),
 	}
 
 	backend.relayMap.UpdateRelayData(relayData)
