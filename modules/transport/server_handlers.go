@@ -1,10 +1,9 @@
 package transport
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"math"
+	// "math"
 	"net"
 	// "sort"
 	// "strings"
@@ -13,7 +12,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
@@ -97,6 +96,7 @@ func getDatacenter(database *routing.DatabaseBinWrapper, datacenterID uint64) ro
 	return value
 }
 
+/*
 type nearRelayGroup struct {
 	Count int32
 	// todo: allocation here is bad. we should instead make these fixed sized arrays and have this all on the stack
@@ -197,6 +197,7 @@ func handleNearAndDestRelays(
 
 	return false, nearRelays, reframedDestRelays[:numDestRelays], nil
 }
+*/
 
 func HandleNextToken(
 	sessionData *SessionData,
@@ -324,6 +325,7 @@ func AddAddress(enableInternalIPs bool, index int32, relay routing.Relay, allRel
 	return routeAddresses
 }
 
+/*
 func PostSessionUpdate(
 	postSessionHandler *PostSessionHandler,
 	packet *SessionUpdatePacket,
@@ -402,13 +404,11 @@ func PostSessionUpdate(
 		}
 	}
 
-	// todo
-	/*
-	slicePacketLoss := slicePacketLossClientToServer
-	if slicePacketLossServerToClient > slicePacketLossClientToServer {
-		slicePacketLoss = slicePacketLossServerToClient
-	}
-	*/
+	// // todo
+	// slicePacketLoss := slicePacketLossClientToServer
+	// if slicePacketLossServerToClient > slicePacketLossClientToServer {
+	// 	slicePacketLoss = slicePacketLossServerToClient
+	// }
 
 	// Clamp jitter between client <-> server at 1000 (it is meaningless beyond that)
 	if packet.JitterClientToServer > 1000.0 {
@@ -511,32 +511,32 @@ func PostSessionUpdate(
 	// send data to the portal (real-time path)
 
 	// todo
-	/*
-		var portalData SessionPortalData
+	// var portalData SessionPortalData
 
-		buildPortalData(&portalData,
-			packet,
-			sessionData,
-			buyer,
-			routeRelayNames,
-			routeRelaySellers,
-			nearRelays,
-			datacenter,
-			routeDiversity,
-			slicePacketLossClientToServer,
-			slicePacketLossServerToClient,
-			debug,
-			unknownDatacenter,
-			datacenterNotEnabled,
-			buyerNotLive,
-			staleRouteMatrix,
-		)
+	// buildPortalData(&portalData,
+	// 	packet,
+	// 	sessionData,
+	// 	buyer,
+	// 	routeRelayNames,
+	// 	routeRelaySellers,
+	// 	nearRelays,
+	// 	datacenter,
+	// 	routeDiversity,
+	// 	slicePacketLossClientToServer,
+	// 	slicePacketLossServerToClient,
+	// 	debug,
+	// 	unknownDatacenter,
+	// 	datacenterNotEnabled,
+	// 	buyerNotLive,
+	// 	staleRouteMatrix,
+	// )
 
-		if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-			postSessionHandler.SendPortalData(&portalData)
-		}
-	*/
+	// if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+	// 	postSessionHandler.SendPortalData(&portalData)
+	// }
+	
 }
+*/
 
 func CalculateNextBytesUpAndDown(kbpsUp uint64, kbpsDown uint64, sliceDuration uint64) (uint64, uint64) {
 	bytesUp := (((1000 * kbpsUp) / 8) * sliceDuration)
@@ -1146,70 +1146,95 @@ func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
 	return false
 }
 
-func sessionBuildNearRelays(state *SessionHandlerState) {
+func sessionGetNearRelays(state *SessionHandlerState) {
 
-	// todo: simplify the fuck out of the garbage below
+	// todo
 
-	/*
-	incomingNearRelays := newNearRelayGroup(packet.NumNearRelays)
-	for i := int32(0); i < incomingNearRelays.Count; i++ {
-		incomingNearRelays.IDs[i] = packet.NearRelayIDs[i]
-		incomingNearRelays.RTTs[i] = packet.NearRelayRTT[i]
-		incomingNearRelays.Jitters[i] = packet.NearRelayJitter[i]
-		incomingNearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
+/*
+	nearRelayIDs := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
+	if len(nearRelayIDs) == 0 {
+		core.Debug("no near relays :(")
+		return false, nearRelayGroup{}, nil, errors.New("no near relays")
+	}
 
-		// The SDK doesn't send up the relay name or relay address, so we have to get those from the route matrix
-		relayIndex, ok := routeMatrix.RelayIDsToIndices[packet.NearRelayIDs[i]]
+	nearRelays := newNearRelayGroup(int32(len(nearRelayIDs)))
+	for i := int32(0); i < nearRelays.Count; i++ {
+		relayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelayIDs[i]]
 		if !ok {
-			// todo: we should catch this condition with  metric
 			continue
 		}
 
-		incomingNearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
-		incomingNearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
+		nearRelays.IDs[i] = nearRelayIDs[i]
+		nearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
+		nearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
 	}
 
-	nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
-		int32(packet.SliceNumber),
-		routeMatrix,
-		incomingNearRelays,
-		&buyer.RouteShader,
-		&sessionData.RouteState,
-		newSession,
-		sessionData.Location.Latitude,
-		sessionData.Location.Longitude,
-		state.datacenter.Location.Latitude,
-		state.datacenter.Location.Longitude,
-		maxNearRelays,
-		int32(math.Ceil(float64(packet.DirectRTT))),
-		int32(math.Ceil(float64(packet.DirectJitter))),
-		int32(math.Floor(float64(slicePacketLoss)+0.5)),
-		int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
-		sessionData.RouteRelayIDs[0],
-		destRelayIDs,
-		state.debug,
-	)
-
-	response.NumNearRelays = nearRelays.Count
-	response.NearRelayIDs = nearRelays.IDs
-	response.NearRelayAddresses = nearRelays.Addrs
-	response.NearRelaysChanged = nearRelaysChanged
-	response.HighFrequencyPings = buyer.InternalConfig.HighFrequencyPings
-
-	if err != nil {
-		// todo: string comparison in hot path?!
-		if strings.HasPrefix(err.Error(), "near relays changed") {
-			core.Debug("near relays changed")
-			metrics.NearRelaysChanged.Add(1)
-		} else {
-			core.Debug("failed to get near relays")
-			metrics.NearRelaysLocateFailure.Add(1)
-		}
-
-		return
-	}
-	*/
+	routeState.NumNearRelays = nearRelays.Count
+	return true, nearRelays, nil, nil
+*/
 }
+
+/*
+// todo: simplify the fuck out of this garbage
+
+incomingNearRelays := newNearRelayGroup(packet.NumNearRelays)
+for i := int32(0); i < incomingNearRelays.Count; i++ {
+	incomingNearRelays.IDs[i] = packet.NearRelayIDs[i]
+	incomingNearRelays.RTTs[i] = packet.NearRelayRTT[i]
+	incomingNearRelays.Jitters[i] = packet.NearRelayJitter[i]
+	incomingNearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
+
+	// The SDK doesn't send up the relay name or relay address, so we have to get those from the route matrix
+	relayIndex, ok := routeMatrix.RelayIDsToIndices[packet.NearRelayIDs[i]]
+	if !ok {
+		// todo: we should catch this condition with  metric
+		continue
+	}
+
+	incomingNearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
+	incomingNearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
+}
+
+nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
+	int32(packet.SliceNumber),
+	routeMatrix,
+	incomingNearRelays,
+	&buyer.RouteShader,
+	&sessionData.RouteState,
+	newSession,
+	sessionData.Location.Latitude,
+	sessionData.Location.Longitude,
+	state.datacenter.Location.Latitude,
+	state.datacenter.Location.Longitude,
+	maxNearRelays,
+	int32(math.Ceil(float64(packet.DirectRTT))),
+	int32(math.Ceil(float64(packet.DirectJitter))),
+	int32(math.Floor(float64(slicePacketLoss)+0.5)),
+	int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
+	sessionData.RouteRelayIDs[0],
+	destRelayIDs,
+	state.debug,
+)
+
+response.NumNearRelays = nearRelays.Count
+response.NearRelayIDs = nearRelays.IDs
+response.NearRelayAddresses = nearRelays.Addrs
+response.NearRelaysChanged = nearRelaysChanged
+response.HighFrequencyPings = buyer.InternalConfig.HighFrequencyPings
+
+if err != nil {
+	// todo: string comparison in hot path?!
+	if strings.HasPrefix(err.Error(), "near relays changed") {
+		core.Debug("near relays changed")
+		metrics.NearRelaysChanged.Add(1)
+	} else {
+		core.Debug("failed to get near relays")
+		metrics.NearRelaysLocateFailure.Add(1)
+	}
+
+	return
+}
+*/
 
 func sessionPost(state *SessionHandlerState) {
 
@@ -1438,10 +1463,7 @@ func SessionUpdateHandlerFunc(
 		/*
 			Update the session
 
-			We need to do special setup on slice 0, because this is the first slice of the session.
-
-			Once we have done the setup, we perform a transformation of state.input -> state.output
-			and it is returned back down to the caller via the response packet in sessionPost.
+			Do setup on slice 0, then for subsequent slices transform state.input -> state.output
 		*/
 
 		if state.packet.SliceNumber == 0 {
@@ -1458,7 +1480,8 @@ func SessionUpdateHandlerFunc(
 			Handle fallback to direct.
 
 			Fallback to direct is a condition where the SDK indicates that it has seen
-			a fatal error, and has decided to go direct for the rest of the session.
+			some fatal error, like not getting a response from the backend in time,
+			and has decided to go direct for the rest of the session.
 
 			When this happens, we early out to save processing time.
 		*/
@@ -1468,9 +1491,7 @@ func SessionUpdateHandlerFunc(
 		}
 
 		/*
-			Are there any relays in the datacenter?
-
-			If not then we must go direct.
+			Are there any relays in the datacenter? If not then we must go direct.
 		*/
 
 		destRelayIDs := state.routeMatrix.GetDatacenterRelayIDs(state.datacenter.ID)
@@ -1481,17 +1502,15 @@ func SessionUpdateHandlerFunc(
 		}
 
 		/*
-			Build set of near relays to return to the SDK
-			The SDK ping these near relays and reports up the results in the next session update.
-		*/
+			Build set of near relays to return to the SDK.
 
-		sessionBuildNearRelays(&state)
+			The SDK pings these near relays and reports up the results in the next session update.
 
-		/*
-			If this is the first slice we don't have any ping stats, so we can't plan a route yet. Just go direct.
+			We hold the set of near relays fixed for the session, so we only do this work on the first slice.
 		*/
 
 		if state.packet.SliceNumber == 0 {
+			sessionGetNearRelays(&state)
 			core.Debug("first slice always goes direct")
 			return
 		}
