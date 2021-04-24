@@ -1146,6 +1146,71 @@ func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
 	return false
 }
 
+func sessionBuildNearRelays(state *SessionHandlerState) {
+
+	// todo: simplify the fuck out of the garbage below
+
+	/*
+	incomingNearRelays := newNearRelayGroup(packet.NumNearRelays)
+	for i := int32(0); i < incomingNearRelays.Count; i++ {
+		incomingNearRelays.IDs[i] = packet.NearRelayIDs[i]
+		incomingNearRelays.RTTs[i] = packet.NearRelayRTT[i]
+		incomingNearRelays.Jitters[i] = packet.NearRelayJitter[i]
+		incomingNearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
+
+		// The SDK doesn't send up the relay name or relay address, so we have to get those from the route matrix
+		relayIndex, ok := routeMatrix.RelayIDsToIndices[packet.NearRelayIDs[i]]
+		if !ok {
+			// todo: we should catch this condition with  metric
+			continue
+		}
+
+		incomingNearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
+		incomingNearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
+	}
+
+	nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
+		int32(packet.SliceNumber),
+		routeMatrix,
+		incomingNearRelays,
+		&buyer.RouteShader,
+		&sessionData.RouteState,
+		newSession,
+		sessionData.Location.Latitude,
+		sessionData.Location.Longitude,
+		state.datacenter.Location.Latitude,
+		state.datacenter.Location.Longitude,
+		maxNearRelays,
+		int32(math.Ceil(float64(packet.DirectRTT))),
+		int32(math.Ceil(float64(packet.DirectJitter))),
+		int32(math.Floor(float64(slicePacketLoss)+0.5)),
+		int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
+		sessionData.RouteRelayIDs[0],
+		destRelayIDs,
+		state.debug,
+	)
+
+	response.NumNearRelays = nearRelays.Count
+	response.NearRelayIDs = nearRelays.IDs
+	response.NearRelayAddresses = nearRelays.Addrs
+	response.NearRelaysChanged = nearRelaysChanged
+	response.HighFrequencyPings = buyer.InternalConfig.HighFrequencyPings
+
+	if err != nil {
+		// todo: string comparison in hot path?!
+		if strings.HasPrefix(err.Error(), "near relays changed") {
+			core.Debug("near relays changed")
+			metrics.NearRelaysChanged.Add(1)
+		} else {
+			core.Debug("failed to get near relays")
+			metrics.NearRelaysLocateFailure.Add(1)
+		}
+
+		return
+	}
+	*/
+}
+
 func sessionPost(state *SessionHandlerState) {
 
 	if state.buyerNotFound || state.signatureCheckFailed {
@@ -1168,6 +1233,13 @@ func sessionPost(state *SessionHandlerState) {
 	state.output.PrevPacketsSentServerToClient = state.packet.PacketsSentServerToClient
 	state.output.PrevPacketsLostClientToServer = state.packet.PacketsLostClientToServer
 	state.output.PrevPacketsLostServerToClient = state.packet.PacketsLostServerToClient
+
+	if state.debug != nil {
+		state.response.Debug = *state.debug
+		if state.response.Debug != "" {
+			state.response.HasDebug = true
+		}
+	}
 
 	if err := writeSessionResponse(state.writer, &state.response, &state.output); err != nil {
 		core.Debug("failed to write session update response: %s", err)
@@ -1311,9 +1383,7 @@ func SessionUpdateHandlerFunc(
 		core.Debug("retry number is %d", state.packet.RetryNumber)
 
 		/* 
-			Build session handler state
-
-			Putting everything in this state struct makes it much easier to call subfunctions from this handler.
+			Build session handler state. Putting everything in a struct makes calling subroutines easier.
 		*/
 
 		state.writer = w
@@ -1336,17 +1406,17 @@ func SessionUpdateHandlerFunc(
 		}
 
 		/* 
-			Run session post at the end of this function
+			Session post always runs at the end of this function
 
-			Session post sends session data to:
+			It sends session data to:
 
 				1. Billing
 				2. Vanity Metrics
 				3. Portal
 
-			by pushing slice data from this session on to different queues.
+			by pushing session data to various queues.
 
-			Session post also writes the response data back to the caller.
+			It also writes and sends the response packet back to the sender.
 		*/
 
 		defer sessionPost(&state)
@@ -1354,11 +1424,11 @@ func SessionUpdateHandlerFunc(
 		/*
 			Call session pre function
 
-			This function checks for early out conditions, and does some setup of the handler state.
+			This function checks for early out conditions and does some setup of the handler state.
 
 			If it returns true, it means that one of the early out conditions has been met, so we return.
 
-			ps. Returning here kicks off the sessionPost which was deferred, sending the response packet to the caller.
+			IMPORTANT. Returning here kicks off the sessionPost which was deferred, sending the response packet.
 		*/
 
 		if sessionPre(&state) {
@@ -1371,7 +1441,7 @@ func SessionUpdateHandlerFunc(
 			We need to do special setup on slice 0, because this is the first slice of the session.
 
 			Once we have done the setup, we perform a transformation of state.input -> state.output
-			and it is returned back down to the caller via the response packet sent in sessionPost.
+			and it is returned back down to the caller via the response packet in sessionPost.
 		*/
 
 		if state.packet.SliceNumber == 0 {
@@ -1390,85 +1460,47 @@ func SessionUpdateHandlerFunc(
 			Fallback to direct is a condition where the SDK indicates that it has seen
 			a fatal error, and has decided to go direct for the rest of the session.
 
-			When this happens, we early out to save on processing time.
+			When this happens, we early out to save processing time.
 		*/
 
 		if sessionHandleFallbackToDirect(&state) {
 			return
 		}
 
-		// todo
 		/*
-		destRelayIDs := routeMatrix.GetDatacenterRelayIDs(state.datacenter.ID)
+			Are there any relays in the datacenter?
+
+			If not then we must go direct.
+		*/
+
+		destRelayIDs := state.routeMatrix.GetDatacenterRelayIDs(state.datacenter.ID)
 		if len(destRelayIDs) == 0 {
-			core.Debug("no relays in datacenter")
+			core.Debug("no relays in datacenter %x", state.datacenter.ID)
 			metrics.NoRelaysInDatacenter.Add(1)
 			return
 		}
 
-		incomingNearRelays := newNearRelayGroup(packet.NumNearRelays)
-		for i := int32(0); i < incomingNearRelays.Count; i++ {
-			incomingNearRelays.IDs[i] = packet.NearRelayIDs[i]
-			incomingNearRelays.RTTs[i] = packet.NearRelayRTT[i]
-			incomingNearRelays.Jitters[i] = packet.NearRelayJitter[i]
-			incomingNearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
+		/*
+			Build set of near relays to return to the SDK
+			The SDK ping these near relays and reports up the results in the next session update.
+		*/
 
-			// The SDK doesn't send up the relay name or relay address, so we have to get those from the route matrix
-			relayIndex, ok := routeMatrix.RelayIDsToIndices[packet.NearRelayIDs[i]]
-			if !ok {
-				// todo: we should catch this condition with  metric
-				continue
-			}
+		sessionBuildNearRelays(&state)
 
-			incomingNearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
-			incomingNearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
-		}
+		/*
+			If this is the first slice we don't have any ping stats, so we can't plan a route yet. Just go direct.
+		*/
 
-		nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
-			int32(packet.SliceNumber),
-			routeMatrix,
-			incomingNearRelays,
-			&buyer.RouteShader,
-			&sessionData.RouteState,
-			newSession,
-			sessionData.Location.Latitude,
-			sessionData.Location.Longitude,
-			state.datacenter.Location.Latitude,
-			state.datacenter.Location.Longitude,
-			maxNearRelays,
-			int32(math.Ceil(float64(packet.DirectRTT))),
-			int32(math.Ceil(float64(packet.DirectJitter))),
-			int32(math.Floor(float64(slicePacketLoss)+0.5)),
-			int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
-			sessionData.RouteRelayIDs[0],
-			destRelayIDs,
-			state.debug,
-		)
-
-		response.NumNearRelays = nearRelays.Count
-		response.NearRelayIDs = nearRelays.IDs
-		response.NearRelayAddresses = nearRelays.Addrs
-		response.NearRelaysChanged = nearRelaysChanged
-		response.HighFrequencyPings = buyer.InternalConfig.HighFrequencyPings
-
-		if err != nil {
-			// todo: string comparison in hot path?!
-			if strings.HasPrefix(err.Error(), "near relays changed") {
-				core.Debug("near relays changed")
-				metrics.NearRelaysChanged.Add(1)
-			} else {
-				core.Debug("failed to get near relays")
-				metrics.NearRelaysLocateFailure.Add(1)
-			}
-
-			return
-		}
-
-		if newSession {
+		if state.packet.SliceNumber == 0 {
 			core.Debug("first slice always goes direct")
 			return
 		}
 
+		// ----------------------
+
+		// todo: break this down
+
+		/*
 		var routeCost int32
 		routeRelays := [core.MaxRelaysPerRoute]int32{}
 
@@ -1573,19 +1605,7 @@ func SessionUpdateHandlerFunc(
 			sessionData.RouteRelayIDs[i] = relayID
 		}
 		*/
-
-		// todo
-
-		/*
-		// todo: this needs to move into post
-		if state.debug != nil {
-			response.Debug = *state.debug
-			if response.Debug != "" {
-				response.HasDebug = true
-			}
-		}
-		*/
-
+		
 		core.Debug("session updated successfully")
 	}
 }
