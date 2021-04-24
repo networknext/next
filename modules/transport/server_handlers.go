@@ -329,14 +329,20 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			return
 		}
 
-		if datacenterExists(database, packet.DatacenterID) {
-			core.Debug("server is in datacenter \"%s\" [%x]", packet.DatacenterName, packet.DatacenterID)
-		} else {
-			// IMPORTANT: We must print this here always, otherwise we don't get the datacenter name corresponding to the id
-			fmt.Printf("error: unknown datacenter %s [%x]", packet.DatacenterName, packet.DatacenterID)
+		// IMPORTANT: When the datacenter doesn't exist, we intentionally let the server init succeed anyway
+		// and print a log here. The log lets us map the datacenter id to the datacenter name and buyer id,
+		// and in session updates for sessions going across this server, we will see "unknownDatacenter" flag
+		// set in the billing entry. This lets us measure how many slices have unknown datacenter, and lets
+		// those sessions show up as blue dots in the map.
+
+		if !datacenterExists(database, packet.DatacenterID) {
+			fmt.Printf("error: unknown datacenter %s [%x] for customer %x", packet.DatacenterName, packet.DatacenterID, packet.CustomerID)
 			metrics.DatacenterNotFound.Add(1)
+			return
 		}
 
+		core.Debug("server is in datacenter \"%s\" [%x]", packet.DatacenterName, packet.DatacenterID)
+		
 		core.Debug("server initialized successfully")
 	}
 }
@@ -381,7 +387,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.Data
 		if !buyer.Live {
 			core.Debug("customer not active")
 			// todo: add buyer not active metric here
-			// metrics.BuyerNotActive.Add(1)
+			// metrics.BuyerNotLive.Add(1)
 			return
 		}
 
@@ -404,6 +410,12 @@ func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.Data
 			NumSessions: packet.NumSessions,
 		}
 		postSessionHandler.SendPortalCounts(countData)
+
+		if !datacenterExists(database, packet.DatacenterID) {
+			core.Debug("datacenter does not exist %x", packet.DatacenterID)
+			// todo: metrics for this
+			return
+		}
 
 		core.Debug("server is in datacenter %x", packet.DatacenterID)
 
