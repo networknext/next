@@ -582,33 +582,6 @@ func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysP
 	return relayPrices
 }
 
-type SessionHandlerState struct {
-	input     			 SessionData         // sent up from the SDK
-	output               SessionData         // sent down to the SDK
-	packet               SessionUpdatePacket
-	database             *routing.DatabaseBinWrapper
-	datacenter           routing.Datacenter
-	buyer 				 routing.Buyer
-	debug                *string
-	signatureCheckFailed bool
-	unknownDatacenter    bool
-	datacenterNotEnabled bool
-	buyerNotFound        bool
-	buyerNotLive         bool
-	staleRouteMatrix     bool
-
-	/*
-		postSessionHandler *PostSessionHandler
-		multipathVetoHandler storage.MultipathVetoHandler
-		routeRelayNames [core.MaxRelaysPerRoute]string
-		routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller
-		nearRelays nearRelayGroup
-		routeDiversity int32
-		slicePacketLossClientToServer float32
-		slicePacketLossServerToClient float32
-	*/
-}
-
 func buildPortalData(state *SessionHandlerState, portalData *SessionPortalData) {
 
 	// todo: switch to using session handler state
@@ -886,6 +859,195 @@ func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.Data
 
 // ----------------------------------------------------------------------------
 
+type SessionHandlerState struct {
+	input     			 SessionData         		// sent up from the SDK
+	output               SessionData         		// sent down to the SDK
+	packet               SessionUpdatePacket
+	database             *routing.DatabaseBinWrapper
+	routeMatrix          *routing.RouteMatrix
+	datacenter           routing.Datacenter
+	buyer 				 routing.Buyer
+	debug                *string
+	ipLocator            routing.IPLocator
+	signatureCheckFailed bool
+	unknownDatacenter    bool
+	datacenterNotEnabled bool
+	buyerNotFound        bool
+	buyerNotLive         bool
+	staleRouteMatrix     bool
+	staleDuration 		 time.Duration
+	slicePacketLoss      float32
+
+	/*
+		postSessionHandler *PostSessionHandler
+		multipathVetoHandler storage.MultipathVetoHandler
+		routeRelayNames [core.MaxRelaysPerRoute]string
+		routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller
+		nearRelays nearRelayGroup
+		routeDiversity int32
+		slicePacketLossClientToServer float32
+		slicePacketLossServerToClient float32
+	*/
+}
+
+func sessionInitialize(state *SessionHandlerState) {
+
+	core.Debug("new session")
+
+	var err error
+
+	state.output.Location, err = state.ipLocator.LocateIP(state.packet.ClientAddress.IP)
+
+	if err != nil || state.output.Location == routing.LocationNullIsland {
+		core.Debug("location veto")
+		// todo: put metrics in state
+		// metrics.ClientLocateFailure.Add(1)
+		state.output.RouteState.LocationVeto = true
+		return
+	}
+
+	state.output.Version = SessionDataVersion
+	state.output.SessionID = state.packet.SessionID
+	state.output.SliceNumber = state.packet.SliceNumber + 1
+	state.output.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
+	state.output.RouteState.UserID = state.packet.UserHash
+	state.output.RouteState.ABTest = state.buyer.RouteShader.ABTest
+
+	state.input = state.output
+}
+
+func sessionUpdate(state *SessionHandlerState) {
+
+	core.Debug("existing session")
+
+	err := UnmarshalSessionData(&state.input, state.packet.SessionData[:])
+
+	if err != nil {
+		core.Debug("could not read session data:\n\n%s\n", err)
+		// todo: put metrics in state
+		// metrics.ReadSessionDataFailure.Add(1)
+		return
+	}
+
+	if state.input.SessionID != state.packet.SessionID {
+		core.Debug("bad session id")
+		// todo: put metrics in state
+		// metrics.BadSessionID.Add(1)
+		return
+	}
+
+	if state.input.SliceNumber != state.packet.SliceNumber {
+		core.Debug("bad slice number")
+		// todo: put metrics in state
+		// metrics.BadSliceNumber.Add(1)
+		return
+	}
+
+	state.output = state.input
+	state.output.SliceNumber += 1
+	state.output.ExpireTimestamp += billing.BillingSliceSeconds
+
+	// calculate slice packet loss
+
+	slicePacketsSentClientToServer := state.packet.PacketsSentClientToServer - state.input.PrevPacketsSentClientToServer
+	slicePacketsSentServerToClient := state.packet.PacketsSentServerToClient - state.input.PrevPacketsSentServerToClient
+
+	slicePacketsLostClientToServer := state.packet.PacketsLostClientToServer - state.input.PrevPacketsLostClientToServer
+	slicePacketsLostServerToClient := state.packet.PacketsLostServerToClient - state.input.PrevPacketsLostServerToClient
+
+	var slicePacketLossClientToServer float32
+	if slicePacketsSentClientToServer != uint64(0) {
+		slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer)/float64(slicePacketsSentClientToServer)) * 100.0
+	} else {
+		slicePacketLossClientToServer = float32(0)
+	}
+
+	var slicePacketLossServerToClient float32
+	if slicePacketsSentServerToClient != uint64(0) {
+		slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient)/float64(slicePacketsSentServerToClient)) * 100.0
+	} else {
+		slicePacketLossServerToClient = float32(0)
+	}
+
+	state.slicePacketLoss = slicePacketLossClientToServer
+	if slicePacketLossServerToClient > slicePacketLossClientToServer {
+		state.slicePacketLoss = slicePacketLossServerToClient
+	}
+}
+
+func sessionEarlyOut(state *SessionHandlerState) bool {
+
+	if routeMatrixIsStale(state.routeMatrix, state.staleDuration) {
+		core.Debug("stale route matrix")
+		state.staleRouteMatrix = true
+		return true
+	}
+
+	if state.packet.ClientPingTimedOut {
+		core.Debug("client ping timed out")
+		// todo: put metrics in state
+		// metrics.ClientPingTimedOut.Add(1)
+		return true
+	}
+
+	var exists bool
+	state.buyer, exists = state.database.BuyerMap[state.packet.CustomerID]
+	if !exists {
+		core.Debug("buyer not found")
+		// todo: put metrics in state
+		// metrics.BuyerNotFound.Add(1)
+		state.buyerNotFound = true
+		return true
+	}
+
+	if !state.buyer.Live {
+		core.Debug("buyer not live")
+		// todo: put metrics in state
+		// metrics.BuyerNotLive.Add(1)
+		state.buyerNotLive = true
+		return true
+	}
+
+	// todo: put packet data in handler state
+	/*
+	if !crypto.VerifyPacket(state.buyer.PublicKey, incoming.Data) {
+		core.Debug("signature check failed")
+		// todo: put metrics in state
+		// metrics.SignatureCheckFailed.Add(1)
+		state.signatureCheckFailed = true
+		return true
+	}
+	*/
+
+	if !datacenterExists(state.database, state.packet.DatacenterID) {
+		core.Debug("unknown datacenter")
+		// todo: add a metric for this condition
+		state.unknownDatacenter = true
+		return true
+	}
+
+	if !datacenterEnabled(state.database, state.packet.CustomerID, state.packet.DatacenterID) {
+		core.Debug("datacenter not enabled")
+		// todo: add a metric for this condition
+		state.datacenterNotEnabled = true
+		return true
+	}
+
+	if state.buyer.Debug {
+		core.Debug("debug enabled")
+		state.debug = new(string)
+	}
+
+	for i := int32(0); i < state.packet.NumTags; i++ {
+		if state.packet.Tags[i] == crypto.HashID("pro") {
+			core.Debug("pro mode enabled")
+			state.buyer.RouteShader.ProMode = true
+		}
+	}
+
+	return false
+}
+
 func SessionUpdateHandlerFunc(
 	logger log.Logger,
 	getIPLocator func(sessionID uint64) routing.IPLocator,
@@ -928,7 +1090,7 @@ func SessionUpdateHandlerFunc(
 			return
 		}
 
-		// log out key stuff we want to see with each session update (debug only)
+		// log stuff we want to see with each session update (debug only)
 
 		core.Debug("customer id is %x", state.packet.CustomerID)
 		core.Debug("datacenter id is %x", state.packet.DatacenterID)
@@ -936,41 +1098,34 @@ func SessionUpdateHandlerFunc(
 		core.Debug("slice number is %d", state.packet.SliceNumber)
 		core.Debug("retry number is %d", state.packet.RetryNumber)
 
-		// if slice number is 0, this is a new session
-
-		newSession := state.packet.SliceNumber == 0
-
 		// build session handler state
 
 		state.database = getDatabase()
 		state.datacenter = routing.UnknownDatacenter
+		state.ipLocator = getIPLocator(state.packet.SessionID)
+		state.routeMatrix = getRouteMatrix()
+		state.staleDuration = staleDuration
 
-		// ...
+		/*
+		state.response = SessionResponsePacket{
+			Version:     state.packet.Version,
+			SessionID:   state.packet.SessionID,
+			SliceNumber: state.packet.SliceNumber,
+			RouteType:   routing.RouteTypeDirect,
+		}
+		*/
 
 		// blah stuff that needs to be cleaned up
 
 		// todo
 		// var routeDiversity int32
 
-		ipLocator := getIPLocator(state.packet.SessionID)
-		routeMatrix := getRouteMatrix()
-
-		response := SessionResponsePacket{
-			Version:     state.packet.Version,
-			SessionID:   state.packet.SessionID,
-			SliceNumber: state.packet.SliceNumber,
-			RouteType:   routing.RouteTypeDirect,
-		}
-
-		var slicePacketLossClientToServer float32
-		var slicePacketLossServerToClient float32
-
-		var slicePacketLoss float32
-
 		// from this point forward we need to *always* run post processing
 
 		defer func() {
 
+			// todo
+			/*
 			if state.buyerNotFound || state.signatureCheckFailed {
 				core.Debug("not responding")
 				return
@@ -1081,152 +1236,20 @@ func SessionUpdateHandlerFunc(
 			}
 		}()
 
-		if routeMatrixIsStale(routeMatrix, staleDuration) {
-			core.Debug("stale route matrix")
-			state.staleRouteMatrix = true
+		if sessionEarlyOut(&state) {
 			return
 		}
-
-		if state.packet.ClientPingTimedOut {
-			core.Debug("client ping timed out")
-			metrics.ClientPingTimedOut.Add(1)
-			return
-		}
-
-		var exists bool
-		state.buyer, exists = state.database.BuyerMap[state.packet.CustomerID]
-		if !exists {
-			core.Debug("buyer not found")
-			metrics.BuyerNotFound.Add(1)
-			state.buyerNotFound = true
-			return
-		}
-
-		if !state.buyer.Live {
-			core.Debug("buyer not live")
-			metrics.BuyerNotLive.Add(1)
-			state.buyerNotLive = true
-			return
-		}
-
-		if !crypto.VerifyPacket(state.buyer.PublicKey, incoming.Data) {
-			core.Debug("signature check failed")
-			metrics.SignatureCheckFailed.Add(1)
-			state.signatureCheckFailed = true
-			return
-		}
-
-		if state.buyer.Debug {
-			core.Debug("debug enabled")
-			state.debug = new(string)
-		}
-
-		for i := int32(0); i < state.packet.NumTags; i++ {
-			if state.packet.Tags[i] == crypto.HashID("pro") {
-				core.Debug("pro mode enabled")
-				state.buyer.RouteShader.ProMode = true
-				break
-			}
-		}
-
-		if !datacenterExists(state.database, state.packet.DatacenterID) {
-			core.Debug("unknown datacenter")
-			// todo: add a metric for this condition
-			state.unknownDatacenter = true
-			return
-		}
-
-		if !datacenterEnabled(state.database, state.packet.CustomerID, state.packet.DatacenterID) {
-			core.Debug("datacenter not enabled")
-			// todo: add a metric for this condition
-			state.datacenterNotEnabled = true
-			return
-		}
-
-		// -----------------------------------------
 
 		state.datacenter = getDatacenter(state.database, state.packet.DatacenterID)
 
-		var err error
+		if state.packet.SliceNumber == 0 {
 
-		if newSession {
-
-			core.Debug("new session")
-
-			state.output.Location, err = ipLocator.LocateIP(state.packet.ClientAddress.IP)
-
-			if err != nil || state.output.Location == routing.LocationNullIsland {
-				core.Debug("location veto")
-				metrics.ClientLocateFailure.Add(1)
-				state.output.RouteState.LocationVeto = true
-				return
-			}
-
-			state.output.Version = SessionDataVersion
-			state.output.SessionID = state.packet.SessionID
-			state.output.SliceNumber = state.packet.SliceNumber + 1
-			state.output.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
-			state.output.RouteState.UserID = state.packet.UserHash
-			state.output.RouteState.ABTest = state.buyer.RouteShader.ABTest
-
-			// IMPORTANT: Initialize these so the first slice shows up correctly in the portal
-			state.input.Location = state.output.Location
-			state.input.RouteState.ABTest = state.output.RouteState.ABTest
+			sessionInitialize(&state)
 
 		} else {
 
-			core.Debug("existing session")
+			sessionUpdate(&state)
 
-			err := UnmarshalSessionData(&state.input, state.packet.SessionData[:])
-
-			if err != nil {
-				core.Debug("could not read session data:\n\n%s\n", err)
-				metrics.ReadSessionDataFailure.Add(1)
-				return
-			}
-
-			if state.input.SessionID != state.packet.SessionID {
-				core.Debug("bad session id")
-				metrics.BadSessionID.Add(1)
-				return
-			}
-
-			if state.input.SliceNumber != state.packet.SliceNumber {
-				core.Debug("bad slice number")
-				metrics.BadSliceNumber.Add(1)
-				return
-			}
-
-			state.output = state.input
-			state.output.SliceNumber += 1
-			state.output.ExpireTimestamp += billing.BillingSliceSeconds
-
-			// todo: function to calculate packet loss
-
-			slicePacketsSentClientToServer := state.packet.PacketsSentClientToServer - state.input.PrevPacketsSentClientToServer
-			slicePacketsSentServerToClient := state.packet.PacketsSentServerToClient - state.input.PrevPacketsSentServerToClient
-
-			slicePacketsLostClientToServer := state.packet.PacketsLostClientToServer - state.input.PrevPacketsLostClientToServer
-			slicePacketsLostServerToClient := state.packet.PacketsLostServerToClient - state.input.PrevPacketsLostServerToClient
-
-			if slicePacketsSentClientToServer != uint64(0) {
-				slicePacketLossClientToServer = float32(float64(slicePacketsLostClientToServer)/float64(slicePacketsSentClientToServer)) * 100.0
-			} else {
-				slicePacketLossClientToServer = float32(0)
-			}
-
-			if slicePacketsSentServerToClient != uint64(0) {
-				slicePacketLossServerToClient = float32(float64(slicePacketsLostServerToClient)/float64(slicePacketsSentServerToClient)) * 100.0
-			} else {
-				slicePacketLossServerToClient = float32(0)
-			}
-
-			slicePacketLoss = slicePacketLossClientToServer
-			if slicePacketLossServerToClient > slicePacketLossClientToServer {
-				slicePacketLoss = slicePacketLossServerToClient
-			}
-
-			_ = slicePacketLoss
 		}
 
 		// todo: handle fallback to direct function
@@ -1450,14 +1473,17 @@ func SessionUpdateHandlerFunc(
 		}
 		*/
 
-		// todo above
+		// todo
 
+		/*
+		// todo: this needs to move into post
 		if state.debug != nil {
 			response.Debug = *state.debug
 			if response.Debug != "" {
 				response.HasDebug = true
 			}
 		}
+		*/
 
 		core.Debug("session updated successfully")
 	}
