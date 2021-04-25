@@ -786,10 +786,21 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 	directLatency := int32(math.Ceil(float64(state.packet.DirectRTT)))
 	directJitter := int32(math.Ceil(float64(state.packet.DirectJitter)))
-
-	// todo: little bit weird that we pass in "real" packet loss always as direct here...
-	directPacketLoss := int32(math.Floor(float64(state.slicePacketLoss)+0.5))
+	directPacketLoss := int32(math.Floor(float64(state.packet.DirectPacketLoss)+0.5))
 	nextPacketLoss := int32(math.Floor(float64(state.packet.NextPacketLoss)+0.5))
+
+	/*
+		IMPORTANT: If we are not currently on network next, replace the direct packet loss 
+		that comes from pings (@10HZ), with the real packet loss from real game packets (60HZ)
+		This gives us a much higher precision view of packet loss, which is important because
+		it's used as an input to decide if we should take network next to reduce packet loss!
+	*/
+	if !state.packet.Next {
+		realPacketLoss := int32(math.Floor(float64(state.slicePacketLoss)+0.5))
+		if realPacketLoss > directPacketLoss {
+			directPacketLoss = realPacketLoss
+		}
+	}
 
 	destRelayIDs := state.routeMatrix.GetDatacenterRelayIDs(state.datacenter.ID)
 	if len(destRelayIDs) == 0 {
