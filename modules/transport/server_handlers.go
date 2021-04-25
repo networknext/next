@@ -94,7 +94,7 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			return
 		}
 
-		core.Debug("server customer id is %x", packet.CustomerID)
+		core.Debug("server buyer id is %x", packet.BuyerID)
 
 		database := getDatabase()
 
@@ -107,18 +107,18 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			}
 		}()
 
-		buyer, exists := database.BuyerMap[packet.CustomerID]
+		buyer, exists := database.BuyerMap[packet.BuyerID]
 		if !exists {
-			core.Debug("unknown customer")
+			core.Debug("unknown buyer")
 			metrics.BuyerNotFound.Add(1)
-			responseType = InitResponseUnknownCustomer
+			responseType = InitResponseUnknownBuyer
 			return
 		}
 
 		if !buyer.Live {
-			core.Debug("customer not active")
+			core.Debug("buyer not active")
 			metrics.BuyerNotActive.Add(1)
-			responseType = InitResponseCustomerNotActive
+			responseType = InitResponseBuyerNotActive
 			return
 		}
 
@@ -136,14 +136,12 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 			return
 		}
 
-		// IMPORTANT: When the datacenter doesn't exist, we intentionally let the server init succeed anyway
-		// and print a log here. The log lets us map the datacenter id to the datacenter name and buyer id,
-		// and in session updates for sessions going across this server, we will see "unknownDatacenter" flag
-		// set in the billing entry. This lets us measure how many slices have unknown datacenter, and lets
-		// those sessions show up as blue dots in the map.
-
+		/*
+			IMPORTANT: When the datacenter doesn't exist, we intentionally let the server init succeed anyway
+			and log here, so we can map the datacenter name to the datacenter id, when we are tracking it down.
+		*/
 		if !datacenterExists(database, packet.DatacenterID) {
-			fmt.Printf("error: unknown datacenter %s [%x] for customer %x", packet.DatacenterName, packet.DatacenterID, packet.CustomerID)
+			fmt.Printf("error: unknown datacenter %s [%x] for buyer id %x", packet.DatacenterName, packet.DatacenterID, packet.BuyerID)
 			metrics.DatacenterNotFound.Add(1)
 			return
 		}
@@ -182,19 +180,19 @@ func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.Data
 			return
 		}
 
-		core.Debug("server customer id is %x", packet.CustomerID)
+		core.Debug("server buyer id is %x", packet.BuyerID)
 
 		database := getDatabase()
 
-		buyer, exists := database.BuyerMap[packet.CustomerID]
+		buyer, exists := database.BuyerMap[packet.BuyerID]
 		if !exists {
-			core.Debug("unknown customer")
+			core.Debug("unknown buyer")
 			metrics.BuyerNotFound.Add(1)
 			return
 		}
 
 		if !buyer.Live {
-			core.Debug("customer not active")
+			core.Debug("buyer not active")
 			// todo: add buyer not active metric here
 			// metrics.BuyerNotLive.Add(1)
 			return
@@ -466,7 +464,7 @@ func sessionPre(state *SessionHandlerState) bool {
 	}
 
 	var exists bool
-	state.buyer, exists = state.database.BuyerMap[state.packet.CustomerID]
+	state.buyer, exists = state.database.BuyerMap[state.packet.BuyerID]
 	if !exists {
 		core.Debug("buyer not found")
 		// todo: put metrics in state
@@ -501,7 +499,7 @@ func sessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
-	if !datacenterEnabled(state.database, state.packet.CustomerID, state.packet.DatacenterID) {
+	if !datacenterEnabled(state.database, state.packet.BuyerID, state.packet.DatacenterID) {
 		core.Debug("datacenter not enabled")
 		// todo: add a metric for this condition
 		state.datacenterNotEnabled = true
@@ -985,7 +983,7 @@ func SessionUpdateHandlerFunc(
 
 		// log stuff we want to see with each session update (debug only)
 
-		core.Debug("customer id is %x", state.packet.CustomerID)
+		core.Debug("buyer id is %x", state.packet.BuyerID)
 		core.Debug("datacenter id is %x", state.packet.DatacenterID)
 		core.Debug("session id is %x", state.packet.SessionID)
 		core.Debug("slice number is %d", state.packet.SliceNumber)
@@ -1413,7 +1411,7 @@ func PostSessionUpdate(
 
 	billingEntry := &billing.BillingEntry{
 		Timestamp:                       uint64(time.Now().Unix()),
-		BuyerID:                         packet.CustomerID,
+		BuyerID:                         packet.BuyerID,
 		UserHash:                        packet.UserHash,
 		SessionID:                       packet.SessionID,
 		SliceNumber:                     packet.SliceNumber,
@@ -1594,7 +1592,7 @@ func buildPortalData(state *SessionHandlerState, portalData *SessionPortalData) 
 				Connection:      uint8(packet.ConnectionType),
 				NearbyRelays:    nearRelayPortalData,
 				Platform:        uint8(packet.PlatformType),
-				BuyerID:         packet.CustomerID,
+				BuyerID:         packet.BuyerID,
 			},
 			Slice: SessionSlice{
 				Timestamp: time.Now(),
@@ -1632,7 +1630,7 @@ func buildPortalData(state *SessionHandlerState, portalData *SessionPortalData) 
 				Latitude:  float64(sessionData.Location.Latitude),
 				Longitude: float64(sessionData.Location.Longitude),
 			},
-			LargeCustomer: buyer.InternalConfig.LargeCustomer,
+			LargeCustomer:	   buyer.InternalConfig.LargeCustomer,
 			EverOnNext:    sessionData.EverOnNext,
 		}
 	*/

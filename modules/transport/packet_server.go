@@ -30,11 +30,11 @@ const (
 	PacketTypeServerInitResponse = 224
 
 	InitResponseOK                   = 0
-	InitResponseUnknownCustomer      = 1
+	InitResponseUnknownBuyer         = 1
 	InitResponseUnknownDatacenter    = 2
 	InitResponseOldSDKVersion        = 3
 	InitResponseSignatureCheckFailed = 4
-	InitResponseCustomerNotActive    = 5
+	InitResponseBuyerNotActive       = 5
 	InitResponseDataCenterNotEnabled = 6
 
 	ConnectionTypeUnknown  = 0
@@ -218,7 +218,7 @@ func MarshalPacket(packet Packet) ([]byte, error) {
 
 type ServerInitRequestPacket struct {
 	Version        SDKVersion
-	CustomerID     uint64
+	BuyerID        uint64
 	DatacenterID   uint64
 	RequestID      uint64
 	DatacenterName string
@@ -232,7 +232,7 @@ func (packet *ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&versionMinor, 8)
 	stream.SerializeBits(&versionPatch, 8)
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.BuyerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint64(&packet.RequestID)
 	stream.SerializeString(&packet.DatacenterName, MaxDatacenterNameLength)
@@ -252,7 +252,7 @@ func (packet *ServerInitResponsePacket) Serialize(stream encoding.Stream) error 
 
 type ServerUpdatePacket struct {
 	Version       SDKVersion
-	CustomerID    uint64
+	BuyerID       uint64
 	DatacenterID  uint64
 	NumSessions   uint32
 	ServerAddress net.UDPAddr
@@ -266,7 +266,7 @@ func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&versionMinor, 8)
 	stream.SerializeBits(&versionPatch, 8)
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.BuyerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
@@ -275,7 +275,7 @@ func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
 
 type SessionUpdatePacket struct {
 	Version                         SDKVersion
-	CustomerID                      uint64
+	BuyerID                         uint64
 	DatacenterID                    uint64
 	SessionID                       uint64
 	SliceNumber                     uint32
@@ -335,7 +335,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
 
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.BuyerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint64(&packet.SessionID)
 	stream.SerializeUint32(&packet.SliceNumber)
