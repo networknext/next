@@ -133,14 +133,14 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 
 	// Work with the near relays as an array of structs first for easier sorting
 
-    type NearRelayData struct {
+	type NearRelayData struct {
 		ID        uint64
 		Addr      net.UDPAddr
 		Name      string
 		Distance  int
 		Latitude  float64
 		Longitude float64
-    }
+	}
 
 	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
 
@@ -202,7 +202,7 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
 	for i := 0; i < len(nearRelayData); i++ {
-		
+
 		if len(nearRelayIDs) == maxNearRelays {
 			break
 		}

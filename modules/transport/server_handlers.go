@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"time"
+	"math"
 
 	"github.com/go-kit/kit/log"
 
@@ -728,29 +729,101 @@ func sessionGetNearRelays(state *SessionHandlerState) bool {
 	return true
 }
 
-func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
+/*
 
-	// todo
+		incomingNearRelays := newNearRelayGroup(packet.NumNearRelays)
+		for i := int32(0); i < incomingNearRelays.Count; i++ {
+			incomingNearRelays.IDs[i] = packet.NearRelayIDs[i]
+			incomingNearRelays.RTTs[i] = packet.NearRelayRTT[i]
+			incomingNearRelays.Jitters[i] = packet.NearRelayJitter[i]
+			incomingNearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
 
-	/*
-	incomingNearRelays := newNearRelayGroup(packet.NumNearRelays)
-	for i := int32(0); i < incomingNearRelays.Count; i++ {
-		incomingNearRelays.IDs[i] = packet.NearRelayIDs[i]
-		incomingNearRelays.RTTs[i] = packet.NearRelayRTT[i]
-		incomingNearRelays.Jitters[i] = packet.NearRelayJitter[i]
-		incomingNearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
+			// The SDK doesn't send up the relay name or relay address, so we have to get those from the route matrix
+			relayIndex, ok := routeMatrix.RelayIDsToIndices[packet.NearRelayIDs[i]]
+			if !ok {
+				continue
+			}
 
-		// The SDK doesn't send up the relay name or relay address, so we have to get those from the route matrix
-		relayIndex, ok := routeMatrix.RelayIDsToIndices[packet.NearRelayIDs[i]]
-		if !ok {
-			// todo: we should catch this condition with  metric
-			continue
+			incomingNearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
+			incomingNearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
 		}
 
-		incomingNearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
-		incomingNearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
+		nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
+			int32(packet.SliceNumber),
+			routeMatrix,
+			incomingNearRelays,
+			&buyer.RouteShader,
+			&sessionData.RouteState,
+			newSession,
+			sessionData.Location.Latitude,
+			sessionData.Location.Longitude,
+			datacenter.Location.Latitude,
+			datacenter.Location.Longitude,
+			maxNearRelays,
+			int32(math.Ceil(float64(packet.DirectRTT))),
+			int32(math.Ceil(float64(packet.DirectJitter))),
+			int32(math.Floor(float64(slicePacketLoss)+0.5)),
+			int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
+			sessionData.RouteRelayIDs[0],
+			destRelayIDs,
+			debug,
+		)
+*/
+
+func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
+
+	routeShader := &state.buyer.RouteShader
+
+	routeState := &state.output.RouteState
+
+	directLatency := int32(math.Ceil(float64(state.packet.DirectRTT)))
+	directJitter := int32(math.Ceil(float64(state.packet.DirectJitter)))
+
+	// todo: little bit weird that we pass in "real" packet loss always as direct here...
+	directPacketLoss := int32(math.Floor(float64(state.slicePacketLoss)+0.5))
+	nextPacketLoss := int32(math.Floor(float64(state.packet.NextPacketLoss)+0.5))
+
+	destRelayIDs := state.routeMatrix.GetDatacenterRelayIDs(state.datacenter.ID)
+	if len(destRelayIDs) == 0 {
+		core.Debug("no relays in datacenter %x", state.datacenter.ID)
+		// todo
+		// metrics.NoRelaysInDatacenter.Add(1)
+		return false
 	}
-	*/
+
+	// todo
+	firstRouteRelayID := uint64(0)
+
+	sliceNumber := int32(state.packet.SliceNumber)
+
+	// todo: put these in state?
+	var nearRelayRTTs []int32
+	var nearRelayJitters []int32
+	var numDestRelays int32
+	destRelays := make([]int32, len(destRelayIDs))
+
+	core.ReframeRelays(
+		// input
+		routeShader,
+		routeState,
+		state.routeMatrix.RelayIDsToIndices,
+		directLatency,
+		directJitter,
+		directPacketLoss,
+		nextPacketLoss,
+		firstRouteRelayID,
+		sliceNumber,
+		state.packet.NearRelayIDs,
+		state.packet.NearRelayRTT,
+		state.packet.NearRelayJitter,
+		state.packet.NearRelayPacketLoss,
+		destRelayIDs,
+		// output
+		nearRelayRTTs,
+		nearRelayJitters,
+		&numDestRelays,
+		destRelays,
+	)
 
 	return true
 
