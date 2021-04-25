@@ -423,6 +423,7 @@ type SessionHandlerState struct {
 	output               SessionData // sent down to the SDK
 	packet               SessionUpdatePacket
 	response             SessionResponsePacket
+	metrics 			 *metrics.SessionUpdateMetrics
 	database             *routing.DatabaseBinWrapper
 	routeMatrix          *routing.RouteMatrix
 	datacenter           routing.Datacenter
@@ -456,16 +457,14 @@ func sessionPre(state *SessionHandlerState) bool {
 	state.buyer, exists = state.database.BuyerMap[state.packet.BuyerID]
 	if !exists {
 		core.Debug("buyer not found")
-		// todo: put metrics in state
-		// metrics.BuyerNotFound.Add(1)
+		state.metrics.BuyerNotFound.Add(1)
 		state.buyerNotFound = true
 		return true
 	}
 
 	if !state.buyer.Live {
 		core.Debug("buyer not live")
-		// todo: put metrics in state
-		// metrics.BuyerNotLive.Add(1)
+		state.metrics.BuyerNotLive.Add(1)
 		state.buyerNotLive = true
 		return true
 	}
@@ -474,8 +473,7 @@ func sessionPre(state *SessionHandlerState) bool {
 	/*
 		if !crypto.VerifyPacket(state.buyer.PublicKey, incoming.Data) {
 			core.Debug("signature check failed")
-			// todo: put metrics in state
-			// metrics.SignatureCheckFailed.Add(1)
+			state.metrics.SignatureCheckFailed.Add(1)
 			state.signatureCheckFailed = true
 			return true
 		}
@@ -483,8 +481,7 @@ func sessionPre(state *SessionHandlerState) bool {
 
 	if state.packet.ClientPingTimedOut {
 		core.Debug("client ping timed out")
-		// todo: put metrics in state
-		// metrics.ClientPingTimedOut.Add(1)
+		state.metrics.ClientPingTimedOut.Add(1)
 		return true
 	}
 
@@ -505,14 +502,12 @@ func sessionPre(state *SessionHandlerState) bool {
 	destRelayIDs := state.routeMatrix.GetDatacenterRelayIDs(state.datacenter.ID)
 	if len(destRelayIDs) == 0 {
 		core.Debug("no relays in datacenter %x", state.datacenter.ID)
-		// todo
-		// metrics.NoRelaysInDatacenter.Add(1)
+		state.metrics.NoRelaysInDatacenter.Add(1)
 		return true
 	}
 
 	if routeMatrixIsStale(state.routeMatrix, state.staleDuration) {
 		core.Debug("stale route matrix")
-		// todo: put metrics in state
 		state.staleRouteMatrix = true
 		return true
 	}
@@ -544,8 +539,7 @@ func sessionUpdateNewSession(state *SessionHandlerState) {
 
 	if err != nil || state.output.Location == routing.LocationNullIsland {
 		core.Debug("location veto")
-		// todo: put metrics in state
-		// metrics.ClientLocateFailure.Add(1)
+		state.metrics.ClientLocateFailure.Add(1)
 		state.output.RouteState.LocationVeto = true
 		return
 	}
@@ -568,22 +562,19 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 
 	if err != nil {
 		core.Debug("could not read session data:\n\n%s\n", err)
-		// todo: put metrics in state
-		// metrics.ReadSessionDataFailure.Add(1)
+		state.metrics.ReadSessionDataFailure.Add(1)
 		return
 	}
 
 	if state.input.SessionID != state.packet.SessionID {
 		core.Debug("bad session id")
-		// todo: put metrics in state
-		// metrics.BadSessionID.Add(1)
+		state.metrics.BadSessionID.Add(1)
 		return
 	}
 
 	if state.input.SliceNumber != state.packet.SliceNumber {
 		core.Debug("bad slice number")
-		// todo: put metrics in state
-		// metrics.BadSliceNumber.Add(1)
+		state.metrics.BadSliceNumber.Add(1)
 		return
 	}
 
@@ -630,80 +621,67 @@ func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
 		reported := false
 
 		if state.packet.Flags&FallbackFlagsBadRouteToken != 0 {
-			// todo
-			// state.metrics.FallbackToDirectBadRouteToken.Add(1)
+			state.metrics.FallbackToDirectBadRouteToken.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsNoNextRouteToContinue != 0 {
-			// todo
-			// state.metrics.FallbackToDirectNoNextRouteToContinue.Add(1)
+			state.metrics.FallbackToDirectNoNextRouteToContinue.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsPreviousUpdateStillPending != 0 {
-			// todo
-			// state.metrics.FallbackToDirectPreviousUpdateStillPending.Add(1)
+			state.metrics.FallbackToDirectPreviousUpdateStillPending.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsBadContinueToken != 0 {
-			// todo
-			// metrics.FallbackToDirectBadContinueToken.Add(1)
+			state.metrics.FallbackToDirectBadContinueToken.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsRouteExpired != 0 {
-			// todo
-			// metrics.FallbackToDirectRouteExpired.Add(1)
+			state.metrics.FallbackToDirectRouteExpired.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsRouteRequestTimedOut != 0 {
-			// todo
-			// metrics.FallbackToDirectRouteRequestTimedOut.Add(1)
+			state.metrics.FallbackToDirectRouteRequestTimedOut.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsContinueRequestTimedOut != 0 {
-			// todo
-			// metrics.FallbackToDirectContinueRequestTimedOut.Add(1)
+			state.metrics.FallbackToDirectContinueRequestTimedOut.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsClientTimedOut != 0 {
-			// todo
-			// metrics.FallbackToDirectClientTimedOut.Add(1)
+			state.metrics.FallbackToDirectClientTimedOut.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsUpgradeResponseTimedOut != 0 {
-			// todo
-			// metrics.FallbackToDirectUpgradeResponseTimedOut.Add(1)
+			state.metrics.FallbackToDirectUpgradeResponseTimedOut.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsRouteUpdateTimedOut != 0 {
-			// todo
-			// metrics.FallbackToDirectRouteUpdateTimedOut.Add(1)
+			state.metrics.FallbackToDirectRouteUpdateTimedOut.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsDirectPongTimedOut != 0 {
-			// todo
-			// metrics.FallbackToDirectDirectPongTimedOut.Add(1)
+			state.metrics.FallbackToDirectDirectPongTimedOut.Add(1)
 			reported = true
 		}
 
 		if state.packet.Flags&FallbackFlagsNextPongTimedOut != 0 {
-			// todo
-			// metrics.FallbackToDirectNextPongTimedOut.Add(1)
+			state.metrics.FallbackToDirectNextPongTimedOut.Add(1)
 			reported = true
 		}
 
 		if !reported {
-			// todo
-			// metrics.FallbackToDirectUnknownReason.Add(1)
+			state.metrics.FallbackToDirectUnknownReason.Add(1)
 		}
 
 		return true
@@ -815,7 +793,7 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 	sliceNumber := int32(state.packet.SliceNumber)
 
-	// todo: put these in state?
+	// todo: put these in state
 	var nearRelayRTTs []int32
 	var nearRelayJitters []int32
 	var numDestRelays int32
@@ -857,13 +835,11 @@ func sessionPost(state *SessionHandlerState) {
 
 	if state.response.RouteType != routing.RouteTypeDirect {
 		core.Debug("session takes network next")
-		// todo: put metrics in state
-		// state.metrics.NextSlices.Add(1)
+		state.metrics.NextSlices.Add(1)
 		state.output.EverOnNext = true
 	} else {
 		core.Debug("session goes direct")
-		// todo: put metrics in state
-		// metrics.DirectSlices.Add(1)
+		state.metrics.DirectSlices.Add(1)
 	}
 
 	state.output.PrevPacketsSentClientToServer = state.packet.PacketsSentClientToServer
@@ -880,8 +856,7 @@ func sessionPost(state *SessionHandlerState) {
 
 	if err := writeSessionResponse(state.writer, &state.response, &state.output); err != nil {
 		core.Debug("failed to write session update response: %s", err)
-		// todo: metrics in state
-		// metrics.WriteResponseFailure.Add(1)
+		state.metrics.WriteResponseFailure.Add(1)
 		return
 	}
 
@@ -1049,6 +1024,8 @@ func SessionUpdateHandlerFunc(
 		*/
 
 		state.writer = w
+
+		state.metrics = metrics
 
 		state.database = getDatabase()
 
