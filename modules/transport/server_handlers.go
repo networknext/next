@@ -713,30 +713,16 @@ func sessionGetNearRelays(state *SessionHandlerState) bool {
 	var serverLat float32
 	var serverLong float32
 
-	// todo: don't allocate here
-	nearRelayIDs := state.routeMatrix.GetNearRelays(directLatency, clientLat, clientLong, serverLat, serverLong, core.MaxNearRelays)
+	nearRelayIDs, nearRelayAddresses := state.routeMatrix.GetNearRelays(directLatency, clientLat, clientLong, serverLat, serverLong, core.MaxNearRelays)
 	if len(nearRelayIDs) == 0 {
 		core.Debug("no near relays :(")
 		return false
 	}
 
-	/*
+	_ = nearRelayIDs
+	_ = nearRelayAddresses
 
-		nearRelays := newNearRelayGroup(int32(len(nearRelayIDs)))
-		for i := int32(0); i < nearRelays.Count; i++ {
-			relayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelayIDs[i]]
-			if !ok {
-				continue
-			}
-
-			nearRelays.IDs[i] = nearRelayIDs[i]
-			nearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
-			nearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
-		}
-
-		routeState.NumNearRelays = nearRelays.Count
-		return true, nearRelays, nil, nil
-	*/
+	// todo: stick near relay ids and addresses in state
 
 	return true
 }

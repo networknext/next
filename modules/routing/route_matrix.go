@@ -114,7 +114,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	return stream.Error()
 }
 
-func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int) []uint64 {
+func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int) ([]uint64, []net.UDPAddr) {
 
 	// Quantize to integer values so we don't have noise in low bits
 
@@ -133,14 +133,14 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 
 	// Work with the near relays as an array of structs first for easier sorting
 
-	type NearRelayData struct {
+    type NearRelayData struct {
 		ID        uint64
 		Addr      net.UDPAddr
 		Name      string
 		Distance  int
 		Latitude  float64
 		Longitude float64
-	}
+    }
 
 	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
 
@@ -163,6 +163,8 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 	latencyThreshold := float32(30.0)
 
 	nearRelayIDs := make([]uint64, 0, maxNearRelays)
+	nearRelayAddresses := make([]net.UDPAddr, 0, maxNearRelays)
+
 	nearRelayIDMap := map[uint64]struct{}{}
 
 	for i := 0; i < len(nearRelayData); i++ {
@@ -180,15 +182,14 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		}
 
 		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-
-		// Store the near relay ID in a map so that we don't reinsert it later
+		nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
 		nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
 	}
 
 	// If we already have enough relays, stop and return them
 
 	if len(nearRelayIDs) == maxNearRelays {
-		return nearRelayIDs
+		return nearRelayIDs, nearRelayAddresses
 	}
 
 	// We need more relays. Look for near relays around the *destination*
@@ -201,11 +202,12 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
 	for i := 0; i < len(nearRelayData); i++ {
+		
 		if len(nearRelayIDs) == maxNearRelays {
 			break
 		}
 
-		// Don't add the relay if we've already added it
+		// don't add the same relay twice
 		if _, ok := nearRelayIDMap[nearRelayData[i].ID]; ok {
 			continue
 		}
@@ -216,9 +218,10 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		}
 
 		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
+		nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
 	}
 
-	return nearRelayIDs
+	return nearRelayIDs, nearRelayAddresses
 }
 
 func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
