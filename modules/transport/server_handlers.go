@@ -502,6 +502,14 @@ func sessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
+	destRelayIDs := state.routeMatrix.GetDatacenterRelayIDs(state.datacenter.ID)
+	if len(destRelayIDs) == 0 {
+		core.Debug("no relays in datacenter %x", state.datacenter.ID)
+		// todo
+		// metrics.NoRelaysInDatacenter.Add(1)
+		return true
+	}
+
 	if routeMatrixIsStale(state.routeMatrix, state.staleDuration) {
 		core.Debug("stale route matrix")
 		// todo: put metrics in state
@@ -1051,13 +1059,7 @@ func SessionUpdateHandlerFunc(
 		/*
 			Session post always runs at the end of this function
 
-			It sends session data to:
-
-				1. Billing
-				2. Vanity Metrics
-				3. Portal
-
-			by pushing session data to various queues.
+			It sends session data to billing, vanity metrics and the portal.
 
 			It also writes and sends the response packet back to the sender.
 		*/
@@ -1105,17 +1107,6 @@ func SessionUpdateHandlerFunc(
 		*/
 
 		if sessionHandleFallbackToDirect(&state) {
-			return
-		}
-
-		/*
-			Are there any relays in the datacenter? If not then we must go direct.
-		*/
-
-		destRelayIDs := state.routeMatrix.GetDatacenterRelayIDs(state.datacenter.ID)
-		if len(destRelayIDs) == 0 {
-			core.Debug("no relays in datacenter %x", state.datacenter.ID)
-			metrics.NoRelaysInDatacenter.Add(1)
 			return
 		}
 
