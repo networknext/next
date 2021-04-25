@@ -716,6 +716,8 @@ func sessionGetNearRelays(state *SessionHandlerState) bool {
 	state.response.NearRelayIDs, state.response.NearRelayAddresses = state.routeMatrix.GetNearRelays(directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays)
 	if len(state.response.NearRelayIDs) == 0 {
 		core.Debug("no near relays :(")
+		// todo
+		// metrics.NearRelaysLocateFailure.Add(1)
 		return false
 	}
 
@@ -730,71 +732,29 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 	// todo
 
+	/*
+	incomingNearRelays := newNearRelayGroup(packet.NumNearRelays)
+	for i := int32(0); i < incomingNearRelays.Count; i++ {
+		incomingNearRelays.IDs[i] = packet.NearRelayIDs[i]
+		incomingNearRelays.RTTs[i] = packet.NearRelayRTT[i]
+		incomingNearRelays.Jitters[i] = packet.NearRelayJitter[i]
+		incomingNearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
+
+		// The SDK doesn't send up the relay name or relay address, so we have to get those from the route matrix
+		relayIndex, ok := routeMatrix.RelayIDsToIndices[packet.NearRelayIDs[i]]
+		if !ok {
+			// todo: we should catch this condition with  metric
+			continue
+		}
+
+		incomingNearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
+		incomingNearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
+	}
+	*/
+
 	return true
 
 }
-
-/*
-// todo: simplify the fuck out of this garbage
-
-incomingNearRelays := newNearRelayGroup(packet.NumNearRelays)
-for i := int32(0); i < incomingNearRelays.Count; i++ {
-	incomingNearRelays.IDs[i] = packet.NearRelayIDs[i]
-	incomingNearRelays.RTTs[i] = packet.NearRelayRTT[i]
-	incomingNearRelays.Jitters[i] = packet.NearRelayJitter[i]
-	incomingNearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
-
-	// The SDK doesn't send up the relay name or relay address, so we have to get those from the route matrix
-	relayIndex, ok := routeMatrix.RelayIDsToIndices[packet.NearRelayIDs[i]]
-	if !ok {
-		// todo: we should catch this condition with  metric
-		continue
-	}
-
-	incomingNearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
-	incomingNearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
-}
-
-nearRelaysChanged, nearRelays, reframedDestRelays, err := handleNearAndDestRelays(
-	int32(packet.SliceNumber),
-	routeMatrix,
-	incomingNearRelays,
-	&buyer.RouteShader,
-	&sessionData.RouteState,
-	newSession,
-	sessionData.Location.Latitude,
-	sessionData.Location.Longitude,
-	state.datacenter.Location.Latitude,
-	state.datacenter.Location.Longitude,
-	maxNearRelays,
-	int32(math.Ceil(float64(packet.DirectRTT))),
-	int32(math.Ceil(float64(packet.DirectJitter))),
-	int32(math.Floor(float64(slicePacketLoss)+0.5)),
-	int32(math.Floor(float64(packet.NextPacketLoss)+0.5)),
-	sessionData.RouteRelayIDs[0],
-	destRelayIDs,
-	state.debug,
-)
-
-response.NumNearRelays = nearRelays.Count
-response.NearRelayIDs = nearRelays.IDs
-response.NearRelayAddresses = nearRelays.Addrs
-response.NearRelaysChanged = nearRelaysChanged
-response.HighFrequencyPings = buyer.InternalConfig.HighFrequencyPings
-
-if err != nil {
-	// todo: string comparison in hot path?!
-	if strings.HasPrefix(err.Error(), "near relays changed") {
-		core.Debug("near relays changed")
-		metrics.NearRelaysChanged.Add(1)
-	} else {
-		core.Debug("failed to get near relays")
-		metrics.NearRelaysLocateFailure.Add(1)
-	}
-
-	return
-}
-*/
 
 func sessionPost(state *SessionHandlerState) {
 
