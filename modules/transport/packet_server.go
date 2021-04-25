@@ -634,10 +634,11 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
+	// IMPORTANT: DO NOT EVER CHANGE CODE IN THIS FUNCTION BELOW HERE.
+	// CHANGING CODE BELOW HERE *WILL* BREAK PRODUCTION!!!!
+
 	stream.SerializeBits(&sessionData.Version, 8)
 
-	// IMPORTANT: If you ever make this serialize not backwards compatible with old session data
-	// you must update the too old version number here and it will be a disruptive update (sessions will fall back to direct!)
 	if sessionData.Version < 8 {
 		return errors.New("session data is too old")
 	}
@@ -702,11 +703,8 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
-
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
-
 	stream.SerializeBool(&sessionData.EverOnNext)
-
 	stream.SerializeBool(&sessionData.FellBackToDirect)
 
 	stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
@@ -755,7 +753,11 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		stream.SerializeBool(&sessionData.RouteState.LocationVeto)
 	}
 
-	// IMPORTANT: Add new fields at the bottom. Never remove or change old fields or it becomes a disruptive update!
+	// IMPORTANT: ADD NEW FIELDS BELOW HERE ONLY. AFTER YOU ADD YOUR NEW FIELDS
+	// MOVE THIS MESSAGE DOWN BELOW THE FIELDS YOU ADDED. FAILING TO FOLLOW
+	// THESE INSRUCTIONS WILL CAUSE PEOPLE TO BREAK PRODUCTION!!!!
+
+	// >>> new fields go here <<<
 
 	return stream.Error()
 }

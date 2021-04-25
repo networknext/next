@@ -731,7 +731,7 @@ func mainReturnWithCode() int {
 				data = data[crypto.PacketHashSize+1 : size]
 
 				var buffer bytes.Buffer
-				packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
+				packet := transport.UDPPacket{From: *fromAddr, Data: data}
 
 				switch packetType {
 				case transport.PacketTypeServerInitRequest:
