@@ -436,6 +436,8 @@ type SessionHandlerState struct {
 	staleRouteMatrix     bool
 	staleDuration        time.Duration
 	slicePacketLoss      float32
+	nearRelayIds         []uint64
+	nearRelayAddresses   []net.UDPAddr
 
 	/*
 		postSessionHandler *PostSessionHandler
@@ -450,19 +452,6 @@ type SessionHandlerState struct {
 }
 
 func sessionPre(state *SessionHandlerState) bool {
-
-	if routeMatrixIsStale(state.routeMatrix, state.staleDuration) {
-		core.Debug("stale route matrix")
-		state.staleRouteMatrix = true
-		return true
-	}
-
-	if state.packet.ClientPingTimedOut {
-		core.Debug("client ping timed out")
-		// todo: put metrics in state
-		// metrics.ClientPingTimedOut.Add(1)
-		return true
-	}
 
 	var exists bool
 	state.buyer, exists = state.database.BuyerMap[state.packet.BuyerID]
@@ -493,6 +482,13 @@ func sessionPre(state *SessionHandlerState) bool {
 		}
 	*/
 
+	if state.packet.ClientPingTimedOut {
+		core.Debug("client ping timed out")
+		// todo: put metrics in state
+		// metrics.ClientPingTimedOut.Add(1)
+		return true
+	}
+
 	if !datacenterExists(state.database, state.packet.DatacenterID) {
 		core.Debug("unknown datacenter")
 		// todo: add a metric for this condition
@@ -504,6 +500,13 @@ func sessionPre(state *SessionHandlerState) bool {
 		core.Debug("datacenter not enabled")
 		// todo: add a metric for this condition
 		state.datacenterNotEnabled = true
+		return true
+	}
+
+	if routeMatrixIsStale(state.routeMatrix, state.staleDuration) {
+		core.Debug("stale route matrix")
+		// todo: put metrics in state
+		state.staleRouteMatrix = true
 		return true
 	}
 
@@ -712,18 +715,21 @@ func sessionGetNearRelays(state *SessionHandlerState) bool {
 	serverLatitude := state.datacenter.Location.Latitude
 	serverLongitude := state.datacenter.Location.Longitude
 
-	nearRelayIDs, nearRelayAddresses := state.routeMatrix.GetNearRelays(directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays)
-	if len(nearRelayIDs) == 0 {
+	state.nearRelayIds, state.nearRelayAddresses = state.routeMatrix.GetNearRelays(directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays)
+	if len(state.nearRelayIds) == 0 {
 		core.Debug("no near relays :(")
 		return false
 	}
 
-	_ = nearRelayIDs
-	_ = nearRelayAddresses
+	return true
+}
 
-	// todo: stick near relay ids and addresses in state
+func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
+
+	// todo
 
 	return true
+
 }
 
 /*
@@ -1079,7 +1085,7 @@ func SessionUpdateHandlerFunc(
 		}
 
 		/*
-			Build set of near relays to return to the SDK.
+			Build set of near relays to return to the SDK on the first slice.
 
 			The SDK pings these near relays and reports up the results in the next session update.
 
@@ -1090,6 +1096,16 @@ func SessionUpdateHandlerFunc(
 			sessionGetNearRelays(&state)
 			core.Debug("first slice always goes direct")
 			return
+		}
+
+		/*
+			Process near relay ping stats after the first slice.
+
+			The SDK reports up ping statistics to near relays, and we use these for route planning.
+		*/
+
+		if state.packet.SliceNumber > 0 {
+			sessionUpdateNearRelayStats(&state)
 		}
 
 		// ----------------------
