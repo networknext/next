@@ -436,8 +436,6 @@ type SessionHandlerState struct {
 	staleRouteMatrix     bool
 	staleDuration        time.Duration
 	slicePacketLoss      float32
-	nearRelayIds         []uint64
-	nearRelayAddresses   []net.UDPAddr
 
 	/*
 		postSessionHandler *PostSessionHandler
@@ -715,11 +713,15 @@ func sessionGetNearRelays(state *SessionHandlerState) bool {
 	serverLatitude := state.datacenter.Location.Latitude
 	serverLongitude := state.datacenter.Location.Longitude
 
-	state.nearRelayIds, state.nearRelayAddresses = state.routeMatrix.GetNearRelays(directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays)
-	if len(state.nearRelayIds) == 0 {
+	state.response.NearRelayIDs, state.response.NearRelayAddresses = state.routeMatrix.GetNearRelays(directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays)
+	if len(state.response.NearRelayIDs) == 0 {
 		core.Debug("no near relays :(")
 		return false
 	}
+
+	state.response.NumNearRelays = int32(len(state.response.NearRelayIDs))
+	state.response.HighFrequencyPings = state.buyer.InternalConfig.HighFrequencyPings
+	state.response.NearRelaysChanged = true
 
 	return true
 }
