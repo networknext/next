@@ -704,16 +704,15 @@ func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
 
 func sessionGetNearRelays(state *SessionHandlerState) bool {
 
-	// todo
-	directLatency := float32(0.0)
+	directLatency := state.packet.DirectRTT
 
-	// todo
-	var clientLat float32
-	var clientLong float32
-	var serverLat float32
-	var serverLong float32
+	clientLatitude := state.output.Location.Latitude
+	clientLongitude := state.output.Location.Longitude
 
-	nearRelayIDs, nearRelayAddresses := state.routeMatrix.GetNearRelays(directLatency, clientLat, clientLong, serverLat, serverLong, core.MaxNearRelays)
+	serverLatitude := state.datacenter.Location.Latitude
+	serverLongitude := state.datacenter.Location.Longitude
+
+	nearRelayIDs, nearRelayAddresses := state.routeMatrix.GetNearRelays(directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays)
 	if len(nearRelayIDs) == 0 {
 		core.Debug("no near relays :(")
 		return false
