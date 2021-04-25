@@ -632,7 +632,7 @@ func mainReturnWithCode() int {
 
 		go func() {
 			httpPort := envvar.Get("HTTP_PORT", "40001")
-
+			fmt.Printf("started http server on port %s\n\n", httpPort)
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
@@ -689,6 +689,7 @@ func mainReturnWithCode() int {
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
+
 			lp, err := lc.ListenPacket(ctx, "udp", "0.0.0.0:"+udpPort)
 			if err != nil {
 				panic(fmt.Sprintf("could not bind socket: %v", err))
@@ -761,7 +762,7 @@ func mainReturnWithCode() int {
 		}(i)
 	}
 
-	level.Info(logger).Log("msg", "waiting for incoming connections")
+	fmt.Printf("started udp server on port %s\n\n", udpPort)
 
 	// Wait for interrupt signal
 	sigint := make(chan os.Signal, 1)
