@@ -138,8 +138,9 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 
 		/*
 			IMPORTANT: When the datacenter doesn't exist, we intentionally let the server init succeed anyway
-			and log here, so we can map the datacenter name to the datacenter id, when we are tracking it down.
+			and just log here, so we can map the datacenter name to the datacenter id, when we are tracking it down.
 		*/
+
 		if !datacenterExists(database, packet.DatacenterID) {
 			fmt.Printf("error: unknown datacenter %s [%x] for buyer id %x", packet.DatacenterName, packet.DatacenterID, packet.BuyerID)
 			metrics.DatacenterNotFound.Add(1)
@@ -701,16 +702,25 @@ func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
 	return false
 }
 
-func sessionGetNearRelays(state *SessionHandlerState) {
+func sessionGetNearRelays(state *SessionHandlerState) bool {
 
 	// todo
+	directLatency := float32(0.0)
+
+	// todo
+	var clientLat float32
+	var clientLong float32
+	var serverLat float32
+	var serverLong float32
+
+	// todo: don't allocate here
+	nearRelayIDs := state.routeMatrix.GetNearRelays(directLatency, clientLat, clientLong, serverLat, serverLong, core.MaxNearRelays)
+	if len(nearRelayIDs) == 0 {
+		core.Debug("no near relays :(")
+		return false
+	}
 
 	/*
-		nearRelayIDs := routeMatrix.GetNearRelays(float32(directLatency), clientLat, clientLong, serverLat, serverLong, maxNearRelays)
-		if len(nearRelayIDs) == 0 {
-			core.Debug("no near relays :(")
-			return false, nearRelayGroup{}, nil, errors.New("no near relays")
-		}
 
 		nearRelays := newNearRelayGroup(int32(len(nearRelayIDs)))
 		for i := int32(0); i < nearRelays.Count; i++ {
@@ -727,6 +737,8 @@ func sessionGetNearRelays(state *SessionHandlerState) {
 		routeState.NumNearRelays = nearRelays.Count
 		return true, nearRelays, nil, nil
 	*/
+
+	return true
 }
 
 /*
@@ -944,7 +956,6 @@ func SessionUpdateHandlerFunc(
 	getRouteMatrix func() *routing.RouteMatrix,
 	multipathVetoHandler storage.MultipathVetoHandler,
 	getDatabase func() *routing.DatabaseBinWrapper,
-	maxNearRelays int,
 	routerPrivateKey [crypto.KeySize]byte,
 	postSessionHandler *PostSessionHandler,
 	metrics *metrics.SessionUpdateMetrics,

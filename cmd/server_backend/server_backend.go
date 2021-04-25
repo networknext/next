@@ -604,17 +604,6 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	if maxNearRelays > 32 {
-		level.Error(logger).Log("err", "cannot support more than 32 near relays")
-		return 1
-	}
-
 	// Start HTTP server
 	{
 		router := mux.NewRouter()
@@ -685,7 +674,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), getDatabase, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), getDatabase, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
