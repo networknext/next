@@ -2,7 +2,6 @@ package routing
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -79,7 +78,6 @@ func (relayMap *RelayMap) GetActiveRelayData() ([]uint64, []int, []string) {
 		}
 		relayIds[index] = v.ID
 		relaySessionCounts[index] = v.SessionCount
-		fmt.Printf("GetActiveRelayData() index: %d, v.SessionCount: %d\n", index, v.SessionCount)
 		relayVersions[index] = v.Version
 		index++
 	}
