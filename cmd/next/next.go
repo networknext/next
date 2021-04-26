@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -482,60 +483,65 @@ func main() {
 
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 
-	// Flags to only show relays in certain states
-	var relaysStateShowFlags [6]bool
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", false, "only show enabled relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "decommissioned", false, "only show decommissioned relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateOffline], "offline", false, "only show offline relays")
-
-	// Flags to hide relays in certain states
-	var relaysStateHideFlags [6]bool
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
-
-	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
-	var relaysDownFlag bool
-	relaysfs.BoolVar(&relaysDownFlag, "down", false, "show relays that are down")
-
-	// Show all relays (including decommissioned ones) regardless of other flags
-	var relaysAllFlag bool
-	relaysfs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
-
-	// -list and -csv should work with all other flags
-	// Show only a list or relay names
-	var relaysListFlag bool
-	relaysfs.BoolVar(&relaysListFlag, "list", false, "show list of names")
-
-	// Return a CSV file instead of a table
-	var csvOutputFlag bool
-	relaysfs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
-
-	// Return all relays at this version
-	var relayVersionFilter string
-	relaysfs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
-
 	// Limit the number of relays displayed, in descending order of sessions carried
 	var relaysCount int64
 	relaysfs.Int64Var(&relaysCount, "n", 0, "number of relays to display (default: all)")
 
+	var relaysAlphaSort bool
+	relaysfs.BoolVar(&relaysAlphaSort, "alpha", false, "Sort relays by name, not by sessions carried")
+
+	relaysDbFs := flag.NewFlagSet("relays state", flag.ExitOnError)
+
+	// Flags to only show relays in certain states
+	var relaysStateShowFlags [6]bool
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", false, "only show enabled relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "decommissioned", false, "only show decommissioned relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateOffline], "offline", false, "only show offline relays")
+
+	// Flags to hide relays in certain states
+	var relaysStateHideFlags [6]bool
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
+
+	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
+	var relaysDownFlag bool
+	relaysDbFs.BoolVar(&relaysDownFlag, "down", false, "show relays that are down")
+
+	// Show all relays (including decommissioned ones) regardless of other flags
+	var relaysAllFlag bool
+	relaysDbFs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
+
+	// -list and -csv should work with all other flags
+	// Show only a list or relay names
+	var relaysListFlag bool
+	relaysDbFs.BoolVar(&relaysListFlag, "list", false, "show list of names")
+
+	// Return a CSV file instead of a table
+	var csvOutputFlag bool
+	relaysDbFs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
+
+	// Return all relays at this version
+	var relayVersionFilter string
+	relaysDbFs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
+
 	// Display relay IDs as signed ints instead of the default hex
 	var relayIDSigned bool
-	relaysfs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
+	relaysDbFs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
 
 	// display the OPS version of the relay output
 	var relayOpsOutput bool
-	relaysfs.BoolVar(&relayOpsOutput, "ops", false, "display ops metadata (costs, bandwidth, terms, etc)")
+	relaysDbFs.BoolVar(&relayOpsOutput, "ops", false, "display ops metadata (costs, bandwidth, terms, etc)")
 
 	// Sort -ops output by IncludedBandwidthGB, descending
 	var relayBWSort bool
-	relaysfs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
+	relaysDbFs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
 
 	// accept session ID as a signed int (next session dump)
 	sessionDumpfs := flag.NewFlagSet("session dump", flag.ExitOnError)
@@ -604,6 +610,32 @@ func main() {
 			env.Name = args[0]
 			env.Write()
 
+			if args[0] == "local" {
+				// Set up everything needed to run the database.bin generator
+				os.Setenv("RELAY_PUBLIC_KEY", "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+				os.Setenv("FEATURE_POSTGRESQL", "false")
+				os.Setenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "10s")
+				os.Setenv("NEXT_CUSTOMER_PUBLIC_KEY", "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
+				getLocalDatabaseBin()
+
+				// Start redis server if it isn't already
+				runnable := exec.Command("ps", "aux")
+				buffer, err := runnable.CombinedOutput()
+
+				if err != nil {
+					fmt.Printf("Failed to run ps aux: %v\n", err)
+				}
+
+				psAuxOutput := string(buffer)
+
+				if !strings.Contains(psAuxOutput, "redis-server") {
+					runnable := exec.Command("redis-server")
+					if err := runnable.Start(); err != nil {
+						fmt.Printf("Failed to start redis: %v\n", err)
+					}
+				}
+			}
+
 			fmt.Printf("Selected %s environment\n", env.Name)
 			return nil
 		},
@@ -636,6 +668,69 @@ func main() {
 			env.CLIRelease = release
 			env.CLIBuildTime = buildtime
 			fmt.Print(env.String())
+			return nil
+		},
+	}
+
+	var usersCommand = &ffcli.Command{
+		Name:       "users",
+		ShortUsage: "next users",
+		ShortHelp:  "Sort through auth0 users to get more information about associated company and/or buyer account",
+		Exec: func(_ context.Context, args []string) error {
+			reply := localjsonrpc.UserDatabaseReply{}
+			fmt.Println("Looking up all accounts associated to a company/buyer account")
+			fmt.Println("")
+			if err := rpcClient.CallFor(&reply, "AuthService.UserDatabase", localjsonrpc.UserDatabaseArgs{}); err == nil {
+				usersCSV := [][]string{{}}
+
+				usersCSV = append(usersCSV, []string{
+					"Email", "Company Code", "Buyer ID", "Is Owner?", "Time Created"})
+
+				for _, entry := range reply.Entries {
+					fmt.Printf("Email: %s - Company Code: %s - Buyer ID: %s - Is Owner: %s - Time Created: %s\n\n", entry.Email, entry.CompanyCode, entry.BuyerID, strconv.FormatBool(entry.IsOwner), entry.CreationTime)
+					usersCSV = append(usersCSV, []string{
+						entry.Email,
+						entry.CompanyCode,
+						entry.BuyerID,
+						strconv.FormatBool(entry.IsOwner),
+						entry.CreationTime,
+					})
+				}
+
+				fileName := "./users.csv"
+				f, err := os.Create(fileName)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
+				}
+
+				writer := csv.NewWriter(f)
+				err = writer.WriteAll(usersCSV)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
+				}
+				fmt.Println("CSV file written: users.csv")
+				return nil
+			}
+			return nil
+		},
+	}
+
+	var hashCommand = &ffcli.Command{
+		Name:       "hash",
+		ShortUsage: "next hash (string)",
+		ShortHelp:  "Provide the 64-bit FNV-1a hash for the provided string (big-endian)",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintf("Please provided a string"), 0)
+			}
+
+			hashValue := crypto.HashID(args[0])
+			hexStr := fmt.Sprintf("%016x\n", hashValue)
+
+			fmt.Printf("unsigned: %d\n", hashValue)
+			fmt.Printf("signed  : %d\n", int64(hashValue))
+			fmt.Printf("hex     : 0x%s\n", strings.ToUpper(hexStr))
+
 			return nil
 		},
 	}
@@ -765,72 +860,139 @@ func main() {
 		},
 	}
 
+	var databaseCommand = &ffcli.Command{
+		Name:       "database",
+		ShortUsage: "next database <subcommand>",
+		ShortHelp:  "Generate, check and publish database.bin files",
+		Exec: func(ctx context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "get",
+				ShortUsage: "next database get",
+				ShortHelp:  "Generate a local database.bin file based on the current database state.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					getDatabaseBin(env)
+
+					return nil
+				},
+			},
+			{
+				Name:       "check",
+				ShortUsage: "next database check",
+				ShortHelp:  "Sanity check a local database.bin file.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					checkMetaData()
+					checkRelaysInBinFile()
+					checkDatacentersInBinFile()
+					checkSellersInBinFile()
+					checkBuyersInBinFile()
+					checkDCMapsInBinFile()
+
+					return nil
+				},
+			},
+
+			{
+				Name:       "commit",
+				ShortUsage: "next database commit",
+				ShortHelp:  "Publish a local database.bin file to the relevant GCP bucket.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					commitDatabaseBin(env)
+					return nil
+				},
+			},
+		},
+	}
+
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
-		ShortHelp:  "List relays",
+		ShortHelp:  "Return real-time relay data from the relay backend",
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
-			if relaysfs.NFlag() == 0 ||
-				((relaysfs.NFlag() == 1) && relayOpsOutput) ||
-				((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
-				// If no flags are given, set the default set of flags
-				relaysStateShowFlags[routing.RelayStateEnabled] = true
-				relaysStateHideFlags[routing.RelayStateEnabled] = false
-			}
 
-			if relaysAllFlag {
-				// Show all relays (except for decommissioned relays) with --all flag
-				relaysStateShowFlags[routing.RelayStateEnabled] = true
-				relaysStateShowFlags[routing.RelayStateMaintenance] = true
-				relaysStateShowFlags[routing.RelayStateDisabled] = true
-				relaysStateShowFlags[routing.RelayStateQuarantine] = true
-				relaysStateShowFlags[routing.RelayStateOffline] = true
-				relaysStateHideFlags[routing.RelayStateEnabled] = false
-				relaysStateHideFlags[routing.RelayStateMaintenance] = false
-				relaysStateHideFlags[routing.RelayStateDisabled] = false
-				relaysStateHideFlags[routing.RelayStateQuarantine] = false
-				relaysStateHideFlags[routing.RelayStateOffline] = false
-			}
-
-			var arg string
+			var regexName string
 			if len(args) > 0 {
-				arg = args[0]
+				regexName = args[0]
 			}
 
-			if relayOpsOutput {
-				opsRelays(
-					rpcClient,
-					env,
-					arg,
-					relaysStateShowFlags,
-					relaysStateHideFlags,
-					relaysDownFlag,
-					csvOutputFlag,
-					relayVersionFilter,
-					relaysCount,
-					relayIDSigned,
-					relayBWSort,
-				)
-			} else {
-				relays(
-					rpcClient,
-					env,
-					arg,
-					relaysStateShowFlags,
-					relaysStateHideFlags,
-					relaysDownFlag,
-					relaysListFlag,
-					csvOutputFlag,
-					relayVersionFilter,
-					relaysCount,
-					relayIDSigned,
-				)
-			}
+			queryRelayBackend(env, relaysCount, relaysAlphaSort, regexName)
 
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
+			{
+				Name:       "db",
+				ShortUsage: "next relays db <regex>",
+				ShortHelp:  "Collect and present relay data from the database",
+				FlagSet:    relaysDbFs,
+				Exec: func(ctx context.Context, args []string) error {
+
+					if relaysDbFs.NFlag() == 0 ||
+						((relaysDbFs.NFlag() == 1) && relayOpsOutput) ||
+						((relaysDbFs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
+						// If no flags are given, set the default set of flags
+						relaysStateShowFlags[routing.RelayStateEnabled] = true
+						relaysStateHideFlags[routing.RelayStateEnabled] = false
+					}
+
+					if relaysAllFlag {
+						// Show all relays (except for decommissioned relays) with --all flag
+						relaysStateShowFlags[routing.RelayStateEnabled] = true
+						relaysStateShowFlags[routing.RelayStateMaintenance] = true
+						relaysStateShowFlags[routing.RelayStateDisabled] = true
+						relaysStateShowFlags[routing.RelayStateQuarantine] = true
+						relaysStateShowFlags[routing.RelayStateOffline] = true
+						relaysStateHideFlags[routing.RelayStateEnabled] = false
+						relaysStateHideFlags[routing.RelayStateMaintenance] = false
+						relaysStateHideFlags[routing.RelayStateDisabled] = false
+						relaysStateHideFlags[routing.RelayStateQuarantine] = false
+						relaysStateHideFlags[routing.RelayStateOffline] = false
+					}
+
+					var arg string
+					if len(args) > 0 {
+						arg = args[0]
+					}
+
+					if relayOpsOutput {
+						opsRelays(
+							rpcClient,
+							env,
+							arg,
+							relaysStateShowFlags,
+							relaysStateHideFlags,
+							relaysDownFlag,
+							csvOutputFlag,
+							relayVersionFilter,
+							relaysCount,
+							relayIDSigned,
+							relayBWSort,
+						)
+					} else {
+						relays(
+							rpcClient,
+							env,
+							arg,
+							relaysStateShowFlags,
+							relaysStateHideFlags,
+							relaysDownFlag,
+							relaysListFlag,
+							csvOutputFlag,
+							relayVersionFilter,
+							relaysCount,
+							relayIDSigned,
+						)
+					}
+
+					return nil
+				},
+			},
 			{
 				Name:       "count",
 				ShortUsage: "next relays count <regex>",
@@ -878,6 +1040,36 @@ func main() {
 					}
 
 					validate(rpcClient, env, relaysStateShowFlags, relaysStateHideFlags, args[0])
+					return nil
+				},
+			},
+			{
+				Name:       "binfile",
+				ShortUsage: "next relays binfile",
+				ShortHelp:  "GET relays.bin from the portal",
+				Exec: func(ctx context.Context, args []string) error {
+
+					getRelaysBin(env, "relays.bin")
+					return nil
+				},
+			},
+			{
+				Name:       "bincheck",
+				ShortUsage: "next relays bincheck",
+				ShortHelp:  "Sanity checks a local relays.bin file",
+				Exec: func(ctx context.Context, args []string) error {
+
+					checkRelaysBin()
+					return nil
+				},
+			},
+			{
+				Name:       "bincommit",
+				ShortUsage: "next relays bincommit",
+				ShortHelp:  "Copies the local relays.bin file to the relevant GCP *_artifacts bucket",
+				Exec: func(ctx context.Context, args []string) error {
+
+					commitRelaysBin(env)
 					return nil
 				},
 			},
@@ -2205,6 +2397,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		authCommand,
 		selectCommand,
 		envCommand,
+		usersCommand,
 		sessionCommand,
 		sessionsCommand,
 		relaysCommand,
@@ -2228,6 +2421,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		stagingCommand,
 		signedCommand,
 		unsignedCommand,
+		hashCommand,
+		databaseCommand,
 	}
 
 	root := &ffcli.Command{

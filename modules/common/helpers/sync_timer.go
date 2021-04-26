@@ -9,7 +9,7 @@ type SyncTimer struct {
 
 func NewSyncTimer(interval time.Duration) *SyncTimer {
 	s := new(SyncTimer)
-	s.lastRun = time.Now().Add(interval * 5)
+	s.lastRun = time.Now().Add(interval)
 	s.interval = interval
 	return s
 }

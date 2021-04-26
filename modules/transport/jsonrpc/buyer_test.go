@@ -19,6 +19,7 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,7 +51,7 @@ func TestBuyersList(t *testing.T) {
 	t.Run("list - empty", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.BuyerListReply
 		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
@@ -62,7 +63,7 @@ func TestBuyersList(t *testing.T) {
 	t.Run("list - !admin", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.BuyerListReply
 		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
@@ -76,11 +77,11 @@ func TestBuyersList(t *testing.T) {
 	t.Run("list - admin", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
 		req = req.WithContext(reqContext)
-		assert.True(t, jsonrpc.VerifyAllRoles(req, jsonrpc.AdminRole))
+		assert.True(t, middleware.VerifyAllRoles(req, middleware.AdminRole))
 		var reply jsonrpc.BuyerListReply
 		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
 		assert.NoError(t, err)
@@ -592,7 +593,7 @@ func TestTotalSessions(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("all", func(t *testing.T) {
@@ -623,7 +624,7 @@ func TestTotalSessions(t *testing.T) {
 
 	t.Run("filtered - admin", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
 		req = req.WithContext(reqContext)
@@ -680,7 +681,7 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("all", func(t *testing.T) {
@@ -756,7 +757,7 @@ func TestTopSessions(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("all", func(t *testing.T) {
@@ -784,7 +785,7 @@ func TestTopSessions(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
@@ -962,8 +963,8 @@ func TestSessionDetails(t *testing.T) {
 	assert.NoError(t, err)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{})
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
 	t.Run("success - bigtable - !admin - !sameBuyer", func(t *testing.T) {
@@ -982,8 +983,8 @@ func TestSessionDetails(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{})
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
 	t.Run("success - bigtable - !admin - sameBuyer", func(t *testing.T) {
@@ -1002,8 +1003,8 @@ func TestSessionDetails(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
@@ -1027,8 +1028,8 @@ func TestSessionDetails(t *testing.T) {
 	redisClient.RPush(fmt.Sprintf("ss-%s", sessionID), slice1.RedisString(), slice2.RedisString())
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{})
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
 	t.Run("success - !admin - !sameBuyer", func(t *testing.T) {
@@ -1047,8 +1048,8 @@ func TestSessionDetails(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{})
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
 	t.Run("success - !admin - sameBuyer", func(t *testing.T) {
@@ -1067,8 +1068,8 @@ func TestSessionDetails(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
@@ -1155,7 +1156,7 @@ func TestSessionMapPoints(t *testing.T) {
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("filtered - !admin - sameBuyer", func(t *testing.T) {
@@ -1179,7 +1180,7 @@ func TestSessionMapPoints(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
@@ -1264,7 +1265,7 @@ func TestSessionMap(t *testing.T) {
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("filtered - !admin - sameBuyer", func(t *testing.T) {
@@ -1288,7 +1289,7 @@ func TestSessionMap(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
@@ -1329,7 +1330,7 @@ func TestGameConfiguration(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	jsonrpc.SetIsAnonymous(req, true)
+	middleware.SetIsAnonymous(req, true)
 
 	t.Run("insufficient privileges", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
@@ -1337,7 +1338,7 @@ func TestGameConfiguration(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	jsonrpc.SetIsAnonymous(req, false)
+	middleware.SetIsAnonymous(req, false)
 
 	t.Run("no company", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
@@ -1346,7 +1347,7 @@ func TestGameConfiguration(t *testing.T) {
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("success", func(t *testing.T) {
@@ -1381,7 +1382,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	jsonrpc.SetIsAnonymous(req, true)
+	middleware.SetIsAnonymous(req, true)
 
 	t.Run("insufficient privileges", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
@@ -1389,10 +1390,10 @@ func TestUpdateGameConfiguration(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	jsonrpc.SetIsAnonymous(req, false)
+	middleware.SetIsAnonymous(req, false)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Owner",
 	})
 	req = req.WithContext(reqContext)
@@ -1404,7 +1405,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
 	req = req.WithContext(reqContext)
 
 	t.Run("no public key", func(t *testing.T) {
@@ -1428,7 +1429,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("success - existing buyer", func(t *testing.T) {
@@ -1475,7 +1476,7 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("fail - not same buyer", func(t *testing.T) {
@@ -1493,8 +1494,8 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
