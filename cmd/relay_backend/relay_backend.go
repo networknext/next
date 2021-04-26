@@ -563,6 +563,7 @@ func mainReturnWithCode() int {
 					relayData.SellerID = relay.Seller.ID
 					relayData.DatacenterID = relay.Datacenter.ID
 					relayData.SessionCount = activeRelaySessionCounts[i]
+					fmt.Printf("mainReturnWithCode() activeRelaySessionCounts[%d]: %d\n", i, activeRelaySessionCounts[i])
 					relayData.Version = activeRelayVersions[i]
 
 					activeRelays = append(activeRelays, relayData)
@@ -603,6 +604,7 @@ func mainReturnWithCode() int {
 				id := activeRelays[i].ID
 				status := "active"
 				sessions := activeRelays[i].SessionCount
+				fmt.Printf("csv generation: activeRelays[%d].SessionCount: %d\n", i, activeRelays[i].SessionCount)
 				version := activeRelays[i].Version
 				relaysDataString = fmt.Sprintf("%s\n%s,%s,%x,%s,%d,%s", relaysDataString, name, address, id, status, sessions, version)
 			}
