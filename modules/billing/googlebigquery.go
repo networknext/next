@@ -430,6 +430,22 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 		e["pro"] = entry.Pro
 	}
 
+	if entry.BuyerNotLive {
+		e["buyerNotLive"] = entry.BuyerNotLive
+	}
+
+	if entry.UnknownDatacenter {
+		e["unknownDatacenter"] = entry.UnknownDatacenter
+	}
+
+	if entry.DatacenterNotEnabled {
+		e["datacenterNotEnabled"] = entry.DatacenterNotEnabled
+	}
+
+	if entry.StaleRouteMatrix {
+		e["staleRouteMatrix"] = entry.StaleRouteMatrix
+	}
+
 	if entry.RouteDiversity > 0 {
 		e["routeDiversity"] = entry.RouteDiversity
 	}

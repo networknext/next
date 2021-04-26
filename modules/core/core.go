@@ -17,12 +17,10 @@ import (
 	"unsafe"
 )
 
-const NEXT_EXPERIMENTAL = false
-
 const CostBias = 3
 const MaxNearRelays = 32
 const MaxRelaysPerRoute = 5
-const MaxRoutesPerEntry = 64
+const MaxRoutesPerEntry = 16
 const JitterThreshold = 15
 
 const NEXT_MAX_NODES = 7
@@ -544,6 +542,243 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 	return routes
 }
 
+func Optimize2(numRelays int, numSegments int, cost []int32, costThreshold int32, relayDatacenter []uint64, destinationRelay []bool) []RouteEntry {
+
+	// build a matrix of indirect routes from relays i -> j that have lower cost than direct, eg. i -> (x) -> j, where x is every other relay
+
+	type Indirect struct {
+		relay int32
+		cost  int32
+	}
+
+	indirect := make([][][]Indirect, numRelays)
+
+	var wg sync.WaitGroup
+
+	wg.Add(numSegments)
+
+	for segment := 0; segment < numSegments; segment++ {
+
+		startIndex := segment * numRelays / numSegments
+		endIndex := (segment+1)*numRelays/numSegments - 1
+		if segment == numSegments-1 {
+			endIndex = numRelays - 1
+		}
+
+		go func(startIndex int, endIndex int) {
+
+			defer wg.Done()
+
+			working := make([]Indirect, numRelays)
+
+			for i := startIndex; i <= endIndex; i++ {
+
+				indirect[i] = make([][]Indirect, numRelays)
+
+				for j := 0; j < numRelays; j++ {
+
+					// can't route to self
+					if i == j {
+						continue
+					}
+
+					ijIndex := TriMatrixIndex(i, j)
+
+					numRoutes := 0
+					costDirect := cost[ijIndex]
+
+					if costDirect < 0 {
+
+						// no direct route exists between i,j. subdivide valid routes so we don't miss indirect paths.
+
+						for k := 0; k < numRelays; k++ {
+							if k == i || k == j {
+								continue
+							}
+							ikIndex := TriMatrixIndex(i, k)
+							kjIndex := TriMatrixIndex(k, j)
+							ikCost := cost[ikIndex]
+							kjCost := cost[kjIndex]
+							if ikCost < 0 || kjCost < 0 {
+								continue
+							}
+							working[numRoutes].relay = int32(k)
+							working[numRoutes].cost = int32(ikCost + kjCost)
+							numRoutes++
+						}
+
+					} else {
+
+						// direct route exists between i,j. subdivide only when a significant cost reduction occurs.
+
+						for k := 0; k < numRelays; k++ {
+							if k == i || k == j {
+								continue
+							}
+							ikIndex := TriMatrixIndex(i, k)
+							ikCost := cost[ikIndex]
+							if ikCost < 0 {
+								continue
+							}
+							kjIndex := TriMatrixIndex(k, j)
+							kjCost := cost[kjIndex]
+							if kjCost < 0 {
+								continue
+							}
+							indirectCost := ikCost + kjCost
+							if indirectCost > costDirect-costThreshold {
+								continue
+							}
+							working[numRoutes].relay = int32(k)
+							working[numRoutes].cost = indirectCost
+							numRoutes++
+						}
+
+					}
+
+					if numRoutes > 0 {
+						indirect[i][j] = make([]Indirect, numRoutes)
+						copy(indirect[i][j], working)
+					}
+				}
+			}
+
+		}(startIndex, endIndex)
+	}
+
+	wg.Wait()
+
+	// use the indirect matrix to subdivide a route up to 5 hops
+
+	entryCount := TriMatrixLength(numRelays)
+
+	routes := make([]RouteEntry, entryCount)
+
+	wg.Add(numSegments)
+
+	for segment := 0; segment < numSegments; segment++ {
+
+		startIndex := segment * numRelays / numSegments
+		endIndex := (segment+1)*numRelays/numSegments - 1
+		if segment == numSegments-1 {
+			endIndex = numRelays - 1
+		}
+
+		go func(startIndex int, endIndex int) {
+
+			defer wg.Done()
+
+			for i := startIndex; i <= endIndex; i++ {
+
+				for j := 0; j < i; j++ {
+
+					if !destinationRelay[i] && !destinationRelay[j] {
+						continue
+					}
+
+					ijIndex := TriMatrixIndex(i, j)
+
+					if indirect[i][j] == nil {
+
+						if cost[ijIndex] >= 0 {
+
+							// only direct route from i -> j exists, and it is suitable
+
+							routes[ijIndex].DirectCost = cost[ijIndex]
+							routes[ijIndex].NumRoutes = 1
+							routes[ijIndex].RouteCost[0] = cost[ijIndex]
+							routes[ijIndex].RouteNumRelays[0] = 2
+							routes[ijIndex].RouteRelays[0][0] = int32(i)
+							routes[ijIndex].RouteRelays[0][1] = int32(j)
+							routes[ijIndex].RouteHash[0] = RouteHash(int32(i), int32(j))
+
+						} else {
+
+							// no route exists from i -> j
+
+						}
+
+					} else {
+
+						// subdivide routes from i -> j as follows: i -> (x) -> (y) -> (z) -> j, where the subdivision improves significantly on cost
+
+						var routeManager RouteManager
+
+						routeManager.RelayDatacenter = relayDatacenter
+
+						for k := range indirect[i][j] {
+
+							if cost[ijIndex] >= 0 {
+								routeManager.AddRoute(cost[ijIndex], int32(i), int32(j))
+							}
+
+							y := indirect[i][j][k]
+
+							routeManager.AddRoute(y.cost, int32(i), y.relay, int32(j))
+
+							var x *Indirect
+							if indirect[i][y.relay] != nil {
+								x = &indirect[i][y.relay][0]
+							}
+
+							var z *Indirect
+							if indirect[j][y.relay] != nil {
+								z = &indirect[j][y.relay][0]
+							}
+
+							if x != nil {
+								ixIndex := TriMatrixIndex(i, int(x.relay))
+								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
+								yjIndex := TriMatrixIndex(int(y.relay), j)
+
+								routeManager.AddRoute(cost[ixIndex]+cost[xyIndex]+cost[yjIndex], int32(i), x.relay, y.relay, int32(j))
+							}
+
+							if z != nil {
+								iyIndex := TriMatrixIndex(i, int(y.relay))
+								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
+								zjIndex := TriMatrixIndex(int(z.relay), j)
+
+								routeManager.AddRoute(cost[iyIndex]+cost[yzIndex]+cost[zjIndex], int32(i), y.relay, z.relay, int32(j))
+							}
+
+							if x != nil && z != nil {
+								ixIndex := TriMatrixIndex(i, int(x.relay))
+								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
+								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
+								zjIndex := TriMatrixIndex(int(z.relay), j)
+
+								routeManager.AddRoute(cost[ixIndex]+cost[xyIndex]+cost[yzIndex]+cost[zjIndex], int32(i), x.relay, y.relay, z.relay, int32(j))
+							}
+
+							numRoutes := routeManager.NumRoutes
+
+							routes[ijIndex].DirectCost = cost[ijIndex]
+
+							routes[ijIndex].NumRoutes = int32(numRoutes)
+
+							for u := 0; u < numRoutes; u++ {
+								routes[ijIndex].RouteCost[u] = routeManager.RouteCost[u]
+								routes[ijIndex].RouteNumRelays[u] = routeManager.RouteNumRelays[u]
+								numRelays := int(routes[ijIndex].RouteNumRelays[u])
+								for v := 0; v < numRelays; v++ {
+									routes[ijIndex].RouteRelays[u][v] = routeManager.RouteRelays[u][v]
+								}
+								routes[ijIndex].RouteHash[u] = routeManager.RouteHash[u]
+							}
+						}
+					}
+				}
+			}
+
+		}(startIndex, endIndex)
+	}
+
+	wg.Wait()
+
+	return routes
+}
+
 // ---------------------------------------------------
 
 type RouteToken struct {
@@ -850,6 +1085,7 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 	for i := range sourceRelays {
 		// IMPORTANT: RTT = 255 signals the source relay is unroutable
 		if sourceRelayCost[i] >= 255 {
+			Debug("Source Relay is unroutable!")
 			continue
 		}
 		firstRouteFromThisRelay := true
@@ -861,8 +1097,11 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			}
 			index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
 			entry := &routeMatrix[index]
+			Debug("Number of routes in entry: %v", int(entry.NumRoutes))
 			for k := 0; k < int(entry.NumRoutes); k++ {
 				cost := entry.RouteCost[k] + sourceRelayCost[i]
+				Debug("route cost: %v", cost)
+				Debug("max cost: %v", cost)
 				if cost > maxCost {
 					break
 				}
@@ -1264,6 +1503,7 @@ type RouteState struct {
 	CommitVeto          bool
 	CommitCounter       int32
 	LatencyWorse        bool
+	LocationVeto        bool
 	MultipathOverload   bool
 	NoRoute             bool
 	NextLatencyTooHigh  bool
@@ -1328,7 +1568,7 @@ func NewInternalConfig() InternalConfig {
 
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
-	if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
+	if routeState.Veto || routeState.LocationVeto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
 		return true
 	}
 
