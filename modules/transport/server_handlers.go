@@ -822,6 +822,8 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		return
 	}
 
+	routeChanged := false
+
 	if !state.output.RouteState.Next {
 
 		// currently going direct. should we take network next?
@@ -865,7 +867,6 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		// if stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, slicePacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], state.debug)
 
 		stayOnNext := false
-		routeChanged := false
 
 		if stayOnNext {
 
@@ -915,21 +916,17 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		routeCost = routing.InvalidRouteValue
 	}
 
-	_ = routeCost
+	state.output.RouteCost = routeCost
+	state.output.RouteChanged = routeChanged
+	state.output.RouteNumRelays = routeNumRelays
 
 	/*
-	sessionData.RouteCost = routeCost
-	sessionData.RouteChanged = nextRouteSwitched
-	sessionData.RouteNumRelays = routeNumRelays
 	for i := int32(0); i < routeNumRelays; i++ {
 		relayID := routeMatrix.RelayIDs[routeRelays[i]]
 		sessionData.RouteRelayIDs[i] = relayID
 	}
 	*/
-
 	_ = routeRelays
-	_ = routeNumRelays
-
 }
 
 func sessionPost(state *SessionHandlerState) {
