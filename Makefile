@@ -1075,9 +1075,13 @@ deploy-relay-backend-dev:
 deploy-relay-backend-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t relay-backend -n relay_backend -b gs://staging_artifacts
 
-.PHONY: deploy-relay-backend-prod
-deploy-relay-backend-prod:
+.PHONY: deploy-relay-backend-prod-1
+deploy-relay-backend-prod-1:
 	./deploy/deploy.sh -e prod -c mig-jcr6 -t relay-backend -n relay_backend -b gs://prod_artifacts
+
+.PHONY: deploy-relay-backend-prod-2
+deploy-relay-backend-prod-2:
+	./deploy/deploy.sh -e prod -c prod-2 -t relay-backend -n relay_backend -b gs://prod_artifacts
 
 .PHONY: publish-relay-backend-artifacts-dev
 publish-relay-backend-artifacts-dev:
