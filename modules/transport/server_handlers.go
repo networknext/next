@@ -452,6 +452,7 @@ type SessionHandlerState struct {
 	output               SessionData // sent down to the SDK
 	packet               SessionUpdatePacket
 	response             SessionResponsePacket
+	packetData           []byte
 	metrics 			 *metrics.SessionUpdateMetrics
 	database             *routing.DatabaseBinWrapper
 	routeMatrix          *routing.RouteMatrix
@@ -477,11 +478,9 @@ type SessionHandlerState struct {
 
 	// todo
 	/*
+		routeDiversity int32
 		postSessionHandler *PostSessionHandler
 		multipathVetoHandler storage.MultipathVetoHandler
-		routeRelayNames [core.MaxRelaysPerRoute]string
-		routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller
-		routeDiversity int32
 	*/
 }
 
@@ -503,15 +502,12 @@ func sessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
-	// todo: put packet data in handler state
-	/*
-		if !crypto.VerifyPacket(state.buyer.PublicKey, incoming.Data) {
-			core.Debug("signature check failed")
-			state.metrics.SignatureCheckFailed.Add(1)
-			state.signatureCheckFailed = true
-			return true
-		}
-	*/
+	if !crypto.VerifyPacket(state.buyer.PublicKey, state.packetData) {
+		core.Debug("signature check failed")
+		state.metrics.SignatureCheckFailed.Add(1)
+		state.signatureCheckFailed = true
+		return true
+	}
 
 	if state.packet.ClientPingTimedOut {
 		core.Debug("client ping timed out")
@@ -1526,6 +1522,7 @@ func SessionUpdateHandlerFunc(
 		state.metrics = metrics
 		state.database = getDatabase()
 		state.datacenter = routing.UnknownDatacenter
+		state.packetData = incoming.Data
 		state.ipLocator = getIPLocator(state.packet.SessionID)
 		state.routeMatrix = getRouteMatrix()
 		state.staleDuration = staleDuration
