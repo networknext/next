@@ -29,15 +29,15 @@ type RelayFleetEntry struct {
 	Version  string `json:"version"`
 }
 
-type FleetArgs struct{}
+type RelayFleetArgs struct{}
 
-type FleetReply struct {
+type RelayFleetReply struct {
 	RelayFleet []RelayFleetEntry `json:"relay_fleet"`
 }
 
 // RelayFleet retrieves the CSV file from relay_frontend/relays, converts it to
 // json and puts it on the wire.
-func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *FleetArgs, reply *FleetReply) error {
+func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, reply *RelayFleetReply) error {
 
 	authToken, err := GetOpsToken()
 	if err != nil {
@@ -47,7 +47,6 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *FleetArgs, reply
 	}
 
 	uri := rfs.RelayFrontendURI + "/relays"
-	fmt.Println("uri:", uri)
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
