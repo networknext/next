@@ -834,23 +834,23 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 	routeRelays := [core.MaxRelaysPerRoute]int32{}
 
-	// todo: what the fuck -- why would we copy such a potentially large map here?
+	// todo: why would we copy such a potentially large map here?
 	// multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
 
-	// todo: is this necessary?
+	// todo
 	/*
-		// todo: don't allocate in hot path
-		nearRelayIndices := make([]int32, nearRelays.Count)
-		nearRelayCosts := make([]int32, nearRelays.Count)
-		for i := int32(0); i < nearRelays.Count; i++ {
-			nearRelayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelays.IDs[i]]
-			if !ok {
-				continue
-			}
-
-			nearRelayIndices[i] = nearRelayIndex
-			nearRelayCosts[i] = nearRelays.RTTs[i]
+	// todo: don't allocate in hot path
+	nearRelayIndices := make([]int32, nearRelays.Count)
+	nearRelayCosts := make([]int32, nearRelays.Count)
+	for i := int32(0); i < nearRelays.Count; i++ {
+		nearRelayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelays.IDs[i]]
+		if !ok {
+			continue
 		}
+
+		nearRelayIndices[i] = nearRelayIndex
+		nearRelayCosts[i] = nearRelays.RTTs[i]
+	}
 	*/
 
 	var routeNumRelays int32
@@ -875,10 +875,11 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 		// currently going direct. should we take network next?
 
+		// todo
 		/*
-			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), slicePacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, state.debug) {
-				BuildNextTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
-			}
+		if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), slicePacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, state.debug) {
+			BuildNextTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+		}
 		*/
 
 	} else {
@@ -902,6 +903,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 			This is necessary because the set of relays in the route matrix change over time.
 		*/
 
+		// todo
 		/*
 			if !core.ReframeRoute(&sessionData.RouteState, routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
 				routeRelays = [core.MaxRelaysPerRoute]int32{}
