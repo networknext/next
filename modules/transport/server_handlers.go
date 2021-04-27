@@ -784,9 +784,6 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		return false
 	}
 
-	// todo: where the fuck does this come from
-	firstRouteRelayID := uint64(0)
-
 	sliceNumber := int32(state.packet.SliceNumber)
 
 	// todo: put these in state
@@ -804,7 +801,6 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		directJitter,
 		directPacketLoss,
 		nextPacketLoss,
-		firstRouteRelayID,
 		sliceNumber,
 		state.packet.NearRelayIDs,
 		state.packet.NearRelayRTT,
