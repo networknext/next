@@ -263,25 +263,25 @@ func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelay
 }
 
 func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) [core.MaxRelaysPerRoute]routing.Nibblin {
+	
 	relayPrices := [core.MaxRelaysPerRoute]routing.Nibblin{}
-
+	
 	if routeNumRelays == 0 {
 		return relayPrices
 	}
-
+	
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
-
+	
 	for i := 0; i < len(relayPrices); i++ {
 		relayPriceNibblins := float64(relaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
 	}
-
+	
 	return relayPrices
 }
 
-// todo: clean up
-func HandleNextToken(
+func BuildNextTokens(
 	sessionData *SessionData,
 	database *routing.DatabaseBinWrapper,
 	buyer *routing.Buyer,
@@ -292,18 +292,58 @@ func HandleNextToken(
 	routerPrivateKey [crypto.KeySize]byte,
 	response *SessionResponsePacket,
 ) {
-	sessionData.Initial = true
+	/*
+		This is either the first network next route, or we have changed network next route.
 
-	// todo: this should be 2 * BillingSliceSeconds
+		We add an extra 10 seconds to the session expire timestamp, taking it to a total of 20 seconds.
+		
+		This means that each time we get a new route, we purchase ahead an extra 10 seconds, and renew
+		the route 10 seconds early from this point, avoiding race conditions at the end of the 10 seconds 
+		when we continue the route.
+
+		However, this also means that each time we switch routes, we burn the tail (10 seconds),
+		so we want to minimize route switching where possible, for our customer's benefit.
+
+		We also increase the session version here. This ensures that the new route is considered
+		distinct from the old route, even if there are common relays in the old and the new routes.
+	*/
+
+	sessionData.Initial = true
 	sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 	sessionData.SessionVersion++
 
-	numTokens := routeNumRelays + 2 // relays + client + server
+	/*
+		Build the cryptographic tokens that describe the route.
+
+		The first token in the array always corresponds to the client.
+
+		The last token in the array always corresponds to the server.
+
+		The tokens in the middle correspond to relays.
+
+		Each token is encrypted with the private key of the router (known only to us),
+		and the public key of the corresponding node (client, server or relay).
+
+		This gives us the following properties:
+
+			1. Nobody can generate routes except us
+
+			2. Only the corresponding node can decrypt the route information
+
+		While we are not currently a DDoS protection solution, property #2 means that 
+		we could use our technology to build one, if we choose, since we can construct
+		a route and the client would only know the address of the next hop, not the 
+		server.
+	*/
+
+	numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
+
 	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
 	if routeAddresses == nil || routePublicKeys == nil {
 		response.RouteType = routing.RouteTypeDirect
 		response.NumTokens = 0
 		response.Tokens = nil
+		// todo: there should be a metric for this condition
 		return
 	}
 
@@ -314,8 +354,7 @@ func HandleNextToken(
 	response.Tokens = tokenData
 }
 
-// todo: clean up
-func HandleContinueToken(
+func BuildContinueTokens(
 	sessionData *SessionData,
 	database *routing.DatabaseBinWrapper,
 	buyer *routing.Buyer,
@@ -326,7 +365,16 @@ func HandleContinueToken(
 	routerPrivateKey [crypto.KeySize]byte,
 	response *SessionResponsePacket,
 ) {
-	numTokens := routeNumRelays + 2 // relays + client + server
+
+	/*
+		Continue tokens are used when we hold the same route from one slice to the next.
+
+		Continue tokens just extend the expire time for the route across each relay by 10 seconds. 
+		
+		It is smaller than the full initial description of the route, and is the common case.
+	*/
+
+	numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
 	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
 	if routeAddresses == nil || routePublicKeys == nil {
 		response.RouteType = routing.RouteTypeDirect
@@ -334,6 +382,7 @@ func HandleContinueToken(
 		response.Tokens = nil
 		return
 	}
+
 	tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
 	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
 	response.RouteType = routing.RouteTypeContinue
@@ -353,6 +402,7 @@ func GetRouteAddressesAndPublicKeys(
 	database *routing.DatabaseBinWrapper,
 ) ([]*net.UDPAddr, [][]byte) {
 
+	// todo: avoid allocations here. stupid
 	routeAddresses := make([]*net.UDPAddr, numTokens)
 	routePublicKeys := make([][]byte, numTokens)
 
@@ -389,7 +439,6 @@ func GetRouteAddressesAndPublicKeys(
 	return routeAddresses, routePublicKeys
 }
 
-// todo: clean up
 func AddAddress(enableInternalIPs bool, index int32, relay routing.Relay, allRelayIDs []uint64, database *routing.DatabaseBinWrapper, routeRelays []int32, routeAddresses []*net.UDPAddr) []*net.UDPAddr {
 	totalNumRelays := int32(len(allRelayIDs))
 	routeAddresses[index+1] = &relay.Addr
@@ -407,12 +456,6 @@ func AddAddress(enableInternalIPs bool, index int32, relay routing.Relay, allRel
 		}
 	}
 	return routeAddresses
-}
-
-// ----------------------------------------------------------------------------
-
-func routeMatrixIsStale(routeMatrix *routing.RouteMatrix, staleDuration time.Duration) bool {
-	return routeMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix())
 }
 
 // ----------------------------------------------------------------------------
@@ -513,7 +556,7 @@ func sessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
-	if routeMatrixIsStale(state.routeMatrix, state.staleDuration) {
+	if state.routeMatrix.CreatedAt+uint64(state.staleDuration.Seconds()) < uint64(time.Now().Unix()) {
 		core.Debug("stale route matrix")
 		state.staleRouteMatrix = true
 		// todo: add a metric for this
@@ -810,6 +853,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 	// todo: is this necessary?
 	/*
+	// todo: don't allocate in hot path
 	nearRelayIndices := make([]int32, nearRelays.Count)
 	nearRelayCosts := make([]int32, nearRelays.Count)
 	for i := int32(0); i < nearRelays.Count; i++ {
@@ -847,7 +891,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 		/*
 		if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), slicePacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, state.debug) {
-			HandleNextToken(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+			BuildNextTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 		}
 		*/
 
@@ -893,11 +937,11 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 				core.Debug("route changed")
 				state.metrics.RouteSwitched.Add(1)
 				// todo
-				// HandleNextToken(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+				// BuildNextTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 			} else {
 				core.Debug("route continued")
 				// todo
-				// HandleContinueToken(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+				// BuildContinueTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
 			}
 
 		} else {
@@ -1509,9 +1553,8 @@ func SessionUpdateHandlerFunc(
 		/*
 			Session post *always* runs at the end of this function
 
-			It sends session data to billing, vanity metrics and the portal.
-
-			It also writes and sends the response packet back to the sender.
+			It writes and sends the response packet back to the sender,
+			and sends session data to billing, vanity metrics and the portal.
 		*/
 
 		defer sessionPost(&state)
@@ -1572,21 +1615,19 @@ func SessionUpdateHandlerFunc(
 		if state.packet.SliceNumber == 0 {
 			sessionGetNearRelays(&state)
 			core.Debug("first slice always goes direct")
-			return
+			return			
 		}
 
 		/*
 			Process near relay ping statistics after the first slice.
 
-			We have latency, jitter and packet Loss for each near relay and we use these values for route planning.
+			We use near relay latency, jitter and packet loss for route planning.
 		*/
 
-		if state.packet.SliceNumber > 0 {
-			sessionUpdateNearRelayStats(&state)
-		}
+		sessionUpdateNearRelayStats(&state)
 
 		/*	
-			Here we decide whether we should take network next or not.
+			Decide whether we should take network next or not.
 		*/
 
 		sessionMakeRouteDecision(&state)
