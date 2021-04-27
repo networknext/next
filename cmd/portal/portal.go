@@ -578,6 +578,17 @@ func main() {
 			Storage: db,
 		}, "")
 
+		relayFrontEnd, ok := os.LookupEnv("RELAY_FRONTEND")
+		if !ok {
+			level.Error(logger).Log("err", "RELAY_FRONTEND environment variable not set")
+			os.Exit(1)
+		}
+
+		s.RegisterService(&jsonrpc.RelayFleetService{
+			RelayFrontendURI: relayFrontEnd,
+			Logger:           logger,
+		}, "")
+
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
 		r := mux.NewRouter()
