@@ -338,13 +338,6 @@ func BuildNextTokens(
 	numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
 
 	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
-	if routeAddresses == nil || routePublicKeys == nil {
-		response.RouteType = routing.RouteTypeDirect
-		response.NumTokens = 0
-		response.Tokens = nil
-		// todo: there should be a metric for this condition
-		return
-	}
 
 	tokenData := make([]byte, numTokens*routing.EncryptedNextRouteTokenSize)
 	core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), uint32(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint32(buyer.RouteShader.BandwidthEnvelopeDownKbps), int(numTokens), routeAddresses, routePublicKeys, routerPrivateKey)
@@ -374,14 +367,8 @@ func BuildContinueTokens(
 	*/
 
 	numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
-	routeAddresses, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
-	if routeAddresses == nil || routePublicKeys == nil {
-		response.RouteType = routing.RouteTypeDirect
-		response.NumTokens = 0
-		response.Tokens = nil
-		// todo: add a metric for this condition
-		return
-	}
+
+	_, routePublicKeys := GetRouteAddressesAndPublicKeys(&packet.ClientAddress, packet.ClientRoutePublicKey, &packet.ServerAddress, packet.ServerRoutePublicKey, numTokens, routeRelays, allRelayIDs, database)
 
 	tokenData := make([]byte, numTokens*routing.EncryptedContinueRouteTokenSize)
 	core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionID, uint8(sessionData.SessionVersion), int(numTokens), routePublicKeys, routerPrivateKey)
@@ -401,57 +388,58 @@ func GetRouteAddressesAndPublicKeys(
 	database *routing.DatabaseBinWrapper,
 ) ([]*net.UDPAddr, [][]byte) {
 
-	// todo: avoid allocations here. stupid
-	routeAddresses := make([]*net.UDPAddr, numTokens)
-	routePublicKeys := make([][]byte, numTokens)
+	var routeAddresses [core.NEXT_MAX_NODES]*net.UDPAddr
+	var routePublicKeys [core.NEXT_MAX_NODES][]byte
+
+	// client node
 
 	routeAddresses[0] = clientAddress
 	routePublicKeys[0] = clientPublicKey
+
+	// relay nodes
+
+	numRouteRelays := len(routeRelays)
+
+	relayAddresses := routeAddresses[1:numTokens-2]
+	relayPublicKeys := routePublicKeys[1:numTokens-2]
+
+	for i := 0; i < numRouteRelays; i++ {
+
+		relayIndex := routeRelays[i]
+		
+		relayID := allRelayIDs[relayIndex]
+
+		// IMPORTANT: By this point, all relays in the route have been verified to exist
+		// So we don't need to check that it exists in the relay map here. It *DOES*
+		relay, _ := database.RelayMap[relayID]	
+
+		/*
+			If the relay has a private address defined and the previous relay in the route
+			is from the same seller, prefer to send to the relay private address instead. 
+			These private addresses often have better performance than the private addresses,
+			and in the case of google cloud, have cheaper bandwidth prices.
+		*/
+
+		relayAddresses[i] = &relay.Addr
+
+		if i >= 1 {
+			prevRelayIndex := routeRelays[i-1]
+			prevID := allRelayIDs[prevRelayIndex]
+			prev, _ := database.RelayMap[prevID] // IMPORTANT: Relay DOES exist.
+			if prev.Seller.ID == relay.Seller.ID && relay.InternalAddr.String() != ":0" {
+				relayAddresses[i] = &relay.InternalAddr
+			}
+		}
+
+		relayPublicKeys[i] = relay.PublicKey
+	}
+
+	// server node
+
 	routeAddresses[numTokens-1] = serverAddress
 	routePublicKeys[numTokens-1] = serverPublicKey
 
-	totalNumRelays := int32(len(allRelayIDs))
-	foundRelayCount := int32(0)
-
-	for i := int32(0); i < numTokens-2; i++ {
-		relayIndex := routeRelays[i]
-		if relayIndex < totalNumRelays {
-			relayID := allRelayIDs[relayIndex]
-			relay, exists := database.RelayMap[relayID]
-			if !exists {
-				// todo: just return error condition here instead of checking below...
-				continue
-			}
-
-			routeAddresses = AddAddress(i, relay, allRelayIDs, database, routeRelays, routeAddresses)
-
-			routePublicKeys[i+1] = relay.PublicKey
-			foundRelayCount++
-		}
-	}
-
-	if foundRelayCount != numTokens-2 {
-		return nil, nil
-	}
-
-	return routeAddresses, routePublicKeys
-}
-
-func AddAddress(index int32, relay routing.Relay, allRelayIDs []uint64, database *routing.DatabaseBinWrapper, routeRelays []int32, routeAddresses []*net.UDPAddr) []*net.UDPAddr {
-	totalNumRelays := int32(len(allRelayIDs))
-	routeAddresses[index+1] = &relay.Addr
-	// check if the previous relay is the same seller
-	if index >= 1 {
-		prevRelayIndex := routeRelays[index-1]
-		if prevRelayIndex < totalNumRelays {
-			prevID := allRelayIDs[prevRelayIndex]
-			prev, exists := database.RelayMap[prevID]
-			if exists && prev.Seller.ID == relay.Seller.ID && prev.InternalAddr.String() != ":0" && relay.InternalAddr.String() != ":0" {
-				routeAddresses[index+1] = &relay.InternalAddr
-			}
-		}
-	}
-	return routeAddresses
+	return routeAddresses[:], routePublicKeys[:]
 }
 
 // ----------------------------------------------------------------------------
