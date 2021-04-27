@@ -438,6 +438,12 @@ type SessionHandlerState struct {
 	staleRouteMatrix     bool
 	staleDuration        time.Duration
 	realPacketLoss       float32
+	nearRelayIDs         []uint64
+	nearRelayNames       []string
+	nearRelayAddresses   []net.UDPAddr
+	nearRelayRTT         []int32
+	nearRelayJitter      []int32
+	nearRelayPacketLoss  []int32
 
 	// todo
 	/*
@@ -823,7 +829,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		Veto the session and go direct.
 	*/
 
-	if state.output.RouteState.Next && state.output.RouteNumRelays == 0 {
+	if state.input.RouteState.Next && state.input.RouteNumRelays == 0 {
 		core.Debug("on network next, but no route relays?")
 		state.output.RouteState.Next = false
 		state.output.RouteState.Veto = true
@@ -834,7 +840,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 	routeChanged := false
 
-	if !state.output.RouteState.Next {
+	if !state.input.RouteState.Next {
 
 		// currently going direct. should we take network next?
 
@@ -1017,40 +1023,44 @@ func sessionPost(state *SessionHandlerState) {
 
 	for i := int32(0); i < nearRelays; i++ {
 
-		// todo
+		/*
+			The set of near relays is held fixed at the start of a session.
+			Therefore it is possible that a near relay may no longer exist.
 
-	}
+			Check for that here and just ignore this relay entry (leave it empty)
+		*/
 
-	/*
-
-	for i := int32(0); i < nearRelays.Count; i++ {
-
-		// Since we now guarantee that the near relay IDs reported up from the SDK each slice don't change,
-		// we can use the packet's near relay IDs here instead of storing the near relay IDs in the session data
-		relayID := packet.NearRelayIDs[i]
-
-		// Make sure to check if the relay exists in case the near relays are gone
-		// this slice compared to the previous slice
-		relayIndex, ok := routeMatrix.RelayIDsToIndices[relayID]
+		relayID := state.packet.NearRelayIDs[i]
+		relayIndex, ok := state.routeMatrix.RelayIDsToIndices[relayID]
 		if !ok {
 			continue
 		}
 
-		nearRelays.IDs[i] = relayID
-		nearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
-		nearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
-		nearRelays.RTTs[i] = prevSessionData.RouteState.NearRelayRTT[i]
-		nearRelays.Jitters[i] = prevSessionData.RouteState.NearRelayJitter[i]
+		/*
+			Fill in information for near relays.
 
-		// We don't actually store the packet loss in the session data, so just use the
-		// values from the session update packet (no max history)
-		if nearRelays.RTTs[i] >= 255 {
-			nearRelays.PacketLosses[i] = 100
-		} else {
-			nearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
-		}
+			We grab this data from the input route state, which corresponds
+			to the previous slice. This way all values for a slice in billing
+			and the portal line up temporally.
+		*/
+
+		state.nearRelayIDs[i] = relayID
+		state.nearRelayNames[i] = state.routeMatrix.RelayNames[relayIndex]
+		state.nearRelayAddresses[i] = state.routeMatrix.RelayAddresses[relayIndex]
+		state.nearRelayRTT[i] = state.input.RouteState.NearRelayRTT[i]
+		state.nearRelayJitter[i] = state.input.RouteState.NearRelayJitter[i]
+
+		/*
+			We have to be a bit tricky to get packet loss for near relays,
+			since we store a history of near relay PL in a sliding window. 
+
+			Take the previous entry in the sliding window and it corresponds
+			to the input slice number that we want, however we can't use -1 
+			because modulo negative numbers doesn't do what we want, so add 7 instead...
+		*/
+		index := (state.input.RouteState.PLHistoryIndex + 7) % 8
+		state.nearRelayPacketLoss[i] = int32(state.input.RouteState.NearRelayPLHistory[index])
 	}
-	*/
 
 	/*
 		The client times out at the end of each session, and holds on for 60 seconds.
