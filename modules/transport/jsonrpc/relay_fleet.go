@@ -11,14 +11,14 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// RelayFleetService provides access to real-time data provided by tge endpoints
+// RelayFleetService provides access to real-time data provided by the endpoints
 // mounted on the relay_frontend (/relays, /cost_matrix (tbd), etc.).
 type RelayFleetService struct {
 	RelayFrontendURI string
 	Logger           log.Logger
 }
 
-// RelayFleetEntry represnets a line in the CSV file provided
+// RelayFleetEntry represents a line in the CSV file provided
 // by relay_frontend/relays (all strings)
 type RelayFleetEntry struct {
 	Name     string `json:"name"`
@@ -35,6 +35,8 @@ type FleetReply struct {
 	RelayFleet []RelayFleetEntry `json:"relay_fleet"`
 }
 
+// RelayFleet retrieves the CSV file from relay_frontend/relays, converts it to
+// json and puts it on the wire.
 func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *FleetArgs, reply *FleetReply) error {
 
 	authToken, err := GetOpsToken()
