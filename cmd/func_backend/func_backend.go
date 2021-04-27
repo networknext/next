@@ -261,7 +261,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	if sessionUpdate.FallbackToDirect {
-		fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr.String())
+		fmt.Printf("error: fallback to direct %s\n", incoming.From.String())
 		return
 	}
 
@@ -691,7 +691,7 @@ func main() {
 			data = data[crypto.PacketHashSize+1 : size]
 
 			var buffer bytes.Buffer
-			packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
+			packet := transport.UDPPacket{From: *fromAddr, Data: data}
 
 			switch packetType {
 			case transport.PacketTypeServerInitRequest:

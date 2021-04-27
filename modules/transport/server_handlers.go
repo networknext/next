@@ -397,10 +397,10 @@ func GetRouteAddressesAndPublicKeys(
 
 	// relay nodes
 
-	numRouteRelays := len(routeRelays)
+	relayAddresses := routeAddresses[1 : numTokens-1]
+	relayPublicKeys := routePublicKeys[1 : numTokens-1]
 
-	relayAddresses := routeAddresses[1 : numTokens-2]
-	relayPublicKeys := routePublicKeys[1 : numTokens-2]
+	numRouteRelays := len(routeRelays)
 
 	for i := 0; i < numRouteRelays; i++ {
 
@@ -424,7 +424,7 @@ func GetRouteAddressesAndPublicKeys(
 
 		relayAddresses[i] = &relay.Addr
 
-		if i >= 1 {
+		if i > 0 {
 			prevRelayIndex := routeRelays[i-1]
 			prevID := allRelayIDs[prevRelayIndex]
 			prev, _ := database.RelayMap[prevID] // IMPORTANT: Relay DOES exist.
@@ -441,7 +441,7 @@ func GetRouteAddressesAndPublicKeys(
 	routeAddresses[numTokens-1] = serverAddress
 	routePublicKeys[numTokens-1] = serverPublicKey
 
-	return routeAddresses[:], routePublicKeys[:]
+	return routeAddresses[:numTokens], routePublicKeys[:numTokens]
 }
 
 // ----------------------------------------------------------------------------
