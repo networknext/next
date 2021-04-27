@@ -3,9 +3,9 @@ package transport
 import (
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"time"
-	"math"
 
 	"github.com/go-kit/kit/log"
 
@@ -262,21 +262,21 @@ func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelay
 }
 
 func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) [core.MaxRelaysPerRoute]routing.Nibblin {
-	
+
 	relayPrices := [core.MaxRelaysPerRoute]routing.Nibblin{}
-	
+
 	if routeNumRelays == 0 {
 		return relayPrices
 	}
-	
+
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
-	
+
 	for i := 0; i < len(relayPrices); i++ {
 		relayPriceNibblins := float64(relaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
 	}
-	
+
 	return relayPrices
 }
 
@@ -295,9 +295,9 @@ func BuildNextTokens(
 		This is either the first network next route, or we have changed network next route.
 
 		We add an extra 10 seconds to the session expire timestamp, taking it to a total of 20 seconds.
-		
+
 		This means that each time we get a new route, we purchase ahead an extra 10 seconds, and renew
-		the route 10 seconds early from this point, avoiding race conditions at the end of the 10 seconds 
+		the route 10 seconds early from this point, avoiding race conditions at the end of the 10 seconds
 		when we continue the route.
 
 		However, this also means that each time we switch routes, we burn the tail (10 seconds),
@@ -329,7 +329,7 @@ func BuildNextTokens(
 
 			2. Only the corresponding node can decrypt the token
 
-		While we are not currently a DDoS protection solution, property #2 means that 
+		While we are not currently a DDoS protection solution, property #2 means that
 		we could use our technology to build one, if we choose, since we can construct
 		a route and the client would only know the address of the next hop, and nothing more...
 	*/
@@ -360,8 +360,8 @@ func BuildContinueTokens(
 	/*
 		Continue tokens are used when we hold the same route from one slice to the next.
 
-		Continue tokens just extend the expire time for the route across each relay by 10 seconds. 
-		
+		Continue tokens just extend the expire time for the route across each relay by 10 seconds.
+
 		It is smaller than the full initial description of the route, and is the common case.
 	*/
 
@@ -399,13 +399,13 @@ func GetRouteAddressesAndPublicKeys(
 
 	numRouteRelays := len(routeRelays)
 
-	relayAddresses := routeAddresses[1:numTokens-2]
-	relayPublicKeys := routePublicKeys[1:numTokens-2]
+	relayAddresses := routeAddresses[1 : numTokens-2]
+	relayPublicKeys := routePublicKeys[1 : numTokens-2]
 
 	for i := 0; i < numRouteRelays; i++ {
 
 		relayIndex := routeRelays[i]
-		
+
 		relayID := allRelayIDs[relayIndex]
 
 		/*
@@ -413,11 +413,11 @@ func GetRouteAddressesAndPublicKeys(
 			so we don't need to check that it exists in the relay map here. It *DOES*
 		*/
 
-		relay, _ := database.RelayMap[relayID]	
+		relay, _ := database.RelayMap[relayID]
 
 		/*
 			If the relay has a private address defined and the previous relay in the route
-			is from the same seller, prefer to send to the relay private address instead. 
+			is from the same seller, prefer to send to the relay private address instead.
 			These private addresses often have better performance than the private addresses,
 			and in the case of google cloud, have cheaper bandwidth prices.
 		*/
@@ -447,34 +447,48 @@ func GetRouteAddressesAndPublicKeys(
 // ----------------------------------------------------------------------------
 
 type SessionHandlerState struct {
-	writer               io.Writer
-	input                SessionData // sent up from the SDK
-	output               SessionData // sent down to the SDK
-	packet               SessionUpdatePacket
-	response             SessionResponsePacket
-	packetData           []byte
-	metrics 			 *metrics.SessionUpdateMetrics
-	database             *routing.DatabaseBinWrapper
-	routeMatrix          *routing.RouteMatrix
-	datacenter           routing.Datacenter
-	buyer                routing.Buyer
-	debug                *string
-	ipLocator            routing.IPLocator
+	input SessionData // sent down to the SDK
+
+	output SessionData // sent down to the SDK
+
+	writer        io.Writer
+	packet        SessionUpdatePacket
+	response      SessionResponsePacket
+	packetData    []byte
+	metrics       *metrics.SessionUpdateMetrics
+	database      *routing.DatabaseBinWrapper
+	routeMatrix   *routing.RouteMatrix
+	datacenter    routing.Datacenter
+	buyer         routing.Buyer
+	debug         *string
+	ipLocator     routing.IPLocator
+	staleDuration time.Duration
+
+	// flags
 	signatureCheckFailed bool
 	unknownDatacenter    bool
 	datacenterNotEnabled bool
 	buyerNotFound        bool
 	buyerNotLive         bool
 	staleRouteMatrix     bool
-	staleDuration        time.Duration
-	realPacketLoss       float32
-	nearRelayCount       int
-	nearRelayIDs         [core.MaxNearRelays]uint64
-	nearRelayNames       [core.MaxNearRelays]string
-	nearRelayAddresses   [core.MaxNearRelays]net.UDPAddr
-	nearRelayRTT         [core.MaxNearRelays]int32
-	nearRelayJitter      [core.MaxNearRelays]int32
-	nearRelayPacketLoss  [core.MaxNearRelays]int32
+
+	// real packet loss (from actual game packets). high precision %
+	realPacketLoss float32
+
+	// for route planning (comes from SDK and route matrix)
+	nearRelayRTTs    [core.MaxNearRelays]int32
+	nearRelayJitters [core.MaxNearRelays]int32
+	numDestRelays    int32
+	destRelays       []int32
+
+	// for display (sent to billing, portal etc...)
+	outputNearRelayCount      int
+	outputNearRelayIDs        [core.MaxNearRelays]uint64
+	outputNearRelayNames      [core.MaxNearRelays]string
+	outputNearRelayAddresses  [core.MaxNearRelays]net.UDPAddr
+	outputNearRelayRTT        [core.MaxNearRelays]int32
+	outputNearRelayJitter     [core.MaxNearRelays]int32
+	outputNearRelayPacketLoss [core.MaxNearRelays]int32
 
 	// todo
 	/*
@@ -761,11 +775,11 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 	directLatency := int32(math.Ceil(float64(state.packet.DirectRTT)))
 	directJitter := int32(math.Ceil(float64(state.packet.DirectJitter)))
-	directPacketLoss := math.Floor(float64(state.packet.DirectPacketLoss)+0.5)
-	nextPacketLoss := math.Floor(float64(state.packet.NextPacketLoss)+0.5)
+	directPacketLoss := math.Floor(float64(state.packet.DirectPacketLoss) + 0.5)
+	nextPacketLoss := math.Floor(float64(state.packet.NextPacketLoss) + 0.5)
 
 	/*
-		IMPORTANT: If we are not currently on network next, replace the direct packet loss 
+		IMPORTANT: If we are not currently on network next, replace the direct packet loss
 		that comes from pings (@10HZ), with the real packet loss from real game packets (60HZ)
 		This gives us a much higher precision view of packet loss, which is important because
 		it's used as an input to decide if we should take network next to reduce packet loss!
@@ -786,11 +800,7 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 	sliceNumber := int32(state.packet.SliceNumber)
 
-	// todo: put these in state
-	var nearRelayRTTs []int32
-	var nearRelayJitters []int32
-	var numDestRelays int32
-	destRelays := make([]int32, len(destRelayIDs))
+	state.destRelays = make([]int32, len(destRelayIDs))
 
 	core.ReframeRelays(
 		// input
@@ -808,10 +818,10 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		state.packet.NearRelayPacketLoss,
 		destRelayIDs,
 		// output
-		nearRelayRTTs,
-		nearRelayJitters,
-		&numDestRelays,
-		destRelays,
+		state.nearRelayRTTs[:],
+		state.nearRelayJitters[:],
+		&state.numDestRelays,
+		state.destRelays,
 	)
 
 	return true
@@ -829,24 +839,24 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 	// todo: is this necessary?
 	/*
-	// todo: don't allocate in hot path
-	nearRelayIndices := make([]int32, nearRelays.Count)
-	nearRelayCosts := make([]int32, nearRelays.Count)
-	for i := int32(0); i < nearRelays.Count; i++ {
-		nearRelayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelays.IDs[i]]
-		if !ok {
-			continue
-		}
+		// todo: don't allocate in hot path
+		nearRelayIndices := make([]int32, nearRelays.Count)
+		nearRelayCosts := make([]int32, nearRelays.Count)
+		for i := int32(0); i < nearRelays.Count; i++ {
+			nearRelayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelays.IDs[i]]
+			if !ok {
+				continue
+			}
 
-		nearRelayIndices[i] = nearRelayIndex
-		nearRelayCosts[i] = nearRelays.RTTs[i]
-	}
+			nearRelayIndices[i] = nearRelayIndex
+			nearRelayCosts[i] = nearRelays.RTTs[i]
+		}
 	*/
 
 	var routeNumRelays int32
 
 	/*
-		If we are on on network next but don't have any relays in our route, something is WRONG. 
+		If we are on on network next but don't have any relays in our route, something is WRONG.
 		Veto the session and go direct.
 	*/
 
@@ -866,9 +876,9 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		// currently going direct. should we take network next?
 
 		/*
-		if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), slicePacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, state.debug) {
-			BuildNextTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
-		}
+			if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), slicePacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, state.debug) {
+				BuildNextTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+			}
 		*/
 
 	} else {
@@ -886,18 +896,18 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 			return
 		}
 
-		/* 
+		/*
 			Reframe the current route in terms of relay indices in the current route matrix
 
 			This is necessary because the set of relays in the route matrix change over time.
 		*/
 
 		/*
-		if !core.ReframeRoute(&sessionData.RouteState, routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
-			routeRelays = [core.MaxRelaysPerRoute]int32{}
-			core.Debug("one or more relays in the route no longer exist")
-			metrics.RouteDoesNotExist.Add(1)
-		}
+			if !core.ReframeRoute(&sessionData.RouteState, routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
+				routeRelays = [core.MaxRelaysPerRoute]int32{}
+				core.Debug("one or more relays in the route no longer exist")
+				metrics.RouteDoesNotExist.Add(1)
+			}
 		*/
 
 		// todo
@@ -990,8 +1000,8 @@ func sessionPost(state *SessionHandlerState) {
 	}
 
 	/*
-		Store the packets sent and packets lost counters in the route state, 
-		so we can use them to calculate delta packets sent and delta packets lost 
+		Store the packets sent and packets lost counters in the route state,
+		so we can use them to calculate delta packets sent and delta packets lost
 		for the next slice in our real packet loss calculation.
 	*/
 
@@ -1029,20 +1039,20 @@ func sessionPost(state *SessionHandlerState) {
 	routeRelaySellers := [core.MaxRelaysPerRoute]routing.Seller{}
 
 	for i := int32(0); i < state.input.RouteNumRelays; i++ {
-		relay, ok := state.database.RelayMap[state.input.RouteRelayIDs[i]] 
+		relay, ok := state.database.RelayMap[state.input.RouteRelayIDs[i]]
 		if ok {
 			routeRelayNames[i] = relay.Name
 			routeRelaySellers[i] = relay.Seller
 		}
 	}
 
-	/* 
-		Build near relay data
+	/*
+		Build output near relay data (for portal, billing etc...)
 	*/
 
-	state.nearRelayCount = int(state.input.RouteState.NumNearRelays)
+	state.outputNearRelayCount = int(state.input.RouteState.NumNearRelays)
 
-	for i := 0; i < state.nearRelayCount; i++ {
+	for i := 0; i < state.outputNearRelayCount; i++ {
 
 		/*
 			The set of near relays is held fixed at the start of a session.
@@ -1059,15 +1069,15 @@ func sessionPost(state *SessionHandlerState) {
 			Fill in information for near relays.
 
 			We grab this data from the input route state, which corresponds
-			to the previous slice. This makes sure all values for a slice in 
+			to the previous slice. This makes sure all values for a slice in
 			billing and the portal line up temporally.
 		*/
 
-		state.nearRelayIDs[i] = relayID
-		state.nearRelayNames[i] = state.routeMatrix.RelayNames[relayIndex]
-		state.nearRelayAddresses[i] = state.routeMatrix.RelayAddresses[relayIndex]
-		state.nearRelayRTT[i] = state.input.RouteState.NearRelayRTT[i]
-		state.nearRelayJitter[i] = state.input.RouteState.NearRelayJitter[i]
+		state.outputNearRelayIDs[i] = relayID
+		state.outputNearRelayNames[i] = state.routeMatrix.RelayNames[relayIndex]
+		state.outputNearRelayAddresses[i] = state.routeMatrix.RelayAddresses[relayIndex]
+		state.outputNearRelayRTT[i] = state.input.RouteState.NearRelayRTT[i]
+		state.outputNearRelayJitter[i] = state.input.RouteState.NearRelayJitter[i]
 
 		/*
 			We have to be a bit tricky to get packet loss for near relays,
@@ -1075,11 +1085,11 @@ func sessionPost(state *SessionHandlerState) {
 			not just a single value.
 
 			Take the previous entry in the sliding window and it corresponds
-			to the input slice number that we want, however we can't use -1 
+			to the input slice number that we want, however we can't use -1
 			because modulo negative numbers doesn't do what we want, so add 7 instead...
 		*/
 		index := (state.input.RouteState.PLHistoryIndex + 7) % 8
-		state.nearRelayPacketLoss[i] = int32(state.input.RouteState.NearRelayPLHistory[index])
+		state.outputNearRelayPacketLoss[i] = int32(state.input.RouteState.NearRelayPLHistory[index])
 	}
 
 	/*
@@ -1118,105 +1128,105 @@ func sessionPost(state *SessionHandlerState) {
 func buildPortalData(state *SessionHandlerState, portalData *SessionPortalData) {
 
 	/*
-	// todo: we should try to avoid allocation here
-	hops := make([]RelayHop, sessionData.RouteNumRelays)
-	for i := int32(0); i < sessionData.RouteNumRelays; i++ {
-		hops[i] = RelayHop{
-			ID:   sessionData.RouteRelayIDs[i],
-			Name: routeRelayNames[i],
+		// todo: we should try to avoid allocation here
+		hops := make([]RelayHop, sessionData.RouteNumRelays)
+		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
+			hops[i] = RelayHop{
+				ID:   sessionData.RouteRelayIDs[i],
+				Name: routeRelayNames[i],
+			}
 		}
-	}
 
-	// todo: we should try to avoid allocation here
-	nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
-	for i := range nearRelayPortalData {
-		nearRelayPortalData[i] = NearRelayPortalData{
-			ID:   nearRelays.IDs[i],
-			Name: nearRelays.Names[i],
-			ClientStats: routing.Stats{
-				RTT:        float64(nearRelays.RTTs[i]),
-				Jitter:     float64(nearRelays.Jitters[i]),
-				PacketLoss: float64(nearRelays.PacketLosses[i]),
-			},
+		// todo: we should try to avoid allocation here
+		nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
+		for i := range nearRelayPortalData {
+			nearRelayPortalData[i] = NearRelayPortalData{
+				ID:   nearRelays.IDs[i],
+				Name: nearRelays.Names[i],
+				ClientStats: routing.Stats{
+					RTT:        float64(nearRelays.RTTs[i]),
+					Jitter:     float64(nearRelays.Jitters[i]),
+					PacketLoss: float64(nearRelays.PacketLosses[i]),
+				},
+			}
 		}
-	}
 
-	// todo: sorting below should be done by the portal instead. here we are in hot path and must do as little work as possible
+		// todo: sorting below should be done by the portal instead. here we are in hot path and must do as little work as possible
 
-	// Sort the near relays for display purposes
-	sort.Slice(nearRelayPortalData, func(i, j int) bool {
-		return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
-	})
+		// Sort the near relays for display purposes
+		sort.Slice(nearRelayPortalData, func(i, j int) bool {
+			return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
+		})
 
-	var deltaRTT float32
-	if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
-		deltaRTT = packet.DirectRTT - packet.NextRTT
-	}
+		var deltaRTT float32
+		if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
+			deltaRTT = packet.DirectRTT - packet.NextRTT
+		}
 
-	predictedRTT := float64(sessionData.RouteCost)
-	if sessionData.RouteCost >= routing.InvalidRouteValue {
-		predictedRTT = 0
-	}
+		predictedRTT := float64(sessionData.RouteCost)
+		if sessionData.RouteCost >= routing.InvalidRouteValue {
+			predictedRTT = 0
+		}
 
-	*portalData = SessionPortalData{
-		Meta: SessionMeta{
-			ID:              packet.SessionID,
-			UserHash:        packet.UserHash,
-			DatacenterName:  datacenter.Name,
-			DatacenterAlias: datacenter.AliasName,
-			OnNetworkNext:   packet.Next,
-			NextRTT:         float64(packet.NextRTT),
-			DirectRTT:       float64(packet.DirectRTT),
-			DeltaRTT:        float64(deltaRTT),
-			Location:        sessionData.Location,
-			ClientAddr:      packet.ClientAddress.String(),
-			ServerAddr:      packet.ServerAddress.String(),
-			Hops:            hops,
-			SDK:             packet.Version.String(),
-			Connection:      uint8(packet.ConnectionType),
-			NearbyRelays:    nearRelayPortalData,
-			Platform:        uint8(packet.PlatformType),
-			BuyerID:         packet.BuyerID,
-		},
-		Slice: SessionSlice{
-			Timestamp: time.Now(),
-			Next: routing.Stats{
-				RTT:        float64(packet.NextRTT),
-				Jitter:     float64(packet.NextJitter),
-				PacketLoss: float64(packet.NextPacketLoss),
+		*portalData = SessionPortalData{
+			Meta: SessionMeta{
+				ID:              packet.SessionID,
+				UserHash:        packet.UserHash,
+				DatacenterName:  datacenter.Name,
+				DatacenterAlias: datacenter.AliasName,
+				OnNetworkNext:   packet.Next,
+				NextRTT:         float64(packet.NextRTT),
+				DirectRTT:       float64(packet.DirectRTT),
+				DeltaRTT:        float64(deltaRTT),
+				Location:        sessionData.Location,
+				ClientAddr:      packet.ClientAddress.String(),
+				ServerAddr:      packet.ServerAddress.String(),
+				Hops:            hops,
+				SDK:             packet.Version.String(),
+				Connection:      uint8(packet.ConnectionType),
+				NearbyRelays:    nearRelayPortalData,
+				Platform:        uint8(packet.PlatformType),
+				BuyerID:         packet.BuyerID,
 			},
-			Direct: routing.Stats{
-				RTT:        float64(packet.DirectRTT),
-				Jitter:     float64(packet.DirectJitter),
-				PacketLoss: float64(packet.DirectPacketLoss),
+			Slice: SessionSlice{
+				Timestamp: time.Now(),
+				Next: routing.Stats{
+					RTT:        float64(packet.NextRTT),
+					Jitter:     float64(packet.NextJitter),
+					PacketLoss: float64(packet.NextPacketLoss),
+				},
+				Direct: routing.Stats{
+					RTT:        float64(packet.DirectRTT),
+					Jitter:     float64(packet.DirectJitter),
+					PacketLoss: float64(packet.DirectPacketLoss),
+				},
+				Predicted: routing.Stats{
+					RTT: predictedRTT,
+				},
+				ClientToServerStats: routing.Stats{
+					Jitter:     float64(packet.JitterClientToServer),
+					PacketLoss: float64(slicePacketLossClientToServer),
+				},
+				ServerToClientStats: routing.Stats{
+					Jitter:     float64(packet.JitterServerToClient),
+					PacketLoss: float64(slicePacketLossServerToClient),
+				},
+				RouteDiversity: uint32(routeDiversity),
+				Envelope: routing.Envelope{
+					Up:   int64(packet.NextKbpsUp),
+					Down: int64(packet.NextKbpsDown),
+				},
+				IsMultiPath:       sessionData.RouteState.Multipath,
+				IsTryBeforeYouBuy: !sessionData.RouteState.Committed,
+				OnNetworkNext:     packet.Next,
 			},
-			Predicted: routing.Stats{
-				RTT: predictedRTT,
+			Point: SessionMapPoint{
+				Latitude:  float64(sessionData.Location.Latitude),
+				Longitude: float64(sessionData.Location.Longitude),
 			},
-			ClientToServerStats: routing.Stats{
-				Jitter:     float64(packet.JitterClientToServer),
-				PacketLoss: float64(slicePacketLossClientToServer),
-			},
-			ServerToClientStats: routing.Stats{
-				Jitter:     float64(packet.JitterServerToClient),
-				PacketLoss: float64(slicePacketLossServerToClient),
-			},
-			RouteDiversity: uint32(routeDiversity),
-			Envelope: routing.Envelope{
-				Up:   int64(packet.NextKbpsUp),
-				Down: int64(packet.NextKbpsDown),
-			},
-			IsMultiPath:       sessionData.RouteState.Multipath,
-			IsTryBeforeYouBuy: !sessionData.RouteState.Committed,
-			OnNetworkNext:     packet.Next,
-		},
-		Point: SessionMapPoint{
-			Latitude:  float64(sessionData.Location.Latitude),
-			Longitude: float64(sessionData.Location.Longitude),
-		},
-		LargeCustomer:	   buyer.InternalConfig.LargeCustomer,
-		EverOnNext:    sessionData.EverOnNext,
-	}
+			LargeCustomer:	   buyer.InternalConfig.LargeCustomer,
+			EverOnNext:    sessionData.EverOnNext,
+		}
 	*/
 }
 
@@ -1553,7 +1563,7 @@ func SessionUpdateHandlerFunc(
 
 			Do setup on slice 0, then for subsequent slices transform state.input -> state.output
 
-			state.output is sent down to the SDK in the session response packet, and next slice 
+			state.output is sent down to the SDK in the session response packet, and next slice
 			it is sent back up to us in the subsequent session update packet for this session.
 
 			This is how we make this handler stateless. Without this, we need to store per-session
@@ -1592,7 +1602,7 @@ func SessionUpdateHandlerFunc(
 		if state.packet.SliceNumber == 0 {
 			sessionGetNearRelays(&state)
 			core.Debug("first slice always goes direct")
-			return			
+			return
 		}
 
 		/*
@@ -1603,7 +1613,7 @@ func SessionUpdateHandlerFunc(
 
 		sessionUpdateNearRelayStats(&state)
 
-		/*	
+		/*
 			Decide whether we should take network next or not.
 		*/
 
