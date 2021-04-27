@@ -12,7 +12,6 @@ import (
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -380,6 +379,7 @@ func BuildContinueTokens(
 		response.RouteType = routing.RouteTypeDirect
 		response.NumTokens = 0
 		response.Tokens = nil
+		// todo: add a metric for this condition
 		return
 	}
 
@@ -390,7 +390,6 @@ func BuildContinueTokens(
 	response.Tokens = tokenData
 }
 
-// todo: clean up
 func GetRouteAddressesAndPublicKeys(
 	clientAddress *net.UDPAddr,
 	clientPublicKey []byte,
@@ -414,18 +413,17 @@ func GetRouteAddressesAndPublicKeys(
 	totalNumRelays := int32(len(allRelayIDs))
 	foundRelayCount := int32(0)
 
-	enableInternalIPs, _ := envvar.GetBool("FEATURE_ENABLE_INTERNAL_IPS", false)
-
 	for i := int32(0); i < numTokens-2; i++ {
 		relayIndex := routeRelays[i]
 		if relayIndex < totalNumRelays {
 			relayID := allRelayIDs[relayIndex]
 			relay, exists := database.RelayMap[relayID]
 			if !exists {
+				// todo: just return error condition here instead of checking below...
 				continue
 			}
 
-			routeAddresses = AddAddress(enableInternalIPs, i, relay, allRelayIDs, database, routeRelays, routeAddresses)
+			routeAddresses = AddAddress(i, relay, allRelayIDs, database, routeRelays, routeAddresses)
 
 			routePublicKeys[i+1] = relay.PublicKey
 			foundRelayCount++
@@ -439,19 +437,17 @@ func GetRouteAddressesAndPublicKeys(
 	return routeAddresses, routePublicKeys
 }
 
-func AddAddress(enableInternalIPs bool, index int32, relay routing.Relay, allRelayIDs []uint64, database *routing.DatabaseBinWrapper, routeRelays []int32, routeAddresses []*net.UDPAddr) []*net.UDPAddr {
+func AddAddress(index int32, relay routing.Relay, allRelayIDs []uint64, database *routing.DatabaseBinWrapper, routeRelays []int32, routeAddresses []*net.UDPAddr) []*net.UDPAddr {
 	totalNumRelays := int32(len(allRelayIDs))
 	routeAddresses[index+1] = &relay.Addr
-	if enableInternalIPs {
-		// check if the previous relay is the same seller
-		if index >= 1 {
-			prevRelayIndex := routeRelays[index-1]
-			if prevRelayIndex < totalNumRelays {
-				prevID := allRelayIDs[prevRelayIndex]
-				prev, exists := database.RelayMap[prevID]
-				if exists && prev.Seller.ID == relay.Seller.ID && prev.InternalAddr.String() != ":0" && relay.InternalAddr.String() != ":0" {
-					routeAddresses[index+1] = &relay.InternalAddr
-				}
+	// check if the previous relay is the same seller
+	if index >= 1 {
+		prevRelayIndex := routeRelays[index-1]
+		if prevRelayIndex < totalNumRelays {
+			prevID := allRelayIDs[prevRelayIndex]
+			prev, exists := database.RelayMap[prevID]
+			if exists && prev.Seller.ID == relay.Seller.ID && prev.InternalAddr.String() != ":0" && relay.InternalAddr.String() != ":0" {
+				routeAddresses[index+1] = &relay.InternalAddr
 			}
 		}
 	}
