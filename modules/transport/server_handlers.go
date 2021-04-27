@@ -509,6 +509,15 @@ func sessionPre(state *SessionHandlerState) bool {
 	if routeMatrixIsStale(state.routeMatrix, state.staleDuration) {
 		core.Debug("stale route matrix")
 		state.staleRouteMatrix = true
+		// todo: add a metric for this
+		// state.metrics.StaleRouteMatrix.Add(1)
+		return true
+	}
+
+	if state.input.RouteState.NumNearRelays != state.packet.NumNearRelays {
+		core.Debug("near relay count diverged")
+		// todo: add a metric for this
+		// state.metrics.NearRelayCountDiverged.Add(1)
 		return true
 	}
 
@@ -789,9 +798,10 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 	routeRelays := [core.MaxRelaysPerRoute]int32{}
 
-	// todo: what the fuck
+	// todo: what the fuck -- why would we copy such a potentially large map here?
 	// multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
 
+	// todo: is this necessary?
 	/*
 	nearRelayIndices := make([]int32, nearRelays.Count)
 	nearRelayCosts := make([]int32, nearRelays.Count)
@@ -818,7 +828,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		state.output.RouteState.Next = false
 		state.output.RouteState.Veto = true
 		// todo: add metric for this condition
-		// metrics.NextWithoutRouteRelays.Add(1)
+		// state.metrics.NextWithoutRouteRelays.Add(1)
 		return
 	}
 
@@ -920,13 +930,10 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 	state.output.RouteChanged = routeChanged
 	state.output.RouteNumRelays = routeNumRelays
 
-	/*
 	for i := int32(0); i < routeNumRelays; i++ {
-		relayID := routeMatrix.RelayIDs[routeRelays[i]]
-		sessionData.RouteRelayIDs[i] = relayID
+		relayID := state.routeMatrix.RelayIDs[routeRelays[i]]
+		state.output.RouteRelayIDs[i] = relayID
 	}
-	*/
-	_ = routeRelays
 }
 
 func sessionPost(state *SessionHandlerState) {
@@ -987,61 +994,62 @@ func sessionPost(state *SessionHandlerState) {
 		return
 	}
 
-	// Rebuild the arrays of route relay names and sellers from the previous session data
-	// routeRelayNames := [core.MaxRelaysPerRoute]string{}
-	// routeRelaySellers := [core.MaxRelaysPerRoute]routing.Seller{}
-
-	// todo
 	/*
-		for i := int32(0); i < prevSessionData.RouteNumRelays; i++ {
-			for _, relay := range state.database.Relays {
-				if relay.ID == prevSessionData.RouteRelayIDs[i] {
-					routeRelayNames[i] = relay.Name
-					routeRelaySellers[i] = relay.Seller
-					break
-				}
-			}
-		}
+		Build route relay data.
 	*/
 
-	// todo
+	routeRelayNames := [core.MaxRelaysPerRoute]string{}
+	routeRelaySellers := [core.MaxRelaysPerRoute]routing.Seller{}
 
-	// Rebuild the near relays from the previous session data
-	// var nearRelays nearRelayGroup
+	for i := int32(0); i < state.input.RouteNumRelays; i++ {
+		relay, ok := state.database.RelayMap[state.input.RouteRelayIDs[i]] 
+		if ok {
+			routeRelayNames[i] = relay.Name
+			routeRelaySellers[i] = relay.Seller
+		}
+	}
 
-	// Make sure we only rebuild the previous near relays if we haven't gotten out of sync somehow
+	/* 
+		Build near relay data
+	*/
+
+	nearRelays := state.input.RouteState.NumNearRelays
+
+	for i := int32(0); i < nearRelays; i++ {
+
+		// todo
+
+	}
+
 	/*
-		if prevSessionData.RouteState.NumNearRelays == packet.NumNearRelays {
-			nearRelays = newNearRelayGroup(prevSessionData.RouteState.NumNearRelays)
+
+	for i := int32(0); i < nearRelays.Count; i++ {
+
+		// Since we now guarantee that the near relay IDs reported up from the SDK each slice don't change,
+		// we can use the packet's near relay IDs here instead of storing the near relay IDs in the session data
+		relayID := packet.NearRelayIDs[i]
+
+		// Make sure to check if the relay exists in case the near relays are gone
+		// this slice compared to the previous slice
+		relayIndex, ok := routeMatrix.RelayIDsToIndices[relayID]
+		if !ok {
+			continue
 		}
 
-		for i := int32(0); i < nearRelays.Count; i++ {
+		nearRelays.IDs[i] = relayID
+		nearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
+		nearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
+		nearRelays.RTTs[i] = prevSessionData.RouteState.NearRelayRTT[i]
+		nearRelays.Jitters[i] = prevSessionData.RouteState.NearRelayJitter[i]
 
-			// Since we now guarantee that the near relay IDs reported up from the SDK each slice don't change,
-			// we can use the packet's near relay IDs here instead of storing the near relay IDs in the session data
-			relayID := packet.NearRelayIDs[i]
-
-			// Make sure to check if the relay exists in case the near relays are gone
-			// this slice compared to the previous slice
-			relayIndex, ok := routeMatrix.RelayIDsToIndices[relayID]
-			if !ok {
-				continue
-			}
-
-			nearRelays.IDs[i] = relayID
-			nearRelays.Names[i] = routeMatrix.RelayNames[relayIndex]
-			nearRelays.Addrs[i] = routeMatrix.RelayAddresses[relayIndex]
-			nearRelays.RTTs[i] = prevSessionData.RouteState.NearRelayRTT[i]
-			nearRelays.Jitters[i] = prevSessionData.RouteState.NearRelayJitter[i]
-
-			// We don't actually store the packet loss in the session data, so just use the
-			// values from the session update packet (no max history)
-			if nearRelays.RTTs[i] >= 255 {
-				nearRelays.PacketLosses[i] = 100
-			} else {
-				nearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
-			}
+		// We don't actually store the packet loss in the session data, so just use the
+		// values from the session update packet (no max history)
+		if nearRelays.RTTs[i] >= 255 {
+			nearRelays.PacketLosses[i] = 100
+		} else {
+			nearRelays.PacketLosses[i] = packet.NearRelayPacketLoss[i]
 		}
+	}
 	*/
 
 	/*
