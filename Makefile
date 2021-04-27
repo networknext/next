@@ -1230,39 +1230,39 @@ build-reference-relay:
 #   Relay Forwarder   #
 #######################
 
-# .PHONY: dev-relay-forwarder
-# dev-relay-forwarder: build-relay-forwarder ## runs a local relay forwarder
-# 	@PORT=30000 ./dist/relay_forwarder
+.PHONY: dev-relay-forwarder
+dev-relay-forwarder: build-relay-forwarder ## runs a local relay forwarder
+	@PORT=30006 ./dist/relay_forwarder
 
-# .PHONY: build-relay-forwarder
-# build-relay-forwarder:
-# 	@printf "Building relay forwarder... "
-# 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
-# 	@printf "done\n"
+.PHONY: build-relay-forwarder
+build-relay-forwarder:
+	@printf "Building relay forwarder... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_forwarder ./cmd/relay_forwarder/relay_forwarder.go
+	@printf "done\n"
 
-# .PHONY: build-relay-forwarder-artifacts-dev
-# build-relay-forwarder-artifacts-dev: build-relay-forwarder
-# 	./deploy/build-artifacts.sh -e dev -s relay_forwarder
+.PHONY: build-relay-forwarder-artifacts-dev
+build-relay-forwarder-artifacts-dev: build-relay-forwarder
+	./deploy/build-artifacts.sh -e dev -s relay_forwarder
 
-# .PHONY: publish-relay-forwarder-artifacts-dev
-# publish-relay-forwarder-artifacts-dev:
-# 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_forwarder
+.PHONY: publish-relay-forwarder-artifacts-dev
+publish-relay-forwarder-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_forwarder
 
-# .PHONY: build-relay-forwarder-artifacts-staging
-# build-relay-forwarder-artifacts-staging: build-relay-forwarder
-# 	./deploy/build-artifacts.sh -e staging -s relay_forwarder
+.PHONY: build-relay-forwarder-artifacts-staging
+build-relay-forwarder-artifacts-staging: build-relay-forwarder
+	./deploy/build-artifacts.sh -e staging -s relay_forwarder
 
-# .PHONY: publish-relay-forwarder-artifacts-staging
-# publish-relay-forwarder-artifacts-staging:
-# 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_forwarder
+.PHONY: publish-relay-forwarder-artifacts-staging
+publish-relay-forwarder-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_forwarder
 
-# .PHONY: build-relay-forwarder-artifacts-prod
-# build-relay-forwarder-artifacts-prod: build-relay-forwarder
-# 	./deploy/build-artifacts.sh -e prod -s relay_forwarder
+.PHONY: build-relay-forwarder-artifacts-prod
+build-relay-forwarder-artifacts-prod: build-relay-forwarder
+	./deploy/build-artifacts.sh -e prod -s relay_forwarder
 
-# .PHONY: publish-relay-forwarder-artifacts-prod
-# publish-relay-forwarder-artifacts-prod:
-# 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_forwarder
+.PHONY: publish-relay-forwarder-artifacts-prod
+publish-relay-forwarder-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_forwarder
 
 #######################
 #    Relay Gateway    #

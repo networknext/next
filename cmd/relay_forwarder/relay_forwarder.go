@@ -2,9 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"expvar"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -12,11 +12,13 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 
 	"github.com/go-kit/kit/log/level"
@@ -31,7 +33,7 @@ var (
 )
 
 func main() {
-	return mainReturnWithCode()
+	os.Exit(mainReturnWithCode())
 }
 
 func mainReturnWithCode() int {
@@ -69,7 +71,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	fowarderMetrics, err := metrics.NewRelayForwarderMetrics(ctx, metricsHandler)
+	forwarderMetrics, err := metrics.NewRelayForwarderMetrics(ctx, metricsHandler, serviceName)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -202,7 +204,7 @@ func mainReturnWithCode() int {
 func forwardPost(requestURI *url.URL) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
+		fmt.Printf("request: %+v\n", r)
 		// Create a reverse proxy
 		proxy := httputil.NewSingleHostReverseProxy(requestURI)
 		// Serve the request
