@@ -438,12 +438,13 @@ type SessionHandlerState struct {
 	staleRouteMatrix     bool
 	staleDuration        time.Duration
 	realPacketLoss       float32
-	nearRelayIDs         []uint64
-	nearRelayNames       []string
-	nearRelayAddresses   []net.UDPAddr
-	nearRelayRTT         []int32
-	nearRelayJitter      []int32
-	nearRelayPacketLoss  []int32
+	nearRelayCount       int
+	nearRelayIDs         [core.MaxNearRelays]uint64
+	nearRelayNames       [core.MaxNearRelays]string
+	nearRelayAddresses   [core.MaxNearRelays]net.UDPAddr
+	nearRelayRTT         [core.MaxNearRelays]int32
+	nearRelayJitter      [core.MaxNearRelays]int32
+	nearRelayPacketLoss  [core.MaxNearRelays]int32
 
 	// todo
 	/*
@@ -1019,15 +1020,13 @@ func sessionPost(state *SessionHandlerState) {
 		Build near relay data
 	*/
 
-	nearRelays := state.input.RouteState.NumNearRelays
+	state.nearRelayCount = int(state.input.RouteState.NumNearRelays)
 
-	for i := int32(0); i < nearRelays; i++ {
+	for i := 0; i < state.nearRelayCount; i++ {
 
 		/*
 			The set of near relays is held fixed at the start of a session.
 			Therefore it is possible that a near relay may no longer exist.
-
-			Check for that here and just ignore this relay entry (leave it empty)
 		*/
 
 		relayID := state.packet.NearRelayIDs[i]
@@ -1040,8 +1039,8 @@ func sessionPost(state *SessionHandlerState) {
 			Fill in information for near relays.
 
 			We grab this data from the input route state, which corresponds
-			to the previous slice. This way all values for a slice in billing
-			and the portal line up temporally.
+			to the previous slice. This makes sure all values for a slice in 
+			billing and the portal line up temporally.
 		*/
 
 		state.nearRelayIDs[i] = relayID
@@ -1052,7 +1051,8 @@ func sessionPost(state *SessionHandlerState) {
 
 		/*
 			We have to be a bit tricky to get packet loss for near relays,
-			since we store a history of near relay PL in a sliding window. 
+			since we store a history of near relay PL in a sliding window,
+			not just a single value.
 
 			Take the previous entry in the sliding window and it corresponds
 			to the input slice number that we want, however we can't use -1 
