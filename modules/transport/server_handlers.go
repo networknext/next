@@ -761,8 +761,8 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 	directLatency := int32(math.Ceil(float64(state.packet.DirectRTT)))
 	directJitter := int32(math.Ceil(float64(state.packet.DirectJitter)))
-	directPacketLoss := int32(math.Floor(float64(state.packet.DirectPacketLoss)+0.5))
-	nextPacketLoss := int32(math.Floor(float64(state.packet.NextPacketLoss)+0.5))
+	directPacketLoss := math.Floor(float64(state.packet.DirectPacketLoss)+0.5)
+	nextPacketLoss := math.Floor(float64(state.packet.NextPacketLoss)+0.5)
 
 	/*
 		IMPORTANT: If we are not currently on network next, replace the direct packet loss 
@@ -771,9 +771,7 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		it's used as an input to decide if we should take network next to reduce packet loss!
 	*/
 	if !state.packet.Next {
-		// todo: this shouldn't have a decision made on it as an integer value
-		// we lose all the precision of the real packet loss!!!!
-		realPacketLoss := int32(math.Floor(float64(state.realPacketLoss)+0.5))
+		realPacketLoss := float64(state.realPacketLoss)
 		if realPacketLoss > directPacketLoss {
 			directPacketLoss = realPacketLoss
 		}

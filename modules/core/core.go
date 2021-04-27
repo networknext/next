@@ -1141,7 +1141,7 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, nextPacketLoss int32, firstRouteRelayId uint64, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss float64, nextPacketLoss float64, firstRouteRelayId uint64, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if routeState.NumNearRelays == 0 {
 		routeState.NumNearRelays = int32(len(sourceRelayId))
@@ -1263,7 +1263,7 @@ func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIn
 
 	for i := range sourceRelayPacketLoss {
 
-		if sourceRelayPacketLoss[i] > directPacketLoss {
+		if float64(sourceRelayPacketLoss[i]) > directPacketLoss {
 			routeState.NearRelayPLHistory[i] |= (1 << index)
 		} else {
 			routeState.NearRelayPLHistory[i] &= ^(1 << index)
