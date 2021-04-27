@@ -52,8 +52,6 @@ func getFleetRelays(
 
 		maxSessions, err := strconv.Atoi(relay.Sessions)
 		if err != nil {
-			// tbd
-			// fmt.Printf("Error parsing MaxSessions for %s: %v\n", relay[0], err)
 			maxSessions = -1
 		}
 
