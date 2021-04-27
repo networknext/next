@@ -307,9 +307,9 @@ func BuildNextTokens(
 		distinct from the old route, even if there are common relays in the old and the new routes.
 	*/
 
-	sessionData.Initial = true
 	sessionData.ExpireTimestamp += billing.BillingSliceSeconds
 	sessionData.SessionVersion++
+	sessionData.Initial = true
 
 	/*
 		Build the cryptographic tokens that describe the route.
@@ -327,12 +327,11 @@ func BuildNextTokens(
 
 			1. Nobody can generate routes except us
 
-			2. Only the corresponding node can decrypt the route information
+			2. Only the corresponding node can decrypt the token
 
 		While we are not currently a DDoS protection solution, property #2 means that 
 		we could use our technology to build one, if we choose, since we can construct
-		a route and the client would only know the address of the next hop, not the 
-		server.
+		a route and the client would only know the address of the next hop, and nothing more...
 	*/
 
 	numTokens := routeNumRelays + 2 // client + relays + server -> 1 + numRelays + 1 -> numRelays + 2
@@ -409,8 +408,11 @@ func GetRouteAddressesAndPublicKeys(
 		
 		relayID := allRelayIDs[relayIndex]
 
-		// IMPORTANT: By this point, all relays in the route have been verified to exist
-		// So we don't need to check that it exists in the relay map here. It *DOES*
+		/*
+			IMPORTANT: By this point, all relays in the route have been verified to exist
+			so we don't need to check that it exists in the relay map here. It *DOES*
+		*/
+
 		relay, _ := database.RelayMap[relayID]	
 
 		/*
