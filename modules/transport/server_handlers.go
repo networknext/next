@@ -1010,6 +1010,7 @@ func sessionPost(state *SessionHandlerState) {
 		Build route relay data.
 	*/
 
+	// todo: this stuff is used by the billing and portal entries. add to state?
 	routeRelayNames := [core.MaxRelaysPerRoute]string{}
 	routeRelaySellers := [core.MaxRelaysPerRoute]routing.Seller{}
 
@@ -1080,9 +1081,9 @@ func sessionPost(state *SessionHandlerState) {
 		Build billing data and send it to the billing system via pubsub (non-realtime path)
 	*/
 
-	// todo
+	billingEntry := buildBillingEntry(state)
 
-	// billingEntry := buildBillingEntry(state)
+	_ = billingEntry
 
 	// postSessionHandler.SendBillingEntry(billingEntry)
 
@@ -1111,31 +1112,92 @@ func sessionPost(state *SessionHandlerState) {
 	*/
 }
 
-func buildBillingEntry(state *SessionHandlerState) {
+func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 
-	// todo
-/*
+	// todo: where does input state get pulled in from the serialized route state. verify it is done property.
+
+	/*
+		Each slice is 10 seconds long except for the first slice with a given network next route,
+		which is 20 secodns long. Each time we change network next route, we burn the 10 second tail
+		we pre-bought when we first started using that route with the 20 second slice.
+	*/
+
 	sliceDuration := uint64(billing.BillingSliceSeconds)
-	if sessionData.Initial {
+	if state.input.Initial {
 		sliceDuration *= 2
 	}
-	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(packet.NextKbpsUp), uint64(packet.NextKbpsDown), sliceDuration)
-	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
-	totalPrice := CalculateTotalPriceNibblins(int(sessionData.RouteNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
-	routeRelayPrices := CalculateRouteRelaysPrice(int(sessionData.RouteNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
+	/*
+		Calculate the actual amounts of bytes sent up and down along the network next route
+		for the duration of the previous slice (just being reported up from the SDK).
+		
+		This in *not* the amount of bandwidth to be billed to the buyer, we bill on *envelope* not usage.
+	*/
+
+	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.packet.NextKbpsUp), uint64(state.packet.NextKbpsDown), sliceDuration)
+
+	// todo
+	_ = nextBytesUp
+	_ = nextBytesDown
+
+	/*
+		Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice. 
+
+		This is what we bill on.
+	*/
+
+	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
+
+	// todo
+	_ = nextEnvelopeBytesUp
+	_ = nextEnvelopeBytesDown
+
+	/*
+		Calculate the total price for this slice of bandwidth envelope.
+
+		This is the sum of all relay hop prices, plus our rake, multiplied by the envelope up/down
+		and the length of the session in seconds.
+	*/
+
+	// todo: this stuff is used by the billing and portal entries. add to state?
+	// routeRelayNames := [core.MaxRelaysPerRoute]string{}
+	routeRelaySellers := [core.MaxRelaysPerRoute]routing.Seller{}
+
+	totalPrice := CalculateTotalPriceNibblins(int(state.input.RouteNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+
+	// todo: totalPrice is kinda a bad name. it's really "total cost of this slice"
+
+	// todo
+	_ = totalPrice
+
+	/*
+		Calculate the per-relay hop price that sums up to the total price, minus our rake.
+	*/
+
+	routeRelayPrices := CalculateRouteRelaysPrice(int(state.input.RouteNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+
+	// todo: route relay price is a bad name. it's really just the per-relay cost, not price. price is a rate, cost is the absolute value.
+
+	_ = routeRelayPrices
+
+	// todo: bring back multipath veto, but fix the weird copy the entire multipath database thing first =p
+	/*
 	// Check if we should multipath veto the user
 	if packet.Next && sessionData.RouteState.MultipathOverload {
 		if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
 			level.Error(postSessionHandler.logger).Log("err", err)
 		}
 	}
+	*/
 
+	/*
+	// todo: what are we even doing here? we are just copying one array to another?
 	nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
 	for i := 0; i < core.MaxRelaysPerRoute; i++ {
 		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
 	}
 
+	// todo: why?
 	var routeCost int32 = sessionData.RouteCost
 	if sessionData.RouteCost == math.MaxInt32 {
 		routeCost = 0
@@ -1150,7 +1212,10 @@ func buildBillingEntry(state *SessionHandlerState) {
 			}
 		}
 	}
+	*/
 
+	// todo
+	/*
 	debugString := ""
 	if debug != nil {
 		debugString = *debug
@@ -1266,6 +1331,9 @@ func buildBillingEntry(state *SessionHandlerState) {
 		StaleRouteMatrix:                staleRouteMatrix,
 	}
 */	
+
+	// todo
+	return nil
 }
 
 func buildPortalData(state *SessionHandlerState, portalData *SessionPortalData) {
