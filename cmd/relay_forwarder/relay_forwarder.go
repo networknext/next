@@ -21,6 +21,7 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 
+	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 )
@@ -90,19 +91,6 @@ func mainReturnWithCode() int {
 		lbAddr = envvar.Get("RELAY_GATEWAY_ADDRESS", "127.0.0.1:30000")
 	}
 
-	// Create init and update URIs
-	initURI, err := url.Parse(fmt.Sprintf("http://%s/relay_init", lbAddr))
-	if err != nil {
-		level.Error(logger).Log("msg", "could not parse relay init URI", "err", err)
-		return 1
-	}
-
-	updateURI, err := url.Parse(fmt.Sprintf("http://%s/relay_update", lbAddr))
-	if err != nil {
-		level.Error(logger).Log("msg", "could not parse relay update URI", "err", err)
-		return 1
-	}
-
 	// Setup the status handler info
 	var statusData []byte
 	var statusMutex sync.RWMutex
@@ -128,7 +116,7 @@ func mainReturnWithCode() int {
 				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
 				statusDataString += fmt.Sprintf("%d goroutines\n", int(forwarderMetrics.ForwarderServiceMetrics.Goroutines.Value()))
 				statusDataString += fmt.Sprintf("%.2f mb allocated\n", forwarderMetrics.ForwarderServiceMetrics.MemoryAllocated.Value())
-
+				fmt.Println(statusDataString)
 				statusMutex.Lock()
 				statusData = []byte(statusDataString)
 				statusMutex.Unlock()
@@ -155,8 +143,8 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-	router.HandleFunc("/relay_init", forwardPost(initURI)).Methods("POST")
-	router.HandleFunc("/relay_update", forwardPost(updateURI)).Methods("POST")
+	router.HandleFunc("/relay_init", forwardPost(lbAddr, logger)).Methods("POST")
+	router.HandleFunc("/relay_update", forwardPost(lbAddr, logger)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	go func() {
@@ -177,64 +165,42 @@ func mainReturnWithCode() int {
 	return 0
 }
 
-// func forwardGet(address string, octet bool) func(w http.ResponseWriter, r *http.Request) {
-
-// 	return func(w http.ResponseWriter, r *http.Request) {
-// 		resp, err := http.Get(address)
-// 		if err != nil {
-// 			log.Printf("error forwarding get: %s", err.Error())
-// 			w.WriteHeader(http.StatusInternalServerError)
-// 			return
-// 		}
-// 		body, err := ioutil.ReadAll(resp.Body)
-// 		if err != nil {
-// 			log.Printf("error reading response body: %s", err.Error())
-// 			w.WriteHeader(http.StatusInternalServerError)
-// 			return
-// 		}
-// 		defer resp.Body.Close()
-// 		w.WriteHeader(resp.StatusCode)
-// 		if octet {
-// 			w.Header().Set("Content-Type", "application/octet-stream")
-// 		}
-// 		w.Write(body)
-// 	}
-// }
-
-func forwardPost(requestURI *url.URL) func(w http.ResponseWriter, r *http.Request) {
+func forwardPost(gatewayAddr string, logger log.Logger) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("request: %+v\n", r)
+		// Parse the remote address to get the origin URL
+		origin, err := url.Parse(fmt.Sprintf("//%s", r.RemoteAddr))
+		if err != nil {
+			level.Error(logger).Log("msg", "error reading response body", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		// Get the requested path (i.e. /relay_update)
+		requestedPath := r.RequestURI
+
 		// Create a reverse proxy
-		proxy := httputil.NewSingleHostReverseProxy(requestURI)
+		reverseProxy := httputil.NewSingleHostReverseProxy(origin)
+
+		// Modify the director to forward the request to the relay gateway
+		reverseProxy.Director = func(req *http.Request) {
+			req.Header.Add("X-Forwarded-Host", req.Host)
+			req.Header.Add("X-Origin-Host", origin.Host)
+			req.URL.Scheme = "http"
+			req.URL.Host = gatewayAddr
+			req.URL.Path = requestedPath
+		}
+
+		// Add an error handler to use our logger
+		reverseProxy.ErrorHandler = func(writer http.ResponseWriter, req *http.Request, err error) {
+			if err != nil {
+				level.Error(logger).Log("msg", "error reaching relay gateway", "err", err)
+				writer.WriteHeader(http.StatusInternalServerError)
+				writer.Write([]byte(err.Error()))
+			}
+		}
+
 		// Serve the request
-		proxy.ServeHTTP(w, r)
-
-		// reqBody, err := ioutil.ReadAll(r.Body)
-		// if err != nil {
-		// 	fmt.Printf("error reading response body: %s", err.Error())
-		// 	w.WriteHeader(http.StatusInternalServerError)
-		// 	return
-		// }
-		// r.Body.Close()
-
-		// reqBuf := bytes.NewBuffer(reqBody)
-		// resp, err := http.Post(address, r.Header.Get("Content-Type"), reqBuf)
-		// if err != nil {
-		// 	fmt.Printf("error forwarding get: %s", err.Error())
-		// 	w.WriteHeader(http.StatusInternalServerError)
-		// 	return
-		// }
-		// respBody, err := ioutil.ReadAll(resp.Body)
-		// if err != nil {
-		// 	fmt.Printf("error reading response body: %s", err.Error())
-		// 	w.WriteHeader(http.StatusInternalServerError)
-		// 	return
-		// }
-		// resp.Body.Close()
-
-		// w.WriteHeader(resp.StatusCode)
-		// w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
-		// w.Write(respBody)
+		reverseProxy.ServeHTTP(w, r)
 	}
 }
