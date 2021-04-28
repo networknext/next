@@ -1076,157 +1076,45 @@ func sessionPost(state *SessionHandlerState) {
 		return
 	}
 
-	// todo: pass in routing state not individual data pieces
+	/*
+		Build billing data and send it to the billing system via pubsub (non-realtime path)
+	*/
+
+	// todo
+
+	// billingEntry := buildBillingEntry(state)
+
+	// postSessionHandler.SendBillingEntry(billingEntry)
 
 	/*
-		go PostSessionUpdate(postSessionHandler,
-			&packet,
-			&prevSessionData,
-			&buyer,
-			multipathVetoHandler,
-			routeRelayNames,
-			routeRelaySellers,
-			nearRelays,
-			&datacenter,
-			routeDiversity,
-			slicePacketLossClientToServer,
-			slicePacketLossServerToClient,
-			debug,
-			unknownDatacenter,
-			datacenterNotEnabled,
-			buyerNotLive,
-			staleRouteMatrix,
-		)
+		Send the billing entry to the vanity metrics system (real-time path)
+	*/
+
+	// todo
+	/*
+	if postSessionHandler.useVanityMetrics {
+		postSessionHandler.SendVanityMetric(billingEntry)
+	}
+	*/
+
+	/*
+		Send data to the portal (real-time path)
+	*/
+
+	// todo
+	/*
+	portalData := buildPortalData(state)
+
+	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+	 	postSessionHandler.SendPortalData(&portalData)
+	}
 	*/
 }
 
-func buildPortalData(state *SessionHandlerState, portalData *SessionPortalData) {
+func buildBillingEntry(state *SessionHandlerState) {
 
-	/*
-		// todo: we should try to avoid allocation here
-		hops := make([]RelayHop, sessionData.RouteNumRelays)
-		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
-			hops[i] = RelayHop{
-				ID:   sessionData.RouteRelayIDs[i],
-				Name: routeRelayNames[i],
-			}
-		}
-
-		// todo: we should try to avoid allocation here
-		nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
-		for i := range nearRelayPortalData {
-			nearRelayPortalData[i] = NearRelayPortalData{
-				ID:   nearRelays.IDs[i],
-				Name: nearRelays.Names[i],
-				ClientStats: routing.Stats{
-					RTT:        float64(nearRelays.RTTs[i]),
-					Jitter:     float64(nearRelays.Jitters[i]),
-					PacketLoss: float64(nearRelays.PacketLosses[i]),
-				},
-			}
-		}
-
-		// todo: sorting below should be done by the portal instead. here we are in hot path and must do as little work as possible
-
-		// Sort the near relays for display purposes
-		sort.Slice(nearRelayPortalData, func(i, j int) bool {
-			return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
-		})
-
-		var deltaRTT float32
-		if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
-			deltaRTT = packet.DirectRTT - packet.NextRTT
-		}
-
-		predictedRTT := float64(sessionData.RouteCost)
-		if sessionData.RouteCost >= routing.InvalidRouteValue {
-			predictedRTT = 0
-		}
-
-		*portalData = SessionPortalData{
-			Meta: SessionMeta{
-				ID:              packet.SessionID,
-				UserHash:        packet.UserHash,
-				DatacenterName:  datacenter.Name,
-				DatacenterAlias: datacenter.AliasName,
-				OnNetworkNext:   packet.Next,
-				NextRTT:         float64(packet.NextRTT),
-				DirectRTT:       float64(packet.DirectRTT),
-				DeltaRTT:        float64(deltaRTT),
-				Location:        sessionData.Location,
-				ClientAddr:      packet.ClientAddress.String(),
-				ServerAddr:      packet.ServerAddress.String(),
-				Hops:            hops,
-				SDK:             packet.Version.String(),
-				Connection:      uint8(packet.ConnectionType),
-				NearbyRelays:    nearRelayPortalData,
-				Platform:        uint8(packet.PlatformType),
-				BuyerID:         packet.BuyerID,
-			},
-			Slice: SessionSlice{
-				Timestamp: time.Now(),
-				Next: routing.Stats{
-					RTT:        float64(packet.NextRTT),
-					Jitter:     float64(packet.NextJitter),
-					PacketLoss: float64(packet.NextPacketLoss),
-				},
-				Direct: routing.Stats{
-					RTT:        float64(packet.DirectRTT),
-					Jitter:     float64(packet.DirectJitter),
-					PacketLoss: float64(packet.DirectPacketLoss),
-				},
-				Predicted: routing.Stats{
-					RTT: predictedRTT,
-				},
-				ClientToServerStats: routing.Stats{
-					Jitter:     float64(packet.JitterClientToServer),
-					PacketLoss: float64(slicePacketLossClientToServer),
-				},
-				ServerToClientStats: routing.Stats{
-					Jitter:     float64(packet.JitterServerToClient),
-					PacketLoss: float64(slicePacketLossServerToClient),
-				},
-				RouteDiversity: uint32(routeDiversity),
-				Envelope: routing.Envelope{
-					Up:   int64(packet.NextKbpsUp),
-					Down: int64(packet.NextKbpsDown),
-				},
-				IsMultiPath:       sessionData.RouteState.Multipath,
-				IsTryBeforeYouBuy: !sessionData.RouteState.Committed,
-				OnNetworkNext:     packet.Next,
-			},
-			Point: SessionMapPoint{
-				Latitude:  float64(sessionData.Location.Latitude),
-				Longitude: float64(sessionData.Location.Longitude),
-			},
-			LargeCustomer:	   buyer.InternalConfig.LargeCustomer,
-			EverOnNext:    sessionData.EverOnNext,
-		}
-	*/
-}
-
+	// todo
 /*
-func PostSessionUpdate(
-	postSessionHandler *PostSessionHandler,
-	packet *SessionUpdatePacket,
-	sessionData *SessionData,
-	buyer *routing.Buyer,
-	multipathVetoHandler storage.MultipathVetoHandler,
-	routeRelayNames [core.MaxRelaysPerRoute]string,
-	routeRelaySellers [core.MaxRelaysPerRoute]routing.Seller,
-	nearRelays nearRelayGroup,
-	datacenter *routing.Datacenter,
-	routeDiversity int32,
-	slicePacketLossClientToServer float32,
-	slicePacketLossServerToClient float32,
-	debug *string,
-	unknownDatacenter bool,
-	datacenterNotEnabled bool,
-	buyerNotLive bool,
-	staleRouteMatrix bool,
-) {
-	// todo: move the function below into its own "build billing entry" function
-
 	sliceDuration := uint64(billing.BillingSliceSeconds)
 	if sessionData.Initial {
 		sliceDuration *= 2
@@ -1377,46 +1265,113 @@ func PostSessionUpdate(
 		DatacenterNotEnabled:            datacenterNotEnabled,
 		StaleRouteMatrix:                staleRouteMatrix,
 	}
-
-	// send to the billing system (non-realtime path)
-
-	postSessionHandler.SendBillingEntry(billingEntry)
-
-	// send to vanity metrics (real-time path)
-
-	if postSessionHandler.useVanityMetrics {
-		postSessionHandler.SendVanityMetric(billingEntry)
-	}
-
-	// send data to the portal (real-time path)
-
-	// todo
-	// var portalData SessionPortalData
-
-	// buildPortalData(&portalData,
-	// 	packet,
-	// 	sessionData,
-	// 	buyer,
-	// 	routeRelayNames,
-	// 	routeRelaySellers,
-	// 	nearRelays,
-	// 	datacenter,
-	// 	routeDiversity,
-	// 	slicePacketLossClientToServer,
-	// 	slicePacketLossServerToClient,
-	// 	debug,
-	// 	unknownDatacenter,
-	// 	datacenterNotEnabled,
-	// 	buyerNotLive,
-	// 	staleRouteMatrix,
-	// )
-
-	// if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-	// 	postSessionHandler.SendPortalData(&portalData)
-	// }
-
+*/	
 }
-*/
+
+func buildPortalData(state *SessionHandlerState, portalData *SessionPortalData) {
+
+	/*
+		// todo: we should try to avoid allocation here
+		hops := make([]RelayHop, sessionData.RouteNumRelays)
+		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
+			hops[i] = RelayHop{
+				ID:   sessionData.RouteRelayIDs[i],
+				Name: routeRelayNames[i],
+			}
+		}
+
+		// todo: we should try to avoid allocation here
+		nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
+		for i := range nearRelayPortalData {
+			nearRelayPortalData[i] = NearRelayPortalData{
+				ID:   nearRelays.IDs[i],
+				Name: nearRelays.Names[i],
+				ClientStats: routing.Stats{
+					RTT:        float64(nearRelays.RTTs[i]),
+					Jitter:     float64(nearRelays.Jitters[i]),
+					PacketLoss: float64(nearRelays.PacketLosses[i]),
+				},
+			}
+		}
+
+		// todo: sorting below should be done by the portal instead. here we are in hot path and must do as little work as possible
+
+		// Sort the near relays for display purposes
+		sort.Slice(nearRelayPortalData, func(i, j int) bool {
+			return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
+		})
+
+		var deltaRTT float32
+		if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
+			deltaRTT = packet.DirectRTT - packet.NextRTT
+		}
+
+		predictedRTT := float64(sessionData.RouteCost)
+		if sessionData.RouteCost >= routing.InvalidRouteValue {
+			predictedRTT = 0
+		}
+
+		*portalData = SessionPortalData{
+			Meta: SessionMeta{
+				ID:              packet.SessionID,
+				UserHash:        packet.UserHash,
+				DatacenterName:  datacenter.Name,
+				DatacenterAlias: datacenter.AliasName,
+				OnNetworkNext:   packet.Next,
+				NextRTT:         float64(packet.NextRTT),
+				DirectRTT:       float64(packet.DirectRTT),
+				DeltaRTT:        float64(deltaRTT),
+				Location:        sessionData.Location,
+				ClientAddr:      packet.ClientAddress.String(),
+				ServerAddr:      packet.ServerAddress.String(),
+				Hops:            hops,
+				SDK:             packet.Version.String(),
+				Connection:      uint8(packet.ConnectionType),
+				NearbyRelays:    nearRelayPortalData,
+				Platform:        uint8(packet.PlatformType),
+				BuyerID:         packet.BuyerID,
+			},
+			Slice: SessionSlice{
+				Timestamp: time.Now(),
+				Next: routing.Stats{
+					RTT:        float64(packet.NextRTT),
+					Jitter:     float64(packet.NextJitter),
+					PacketLoss: float64(packet.NextPacketLoss),
+				},
+				Direct: routing.Stats{
+					RTT:        float64(packet.DirectRTT),
+					Jitter:     float64(packet.DirectJitter),
+					PacketLoss: float64(packet.DirectPacketLoss),
+				},
+				Predicted: routing.Stats{
+					RTT: predictedRTT,
+				},
+				ClientToServerStats: routing.Stats{
+					Jitter:     float64(packet.JitterClientToServer),
+					PacketLoss: float64(slicePacketLossClientToServer),
+				},
+				ServerToClientStats: routing.Stats{
+					Jitter:     float64(packet.JitterServerToClient),
+					PacketLoss: float64(slicePacketLossServerToClient),
+				},
+				RouteDiversity: uint32(routeDiversity),
+				Envelope: routing.Envelope{
+					Up:   int64(packet.NextKbpsUp),
+					Down: int64(packet.NextKbpsDown),
+				},
+				IsMultiPath:       sessionData.RouteState.Multipath,
+				IsTryBeforeYouBuy: !sessionData.RouteState.Committed,
+				OnNetworkNext:     packet.Next,
+			},
+			Point: SessionMapPoint{
+				Latitude:  float64(sessionData.Location.Latitude),
+				Longitude: float64(sessionData.Location.Longitude),
+			},
+			LargeCustomer:	   buyer.InternalConfig.LargeCustomer,
+			EverOnNext:    sessionData.EverOnNext,
+		}
+	*/
+}
 
 // ------------------------------------------------------------------
 
