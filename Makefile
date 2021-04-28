@@ -1240,25 +1240,37 @@ build-relay-forwarder:
 build-relay-forwarder-artifacts-dev: build-relay-forwarder
 	./deploy/build-artifacts.sh -e dev -s relay_forwarder
 
-.PHONY: publish-relay-forwarder-artifacts-dev
-publish-relay-forwarder-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_forwarder
-
 .PHONY: build-relay-forwarder-artifacts-staging
 build-relay-forwarder-artifacts-staging: build-relay-forwarder
 	./deploy/build-artifacts.sh -e staging -s relay_forwarder
-
-.PHONY: publish-relay-forwarder-artifacts-staging
-publish-relay-forwarder-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_forwarder
 
 .PHONY: build-relay-forwarder-artifacts-prod
 build-relay-forwarder-artifacts-prod: build-relay-forwarder
 	./deploy/build-artifacts.sh -e prod -s relay_forwarder
 
+.PHONY: publish-relay-forwarder-artifacts-dev
+publish-relay-forwarder-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay_forwarder
+
+.PHONY: publish-relay-forwarder-artifacts-staging
+publish-relay-forwarder-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay_forwarder
+
 .PHONY: publish-relay-forwarder-artifacts-prod
 publish-relay-forwarder-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_forwarder
+	
+.PHONY: deploy-relay-forwarder-dev
+deploy-relay-forwarder-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t relay-forwarder -n relay_forwarder -b gs://development_artifacts
+
+.PHONY: deploy-relay-forwarder-staging
+deploy-relay-forwarder-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t relay-forwarder -n relay_forwarder -b gs://staging_artifacts
+
+.PHONY: deploy-relay-forwarder-prod
+deploy-relay-forwarder-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t relay-forwarder -n relay_forwarder -b gs://prod_artifacts
 
 #######################
 #    Relay Gateway    #
@@ -1336,7 +1348,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-pusher build-server-backend build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
