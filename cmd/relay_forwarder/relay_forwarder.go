@@ -79,16 +79,16 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the Relay Gateway's Load Balancer's IP
-	var lbAddr string
+	var gatewayAddr string
 	if gcpProjectID != "" {
-		lbAddr = envvar.Get("GATEWAY_LOAD_BALANCER_IP", "")
-		ip := net.ParseIP(lbAddr)
+		gatewayAddr = envvar.Get("GATEWAY_LOAD_BALANCER_IP", "")
+		ip := net.ParseIP(gatewayAddr)
 		if ip == nil {
-			level.Error(logger).Log("msg", "could not parse relay gatway's load balancer's IP", "err", err)
+			level.Error(logger).Log("msg", fmt.Sprintf("could not parse relay gatway's load balancer's IP %s", gatewayAddr), "err", err)
 			return 1
 		}
 	} else {
-		lbAddr = envvar.Get("RELAY_GATEWAY_ADDRESS", "127.0.0.1:30000")
+		gatewayAddr = envvar.Get("RELAY_GATEWAY_ADDRESS", "127.0.0.1:30000")
 	}
 
 	// Setup the status handler info
@@ -116,7 +116,7 @@ func mainReturnWithCode() int {
 				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
 				statusDataString += fmt.Sprintf("%d goroutines\n", int(forwarderMetrics.ForwarderServiceMetrics.Goroutines.Value()))
 				statusDataString += fmt.Sprintf("%.2f mb allocated\n", forwarderMetrics.ForwarderServiceMetrics.MemoryAllocated.Value())
-				fmt.Println(statusDataString)
+
 				statusMutex.Lock()
 				statusData = []byte(statusDataString)
 				statusMutex.Unlock()
@@ -143,15 +143,15 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-	router.HandleFunc("/relay_init", forwardPost(lbAddr, logger)).Methods("POST")
-	router.HandleFunc("/relay_update", forwardPost(lbAddr, logger)).Methods("POST")
+	router.HandleFunc("/relay_init", forwardPost(gatewayAddr, logger)).Methods("POST")
+	router.HandleFunc("/relay_update", forwardPost(gatewayAddr, logger)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	go func() {
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+			os.Exit(1) // TODO: don't os.Exit() here, but find a way to exit
 		}
 	}()
 
