@@ -109,7 +109,7 @@ if (window.location.pathname === '/get-access') {
       }
     }
 
-    if (query.includes('signup') && Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+    if (query.includes('signup')) {
       setTimeout(() => {
         if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
           Vue.prototype.$gtag.event('Auth0 account created', {
