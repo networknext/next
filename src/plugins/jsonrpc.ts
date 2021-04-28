@@ -135,6 +135,22 @@ export class JSONRPCService {
   public fetchFeatureFlags (): Promise<any> {
     return this.call('ConfigService.AllFeatureFlags', {})
   }
+
+  public sendSignUpSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerSignedUpSlackNotification', args)
+  }
+
+  public sendDocsViewSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerViewedTheDocsSlackNotification', args)
+  }
+
+  public sendSDKDownloadSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloadedSDKSlackNotification', args)
+  }
+
+  public sendPublicKeyEnteredSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerEnteredPublicKeySlackNotification', args)
+  }
 }
 
 export const JSONRPCPlugin = {

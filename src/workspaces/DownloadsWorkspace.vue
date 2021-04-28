@@ -102,8 +102,8 @@ export default class DownloadsWorkspace extends Vue {
     this.downloadsTourCallbacks = {
       onFinish: () => {
         this.$store.commit('UPDATE_FINISHED_SIGN_UP_TOURS', 'downloads')
-        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-          Vue.prototype.$gtag.event('Downloads tour finished', {
+        if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          this.$gtag.event('Downloads tour finished', {
             event_category: 'Tours'
           })
         }
@@ -118,21 +118,23 @@ export default class DownloadsWorkspace extends Vue {
   }
 
   private downloadSDK () {
-    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
       this.$gtag.event('sdk-download', {
         event_category: 'Important Clicks'
       })
     }
     window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.10.zip')
+    this.$apiService.sendSDKDownloadSlackNotification({ email: this.$store.getters.userProfile.email })
   }
 
   private downloadDocs () {
-    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
       this.$gtag.event('SDK-docs-download', {
         event_category: 'Important Clicks'
       })
     }
     window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')
+    this.$apiService.sendDocsViewSlackNotification({ email: this.$store.getters.userProfile.email })
   }
 }
 </script>
