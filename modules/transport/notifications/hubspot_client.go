@@ -17,20 +17,27 @@ type HubSpotClient struct {
 }
 
 type CreateDealMessage struct {
-	Amount    string    `json:"amount,omitempty"`
-	CloseDate time.Time `json:"closedate,omitempty"`
-	DealName  string    `json:"dealname,omitempty"`
-	DealStage string    `json:"dealstage,omitempty"`
-	Pipeline  string    `json:"pipeline,omitempty"`
+	Properties CreateDealProperties `json:"properties,omitempty"`
+}
+
+type CreateDealProperties struct {
+	Amount    string `json:"amount,omitempty"`
+	CloseDate string `json:"closedate,omitempty"`
+	DealName  string `json:"dealname,omitempty"`
+	DealStage string `json:"dealstage,omitempty"`
+	Pipeline  string `json:"pipeline,omitempty"`
 }
 
 func (hsc HubSpotClient) CreateHubSpotDealEntry(action string) error {
-	message := CreateDealMessage{
-		Amount:    "",                                 // To be filled in later
-		CloseDate: time.Now().Add(7 * 24 * time.Hour), // Two week default close date
+	properties := CreateDealProperties{
+		Amount:    "", // To be filled in later
 		DealName:  action,
-		DealStage: "Self Serve Lead Stages Catch All",
+		DealStage: "13770918",
 		Pipeline:  "default",
+	}
+
+	message := CreateDealMessage{
+		Properties: properties,
 	}
 	hubspotBody, _ := json.Marshal(message)
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.hubapi.com/crm/v3/objects/deals?hapikey=%s", hsc.APIKey), bytes.NewBuffer(hubspotBody))
@@ -52,8 +59,10 @@ func (hsc HubSpotClient) CreateHubSpotDealEntry(action string) error {
 	if err != nil {
 		return err
 	}
-	if buf.String() != "ok" {
-		return errors.New("Non-ok response returned from Hubspot")
+
+	// Check if the status code is outside the range of possible 200 level responses
+	if resp.StatusCode-200 > 26 {
+		return errors.New("HubSpot returned non-200 status code")
 	}
 	return nil
 }

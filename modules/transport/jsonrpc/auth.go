@@ -1046,6 +1046,7 @@ func (s *AuthService) CustomerViewedTheDocsNotifications(r *http.Request, args *
 			message = fmt.Sprintf("%s from %s viewed the SDK documentation", args.Email, args.CustomerName)
 		}
 		if err := s.HubSpotClient.CreateHubSpotDealEntry(message); err != nil {
+			fmt.Println(err)
 			err := JSONRPCErrorCodes[int(ERROR_HUBSPOT_FAILURE)]
 			s.Logger.Log("err", fmt.Errorf("CustomerViewedTheDocsNotifications(): %v: Failed to create HubSpot entry", err.Error()))
 		}

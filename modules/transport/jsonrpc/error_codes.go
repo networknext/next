@@ -95,4 +95,11 @@ var JSONRPCErrorCodes []json2.Error = []json2.Error{
 			Name: "ERROR_SLACK_FAILURE",
 		},
 	},
+	{
+		Message: "HubSpot API send failure",
+		Code:    ERROR_HUBSPOT_FAILURE,
+		Data: &JSONRPCErrorData{
+			Name: "ERROR_HUBSPOT_FAILURE",
+		},
+	},
 }
