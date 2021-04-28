@@ -24,16 +24,16 @@ type CreateDealMessage struct {
 	Pipeline  string    `json:"pipeline,omitempty"`
 }
 
-func (hsc HubSpotClient) CreateHubSpotDealEntry(customerName string, action string) error {
+func (hsc HubSpotClient) CreateHubSpotDealEntry(action string) error {
 	message := CreateDealMessage{
 		Amount:    "",                                 // To be filled in later
 		CloseDate: time.Now().Add(7 * 24 * time.Hour), // Two week default close date
-		DealName:  fmt.Sprintf("%s %s", customerName, action),
+		DealName:  action,
 		DealStage: "Self Serve Lead Stages Catch All",
 		Pipeline:  "default",
 	}
 	hubspotBody, _ := json.Marshal(message)
-	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s%s", hsc, "https://api.hubapi.com/crm/v3/objects/deals"), bytes.NewBuffer(hubspotBody))
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.hubapi.com/crm/v3/objects/deals?hapikey=%s", hsc.APIKey), bytes.NewBuffer(hubspotBody))
 	if err != nil {
 		return err
 	}
