@@ -1,65 +1,44 @@
 package middleware
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
-	"strings"
 
+	jwtmiddleware "github.com/auth0/go-jwt-middleware"
 	"github.com/dgrijalva/jwt-go"
 )
 
-func HttpGetMiddleware(audience string, next http.Handler) http.Handler {
+func PlainHttpAuthMiddleware(audience string, next http.Handler, allowedOrigins []string) http.Handler {
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
+	mw := jwtmiddleware.New(jwtmiddleware.Options{
+		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+			claims := token.Claims.(jwt.MapClaims)
 
-			var claims jwt.MapClaims
-
-			authHeader := strings.Split(r.Header.Get("Authorization"), "Bearer ")
-			if len(authHeader) != 2 {
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte("Malformed Token"))
-			} else {
-				jwtToken := authHeader[1]
-				token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
-					if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-						return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-					}
-
-					claims = token.Claims.(jwt.MapClaims)
-					if _, ok := claims["scope"]; !ok {
-						if !claims.VerifyAudience(audience, false) {
-							return token, errors.New("invalid audience")
-						}
-					}
-
-					cert, err := getPemCert(token)
-					if err != nil {
-						return nil, err
-					}
-
-					return jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
-				})
-
-				if token.Valid {
-					// TODO: send the auth0 claims to get the "author" from the sub
-					//       when we start rolling database.bin files from the admin tool
-					// ctx := context.WithValue(r.Context(), "props", claims)
-					ctx := context.Background()
-					next.ServeHTTP(w, r.WithContext(ctx))
-				} else {
-					fmt.Println(err)
-					w.WriteHeader(http.StatusUnauthorized)
-					w.Write([]byte("Unauthorized"))
+			if _, ok := claims["scope"]; !ok {
+				if !claims.VerifyAudience(audience, false) {
+					return nil, errors.New("invalid audience")
 				}
 			}
-		} else {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-		}
+
+			iss := "https://networknext.auth0.com/"
+			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
+			if !checkIss {
+				return nil, errors.New("invalid issuer")
+			}
+
+			cert, err := getPemCert(token)
+			if err != nil {
+				return nil, err
+			}
+
+			return jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
+		},
+		SigningMethod:       jwt.SigningMethodRS256,
+		CredentialsOptional: false,
 	})
+
+	return CORSControlHandler(allowedOrigins, mw.Handler(next))
 }
 
 type jwks struct {

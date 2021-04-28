@@ -10,58 +10,68 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/common/helpers"
-
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 )
 
 const (
 	MatrixTypeCost   = "cost"
 	MatrixTypeNormal = "normal"
-	MatrixTypeValve  = "valve"
 )
 
+type RelayFrontendConfig struct {
+	Env                    string
+	MasterTimeVariance     time.Duration
+	UpdateRetryCount       int
+	MatrixStoreAddress     string
+	MSMaxIdleConnections   int
+	MSMaxActiveConnections int
+	MSReadTimeout          time.Duration
+	MSWriteTimeout         time.Duration
+	MSMatrixExpireTimeout  time.Duration
+}
+
 type RelayFrontendSvc struct {
-	cfg                         *Config
+	RetryCount int
+
+	cfg                         *RelayFrontendConfig
 	id                          uint64
 	store                       storage.MatrixStore
 	createdAt                   time.Time
 	currentMasterBackendAddress string
-	relayStatsAddress           string
 
 	// cached matrix
-	costMatrix       *helpers.MatrixData
-	routeMatrix      *helpers.MatrixData
-	routeMatrixValve *helpers.MatrixData
+	costMatrix  *helpers.MatrixData
+	routeMatrix *helpers.MatrixData
 }
 
-func NewRelayFrontend(store storage.MatrixStore, cfg *Config) (*RelayFrontendSvc, error) {
+func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*RelayFrontendSvc, error) {
 	rand.Seed(time.Now().UnixNano())
 	r := new(RelayFrontendSvc)
+	r.RetryCount = 0
 	r.cfg = cfg
 	r.id = rand.Uint64()
 	r.store = store
 	r.createdAt = time.Now().UTC()
 	r.costMatrix = new(helpers.MatrixData)
 	r.routeMatrix = new(helpers.MatrixData)
-	r.routeMatrixValve = new(helpers.MatrixData)
 	return r, nil
 }
 
 func (r *RelayFrontendSvc) UpdateRelayBackendMaster() error {
 	rbArr, err := r.store.GetRelayBackendLiveData()
 	if err != nil {
+		r.currentMasterBackendAddress = ""
 		return err
 	}
 
 	masterAddress, err := chooseRelayBackendMaster(rbArr, r.cfg.MasterTimeVariance)
 	if err != nil {
 		r.currentMasterBackendAddress = ""
-		r.relayStatsAddress = ""
 		return err
 	}
 
 	r.currentMasterBackendAddress = masterAddress
-	r.relayStatsAddress = fmt.Sprintf("http://%s/relay_stats", r.currentMasterBackendAddress)
 
 	return nil
 }
@@ -86,8 +96,35 @@ func (r *RelayFrontendSvc) cacheMatrixInternal(matrixAddr, matrixType string) er
 		r.costMatrix.SetMatrix(matrixBin)
 	case MatrixTypeNormal:
 		r.routeMatrix.SetMatrix(matrixBin)
-	case MatrixTypeValve:
-		r.routeMatrixValve.SetMatrix(matrixBin)
+	}
+
+	return nil
+}
+
+func (r *RelayFrontendSvc) ReachedRetryLimit() bool {
+	return r.RetryCount > r.cfg.UpdateRetryCount
+}
+
+func (r *RelayFrontendSvc) ResetCachedMatrix(matrixType string) error {
+	switch matrixType {
+	case MatrixTypeCost:
+		emptyCostMatrix := routing.CostMatrix{Version: routing.CostMatrixSerializeVersion}
+		err := emptyCostMatrix.WriteResponseData(10000)
+		if err != nil {
+			return err
+		}
+
+		emptyCostMatrixBin := emptyCostMatrix.GetResponseData()
+		r.costMatrix.SetMatrix(emptyCostMatrixBin)
+	case MatrixTypeNormal:
+		emptyRouteMatrix := routing.RouteMatrix{Version: routing.RouteMatrixSerializeVersion}
+		err := emptyRouteMatrix.WriteResponseData(10000)
+		if err != nil {
+			return err
+		}
+
+		emptyRouteMatrixBin := emptyRouteMatrix.GetResponseData()
+		r.routeMatrix.SetMatrix(emptyRouteMatrixBin)
 	}
 
 	return nil
@@ -96,6 +133,7 @@ func (r *RelayFrontendSvc) cacheMatrixInternal(matrixAddr, matrixType string) er
 func chooseRelayBackendMaster(rbArr []storage.RelayBackendLiveData, timeVariance time.Duration) (string, error) {
 	currentTime := time.Now().UTC()
 	masterRB := storage.NewRelayBackendLiveData("", "", currentTime, currentTime)
+
 	for _, rb := range rbArr {
 		if currentTime.Sub(rb.UpdatedAt) > timeVariance {
 			continue
@@ -103,13 +141,13 @@ func chooseRelayBackendMaster(rbArr []storage.RelayBackendLiveData, timeVariance
 		if rb.InitAt.After(masterRB.InitAt) {
 			continue
 		}
-		if rb.InitAt.Equal(masterRB.InitAt) && rb.Id < masterRB.Id {
+		if rb.InitAt.Equal(masterRB.InitAt) && rb.ID < masterRB.ID {
 			continue
 		}
 		masterRB = rb
 	}
 
-	if masterRB.Id == "" {
+	if masterRB.ID == "" {
 		return "", fmt.Errorf("relay backend master not found")
 	}
 
@@ -138,15 +176,13 @@ func (r *RelayFrontendSvc) GetMatrixAddress(matrixType string) (string, error) {
 		addr = fmt.Sprintf("http://%s/cost_matrix", r.currentMasterBackendAddress)
 	case MatrixTypeNormal:
 		addr = fmt.Sprintf("http://%s/route_matrix", r.currentMasterBackendAddress)
-	case MatrixTypeValve:
-		addr = fmt.Sprintf("http://%s/route_matrix_valve", r.currentMasterBackendAddress)
 	default:
 		return "", errors.New("matrix type not supported")
 	}
 	return addr, nil
 }
 
-func (r *RelayFrontendSvc) GetCostMatrix() func(w http.ResponseWriter, req *http.Request) {
+func (r *RelayFrontendSvc) GetCostMatrixHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		data := r.costMatrix.GetMatrix()
@@ -162,7 +198,7 @@ func (r *RelayFrontendSvc) GetCostMatrix() func(w http.ResponseWriter, req *http
 	}
 }
 
-func (r *RelayFrontendSvc) GetRouteMatrix() func(w http.ResponseWriter, req *http.Request) {
+func (r *RelayFrontendSvc) GetRouteMatrixHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		data := r.routeMatrix.GetMatrix()
@@ -178,36 +214,80 @@ func (r *RelayFrontendSvc) GetRouteMatrix() func(w http.ResponseWriter, req *htt
 	}
 }
 
-func (r *RelayFrontendSvc) GetRouteMatrixValve() func(w http.ResponseWriter, req *http.Request) {
+func (r *RelayFrontendSvc) GetRelayBackendHandlerFunc(endpoint string) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/octet-stream")
-		data := r.routeMatrixValve.GetMatrix()
-		if len(data) == 0 {
+		if r.currentMasterBackendAddress == "" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		buffer := bytes.NewBuffer(data)
-		_, err := buffer.WriteTo(w)
+
+		resp, err := http.Get(fmt.Sprintf("http://%s/%s", r.currentMasterBackendAddress, endpoint))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
+		defer resp.Body.Close()
+
+		bin, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(bin)
 	}
 }
 
-func (r *RelayFrontendSvc) GetRelayStats() func(w http.ResponseWriter, req *http.Request) {
+func (r *RelayFrontendSvc) GetRelayBackendMasterHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
-
-		if r.relayStatsAddress == "" {
+		if r.currentMasterBackendAddress == "" {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		resp, err := http.Get(r.relayStatsAddress)
-		defer resp.Body.Close()
+		bin := []byte(r.currentMasterBackendAddress)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(bin)
+	}
+}
+
+func (r *RelayFrontendSvc) GetRelayDashboardHandlerFunc(username string, password string) func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+
+		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+
+		u, p, _ := req.BasicAuth()
+		if u != username && p != password {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if r.currentMasterBackendAddress == "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		client := &http.Client{
+			Timeout: time.Second * 10,
+		}
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/relay_dashboard", r.currentMasterBackendAddress), nil)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		req.SetBasicAuth(username, password)
+		resp, err := client.Do(req)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
 		bin, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

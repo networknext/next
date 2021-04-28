@@ -10,6 +10,8 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
+const CostMatrixSerializeVersion = 2
+
 type CostMatrix struct {
 	RelayIDs           []uint64
 	RelayAddresses     []net.UDPAddr
@@ -18,12 +20,17 @@ type CostMatrix struct {
 	RelayLongitudes    []float32
 	RelayDatacenterIDs []uint64
 	Costs              []int32
+	Version            uint32
+	DestRelays         []bool
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
 }
 
 func (m *CostMatrix) Serialize(stream encoding.Stream) error {
+	
+	stream.SerializeUint32(&m.Version)
+
 	numRelays := uint32(len(m.RelayIDs))
 	stream.SerializeUint32(&numRelays)
 
@@ -53,6 +60,15 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 
 	for i := uint32(0); i < costsLength; i++ {
 		stream.SerializeInteger(&m.Costs[i], -1, InvalidRouteValue)
+	}
+
+	if m.Version >= 2 {
+		if stream.IsReading() {
+			m.DestRelays = make([]bool, numRelays)
+		}
+		for i := range m.DestRelays {
+			stream.SerializeBool(&m.DestRelays[i])
+		}
 	}
 
 	return stream.Error()
