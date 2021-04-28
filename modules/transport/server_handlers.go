@@ -890,16 +890,12 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 			state.metrics.RouteDoesNotExist.Add(1)
 		}
 
-		// todo
-		// stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(state.routeMatrix.RouteEntries, state.routeMatrix.RelayNames, &state.buyer.RouteShader, &state.output.RouteState, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), int32(state.packet.NextRTT), state.output.RouteCost, state.realPacketLoss, state.packet.NextPacketLoss, state.output.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], state.debug)
-		stayOnNext := true
-
+		stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(state.routeMatrix.RouteEntries, state.routeMatrix.RelayNames, &state.buyer.RouteShader, &state.output.RouteState, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), int32(state.packet.NextRTT), state.output.RouteCost, state.realPacketLoss, state.packet.NextPacketLoss, state.output.RouteNumRelays, routeRelays, state.nearRelayIndices[:], state.nearRelayRTTs[:], state.destRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.debug)
+		
 		if stayOnNext {
 
 			// stay on network next
 
-			// todo
-			/*
 			if routeChanged {
 				core.Debug("route changed")
 				state.metrics.RouteSwitched.Add(1)
@@ -908,7 +904,6 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 				core.Debug("route continued")
 				BuildContinueTokens(&state.output, state.database, &state.buyer, &state.packet, routeNumRelays, routeRelays[:], state.routeMatrix.RelayIDs, state.routerPrivateKey, &state.response)
 			}
-			*/
 
 		} else {
 
