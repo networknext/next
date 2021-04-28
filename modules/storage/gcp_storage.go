@@ -149,7 +149,7 @@ func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName st
 
 		level.Debug(g.Logger).Log("msg", buffer)
 		if err != nil {
-			err = fmt.Errorf("failed to copy file to instance: %v", err)
+			err = fmt.Errorf("failed to copy file to instance %s: %v", name, err)
 			loopError = err
 		}
 	}

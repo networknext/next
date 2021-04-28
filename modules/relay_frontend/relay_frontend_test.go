@@ -6,23 +6,22 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/networknext/backend/modules/encoding"
-
 	"github.com/networknext/backend/modules/common/helpers"
-
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
-
 	"github.com/networknext/backend/modules/storage"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNew(t *testing.T) {
 	store := storage.MatrixStoreMock{}
-	cfg := &Config{MasterTimeVariance: timeVariance(15)}
+	cfg := &RelayFrontendConfig{MasterTimeVariance: timeVariance(15)}
 	svc, err := NewRelayFrontend(&store, cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, svc)
@@ -38,21 +37,21 @@ func timeVariance(value int) time.Duration {
 func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 	currTime := time.Now()
 	rb1 := storage.RelayBackendLiveData{
-		Id:        "12345",
+		ID:        "12345",
 		Address:   "1.1.1.1",
 		InitAt:    currTime.Add(-10 * time.Second),
 		UpdatedAt: currTime,
 	}
 
 	rb2 := storage.RelayBackendLiveData{
-		Id:        "54321",
+		ID:        "54321",
 		Address:   "2.1.1.1",
 		InitAt:    currTime.Add(-15 * time.Second),
 		UpdatedAt: currTime,
 	}
 
 	rb3 := storage.RelayBackendLiveData{
-		Id:        "67890",
+		ID:        "67890",
 		Address:   "3.1.1.1",
 		InitAt:    currTime.Add(-2 * time.Second),
 		UpdatedAt: currTime,
@@ -64,7 +63,7 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 		},
 	}
 
-	cfg := &Config{MasterTimeVariance: time.Second}
+	cfg := &RelayFrontendConfig{MasterTimeVariance: time.Second}
 	svc, err := NewRelayFrontend(&store, cfg)
 	assert.Nil(t, err)
 
@@ -72,27 +71,25 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "2.1.1.1", svc.currentMasterBackendAddress)
-	assert.Equal(t, "http://2.1.1.1/relay_stats", svc.relayStatsAddress)
 
 	// change to rb1 as master
 	rb2.UpdatedAt = rb2.UpdatedAt.Add(-6 * time.Second)
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "1.1.1.1", svc.currentMasterBackendAddress)
-	assert.Equal(t, "http://1.1.1.1/relay_stats", svc.relayStatsAddress)
 }
 
 func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 	currTime := time.Now()
 	rb1 := storage.RelayBackendLiveData{
-		Id:        "12345",
+		ID:        "12345",
 		Address:   "1.1.1.1",
 		InitAt:    currTime.Add(-10 * time.Second),
 		UpdatedAt: currTime,
 	}
 
 	rb2 := storage.RelayBackendLiveData{
-		Id:        "54321",
+		ID:        "54321",
 		Address:   "2.1.1.1",
 		InitAt:    currTime.Add(-15 * time.Second),
 		UpdatedAt: currTime,
@@ -104,7 +101,7 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 		},
 	}
 
-	cfg := &Config{MasterTimeVariance: time.Second}
+	cfg := &RelayFrontendConfig{MasterTimeVariance: time.Second}
 	svc, err := NewRelayFrontend(&store, cfg)
 	assert.Nil(t, err)
 
@@ -113,26 +110,25 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "2.1.1.1", svc.currentMasterBackendAddress)
-	assert.Equal(t, "http://2.1.1.1/relay_stats", svc.relayStatsAddress)
 }
 
 func TestRelayFrontendSvc_ChooseRelayBackendMaster(t *testing.T) {
 	currTime := time.Now()
 	rbArr := []storage.RelayBackendLiveData{
 		{
-			Id:        "12345",
+			ID:        "12345",
 			Address:   "1.1.1.1",
 			InitAt:    currTime.Add(-10 * time.Second),
 			UpdatedAt: currTime,
 		},
 		{
-			Id:        "54321",
+			ID:        "54321",
 			Address:   "2.1.1.1",
 			InitAt:    currTime.Add(-15 * time.Second),
 			UpdatedAt: currTime,
 		},
 		{
-			Id:        "67890",
+			ID:        "67890",
 			Address:   "3.1.1.1",
 			InitAt:    currTime.Add(-5 * time.Second),
 			UpdatedAt: currTime,
@@ -171,11 +167,7 @@ func TestRelayFrontendSvc_GetMatrixAddress(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "http://1.1.1.1/route_matrix", address)
 
-	address, err = svc.GetMatrixAddress(MatrixTypeValve)
-	assert.Nil(t, err)
-	assert.Equal(t, "http://1.1.1.1/route_matrix_valve", address)
-
-	address, err = svc.GetMatrixAddress("dog")
+	address, err = svc.GetMatrixAddress("not_an_address")
 	assert.NotNil(t, err)
 	assert.Equal(t, "", address)
 }
@@ -244,34 +236,13 @@ func TestRelayFrontendSvc_CacheMatrixNormal(t *testing.T) {
 	assert.Equal(t, bin, svc.routeMatrix.GetMatrix())
 }
 
-func TestRelayFrontendSvc_CacheMatrixValve(t *testing.T) {
-	testMatrix := testMatrix(t)
-	bin := testMatrix.GetResponseData()
-	assert.NotEqual(t, 0, len(bin))
-
-	svc := new(RelayFrontendSvc)
-	svc.routeMatrixValve = new(helpers.MatrixData)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/octet-stream")
-		buffer := bytes.NewBuffer(bin)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}))
-
-	err := svc.cacheMatrixInternal(ts.URL, MatrixTypeValve)
-	assert.NoError(t, err)
-	assert.Equal(t, bin, svc.routeMatrixValve.GetMatrix())
-}
-
 func TestRelayFrontendSvc_GetCostMatrix(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.costMatrix = new(helpers.MatrixData)
 	testMatrix := testMatrix(t)
 	svc.costMatrix.SetMatrix(testMatrix.GetResponseData())
 
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrix()))
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrixHandlerFunc()))
 
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
@@ -293,11 +264,42 @@ func TestRelayFrontendSvc_GetCostMatrix(t *testing.T) {
 func TestRelayFrontendSvc_GetCostMatrixNotFound(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.costMatrix = new(helpers.MatrixData)
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrix()))
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrixHandlerFunc()))
 
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
+}
+
+func TestRelayFrontendSvc_ResetCostMatrix(t *testing.T) {
+	svc := &RelayFrontendSvc{}
+	svc.costMatrix = new(helpers.MatrixData)
+	testMatrix := testMatrix(t)
+	svc.costMatrix.SetMatrix(testMatrix.GetResponseData())
+
+	err := svc.ResetCachedMatrix(MatrixTypeCost)
+	assert.NoError(t, err)
+
+	expectedEmptyCostMatrix := routing.CostMatrix{
+		RelayIDs:           []uint64{},
+		RelayAddresses:     []net.UDPAddr{},
+		RelayNames:         []string{},
+		RelayLatitudes:     []float32{},
+		RelayLongitudes:    []float32{},
+		RelayDatacenterIDs: []uint64{},
+		Costs:              []int32{},
+		Version:            routing.CostMatrixSerializeVersion,
+		DestRelays:         []bool{},
+	}
+
+	receivedCostMatrixBin := svc.costMatrix.GetMatrix()
+	var receivedCostMatrix routing.CostMatrix
+
+	readStream := encoding.CreateReadStream(receivedCostMatrixBin)
+	err = receivedCostMatrix.Serialize(readStream)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedEmptyCostMatrix, receivedCostMatrix)
 }
 
 func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
@@ -305,7 +307,7 @@ func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
 	svc.routeMatrix = new(helpers.MatrixData)
 	testMatrix := testMatrix(t)
 	svc.routeMatrix.SetMatrix(testMatrix.GetResponseData())
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrix()))
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixHandlerFunc()))
 
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
@@ -327,51 +329,49 @@ func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
 func TestRelayFrontendSvc_GetRouteMatrixNotFound(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.routeMatrix = new(helpers.MatrixData)
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrix()))
+	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixHandlerFunc()))
 
 	resp, err := http.Get(ts.URL)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
 }
 
-func TestRelayFrontendSvc_GetRouteMatrixValve(t *testing.T) {
+func TestRelayFrontendSvc_ResetRouteMatrix(t *testing.T) {
 	svc := &RelayFrontendSvc{}
-	svc.routeMatrixValve = new(helpers.MatrixData)
-
+	svc.routeMatrix = new(helpers.MatrixData)
 	testMatrix := testMatrix(t)
-	svc.routeMatrixValve.SetMatrix(testMatrix.GetResponseData())
+	testMatrix.Version = routing.RouteMatrixSerializeVersion
+	svc.routeMatrix.SetMatrix(testMatrix.GetResponseData())
 
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixValve()))
-
-	resp, err := http.Get(ts.URL)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, resp.Body)
-
-	buffer, err := ioutil.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, buffer)
-
-	var newRouteMatrix routing.RouteMatrix
-	rs := encoding.CreateReadStream(buffer)
-	err = newRouteMatrix.Serialize(rs)
+	err := svc.ResetCachedMatrix(MatrixTypeNormal)
 	assert.NoError(t, err)
 
-	err = newRouteMatrix.WriteResponseData(5000)
+	expectedEmptyRouteMatrix := routing.RouteMatrix{
+		RelayIDsToIndices:  make(map[uint64]int32),
+		RelayIDs:           []uint64{},
+		RelayAddresses:     []net.UDPAddr{},
+		RelayNames:         []string{},
+		RelayLatitudes:     []float32{},
+		RelayLongitudes:    []float32{},
+		RelayDatacenterIDs: []uint64{},
+		RouteEntries:       []core.RouteEntry{},
+		BinFileBytes:       0,
+		CreatedAt:          0,
+		Version:            routing.RouteMatrixSerializeVersion,
+		DestRelays:         []bool{},
+	}
+
+	receivedRouteMatrixBin := svc.routeMatrix.GetMatrix()
+	var receivedRouteMatrix routing.RouteMatrix
+
+	readStream := encoding.CreateReadStream(receivedRouteMatrixBin)
+	err = receivedRouteMatrix.Serialize(readStream)
 	assert.NoError(t, err)
-	assert.Equal(t, testMatrix, newRouteMatrix)
+
+	assert.Equal(t, expectedEmptyRouteMatrix, receivedRouteMatrix)
 }
 
-func TestRelayFrontendSvc_GetRouteMatrixValveNotFound(t *testing.T) {
-	svc := &RelayFrontendSvc{}
-	svc.routeMatrixValve = new(helpers.MatrixData)
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixValve()))
-
-	resp, err := http.Get(ts.URL)
-	assert.NoError(t, err)
-	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
-}
-
-func TestRelayFrontendSvc_GetRelayStats(t *testing.T) {
+func TestRelayFrontendSvc_GetRelayBackendHandler(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 
 	backendHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -380,12 +380,49 @@ func TestRelayFrontendSvc_GetRelayStats(t *testing.T) {
 	}
 
 	bSvr := httptest.NewServer(http.HandlerFunc(backendHandler))
-	svc.relayStatsAddress = bSvr.URL
+	svc.currentMasterBackendAddress = strings.TrimLeft(bSvr.URL, "http://")
+	assert.NotEqual(t, svc.currentMasterBackendAddress, bSvr.URL)
 
-	fSvr := httptest.NewServer(http.HandlerFunc(svc.GetRelayStats()))
+	fSvr := httptest.NewServer(http.HandlerFunc(svc.GetRelayBackendHandlerFunc("/database_version")))
 	resp, err := http.Get(fSvr.URL)
 	assert.NoError(t, err)
-	assert.Equal(t, resp.StatusCode, http.StatusOK)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, body)
+	assert.Equal(t, []byte("test"), body)
+}
+
+func TestRelayFrontendSvc_GetRelayDashboardHandler(t *testing.T) {
+	svc := &RelayFrontendSvc{}
+
+	backendHandler := func(w http.ResponseWriter, r *http.Request) {
+		u, p, _ := r.BasicAuth()
+		if u != "testUsername" || p != "testPassword" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("test"))
+	}
+
+	bSvr := httptest.NewServer(http.HandlerFunc(backendHandler))
+	svc.currentMasterBackendAddress = strings.TrimLeft(bSvr.URL, "http://")
+	assert.NotEqual(t, svc.currentMasterBackendAddress, bSvr.URL)
+
+	fSvr := httptest.NewServer(http.HandlerFunc(svc.GetRelayDashboardHandlerFunc("testUsername", "testPassword")))
+	client := &http.Client{}
+
+	req, err := http.NewRequest("GET", fSvr.URL, nil)
+	assert.NoError(t, err)
+	req.SetBasicAuth("testUsername", "testPassword")
+
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	defer resp.Body.Close()
 

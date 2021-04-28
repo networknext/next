@@ -38,6 +38,7 @@ import (
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/networknext/backend/modules/transport/middleware"
+	"github.com/networknext/backend/modules/transport/notifications"
 )
 
 var (
@@ -359,35 +360,6 @@ func main() {
 		Storage: db,
 	}
 
-	// serverRelayBinFile will be deprecated by serveDatabaseBinFile, below
-	serveRelayBinFile := func(w http.ResponseWriter, r *http.Request) {
-
-		w.Header().Set("Content-Type", "application/octet-stream")
-
-		var enabledRelays []routing.Relay
-		var relayWrapper routing.RelayBinWrapper
-
-		relays := db.Relays()
-
-		for _, localRelay := range relays {
-			if localRelay.State == routing.RelayStateEnabled {
-				enabledRelays = append(enabledRelays, localRelay)
-			}
-		}
-
-		relayWrapper.Relays = enabledRelays
-
-		var buffer bytes.Buffer
-
-		encoder := gob.NewEncoder(&buffer)
-		encoder.Encode(relayWrapper)
-
-		_, err = buffer.WriteTo(w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
 	serveDatabaseBinFile := func(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: pull the sub claim from the auth0 claims to get the "author"
@@ -400,10 +372,13 @@ func main() {
 		buyerMap := make(map[uint64]routing.Buyer)
 		sellerMap := make(map[string]routing.Seller)
 		datacenterMap := make(map[uint64]routing.Datacenter)
+		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
 
 		buyers := db.Buyers()
 		for _, buyer := range buyers {
 			buyerMap[buyer.ID] = buyer
+			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
+			datacenterMaps[buyer.ID] = dcMapsForBuyer
 		}
 
 		for _, seller := range db.Sellers() {
@@ -419,12 +394,6 @@ func main() {
 				enabledRelays = append(enabledRelays, localRelay)
 				relayMap[localRelay.ID] = localRelay
 			}
-		}
-
-		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
-		for _, buyer := range buyers {
-			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
-			datacenterMaps[buyer.ID] = dcMapsForBuyer
 		}
 
 		dbWrapper.Relays = enabledRelays
@@ -543,7 +512,7 @@ func main() {
 
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
-			user := i.Request.Context().Value(jsonrpc.Keys.UserKey)
+			user := i.Request.Context().Value(middleware.Keys.UserKey)
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 
@@ -564,10 +533,10 @@ func main() {
 					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
 						newsletterConsent = consent.(bool)
 					}
-					return jsonrpc.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
+					return middleware.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
 				}
 			}
-			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
+			return middleware.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
 		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
@@ -580,30 +549,45 @@ func main() {
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&configService, "")
+
+		webHookUrl := envvar.Get("SLACK_WEBHOOK_URL", "")
+		if webHookUrl == "" {
+			level.Error(logger).Log("err", "env var SLACK_WEBHOOK_URL must be set")
+			os.Exit(1)
+		}
+
+		channel := envvar.Get("SLACK_CHANNEL", "")
+		if channel == "" {
+			level.Error(logger).Log("err", "env var SLACK_CHANNEL must be set")
+			os.Exit(1)
+		}
+
 		s.RegisterService(&jsonrpc.AuthService{
-			MailChimpManager: transport.MailChimpHandler{
+			MailChimpManager: notifications.MailChimpHandler{
 				HTTPHandler: *http.DefaultClient,
 				MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
 			},
 			Logger:      logger,
 			UserManager: userManager,
 			JobManager:  jobManager,
-			Storage:     db,
+			SlackClient: notifications.SlackClient{
+				WebHookUrl: webHookUrl,
+				UserName:   "PortalBot",
+				Channel:    channel,
+			},
+			Storage: db,
 		}, "")
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 
-		finalBinHandler := http.HandlerFunc(serveRelayBinFile)
-		r.Handle("/relays.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), finalBinHandler)).Methods("GET")
-
 		databaseBinHandler := http.HandlerFunc(serveDatabaseBinFile)
-		r.Handle("/database.bin", middleware.HttpGetMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler)).Methods("GET")
+		r.Handle("/database.bin", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler, strings.Split(allowedOrigins, ","))).Methods("GET")
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
