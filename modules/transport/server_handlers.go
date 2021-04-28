@@ -891,12 +891,10 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 			if routeChanged {
 				core.Debug("route changed")
 				state.metrics.RouteSwitched.Add(1)
-				// todo
-				// BuildNextTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+				BuildNextTokens(&state.output, state.database, &state.buyer, &state.packet, routeNumRelays, routeRelays[:], state.routeMatrix.RelayIDs, state.routerPrivateKey, &state.response)
 			} else {
 				core.Debug("route continued")
-				// todo
-				// BuildContinueTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+				BuildContinueTokens(&state.output, state.database, &state.buyer, &state.packet, routeNumRelays, routeRelays[:], state.routeMatrix.RelayIDs, state.routerPrivateKey, &state.response)
 			}
 
 		} else {
