@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"os/signal"
 	"runtime"
@@ -21,7 +19,6 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 )
@@ -32,12 +29,6 @@ var (
 	sha           string
 	tag           string
 )
-
-type RelayForwarderParams struct {
-	GatewayAddr string
-	Metrics     *metrics.RelayForwarderMetrics
-	Logger      log.Logger
-}
 
 func main() {
 	os.Exit(mainReturnWithCode())
@@ -143,7 +134,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Create params for the main relay forwarder handlers
-	forwarderParams := &RelayForwarderParams{
+	forwarderParams := &transport.RelayForwarderParams{
 		GatewayAddr: gatewayAddr,
 		Metrics:     forwarderMetrics,
 		Logger:      logger,
@@ -156,8 +147,8 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-	router.HandleFunc("/relay_init", forwardPost(forwarderParams)).Methods("POST")
-	router.HandleFunc("/relay_update", forwardPost(forwarderParams)).Methods("POST")
+	router.HandleFunc("/relay_init", transport.ForwardPostHandlerFunc(forwarderParams)).Methods("POST")
+	router.HandleFunc("/relay_update", transport.ForwardPostHandlerFunc(forwarderParams)).Methods("POST")
 	router.Handle("/debug/vars", expvar.Handler())
 
 	go func() {
@@ -176,56 +167,4 @@ func mainReturnWithCode() int {
 		cancelFunc()
 	}
 	return 0
-}
-
-func forwardPost(params *RelayForwarderParams) func(w http.ResponseWriter, r *http.Request) {
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		durationStart := time.Now()
-		defer func() {
-			milliseconds := float64(time.Since(durationStart).Milliseconds())
-			params.Metrics.HandlerMetrics.Duration.Set(float64(milliseconds))
-			if milliseconds > 100 {
-				params.Metrics.HandlerMetrics.LongDuration.Add(1)
-			}
-			params.Metrics.HandlerMetrics.Invocations.Add(1)
-		}()
-
-		// Parse the remote address to get the origin URL
-		origin, err := url.Parse(fmt.Sprintf("//%s", r.RemoteAddr))
-		if err != nil {
-			level.Error(params.Logger).Log("msg", fmt.Sprintf("error parsing request remote addr as URL: %s", r.RemoteAddr), "err", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			params.Metrics.ErrorMetrics.ParseURLError.Add(1)
-			return
-		}
-
-		// Get the requested path (i.e. /relay_update)
-		requestedPath := r.RequestURI
-
-		// Create a reverse proxy
-		reverseProxy := httputil.NewSingleHostReverseProxy(origin)
-
-		// Modify the director to forward the request to the relay gateway
-		reverseProxy.Director = func(req *http.Request) {
-			req.Header.Add("X-Forwarded-Host", req.Host)
-			req.Header.Add("X-Origin-Host", origin.Host)
-			req.URL.Scheme = "http"
-			req.URL.Host = params.GatewayAddr
-			req.URL.Path = requestedPath
-		}
-
-		// Add an error handler to use our logger
-		reverseProxy.ErrorHandler = func(writer http.ResponseWriter, req *http.Request, err error) {
-			if err != nil {
-				level.Error(params.Logger).Log("msg", "error reaching relay gateway", "err", err)
-				writer.WriteHeader(http.StatusInternalServerError)
-				writer.Write([]byte(err.Error()))
-				params.Metrics.ErrorMetrics.ForwardPostError.Add(1)
-			}
-		}
-
-		// Serve the request
-		reverseProxy.ServeHTTP(w, r)
-	}
 }
