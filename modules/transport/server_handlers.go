@@ -476,6 +476,8 @@ type SessionHandlerState struct {
 	realPacketLoss float32
 
 	// for route planning (comes from SDK and route matrix)
+	numNearRelays    int
+	nearRelayIndices [core.MaxNearRelays]int32
 	nearRelayRTTs    [core.MaxNearRelays]int32
 	nearRelayJitters [core.MaxNearRelays]int32
 	numDestRelays    int32
@@ -812,6 +814,17 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		state.destRelays,
 	)
 
+	state.numNearRelays = len(state.packet.NearRelayIDs)
+
+	for i := range state.packet.NearRelayIDs {
+		relayIndex, exists := state.routeMatrix.RelayIDsToIndices[state.packet.NearRelayIDs[i]]
+		if exists {
+			state.nearRelayIndices[i] = relayIndex
+		} else {
+			state.nearRelayIndices[i] = -1 // near relay no longer exists in route matrix
+		}
+	}
+
 	return true
 
 }
@@ -842,16 +855,11 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 	
 	routeRelays := [core.MaxRelaysPerRoute]int32{}
 
-	// todo
-	nearRelayIndices := []int32{}
-	nearRelayCosts := []int32{}
-	reframedDestRelays := []int32{}
-
 	if !state.input.RouteState.Next {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.routeDiversity, state.debug) {
+		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, state.nearRelayIndices[:], state.nearRelayRTTs[:], state.destRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.routeDiversity, state.debug) {
 			BuildNextTokens(&state.output, state.database, &state.buyer, &state.packet, routeNumRelays, routeRelays[:], state.routeMatrix.RelayIDs, state.routerPrivateKey, &state.response)
 		}
 
@@ -882,12 +890,16 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 			state.metrics.RouteDoesNotExist.Add(1)
 		}
 
-		stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(state.routeMatrix.RouteEntries, state.routeMatrix.RelayNames, &state.buyer.RouteShader, &state.output.RouteState, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), int32(state.packet.NextRTT), state.output.RouteCost, state.realPacketLoss, state.packet.NextPacketLoss, state.output.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], state.debug)
+		// todo
+		// stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(state.routeMatrix.RouteEntries, state.routeMatrix.RelayNames, &state.buyer.RouteShader, &state.output.RouteState, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), int32(state.packet.NextRTT), state.output.RouteCost, state.realPacketLoss, state.packet.NextPacketLoss, state.output.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], state.debug)
+		stayOnNext := true
 
 		if stayOnNext {
 
 			// stay on network next
 
+			// todo
+			/*
 			if routeChanged {
 				core.Debug("route changed")
 				state.metrics.RouteSwitched.Add(1)
@@ -896,6 +908,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 				core.Debug("route continued")
 				BuildContinueTokens(&state.output, state.database, &state.buyer, &state.packet, routeNumRelays, routeRelays[:], state.routeMatrix.RelayIDs, state.routerPrivateKey, &state.response)
 			}
+			*/
 
 		} else {
 
