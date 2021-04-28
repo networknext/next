@@ -84,7 +84,7 @@ func mainReturnWithCode() int {
 		gatewayAddr = envvar.Get("GATEWAY_LOAD_BALANCER_IP", "")
 		ip := net.ParseIP(gatewayAddr)
 		if ip == nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("could not parse relay gatway's load balancer's IP %s", gatewayAddr), "err", err)
+			level.Error(logger).Log("msg", fmt.Sprintf("could not parse relay gatway's load balancer's IP: %s", gatewayAddr), "err", err)
 			return 1
 		}
 	} else {
@@ -171,7 +171,7 @@ func forwardPost(gatewayAddr string, logger log.Logger) func(w http.ResponseWrit
 		// Parse the remote address to get the origin URL
 		origin, err := url.Parse(fmt.Sprintf("//%s", r.RemoteAddr))
 		if err != nil {
-			level.Error(logger).Log("msg", "error reading response body", "err", err)
+			level.Error(logger).Log("msg", fmt.Sprintf("error parsing request remote addr as URL: %s", r.RemoteAddr), "err", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
