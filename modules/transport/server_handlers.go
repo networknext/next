@@ -34,8 +34,7 @@ func datacenterEnabled(database *routing.DatabaseBinWrapper, buyerID uint64, dat
 	if !ok {
 		return false
 	}
-	// todo: this should be reworked so that it's a map lookup to check if a datacenter is enabled
-	// the linear walk below is not acceptable (this is in the hot path!!!)
+	// todo: this should be a hash look up, not a linear walk!
 	for _, dcMap := range datacenterAliases {
 		if datacenterID == dcMap.DatacenterID {
 			return true
@@ -836,22 +835,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 	// todo: why would we copy such a potentially large map here?
 	// multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
-
-	// todo
-	/*
-	// todo: don't allocate in hot path
-	nearRelayIndices := make([]int32, nearRelays.Count)
-	nearRelayCosts := make([]int32, nearRelays.Count)
-	for i := int32(0); i < nearRelays.Count; i++ {
-		nearRelayIndex, ok := routeMatrix.RelayIDsToIndices[nearRelays.IDs[i]]
-		if !ok {
-			continue
-		}
-
-		nearRelayIndices[i] = nearRelayIndex
-		nearRelayCosts[i] = nearRelays.RTTs[i]
-	}
-	*/
+	multipathVetoMap := map[uint64]bool{}
 
 	var routeNumRelays int32
 
@@ -876,11 +860,18 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		// currently going direct. should we take network next?
 
 		// todo
-		/*
-		if core.MakeRouteDecision_TakeNetworkNext(routeMatrix.RouteEntries, &buyer.RouteShader, &sessionData.RouteState, multipathVetoMap, &buyer.InternalConfig, int32(packet.DirectRTT), slicePacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, state.debug) {
+		nearRelayIndices := []int32{}
+		nearRelayRTT := []int32{}
+		reframedDestRelays := []int32{}
+		routeDiversity := int32(0)
+
+		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, nearRelayIndices, nearRelayRTT, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, state.debug) {
+			
+			// todo
+			/*
 			BuildNextTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
+			*/
 		}
-		*/
 
 	} else {
 
