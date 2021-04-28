@@ -18,6 +18,7 @@ import (
 
 type AuthService struct {
 	MailChimpManager notifications.MailChimpHandler
+	HubSpotClient    notifications.HubSpotClient
 	UserManager      storage.UserManager
 	JobManager       storage.JobManager
 	SlackClient      notifications.SlackClient
@@ -987,8 +988,9 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 	return nil
 }
 
-type CustomerSlackNotification struct {
-	Email string `json:"email"`
+type CustomerNotifications struct {
+	Email        string `json:"email"`
+	CustomerName string `json:"customer_name"`
 }
 
 type GenericSlackNotificationArgs struct {
@@ -996,10 +998,10 @@ type GenericSlackNotificationArgs struct {
 	Type    string `json:"type"`
 }
 
-type GenericSlackNotificationReply struct {
+type GenericNotificationsReply struct {
 }
 
-func (s *AuthService) CustomerSignedUpSlackNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+func (s *AuthService) CustomerSignedUpSlackNotification(r *http.Request, args *CustomerNotifications, reply *GenericNotificationsReply) error {
 	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v", err.Error()))
@@ -1009,7 +1011,7 @@ func (s *AuthService) CustomerSignedUpSlackNotification(r *http.Request, args *C
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
-		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v: Email is required", err.Error()))
 		return &err
 	}
 
@@ -1017,102 +1019,143 @@ func (s *AuthService) CustomerSignedUpSlackNotification(r *http.Request, args *C
 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v: Email is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v: Failed to send Slack notification", err.Error()))
 		return &err
 	}
 	return nil
 }
 
-func (s *AuthService) CustomerViewedTheDocsSlackNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+func (s *AuthService) CustomerViewedTheDocsNotifications(r *http.Request, args *CustomerNotifications, reply *GenericNotificationsReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("CustomerViewedTheDocsSlackNotification(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerViewedTheDocsNotifications(): %v", err.Error()))
 		return &err
 	}
 
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
-		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerViewedTheDocsNotifications(): %v: Email is required", err.Error()))
 		return &err
 	}
 
-	message := fmt.Sprintf("%s viewed the SDK documentation! :muscle:", args.Email)
+	message := fmt.Sprintf("%s viewed the SDK documentation", args.Email)
+
+	if s.HubSpotClient.APIKey != "" {
+		if args.CustomerName != "" {
+			message = fmt.Sprintf("%s from %s viewed the SDK documentation", args.Email, args.CustomerName)
+		}
+		if err := s.HubSpotClient.CreateHubSpotDealEntry(message); err != nil {
+			fmt.Println(err)
+			err := JSONRPCErrorCodes[int(ERROR_HUBSPOT_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("CustomerViewedTheDocsNotifications(): %v: Failed to create HubSpot entry", err.Error()))
+		}
+	}
+
+	message += " :muscle:"
 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("CustomerViewedTheDocsSlackNotification(): %v: Email is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerViewedTheDocsNotifications(): %v: Failed to send Slack notification", err.Error()))
 		return &err
 	}
 	return nil
 }
 
-func (s *AuthService) CustomerDownloadedSDKSlackNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+func (s *AuthService) CustomerDownloadedSDKNotifications(r *http.Request, args *CustomerNotifications, reply *GenericNotificationsReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("CustomerDownloadedSDKSlackNotification(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerDownloadedSDKNotifications(): %v", err.Error()))
 		return &err
 	}
 
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
-		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerDownloadedSDKNotifications(): %v: Email is required", err.Error()))
 		return &err
 	}
 
-	message := fmt.Sprintf("%s downloaded the SDK! :party_parrot:", args.Email)
+	message := fmt.Sprintf("%s downloaded the SDK", args.Email)
+
+	if s.HubSpotClient.APIKey != "" {
+		if args.CustomerName != "" {
+			message = fmt.Sprintf("%s from %s downloaded the SDK", args.Email, args.CustomerName)
+		}
+		if err := s.HubSpotClient.CreateHubSpotDealEntry(message); err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_HUBSPOT_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("CustomerDownloadedSDKNotifications(): %v: Failed to create HubSpot entry", err.Error()))
+		}
+	}
+
+	message += " :party_parrot:"
 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("CustomerDownloadedSDKSlackNotification(): %v: Email is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerDownloadedSDKNotifications(): %v: Failed to send Slack notification", err.Error()))
 		return &err
 	}
 	return nil
 }
 
-func (s *AuthService) CustomerEnteredPublicKeySlackNotification(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+func (s *AuthService) CustomerEnteredPublicKeyNotifications(r *http.Request, args *CustomerNotifications, reply *GenericNotificationsReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("CustomerEnteredPublicKeySlackNotification(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerEnteredPublicKeyNotifications(): %v", err.Error()))
 		return &err
 	}
 
 	if args.Email == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Email"
-		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerEnteredPublicKeyNotifications(): %v: Email is required", err.Error()))
 		return &err
 	}
 
-	message := fmt.Sprintf("%s entered a public key! :rocket:", args.Email)
+	if args.CustomerName == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "CustomerName"
+		s.Logger.Log("err", fmt.Errorf("CustomerEnteredPublicKeyNotifications(): %v: CustomerName is required", err.Error()))
+		return &err
+	}
+
+	message := fmt.Sprintf("%s from %s entered a public key", args.Email, args.CustomerName)
+
+	if s.HubSpotClient.APIKey != "" {
+		if err := s.HubSpotClient.CreateHubSpotDealEntry(message); err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_HUBSPOT_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("CustomerEnteredPublicKeyNotifications(): %v: Failed to create HubSpot entry", err.Error()))
+		}
+	}
+
+	message += " :rocket:"
 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("CustomerEnteredPublicKeySlackNotification(): %v: Email is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerEnteredPublicKeyNotifications(): %v: Failed to send Slack notification", err.Error()))
 		return &err
 	}
 	return nil
 }
 
-func (s *AuthService) SlackNotification(r *http.Request, args *GenericSlackNotificationArgs, reply *GenericSlackNotificationReply) error {
+func (s *AuthService) Notifications(r *http.Request, args *GenericSlackNotificationArgs, reply *GenericNotificationsReply) error {
 	if !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("SlackNotification(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("Notifications(): %v", err.Error()))
 		return &err
 	}
 
 	if args.Message == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Message"
-		s.Logger.Log("err", fmt.Errorf("SlackNotification(): %v: Message is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("Notifications(): %v: Message is required", err.Error()))
 		return &err
 	}
 
 	if args.Type == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Type"
-		s.Logger.Log("err", fmt.Errorf("SlackNotification(): %v: Type is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("Notifications(): %v: Type is required", err.Error()))
 		return &err
 	}
 
@@ -1120,24 +1163,24 @@ func (s *AuthService) SlackNotification(r *http.Request, args *GenericSlackNotif
 	case "info":
 		if err := s.SlackClient.SendInfo(args.Message); err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v: Failed to send info Slack notification: %s", args.Message, err.Error()))
+			s.Logger.Log("err", fmt.Errorf("CustomerSignedUpNotifications(): %v: Failed to send info Slack notification: %s", args.Message, err.Error()))
 			return &err
 		}
 	case "warning":
 		if err := s.SlackClient.SendWarning(args.Message); err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v: Failed to send warning Slack notification: %s", args.Message, err.Error()))
+			s.Logger.Log("err", fmt.Errorf("CustomerSignedUpNotifications(): %v: Failed to send warning Slack notification: %s", args.Message, err.Error()))
 			return &err
 		}
 	case "error":
 		if err := s.SlackClient.SendError(args.Message); err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v: Failed to send error Slack notification: %s", args.Message, err.Error()))
+			s.Logger.Log("err", fmt.Errorf("CustomerSignedUpNotifications(): %v: Failed to send error Slack notification: %s", args.Message, err.Error()))
 			return &err
 		}
 	default:
 		err := JSONRPCErrorCodes[int(ERROR_ILLEGAL_OPERATION)]
-		s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v: Slack notification type not supported: %s", args.Type, err.Error()))
+		s.Logger.Log("err", fmt.Errorf("CustomerSignedUpNotifications(): %v: Slack notification type not supported: %s", args.Type, err.Error()))
 		return &err
 	}
 	return nil

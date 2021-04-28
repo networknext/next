@@ -21,6 +21,7 @@ const (
 	ERROR_PASSWORD_GENERATION_FAILURE json2.ErrorCode = 7
 	ERROR_ILLEGAL_OPERATION           json2.ErrorCode = 8
 	ERROR_SLACK_FAILURE               json2.ErrorCode = 9
+	ERROR_HUBSPOT_FAILURE             json2.ErrorCode = 10
 )
 
 var JSONRPCErrorCodes []json2.Error = []json2.Error{
@@ -92,6 +93,13 @@ var JSONRPCErrorCodes []json2.Error = []json2.Error{
 		Code:    ERROR_SLACK_FAILURE,
 		Data: &JSONRPCErrorData{
 			Name: "ERROR_SLACK_FAILURE",
+		},
+	},
+	{
+		Message: "HubSpot API send failure",
+		Code:    ERROR_HUBSPOT_FAILURE,
+		Data: &JSONRPCErrorData{
+			Name: "ERROR_HUBSPOT_FAILURE",
 		},
 	},
 }

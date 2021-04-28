@@ -306,6 +306,8 @@ dist:
 # Always run sqlite3
 export FEATURE_POSTGRESQL=false
 export JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL
+export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/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
+export SLACK_CHANNEL=portal-test
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
