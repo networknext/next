@@ -490,9 +490,10 @@ type SessionHandlerState struct {
 	outputNearRelayJitter     [core.MaxNearRelays]int32
 	outputNearRelayPacketLoss [core.MaxNearRelays]int32
 
+	routeDiversity      int32
+
 	// todo
 	/*
-		routeDiversity int32
 		postSessionHandler *PostSessionHandler
 		multipathVetoHandler storage.MultipathVetoHandler
 	*/
@@ -817,15 +818,9 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 func sessionMakeRouteDecision(state *SessionHandlerState) {
 
-	var routeCost int32
-
-	routeRelays := [core.MaxRelaysPerRoute]int32{}
-
 	// todo: why would we copy such a potentially large map here?
 	// multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
 	multipathVetoMap := map[uint64]bool{}
-
-	var routeNumRelays int32
 
 	/*
 		If we are on on network next but don't have any relays in our route, something is WRONG.
@@ -841,19 +836,22 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		return
 	}
 
-	routeChanged := false
+	var routeChanged bool
+	var routeCost int32
+	var routeNumRelays int32
+	
+	routeRelays := [core.MaxRelaysPerRoute]int32{}
+
+	// todo
+	nearRelayIndices := []int32{}
+	nearRelayCosts := []int32{}
+	reframedDestRelays := []int32{}
 
 	if !state.input.RouteState.Next {
 
 		// currently going direct. should we take network next?
 
-		// todo
-		nearRelayIndices := []int32{}
-		nearRelayRTT := []int32{}
-		reframedDestRelays := []int32{}
-		routeDiversity := int32(0)
-
-		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, nearRelayIndices, nearRelayRTT, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, state.debug) {
+		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.routeDiversity, state.debug) {
 			BuildNextTokens(&state.output, state.database, &state.buyer, &state.packet, routeNumRelays, routeRelays[:], state.routeMatrix.RelayIDs, state.routerPrivateKey, &state.response)
 		}
 
@@ -878,19 +876,13 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 			This is necessary because the set of relays in the route matrix change over time.
 		*/
 
-		// todo
-		/*
-			if !core.ReframeRoute(&sessionData.RouteState, routeMatrix.RelayIDsToIndices, sessionData.RouteRelayIDs[:sessionData.RouteNumRelays], &routeRelays) {
-				routeRelays = [core.MaxRelaysPerRoute]int32{}
-				core.Debug("one or more relays in the route no longer exist")
-				metrics.RouteDoesNotExist.Add(1)
-			}
-		*/
+		if !core.ReframeRoute(&state.output.RouteState, state.routeMatrix.RelayIDsToIndices, state.output.RouteRelayIDs[:state.output.RouteNumRelays], &routeRelays) {
+			routeRelays = [core.MaxRelaysPerRoute]int32{}
+			core.Debug("one or more relays in the route no longer exist")
+			state.metrics.RouteDoesNotExist.Add(1)
+		}
 
-		// todo
-		// if stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(routeMatrix.RouteEntries, routeMatrix.RelayNames, &buyer.RouteShader, &sessionData.RouteState, &buyer.InternalConfig, int32(packet.DirectRTT), int32(packet.NextRTT), sessionData.RouteCost, slicePacketLoss, packet.NextPacketLoss, sessionData.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], state.debug)
-
-		stayOnNext := false
+		stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(state.routeMatrix.RouteEntries, state.routeMatrix.RelayNames, &state.buyer.RouteShader, &state.output.RouteState, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), int32(state.packet.NextRTT), state.output.RouteCost, state.realPacketLoss, state.packet.NextPacketLoss, state.output.RouteNumRelays, routeRelays, nearRelayIndices, nearRelayCosts, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], state.debug)
 
 		if stayOnNext {
 
