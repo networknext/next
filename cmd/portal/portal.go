@@ -12,7 +12,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -562,7 +561,12 @@ func main() {
 			os.Exit(1)
 		}
 
+		hubspotAPIKey := envvar.Get("HUBSPOT_API_KEY", "")
+
 		s.RegisterService(&jsonrpc.AuthService{
+			HubSpotClient: notifications.HubSpotClient{
+				APIKey: hubspotAPIKey,
+			},
 			MailChimpManager: notifications.MailChimpHandler{
 				HTTPHandler: *http.DefaultClient,
 				MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
@@ -578,16 +582,16 @@ func main() {
 			Storage: db,
 		}, "")
 
-		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+		allowedOrigins := envvar.GetList("ALLOWED_ORIGINS", []string{})
 
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowedOrigins))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
-		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
+		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowedOrigins))
 
 		databaseBinHandler := http.HandlerFunc(serveDatabaseBinFile)
-		r.Handle("/database.bin", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler, strings.Split(allowedOrigins, ","))).Methods("GET")
+		r.Handle("/database.bin", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler, allowedOrigins)).Methods("GET")
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {

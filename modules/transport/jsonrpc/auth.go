@@ -18,6 +18,7 @@ import (
 
 type AuthService struct {
 	MailChimpManager notifications.MailChimpHandler
+	HubSpotClient    notifications.HubSpotClient
 	UserManager      storage.UserManager
 	JobManager       storage.JobManager
 	SlackClient      notifications.SlackClient
