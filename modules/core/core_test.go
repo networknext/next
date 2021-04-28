@@ -5223,9 +5223,9 @@ func TestReframeRelays_NearRelayFilter(t *testing.T) {
 
 	directLatency := int32(100)
 	directJitter := int32(5)
-	directPacketLoss := 0.0
+	directPacketLoss := int32(0)
 
-	nextPacketLoss := 0.0
+	nextPacketLoss := int32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{50, 50, 50, 50, 50}
@@ -5394,9 +5394,9 @@ func TestReframeRelays_ReduceJitter_Simple(t *testing.T) {
 
 	directLatency := int32(100)
 	directJitter := int32(5)
-	directPacketLoss := 0.0
+	directPacketLoss := int32(0)
 
-	nextPacketLoss := 0.0
+	nextPacketLoss := int32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{50, 50, 50, 50, 50}
@@ -5504,9 +5504,9 @@ func TestReframeRelays_ReduceJitter_Threshold(t *testing.T) {
 
 	directLatency := int32(100)
 	directJitter := int32(0)
-	directPacketLoss := 0.0
+	directPacketLoss := int32(0)
 
-	nextPacketLoss := 0.0
+	nextPacketLoss := int32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{50, 50, 50, 50, 50}
@@ -5577,9 +5577,9 @@ func TestReframeRelays_ReducePacketLoss_Sporadic(t *testing.T) {
 
 	directLatency := int32(100)
 	directJitter := int32(10)
-	directPacketLoss := 0.0
+	directPacketLoss := int32(0)
 
-	nextPacketLoss := 0.0
+	nextPacketLoss := int32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
@@ -5659,9 +5659,9 @@ func TestReframeRelays_ReducePacketLoss_Continuous(t *testing.T) {
 
 	directLatency := int32(100)
 	directJitter := int32(10)
-	directPacketLoss := 1.0
+	directPacketLoss := int32(1)
 
-	nextPacketLoss := 0.0
+	nextPacketLoss := int32(0)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
@@ -5773,9 +5773,9 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 
 	directLatency := int32(100)
 	directJitter := int32(10)
-	directPacketLoss := 1.0
+	directPacketLoss := int32(1)
 
-	nextPacketLoss := 1.0
+	nextPacketLoss := int32(1)
 
 	sourceRelayIds := relayIds
 	sourceRelayLatency := []int32{10, 50, 50, 50, 50}
