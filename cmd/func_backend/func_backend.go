@@ -261,7 +261,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	if sessionUpdate.FallbackToDirect {
-		fmt.Printf("error: fallback to direct %s\n", incoming.SourceAddr.String())
+		fmt.Printf("error: fallback to direct %s\n", incoming.From.String())
 		return
 	}
 
@@ -691,7 +691,7 @@ func main() {
 			data = data[crypto.PacketHashSize+1 : size]
 
 			var buffer bytes.Buffer
-			packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
+			packet := transport.UDPPacket{From: *fromAddr, Data: data}
 
 			switch packetType {
 			case transport.PacketTypeServerInitRequest:
@@ -819,7 +819,7 @@ func WriteBytes(data []byte, index *int, value []byte, numBytes int) {
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
-	
+
 	fmt.Printf("relay update\n")
 
 	body, err := ioutil.ReadAll(request.Body)
@@ -921,13 +921,13 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	_, ok := backend.relayMap.GetRelayData(relay.Addr.String())
 	if !ok {
 		backend.dirty = true
-	} 
+	}
 
 	relayData := routing.RelayData{
-	       ID:             crypto.HashID(relay_address),
-	       Addr:           *udpAddr,
-	       PublicKey:      crypto.RelayPublicKey[:],
-	       LastUpdateTime: time.Now(),
+		ID:             crypto.HashID(relay_address),
+		Addr:           *udpAddr,
+		PublicKey:      crypto.RelayPublicKey[:],
+		LastUpdateTime: time.Now(),
 	}
 
 	backend.relayMap.UpdateRelayData(relayData)
