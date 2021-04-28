@@ -290,10 +290,6 @@ ifndef FEATURE_NEW_RELAY_BACKEND_ADDRESSES
 export FEATURE_NEW_RELAY_BACKEND_ADDRESSES = 127.0.0.1:30001,127.0.0.1:30002
 endif
 
-ifndef RELAY_GATEWAY_ADDRESS
-export RELAY_GATEWAY_ADDRESS = 127.0.0.1:30000
-endif
-
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"

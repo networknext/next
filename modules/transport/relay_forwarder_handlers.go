@@ -22,6 +22,7 @@ type RelayForwarderParams struct {
 func ForwardPostHandlerFunc(params *RelayForwarderParams) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Record duration time and invocations
 		durationStart := time.Now()
 		defer func() {
 			milliseconds := float64(time.Since(durationStart).Milliseconds())
