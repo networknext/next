@@ -104,7 +104,7 @@ func TestRouteMatrixNoNearRelays(t *testing.T) {
 	routeMatrix := routing.RouteMatrix{}
 
 	nearRelayIDs, nearRelayAddresses := routeMatrix.GetNearRelays(0, 0, 0, 0, 0, core.MaxNearRelays)
-	
+
 	assert.Empty(t, nearRelayIDs)
 	assert.Empty(t, nearRelayAddresses)
 }

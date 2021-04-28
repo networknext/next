@@ -450,18 +450,19 @@ type SessionHandlerState struct {
 
 	output SessionData // sent down to the SDK
 
-	writer        io.Writer
-	packet        SessionUpdatePacket
-	response      SessionResponsePacket
-	packetData    []byte
-	metrics       *metrics.SessionUpdateMetrics
-	database      *routing.DatabaseBinWrapper
-	routeMatrix   *routing.RouteMatrix
-	datacenter    routing.Datacenter
-	buyer         routing.Buyer
-	debug         *string
-	ipLocator     routing.IPLocator
-	staleDuration time.Duration
+	writer           io.Writer
+	packet           SessionUpdatePacket
+	response         SessionResponsePacket
+	packetData       []byte
+	metrics          *metrics.SessionUpdateMetrics
+	database         *routing.DatabaseBinWrapper
+	routeMatrix      *routing.RouteMatrix
+	datacenter       routing.Datacenter
+	buyer            routing.Buyer
+	debug            *string
+	ipLocator        routing.IPLocator
+	staleDuration    time.Duration
+	routerPrivateKey [crypto.KeySize]byte
 
 	// flags
 	signatureCheckFailed bool
@@ -853,11 +854,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		routeDiversity := int32(0)
 
 		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, nearRelayIndices, nearRelayRTT, reframedDestRelays, &routeCost, &routeNumRelays, routeRelays[:], &routeDiversity, state.debug) {
-			
-			// todo
-			/*
-			BuildNextTokens(&sessionData, state.database, &buyer, &packet, routeNumRelays, routeRelays[:], routeMatrix.RelayIDs, routerPrivateKey, &response)
-			*/
+			BuildNextTokens(&state.output, state.database, &state.buyer, &state.packet, routeNumRelays, routeRelays[:], state.routeMatrix.RelayIDs, state.routerPrivateKey, &state.response)
 		}
 
 	} else {
@@ -1510,6 +1507,7 @@ func SessionUpdateHandlerFunc(
 		state.ipLocator = getIPLocator(state.packet.SessionID)
 		state.routeMatrix = getRouteMatrix()
 		state.staleDuration = staleDuration
+		state.routerPrivateKey = routerPrivateKey
 		state.response = SessionResponsePacket{
 			Version:     state.packet.Version,
 			SessionID:   state.packet.SessionID,

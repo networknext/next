@@ -121,7 +121,7 @@ func (entry *NextBeaconPacket) Save() (map[string]bigquery.Value, string, error)
 
 	e["version"] = int(entry.Version)
 	e["timestamp"] = int(entry.Timestamp)
-	e["customerID"] = int(entry.BuyerID)            // todo: should rename to buyer id at some point
+	e["customerID"] = int(entry.BuyerID) // todo: should rename to buyer id at some point
 	e["datacenterID"] = int(entry.DatacenterID)
 	e["userHash"] = int(entry.UserHash)
 	e["addressHash"] = int(entry.AddressHash)
