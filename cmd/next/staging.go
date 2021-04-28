@@ -26,8 +26,11 @@ type StagingServiceConfig struct {
 }
 
 type StagingConfig struct {
+	RelayGateway   StagingServiceConfig `json:relay-gateway"`
 	RelayBackend   StagingServiceConfig `json:"relay-backend"`
 	Relays         StagingServiceConfig `json:"relays"`
+	RelayFrontend  StagingServiceConfig `json:"relay-gateway"`
+	RelayPusher    StagingServiceConfig `json:"relay-pusher"`
 	PortalCruncher StagingServiceConfig `json:"portal-cruncher"`
 	Vanity         StagingServiceConfig `json:"vanity"`
 	Api            StagingServiceConfig `json:"api"`
@@ -41,14 +44,29 @@ type StagingConfig struct {
 }
 
 var DefaultStagingConfig = StagingConfig{
+	RelayGateway: StagingServiceConfig{
+		Cores: 2,
+		Count: -1,
+	},
+
 	RelayBackend: StagingServiceConfig{
-		Cores: 96,
-		Count: 1,
+		Cores: 16,
+		Count: 2,
 	},
 
 	Relays: StagingServiceConfig{
 		Cores: 4,
 		Count: 80,
+	},
+
+	RelayFrontend: StagingServiceConfig{
+		Cores: 1,
+		Count: -1,
+	},
+
+	RelayPusher: StagingServiceConfig{
+		Cores: 1,
+		Count: 1,
 	},
 
 	PortalCruncher: StagingServiceConfig{
@@ -552,6 +570,9 @@ func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-staging", config.Relays))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("portal-cruncher", config.PortalCruncher))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("vanity", config.Vanity))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-pusher", config.RelayPusher))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-gateway-mig", false, config.RelayGateway))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-frontend-mig", false, config.RelayFrontend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("api-mig", false, config.Api))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("analytics-mig", false, config.Analytics))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
