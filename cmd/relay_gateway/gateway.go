@@ -69,8 +69,7 @@ func init() {
 
 	relayArray_internal = database.Relays
 
-	gcpProjectID := backend.GetGCPProjectID()
-	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
+	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal)
 	// backend.DisplayLoadedRelays(relayArray_internal)
 
 	// Store the creator and creation time from the database
@@ -203,7 +202,7 @@ func mainReturnWithCode() int {
 					// Get the new relay array
 					relayArrayNew := databaseNew.Relays
 					// Proceed to fill up the new relay hash
-					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew)
 
 					// Pointer swap the relay array
 					relayArrayMutex.Lock()

@@ -364,16 +364,10 @@ func DecodeBinWrapper(file *os.File, binWrapper *routing.DatabaseBinWrapper) err
 }
 
 // Sorts a relay array and hash via Name
-func SortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay, gcpProjectID string) {
+func SortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay) {
 	sort.SliceStable(relayArray, func(i, j int) bool {
 		return relayArray[i].Name < relayArray[j].Name
 	})
-
-	if gcpProjectID == "" {
-		// TODO: hack override for local testing for single relay
-		// relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
-		// relayArray[0].ID = 0xde0fb1e9a25b1948
-	}
 
 	for i := range relayArray {
 		relayHash[relayArray[i].ID] = relayArray[i]
