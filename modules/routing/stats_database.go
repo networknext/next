@@ -181,18 +181,14 @@ func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 }
 
 func (database *StatsDatabase) GetEntry(relay1, relay2 uint64) *StatsEntryRelay {
+	var relay *StatsEntryRelay
 	database.mu.Lock()
 	entry, entryExists := database.Entries[relay1]
-	database.mu.Unlock()
-
 	if entryExists {
-		relay, relayExists := entry.Relays[relay2]
-		if relayExists {
-			return relay
-		}
+		relay = entry.Relays[relay2]
 	}
-
-	return nil
+	database.mu.Unlock()
+	return relay
 }
 
 func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float32, float32) {
