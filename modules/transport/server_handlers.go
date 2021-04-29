@@ -1256,10 +1256,6 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 
 	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.packet.NextKbpsUp), uint64(state.packet.NextKbpsDown), sliceDuration)
 
-	// todo
-	_ = nextBytesUp
-	_ = nextBytesDown
-
 	/*
 		Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
 
@@ -1267,10 +1263,6 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 	*/
 
 	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
-
-	// todo
-	_ = nextEnvelopeBytesUp
-	_ = nextEnvelopeBytesDown
 
 	/*
 		Calculate the total price for this slice of bandwidth envelope.
@@ -1281,34 +1273,23 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 
 	totalPrice := CalculateTotalPriceNibblins(int(state.input.RouteNumRelays), state.postRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
-	// todo: totalPrice is kinda a bad name. it's really "total cost of this slice"
-
-	// todo
-	_ = totalPrice
-
 	/*
 		Calculate the per-relay hop price that sums up to the total price, minus our rake.
 	*/
 
 	routeRelayPrices := CalculateRouteRelaysPrice(int(state.input.RouteNumRelays), state.postRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
-	// todo: route relay price is a bad name. it's really just the per-relay cost, not price. price is a rate, cost is the absolute value.
-
-	_ = routeRelayPrices
-
-	// todo: what are we even doing here? we are just copying one array to another?
+	// todo: not really sure why we transform it like this? seems wasteful
 	nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
 	for i := 0; i < core.MaxRelaysPerRoute; i++ {
 		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
 	}
 
-	// todo: why?
+	// todo: not really sure why we need to do this...
 	var routeCost int32 = state.input.RouteCost
 	if state.input.RouteCost == math.MaxInt32 {
 		routeCost = 0
 	}
-
-	_ = routeCost
 
 	/*
 		Save the first hop RTT from the client to the first relay in the route.
@@ -1326,8 +1307,6 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 		}
 	}
 
-	_ = nearRelayRTT
-
 	/*
 		If the debug string is set to something by the core routing system, put it in the billing entry.
 	*/
@@ -1336,27 +1315,6 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 	if state.debug != nil {
 		debugString = *state.debug
 	}
-
-	_ = debugString
-
-	// todo: no longer needed?
-	/*
-	var numNearRelays uint8
-	nearRelayIDs := [billing.BillingEntryMaxNearRelays]uint64{}
-	nearRelayRTTs := [billing.BillingEntryMaxNearRelays]float32{}
-	nearRelayJitters := [billing.BillingEntryMaxNearRelays]float32{}
-	nearRelayPacketLosses := [billing.BillingEntryMaxNearRelays]float32{}
-
-	if buyer.Debug {
-		numNearRelays = uint8(nearRelays.Count)
-		for i := uint8(0); i < numNearRelays; i++ {
-			nearRelayIDs[i] = nearRelays.IDs[i]
-			nearRelayRTTs[i] = float32(nearRelays.RTTs[i])
-			nearRelayJitters[i] = float32(nearRelays.Jitters[i])
-			nearRelayPacketLosses[i] = float32(nearRelays.PacketLosses[i])
-		}
-	}
-	*/
 
 	/*
 		Clamp jitter between client and server at 1000. 
@@ -1462,105 +1420,105 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 
 	// todo
 	/*
-		// todo: we should try to avoid allocation here
-		hops := make([]RelayHop, sessionData.RouteNumRelays)
-		for i := int32(0); i < sessionData.RouteNumRelays; i++ {
-			hops[i] = RelayHop{
-				ID:   sessionData.RouteRelayIDs[i],
-				Name: routeRelayNames[i],
-			}
+	// todo: we should try to avoid allocation here
+	hops := make([]RelayHop, sessionData.RouteNumRelays)
+	for i := int32(0); i < sessionData.RouteNumRelays; i++ {
+		hops[i] = RelayHop{
+			ID:   sessionData.RouteRelayIDs[i],
+			Name: routeRelayNames[i],
 		}
+	}
 
-		// todo: we should try to avoid allocation here
-		nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
-		for i := range nearRelayPortalData {
-			nearRelayPortalData[i] = NearRelayPortalData{
-				ID:   nearRelays.IDs[i],
-				Name: nearRelays.Names[i],
-				ClientStats: routing.Stats{
-					RTT:        float64(nearRelays.RTTs[i]),
-					Jitter:     float64(nearRelays.Jitters[i]),
-					PacketLoss: float64(nearRelays.PacketLosses[i]),
-				},
-			}
-		}
-
-		// todo: sorting below should be done by the portal instead. here we are in hot path and must do as little work as possible
-
-		// Sort the near relays for display purposes
-		sort.Slice(nearRelayPortalData, func(i, j int) bool {
-			return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
-		})
-
-		var deltaRTT float32
-		if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
-			deltaRTT = packet.DirectRTT - packet.NextRTT
-		}
-
-		predictedRTT := float64(sessionData.RouteCost)
-		if sessionData.RouteCost >= routing.InvalidRouteValue {
-			predictedRTT = 0
-		}
-
-		*portalData = SessionPortalData{
-			Meta: SessionMeta{
-				ID:              packet.SessionID,
-				UserHash:        packet.UserHash,
-				DatacenterName:  datacenter.Name,
-				DatacenterAlias: datacenter.AliasName,
-				OnNetworkNext:   packet.Next,
-				NextRTT:         float64(packet.NextRTT),
-				DirectRTT:       float64(packet.DirectRTT),
-				DeltaRTT:        float64(deltaRTT),
-				Location:        sessionData.Location,
-				ClientAddr:      packet.ClientAddress.String(),
-				ServerAddr:      packet.ServerAddress.String(),
-				Hops:            hops,
-				SDK:             packet.Version.String(),
-				Connection:      uint8(packet.ConnectionType),
-				NearbyRelays:    nearRelayPortalData,
-				Platform:        uint8(packet.PlatformType),
-				BuyerID:         packet.BuyerID,
+	// todo: we should try to avoid allocation here
+	nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
+	for i := range nearRelayPortalData {
+		nearRelayPortalData[i] = NearRelayPortalData{
+			ID:   nearRelays.IDs[i],
+			Name: nearRelays.Names[i],
+			ClientStats: routing.Stats{
+				RTT:        float64(nearRelays.RTTs[i]),
+				Jitter:     float64(nearRelays.Jitters[i]),
+				PacketLoss: float64(nearRelays.PacketLosses[i]),
 			},
-			Slice: SessionSlice{
-				Timestamp: time.Now(),
-				Next: routing.Stats{
-					RTT:        float64(packet.NextRTT),
-					Jitter:     float64(packet.NextJitter),
-					PacketLoss: float64(packet.NextPacketLoss),
-				},
-				Direct: routing.Stats{
-					RTT:        float64(packet.DirectRTT),
-					Jitter:     float64(packet.DirectJitter),
-					PacketLoss: float64(packet.DirectPacketLoss),
-				},
-				Predicted: routing.Stats{
-					RTT: predictedRTT,
-				},
-				ClientToServerStats: routing.Stats{
-					Jitter:     float64(packet.JitterClientToServer),
-					PacketLoss: float64(slicePacketLossClientToServer),
-				},
-				ServerToClientStats: routing.Stats{
-					Jitter:     float64(packet.JitterServerToClient),
-					PacketLoss: float64(slicePacketLossServerToClient),
-				},
-				RouteDiversity: uint32(routeDiversity),
-				Envelope: routing.Envelope{
-					Up:   int64(packet.NextKbpsUp),
-					Down: int64(packet.NextKbpsDown),
-				},
-				IsMultiPath:       sessionData.RouteState.Multipath,
-				IsTryBeforeYouBuy: !sessionData.RouteState.Committed,
-				OnNetworkNext:     packet.Next,
-			},
-			Point: SessionMapPoint{
-				Latitude:  float64(sessionData.Location.Latitude),
-				Longitude: float64(sessionData.Location.Longitude),
-			},
-			LargeCustomer:	   buyer.InternalConfig.LargeCustomer,
-			EverOnNext:    sessionData.EverOnNext,
 		}
+	}
+
+	// todo: sorting below should be done by the portal instead. here we are in hot path and must do as little work as possible
+
+	// Sort the near relays for display purposes
+	sort.Slice(nearRelayPortalData, func(i, j int) bool {
+		return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
+	})
+
+	var deltaRTT float32
+	if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
+		deltaRTT = packet.DirectRTT - packet.NextRTT
+	}
+
+	predictedRTT := float64(sessionData.RouteCost)
+	if sessionData.RouteCost >= routing.InvalidRouteValue {
+		predictedRTT = 0
+	}
+
+	*portalData = SessionPortalData{
+		Meta: SessionMeta{
+			ID:              packet.SessionID,
+			UserHash:        packet.UserHash,
+			DatacenterName:  datacenter.Name,
+			DatacenterAlias: datacenter.AliasName,
+			OnNetworkNext:   packet.Next,
+			NextRTT:         float64(packet.NextRTT),
+			DirectRTT:       float64(packet.DirectRTT),
+			DeltaRTT:        float64(deltaRTT),
+			Location:        sessionData.Location,
+			ClientAddr:      packet.ClientAddress.String(),
+			ServerAddr:      packet.ServerAddress.String(),
+			Hops:            hops,
+			SDK:             packet.Version.String(),
+			Connection:      uint8(packet.ConnectionType),
+			NearbyRelays:    nearRelayPortalData,
+			Platform:        uint8(packet.PlatformType),
+			BuyerID:         packet.BuyerID,
+		},
+		Slice: SessionSlice{
+			Timestamp: time.Now(),
+			Next: routing.Stats{
+				RTT:        float64(packet.NextRTT),
+				Jitter:     float64(packet.NextJitter),
+				PacketLoss: float64(packet.NextPacketLoss),
+			},
+			Direct: routing.Stats{
+				RTT:        float64(packet.DirectRTT),
+				Jitter:     float64(packet.DirectJitter),
+				PacketLoss: float64(packet.DirectPacketLoss),
+			},
+			Predicted: routing.Stats{
+				RTT: predictedRTT,
+			},
+			ClientToServerStats: routing.Stats{
+				Jitter:     float64(packet.JitterClientToServer),
+				PacketLoss: float64(slicePacketLossClientToServer),
+			},
+			ServerToClientStats: routing.Stats{
+				Jitter:     float64(packet.JitterServerToClient),
+				PacketLoss: float64(slicePacketLossServerToClient),
+			},
+			RouteDiversity: uint32(routeDiversity),
+			Envelope: routing.Envelope{
+				Up:   int64(packet.NextKbpsUp),
+				Down: int64(packet.NextKbpsDown),
+			},
+			IsMultiPath:       sessionData.RouteState.Multipath,
+			IsTryBeforeYouBuy: !sessionData.RouteState.Committed,
+			OnNetworkNext:     packet.Next,
+		},
+		Point: SessionMapPoint{
+			Latitude:  float64(sessionData.Location.Latitude),
+			Longitude: float64(sessionData.Location.Longitude),
+		},
+		LargeCustomer:	   buyer.InternalConfig.LargeCustomer,
+		EverOnNext:    sessionData.EverOnNext,
+	}
 	*/
 
 	// todo
