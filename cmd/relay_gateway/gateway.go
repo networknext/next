@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/networknext/backend/modules/backend"
@@ -91,7 +92,7 @@ func mainReturnWithCode() int {
 	startTime := time.Now().In(est)
 
 	// Setup the service
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	gcpProjectID := backend.GetGCPProjectID()
 
@@ -153,22 +154,6 @@ func mainReturnWithCode() int {
 		// Used to watch over file creation and modification
 		directoryPath := filepath.Dir(absPath)
 
-		// todo: disabled because it doesn't build on macos
-		/*
-		   // Create channel to store notifications of file changing
-		   // Use a size of 2 to ensure a change is detected even with io.EOF error
-		   fileChan := make(chan notify.EventInfo, 2)
-
-		   // Check for Create and InModify events because cloud scheduler will be deleting and replacing each file with updates
-		   // Create covers the case where a file is explicitly deleted and then re-added
-		   // InModify covers the case where a file is replaced with the same filename (i.e. using mv or cp)
-		   if err := notify.Watch(directoryPath, fileChan, notify.Create, notify.InModify); err != nil {
-		       level.Error(logger).Log("msg", fmt.Sprintf("could not create watchman on %s", directoryPath), "err", err)
-		       return 1
-		   }
-		   defer notify.Stop(fileChan)
-		*/
-
 		ticker := time.NewTicker(cfg.BinSyncInterval)
 
 		// Setup goroutine to watch for replaced file and update relayArray_internal and relayHash_internal
@@ -229,8 +214,6 @@ func mainReturnWithCode() int {
 					relayHashMutex.Lock()
 					relayHash_internal = relayHashNew
 					relayHashMutex.Unlock()
-
-					// TODO: update the author, timestamp, and env for the RelaysBinVersionFunc handler using the other fields in databaseNew
 				}
 			}
 		}()
@@ -242,6 +225,9 @@ func mainReturnWithCode() int {
 	// Create a channel to hold incoming relay update requests
 	updateChan := make(chan []byte, cfg.ChannelBufferSize)
 
+	// Create a waitgroup to manage clean shutdown
+	var wg sync.WaitGroup
+
 	// Prioritize using HTTP to batch-send updates to relay backends
 	if cfg.UseHTTP {
 		// Create a Gateway HTTP Client
@@ -251,13 +237,8 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		go func() {
-			// Start up goroutines to POST to relay backends
-			if err := gatewayHTTPClient.Start(ctx); err != nil {
-				level.Error(logger).Log("err", err)
-				errChan <- err
-			}
-		}()
+		// Start up goroutines to POST to relay backends
+		go gatewayHTTPClient.Start(ctx, &wg)
 
 	} else {
 		// TODO: implement ZeroMQ functionality
@@ -406,14 +387,26 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case <-sigint:
+	case <-termChan: // Exit with an error code of 0 if we receive SIGINT or SIGTERM
+		level.Debug(logger).Log("msg", "Received shutdown signal")
+		fmt.Println("Received shutdown signal.")
+
+		cancel()
+		// Wait for essential goroutines to finish up
+		wg.Wait()
+
+		level.Debug(logger).Log("msg", "Successfully shutdown.")
+		fmt.Println("Successfully shutdown.")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
-		// TODO: implement clean shutdown to flush update requests in buffer
+		// Still let essential goroutines finish even though we got an error
+		cancel()
+		wg.Wait()
 		return 1
 	}
 }
