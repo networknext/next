@@ -76,6 +76,10 @@ blocks:
           commands:
             - make build-relay-frontend-artifacts-staging
             - make publish-relay-frontend-artifacts-staging
+        - name: Relay Forwarder
+          commands:
+            - make build-relay-forwarder-artifacts-staging
+            - make publish-relay-forwarder-artifacts-staging
         - name: Server Backend
           commands:
             - make build-server-backend-artifacts-staging
