@@ -175,13 +175,13 @@ func (packet *NextBackendServerInitResponsePacket) Serialize(stream Stream) erro
 // -------------------------------------------------------------------------------------
 
 type NextBackendServerUpdatePacket struct {
-	VersionMajor          uint32
-	VersionMinor          uint32
-	VersionPatch          uint32
-	CustomerId            uint64
-	DatacenterId          uint64
-	NumSessions           uint32
-	ServerAddress 		  net.UDPAddr
+	VersionMajor  uint32
+	VersionMinor  uint32
+	VersionPatch  uint32
+	CustomerId    uint64
+	DatacenterId  uint64
+	NumSessions   uint32
+	ServerAddress net.UDPAddr
 }
 
 func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
@@ -535,9 +535,9 @@ type RelayEntry struct {
 }
 
 type ServerEntry struct {
-	address    		*net.UDPAddr
-	publicKey  		[]byte
-	lastUpdate 		int64
+	address    *net.UDPAddr
+	publicKey  []byte
+	lastUpdate int64
 }
 
 type SessionEntry struct {
@@ -809,7 +809,7 @@ func CompareTokens(a []byte, b []byte) bool {
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
-	
+
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return

@@ -28,7 +28,7 @@ type CostMatrix struct {
 }
 
 func (m *CostMatrix) Serialize(stream encoding.Stream) error {
-	
+
 	stream.SerializeUint32(&m.Version)
 
 	numRelays := uint32(len(m.RelayIDs))
