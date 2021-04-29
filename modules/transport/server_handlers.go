@@ -501,9 +501,9 @@ type SessionHandlerState struct {
 	postNearRelayIDs        [core.MaxNearRelays]uint64
 	postNearRelayNames      [core.MaxNearRelays]string
 	postNearRelayAddresses  [core.MaxNearRelays]net.UDPAddr
-	postNearRelayRTT        [core.MaxNearRelays]int32
-	postNearRelayJitter     [core.MaxNearRelays]int32
-	postNearRelayPacketLoss [core.MaxNearRelays]int32
+	postNearRelayRTT        [core.MaxNearRelays]float32
+	postNearRelayJitter     [core.MaxNearRelays]float32
+	postNearRelayPacketLoss [core.MaxNearRelays]float32
 	postRouteRelayNames     [core.MaxRelaysPerRoute]string
 	postRouteRelaySellers   [core.MaxRelaysPerRoute]routing.Seller
 
@@ -1216,8 +1216,8 @@ func buildPostNearRelayData(state *SessionHandlerState) {
 		state.postNearRelayIDs[i] = relayID
 		state.postNearRelayNames[i] = state.routeMatrix.RelayNames[relayIndex]
 		state.postNearRelayAddresses[i] = state.routeMatrix.RelayAddresses[relayIndex]
-		state.postNearRelayRTT[i] = state.input.RouteState.NearRelayRTT[i]
-		state.postNearRelayJitter[i] = state.input.RouteState.NearRelayJitter[i]
+		state.postNearRelayRTT[i] = float32(state.input.RouteState.NearRelayRTT[i])
+		state.postNearRelayJitter[i] = float32(state.input.RouteState.NearRelayJitter[i])
 
 		/*
 			We have to be a bit tricky to get packet loss for near relays,
@@ -1230,7 +1230,7 @@ func buildPostNearRelayData(state *SessionHandlerState) {
 		*/
 
 		index := (state.input.RouteState.PLHistoryIndex + 7) % 8
-		state.postNearRelayPacketLoss[i] = int32(state.input.RouteState.NearRelayPLHistory[index])
+		state.postNearRelayPacketLoss[i] = float32(state.input.RouteState.NearRelayPLHistory[index])
 	}
 }
 
@@ -1339,121 +1339,123 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 
 	_ = debugString
 
-	// todo
+	// todo: no longer needed?
 	/*
+	var numNearRelays uint8
+	nearRelayIDs := [billing.BillingEntryMaxNearRelays]uint64{}
+	nearRelayRTTs := [billing.BillingEntryMaxNearRelays]float32{}
+	nearRelayJitters := [billing.BillingEntryMaxNearRelays]float32{}
+	nearRelayPacketLosses := [billing.BillingEntryMaxNearRelays]float32{}
 
-		var numNearRelays uint8
-		nearRelayIDs := [billing.BillingEntryMaxNearRelays]uint64{}
-		nearRelayRTTs := [billing.BillingEntryMaxNearRelays]float32{}
-		nearRelayJitters := [billing.BillingEntryMaxNearRelays]float32{}
-		nearRelayPacketLosses := [billing.BillingEntryMaxNearRelays]float32{}
-
-		if buyer.Debug {
-			numNearRelays = uint8(nearRelays.Count)
-			for i := uint8(0); i < numNearRelays; i++ {
-				nearRelayIDs[i] = nearRelays.IDs[i]
-				nearRelayRTTs[i] = float32(nearRelays.RTTs[i])
-				nearRelayJitters[i] = float32(nearRelays.Jitters[i])
-				nearRelayPacketLosses[i] = float32(nearRelays.PacketLosses[i])
-			}
+	if buyer.Debug {
+		numNearRelays = uint8(nearRelays.Count)
+		for i := uint8(0); i < numNearRelays; i++ {
+			nearRelayIDs[i] = nearRelays.IDs[i]
+			nearRelayRTTs[i] = float32(nearRelays.RTTs[i])
+			nearRelayJitters[i] = float32(nearRelays.Jitters[i])
+			nearRelayPacketLosses[i] = float32(nearRelays.PacketLosses[i])
 		}
-
-		// // todo
-		// slicePacketLoss := slicePacketLossClientToServer
-		// if slicePacketLossServerToClient > slicePacketLossClientToServer {
-		// 	slicePacketLoss = slicePacketLossServerToClient
-		// }
-
-		// Clamp jitter between client <-> server at 1000 (it is meaningless beyond that)
-		if packet.JitterClientToServer > 1000.0 {
-			packet.JitterClientToServer = float32(1000)
-		}
-		if packet.JitterServerToClient > 1000.0 {
-			packet.JitterServerToClient = float32(1000)
-		}
-
-		billingEntry := &billing.BillingEntry{
-			Timestamp:                       uint64(time.Now().Unix()),
-			BuyerID:                         packet.BuyerID,
-			UserHash:                        packet.UserHash,
-			SessionID:                       packet.SessionID,
-			SliceNumber:                     packet.SliceNumber,
-			DirectRTT:                       packet.DirectRTT,
-			DirectJitter:                    packet.DirectJitter,
-			DirectPacketLoss:                packet.DirectPacketLoss,
-			Next:                            packet.Next,
-			NextRTT:                         packet.NextRTT,
-			NextJitter:                      packet.NextJitter,
-			NextPacketLoss:                  packet.NextPacketLoss,
-			NumNextRelays:                   uint8(sessionData.RouteNumRelays),
-			NextRelays:                      sessionData.RouteRelayIDs,
-			TotalPrice:                      uint64(totalPrice),
-			ClientToServerPacketsLost:       packet.PacketsLostClientToServer,
-			ServerToClientPacketsLost:       packet.PacketsLostServerToClient,
-			Committed:                       packet.Committed,
-			Flagged:                         packet.Reported,
-			Multipath:                       sessionData.RouteState.Multipath,
-			Initial:                         sessionData.Initial,
-			NextBytesUp:                     nextBytesUp,
-			NextBytesDown:                   nextBytesDown,
-			EnvelopeBytesUp:                 nextEnvelopeBytesUp,
-			EnvelopeBytesDown:               nextEnvelopeBytesDown,
-			DatacenterID:                    datacenter.ID,
-			RTTReduction:                    sessionData.RouteState.ReduceLatency,
-			PacketLossReduction:             sessionData.RouteState.ReducePacketLoss,
-			NextRelaysPrice:                 nextRelaysPrice,
-			Latitude:                        float32(sessionData.Location.Latitude),
-			Longitude:                       float32(sessionData.Location.Longitude),
-			ISP:                             sessionData.Location.ISP,
-			ABTest:                          sessionData.RouteState.ABTest,
-			RouteDecision:                   0, // deprecated
-			ConnectionType:                  uint8(packet.ConnectionType),
-			PlatformType:                    uint8(packet.PlatformType),
-			SDKVersion:                      packet.Version.String(),
-			PacketLoss:                      state.realPacketLoss,
-			PredictedNextRTT:                float32(routeCost),
-			MultipathVetoed:                 sessionData.RouteState.MultipathOverload,
-			UseDebug:                        buyer.Debug,
-			Debug:                           debugString,
-			FallbackToDirect:                packet.FallbackToDirect,
-			ClientFlags:                     packet.Flags,
-			UserFlags:                       packet.UserFlags,
-			NearRelayRTT:                    nearRelayRTT,
-			PacketsOutOfOrderClientToServer: packet.PacketsOutOfOrderClientToServer,
-			PacketsOutOfOrderServerToClient: packet.PacketsOutOfOrderServerToClient,
-			JitterClientToServer:            packet.JitterClientToServer,
-			JitterServerToClient:            packet.JitterServerToClient,
-			NumNearRelays:                   numNearRelays,
-			NearRelayIDs:                    nearRelayIDs,
-			NearRelayRTTs:                   nearRelayRTTs,
-			NearRelayJitters:                nearRelayJitters,
-			NearRelayPacketLosses:           nearRelayPacketLosses,
-			RelayWentAway:                   sessionData.RouteState.RelayWentAway,
-			RouteLost:                       sessionData.RouteState.RouteLost,
-			NumTags:                         uint8(packet.NumTags),
-			Tags:                            packet.Tags,
-			Mispredicted:                    sessionData.RouteState.Mispredict,
-			Vetoed:                          sessionData.RouteState.Veto,
-			LatencyWorse:                    sessionData.RouteState.LatencyWorse,
-			NoRoute:                         sessionData.RouteState.NoRoute,
-			NextLatencyTooHigh:              sessionData.RouteState.NextLatencyTooHigh,
-			RouteChanged:                    sessionData.RouteChanged,
-			CommitVeto:                      sessionData.RouteState.CommitVeto,
-			RouteDiversity:                  uint32(routeDiversity),
-			LackOfDiversity:                 sessionData.RouteState.LackOfDiversity,
-			Pro:                             buyer.RouteShader.ProMode && !sessionData.RouteState.MultipathRestricted,
-			MultipathRestricted:             sessionData.RouteState.MultipathRestricted,
-			ClientToServerPacketsSent:       packet.PacketsSentClientToServer,
-			ServerToClientPacketsSent:       packet.PacketsSentServerToClient,
-			BuyerNotLive:                    buyerNotLive,
-			UnknownDatacenter:               unknownDatacenter,
-			DatacenterNotEnabled:            datacenterNotEnabled,
-			StaleRouteMatrix:                staleRouteMatrix,
-		}
+	}
 	*/
 
-	// todo
-	return nil
+	/*
+		Clamp jitter between client and server at 1000. 
+
+		It is meaningless beyond that...
+	*/
+
+	if state.packet.JitterClientToServer > 1000.0 {
+		state.packet.JitterClientToServer = float32(1000)
+	}
+
+	if state.packet.JitterServerToClient > 1000.0 {
+		state.packet.JitterServerToClient = float32(1000)
+	}
+
+	/*
+		Create the billing entry and return it to the caller
+	*/
+
+	billingEntry := billing.BillingEntry{
+		Timestamp:                       uint64(time.Now().Unix()),
+		BuyerID:                         state.packet.BuyerID,
+		UserHash:                        state.packet.UserHash,
+		SessionID:                       state.packet.SessionID,
+		SliceNumber:                     state.packet.SliceNumber,
+		DirectRTT:                       state.packet.DirectRTT,
+		DirectJitter:                    state.packet.DirectJitter,
+		DirectPacketLoss:                state.packet.DirectPacketLoss,
+		Next:                            state.packet.Next,
+		NextRTT:                         state.packet.NextRTT,
+		NextJitter:                      state.packet.NextJitter,
+		NextPacketLoss:                  state.packet.NextPacketLoss,
+		NumNextRelays:                   uint8(state.input.RouteNumRelays),
+		NextRelays:                      state.input.RouteRelayIDs,
+		TotalPrice:                      uint64(totalPrice),
+		ClientToServerPacketsLost:       state.packet.PacketsLostClientToServer,
+		ServerToClientPacketsLost:       state.packet.PacketsLostServerToClient,
+		Committed:                       state.packet.Committed,
+		Flagged:                         state.packet.Reported,
+		Multipath:                       state.input.RouteState.Multipath,
+		Initial:                         state.input.Initial,
+		NextBytesUp:                     nextBytesUp,
+		NextBytesDown:                   nextBytesDown,
+		EnvelopeBytesUp:                 nextEnvelopeBytesUp,
+		EnvelopeBytesDown:               nextEnvelopeBytesDown,
+		DatacenterID:                    state.datacenter.ID,
+		RTTReduction:                    state.input.RouteState.ReduceLatency,
+		PacketLossReduction:             state.input.RouteState.ReducePacketLoss,
+		NextRelaysPrice:                 nextRelaysPrice,
+		Latitude:                        float32(state.input.Location.Latitude),
+		Longitude:                       float32(state.input.Location.Longitude),
+		ISP:                             state.input.Location.ISP,
+		ABTest:                          state.input.RouteState.ABTest,
+		RouteDecision:                   0, // deprecated
+		ConnectionType:                  uint8(state.packet.ConnectionType),
+		PlatformType:                    uint8(state.packet.PlatformType),
+		SDKVersion:                      state.packet.Version.String(),
+		PacketLoss:                      state.realPacketLoss,
+		PredictedNextRTT:                float32(routeCost),
+		MultipathVetoed:                 state.input.RouteState.MultipathOverload,
+		UseDebug:                        state.buyer.Debug,
+		Debug:                           debugString,
+		FallbackToDirect:                state.packet.FallbackToDirect,
+		ClientFlags:                     state.packet.Flags,
+		UserFlags:                       state.packet.UserFlags,
+		NearRelayRTT:                    nearRelayRTT,
+		PacketsOutOfOrderClientToServer: state.packet.PacketsOutOfOrderClientToServer,
+		PacketsOutOfOrderServerToClient: state.packet.PacketsOutOfOrderServerToClient,
+		JitterClientToServer:            state.packet.JitterClientToServer,
+		JitterServerToClient:            state.packet.JitterServerToClient,
+		NumNearRelays:                   uint8(state.postNearRelayCount),
+		NearRelayIDs:                    state.postNearRelayIDs,
+		NearRelayRTTs:                   state.postNearRelayRTT,
+		NearRelayJitters:                state.postNearRelayJitter,
+		NearRelayPacketLosses:           state.postNearRelayPacketLoss,
+		RelayWentAway:                   state.input.RouteState.RelayWentAway,
+		RouteLost:                       state.input.RouteState.RouteLost,
+		NumTags:                         uint8(state.packet.NumTags),
+		Tags:                            state.packet.Tags,
+		Mispredicted:                    state.input.RouteState.Mispredict,
+		Vetoed:                          state.input.RouteState.Veto,
+		LatencyWorse:                    state.input.RouteState.LatencyWorse,
+		NoRoute:                         state.input.RouteState.NoRoute,
+		NextLatencyTooHigh:              state.input.RouteState.NextLatencyTooHigh,
+		RouteChanged:                    state.input.RouteChanged,
+		CommitVeto:                      state.input.RouteState.CommitVeto,
+		RouteDiversity:                  uint32(state.routeDiversity),
+		LackOfDiversity:                 state.input.RouteState.LackOfDiversity,
+		Pro:                             state.buyer.RouteShader.ProMode && !state.input.RouteState.MultipathRestricted,
+		MultipathRestricted:             state.input.RouteState.MultipathRestricted,
+		ClientToServerPacketsSent:       state.packet.PacketsSentClientToServer,
+		ServerToClientPacketsSent:       state.packet.PacketsSentServerToClient,
+		BuyerNotLive:                    state.buyerNotLive,
+		UnknownDatacenter:               state.unknownDatacenter,
+		DatacenterNotEnabled:            state.datacenterNotEnabled,
+		StaleRouteMatrix:                state.staleRouteMatrix,
+	}
+
+	return &billingEntry
 }
 
 func buildPortalData(state *SessionHandlerState) *SessionPortalData {
