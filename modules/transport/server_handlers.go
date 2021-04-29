@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"net"
+	"sort"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -447,7 +448,7 @@ func GetRouteAddressesAndPublicKeys(
 
 type SessionHandlerState struct {
 
-	/* 
+	/*
 		Convenience state struct for the session update handler.
 
 		We put all the state in here so it's easy to call out to functions to do work.
@@ -455,8 +456,8 @@ type SessionHandlerState struct {
 		Otherwise we have to pass a million parameters into every function and it gets old fast.
 	*/
 
-	input  SessionData // sent up from the SDK. previous slice.
-	
+	input SessionData // sent up from the SDK. previous slice.
+
 	output SessionData // sent down to the SDK. current slice.
 
 	writer             io.Writer
@@ -497,15 +498,17 @@ type SessionHandlerState struct {
 	destRelays       []int32
 
 	// for session post (billing, portal etc...)
-	postNearRelayCount      int
-	postNearRelayIDs        [core.MaxNearRelays]uint64
-	postNearRelayNames      [core.MaxNearRelays]string
-	postNearRelayAddresses  [core.MaxNearRelays]net.UDPAddr
-	postNearRelayRTT        [core.MaxNearRelays]float32
-	postNearRelayJitter     [core.MaxNearRelays]float32
-	postNearRelayPacketLoss [core.MaxNearRelays]float32
-	postRouteRelayNames     [core.MaxRelaysPerRoute]string
-	postRouteRelaySellers   [core.MaxRelaysPerRoute]routing.Seller
+	postNearRelayCount               int
+	postNearRelayIDs                 [core.MaxNearRelays]uint64
+	postNearRelayNames               [core.MaxNearRelays]string
+	postNearRelayAddresses           [core.MaxNearRelays]net.UDPAddr
+	postNearRelayRTT                 [core.MaxNearRelays]float32
+	postNearRelayJitter              [core.MaxNearRelays]float32
+	postNearRelayPacketLoss          [core.MaxNearRelays]float32
+	postRouteRelayNames              [core.MaxRelaysPerRoute]string
+	postRouteRelaySellers            [core.MaxRelaysPerRoute]routing.Seller
+	postRealPacketLossClientToServer float32
+	postRealPacketLossServerToClient float32
 
 	// todo
 	/*
@@ -700,6 +703,9 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 	if realPacketLossServerToClient > realPacketLossClientToServer {
 		state.realPacketLoss = realPacketLossServerToClient
 	}
+
+	state.postRealPacketLossClientToServer = realPacketLossClientToServer
+	state.postRealPacketLossServerToClient = realPacketLossServerToClient
 }
 
 func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
@@ -1124,12 +1130,12 @@ func sessionPost(state *SessionHandlerState) {
 
 	// todo: bring back multipath veto, but fix the weird copy the entire multipath database thing first =p
 	/*
-	if packet.Next && sessionData.RouteState.MultipathOverload {
-		if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
-			level.Error(postSessionHandler.logger).Log("err", err)
+		if packet.Next && sessionData.RouteState.MultipathOverload {
+			if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
+				level.Error(postSessionHandler.logger).Log("err", err)
+			}
 		}
-	}
-	*/	
+	*/
 
 	/*
 		Build route relay data (for portal, billing etc...)
@@ -1251,7 +1257,7 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 		Calculate the actual amounts of bytes sent up and down along the network next route
 		for the duration of the previous slice (just being reported up from the SDK).
 
-		This is *not* what we bill on. 
+		This is *not* what we bill on.
 	*/
 
 	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.packet.NextKbpsUp), uint64(state.packet.NextKbpsDown), sliceDuration)
@@ -1317,7 +1323,7 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 	}
 
 	/*
-		Clamp jitter between client and server at 1000. 
+		Clamp jitter between client and server at 1000.
 
 		It is meaningless beyond that...
 	*/
@@ -1418,111 +1424,135 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 
 func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 
-	// todo
 	/*
-	// todo: we should try to avoid allocation here
-	hops := make([]RelayHop, sessionData.RouteNumRelays)
-	for i := int32(0); i < sessionData.RouteNumRelays; i++ {
+		Build the relay hops for the portal
+	*/
+
+	// todo: we should try to avoid allocations
+	hops := make([]RelayHop, state.input.RouteNumRelays)
+	for i := int32(0); i < state.input.RouteNumRelays; i++ {
 		hops[i] = RelayHop{
-			ID:   sessionData.RouteRelayIDs[i],
-			Name: routeRelayNames[i],
+			ID:   state.input.RouteRelayIDs[i],
+			Name: state.postRouteRelayNames[i],
 		}
 	}
 
-	// todo: we should try to avoid allocation here
-	nearRelayPortalData := make([]NearRelayPortalData, nearRelays.Count)
+	/*
+		Build the near relay data for the portal
+	*/
+
+	// todo: we should try to avoid allocations
+	nearRelayPortalData := make([]NearRelayPortalData, state.postNearRelayCount)
 	for i := range nearRelayPortalData {
 		nearRelayPortalData[i] = NearRelayPortalData{
-			ID:   nearRelays.IDs[i],
-			Name: nearRelays.Names[i],
+			ID:   state.postNearRelayIDs[i],
+			Name: state.postNearRelayNames[i],
 			ClientStats: routing.Stats{
-				RTT:        float64(nearRelays.RTTs[i]),
-				Jitter:     float64(nearRelays.Jitters[i]),
-				PacketLoss: float64(nearRelays.PacketLosses[i]),
+				RTT:        float64(state.postNearRelayRTT[i]),
+				Jitter:     float64(state.postNearRelayJitter[i]),
+				PacketLoss: float64(state.postNearRelayPacketLoss[i]),
 			},
 		}
 	}
 
-	// todo: sorting below should be done by the portal instead. here we are in hot path and must do as little work as possible
+	/*
+		Sort the near relays for display purposes
+	*/
 
-	// Sort the near relays for display purposes
+	// todo: it would be much better to sort this in the portal service on-demand
+	// this is the hot path, and the cost of sorting here for every single slice
+	// is much higher than just sorting near relays when we serve them up for
+	// the portal.
 	sort.Slice(nearRelayPortalData, func(i, j int) bool {
 		return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
 	})
 
+	/*
+		Calculate the delta between network next and direct.
+
+		Clamp the delta RTT above 0. This is used for the top sessions page.
+	*/
+
 	var deltaRTT float32
-	if packet.Next && packet.NextRTT != 0 && packet.DirectRTT >= packet.NextRTT {
-		deltaRTT = packet.DirectRTT - packet.NextRTT
+	if state.packet.Next && state.packet.NextRTT != 0 && state.packet.DirectRTT >= state.packet.NextRTT {
+		deltaRTT = state.packet.DirectRTT - state.packet.NextRTT
 	}
 
-	predictedRTT := float64(sessionData.RouteCost)
-	if sessionData.RouteCost >= routing.InvalidRouteValue {
+	/*
+		Predicted RTT is the round trip time that we predict, even if we don't
+		take network next. It's a conservative prodiction.
+	*/
+
+	predictedRTT := float64(state.input.RouteCost)
+	if state.input.RouteCost >= routing.InvalidRouteValue {
 		predictedRTT = 0
 	}
 
-	*portalData = SessionPortalData{
+	/*
+		Build the portal data and return it to the caller.
+	*/
+
+	portalData := SessionPortalData{
 		Meta: SessionMeta{
-			ID:              packet.SessionID,
-			UserHash:        packet.UserHash,
-			DatacenterName:  datacenter.Name,
-			DatacenterAlias: datacenter.AliasName,
-			OnNetworkNext:   packet.Next,
-			NextRTT:         float64(packet.NextRTT),
-			DirectRTT:       float64(packet.DirectRTT),
+			ID:              state.packet.SessionID,
+			UserHash:        state.packet.UserHash,
+			DatacenterName:  state.datacenter.Name,
+			DatacenterAlias: state.datacenter.AliasName,
+			OnNetworkNext:   state.packet.Next,
+			NextRTT:         float64(state.packet.NextRTT),
+			DirectRTT:       float64(state.packet.DirectRTT),
 			DeltaRTT:        float64(deltaRTT),
-			Location:        sessionData.Location,
-			ClientAddr:      packet.ClientAddress.String(),
-			ServerAddr:      packet.ServerAddress.String(),
+			Location:        state.input.Location,
+			ClientAddr:      state.packet.ClientAddress.String(),
+			ServerAddr:      state.packet.ServerAddress.String(),
 			Hops:            hops,
-			SDK:             packet.Version.String(),
-			Connection:      uint8(packet.ConnectionType),
+			SDK:             state.packet.Version.String(),
+			Connection:      uint8(state.packet.ConnectionType),
 			NearbyRelays:    nearRelayPortalData,
-			Platform:        uint8(packet.PlatformType),
-			BuyerID:         packet.BuyerID,
+			Platform:        uint8(state.packet.PlatformType),
+			BuyerID:         state.packet.BuyerID,
 		},
 		Slice: SessionSlice{
 			Timestamp: time.Now(),
 			Next: routing.Stats{
-				RTT:        float64(packet.NextRTT),
-				Jitter:     float64(packet.NextJitter),
-				PacketLoss: float64(packet.NextPacketLoss),
+				RTT:        float64(state.packet.NextRTT),
+				Jitter:     float64(state.packet.NextJitter),
+				PacketLoss: float64(state.packet.NextPacketLoss),
 			},
 			Direct: routing.Stats{
-				RTT:        float64(packet.DirectRTT),
-				Jitter:     float64(packet.DirectJitter),
-				PacketLoss: float64(packet.DirectPacketLoss),
+				RTT:        float64(state.packet.DirectRTT),
+				Jitter:     float64(state.packet.DirectJitter),
+				PacketLoss: float64(state.packet.DirectPacketLoss),
 			},
 			Predicted: routing.Stats{
 				RTT: predictedRTT,
 			},
 			ClientToServerStats: routing.Stats{
-				Jitter:     float64(packet.JitterClientToServer),
-				PacketLoss: float64(slicePacketLossClientToServer),
+				Jitter:     float64(state.packet.JitterClientToServer),
+				PacketLoss: float64(state.postRealPacketLossClientToServer),
 			},
 			ServerToClientStats: routing.Stats{
-				Jitter:     float64(packet.JitterServerToClient),
-				PacketLoss: float64(slicePacketLossServerToClient),
+				Jitter:     float64(state.packet.JitterServerToClient),
+				PacketLoss: float64(state.postRealPacketLossServerToClient),
 			},
-			RouteDiversity: uint32(routeDiversity),
+			RouteDiversity: uint32(state.routeDiversity),
 			Envelope: routing.Envelope{
-				Up:   int64(packet.NextKbpsUp),
-				Down: int64(packet.NextKbpsDown),
+				Up:   int64(state.packet.NextKbpsUp),
+				Down: int64(state.packet.NextKbpsDown),
 			},
-			IsMultiPath:       sessionData.RouteState.Multipath,
-			IsTryBeforeYouBuy: !sessionData.RouteState.Committed,
-			OnNetworkNext:     packet.Next,
+			IsMultiPath:       state.input.RouteState.Multipath,
+			IsTryBeforeYouBuy: !state.input.RouteState.Committed,
+			OnNetworkNext:     state.packet.Next,
 		},
 		Point: SessionMapPoint{
-			Latitude:  float64(sessionData.Location.Latitude),
-			Longitude: float64(sessionData.Location.Longitude),
+			Latitude:  float64(state.input.Location.Latitude),
+			Longitude: float64(state.input.Location.Longitude),
 		},
-		LargeCustomer:	   buyer.InternalConfig.LargeCustomer,
-		EverOnNext:    sessionData.EverOnNext,
+		LargeCustomer: state.buyer.InternalConfig.LargeCustomer,
+		EverOnNext:    state.input.EverOnNext,
 	}
-	*/
 
-	// todo
-	return nil
+	return &portalData
 }
 
 // ------------------------------------------------------------------
