@@ -618,6 +618,12 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 
 	core.Debug("existing session")
 
+	/*
+		Read in the input state from the session data
+
+		This is the state.output from the previous slice.
+	*/
+
 	err := UnmarshalSessionData(&state.input, state.packet.SessionData[:])
 
 	if err != nil {
@@ -625,6 +631,11 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 		state.metrics.ReadSessionDataFailure.Add(1)
 		return
 	}
+
+	/*
+		Check for some obviously divergent data between the session request packet
+		and the stored session data. If there is a mismatch, just return a direct route.
+	*/
 
 	if state.input.SessionID != state.packet.SessionID {
 		core.Debug("bad session id")
@@ -638,11 +649,24 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 		return
 	}
 
+	/*
+		Copy input state to output and go to next slice. 
+		
+		During the rest of the session update we transform session.output in place, 
+		before sending it back to the SDK in the session response packet.
+	*/
+
 	state.output = state.input
 	state.output.SliceNumber += 1
 	state.output.ExpireTimestamp += billing.BillingSliceSeconds
 
-	// calculate real packet loss (driven from actual game packets, not ping packets)
+	/* 
+		Calculate real packet loss.
+
+		This is driven from actual game packets, not ping packets.
+
+		This value is typically much higher precision (60HZ), vs. ping packets (10HZ).
+	*/
 
 	slicePacketsSentClientToServer := state.packet.PacketsSentClientToServer - state.input.PrevPacketsSentClientToServer
 	slicePacketsSentServerToClient := state.packet.PacketsSentServerToClient - state.input.PrevPacketsSentServerToClient
@@ -667,6 +691,15 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 }
 
 func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
+
+	/*
+		Fallback to direct is a state where the SDK has met some fatal error condition.
+
+		When this happens, the session will go direct from that point forward.
+
+		Here we look at flags sent up from the SDK, and send them to stackdriver metrics,
+		so we can diagnose what caused any fallback to directs to happen.
+	*/
 
 	if state.packet.FallbackToDirect && !state.output.FellBackToDirect {
 
@@ -748,6 +781,24 @@ func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
 
 func sessionGetNearRelays(state *SessionHandlerState) bool {
 
+	/*
+		This function selects up to 32 near relays for the session,
+		according to the players latitude and longitude determined by
+		ip2location.
+
+		These near relays are selected only on the first slice (slice 0)
+		of a session, and are held fixed for the duration of the session.
+
+		The SDK pings the near relays, and reports up the latency, jitter
+		and packet loss to each near relay, with each subsequent session
+		update (every 10 seconds).
+
+		Network Next uses the relay ping statistics in route planning,
+		by adding the latency to the first relay to the total route cost,
+		and by excluding near relays with higher jitter or packet loss
+		than the default internet route.
+	*/
+
 	directLatency := state.packet.DirectRTT
 
 	clientLatitude := state.output.Location.Latitude
@@ -771,6 +822,19 @@ func sessionGetNearRelays(state *SessionHandlerState) bool {
 }
 
 func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
+
+	/*
+		This function is called once every seconds for all slices
+		in a session after slice 0 (first slice).
+
+		It takes the ping statistics for each near relay, and collates them
+		into a format suitable for route planning later on in the session
+		update.
+
+		It also runs various filters inside core.ReframeRelays, which look at
+		the history of latency, jitter and packet loss across the entire session
+		in order to exclude near relays with bad performance from being selected.
+	*/
 
 	routeShader := &state.buyer.RouteShader
 
@@ -931,8 +995,26 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		}
 	}
 
+	/*
+		Stash key route parameters in the response so the SDK recieves them.
+
+		Committed means to actually send packets across the network next route,
+		if false, then the route just has ping packets sent across it, but no
+		game packets.
+
+		Multipath means to send packets across both the direct and the network
+		next route at the same time, which reduces packet loss.
+	*/
+
 	state.response.Committed = state.output.RouteState.Committed
 	state.response.Multipath = state.output.RouteState.Multipath
+
+	/*
+		Stick the route cost, whether the route changed, and the route relay data
+		in the output state. This output state is serialized into the route state
+		in the route response, and sent back up to us, allowing us to know the
+		current network next route, when we plan the next 10 second slice.
+	*/
 
 	if routeCost > routing.InvalidRouteValue {
 		routeCost = routing.InvalidRouteValue
