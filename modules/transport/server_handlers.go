@@ -446,8 +446,18 @@ func GetRouteAddressesAndPublicKeys(
 // ----------------------------------------------------------------------------
 
 type SessionHandlerState struct {
-	input  SessionData // sent down to the SDK
-	output SessionData // sent down to the SDK
+
+	/* 
+		Convenience state struct for the session update handler.
+
+		We put all the state in here so it's easy to call out to functions to do work.
+
+		Otherwise we have to pass a million parameters into every function and it gets old fast.
+	*/
+
+	input  SessionData // sent up from the SDK. previous slice.
+	
+	output SessionData // sent down to the SDK. current slice.
 
 	writer             io.Writer
 	packet             SessionUpdatePacket
@@ -1100,7 +1110,72 @@ func sessionPost(state *SessionHandlerState) {
 	}
 
 	/*
+		Check if we should multipath veto this user.
+
+		Multipath veto detects users who spike up RTT while on multipath, indicating
+		that multipath is sending too much bandwidth for their connection.
+
+		Multipath veto users immediately leave network next (go direct), and are
+		disallowed from taking multipath for future next routes for some period
+		of time.
+
+		After this time elapses, they are allowed to try multipath again.
+	*/
+
+	// todo: bring back multipath veto, but fix the weird copy the entire multipath database thing first =p
+	/*
+	if packet.Next && sessionData.RouteState.MultipathOverload {
+		if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
+			level.Error(postSessionHandler.logger).Log("err", err)
+		}
+	}
+	*/	
+
+	/*
 		Build route relay data (for portal, billing etc...)
+	*/
+
+	buildPostRouteRelayData(state)
+
+	/*
+		Build post near relay data (for portal, billing etc...)
+	*/
+
+	buildPostNearRelayData(state)
+
+	/*
+		Build billing data and send it to the billing system via pubsub (non-realtime path)
+	*/
+
+	billingEntry := buildBillingEntry(state)
+
+	state.postSessionHandler.SendBillingEntry(billingEntry)
+
+	/*
+		Send the billing entry to the vanity metrics system (real-time path)
+	*/
+
+	if state.postSessionHandler.useVanityMetrics {
+		state.postSessionHandler.SendVanityMetric(billingEntry)
+	}
+
+	/*
+		Send data to the portal (real-time path)
+	*/
+
+	portalData := buildPortalData(state)
+
+	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
+		state.postSessionHandler.SendPortalData(portalData)
+	}
+}
+
+func buildPostRouteRelayData(state *SessionHandlerState) {
+
+	/*
+		Build information about the relays involved in the current route.
+
+		This data is sent to the portal, billing and the vanity metrics system.
 	*/
 
 	for i := int32(0); i < state.input.RouteNumRelays; i++ {
@@ -1110,10 +1185,9 @@ func sessionPost(state *SessionHandlerState) {
 			state.postRouteRelaySellers[i] = relay.Seller
 		}
 	}
+}
 
-	/*
-		Build post near relay data (for portal, billing etc...)
-	*/
+func buildPostNearRelayData(state *SessionHandlerState) {
 
 	state.postNearRelayCount = int(state.input.RouteState.NumNearRelays)
 
@@ -1154,45 +1228,18 @@ func sessionPost(state *SessionHandlerState) {
 			to the input slice number that we want, however we can't use -1
 			because modulo negative numbers doesn't do what we want, so add 7 instead...
 		*/
+
 		index := (state.input.RouteState.PLHistoryIndex + 7) % 8
 		state.postNearRelayPacketLoss[i] = int32(state.input.RouteState.NearRelayPLHistory[index])
-	}
-
-	/*
-		Build billing data and send it to the billing system via pubsub (non-realtime path)
-	*/
-
-	billingEntry := buildBillingEntry(state)
-
-	state.postSessionHandler.SendBillingEntry(billingEntry)
-
-	/*
-		Send the billing entry to the vanity metrics system (real-time path)
-	*/
-
-	if state.postSessionHandler.useVanityMetrics {
-		state.postSessionHandler.SendVanityMetric(billingEntry)
-	}
-
-	/*
-		Send data to the portal (real-time path)
-	*/
-
-	portalData := buildPortalData(state)
-
-	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
-		state.postSessionHandler.SendPortalData(portalData)
 	}
 }
 
 func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 
-	// todo: where does input state get pulled in from the serialized route state. verify it is done property.
-
 	/*
 		Each slice is 10 seconds long except for the first slice with a given network next route,
-		which is 20 secodns long. Each time we change network next route, we burn the 10 second tail
-		we pre-bought when we first started using that route with the 20 second slice.
+		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
+		that we pre-bought at the start of the previous route.
 	*/
 
 	sliceDuration := uint64(billing.BillingSliceSeconds)
@@ -1204,7 +1251,7 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 		Calculate the actual amounts of bytes sent up and down along the network next route
 		for the duration of the previous slice (just being reported up from the SDK).
 
-		This in *not* the amount of bandwidth to be billed to the buyer, we bill on *envelope* not usage.
+		This is *not* what we bill on. 
 	*/
 
 	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.packet.NextKbpsUp), uint64(state.packet.NextKbpsDown), sliceDuration)
@@ -1232,11 +1279,7 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 		and the length of the session in seconds.
 	*/
 
-	// todo: this stuff is used by the billing and portal entries. add to state?
-	// routeRelayNames := [core.MaxRelaysPerRoute]string{}
-	routeRelaySellers := [core.MaxRelaysPerRoute]routing.Seller{}
-
-	totalPrice := CalculateTotalPriceNibblins(int(state.input.RouteNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+	totalPrice := CalculateTotalPriceNibblins(int(state.input.RouteNumRelays), state.postRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
 	// todo: totalPrice is kinda a bad name. it's really "total cost of this slice"
 
@@ -1247,52 +1290,57 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 		Calculate the per-relay hop price that sums up to the total price, minus our rake.
 	*/
 
-	routeRelayPrices := CalculateRouteRelaysPrice(int(state.input.RouteNumRelays), routeRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+	routeRelayPrices := CalculateRouteRelaysPrice(int(state.input.RouteNumRelays), state.postRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
 	// todo: route relay price is a bad name. it's really just the per-relay cost, not price. price is a rate, cost is the absolute value.
 
 	_ = routeRelayPrices
 
-	// todo: bring back multipath veto, but fix the weird copy the entire multipath database thing first =p
-	/*
-		// Check if we should multipath veto the user
-		if packet.Next && sessionData.RouteState.MultipathOverload {
-			if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
-				level.Error(postSessionHandler.logger).Log("err", err)
-			}
-		}
-	*/
+	// todo: what are we even doing here? we are just copying one array to another?
+	nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
+	for i := 0; i < core.MaxRelaysPerRoute; i++ {
+		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
+	}
+
+	// todo: why?
+	var routeCost int32 = state.input.RouteCost
+	if state.input.RouteCost == math.MaxInt32 {
+		routeCost = 0
+	}
+
+	_ = routeCost
 
 	/*
-		// todo: what are we even doing here? we are just copying one array to another?
-		nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
-		for i := 0; i < core.MaxRelaysPerRoute; i++ {
-			nextRelaysPrice[i] = uint64(routeRelayPrices[i])
-		}
+		Save the first hop RTT from the client to the first relay in the route.
 
-		// todo: why?
-		var routeCost int32 = sessionData.RouteCost
-		if sessionData.RouteCost == math.MaxInt32 {
-			routeCost = 0
-		}
+		This is useful for analysis and saves data science some work.
+	*/
 
-		var nearRelayRTT float32
-		if sessionData.RouteNumRelays > 0 {
-			for i, nearRelayID := range nearRelays.IDs {
-				if nearRelayID == sessionData.RouteRelayIDs[0] {
-					nearRelayRTT = float32(nearRelays.RTTs[i])
-					break
-				}
+	var nearRelayRTT float32
+	if state.input.RouteNumRelays > 0 {
+		for i, nearRelayID := range state.postNearRelayIDs {
+			if nearRelayID == state.input.RouteRelayIDs[0] {
+				nearRelayRTT = float32(state.postNearRelayRTT[i])
+				break
 			}
 		}
+	}
+
+	_ = nearRelayRTT
+
+	/*
+		If the debug string is set to something by the core routing system, put it in the billing entry.
 	*/
+
+	debugString := ""
+	if state.debug != nil {
+		debugString = *state.debug
+	}
+
+	_ = debugString
 
 	// todo
 	/*
-		debugString := ""
-		if debug != nil {
-			debugString = *debug
-		}
 
 		var numNearRelays uint8
 		nearRelayIDs := [billing.BillingEntryMaxNearRelays]uint64{}
