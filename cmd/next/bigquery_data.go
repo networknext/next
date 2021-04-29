@@ -82,6 +82,10 @@ type BigQueryBillingEntry struct {
 	UserFlags                       bigquery.NullInt64
 	UserHash                        bigquery.NullInt64
 	Vetoed                          bigquery.NullBool
+	UnknownDatacenter               bigquery.NullBool
+	DatacenterNotEnabled            bigquery.NullBool
+	BuyerNotLive                    bigquery.NullBool
+	StaleRouteMatrix                bigquery.NullBool
 }
 
 // BigQueryRelayPingsEntry contains 1 row of the BQ relay_pings table

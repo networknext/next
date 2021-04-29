@@ -146,6 +146,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Debug String",
 		"ClientToServerPacketsSent",
 		"ServerToClientPacketsSent",
+		"UnknownDatacenter",
+		"DatacenterNotEnabled",
+		"BuyerNotLive",
+		"StaleRouteMatrix",
 	})
 
 	for _, billingEntry := range newRows {
@@ -481,6 +485,30 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			routeDiversity = fmt.Sprintf("%d", billingEntry.RouteDiversity.Int64)
 		}
 
+		// UnknownDatacenter
+		unknownDatacenter := ""
+		if billingEntry.UnknownDatacenter.Valid {
+			unknownDatacenter = fmt.Sprintf("%t", billingEntry.UnknownDatacenter.Bool)
+		}
+
+		// DatacenterNotEnabled
+		datacenterNotEnabled := ""
+		if billingEntry.DatacenterNotEnabled.Valid {
+			datacenterNotEnabled = fmt.Sprintf("%t", billingEntry.DatacenterNotEnabled.Bool)
+		}
+
+		// BuyerNotLive
+		buyerNotLive := ""
+		if billingEntry.BuyerNotLive.Valid {
+			buyerNotLive = fmt.Sprintf("%t", billingEntry.BuyerNotLive.Bool)
+		}
+
+		// StaleRouteMatrix
+		staleRouteMatrix := ""
+		if billingEntry.StaleRouteMatrix.Valid {
+			staleRouteMatrix = fmt.Sprintf("%t", billingEntry.StaleRouteMatrix.Bool)
+		}
+
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
 			timeStamp,
@@ -548,6 +576,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			debug,
 			clientToServerPacketsSent,
 			serverToClientPacketsSent,
+			unknownDatacenter,
+			datacenterNotEnabled,
+			buyerNotLive,
+			staleRouteMatrix,
 		})
 	}
 
@@ -648,7 +680,11 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 	lackOfDiversity,
 	packetLoss,
 	pro,
-	routeDiversity
+	routeDiversity,
+	unknownDatacenter,
+	datacenterNotEnabled,
+	buyerNotLive,
+	staleRouteMatrix
     from `))
 
 	if env.Name != "prod" && env.Name != "dev" && env.Name != "staging" {
