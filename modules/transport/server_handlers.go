@@ -475,6 +475,9 @@ type SessionHandlerState struct {
 	// real packet loss (from actual game packets). high precision %
 	realPacketLoss float32
 
+	// route diversity is the number unique near relays with viable routes
+	routeDiversity      int32
+
 	// for route planning (comes from SDK and route matrix)
 	numNearRelays    int
 	nearRelayIndices [core.MaxNearRelays]int32
@@ -483,16 +486,14 @@ type SessionHandlerState struct {
 	numDestRelays    int32
 	destRelays       []int32
 
-	// for display (sent to billing, portal etc...)
-	outputNearRelayCount      int
-	outputNearRelayIDs        [core.MaxNearRelays]uint64
-	outputNearRelayNames      [core.MaxNearRelays]string
-	outputNearRelayAddresses  [core.MaxNearRelays]net.UDPAddr
-	outputNearRelayRTT        [core.MaxNearRelays]int32
-	outputNearRelayJitter     [core.MaxNearRelays]int32
-	outputNearRelayPacketLoss [core.MaxNearRelays]int32
-
-	routeDiversity      int32
+	// for session post (billing, portal etc...)
+	postNearRelayCount      int
+	postNearRelayIDs        [core.MaxNearRelays]uint64
+	postNearRelayNames      [core.MaxNearRelays]string
+	postNearRelayAddresses  [core.MaxNearRelays]net.UDPAddr
+	postNearRelayRTT        [core.MaxNearRelays]int32
+	postNearRelayJitter     [core.MaxNearRelays]int32
+	postNearRelayPacketLoss [core.MaxNearRelays]int32
 
 	// todo
 	/*
@@ -1058,8 +1059,7 @@ func sessionPost(state *SessionHandlerState) {
 
 	/*
 		Store the packets sent and packets lost counters in the route state,
-		so we can use them to calculate delta packets sent and delta packets lost
-		for the next slice in our real packet loss calculation.
+		so we can use them to calculate real packet loss next session update.
 	*/
 
 	state.output.PrevPacketsSentClientToServer = state.packet.PacketsSentClientToServer
@@ -1089,7 +1089,17 @@ func sessionPost(state *SessionHandlerState) {
 	}
 
 	/*
-		Build route relay data.
+		The client times out at the end of each session, and holds on for 60 seconds.
+		These slices at the end have no useful information for the portal or billing, 
+		so we drop them here.
+	*/
+
+	if state.packet.ClientPingTimedOut {
+		return
+	}
+
+	/*
+		Build route relay data (for portal, billing etc...)
 	*/
 
 	// todo: this stuff is used by the billing and portal entries. add to state?
@@ -1105,12 +1115,12 @@ func sessionPost(state *SessionHandlerState) {
 	}
 
 	/*
-		Build output near relay data (for portal, billing etc...)
+		Build post near relay data (for portal, billing etc...)
 	*/
 
-	state.outputNearRelayCount = int(state.input.RouteState.NumNearRelays)
+	state.postNearRelayCount = int(state.input.RouteState.NumNearRelays)
 
-	for i := 0; i < state.outputNearRelayCount; i++ {
+	for i := 0; i < state.postNearRelayCount; i++ {
 
 		/*
 			The set of near relays is held fixed at the start of a session.
@@ -1124,18 +1134,19 @@ func sessionPost(state *SessionHandlerState) {
 		}
 
 		/*
-			Fill in information for near relays.
+			Fill in information for near relays needed by billing and the portal.
 
 			We grab this data from the input route state, which corresponds
-			to the previous slice. This makes sure all values for a slice in
-			billing and the portal line up temporally.
+			to the previous slice. 
+
+			This makes sure all values for a slice in billing and the portal line up temporally.
 		*/
 
-		state.outputNearRelayIDs[i] = relayID
-		state.outputNearRelayNames[i] = state.routeMatrix.RelayNames[relayIndex]
-		state.outputNearRelayAddresses[i] = state.routeMatrix.RelayAddresses[relayIndex]
-		state.outputNearRelayRTT[i] = state.input.RouteState.NearRelayRTT[i]
-		state.outputNearRelayJitter[i] = state.input.RouteState.NearRelayJitter[i]
+		state.postNearRelayIDs[i] = relayID
+		state.postNearRelayNames[i] = state.routeMatrix.RelayNames[relayIndex]
+		state.postNearRelayAddresses[i] = state.routeMatrix.RelayAddresses[relayIndex]
+		state.postNearRelayRTT[i] = state.input.RouteState.NearRelayRTT[i]
+		state.postNearRelayJitter[i] = state.input.RouteState.NearRelayJitter[i]
 
 		/*
 			We have to be a bit tricky to get packet loss for near relays,
@@ -1147,16 +1158,7 @@ func sessionPost(state *SessionHandlerState) {
 			because modulo negative numbers doesn't do what we want, so add 7 instead...
 		*/
 		index := (state.input.RouteState.PLHistoryIndex + 7) % 8
-		state.outputNearRelayPacketLoss[i] = int32(state.input.RouteState.NearRelayPLHistory[index])
-	}
-
-	/*
-		The client times out at the end of each session, and holds on for 60 seconds.
-		These slices at the end have no useful information, so we drop them here.
-	*/
-
-	if state.packet.ClientPingTimedOut {
-		return
+		state.postNearRelayPacketLoss[i] = int32(state.input.RouteState.NearRelayPLHistory[index])
 	}
 
 	/*
