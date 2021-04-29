@@ -30,11 +30,11 @@ const (
 	PacketTypeServerInitResponse = 224
 
 	InitResponseOK                   = 0
-	InitResponseUnknownCustomer      = 1
+	InitResponseUnknownBuyer         = 1
 	InitResponseUnknownDatacenter    = 2
 	InitResponseOldSDKVersion        = 3
 	InitResponseSignatureCheckFailed = 4
-	InitResponseCustomerNotActive    = 5
+	InitResponseBuyerNotActive       = 5
 	InitResponseDataCenterNotEnabled = 6
 
 	ConnectionTypeUnknown  = 0
@@ -218,7 +218,7 @@ func MarshalPacket(packet Packet) ([]byte, error) {
 
 type ServerInitRequestPacket struct {
 	Version        SDKVersion
-	CustomerID     uint64
+	BuyerID        uint64
 	DatacenterID   uint64
 	RequestID      uint64
 	DatacenterName string
@@ -232,7 +232,7 @@ func (packet *ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&versionMinor, 8)
 	stream.SerializeBits(&versionPatch, 8)
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.BuyerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint64(&packet.RequestID)
 	stream.SerializeString(&packet.DatacenterName, MaxDatacenterNameLength)
@@ -252,7 +252,7 @@ func (packet *ServerInitResponsePacket) Serialize(stream encoding.Stream) error 
 
 type ServerUpdatePacket struct {
 	Version       SDKVersion
-	CustomerID    uint64
+	BuyerID       uint64
 	DatacenterID  uint64
 	NumSessions   uint32
 	ServerAddress net.UDPAddr
@@ -266,7 +266,7 @@ func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&versionMinor, 8)
 	stream.SerializeBits(&versionPatch, 8)
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.BuyerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
@@ -275,7 +275,7 @@ func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
 
 type SessionUpdatePacket struct {
 	Version                         SDKVersion
-	CustomerID                      uint64
+	BuyerID                         uint64
 	DatacenterID                    uint64
 	SessionID                       uint64
 	SliceNumber                     uint32
@@ -335,7 +335,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
 
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.BuyerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint64(&packet.SessionID)
 	stream.SerializeUint32(&packet.SliceNumber)
@@ -634,10 +634,11 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
+	// IMPORTANT: DO NOT EVER CHANGE CODE IN THIS FUNCTION BELOW HERE.
+	// CHANGING CODE BELOW HERE *WILL* BREAK PRODUCTION!!!!
+
 	stream.SerializeBits(&sessionData.Version, 8)
 
-	// IMPORTANT: If you ever make this serialize not backwards compatible with old session data
-	// you must update the too old version number here and it will be a disruptive update (sessions will fall back to direct!)
 	if sessionData.Version < 8 {
 		return errors.New("session data is too old")
 	}
@@ -702,11 +703,8 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
-
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
-
 	stream.SerializeBool(&sessionData.EverOnNext)
-
 	stream.SerializeBool(&sessionData.FellBackToDirect)
 
 	stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
@@ -755,7 +753,11 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		stream.SerializeBool(&sessionData.RouteState.LocationVeto)
 	}
 
-	// IMPORTANT: Add new fields at the bottom. Never remove or change old fields or it becomes a disruptive update!
+	// IMPORTANT: ADD NEW FIELDS BELOW HERE ONLY. AFTER YOU ADD YOUR NEW FIELDS
+	// MOVE THIS MESSAGE DOWN BELOW THE FIELDS YOU ADDED. FAILING TO FOLLOW
+	// THESE INSRUCTIONS WILL CAUSE PEOPLE TO BREAK PRODUCTION!!!!
+
+	// >>> new fields go here <<<
 
 	return stream.Error()
 }
