@@ -68,6 +68,10 @@ blocks:
           commands:
             - make build-relay-frontend-artifacts-dev
             - make publish-relay-frontend-artifacts-dev
+        - name: Relay Forwarder
+          commands:
+            - make build-relay-forwarder-artifacts-dev
+            - make publish-relay-forwarder-artifacts-dev
         - name: Server Backend
           commands:
             - make build-server-backend-artifacts-dev
