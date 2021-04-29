@@ -1141,22 +1141,10 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, nextPacketLoss int32, firstRouteRelayId uint64, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, nextPacketLoss int32, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if routeState.NumNearRelays == 0 {
 		routeState.NumNearRelays = int32(len(sourceRelayId))
-	}
-
-	if int(routeState.NumNearRelays) != len(sourceRelayId) {
-		// IMPORTANT: This should never happen, but if it does, nuke all near relays as RTT 255 (unroutable) and bail :)
-		for i := 0; i < len(routeState.NearRelayRTT); i++ {
-			routeState.NearRelayRTT[i] = 255
-		}
-		for i := 0; i < len(out_sourceRelayLatency); i++ {
-			out_sourceRelayLatency[i] = 255
-		}
-		*out_numDestRelays = int32(0)
-		return
 	}
 
 	if directJitter > 255 {

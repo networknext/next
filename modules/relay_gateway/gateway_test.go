@@ -66,7 +66,7 @@ func TestRelayGatewayStart(t *testing.T) {
 		Address:      *udp,
 		Token:        token,
 		PingStats: []routing.RelayStatsPing{
-			routing.RelayStatsPing{
+			{
 				RelayID:    0,
 				RTT:        1,
 				Jitter:     1,
