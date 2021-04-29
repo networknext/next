@@ -25,8 +25,8 @@ func NewRedisMatrixStore(hostname string, maxIdleConnections int, maxActiveConne
 	// Update the dial func with the read and write timeout
 	pool.Dial = func() (redis.Conn, error) {
 		return redis.Dial("tcp", hostname,
-				redis.DialReadTimeout(readTimeout),
-				redis.DialWriteTimeout(writeTimeout))
+			redis.DialReadTimeout(readTimeout),
+			redis.DialWriteTimeout(writeTimeout))
 	}
 
 	r := &RedisMatrixStore{pool: pool, matrixTimeout: matrixExpire}
