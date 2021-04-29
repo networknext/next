@@ -87,6 +87,9 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	// Create an error channel for goroutines
+	errChan := make(chan error, 1)
+
 	// Setup the status handler info
 	var statusData []byte
 	var statusMutex sync.RWMutex
@@ -158,7 +161,7 @@ func mainReturnWithCode() int {
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			level.Error(logger).Log("err", err)
-			os.Exit(1) // TODO: don't os.Exit() here, but find a way to exit
+			errChan <- err
 		}
 	}()
 
@@ -168,6 +171,9 @@ func mainReturnWithCode() int {
 	select {
 	case <-sigint:
 		cancelFunc()
+	case <-errChan:
+		cancelFunc()
+		return 1
 	}
 	return 0
 }
