@@ -578,13 +578,6 @@ func sessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
-	if state.input.RouteState.NumNearRelays != state.packet.NumNearRelays {
-		core.Debug("near relay count diverged")
-		// todo: add a metric for this
-		// state.metrics.NearRelayCountDiverged.Add(1)
-		return true
-	}
-
 	if state.buyer.Debug {
 		core.Debug("debug enabled")
 		state.debug = new(string)
@@ -1195,7 +1188,7 @@ func buildPostRouteRelayData(state *SessionHandlerState) {
 
 func buildPostNearRelayData(state *SessionHandlerState) {
 
-	state.postNearRelayCount = int(state.input.RouteState.NumNearRelays)
+	state.postNearRelayCount = int(state.packet.NumNearRelays)
 
 	for i := 0; i < state.postNearRelayCount; i++ {
 
@@ -1213,8 +1206,7 @@ func buildPostNearRelayData(state *SessionHandlerState) {
 		/*
 			Fill in information for near relays needed by billing and the portal.
 
-			We grab this data from the input route state, which corresponds
-			to the previous slice.
+			We grab this data from the session update packet, which corresponds to the previous slice (input).
 
 			This makes sure all values for a slice in billing and the portal line up temporally.
 		*/
@@ -1222,21 +1214,9 @@ func buildPostNearRelayData(state *SessionHandlerState) {
 		state.postNearRelayIDs[i] = relayID
 		state.postNearRelayNames[i] = state.routeMatrix.RelayNames[relayIndex]
 		state.postNearRelayAddresses[i] = state.routeMatrix.RelayAddresses[relayIndex]
-		state.postNearRelayRTT[i] = float32(state.input.RouteState.NearRelayRTT[i])
-		state.postNearRelayJitter[i] = float32(state.input.RouteState.NearRelayJitter[i])
-
-		/*
-			We have to be a bit tricky to get packet loss for near relays,
-			since we store a history of near relay PL in a sliding window,
-			not just a single value.
-
-			Take the previous entry in the sliding window and it corresponds
-			to the input slice number that we want, however we can't use -1
-			because modulo negative numbers doesn't do what we want, so add 7 instead...
-		*/
-
-		index := (state.input.RouteState.PLHistoryIndex + 7) % 8
-		state.postNearRelayPacketLoss[i] = float32(state.input.RouteState.NearRelayPLHistory[index])
+		state.postNearRelayRTT[i] = float32(state.packet.NearRelayRTT[i])
+		state.postNearRelayJitter[i] = float32(state.packet.NearRelayJitter[i])
+		state.postNearRelayPacketLoss[i] = float32(state.packet.NearRelayPacketLoss[i])
 	}
 }
 
