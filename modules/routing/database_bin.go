@@ -5,7 +5,7 @@ const (
 )
 
 // DatabaseBinWrapper contains all the data from the database for
-// static use by the relay_backend and server_backend
+// static use by the relay_gateway, relay_backend, and server_backend
 type DatabaseBinWrapper struct {
 	CreationTime   string
 	Creator        string
@@ -18,6 +18,21 @@ type DatabaseBinWrapper struct {
 	//                 ^ Buyer.ID   ^ DatacenterMap map index
 }
 
+func CreateEmptyDatabaseBinWrapper() *DatabaseBinWrapper {
+	wrapper := &DatabaseBinWrapper{
+		CreationTime:   "",
+		Creator:        "",
+		Relays:         []Relay{},
+		RelayMap:       make(map[uint64]Relay),
+		BuyerMap:       make(map[uint64]Buyer),
+		SellerMap:      make(map[string]Seller),
+		DatacenterMap:  make(map[uint64]Datacenter),
+		DatacenterMaps: make(map[uint64]map[uint64]DatacenterMap),
+	}
+
+	return wrapper
+}
+
 func (wrapper DatabaseBinWrapper) IsEmpty() bool {
 	if len(wrapper.RelayMap) != 0 {
 		return false
@@ -28,6 +43,10 @@ func (wrapper DatabaseBinWrapper) IsEmpty() bool {
 	} else if len(wrapper.DatacenterMap) != 0 {
 		return false
 	} else if len(wrapper.DatacenterMaps) != 0 {
+		return false
+	} else if wrapper.CreationTime == "" {
+		return false
+	} else if wrapper.Creator == "" {
 		return false
 	} else if len(wrapper.Relays) != 0 {
 		return false

@@ -10,6 +10,7 @@ import (
 )
 
 func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32) {
+
 	var costMatrix routing.CostMatrix
 
 	costFile, err := os.Open(costFilename)
@@ -23,6 +24,14 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 	}
 
 	numRelays := len(costMatrix.RelayIDs)
+
+	numDestRelays := 0
+	for i := range costMatrix.DestRelays {
+		if costMatrix.DestRelays[i] {
+			numDestRelays++
+		}
+	}
+
 	numCPUs := runtime.NumCPU()
 	numSegments := numRelays
 	if numCPUs < numRelays {
@@ -33,13 +42,15 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 	}
 
 	routeMatrix := &routing.RouteMatrix{
+		Version:            routing.RouteMatrixSerializeVersion,
 		RelayIDs:           costMatrix.RelayIDs,
 		RelayAddresses:     costMatrix.RelayAddresses,
 		RelayNames:         costMatrix.RelayNames,
 		RelayLatitudes:     costMatrix.RelayLatitudes,
 		RelayLongitudes:    costMatrix.RelayLongitudes,
 		RelayDatacenterIDs: costMatrix.RelayDatacenterIDs,
-		RouteEntries:       core.Optimize(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs),
+		DestRelays:         costMatrix.DestRelays,
+		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costThreshold, costMatrix.RelayDatacenterIDs, costMatrix.DestRelays),
 	}
 
 	routeFile, err := os.Create(routeFilename)
@@ -48,7 +59,7 @@ func optimizeCostMatrix(costFilename, routeFilename string, costThreshold int32)
 	}
 	defer routeFile.Close()
 
-	if _, err := routeMatrix.WriteTo(routeFile, 100000000); err != nil {
+	if _, err := routeMatrix.WriteTo(routeFile, 100*1000*1000); err != nil {
 		handleRunTimeError(fmt.Sprintf("error writing route matrix: %v\n", err), 1)
 	}
 }

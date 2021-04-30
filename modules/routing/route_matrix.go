@@ -14,6 +14,8 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
+const RouteMatrixSerializeVersion = 2
+
 type RouteMatrix struct {
 	RelayIDsToIndices  map[uint64]int32
 	RelayIDs           []uint64
@@ -26,6 +28,8 @@ type RouteMatrix struct {
 	BinFileBytes       int32
 	BinFileData        []byte
 	CreatedAt          uint64
+	Version            uint32
+	DestRelays         []bool
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -35,6 +39,9 @@ type RouteMatrix struct {
 }
 
 func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
+
+	stream.SerializeUint32(&m.Version)
+
 	numRelays := uint32(len(m.RelayIDs))
 	stream.SerializeUint32(&numRelays)
 
@@ -74,12 +81,11 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&entry.DirectCost, -1, InvalidRouteValue)
 		stream.SerializeInteger(&entry.NumRoutes, 0, math.MaxInt32)
 
-		for i := 0; i < core.MaxRoutesPerEntry; i++ {
+		for i := 0; i < int(entry.NumRoutes); i++ {
 			stream.SerializeInteger(&entry.RouteCost[i], -1, InvalidRouteValue)
 			stream.SerializeInteger(&entry.RouteNumRelays[i], 0, core.MaxRelaysPerRoute)
 			stream.SerializeUint32(&entry.RouteHash[i])
-
-			for j := 0; j < core.MaxRelaysPerRoute; j++ {
+			for j := 0; j < int(entry.RouteNumRelays[i]); j++ {
 				stream.SerializeInteger(&entry.RouteRelays[i][j], 0, math.MaxInt32)
 			}
 		}
@@ -96,10 +102,19 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint64(&m.CreatedAt)
 
+	if m.Version >= 2 {
+		if stream.IsReading() {
+			m.DestRelays = make([]bool, numRelays)
+		}
+		for i := range m.DestRelays {
+			stream.SerializeBool(&m.DestRelays[i])
+		}
+	}
+
 	return stream.Error()
 }
 
-func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int) []uint64 {
+func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int) ([]uint64, []net.UDPAddr) {
 
 	// Quantize to integer values so we don't have noise in low bits
 
@@ -148,6 +163,8 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 	latencyThreshold := float32(30.0)
 
 	nearRelayIDs := make([]uint64, 0, maxNearRelays)
+	nearRelayAddresses := make([]net.UDPAddr, 0, maxNearRelays)
+
 	nearRelayIDMap := map[uint64]struct{}{}
 
 	for i := 0; i < len(nearRelayData); i++ {
@@ -165,15 +182,14 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		}
 
 		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-
-		// Store the near relay ID in a map so that we don't reinsert it later
+		nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
 		nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
 	}
 
 	// If we already have enough relays, stop and return them
 
 	if len(nearRelayIDs) == maxNearRelays {
-		return nearRelayIDs
+		return nearRelayIDs, nearRelayAddresses
 	}
 
 	// We need more relays. Look for near relays around the *destination*
@@ -186,11 +202,12 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
 
 	for i := 0; i < len(nearRelayData); i++ {
+
 		if len(nearRelayIDs) == maxNearRelays {
 			break
 		}
 
-		// Don't add the relay if we've already added it
+		// don't add the same relay twice
 		if _, ok := nearRelayIDMap[nearRelayData[i].ID]; ok {
 			continue
 		}
@@ -201,9 +218,10 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		}
 
 		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
+		nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
 	}
 
-	return nearRelayIDs
+	return nearRelayIDs, nearRelayAddresses
 }
 
 func (m *RouteMatrix) GetDatacenterRelayIDs(datacenterID uint64) []uint64 {
@@ -238,6 +256,8 @@ func (m *RouteMatrix) WriteTo(writer io.Writer, bufferSize int) (int64, error) {
 		return int64(writeStream.GetBytesProcessed()), err
 	}
 
+	writeStream.Flush()
+
 	n, err := writer.Write(writeStream.GetData()[:writeStream.GetBytesProcessed()])
 	return int64(n), err
 }
@@ -256,6 +276,9 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	for i := range src {
 		for j := range dest {
 			if j < i {
+				if !m.DestRelays[i] && !m.DestRelays[j] {
+					continue
+				}
 				numRelayPairs++
 				abFlatIndex := TriMatrixIndex(i, j)
 				if len(m.RouteEntries[abFlatIndex].RouteCost) > 0 {
@@ -307,6 +330,7 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	totalRoutes := uint64(0)
 	maxRouteLength := int32(0)
 	maxRoutesPerRelayPair := int32(0)
+	relayPairs := 0
 	relayPairsWithNoRoutes := 0
 	relayPairsWithOneRoute := 0
 	totalRouteLength := uint64(0)
@@ -314,6 +338,10 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	for i := range src {
 		for j := range dest {
 			if j < i {
+				if !m.DestRelays[i] && !m.DestRelays[j] {
+					continue
+				}
+				relayPairs++
 				ijFlatIndex := TriMatrixIndex(i, j)
 				n := m.RouteEntries[ijFlatIndex].NumRoutes
 				if n > maxRoutesPerRelayPair {
@@ -337,10 +365,21 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 		}
 	}
 
+	numDestRelays := 0
+	for i := range m.DestRelays {
+		if m.DestRelays[i] {
+			numDestRelays++
+		}
+	}
+
 	averageNumRoutes := float64(totalRoutes) / float64(numRelayPairs)
 	averageRouteLength := float64(totalRouteLength) / float64(totalRoutes)
 
 	fmt.Fprintf(writer, "\n%s Summary:\n\n", "Route")
+	fmt.Fprintf(writer, "    %d relays\n", len(m.RelayIDs))
+	fmt.Fprintf(writer, "    %d total routes\n", totalRoutes)
+	fmt.Fprintf(writer, "    %d relay pairs\n", relayPairs)
+	fmt.Fprintf(writer, "    %d destination relays\n", numDestRelays)
 	fmt.Fprintf(writer, "    %.1f routes per relay pair on average (%d max)\n", averageNumRoutes, maxRoutesPerRelayPair)
 	fmt.Fprintf(writer, "    %.1f relays per route on average (%d max)\n", averageRouteLength, maxRouteLength)
 	fmt.Fprintf(writer, "    %.1f%% of relay pairs have only one route\n", float64(relayPairsWithOneRoute)/float64(numRelayPairs)*100)

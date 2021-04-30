@@ -21,6 +21,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/middleware"
 )
 
 type RelayVersion struct {
@@ -70,9 +71,9 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 	}
 
 	/*
-	if version != routing.VersionNumberRelayMap {
-		return fmt.Errorf("incorrect relay map version number: %d", version)
-	}
+		if version != routing.VersionNumberRelayMap {
+			return fmt.Errorf("incorrect relay map version number: %d", version)
+		}
 	*/
 
 	var count uint64
@@ -1355,7 +1356,7 @@ type ModifyRelayFieldReply struct{}
 
 func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArgs, reply *ModifyRelayFieldReply) error {
 
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1471,7 +1472,7 @@ type UpdateCustomerArgs struct {
 type UpdateCustomerReply struct{}
 
 func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, reply *UpdateCustomerReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1514,7 +1515,7 @@ type UpdateSellerArgs struct {
 type UpdateSellerReply struct{}
 
 func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply *UpdateSellerReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1576,7 +1577,7 @@ type UpdateDatacenterArgs struct {
 type UpdateDatacenterReply struct{}
 
 func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArgs, reply *UpdateDatacenterReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 

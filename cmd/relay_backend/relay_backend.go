@@ -20,12 +20,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 
 	// "strings"
 
+	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/pubsub"
 	gcStorage "cloud.google.com/go/storage"
 	"github.com/go-kit/kit/log/level"
@@ -40,6 +40,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 )
 
@@ -53,11 +54,12 @@ var (
 	binCreationTime string
 	env             string
 
-	binWrapper_internal routing.DatabaseBinWrapper
+	database_internal *routing.DatabaseBinWrapper = routing.CreateEmptyDatabaseBinWrapper()
+
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
-	binWrapperMutex sync.RWMutex
+	databaseMutex   sync.RWMutex
 	relayArrayMutex sync.RWMutex
 	relayHashMutex  sync.RWMutex
 
@@ -75,28 +77,26 @@ func init() {
 	}
 	defer file.Close()
 
-	if err = decodeBinWrapper(file, &binWrapper_internal); err != nil {
-		fmt.Printf("decodeBinWrapper() error: %v\n", err)
+	if err = backend.DecodeBinWrapper(file, database_internal); err != nil {
+		fmt.Printf("DecodeBinWrapper() error: %v\n", err)
 		os.Exit(1)
 	}
 
-	relayArray_internal = binWrapper_internal.Relays
+	relayArray_internal = database_internal.Relays
 
 	gcpProjectID := backend.GetGCPProjectID()
-	sortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
-	displayLoadedRelays(relayArray_internal)
+	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
+	// backend.DisplayLoadedRelays(relayArray_internal)
 
-	binCreator = binWrapper_internal.Creator
-	binCreationTime = binWrapper_internal.CreationTime
+	binCreator = database_internal.Creator
+	binCreationTime = database_internal.CreationTime
+
+	est, _ := time.LoadLocation("EST")
+	startTime = time.Now().In(est)
 }
 
 func uptime() time.Duration {
 	return time.Since(startTime)
-}
-
-func init() {
-	est, _ := time.LoadLocation("EST")
-	startTime = time.Now().In(est)
 }
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -206,13 +206,20 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Setup file watchman on relays.bin
+	instanceID, err := getInstanceID(env)
+	if err != nil {
+		level.Error(logger).Log("msg", "error getting relay backend instance ID", "err", err)
+		return 1
+	}
+	level.Debug(logger).Log("msg", "got VM Instance ID", "instanceID", instanceID)
+
+	// Setup file watchman on database.bin
 	{
-		// Get absolute path of relays.bin
-		relaysFilePath := envvar.Get("BIN_PATH", "./database.bin")
-		absPath, err := filepath.Abs(relaysFilePath)
+		// Get absolute path of database.bin
+		databaseFilePath := envvar.Get("BIN_PATH", "./database.bin")
+		absPath, err := filepath.Abs(databaseFilePath)
 		if err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", relaysFilePath), "err", err)
+			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", databaseFilePath), "err", err)
 			return 1
 		}
 
@@ -264,35 +271,43 @@ func mainReturnWithCode() int {
 					}
 
 					// Setup relay array and hash to read into
-					var binWrapperNew routing.DatabaseBinWrapper
+					databaseNew := routing.CreateEmptyDatabaseBinWrapper()
+
 					relayHashNew := make(map[uint64]routing.Relay)
 
-					if err = decodeBinWrapper(file, &binWrapperNew); err == io.EOF {
+					if err = backend.DecodeBinWrapper(file, databaseNew); err == io.EOF {
 						// Sometimes we receive an EOF error since the file is still being replaced
 						// so early out here and proceed on the next notification
 						file.Close()
-						level.Debug(logger).Log("msg", "decodeBinWrapper() EOF error, will wait for next notification")
+						level.Debug(logger).Log("msg", "DecodeBinWrapper() EOF error, will wait for next notification")
 						continue
 					} else if err != nil {
 						file.Close()
-						level.Error(logger).Log("msg", "decodeBinWrapper() error", "err", err)
+						level.Error(logger).Log("msg", "DecodeBinWrapper() error", "err", err)
 						continue
 					}
 
 					// Close the file since it is no longer needed
 					file.Close()
 
+					if databaseNew.IsEmpty() {
+						// Don't want to use an empty bin wrapper
+						// so early out here and use existing array and hash
+						level.Debug(logger).Log("msg", "new bin wrapper is empty, keeping previous values")
+						continue
+					}
+
 					// Get the new relay array
-					relayArrayNew := binWrapperNew.Relays
+					relayArrayNew := databaseNew.Relays
 					// Proceed to fill up the new relay hash
-					sortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
 
 					// Pointer swap the relay bin wrapper
-					binWrapperMutex.Lock()
-					binWrapper_internal = binWrapperNew
-					binCreator = binWrapper_internal.Creator
-					binCreationTime = binWrapper_internal.CreationTime
-					binWrapperMutex.Unlock()
+					databaseMutex.Lock()
+					database_internal = databaseNew
+					binCreator = database_internal.Creator
+					binCreationTime = database_internal.CreationTime
+					databaseMutex.Unlock()
 
 					// Pointer swap the relay array
 					relayArrayMutex.Lock()
@@ -307,7 +322,7 @@ func mainReturnWithCode() int {
 					level.Debug(logger).Log("msg", "successfully updated the relay array and hash")
 
 					// Print the new list of relays
-					displayLoadedRelays(relayArray_internal)
+					// backend.DisplayLoadedRelays(relayArray_internal)
 				}
 			}
 		}()
@@ -376,7 +391,7 @@ func mainReturnWithCode() int {
 			for {
 				syncTimer.Run()
 				cpy := statsdb.MakeCopy()
-				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss))
+				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss), instanceID, isDebug)
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
@@ -409,10 +424,80 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	port := envvar.Get("PORT", "30001")
+
+	// Setup redis so that the Relay Frontend knows this backend is live
+	var matrixStore *storage.RedisMatrixStore
+	var backendLiveData storage.RelayBackendLiveData
+	{
+		// Determine which relay backend address this instance is
+		backendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
+		if len(backendAddresses) == 0 {
+			level.Error(logger).Log("err", "FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
+			return 1
+		}
+		foundAddress, backendAddress, err := getBackendAddress(backendAddresses, env)
+		if err != nil {
+			level.Error(logger).Log("msg", "error searching through list of backend addresses", "err", err)
+			return 1
+		}
+		if !foundAddress {
+			level.Error(logger).Log("msg", fmt.Sprintf("relay backend address not found in list %v", backendAddresses))
+			return 1
+		}
+
+		matrixStoreAddress := envvar.Get("MATRIX_STORE_ADDRESS", "")
+		if matrixStoreAddress == "" {
+			level.Error(logger).Log("err", "MATRIX_STORE_ADDRESS not set")
+			return 1
+		}
+
+		maxIdleConnections, err := envvar.GetInt("MATRIX_STORE_MAX_IDLE_CONNS", 5)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting MATRIX_STORE_MAX_IDLE_CONNS", "err", err)
+			return 1
+		}
+
+		maxActiveConnections, err := envvar.GetInt("MATRIX_STORE_MAX_ACTIVE_CONNS", 5)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting MATRIX_STORE_MAX_ACTIVE_CONNS", "err", err)
+			return 1
+		}
+
+		readTimeout, err := envvar.GetDuration("MATRIX_STORE_READ_TIMEOUT", 250*time.Millisecond)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting MATRIX_STORE_READ_TIMEOUT", "err", err)
+			return 1
+		}
+
+		writeTimeout, err := envvar.GetDuration("MATRIX_STORE_WRITE_TIMEOUT", 250*time.Millisecond)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting MATRIX_STORE_WRITE_TIMEOUT", "err", err)
+			return 1
+		}
+
+		expireTimeout, err := envvar.GetDuration("MATRIX_STORE_EXPIRE_TIMEOUT", 5*time.Second)
+		if err != nil {
+			level.Error(logger).Log("msg", "error getting MATRIX_STORE_EXPIRE_TIMEOUT", "err", err)
+			return 1
+		}
+
+		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddress, maxIdleConnections, maxActiveConnections, readTimeout, writeTimeout, expireTimeout)
+		if err != nil {
+			level.Error(logger).Log("msg", "error creating redis matrix store", "err", err)
+			return 1
+		}
+
+		backendLiveData.ID = instanceID
+		backendLiveData.Address = fmt.Sprintf("%s:%s", backendAddress, port)
+		backendLiveData.InitAt = time.Now().UTC()
+	}
+
 	var costMatrixData []byte
 	var routeMatrixData []byte
 	var relaysData []byte
 	var statusData []byte
+	var destRelaysData []byte
 
 	costMatrix := &routing.CostMatrix{}
 	routeMatrix := &routing.RouteMatrix{}
@@ -421,6 +506,7 @@ func mainReturnWithCode() int {
 	var routeMatrixMutex sync.RWMutex
 	var relaysMutex sync.RWMutex
 	var statusMutex sync.RWMutex
+	var destRelaysMutex sync.RWMutex
 
 	_ = costMatrix
 
@@ -432,13 +518,13 @@ func mainReturnWithCode() int {
 			syncTimer.Run()
 
 			// Encode the current database.bin to attach to route matrix
-			binWrapperMutex.RLock()
-			binWrapperCopy := binWrapper_internal
-			binWrapperMutex.RUnlock()
+			databaseMutex.RLock()
+			databaseCopy := database_internal
+			databaseMutex.RUnlock()
 
-			var binWrapperBuffer bytes.Buffer
-			encoder := gob.NewEncoder(&binWrapperBuffer)
-			encoder.Encode(binWrapperCopy)
+			var databaseBuffer bytes.Buffer
+			encoder := gob.NewEncoder(&databaseBuffer)
+			encoder.Encode(databaseCopy)
 
 			// build set active relays that are *also* in the current database.bin
 
@@ -574,6 +660,60 @@ func mainReturnWithCode() int {
 			costMatrixMetrics.Invocations.Add(1)
 			costMatrixDurationStart := time.Now()
 
+			var destRelays []bool = make([]bool, len(activeRelays))
+
+			buyers := databaseCopy.BuyerMap
+			buyerDCMaps := databaseCopy.DatacenterMaps
+
+			relayIDsToIndices := make(map[uint64]int32)
+			numRelays := uint32(len(relayIDs))
+
+			for i := uint32(0); i < numRelays; i++ {
+				relayIDsToIndices[relayIDs[i]] = int32(i)
+			}
+
+			destRelayNames := []string{}
+			// Loop over buyers
+			for _, buyer := range buyers {
+				// If live check for dest relays
+				if buyer.Live {
+					for _, dc := range buyerDCMaps[buyer.ID] {
+						relaysInDC := routeMatrix.GetDatacenterRelayIDs(dc.DatacenterID)
+
+						if len(relaysInDC) == 0 {
+							continue
+						}
+
+						for _, relayID := range relaysInDC {
+							relayIndex, ok := relayIDsToIndices[relayID]
+							if ok {
+								destRelays[relayIndex] = true
+								destRelayNames = append(destRelayNames, relayNames[relayIndex])
+							}
+						}
+					}
+				}
+			}
+
+			sort.Strings(destRelayNames)
+
+			destRelaysDataString := ""
+			for _, name := range destRelayNames {
+				destRelaysDataString += fmt.Sprintf("%s", name)
+				destRelaysDataString += fmt.Sprintf("\n")
+			}
+
+			destRelaysMutex.Lock()
+			destRelaysData = []byte(destRelaysDataString)
+			destRelaysMutex.Unlock()
+
+			var costs []int32
+			if env == "local" {
+				costs = statsdb.GetCostsLocal(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+			} else {
+				costs = statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss))
+			}
+
 			costMatrixNew := routing.CostMatrix{
 				RelayIDs:           relayIDs,
 				RelayAddresses:     relayAddresses,
@@ -581,7 +721,9 @@ func mainReturnWithCode() int {
 				RelayLatitudes:     relayLatitudes,
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
-				Costs:              statsdb.GetCosts(relayIDs, float32(maxJitter), float32(maxPacketLoss)),
+				Costs:              costs,
+				Version:            routing.CostMatrixSerializeVersion,
+				DestRelays:         destRelays,
 			}
 
 			costMatrixDurationSince := time.Since(costMatrixDurationStart)
@@ -620,7 +762,7 @@ func mainReturnWithCode() int {
 
 			costThreshold := int32(1)
 
-			routeEntries := core.Optimize(numActiveRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs)
+			routeEntries := core.Optimize2(numActiveRelays, numSegments, costMatrixNew.Costs, costThreshold, relayDatacenterIDs, costMatrixNew.DestRelays)
 
 			optimizeDurationSince := time.Since(optimizeDurationStart)
 			optimizeMetrics.DurationGauge.Set(float64(optimizeDurationSince.Milliseconds()))
@@ -637,9 +779,11 @@ func mainReturnWithCode() int {
 				RelayLongitudes:    relayLongitudes,
 				RelayDatacenterIDs: relayDatacenterIDs,
 				RouteEntries:       routeEntries,
-				BinFileBytes:       int32(len(binWrapperBuffer.Bytes())),
-				BinFileData:        binWrapperBuffer.Bytes(),
+				BinFileBytes:       int32(len(databaseBuffer.Bytes())),
+				BinFileData:        databaseBuffer.Bytes(),
 				CreatedAt:          uint64(time.Now().Unix()),
+				Version:            routing.RouteMatrixSerializeVersion,
+				DestRelays:         destRelays,
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
@@ -704,6 +848,16 @@ func mainReturnWithCode() int {
 			statusData = []byte(statusDataString)
 			statusMutex.Unlock()
 
+			// Update redis with last update time
+			// Debug instance should not store this data in redis
+			if !isDebug {
+				backendLiveData.UpdatedAt = time.Now().UTC()
+				err = matrixStore.SetRelayBackendLiveData(backendLiveData)
+				if err != nil {
+					level.Error(logger).Log("msg", fmt.Sprintf("error setting relay backend live data for address %s", backendLiveData.Address), "err", err)
+				}
+			}
+
 			// optionally write route matrix to cloud storage
 
 			gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
@@ -740,6 +894,18 @@ func mainReturnWithCode() int {
 		StatsDB:      statsdb,
 		Metrics:      relayUpdateMetrics,
 		GetRelayData: GetRelayData,
+	}
+
+	destRelayFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		destRelaysMutex.RLock()
+		data := destRelaysData
+		destRelaysMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 	}
 
 	serveRelaysFunc := func(w http.ResponseWriter, r *http.Request) {
@@ -797,24 +963,22 @@ func mainReturnWithCode() int {
 		return rm
 	}
 
-	port := envvar.Get("PORT", "30000")
-
 	fmt.Printf("starting http server on port %s\n\n", port)
 
 	router := mux.NewRouter()
 
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
 	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/bin_version", transport.RelaysBinVersionFunc(binCreator, binCreationTime, env))
-	router.HandleFunc("/relay_init", transport.RelayInitHandlerFunc()).Methods("POST")
+	router.HandleFunc("/database_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
-	router.HandleFunc("/cost_matrix", serveCostMatrixFunc).Methods("GET")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
-	router.HandleFunc("/relays", serveRelaysFunc).Methods("GET")
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-
+	router.HandleFunc("/dest_relays", destRelayFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
+
+	router.HandleFunc("/relays", serveRelaysFunc)
+	router.HandleFunc("/cost_matrix", serveCostMatrixFunc)
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
@@ -863,19 +1027,6 @@ func GCStoreMatrix(bkt *gcStorage.BucketHandle, matrixType string, timestamp tim
 	return err
 }
 
-func ParseAddress(input string) *net.UDPAddr {
-	address := &net.UDPAddr{}
-	ip_string, port_string, err := net.SplitHostPort(input)
-	if err != nil {
-		address.IP = net.ParseIP(input)
-		address.Port = 0
-		return address
-	}
-	address.IP = net.ParseIP(ip_string)
-	address.Port, _ = strconv.Atoi(port_string)
-	return address
-}
-
 func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	relayArrayMutex.RLock()
 	relayArrayData := relayArray_internal
@@ -888,33 +1039,62 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 	return relayArrayData, relayHashData
 }
 
-func decodeBinWrapper(file *os.File, binWrapper *routing.DatabaseBinWrapper) error {
-	decoder := gob.NewDecoder(file)
-	err := decoder.Decode(binWrapper)
-	return err
+// Determines if this instance is in the backend address list and
+// gets the backend address
+func getBackendAddress(backendAddresses []string, env string) (bool, string, error) {
+	var host string
+	var err error
+
+	if env == "local" {
+		// Running local env, default IP to 127.0.0.1
+		host = "127.0.0.1"
+	} else {
+		// Get the host
+		host, err = os.Hostname()
+		if err != nil {
+			return false, "", err
+		}
+	}
+
+	// Get a list of IPv4 and IPv6 addresses for the host
+	addresses, err := net.LookupIP(host)
+	if err != nil {
+		return false, "", err
+	}
+
+	// Get the hosts from the backend addresses if local
+	var backendAddressHosts []string
+	if env == "local" {
+		for _, address := range backendAddresses {
+			backendHost, _, err := net.SplitHostPort(address)
+			if err != nil {
+				return false, "", err
+			}
+			backendAddressHosts = append(backendAddressHosts, backendHost)
+		}
+	} else {
+		backendAddressHosts = backendAddresses
+	}
+
+	for _, address := range addresses {
+		// Get the IPv4 of the address
+		if ipv4 := address.To4(); ipv4 != nil {
+			// Search through the list to see if there's a match
+			for _, validAddress := range backendAddressHosts {
+				if ipv4.String() == validAddress {
+					return true, ipv4.String(), nil
+				}
+			}
+		}
+	}
+
+	return false, "", nil
 }
 
-func sortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay, gcpProjectID string) {
-	sort.SliceStable(relayArray, func(i, j int) bool {
-		return relayArray[i].Name < relayArray[j].Name
-	})
-
-	if gcpProjectID == "" {
-		// TODO: hack override for local testing for single relay
-		// relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
-		// relayArray[0].ID = 0xde0fb1e9a25b1948
+func getInstanceID(env string) (string, error) {
+	if env != "local" {
+		return metadata.InstanceID()
 	}
 
-	for i := range relayArray {
-		relayHash[relayArray[i].ID] = relayArray[i]
-	}
-}
-
-func displayLoadedRelays(relayArray []routing.Relay) {
-	fmt.Printf("\n=======================================\n")
-	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
-	for i := range relayArray {
-		fmt.Printf("\t%s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
-	}
-	fmt.Printf("\n=======================================\n")
+	return "local", nil
 }
