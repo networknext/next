@@ -149,7 +149,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		// Get the directory of the relays.bin
+		// Get the directory of the database.bin
 		// Used to watch over file creation and modification
 		directoryPath := filepath.Dir(absPath)
 
