@@ -988,7 +988,9 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 }
 
 type CustomerSlackNotification struct {
-	Email string `json:"email"`
+	Email        string `json:"email"`
+	CustomerName string `json:"customer_name"`
+	CustomerCode string `json:"customer_code"`
 }
 
 type GenericSlackNotificationArgs struct {
@@ -1036,8 +1038,19 @@ func (s *AuthService) CustomerViewedTheDocsSlackNotification(r *http.Request, ar
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
 		return &err
 	}
+	// TODO: update this in the hubspot PR
 
-	message := fmt.Sprintf("%s viewed the SDK documentation! :muscle:", args.Email)
+	message := fmt.Sprintf("%s viewed the SDK documentation", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s viewed the SDK documentation", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :muscle:"
 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
@@ -1060,8 +1073,19 @@ func (s *AuthService) CustomerDownloadedSDKSlackNotification(r *http.Request, ar
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
 		return &err
 	}
+	// TODO: update this in the hubspot PR
 
-	message := fmt.Sprintf("%s downloaded the SDK! :party_parrot:", args.Email)
+	message := fmt.Sprintf("%s downloaded the SDK", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s downloaded the SDK", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :part_parrot:"
 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
@@ -1084,12 +1108,58 @@ func (s *AuthService) CustomerEnteredPublicKeySlackNotification(r *http.Request,
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
 		return &err
 	}
+	// TODO: update this in the hubspot PR
 
-	message := fmt.Sprintf("%s entered a public key! :rocket:", args.Email)
+	message := fmt.Sprintf("%s entered a public key", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s entered a public key", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :rocket:"
 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("CustomerEnteredPublicKeySlackNotification(): %v: Email is required", err.Error()))
+		return &err
+	}
+	return nil
+}
+
+func (s *AuthService) CustomerDownloadedUE4PluginNotifications(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("CustomerDownloadedUE4PluginNotifications(): %v", err.Error()))
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		s.Logger.Log("err", fmt.Errorf("CustomerDownloadedUE4PluginNotifications(): %v", err.Error()))
+		return &err
+	}
+
+	message := fmt.Sprintf("%s downloaded the UE4 plugin", args.Email)
+
+	// TODO: update this in the hubspot PR
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s downloaded the UE4 plugin", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :muscle:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("CustomerDownloadedUE4PluginNotifications(): %v", err.Error()))
 		return &err
 	}
 	return nil
