@@ -41,6 +41,7 @@ type ServerUpdateMetrics struct {
 
 	ReadPacketFailure            Counter
 	BuyerNotFound                Counter
+	BuyerNotLive                 Counter
 	SignatureCheckFailed         Counter
 	SDKTooOld                    Counter
 	DatacenterMapNotFound        Counter
@@ -54,6 +55,7 @@ var EmptyServerUpdateMetrics = ServerUpdateMetrics{
 	HandlerMetrics:               &EmptyPacketHandlerMetrics,
 	ReadPacketFailure:            &EmptyCounter{},
 	BuyerNotFound:                &EmptyCounter{},
+	BuyerNotLive:                 &EmptyCounter{},
 	SignatureCheckFailed:         &EmptyCounter{},
 	SDKTooOld:                    &EmptyCounter{},
 	DatacenterMapNotFound:        &EmptyCounter{},
@@ -93,6 +95,7 @@ type SessionUpdateMetrics struct {
 	ClientPingTimedOut                         Counter
 	DatacenterMapNotFound                      Counter
 	DatacenterNotFound                         Counter
+	DatacenterNotEnabled                       Counter
 	MisconfiguredDatacenterAlias               Counter
 	DatacenterNotAllowed                       Counter
 	NearRelaysLocateFailure                    Counter
@@ -100,12 +103,14 @@ type SessionUpdateMetrics struct {
 	NoRelaysInDatacenter                       Counter
 	RouteDoesNotExist                          Counter
 	RouteSwitched                              Counter
+	NextWithoutRouteRelays                     Counter
 	SDKAborted                                 Counter
 	NoRoute                                    Counter
 	MultipathOverload                          Counter
 	LatencyWorse                               Counter
 	MispredictVeto                             Counter
 	WriteResponseFailure                       Counter
+	StaleRouteMatrix                           Counter
 }
 
 // EmptySessionUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -137,6 +142,7 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	ClientPingTimedOut:                         &EmptyCounter{},
 	DatacenterMapNotFound:                      &EmptyCounter{},
 	DatacenterNotFound:                         &EmptyCounter{},
+	DatacenterNotEnabled:                       &EmptyCounter{},
 	MisconfiguredDatacenterAlias:               &EmptyCounter{},
 	DatacenterNotAllowed:                       &EmptyCounter{},
 	NearRelaysLocateFailure:                    &EmptyCounter{},
@@ -144,12 +150,14 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	NoRelaysInDatacenter:                       &EmptyCounter{},
 	RouteDoesNotExist:                          &EmptyCounter{},
 	RouteSwitched:                              &EmptyCounter{},
+	NextWithoutRouteRelays:                     &EmptyCounter{},
 	SDKAborted:                                 &EmptyCounter{},
 	NoRoute:                                    &EmptyCounter{},
 	MultipathOverload:                          &EmptyCounter{},
 	LatencyWorse:                               &EmptyCounter{},
 	MispredictVeto:                             &EmptyCounter{},
 	WriteResponseFailure:                       &EmptyCounter{},
+	StaleRouteMatrix:                           &EmptyCounter{},
 }
 
 // ServerBackendMetrics defines the set of metrics for the server backend.
@@ -579,6 +587,17 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 		return nil, err
 	}
 
+	m.BuyerNotLive, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Buyer Not Live",
+		ServiceName: serviceName,
+		ID:          handlerID + ".buyer_not_live",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a customer ID that was not live.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.SignatureCheckFailed, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Signature Check Failed",
 		ServiceName: serviceName,
@@ -943,6 +962,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		return nil, err
 	}
 
+	m.DatacenterNotEnabled, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Not Enabled",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_not_enabled",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a datacenter ID that was not enabled.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.MisconfiguredDatacenterAlias, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Misconfigured Datacenter Alias",
 		ServiceName: serviceName,
@@ -1020,6 +1050,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		return nil, err
 	}
 
+	m.NextWithoutRouteRelays, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Next Without Route Relays",
+		ServiceName: serviceName,
+		ID:          handlerID + ".next_without_route_relays",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " was on next without any route relays.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.SDKAborted, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " SDK Aborted",
 		ServiceName: serviceName,
@@ -1081,6 +1122,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".write_response_failure",
 		Unit:        "errors",
 		Description: "The number of times we failed to write a response to a " + packetDescription + ".",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.StaleRouteMatrix, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Stale Route Matrix",
+		ServiceName: serviceName,
+		ID:          handlerID + ".stale_route_matrix",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " was using a stale route matrix.",
 	})
 	if err != nil {
 		return nil, err
