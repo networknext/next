@@ -418,7 +418,7 @@ func GetRouteAddressesAndPublicKeys(
 		/*
 			If the relay has a private address defined and the previous relay in the route
 			is from the same seller, prefer to send to the relay private address instead.
-			These private addresses often have better performance than the private addresses,
+			These private addresses often have better performance than the public addresses,
 			and in the case of google cloud, have cheaper bandwidth prices.
 		*/
 
