@@ -182,7 +182,6 @@ func mainReturnWithCode() int {
 		return routing.NullIsland
 	}
 
-	// todo: do we still use this? I thought we cached it somewhere...
 	// Setup maxmind download go routine
 	maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute*1)
 	if err != nil {
@@ -430,26 +429,23 @@ func mainReturnWithCode() int {
 		{
 			clientCount, err := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
 			if err != nil {
-				// todo
-				// level.Error(logger).Log("err", err)
+				core.Error("invalid BILLING_CLIENT_COUNT: %v", err)
 				return 1
 			}
 
 			countThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_COUNT", 100)
 			if err != nil {
-				// todo
-				// level.Error(logger).Log("err", err)
+				core.Error("invalid BILLING_BATCHED_MESSAGE_COUNT: %v", err)
 				return 1
 			}
 
 			byteThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_MIN_BYTES", 1024)
 			if err != nil {
-				// todo
-				// level.Error(logger).Log("err", err)
+				core.Error("invalid BILLING_BATCHED_MESSAGE_MIN_BYTES: %v", err)
 				return 1
 			}
 
-			// todo: why don't we remove our batching, and just use theirs instead?
+			// todo: why don't we remove our batching, and just use theirs instead? less code = less problems...
 
 			// We do our own batching so don't stack the library's batching on top of ours
 			// Specifically, don't stack the message count thresholds
@@ -460,8 +456,7 @@ func mainReturnWithCode() int {
 
 			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
 			if err != nil {
-				// todo
-				// level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
+				core.Error("could not create pubsub biller: %v", err)
 				return 1
 			}
 
@@ -476,16 +471,14 @@ func mainReturnWithCode() int {
 
 		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
-			// todo
-			// level.Error(logger).Log("err", err)
+			core.Error("invalid POST_SESSION_PORTAL_SEND_BUFFER_SIZE: %v", err)
 			return 1
 		}
 
 		for _, host := range portalCruncherHosts {
 			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
 			if err != nil {
-				// todo
-				// level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
+				core.Error("could not create portal cruncher publisher: %v", err)
 				return 1
 			}
 
@@ -495,22 +488,19 @@ func mainReturnWithCode() int {
 
 	numPostSessionGoroutines, err := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
 	if err != nil {
-		// todo
-		// level.Error(logger).Log("err", err)
+		core.Error("invalid POST_SESSION_THREAD_COUNT: %v", err)
 		return 1
 	}
 
 	postSessionBufferSize, err := envvar.GetInt("POST_SESSION_BUFFER_SIZE", 1000000)
 	if err != nil {
-		// todo
-		// level.Error(logger).Log("err", err)
+		core.Error("invalid POST_SESSION_BUFFER_SIZE: %v", err)
 		return 1
 	}
 
 	postSessionPortalMaxRetries, err := envvar.GetInt("POST_SESSION_PORTAL_MAX_RETRIES", 10)
 	if err != nil {
-		// todo
-		// level.Error(logger).Log("err", err)
+		core.Error("invalid POST_SESSION_PORTAL_MAX_RETRIES: %v", err)
 		return 1
 	}
 
@@ -535,16 +525,14 @@ func mainReturnWithCode() int {
 
 		postVanityMetricSendBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
-			// todo
-			// level.Error(logger).Log("err", err)
+			core.Error("invalid FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE: %v", err)
 			return 1
 		}
 
 		for _, host := range vanityMetricHosts {
 			vanityPublisher, err := pubsub.NewVanityMetricPublisher(host, postVanityMetricSendBufferSize)
 			if err != nil {
-				// todo
-				// level.Error(logger).Log("msg", "could not create vanity metric publisher", "err", err)
+				core.Error("could not create vanity metric publisher: %v", err)
 				return 1
 			}
 
@@ -554,8 +542,7 @@ func mainReturnWithCode() int {
 
 	postVanityMetricMaxRetries, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_MAX_RETRIES", 10)
 	if err != nil {
-		// todo
-		// level.Error(logger).Log("err", err)
+		core.Error("invalid FEATURE_VANITY_METRIC_POST_MAX_RETRIES: %v", err)
 		return 1
 	}
 
@@ -567,8 +554,7 @@ func mainReturnWithCode() int {
 
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
 	if err != nil {
-		// todo
-		// level.Error(logger).Log("err", err)
+		core.Error("could not create local multipath veto handler: %v", err)
 		return 1
 	}
 	var multipathVetoHandler storage.MultipathVetoHandler = localMultiPathVetoHandler
@@ -578,21 +564,18 @@ func mainReturnWithCode() int {
 		// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
 		multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
 		if err != nil {
-			// todo
-			// level.Error(logger).Log("err", err)
+			core.Error("invalid MULTIPATH_VETO_SYNC_FREQUENCY: %v", err)
 			return 1
 		}
 
 		multipathVetoHandler, err = storage.NewRedisMultipathVetoHandler(redisMultipathVetoHost, getDatabase)
 		if err != nil {
-			// todo
-			// level.Error(logger).Log("err", err)
+			core.Error("could not create redis multipath veto handler: %v", err)
 			return 1
 		}
 
 		if err := multipathVetoHandler.Sync(); err != nil {
-			// todo
-			// level.Error(logger).Log("err", err)
+			core.Error("faild to sync multipath veto handler: %v", err)
 			return 1
 		}
 
@@ -604,8 +587,7 @@ func mainReturnWithCode() int {
 					select {
 					case <-ticker.C:
 						if err := multipathVetoHandler.Sync(); err != nil {
-							// todo
-							// level.Error(logger).Log("err", err)
+							core.Error("faild to sync multipath veto handler: %v", err)
 						}
 					case <-ctx.Done():
 						return
