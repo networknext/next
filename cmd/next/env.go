@@ -27,9 +27,8 @@ const (
 	RelayArtifactURLStaging = "https://storage.googleapis.com/staging_artifacts/relay.staging.tar.gz"
 	RelayArtifactURLProd    = "https://storage.googleapis.com/prod_artifacts/relay.prod.tar.gz"
 
-	RelayBackendHostnameLocal = "localhost"
-	// RelayBackendHostnameDev     = "34.117.47.154"
-	RelayBackendHostnameDev     = "34.71.193.42"
+	RelayBackendHostnameLocal   = "localhost"
+	RelayBackendHostnameDev     = "34.117.47.154"
 	RelayBackendHostnameNRB     = "10.128.0.7"
 	RelayBackendHostnameStaging = "35.190.44.124"
 	RelayBackendHostnameProd    = "35.227.196.44"
