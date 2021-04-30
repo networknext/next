@@ -5,10 +5,7 @@ import (
 	"io"
 	"math"
 	"net"
-	"sort"
 	"time"
-
-	"github.com/go-kit/kit/log"
 
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/core"
@@ -68,7 +65,7 @@ func writeServerInitResponse(w io.Writer, packet *ServerInitRequestPacket, respo
 
 // ----------------------------------------------------------------------------
 
-func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.DatabaseBinWrapper, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
@@ -155,7 +152,7 @@ func ServerInitHandlerFunc(logger log.Logger, getDatabase func() *routing.Databa
 
 // ----------------------------------------------------------------------------
 
-func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.DatabaseBinWrapper, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
@@ -1448,18 +1445,6 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 	}
 
 	/*
-		Sort the near relays for display purposes
-	*/
-
-	// todo: it would be much better to sort this in the portal service on-demand
-	// this is the hot path, and the cost of sorting here for every single slice
-	// is much higher than just sorting near relays when we serve them up for
-	// the portal.
-	sort.Slice(nearRelayPortalData, func(i, j int) bool {
-		return nearRelayPortalData[i].Name < nearRelayPortalData[j].Name
-	})
-
-	/*
 		Calculate the delta between network next and direct.
 
 		Clamp the delta RTT above 0. This is used for the top sessions page.
@@ -1574,7 +1559,6 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 // ------------------------------------------------------------------
 
 func SessionUpdateHandlerFunc(
-	logger log.Logger,
 	getIPLocator func(sessionID uint64) routing.IPLocator,
 	getRouteMatrix func() *routing.RouteMatrix,
 	multipathVetoHandler storage.MultipathVetoHandler,

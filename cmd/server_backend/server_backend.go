@@ -21,17 +21,16 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/networknext/backend/modules/core"
-
 	"os"
 	"os/signal"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
+	// FUCK this logging system. FUCK IT. Marked for death!!!
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/config"
@@ -43,6 +42,8 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
+	"github.com/networknext/backend/modules/common/helpers"
+
 	"golang.org/x/sys/unix"
 
 	googlepubsub "cloud.google.com/go/pubsub"
@@ -93,56 +94,47 @@ func mainReturnWithCode() int {
 
 	fmt.Printf("\n%s\n\n", serviceName)
 
-	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
-	if err != nil {
-		fmt.Println("Failed to get debug status")
-		isDebug = false
-	}
+	isDebug, _ := envvar.GetBool("NEXT_DEBUG", false)
 
 	if isDebug {
-		fmt.Println("Instance is running as a debug instance")
+		core.Debug("running as debug")
 	}
 
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()
 
-	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
+	env, err := backend.GetEnv()
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("could not get env: %v", err)
 		return 1
 	}
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
+	// FUCK THIS LOGGING SYSTEM!!!
+	logger := log.NewNopLogger()
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("could not get metrics handler: %v", err)
 		return 1
 	}
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
+			core.Error("could not initialize stackdriver profiler: %v", err)
 			return 1
 		}
 	}
 
-	// Create server backend metrics
 	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server_backend metrics", "err", err)
+		core.Error("could not create backend metrics: %v", err)
 		return 1
 	}
 
-	// Create maxmindb sync metrics
 	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create maxmind sync metrics", "err", err)
+		core.Error("could not max mind sync metrics: %v", err)
 		return 1
 	}
 
@@ -163,24 +155,24 @@ func mainReturnWithCode() int {
 	}()
 
 	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
-		level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
+		core.Error("SERVER_BACKEND_PRIVATE_KEY not set")
 		return 1
 	}
 
 	privateKey, err := envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", nil)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid SERVER_BACKEND_PRIVATE_KEY: %v", err)
 		return 1
 	}
 
 	if !envvar.Exists("RELAY_ROUTER_PRIVATE_KEY") {
-		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+		core.Error("RELAY_ROUTER_PRIVATE_KEY not set")
 		return 1
 	}
 
 	routerPrivateKeySlice, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid RELAY_ROUTER_PRIVATE_KEY: %v", err)
 		return 1
 	}
 
@@ -191,6 +183,7 @@ func mainReturnWithCode() int {
 		return routing.NullIsland
 	}
 
+	// todo: do we still use this? I thought we cached it somewhere...
 	// Setup maxmind download go routine
 	maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute*1)
 	if err != nil {
@@ -209,14 +202,13 @@ func mainReturnWithCode() int {
 
 		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
 			mmdbMutex.RLock()
-			defer mmdbMutex.RUnlock()
-
 			mmdbRet := mmdb
+			mmdbMutex.RUnlock()
 			return mmdbRet
 		}
 
 		if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("max mind db sync error: %v", err)
 			return 1
 		}
 
@@ -226,7 +218,7 @@ func mainReturnWithCode() int {
 				select {
 				case <-ticker.C:
 					if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-						level.Error(logger).Log("err", err)
+						core.Error("max mind db sync error: %v", err)
 						continue
 					}
 				case <-ctx.Done():
@@ -248,12 +240,13 @@ func mainReturnWithCode() int {
 
 	staleDuration, err := envvar.GetDuration("MATRIX_STALE_DURATION", 20*time.Second)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid MATRIX_STALE_DURATION: %v", err)
 	}
 
 	// function to get the route matrix pointer under mutex
 
 	routeMatrix := &routing.RouteMatrix{}
+
 	var routeMatrixMutex sync.RWMutex
 
 	getRouteMatrix := func() *routing.RouteMatrix {
@@ -266,6 +259,7 @@ func mainReturnWithCode() int {
 	// function to get the database under mutex
 
 	database := routing.CreateEmptyDatabaseBinWrapper()
+
 	var databaseMutex sync.RWMutex
 
 	getDatabase := func() *routing.DatabaseBinWrapper {
@@ -275,7 +269,7 @@ func mainReturnWithCode() int {
 		return db
 	}
 
-	// function to clear route matrix and database at the same time
+	// function to clear route matrix and database atomically
 
 	clearEverything := func() {
 		routeMatrixMutex.RLock()
@@ -291,13 +285,13 @@ func mainReturnWithCode() int {
 		uri := envvar.Get("ROUTE_MATRIX_URI", "")
 
 		if uri == "" {
-			level.Error(logger).Log("err", fmt.Errorf("no route matrix uri specified"))
+			core.Error("ROUTE_MATRIX_URI not set")
 			return 1
 		}
 
 		syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("ROUTE_MATRIX_SYNC_INTERVAL not set")
 			return 1
 		}
 
@@ -336,14 +330,14 @@ func mainReturnWithCode() int {
 				routeMatrixReader.Close()
 
 				if err != nil {
-					core.Debug("error: failed to read route matrix data: %v", err)
+					core.Error("faired to read route matrix data: %v", err)
 					clearEverything()
 					backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
 					continue
 				}
 
 				if len(buffer) == 0 {
-					core.Debug("error: route matrix buffer is empty")
+					core.Debug("route matrix buffer is empty")
 					clearEverything()
 					backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Add(1)
 					continue
@@ -352,15 +346,14 @@ func mainReturnWithCode() int {
 				var newRouteMatrix routing.RouteMatrix
 				readStream := encoding.CreateReadStream(buffer)
 				if err := newRouteMatrix.Serialize(readStream); err != nil {
-					core.Debug("error: failed to serialize route matrix: %v", err)
+					core.Error("failed to serialize route matrix: %v", err)
 					clearEverything()
 					backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Add(1)
 					continue
 				}
 
 				if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
-					// Don't clear everything here
-					core.Debug("error: route matrix is stale")
+					core.Error("route matrix is stale")
 					backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
 					continue
 				}
@@ -369,7 +362,7 @@ func mainReturnWithCode() int {
 				duration := float64(routeEntriesTime.Milliseconds())
 				backendMetrics.RouteMatrixUpdateDuration.Set(duration)
 				if duration > 100 {
-					core.Debug("error: long route matrix duration %dms", duration)
+					core.Error("long route matrix duration %dms", duration)
 					backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
 				}
 
@@ -390,13 +383,13 @@ func mainReturnWithCode() int {
 				decoder := gob.NewDecoder(databaseBuffer)
 				err := decoder.Decode(&newDatabase)
 				if err == io.EOF {
-					core.Debug("error: database.bin is empty")
+					core.Error("database.bin is empty")
 					clearEverything()
 					backendMetrics.ErrorMetrics.BinWrapperEmpty.Add(1)
 					continue
 				}
 				if err != nil {
-					core.Debug("error: failed to read database.bin: %v", err)
+					core.Error("failed to read database.bin: %v", err)
 					clearEverything()
 					backendMetrics.ErrorMetrics.BinWrapperFailure.Add(1)
 					continue
@@ -431,28 +424,33 @@ func mainReturnWithCode() int {
 			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			level.Info(logger).Log("msg", "Detected pubsub emulator")
+			core.Debug("detected pubsub emulator")
 		}
 
 		// Google Pubsub
 		{
 			clientCount, err := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				// todo
+				// level.Error(logger).Log("err", err)
 				return 1
 			}
 
 			countThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_COUNT", 100)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				// todo
+				// level.Error(logger).Log("err", err)
 				return 1
 			}
 
 			byteThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_MIN_BYTES", 1024)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				// todo
+				// level.Error(logger).Log("err", err)
 				return 1
 			}
+
+			// todo: why don't we remove our batching, and just use theirs instead?
 
 			// We do our own batching so don't stack the library's batching on top of ours
 			// Specifically, don't stack the message count thresholds
@@ -463,7 +461,8 @@ func mainReturnWithCode() int {
 
 			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
 			if err != nil {
-				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
+				// todo
+				// level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
 				return 1
 			}
 
@@ -478,14 +477,16 @@ func mainReturnWithCode() int {
 
 		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			// todo
+			// level.Error(logger).Log("err", err)
 			return 1
 		}
 
 		for _, host := range portalCruncherHosts {
 			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
 			if err != nil {
-				level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
+				// todo
+				// level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
 				return 1
 			}
 
@@ -495,19 +496,22 @@ func mainReturnWithCode() int {
 
 	numPostSessionGoroutines, err := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		// todo
+		// level.Error(logger).Log("err", err)
 		return 1
 	}
 
 	postSessionBufferSize, err := envvar.GetInt("POST_SESSION_BUFFER_SIZE", 1000000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		// todo
+		// level.Error(logger).Log("err", err)
 		return 1
 	}
 
 	postSessionPortalMaxRetries, err := envvar.GetInt("POST_SESSION_PORTAL_MAX_RETRIES", 10)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		// todo
+		// level.Error(logger).Log("err", err)
 		return 1
 	}
 
@@ -672,9 +676,9 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), getDatabase, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), getDatabase, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
+	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
