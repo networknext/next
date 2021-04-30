@@ -30,6 +30,7 @@ declare module '*.vue' {
     sendDocsViewSlackNotification (args: any): Promise<any>
     sendSDKDownloadSlackNotification (args: any): Promise<any>
     sendPublicKeyEnteredSlackNotification (args: any): Promise<any>
+    sendUE4DownloadNotifications (args: any): Promise<any>
   }
 
   export class VueJSONRPCServicePlugin {
