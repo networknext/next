@@ -604,17 +604,6 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	if maxNearRelays > 32 {
-		level.Error(logger).Log("err", "cannot support more than 32 near relays")
-		return 1
-	}
-
 	// Start HTTP server
 	{
 		router := mux.NewRouter()
@@ -632,7 +621,7 @@ func mainReturnWithCode() int {
 
 		go func() {
 			httpPort := envvar.Get("HTTP_PORT", "40001")
-
+			fmt.Printf("started http server on port %s\n\n", httpPort)
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
@@ -685,10 +674,11 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), getDatabase, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), getDatabase, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
+
 			lp, err := lc.ListenPacket(ctx, "udp", "0.0.0.0:"+udpPort)
 			if err != nil {
 				panic(fmt.Sprintf("could not bind socket: %v", err))
@@ -731,7 +721,7 @@ func mainReturnWithCode() int {
 				data = data[crypto.PacketHashSize+1 : size]
 
 				var buffer bytes.Buffer
-				packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
+				packet := transport.UDPPacket{From: *fromAddr, Data: data}
 
 				switch packetType {
 				case transport.PacketTypeServerInitRequest:
@@ -761,7 +751,7 @@ func mainReturnWithCode() int {
 		}(i)
 	}
 
-	level.Info(logger).Log("msg", "waiting for incoming connections")
+	fmt.Printf("started udp server on port %s\n\n", udpPort)
 
 	// Wait for interrupt signal
 	sigint := make(chan os.Signal, 1)

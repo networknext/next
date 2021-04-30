@@ -83,6 +83,6 @@ func NewVanityMetric(ctx context.Context, handler Handler, buyerID string) (*Van
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return m, nil
 }
