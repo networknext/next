@@ -194,8 +194,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.Data
 
 		if !buyer.Live {
 			core.Debug("buyer not active")
-			// todo: add buyer not active metric here
-			// metrics.BuyerNotLive.Add(1)
+			metrics.BuyerNotLive.Add(1)
 			return
 		}
 
@@ -221,7 +220,7 @@ func ServerUpdateHandlerFunc(logger log.Logger, getDatabase func() *routing.Data
 
 		if !datacenterExists(database, packet.DatacenterID) {
 			core.Debug("datacenter does not exist %x", packet.DatacenterID)
-			// todo: add metric for this
+			metrics.DatacenterNotFound.Add(1)
 			return
 		}
 
@@ -553,16 +552,14 @@ func sessionPre(state *SessionHandlerState) bool {
 
 	if !datacenterExists(state.database, state.packet.DatacenterID) {
 		core.Debug("unknown datacenter")
-		// todo: add a metric for this condition
-		// state.metrics.UnknownDatacenter.Add(1)
+		state.metrics.DatacenterNotFound.Add(1)
 		state.unknownDatacenter = true
 		return true
 	}
 
 	if !datacenterEnabled(state.database, state.packet.BuyerID, state.packet.DatacenterID) {
 		core.Debug("datacenter not enabled")
-		// todo: add a metric for this condition
-		// state.metrics.DatacenterNotEnabled.Add(1)
+		state.metrics.DatacenterNotEnabled.Add(1)
 		state.datacenterNotEnabled = true
 		return true
 	}
@@ -579,8 +576,7 @@ func sessionPre(state *SessionHandlerState) bool {
 	if state.routeMatrix.CreatedAt+uint64(state.staleDuration.Seconds()) < uint64(time.Now().Unix()) {
 		core.Debug("stale route matrix")
 		state.staleRouteMatrix = true
-		// todo: add a metric for this
-		// state.metrics.StaleRouteMatrix.Add(1)
+		state.metrics.StaleRouteMatrix.Add(1)
 		return true
 	}
 
@@ -923,8 +919,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 		core.Debug("on network next, but no route relays?")
 		state.output.RouteState.Next = false
 		state.output.RouteState.Veto = true
-		// todo: add metric for this condition
-		// state.metrics.NextWithoutRouteRelays.Add(1)
+		state.metrics.NextWithoutRouteRelays.Add(1)
 		return
 	}
 
