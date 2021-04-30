@@ -563,9 +563,9 @@ func sessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
-	destRelayIDs := state.routeMatrix.GetDatacenterRelayIDs(state.datacenter.ID)
+	destRelayIDs := state.routeMatrix.GetDatacenterRelayIDs(state.packet.DatacenterID)
 	if len(destRelayIDs) == 0 {
-		core.Debug("no relays in datacenter %x", state.datacenter.ID)
+		core.Debug("no relays in datacenter %x", state.packet.DatacenterID)
 		state.metrics.NoRelaysInDatacenter.Add(1)
 		return true
 	}
