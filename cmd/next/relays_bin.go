@@ -54,13 +54,10 @@ func getRelaysBin(env Environment, filename string) {
 		handleRunTimeError(fmt.Sprintf("error writing data to relays.bin: %v\n", err), 1)
 	}
 
-	f, err := os.Stat("./relays.bin")
+	_, err = os.Stat("./relays.bin")
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not find relays.bin? %v\n", err), 1)
 	}
-
-	fileSize := f.Size()
-	fmt.Printf("Successfully retrieved ./relays.bin (%d bytes)\n", fileSize)
 
 }
 
@@ -259,25 +256,22 @@ func queryRelayBackend(
 	regexName string,
 ) {
 
-	relayBackendURI, err := env.RelayBackendHostname()
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("could not get env.RelayBackendHostname() from env: %s\n", env.Name), 1)
+	var uri string
+	var err error
+
+	if uri, err = env.RelayBackendURL(); err != nil {
+		handleRunTimeError(fmt.Sprintf("Cannot get get relay backend hostname: %v\n", err), 1)
 	}
 
-	uri := fmt.Sprintf("http://%s/relays", relayBackendURI)
-
-	// GET doesn't seem to like env.PortalHostname() for local
-	if env.Name == "local" {
-		uri = "http://127.0.0.1:30000/relays"
-	}
+	uri += "/relays"
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
-	// req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", env.AuthToken))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", env.AuthToken))
 
 	r, err := client.Do(req)
 	if err != nil {
-		handleRunTimeError(fmt.Sprintf("could not get relays.bin from the portal: %v\n", err), 1)
+		handleRunTimeError(fmt.Sprintf("could not get relays csv from the portal: %v\n", err), 1)
 	}
 	defer r.Body.Close()
 

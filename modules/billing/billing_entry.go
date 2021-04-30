@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	BillingEntryVersion = uint8(25)
+	BillingEntryVersion = uint8(27)
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
@@ -87,7 +87,11 @@ const (
 		1 + // Pro
 		1 + // MultipathRestricted
 		8 + // ClientToServerPacketsSent
-		8 // ServerToClientPacketsSent
+		8 + // ServerToClientPacketsSent
+		1 + // UnknownDatacenter
+		1 + // DatacenterNotEnabled
+		1 + // BuyerNotLive
+		1 // StaleRouteMatrix
 )
 
 type BillingEntry struct {
@@ -164,6 +168,10 @@ type BillingEntry struct {
 	MultipathRestricted             bool
 	ClientToServerPacketsSent       uint64
 	ServerToClientPacketsSent       uint64
+	UnknownDatacenter               bool
+	DatacenterNotEnabled            bool
+	BuyerNotLive                    bool
+	StaleRouteMatrix                bool
 }
 
 func WriteBillingEntry(entry *BillingEntry) []byte {
@@ -289,6 +297,12 @@ func WriteBillingEntry(entry *BillingEntry) []byte {
 
 	encoding.WriteUint64(data, &index, entry.ClientToServerPacketsSent)
 	encoding.WriteUint64(data, &index, entry.ServerToClientPacketsSent)
+
+	encoding.WriteBool(data, &index, entry.UnknownDatacenter)
+	encoding.WriteBool(data, &index, entry.DatacenterNotEnabled)
+	encoding.WriteBool(data, &index, entry.BuyerNotLive)
+
+	encoding.WriteBool(data, &index, entry.StaleRouteMatrix)
 
 	return data[:index]
 }
@@ -674,6 +688,28 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 		}
 
 		if !encoding.ReadUint64(data, &index, &entry.ServerToClientPacketsSent) {
+			return false
+		}
+	}
+
+	if entry.Version >= 26 {
+
+		if !encoding.ReadBool(data, &index, &entry.UnknownDatacenter) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.DatacenterNotEnabled) {
+			return false
+		}
+
+		if !encoding.ReadBool(data, &index, &entry.BuyerNotLive) {
+			return false
+		}
+
+	}
+
+	if entry.Version >= 27 {
+		if !encoding.ReadBool(data, &index, &entry.StaleRouteMatrix) {
 			return false
 		}
 	}

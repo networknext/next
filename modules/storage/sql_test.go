@@ -178,7 +178,7 @@ func TestInsertSQL(t *testing.T) {
 	t.Run("AddRelay", func(t *testing.T) {
 
 		// relay with no null values (except dc to trip an error)
-		addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		addr, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
 		assert.NoError(t, err)
 
 		internalAddr, err := net.ResolveUDPAddr("udp", "172.20.2.6:40000")
@@ -193,7 +193,7 @@ func TestInsertSQL(t *testing.T) {
 		// fields not stored in the database are not tested here
 		relay := routing.Relay{
 			ID:             rid,
-			Name:           "local.1",
+			Name:           "test.1",
 			Addr:           *addr,
 			InternalAddr:   *internalAddr,
 			ManagementAddr: "1.2.3.4",
@@ -323,7 +323,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relayMod.Notes, checkRelayMod.Notes)
 
 		// relay with some null values null values (except dc to trip an error)
-		addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+		addr2, err := net.ResolveUDPAddr("udp", "127.0.0.3:40000")
 		assert.NoError(t, err)
 
 		rid2 := crypto.HashID(addr2.String())
@@ -333,9 +333,9 @@ func TestInsertSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		// fields not stored in the database are not tested here
-		relay2 := routing.Relay{
+		relay3 := routing.Relay{
 			ID:   rid2,
-			Name: "local.2",
+			Name: "test.3",
 			Addr: *addr2,
 			// InternalAddr:   *internalAddr, <-- nullable
 			ManagementAddr: "1.2.3.4",
@@ -357,7 +357,7 @@ func TestInsertSQL(t *testing.T) {
 			Notes:               "the original notes",
 		}
 
-		err = db.AddRelay(ctx, relay2)
+		err = db.AddRelay(ctx, relay3)
 		assert.NoError(t, err)
 
 		// check only the fields *not* set above
@@ -384,7 +384,7 @@ func TestInsertSQL(t *testing.T) {
 		// fields not stored in the database are not tested here
 		relay := routing.Relay{
 			ID:   rid,
-			Name: "nullable.local.1",
+			Name: "nullable.test.1",
 			Addr: *addr,
 			// InternalAddr:   *internalAddr,
 			ManagementAddr: "1.2.3.5",
@@ -451,7 +451,7 @@ func TestInsertSQL(t *testing.T) {
 
 	t.Run("AddDatacenterMap", func(t *testing.T) {
 		dcMap := routing.DatacenterMap{
-			Alias:        "local.map",
+			Alias:        "test.map",
 			BuyerID:      outerBuyer.ID,
 			DatacenterID: outerDatacenter.ID,
 		}
@@ -558,7 +558,7 @@ func TestDeleteSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		dcMap := routing.DatacenterMap{
-			Alias:        "local.map",
+			Alias:        "test.map",
 			BuyerID:      outerBuyer.ID,
 			DatacenterID: outerDatacenter.ID,
 		}
@@ -584,7 +584,7 @@ func TestDeleteSQL(t *testing.T) {
 
 		relay := routing.Relay{
 			ID:             rid,
-			Name:           "local.1",
+			Name:           "test.1",
 			Addr:           *addr,
 			InternalAddr:   *internalAddr,
 			ManagementAddr: "1.2.3.4",
@@ -869,7 +869,7 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		dcMap := routing.DatacenterMap{
-			Alias:        "local.map",
+			Alias:        "test.map",
 			BuyerID:      buyerWithID.ID,
 			DatacenterID: datacenter1.ID,
 		}
@@ -884,13 +884,13 @@ func TestUpdateSQL(t *testing.T) {
 		// changing the datacenter ID in the alias changes the datacenter map ID which is a
 		// combination of the buyer ID and the datacenter ID, so we have to use the new
 		// datacenter ID now to update.
-		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter2.ID, "Alias", "not.local.map")
+		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter2.ID, "Alias", "not.test.map")
 		assert.NoError(t, err)
 
 		checkDcMaps := db.GetDatacenterMapsForBuyer(buyerWithID.ID)
 		assert.Equal(t, 1, len(checkDcMaps))
 
-		assert.Equal(t, "not.local.map", checkDcMaps[did2].Alias)
+		assert.Equal(t, "not.test.map", checkDcMaps[did2].Alias)
 		assert.Equal(t, did2, checkDcMaps[did2].DatacenterID)
 		assert.Equal(t, buyerWithID.ID, checkDcMaps[did2].BuyerID)
 
@@ -983,7 +983,7 @@ func TestUpdateSQL(t *testing.T) {
 
 		relay := routing.Relay{
 			ID:                  rid,
-			Name:                "local.1",
+			Name:                "test.1",
 			Addr:                *addr,
 			InternalAddr:        *internalAddr,
 			ManagementAddr:      "1.2.3.4",
@@ -1012,11 +1012,11 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		// relay.Name
-		err = db.UpdateRelay(ctx, rid, "Name", "local.2")
+		err = db.UpdateRelay(ctx, rid, "Name", "test.2")
 		assert.NoError(t, err)
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
-		assert.Equal(t, "local.2", checkRelay.Name)
+		assert.Equal(t, "test.2", checkRelay.Name)
 
 		// relay.Addr
 		newAddr, err := net.ResolveUDPAddr("udp", "192.168.0.1:40000")

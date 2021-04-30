@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -609,6 +610,32 @@ func main() {
 			env.Name = args[0]
 			env.Write()
 
+			if args[0] == "local" {
+				// Set up everything needed to run the database.bin generator
+				os.Setenv("RELAY_PUBLIC_KEY", "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+				os.Setenv("FEATURE_POSTGRESQL", "false")
+				os.Setenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "10s")
+				os.Setenv("NEXT_CUSTOMER_PUBLIC_KEY", "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
+				getLocalDatabaseBin()
+
+				// Start redis server if it isn't already
+				runnable := exec.Command("ps", "aux")
+				buffer, err := runnable.CombinedOutput()
+
+				if err != nil {
+					fmt.Printf("Failed to run ps aux: %v\n", err)
+				}
+
+				psAuxOutput := string(buffer)
+
+				if !strings.Contains(psAuxOutput, "redis-server") {
+					runnable := exec.Command("redis-server")
+					if err := runnable.Start(); err != nil {
+						fmt.Printf("Failed to start redis: %v\n", err)
+					}
+				}
+			}
+
 			fmt.Printf("Selected %s environment\n", env.Name)
 			return nil
 		},
@@ -641,6 +668,49 @@ func main() {
 			env.CLIRelease = release
 			env.CLIBuildTime = buildtime
 			fmt.Print(env.String())
+			return nil
+		},
+	}
+
+	var usersCommand = &ffcli.Command{
+		Name:       "users",
+		ShortUsage: "next users",
+		ShortHelp:  "Sort through auth0 users to get more information about associated company and/or buyer account",
+		Exec: func(_ context.Context, args []string) error {
+			reply := localjsonrpc.UserDatabaseReply{}
+			fmt.Println("Looking up all accounts associated to a company/buyer account")
+			fmt.Println("")
+			if err := rpcClient.CallFor(&reply, "AuthService.UserDatabase", localjsonrpc.UserDatabaseArgs{}); err == nil {
+				usersCSV := [][]string{{}}
+
+				usersCSV = append(usersCSV, []string{
+					"Email", "Company Code", "Buyer ID", "Is Owner?", "Time Created"})
+
+				for _, entry := range reply.Entries {
+					fmt.Printf("Email: %s - Company Code: %s - Buyer ID: %s - Is Owner: %s - Time Created: %s\n\n", entry.Email, entry.CompanyCode, entry.BuyerID, strconv.FormatBool(entry.IsOwner), entry.CreationTime)
+					usersCSV = append(usersCSV, []string{
+						entry.Email,
+						entry.CompanyCode,
+						entry.BuyerID,
+						strconv.FormatBool(entry.IsOwner),
+						entry.CreationTime,
+					})
+				}
+
+				fileName := "./users.csv"
+				f, err := os.Create(fileName)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
+				}
+
+				writer := csv.NewWriter(f)
+				err = writer.WriteAll(usersCSV)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
+				}
+				fmt.Println("CSV file written: users.csv")
+				return nil
+			}
 			return nil
 		},
 	}
@@ -2327,6 +2397,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		authCommand,
 		selectCommand,
 		envCommand,
+		usersCommand,
 		sessionCommand,
 		sessionsCommand,
 		relaysCommand,
