@@ -1085,7 +1085,7 @@ func (s *AuthService) CustomerDownloadedSDKSlackNotification(r *http.Request, ar
 		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
 	}
 
-	message += " :part_parrot:"
+	message += " :party_parrot:"
 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
@@ -1155,7 +1155,7 @@ func (s *AuthService) CustomerDownloadedUE4PluginNotifications(r *http.Request, 
 		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
 	}
 
-	message += " :muscle:"
+	message += " :the_horns:"
 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
