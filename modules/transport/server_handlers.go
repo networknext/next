@@ -416,7 +416,7 @@ func GetRouteAddressesAndPublicKeys(
 		relay, exists := database.RelayMap[relayID]
 
 		if !exists {
-			fmt.Printf("relay %x doesn't exist?!\n", relayID)
+			core.Debug("relay %x doesn't exist?!\n", relayID)
 		}
 
 		/*
@@ -567,6 +567,8 @@ func sessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
+	state.datacenter = getDatacenter(state.database, state.packet.DatacenterID)
+
 	destRelayIDs := state.routeMatrix.GetDatacenterRelayIDs(state.packet.DatacenterID)
 	if len(destRelayIDs) == 0 {
 		core.Debug("no relays in datacenter %x", state.packet.DatacenterID)
@@ -593,8 +595,6 @@ func sessionPre(state *SessionHandlerState) bool {
 			state.buyer.RouteShader.ProMode = true
 		}
 	}
-
-	state.datacenter = getDatacenter(state.database, state.packet.DatacenterID)
 
 	state.output.Initial = false
 
@@ -1055,6 +1055,19 @@ func sessionPost(state *SessionHandlerState) {
 	if state.buyerNotFound || state.signatureCheckFailed {
 		core.Debug("not responding")
 		return
+	}
+
+	/*
+		Build the set of near relays for the SDK to ping.
+
+		The SDK pings these near relays and reports up the results in the next session update.
+
+		We hold the set of near relays fixed for the session, so we only do this work on the first slice.
+	*/
+
+	if state.packet.SliceNumber == 0 {
+		sessionGetNearRelays(state)
+		core.Debug("first slice always goes direct")
 	}
 
 	/*
@@ -1686,20 +1699,6 @@ func SessionUpdateHandlerFunc(
 		*/
 
 		if sessionHandleFallbackToDirect(&state) {
-			return
-		}
-
-		/*
-			Build the set of near relays for the SDK to ping.
-
-			The SDK pings these near relays and reports up the results in the next session update.
-
-			We hold the set of near relays fixed for the session, so we only do this work on the first slice.
-		*/
-
-		if state.packet.SliceNumber == 0 {
-			sessionGetNearRelays(&state)
-			core.Debug("first slice always goes direct")
 			return
 		}
 
