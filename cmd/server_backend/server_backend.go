@@ -28,7 +28,6 @@ import (
 
 	// FUCK this logging system. FUCK IT. Marked for death!!!
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/backend"
@@ -536,14 +535,16 @@ func mainReturnWithCode() int {
 
 		postVanityMetricSendBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			// todo
+			// level.Error(logger).Log("err", err)
 			return 1
 		}
 
 		for _, host := range vanityMetricHosts {
 			vanityPublisher, err := pubsub.NewVanityMetricPublisher(host, postVanityMetricSendBufferSize)
 			if err != nil {
-				level.Error(logger).Log("msg", "could not create vanity metric publisher", "err", err)
+				// todo
+				// level.Error(logger).Log("msg", "could not create vanity metric publisher", "err", err)
 				return 1
 			}
 
@@ -553,7 +554,8 @@ func mainReturnWithCode() int {
 
 	postVanityMetricMaxRetries, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_MAX_RETRIES", 10)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		// todo
+		// level.Error(logger).Log("err", err)
 		return 1
 	}
 
@@ -565,7 +567,8 @@ func mainReturnWithCode() int {
 
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		// todo
+		// level.Error(logger).Log("err", err)
 		return 1
 	}
 	var multipathVetoHandler storage.MultipathVetoHandler = localMultiPathVetoHandler
@@ -575,18 +578,21 @@ func mainReturnWithCode() int {
 		// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
 		multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			// todo
+			// level.Error(logger).Log("err", err)
 			return 1
 		}
 
 		multipathVetoHandler, err = storage.NewRedisMultipathVetoHandler(redisMultipathVetoHost, getDatabase)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			// todo
+			// level.Error(logger).Log("err", err)
 			return 1
 		}
 
 		if err := multipathVetoHandler.Sync(); err != nil {
-			level.Error(logger).Log("err", err)
+			// todo
+			// level.Error(logger).Log("err", err)
 			return 1
 		}
 
@@ -598,7 +604,8 @@ func mainReturnWithCode() int {
 					select {
 					case <-ticker.C:
 						if err := multipathVetoHandler.Sync(); err != nil {
-							level.Error(logger).Log("err", err)
+							// todo
+							// level.Error(logger).Log("err", err)
 						}
 					case <-ctx.Done():
 						return
@@ -617,7 +624,8 @@ func mainReturnWithCode() int {
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			// todo
+			//level.Error(logger).Log("err", err)
 		}
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
@@ -628,7 +636,8 @@ func mainReturnWithCode() int {
 			fmt.Printf("started http server on port %s\n\n", httpPort)
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				// todo
+				// level.Error(logger).Log("err", err)
 				return
 			}
 		}()
@@ -636,19 +645,22 @@ func mainReturnWithCode() int {
 
 	numThreads, err := envvar.GetInt("NUM_THREADS", 1)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		// todo
+		// level.Error(logger).Log("err", err)
 		return 1
 	}
 
 	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		// todo
+		// level.Error(logger).Log("err", err)
 		return 1
 	}
 
 	writeBuffer, err := envvar.GetInt("WRITE_BUFFER", 100000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		// todo
+		// level.Error(logger).Log("err", err)
 		return 1
 	}
 
@@ -704,7 +716,8 @@ func mainReturnWithCode() int {
 				data := dataArray[:]
 				size, fromAddr, err := conn.ReadFromUDP(data)
 				if err != nil {
-					level.Error(logger).Log("msg", "failed to read UDP packet", "err", err)
+					// todo
+					// level.Error(logger).Log("msg", "failed to read UDP packet", "err", err)
 					break
 				}
 
@@ -717,7 +730,8 @@ func mainReturnWithCode() int {
 				// Check the packet hash is legit and remove the hash from the beginning of the packet
 				// to continue processing the packet as normal
 				if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
-					level.Error(logger).Log("err", "received non network next packet")
+					// todo
+					// level.Error(logger).Log("err", "received non network next packet")
 					continue
 				}
 
@@ -735,7 +749,8 @@ func mainReturnWithCode() int {
 				case transport.PacketTypeSessionUpdate:
 					sessionUpdateHandler(&buffer, &packet)
 				default:
-					level.Error(logger).Log("err", "unknown packet type", "packet_type", packet.Data[0])
+					// todo
+					// level.Error(logger).Log("err", "unknown packet type", "packet_type", packet.Data[0])
 				}
 
 				if buffer.Len() > 0 {
@@ -746,7 +761,8 @@ func mainReturnWithCode() int {
 					crypto.HashPacket(crypto.PacketHashKey, response)
 
 					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
-						level.Error(logger).Log("msg", "failed to write UDP response", "err", err)
+						// todo
+						// level.Error(logger).Log("msg", "failed to write UDP response", "err", err)
 					}
 				}
 			}
