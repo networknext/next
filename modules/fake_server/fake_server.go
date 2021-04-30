@@ -20,7 +20,7 @@ import (
 // It mocks server init, server update, and session update requests to load test the server backend.
 type FakeServer struct {
 	sdkVersion           transport.SDKVersion
-	customerID           uint64
+	buyerID              uint64
 	customerPrivateKey   []byte
 	publicAddress        *net.UDPAddr
 	logger               log.Logger
@@ -34,7 +34,7 @@ type FakeServer struct {
 }
 
 // NewFakeServer returns a fake server with the given parameters.
-func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, beaconAddr *net.UDPAddr, clientCount int, sdkVersion transport.SDKVersion, logger log.Logger, customerID uint64, customerPrivateKey []byte, dcName string) (*FakeServer, error) {
+func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, beaconAddr *net.UDPAddr, clientCount int, sdkVersion transport.SDKVersion, logger log.Logger, buyerID uint64, customerPrivateKey []byte, dcName string) (*FakeServer, error) {
 	// We need to use a random address for the server so that
 	// each server instance is uniquely identifiable, so that
 	// the total session count is accurate.
@@ -60,7 +60,7 @@ func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, beaconAddr
 	server := &FakeServer{
 		sdkVersion:           sdkVersion,
 		publicAddress:        &randomAddress,
-		customerID:           customerID,
+		buyerID:              buyerID,
 		customerPrivateKey:   customerPrivateKey,
 		logger:               logger,
 		serverRoutePublicKey: routePublicKey,
@@ -144,7 +144,7 @@ func (server *FakeServer) update() error {
 func (server *FakeServer) sendServerInitPacket() error {
 	requestPacket := transport.ServerInitRequestPacket{
 		Version:        server.sdkVersion,
-		CustomerID:     server.customerID,
+		BuyerID:        server.buyerID,
 		DatacenterID:   crypto.HashID(server.dcName),
 		RequestID:      rand.Uint64(),
 		DatacenterName: server.dcName,
@@ -187,7 +187,7 @@ func (server *FakeServer) sendServerInitPacket() error {
 func (server *FakeServer) sendServerUpdatePacket() error {
 	requestPacket := transport.ServerUpdatePacket{
 		Version:       server.sdkVersion,
-		CustomerID:    server.customerID,
+		BuyerID:       server.buyerID,
 		DatacenterID:  crypto.HashID(server.dcName),
 		NumSessions:   uint32(len(server.sessions)),
 		ServerAddress: *server.publicAddress,
@@ -213,7 +213,7 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session) (transport.Se
 
 	requestPacket := transport.SessionUpdatePacket{
 		Version:                         server.sdkVersion,
-		CustomerID:                      server.customerID,
+		BuyerID:                         server.buyerID,
 		DatacenterID:                    crypto.HashID(server.dcName),
 		SessionID:                       session.sessionID,
 		SliceNumber:                     session.sliceNumber,
@@ -324,7 +324,7 @@ func (server *FakeServer) sendPacket(packetType byte, packetData []byte) error {
 func (server *FakeServer) sendBeaconPacket(session Session) error {
 	beaconPacket := transport.NextBeaconPacket{
 		Version:          uint32(transport.BeaconPacketVersion),
-		CustomerID:       server.customerID,
+		BuyerID:          server.buyerID,
 		DatacenterID:     crypto.HashID(server.dcName),
 		UserHash:         session.userHash,
 		AddressHash:      crypto.HashID(session.clientAddress.String()),

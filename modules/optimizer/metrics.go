@@ -7,11 +7,11 @@ import (
 )
 
 type Metrics struct {
-	CostMatrixMetrics       *metrics.CostMatrixMetrics
-	OptimizeMetrics         *metrics.OptimizeMetrics
-	RelayBackendMetrics     *metrics.RelayBackendMetrics
-	RelayInitMetrics        *metrics.RelayInitMetrics
-	RelayUpdateMetrics      *metrics.RelayUpdateMetrics
+	CostMatrixMetrics   *metrics.CostMatrixMetrics
+	OptimizeMetrics     *metrics.OptimizeMetrics
+	RelayBackendMetrics *metrics.RelayBackendMetrics
+	RelayInitMetrics    *metrics.RelayInitMetrics
+	RelayUpdateMetrics  *metrics.RelayUpdateMetrics
 }
 
 func NewMetrics(ctx context.Context, metricsHandler metrics.Handler) (*Metrics, error, string) {
