@@ -98,11 +98,15 @@ func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
 	assert.Equal(t, expected.CreatedAt, uint64(0))
 }
 
+// todo: GetNearRelays tests should be extended to also check the second value returned, array of relay addresses is correct
+
 func TestRouteMatrixNoNearRelays(t *testing.T) {
 	routeMatrix := routing.RouteMatrix{}
 
-	nearRelays := routeMatrix.GetNearRelays(0, 0, 0, 0, 0, core.MaxNearRelays)
-	assert.Empty(t, nearRelays)
+	nearRelayIDs, nearRelayAddresses := routeMatrix.GetNearRelays(0, 0, 0, 0, 0, core.MaxNearRelays)
+
+	assert.Empty(t, nearRelayIDs)
+	assert.Empty(t, nearRelayAddresses)
 }
 
 func TestRouteMatrixGetNearRelays(t *testing.T) {
@@ -110,7 +114,7 @@ func TestRouteMatrixGetNearRelays(t *testing.T) {
 
 	expected := []uint64{1, 4, 3}
 
-	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
 
 	assert.Equal(t, expected, actual)
 }
@@ -120,7 +124,7 @@ func TestRouteMatrixGetNearRelaysWithMax(t *testing.T) {
 
 	expected := routeMatrix.RelayIDs[:1]
 
-	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, 1)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, 1)
 
 	assert.Equal(t, expected, actual)
 }
@@ -135,7 +139,7 @@ func TestRouteMatrixGetNearRelaysNoNearRelaysAroundSource(t *testing.T) {
 
 	expected := []uint64{4, 3}
 
-	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
 
 	assert.Equal(t, expected, actual)
 }
@@ -150,7 +154,7 @@ func TestRouteMatrixGetNearRelaysNoNearRelaysAroundDest(t *testing.T) {
 
 	expected := []uint64{1, 3}
 
-	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
 
 	assert.Equal(t, expected, actual)
 }

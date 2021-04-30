@@ -187,11 +187,10 @@ A good test to see if everything works and is installed is to run the "Happy Pat
 7. `make dev-server-backend`: run the server backend
 8. `make dev-server`: this will run a fake game server and register itself with the server backend
 9. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-clients` to create 10 client sessions.
------- The Following steps `require redis-server` ------
 10. `make dev-portal-cruncher-1`: run portal cruncher 1
 11. `make dev-portal-cruncher-2`: run portal cruncher 2
-12. `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit http://127.0.0.1:20000 to view currently connected sessions.
-13. OPTIONAL - For the the Vue rewrite development run `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" CORS="false" dev-portal`. This will launch the backend to be used primarily for the RPC endpoints. You will then need to clone the portal repo, https://github.com/networknext/portal, and run `npm run serve`. This will launch the portal at http://127.0.0.1:8080
+12. `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit http://localhost:20000 to view currently connected sessions.
+13. OPTIONAL - For the the Vue rewrite development run `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" CORS="false" dev-portal`. This will launch the backend to be used primarily for the RPC endpoints. You will then need to clone the portal repo, https://github.com/networknext/portal, and run `npm run serve`. This will launch the portal at http://localhost:8080
 
 You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
 
