@@ -2239,8 +2239,7 @@ func (reader *BitReader) ReadBits(bits int) (uint32, error) {
 		if reader.wordIndex >= reader.numWords {
 			return 0, fmt.Errorf("would read past end of buffer")
 		}
-		// todo: use unsafe
-		// reader.scratch |= uint64(NetworkToHost(reader.data[reader.wordIndex])) << uint(reader.scratchBits)
+		reader.scratch |= uint64(NetworkToHost(*(*uint32)(unsafe.Pointer(&reader.buffer[reader.wordIndex*4])))) << uint(reader.scratchBits)
 		reader.scratchBits += 32
 		reader.wordIndex++
 	}
@@ -2307,8 +2306,7 @@ func (reader *BitReader) ReadBytes(buffer []byte) error {
 		if (reader.bitsRead % 32) != 0 {
 			panic("reader should be word aligned at this point")
 		}
-		// todo: use unsafe
-		// copy(buffer[headBytes:], uintsToBytes(reader.data[reader.wordIndex:reader.wordIndex+numWords]))
+		*(*uint32)(unsafe.Pointer(&buffer[headBytes])) = *(*uint32)(unsafe.Pointer(&reader.buffer[reader.wordIndex*4]))
 		reader.bitsRead += numWords * 32
 		reader.wordIndex += numWords
 		reader.scratchBits = 0

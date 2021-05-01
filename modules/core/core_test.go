@@ -5863,7 +5863,7 @@ func TestBitpacker(t *testing.T) {
 	reader := CreateBitReader(buffer[:])
 
 	assert.Equal(t, 0, reader.GetBitsRead())
-	assert.Equal(t, bytesWritten*8, reader.GetBitsRemaining())
+	assert.Equal(t, BufferSize*8, reader.GetBitsRemaining())
 
 	a, err := reader.ReadBits(1)
 	assert.Nil(t, err)
@@ -5895,7 +5895,7 @@ func TestBitpacker(t *testing.T) {
 	assert.Equal(t, uint32(9999999), g)
 
 	assert.Equal(t, bitsWritten, reader.GetBitsRead())
-	assert.Equal(t, bytesWritten*8-bitsWritten, reader.GetBitsRemaining())
+	assert.Equal(t, BufferSize*8-bitsWritten, reader.GetBitsRemaining())
 }
 
 // -------------------------------------------------------------
