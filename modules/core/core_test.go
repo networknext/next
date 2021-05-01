@@ -6027,7 +6027,7 @@ func TestStream(t *testing.T) {
 
 	t.Parallel()
 
-	const BufferSize = 1024
+	const BufferSize = 256
 
 	buffer := [BufferSize]byte{}
 
@@ -6039,6 +6039,10 @@ func TestStream(t *testing.T) {
 	assert.Nil(t, err)
 
 	writeStream.Flush()
+
+	for i := BufferSize {
+		fmt.Printf("%d: %d\n", i, buffer[i])
+	}
 
 	readStream := CreateReadStream(buffer[:])
 	readObject := &TestObject{}
