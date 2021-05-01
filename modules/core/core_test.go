@@ -5860,14 +5860,8 @@ func TestBitpacker(t *testing.T) {
 
 	assert.Equal(t, 10, bytesWritten)
 
-	// todo
-	/*
 	reader := CreateBitReader(buffer[:])
 
-	_ = reader
-	*/
-
-	/*
 	assert.Equal(t, 0, reader.GetBitsRead())
 	assert.Equal(t, bytesWritten*8, reader.GetBitsRemaining())
 
@@ -5902,7 +5896,6 @@ func TestBitpacker(t *testing.T) {
 
 	assert.Equal(t, bitsWritten, reader.GetBitsRead())
 	assert.Equal(t, bytesWritten*8-bitsWritten, reader.GetBitsRemaining())
-	*/
 }
 
 // -------------------------------------------------------------

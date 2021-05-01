@@ -2027,7 +2027,6 @@ func CreateBitWriter(buffer []byte) (*BitWriter, error) {
 		return nil, fmt.Errorf("bitwriter bytes must be a multiple of 4")
 	}
 	numWords := bytes / 4
-	fmt.Printf("dwords: %d", numWords)
 	return &BitWriter{
 		buffer:   buffer,
 		numBits:  numWords * 32,
@@ -2060,8 +2059,7 @@ func (writer *BitWriter) WriteBits(value uint32, bits int) error {
 	writer.scratchBits += bits
 
 	if writer.scratchBits >= 32 {
-		// todo: write via unsafe
-		// writer.data[writer.wordIndex] = HostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
+		*(*uint32)(unsafe.Pointer(&writer.buffer[writer.wordIndex*4])) = HostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
 		writer.scratch >>= 32
 		writer.scratchBits -= 32
 		writer.wordIndex++
@@ -2073,6 +2071,7 @@ func (writer *BitWriter) WriteBits(value uint32, bits int) error {
 }
 
 func (writer *BitWriter) WriteAlign() error {
+
 	remainderBits := writer.bitsWritten % 8
 
 	if remainderBits != 0 {
@@ -2084,6 +2083,7 @@ func (writer *BitWriter) WriteAlign() error {
 			panic("WriteAlign() failed to align BitWriter")
 		}
 	}
+
 	return nil
 }
 
@@ -2127,8 +2127,7 @@ func (writer *BitWriter) WriteBytes(data []byte) error {
 		if (writer.bitsWritten % 32) != 0 {
 			panic("bits written should be aligned")
 		}
-		// todo: write via unsafe
-		// writer.data[writer.wordIndex] = *(*uint32)(unsafe.Pointer(&data[headBytes]))
+		*(*uint32)(unsafe.Pointer(&writer.buffer[writer.wordIndex*4])) = *(*uint32)(unsafe.Pointer(&data[headBytes]))
 		writer.bitsWritten += numWords * 32
 		writer.wordIndex += numWords
 		writer.scratch = 0
@@ -2170,8 +2169,7 @@ func (writer *BitWriter) FlushBits() error {
 		if writer.wordIndex >= writer.numWords {
 			return fmt.Errorf("buffer overflow")
 		}
-		// todo: write via unsafe
-		// writer.data[writer.wordIndex] = HostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
+		*(*uint32)(unsafe.Pointer(&writer.buffer[writer.wordIndex*4])) = HostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
 		writer.scratch >>= 32
 		writer.scratchBits = 0
 		writer.wordIndex++
@@ -2200,7 +2198,7 @@ func (writer *BitWriter) GetBytesWritten() int {
 }
 
 type BitReader struct {
-	data        []uint32
+	buffer      []byte
 	numBits     int
 	numBytes    int
 	numWords    int
@@ -2210,13 +2208,12 @@ type BitReader struct {
 	wordIndex   int
 }
 
-/*
 func CreateBitReader(data []byte) *BitReader {
 	return &BitReader{
+		buffer:   data,
 		numBits:  len(data) * 8,
 		numBytes: len(data),
 		numWords: (len(data) + 3) / 4,
-		data:     bytesToUints(data),
 	}
 }
 
@@ -2242,7 +2239,8 @@ func (reader *BitReader) ReadBits(bits int) (uint32, error) {
 		if reader.wordIndex >= reader.numWords {
 			return 0, fmt.Errorf("would read past end of buffer")
 		}
-		reader.scratch |= uint64(NetworkToHost(reader.data[reader.wordIndex])) << uint(reader.scratchBits)
+		// todo: use unsafe
+		// reader.scratch |= uint64(NetworkToHost(reader.data[reader.wordIndex])) << uint(reader.scratchBits)
 		reader.scratchBits += 32
 		reader.wordIndex++
 	}
@@ -2309,8 +2307,8 @@ func (reader *BitReader) ReadBytes(buffer []byte) error {
 		if (reader.bitsRead % 32) != 0 {
 			panic("reader should be word aligned at this point")
 		}
-		// todo: busted here -- use unsafe directly?
-		copy(buffer[headBytes:], uintsToBytes(reader.data[reader.wordIndex:reader.wordIndex+numWords]))
+		// todo: use unsafe
+		// copy(buffer[headBytes:], uintsToBytes(reader.data[reader.wordIndex:reader.wordIndex+numWords]))
 		reader.bitsRead += numWords * 32
 		reader.wordIndex += numWords
 		reader.scratchBits = 0
@@ -2354,7 +2352,6 @@ func (reader *BitReader) GetBitsRead() int {
 func (reader *BitReader) GetBitsRemaining() int {
 	return reader.numBits - reader.bitsRead
 }
-*/
 
 // ---------------------------------------------------
 
