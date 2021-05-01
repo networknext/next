@@ -5841,6 +5841,11 @@ func TestBitpacker(t *testing.T) {
 	assert.Equal(t, 0, writer.GetBytesWritten())
 	assert.Equal(t, BufferSize*8, writer.GetBitsAvailable())
 
+	data := [32]byte{}
+	for i := range data {
+		data[i] = byte(65+i)
+	}
+
 	writer.WriteBits(0, 1)
 	writer.WriteBits(1, 1)
 	writer.WriteBits(10, 8)
@@ -5848,17 +5853,14 @@ func TestBitpacker(t *testing.T) {
 	writer.WriteBits(1000, 10)
 	writer.WriteBits(50000, 16)
 	writer.WriteBits(9999999, 32)
+	writer.WriteBytes(data[:])
 	writer.FlushBits()
 
-	bitsWritten := 1 + 1 + 8 + 8 + 10 + 16 + 32
+	bitsWritten := 1 + 1 + 8 + 8 + 10 + 16 + 32 + 32*8
 
-	assert.Equal(t, 10, writer.GetBytesWritten())
+	assert.Equal(t, 42, writer.GetBytesWritten())
 	assert.Equal(t, bitsWritten, writer.GetBitsWritten())
 	assert.Equal(t, BufferSize*8-bitsWritten, writer.GetBitsAvailable())
-
-	bytesWritten := writer.GetBytesWritten()
-
-	assert.Equal(t, 10, bytesWritten)
 
 	reader := CreateBitReader(buffer[:])
 
@@ -5884,6 +5886,10 @@ func TestBitpacker(t *testing.T) {
 	assert.Nil(t, err)
 
 	g, err := reader.ReadBits(32)
+	assert.Nil(t, err)
+
+	readData := [32]byte{}
+	err = reader.ReadBytes(readData[:])
 	assert.Nil(t, err)
 
 	assert.Equal(t, uint32(0), a)
@@ -5916,10 +5922,8 @@ func TestBitsRequired(t *testing.T) {
 	assert.Equal(t, 32, BitsRequired(0, 4294967295))
 }
 
-const maxItems = 11
-const testByteCount = 17
-
 type TestObject struct {
+	/*
 	a           int32
 	b           int32
 	c           int32
@@ -5931,22 +5935,28 @@ type TestObject struct {
 	floatValue  float32
 	doubleValue float64
 	uint64Value uint64
-	// bytes       []byte
+	*/
+	bytes       [32]byte
+	/*
 	str         string
 	addressA    net.UDPAddr
 	addressB    net.UDPAddr
 	addressC    net.UDPAddr
+	*/
 }
 
 func createTestObject() *TestObject {
+	testObject := TestObject{}
+	for i := range testObject.bytes {
+		testObject.bytes[i] = byte(65+i)
+	}
+	return &testObject
+	/*
 	items := make([]uint32, maxItems/2)
 	for i := range items {
 		items[i] = uint32(i + 10)
 	}
 	bytes := make([]byte, testByteCount)
-	for i := range bytes {
-		bytes[i] = byte((i * 37) % 255)
-	}
 	return &TestObject{
 		a:           1,
 		b:           -2,
@@ -5965,10 +5975,12 @@ func createTestObject() *TestObject {
 		addressB:    *ParseAddress("127.0.0.1:50000"),
 		addressC:    *ParseAddress("[::1]:50000"),
 	}
+	*/
 }
 
 func (obj *TestObject) Serialize(stream Stream) error {
 
+	/*
 	stream.SerializeInteger(&obj.a, -10, 10)
 	stream.SerializeInteger(&obj.b, -10, 10)
 
@@ -5996,14 +6008,17 @@ func (obj *TestObject) Serialize(stream Stream) error {
 	stream.SerializeFloat64(&obj.doubleValue)
 
 	stream.SerializeUint64(&obj.uint64Value)
+	*/
 
-	// stream.SerializeBytes(obj.bytes)
+	stream.SerializeBytes(obj.bytes[:])
 
+	/*
 	stream.SerializeString(&obj.str, 256)
 
 	stream.SerializeAddress(&obj.addressA)
 	stream.SerializeAddress(&obj.addressB)
 	stream.SerializeAddress(&obj.addressC)
+	*/
 
 	return stream.Error()
 }
