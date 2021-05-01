@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"sync"
 	"unsafe"
-	// "runtime/debug"
+	"runtime/debug"
 )
 
 const CostBias = 3
@@ -2259,7 +2259,6 @@ func (reader *BitReader) GetBitsRemaining() int {
 
 // ---------------------------------------------------
 
-/*
 type Stream interface {
 	IsWriting() bool
 	IsReading() bool
@@ -2289,8 +2288,8 @@ type WriteStream struct {
 	err    error
 }
 
-func CreateWriteStream(bytes int) (*WriteStream, error) {
-	writer, err := CreateBitWriter(bytes)
+func CreateWriteStream(buffer []byte) (*WriteStream, error) {
+	writer, err := CreateBitWriter(buffer)
 	if err != nil {
 		return nil, err
 	}
@@ -2307,6 +2306,7 @@ func (stream *WriteStream) IsReading() bool {
 	return false
 }
 
+// todo: lame function name
 func (stream *WriteStream) error(err error) {
 	if err != nil && stream.err == nil {
 		stream.err = fmt.Errorf("%v\n%s", err, string(debug.Stack()))
@@ -2659,6 +2659,7 @@ func CreateReadStream(buffer []byte) *ReadStream {
 	}
 }
 
+// todo: stupid name
 func (stream *ReadStream) error(err error) {
 	if err != nil && stream.err == nil {
 		stream.err = fmt.Errorf("%v\n%s", err, string(debug.Stack()))
@@ -3068,6 +3069,5 @@ func (stream *ReadStream) GetBitsProcessed() int {
 func (stream *ReadStream) GetBytesProcessed() int {
 	return (stream.reader.GetBitsRead() + 7) / 8
 }
-*/
 
 // --------------------------------------------------------

@@ -5916,7 +5916,6 @@ func TestBitsRequired(t *testing.T) {
 	assert.Equal(t, 32, BitsRequired(0, 4294967295))
 }
 
-/*
 const maxItems = 11
 const testByteCount = 17
 
@@ -6015,7 +6014,9 @@ func TestStream(t *testing.T) {
 
 	const BufferSize = 1024
 
-	writeStream, err := CreateWriteStream(BufferSize)
+	buffer := [BufferSize]byte{}
+
+	writeStream, err := CreateWriteStream(buffer[:])
 	assert.Nil(t, err)
 
 	writeObject := createTestObject()
@@ -6024,16 +6025,12 @@ func TestStream(t *testing.T) {
 
 	writeStream.Flush()
 
-	bytesWritten := writeStream.GetBytesProcessed()
-
-	buffer := writeStream.GetData()
-
-	readStream := CreateReadStream(buffer[:bytesWritten])
+	readStream := CreateReadStream(buffer[:])
 	readObject := &TestObject{}
 	err = readObject.Serialize(readStream)
 	assert.Nil(t, err)
 
-	assert.Equal(t, readObject, writeObject)
+	assert.Equal(t, writeObject, readObject)
 }
-*/
+
 // ------------------------------------------
