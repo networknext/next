@@ -5826,15 +5826,15 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 
 // -------------------------------------------------------------
 
-// todo
-/*
 func TestBitpacker(t *testing.T) {
 
 	t.Parallel()
 
 	const BufferSize = 256
 
-	writer, err := CreateBitWriter(BufferSize)
+	buffer := [BufferSize]byte{}
+
+	writer, err := CreateBitWriter(buffer[:])
 	assert.Nil(t, err)
 
 	assert.Equal(t, 0, writer.GetBitsWritten())
@@ -5860,10 +5860,14 @@ func TestBitpacker(t *testing.T) {
 
 	assert.Equal(t, 10, bytesWritten)
 
-	buffer := writer.GetData()
+	// todo
+	/*
+	reader := CreateBitReader(buffer[:])
 
-	reader := CreateBitReader(buffer[:bytesWritten])
+	_ = reader
+	*/
 
+	/*
 	assert.Equal(t, 0, reader.GetBitsRead())
 	assert.Equal(t, bytesWritten*8, reader.GetBitsRemaining())
 
@@ -5898,8 +5902,8 @@ func TestBitpacker(t *testing.T) {
 
 	assert.Equal(t, bitsWritten, reader.GetBitsRead())
 	assert.Equal(t, bytesWritten*8-bitsWritten, reader.GetBitsRemaining())
+	*/
 }
-*/
 
 // -------------------------------------------------------------
 

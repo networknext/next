@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"sync"
 	"unsafe"
-	"runtime/debug"
+	// "runtime/debug"
 )
 
 const CostBias = 3
@@ -100,6 +100,12 @@ func GenerateRelayKeyPair() ([]byte, []byte, error) {
 }
 
 // -----------------------------------------------------
+
+const (
+	IPAddressNone = 0
+	IPAddressIPv4 = 1
+	IPAddressIPv6 = 2
+)
 
 func ParseAddress(input string) *net.UDPAddr {
 	address := &net.UDPAddr{}
@@ -1952,6 +1958,7 @@ func MakeRouteDecision_StayOnNetworkNext(routeMatrix []RouteEntry, relayNames []
 
 // ---------------------------------------------------
 
+/*
 func uintsToBytes(data []uint32) []byte {
 	return *(*[]byte)(unsafe.Pointer(&data[0]))
 }
@@ -1959,6 +1966,7 @@ func uintsToBytes(data []uint32) []byte {
 func bytesToUints(data []byte) []uint32 {
 	return *(*[]uint32)(unsafe.Pointer(&data[0]))
 }
+*/
 
 func Log2(x uint32) int {
 	a := x | (x >> 1)
@@ -2004,7 +2012,7 @@ func UnsignedToSigned(n uint32) int32 {
 }
 
 type BitWriter struct {
-	data        []uint32
+	buffer      []byte
 	scratch     uint64
 	numBits     int
 	bitsWritten int
@@ -2013,16 +2021,19 @@ type BitWriter struct {
 	numWords    int
 }
 
-func CreateBitWriter(bytes int) (*BitWriter, error) {
+func CreateBitWriter(buffer []byte) (*BitWriter, error) {
+	bytes := len(buffer)
 	if bytes%4 != 0 {
 		return nil, fmt.Errorf("bitwriter bytes must be a multiple of 4")
 	}
 	numWords := bytes / 4
+	fmt.Printf("dwords: %d", numWords)
 	return &BitWriter{
-		data:     make([]uint32, numWords),
+		buffer:   buffer,
 		numBits:  numWords * 32,
 		numWords: numWords,
 	}, nil
+
 }
 
 func HostToNetwork(x uint32) uint32 {
@@ -2049,7 +2060,8 @@ func (writer *BitWriter) WriteBits(value uint32, bits int) error {
 	writer.scratchBits += bits
 
 	if writer.scratchBits >= 32 {
-		writer.data[writer.wordIndex] = HostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
+		// todo: write via unsafe
+		// writer.data[writer.wordIndex] = HostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
 		writer.scratch >>= 32
 		writer.scratchBits -= 32
 		writer.wordIndex++
@@ -2115,8 +2127,8 @@ func (writer *BitWriter) WriteBytes(data []byte) error {
 		if (writer.bitsWritten % 32) != 0 {
 			panic("bits written should be aligned")
 		}
-		// todo: fix here?
-		copy(writer.data[writer.wordIndex:], bytesToUints(data[headBytes:headBytes+numWords*4]))
+		// todo: write via unsafe
+		// writer.data[writer.wordIndex] = *(*uint32)(unsafe.Pointer(&data[headBytes]))
 		writer.bitsWritten += numWords * 32
 		writer.wordIndex += numWords
 		writer.scratch = 0
@@ -2158,7 +2170,8 @@ func (writer *BitWriter) FlushBits() error {
 		if writer.wordIndex >= writer.numWords {
 			return fmt.Errorf("buffer overflow")
 		}
-		writer.data[writer.wordIndex] = HostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
+		// todo: write via unsafe
+		// writer.data[writer.wordIndex] = HostToNetwork(uint32(writer.scratch & 0xFFFFFFFF))
 		writer.scratch >>= 32
 		writer.scratchBits = 0
 		writer.wordIndex++
@@ -2179,7 +2192,7 @@ func (writer *BitWriter) GetBitsAvailable() int {
 }
 
 func (writer *BitWriter) GetData() []byte {
-	return uintsToBytes(writer.data)
+	return writer.buffer
 }
 
 func (writer *BitWriter) GetBytesWritten() int {
@@ -2197,12 +2210,12 @@ type BitReader struct {
 	wordIndex   int
 }
 
+/*
 func CreateBitReader(data []byte) *BitReader {
 	return &BitReader{
 		numBits:  len(data) * 8,
 		numBytes: len(data),
 		numWords: (len(data) + 3) / 4,
-		// todo: do better here
 		data:     bytesToUints(data),
 	}
 }
@@ -2341,15 +2354,11 @@ func (reader *BitReader) GetBitsRead() int {
 func (reader *BitReader) GetBitsRemaining() int {
 	return reader.numBits - reader.bitsRead
 }
+*/
 
 // ---------------------------------------------------
 
-const (
-	IPAddressNone = 0
-	IPAddressIPv4 = 1
-	IPAddressIPv6 = 2
-)
-
+/*
 type Stream interface {
 	IsWriting() bool
 	IsReading() bool
@@ -3158,5 +3167,6 @@ func (stream *ReadStream) GetBitsProcessed() int {
 func (stream *ReadStream) GetBytesProcessed() int {
 	return (stream.reader.GetBitsRead() + 7) / 8
 }
+*/
 
 // --------------------------------------------------------
