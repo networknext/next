@@ -606,8 +606,7 @@ func mainReturnWithCode() int {
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
-			// todo
-			//level.Error(logger).Log("err", err)
+			core.Error("invalid FEATURE_ENABLE_PPROF: %v", err)
 		}
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
@@ -618,8 +617,7 @@ func mainReturnWithCode() int {
 			fmt.Printf("started http server on port %s\n\n", httpPort)
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
-				// todo
-				// level.Error(logger).Log("err", err)
+				core.Error("failed to start http server: ", err)
 				return
 			}
 		}()
@@ -627,22 +625,19 @@ func mainReturnWithCode() int {
 
 	numThreads, err := envvar.GetInt("NUM_THREADS", 1)
 	if err != nil {
-		// todo
-		// level.Error(logger).Log("err", err)
+		core.Error("invalid NUM_THREADS: %v", err)
 		return 1
 	}
 
 	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
 	if err != nil {
-		// todo
-		// level.Error(logger).Log("err", err)
+		core.Error("invalid READ_BUFFER: %v", err)
 		return 1
 	}
 
 	writeBuffer, err := envvar.GetInt("WRITE_BUFFER", 100000)
 	if err != nil {
-		// todo
-		// level.Error(logger).Log("err", err)
+		core.Error("invalid WRITE_BUFFER: %v", err)
 		return 1
 	}
 
@@ -698,8 +693,7 @@ func mainReturnWithCode() int {
 				data := dataArray[:]
 				size, fromAddr, err := conn.ReadFromUDP(data)
 				if err != nil {
-					// todo
-					// level.Error(logger).Log("msg", "failed to read UDP packet", "err", err)
+					core.Error("failed to read udp packet: %v", err)
 					break
 				}
 
@@ -712,8 +706,6 @@ func mainReturnWithCode() int {
 				// Check the packet hash is legit and remove the hash from the beginning of the packet
 				// to continue processing the packet as normal
 				if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
-					// todo
-					// level.Error(logger).Log("err", "received non network next packet")
 					continue
 				}
 
@@ -730,9 +722,6 @@ func mainReturnWithCode() int {
 					serverUpdateHandler(&buffer, &packet)
 				case transport.PacketTypeSessionUpdate:
 					sessionUpdateHandler(&buffer, &packet)
-				default:
-					// todo
-					// level.Error(logger).Log("err", "unknown packet type", "packet_type", packet.Data[0])
 				}
 
 				if buffer.Len() > 0 {
@@ -743,8 +732,7 @@ func mainReturnWithCode() int {
 					crypto.HashPacket(crypto.PacketHashKey, response)
 
 					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
-						// todo
-						// level.Error(logger).Log("msg", "failed to write UDP response", "err", err)
+						core.Error("failed to write udp response packet: %v", err)
 					}
 				}
 			}

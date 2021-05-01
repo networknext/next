@@ -5825,3 +5825,77 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 }
 
 // -------------------------------------------------------------
+
+func TestBitpacker(t *testing.T) {
+
+	t.Parallel()
+
+	const BufferSize = 256
+
+	writer, err := CreateBitWriter(BufferSize)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, writer.GetBitsWritten())
+	assert.Equal(t, 0, writer.GetBytesWritten())
+	assert.Equal(t, BufferSize*8, writer.GetBitsAvailable())
+
+	writer.WriteBits(0, 1)
+	writer.WriteBits(1, 1)
+	writer.WriteBits(10, 8)
+	writer.WriteBits(255, 8)
+	writer.WriteBits(1000, 10)
+	writer.WriteBits(50000, 16)
+	writer.WriteBits(9999999, 32)
+	writer.FlushBits()
+
+	bitsWritten := 1 + 1 + 8 + 8 + 10 + 16 + 32
+
+	assert.Equal(t, 10, writer.GetBytesWritten())
+	assert.Equal(t, bitsWritten, writer.GetBitsWritten())
+	assert.Equal(t, BufferSize*8-bitsWritten, writer.GetBitsAvailable())
+
+	bytesWritten := writer.GetBytesWritten()
+
+	assert.Equal(t, 10, bytesWritten)
+
+	buffer := writer.GetData()
+
+	reader := CreateBitReader(buffer[:bytesWritten])
+
+	assert.Equal(t, 0, reader.GetBitsRead())
+	assert.Equal(t, bytesWritten*8, reader.GetBitsRemaining())
+
+	a, err := reader.ReadBits(1)
+	assert.Nil(t, err)
+
+	b, err := reader.ReadBits(1)
+	assert.Nil(t, err)
+
+	c, err := reader.ReadBits(8)
+	assert.Nil(t, err)
+
+	d, err := reader.ReadBits(8)
+	assert.Nil(t, err)
+
+	e, err := reader.ReadBits(10)
+	assert.Nil(t, err)
+
+	f, err := reader.ReadBits(16)
+	assert.Nil(t, err)
+
+	g, err := reader.ReadBits(32)
+	assert.Nil(t, err)
+
+	assert.Equal(t, uint32(0), a)
+	assert.Equal(t, uint32(1), b)
+	assert.Equal(t, uint32(10), c)
+	assert.Equal(t, uint32(255), d)
+	assert.Equal(t, uint32(1000), e)
+	assert.Equal(t, uint32(50000), f)
+	assert.Equal(t, uint32(9999999), g)
+
+	assert.Equal(t, bitsWritten, reader.GetBitsRead())
+	assert.Equal(t, bytesWritten*8-bitsWritten, reader.GetBitsRemaining())
+}
+
+// -------------------------------------------------------------
