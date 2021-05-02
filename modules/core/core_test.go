@@ -5923,7 +5923,6 @@ func TestBitsRequired(t *testing.T) {
 }
 
 type TestObject struct {
-	/*
 	a           int32
 	b           int32
 	c           int32
@@ -5931,18 +5930,15 @@ type TestObject struct {
 	e           uint32
 	f           uint32
 	g           bool
-	items       []uint32
+	items       [16]uint32
 	floatValue  float32
 	doubleValue float64
 	uint64Value uint64
-	*/
 	bytes       [32]byte
-	/*
 	str         string
 	addressA    net.UDPAddr
 	addressB    net.UDPAddr
 	addressC    net.UDPAddr
-	*/
 }
 
 func createTestObject() *TestObject {
@@ -5950,37 +5946,28 @@ func createTestObject() *TestObject {
 	for i := range testObject.bytes {
 		testObject.bytes[i] = byte(65+i)
 	}
+	for i := range testObject.items {
+		testObject.items[i] = uint32(i)
+	}
+	testObject.a = 1
+	testObject.b = -2
+	testObject.c = 150
+	testObject.d = 55
+	testObject.e = 255
+	testObject.f = 127
+	testObject.g = true
+	testObject.floatValue = 3.1415926
+	testObject.doubleValue = 1.0 / 3.0
+	testObject.uint64Value = 0x1234567898765432
+	testObject.str = "hello world!"
+	testObject.addressA = net.UDPAddr{}
+	testObject.addressB = *ParseAddress("127.0.0.1:50000")
+	testObject.addressC = *ParseAddress("[::1]:50000")
 	return &testObject
-	/*
-	items := make([]uint32, maxItems/2)
-	for i := range items {
-		items[i] = uint32(i + 10)
-	}
-	bytes := make([]byte, testByteCount)
-	return &TestObject{
-		a:           1,
-		b:           -2,
-		c:           150,
-		d:           55,
-		e:           255,
-		f:           127,
-		g:           true,
-		items:       items,
-		floatValue:  3.1415926,
-		doubleValue: 1.0 / 3.0,
-		uint64Value: 0x1234567898765432,
-		// bytes:       bytes,
-		str:         "hello world!",
-		addressA:    net.UDPAddr{},
-		addressB:    *ParseAddress("127.0.0.1:50000"),
-		addressC:    *ParseAddress("[::1]:50000"),
-	}
-	*/
 }
 
 func (obj *TestObject) Serialize(stream Stream) error {
 
-	/*
 	stream.SerializeInteger(&obj.a, -10, 10)
 	stream.SerializeInteger(&obj.b, -10, 10)
 
@@ -5994,11 +5981,6 @@ func (obj *TestObject) Serialize(stream Stream) error {
 
 	stream.SerializeBool(&obj.g)
 
-	numItems := int32(len(obj.items))
-	stream.SerializeInteger(&numItems, 0, maxItems-1)
-	if stream.IsReading() {
-		obj.items = make([]uint32, numItems)
-	}
 	for i := range obj.items {
 		stream.SerializeBits(&obj.items[i], 8)
 	}
@@ -6008,17 +5990,14 @@ func (obj *TestObject) Serialize(stream Stream) error {
 	stream.SerializeFloat64(&obj.doubleValue)
 
 	stream.SerializeUint64(&obj.uint64Value)
-	*/
 
 	stream.SerializeBytes(obj.bytes[:])
 
-	/*
 	stream.SerializeString(&obj.str, 256)
 
 	stream.SerializeAddress(&obj.addressA)
 	stream.SerializeAddress(&obj.addressB)
 	stream.SerializeAddress(&obj.addressC)
-	*/
 
 	return stream.Error()
 }
