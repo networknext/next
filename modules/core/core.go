@@ -2090,13 +2090,16 @@ func (writer *BitWriter) WriteBytes(data []byte) error {
 	if err := writer.FlushBits(); err != nil {
 		return err
 	}
+	
 	numWords := (len(data) - headBytes) / 4
-	if numWords > 0 {
-		*(*uint32)(unsafe.Pointer(&writer.buffer[writer.wordIndex*4])) = *(*uint32)(unsafe.Pointer(&data[headBytes]))
-		writer.bitsWritten += numWords * 32
-		writer.wordIndex += numWords
-		writer.scratch = 0
+	
+	for i := 0; i < numWords; i++ {
+		*(*uint32)(unsafe.Pointer(&writer.buffer[writer.wordIndex*4])) = *(*uint32)(unsafe.Pointer(&data[headBytes+i*4]))
+		writer.bitsWritten += 32
+		writer.wordIndex += 1
 	}
+
+	writer.scratch = 0
 
 	tailStart := headBytes + numWords*4
 	tailBytes := len(data) - tailStart
@@ -2224,12 +2227,13 @@ func (reader *BitReader) ReadBytes(buffer []byte) error {
 
 	numWords := (len(buffer) - headBytes) / 4
 
-	if numWords > 0 {
-		*(*uint32)(unsafe.Pointer(&buffer[headBytes])) = *(*uint32)(unsafe.Pointer(&reader.buffer[reader.wordIndex*4]))
-		reader.bitsRead += numWords * 32
-		reader.wordIndex += numWords
-		reader.scratchBits = 0
+	for i := 0; i < numWords; i++ {
+		*(*uint32)(unsafe.Pointer(&buffer[headBytes+i*4])) = *(*uint32)(unsafe.Pointer(&reader.buffer[reader.wordIndex*4]))
+		reader.bitsRead += 32
+		reader.wordIndex += 1
 	}
+
+	reader.scratchBits = 0
 
 	tailStart := headBytes + numWords*4
 	tailBytes := len(buffer) - tailStart
