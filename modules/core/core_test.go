@@ -6040,10 +6040,6 @@ func TestStream(t *testing.T) {
 
 	writeStream.Flush()
 
-	for i := BufferSize {
-		fmt.Printf("%d: %d\n", i, buffer[i])
-	}
-
 	readStream := CreateReadStream(buffer[:])
 	readObject := &TestObject{}
 	err = readObject.Serialize(readStream)
