@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -50,7 +51,7 @@ func TestRouteMatrixSerialize(t *testing.T) {
 
 	buffer := make([]byte, 10000)
 
-	ws, err := core.CreateWriteStream(buffer)
+	ws, err := encoding.CreateWriteStream(buffer)
 	assert.NoError(t, err)
 	err = expected.Serialize(ws)
 	assert.NoError(t, err)
@@ -59,7 +60,7 @@ func TestRouteMatrixSerialize(t *testing.T) {
 	data := ws.GetData()[:ws.GetBytesProcessed()]
 
 	var actual routing.RouteMatrix
-	rs := core.CreateReadStream(data)
+	rs := encoding.CreateReadStream(data)
 	err = actual.Serialize(rs)
 	assert.NoError(t, err)
 
@@ -73,7 +74,7 @@ func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
 
 	buffer := make([]byte, 10000)
 
-	ws, err := core.CreateWriteStream(buffer)
+	ws, err := encoding.CreateWriteStream(buffer)
 	assert.NoError(t, err)
 	err = original.Serialize(ws)
 	assert.NoError(t, err)
@@ -82,7 +83,7 @@ func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
 	data := ws.GetData()[:ws.GetBytesProcessed()]
 
 	var actual routing.RouteMatrix
-	rs := core.CreateReadStream(data)
+	rs := encoding.CreateReadStream(data)
 	err = actual.Serialize(rs)
 	assert.NoError(t, err)
 

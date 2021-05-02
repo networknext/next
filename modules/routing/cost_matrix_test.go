@@ -4,7 +4,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,7 +32,7 @@ func TestCostMatrixSerialize(t *testing.T) {
 	expected := getCostMatrix(t)
 
 	buffer := make([]byte, 10000)
-	ws, err := core.CreateWriteStream(buffer)
+	ws, err := encoding.CreateWriteStream(buffer)
 	assert.NoError(t, err)
 	err = expected.Serialize(ws)
 	assert.NoError(t, err)
@@ -41,7 +41,7 @@ func TestCostMatrixSerialize(t *testing.T) {
 	data := ws.GetData()[:ws.GetBytesProcessed()]
 
 	var actual routing.CostMatrix
-	rs := core.CreateReadStream(data)
+	rs := encoding.CreateReadStream(data)
 	err = actual.Serialize(rs)
 	assert.NoError(t, err)
 

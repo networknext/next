@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/common/helpers"
@@ -252,7 +253,7 @@ func TestRelayFrontendSvc_GetCostMatrix(t *testing.T) {
 	assert.NotEmpty(t, buffer)
 
 	var newRouteMatrix routing.RouteMatrix
-	rs := core.CreateReadStream(buffer)
+	rs := encoding.CreateReadStream(buffer)
 	err = newRouteMatrix.Serialize(rs)
 	assert.NoError(t, err)
 
@@ -294,7 +295,7 @@ func TestRelayFrontendSvc_ResetCostMatrix(t *testing.T) {
 	receivedCostMatrixBin := svc.costMatrix.GetMatrix()
 	var receivedCostMatrix routing.CostMatrix
 
-	readStream := core.CreateReadStream(receivedCostMatrixBin)
+	readStream := encoding.CreateReadStream(receivedCostMatrixBin)
 	err = receivedCostMatrix.Serialize(readStream)
 	assert.NoError(t, err)
 
@@ -317,7 +318,7 @@ func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
 	assert.NotEmpty(t, buffer)
 
 	var newRouteMatrix routing.RouteMatrix
-	rs := core.CreateReadStream(buffer)
+	rs := encoding.CreateReadStream(buffer)
 	err = newRouteMatrix.Serialize(rs)
 	assert.NoError(t, err)
 
@@ -363,7 +364,7 @@ func TestRelayFrontendSvc_ResetRouteMatrix(t *testing.T) {
 	receivedRouteMatrixBin := svc.routeMatrix.GetMatrix()
 	var receivedRouteMatrix routing.RouteMatrix
 
-	readStream := core.CreateReadStream(receivedRouteMatrixBin)
+	readStream := encoding.CreateReadStream(receivedRouteMatrixBin)
 	err = receivedRouteMatrix.Serialize(readStream)
 	assert.NoError(t, err)
 

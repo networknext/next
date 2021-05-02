@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
@@ -139,7 +139,7 @@ func main() {
 
 			var newRouteMatrix routing.RouteMatrix
 			if len(buffer) > 0 {
-				rs := core.CreateReadStream(buffer)
+				rs := encoding.CreateReadStream(buffer)
 				if err := newRouteMatrix.Serialize(rs); err != nil {
 					level.Error(logger).Log("msg", "could not serialize route matrix", "err", err)
 					continue // Don't swap route matrix if we fail to serialize

@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const RouteMatrixSerializeVersion = 2
@@ -37,7 +38,7 @@ type RouteMatrix struct {
 	cachedAnalysisMutex sync.RWMutex
 }
 
-func (m *RouteMatrix) Serialize(stream core.Stream) error {
+func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint32(&m.Version)
 
@@ -239,14 +240,14 @@ func (m *RouteMatrix) ReadFrom(reader io.Reader) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	readStream := core.CreateReadStream(data)
+	readStream := encoding.CreateReadStream(data)
 	err = m.Serialize(readStream)
 	return int64(readStream.GetBytesProcessed()), err
 }
 
 func (m *RouteMatrix) WriteTo(writer io.Writer, bufferSize int) (int64, error) {
 	buffer := make([]byte, bufferSize)
-	writeStream, err := core.CreateWriteStream(buffer)
+	writeStream, err := encoding.CreateWriteStream(buffer)
 	if err != nil {
 		return 0, err
 	}
@@ -391,7 +392,7 @@ func (m *RouteMatrix) GetResponseData() []byte {
 
 func (m *RouteMatrix) WriteResponseData(bufferSize int) error {
 	buffer := make([]byte, bufferSize)
-	stream, err := core.CreateWriteStream(buffer)
+	stream, err := encoding.CreateWriteStream(buffer)
 	if err != nil {
 		return fmt.Errorf("failed to create write stream in route matrix WriteResponseData(): %v", err)
 	}

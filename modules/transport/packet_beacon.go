@@ -6,7 +6,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
-	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
@@ -45,7 +45,7 @@ type NextBeaconPacket struct {
 	FallbackToDirect bool
 }
 
-func (packet *NextBeaconPacket) Serialize(stream core.Stream) error {
+func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&packet.Version, 8)
 
 	stream.SerializeBool(&packet.Enabled)
@@ -96,7 +96,7 @@ func WriteBeaconEntry(entry *NextBeaconPacket) ([]byte, error) {
 
 	buffer := [MaxNextBeaconPacketBytes]byte{}
 
-	ws, err := core.CreateWriteStream(buffer[:])
+	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func WriteBeaconEntry(entry *NextBeaconPacket) ([]byte, error) {
 }
 
 func ReadBeaconEntry(entry *NextBeaconPacket, data []byte) error {
-	if err := entry.Serialize(core.CreateReadStream(data)); err != nil {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
 		return err
 	}
 	return nil

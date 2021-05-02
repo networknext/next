@@ -30,6 +30,7 @@ import (
 	"github.com/go-kit/kit/log"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/config"
@@ -341,7 +342,7 @@ func mainReturnWithCode() int {
 				}
 
 				var newRouteMatrix routing.RouteMatrix
-				readStream := core.CreateReadStream(buffer)
+				readStream := encoding.CreateReadStream(buffer)
 				if err := newRouteMatrix.Serialize(readStream); err != nil {
 					core.Error("failed to serialize route matrix: %v", err)
 					clearEverything()
