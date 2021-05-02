@@ -34,7 +34,6 @@ import (
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
@@ -342,7 +341,7 @@ func mainReturnWithCode() int {
 				}
 
 				var newRouteMatrix routing.RouteMatrix
-				readStream := encoding.CreateReadStream(buffer)
+				readStream := core.CreateReadStream(buffer)
 				if err := newRouteMatrix.Serialize(readStream); err != nil {
 					core.Error("failed to serialize route matrix: %v", err)
 					clearEverything()

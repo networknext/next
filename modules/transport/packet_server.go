@@ -7,7 +7,6 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 )
 
@@ -192,28 +191,29 @@ func FallbackFlagText(fallbackFlag uint32) string {
 }
 
 type Packet interface {
-	Serialize(stream encoding.Stream) error
+	Serialize(stream core.Stream) error
 }
 
 func UnmarshalPacket(packet Packet, data []byte) error {
-	if err := packet.Serialize(encoding.CreateReadStream(data)); err != nil {
+	if err := packet.Serialize(core.CreateReadStream(data)); err != nil {
 		return err
 	}
 	return nil
 }
 
 func MarshalPacket(packet Packet) ([]byte, error) {
-	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	buffer := [DefaultMaxPacketSize]byte{}
+	stream, err := core.CreateWriteStream(buffer[:])
 	if err != nil {
 		return nil, err
 	}
 
-	if err := packet.Serialize(ws); err != nil {
+	if err := packet.Serialize(stream); err != nil {
 		return nil, err
 	}
-	ws.Flush()
+	stream.Flush()
 
-	return ws.GetData()[:ws.GetBytesProcessed()], nil
+	return buffer[:stream.GetBytesProcessed()], nil
 }
 
 type ServerInitRequestPacket struct {
@@ -224,7 +224,7 @@ type ServerInitRequestPacket struct {
 	DatacenterName string
 }
 
-func (packet *ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
+func (packet *ServerInitRequestPacket) Serialize(stream core.Stream) error {
 	versionMajor := uint32(packet.Version.Major)
 	versionMinor := uint32(packet.Version.Minor)
 	versionPatch := uint32(packet.Version.Patch)
@@ -244,7 +244,7 @@ type ServerInitResponsePacket struct {
 	Response  uint32
 }
 
-func (packet *ServerInitResponsePacket) Serialize(stream encoding.Stream) error {
+func (packet *ServerInitResponsePacket) Serialize(stream core.Stream) error {
 	stream.SerializeUint64(&packet.RequestID)
 	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
@@ -258,7 +258,7 @@ type ServerUpdatePacket struct {
 	ServerAddress net.UDPAddr
 }
 
-func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
+func (packet *ServerUpdatePacket) Serialize(stream core.Stream) error {
 	versionMajor := uint32(packet.Version.Major)
 	versionMinor := uint32(packet.Version.Minor)
 	versionPatch := uint32(packet.Version.Patch)
@@ -323,7 +323,7 @@ type SessionUpdatePacket struct {
 	JitterServerToClient            float32
 }
 
-func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
+func (packet *SessionUpdatePacket) Serialize(stream core.Stream) error {
 
 	versionMajor := uint32(packet.Version.Major)
 	versionMinor := uint32(packet.Version.Minor)
@@ -512,7 +512,7 @@ type SessionResponsePacket struct {
 	HighFrequencyPings bool
 }
 
-func (packet *SessionResponsePacket) Serialize(stream encoding.Stream) error {
+func (packet *SessionResponsePacket) Serialize(stream core.Stream) error {
 
 	stream.SerializeUint64(&packet.SessionID)
 
@@ -607,7 +607,7 @@ type SessionData struct {
 }
 
 func UnmarshalSessionData(sessionData *SessionData, data []byte) error {
-	if err := sessionData.Serialize(encoding.CreateReadStream(data)); err != nil {
+	if err := sessionData.Serialize(core.CreateReadStream(data)); err != nil {
 		return err
 	}
 	return nil
@@ -619,20 +619,22 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 		sessionData.Version = SessionDataVersion
 	}
 
-	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	buffer := [DefaultMaxPacketSize]byte{}
+
+	stream, err := core.CreateWriteStream(buffer[:])
 	if err != nil {
 		return nil, err
 	}
 
-	if err := sessionData.Serialize(ws); err != nil {
+	if err := sessionData.Serialize(stream); err != nil {
 		return nil, err
 	}
-	ws.Flush()
+	stream.Flush()
 
-	return ws.GetData()[:ws.GetBytesProcessed()], nil
+	return buffer[:stream.GetBytesProcessed()], nil
 }
 
-func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
+func (sessionData *SessionData) Serialize(stream core.Stream) error {
 
 	// IMPORTANT: DO NOT EVER CHANGE CODE IN THIS FUNCTION BELOW HERE.
 	// CHANGING CODE BELOW HERE *WILL* BREAK PRODUCTION!!!!

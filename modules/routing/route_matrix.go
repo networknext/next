@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/encoding"
 )
 
 const RouteMatrixSerializeVersion = 2
@@ -38,7 +37,7 @@ type RouteMatrix struct {
 	cachedAnalysisMutex sync.RWMutex
 }
 
-func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
+func (m *RouteMatrix) Serialize(stream core.Stream) error {
 
 	stream.SerializeUint32(&m.Version)
 
@@ -240,25 +239,22 @@ func (m *RouteMatrix) ReadFrom(reader io.Reader) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-
-	readStream := encoding.CreateReadStream(data)
+	readStream := core.CreateReadStream(data)
 	err = m.Serialize(readStream)
 	return int64(readStream.GetBytesProcessed()), err
 }
 
 func (m *RouteMatrix) WriteTo(writer io.Writer, bufferSize int) (int64, error) {
-	writeStream, err := encoding.CreateWriteStream(bufferSize)
+	buffer := make([]byte, bufferSize)
+	writeStream, err := core.CreateWriteStream(buffer)
 	if err != nil {
 		return 0, err
 	}
-
 	if err = m.Serialize(writeStream); err != nil {
 		return int64(writeStream.GetBytesProcessed()), err
 	}
-
 	writeStream.Flush()
-
-	n, err := writer.Write(writeStream.GetData()[:writeStream.GetBytesProcessed()])
+	n, err := writer.Write(buffer[:writeStream.GetBytesProcessed()])
 	return int64(n), err
 }
 
@@ -394,19 +390,18 @@ func (m *RouteMatrix) GetResponseData() []byte {
 }
 
 func (m *RouteMatrix) WriteResponseData(bufferSize int) error {
-	ws, err := encoding.CreateWriteStream(bufferSize)
+	buffer := make([]byte, bufferSize)
+	stream, err := core.CreateWriteStream(buffer)
 	if err != nil {
 		return fmt.Errorf("failed to create write stream in route matrix WriteResponseData(): %v", err)
 	}
 
-	if err := m.Serialize(ws); err != nil {
+	if err := m.Serialize(stream); err != nil {
 		return fmt.Errorf("failed to serialize route matrix in WriteResponseData(): %v", err)
 	}
-
-	ws.Flush()
-
+	stream.Flush()
 	m.cachedResponseMutex.Lock()
-	m.cachedResponse = ws.GetData()[:ws.GetBytesProcessed()]
+	m.cachedResponse = buffer[:stream.GetBytesProcessed()]
 	m.cachedResponseMutex.Unlock()
 	return nil
 }

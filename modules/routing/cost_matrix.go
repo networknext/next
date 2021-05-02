@@ -7,7 +7,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/core"
 )
 
 const CostMatrixSerializeVersion = 2
@@ -27,7 +27,7 @@ type CostMatrix struct {
 	cachedResponseMutex sync.RWMutex
 }
 
-func (m *CostMatrix) Serialize(stream encoding.Stream) error {
+func (m *CostMatrix) Serialize(stream core.Stream) error {
 
 	stream.SerializeUint32(&m.Version)
 
@@ -80,7 +80,7 @@ func (m *CostMatrix) ReadFrom(reader io.Reader) (int64, error) {
 		return 0, err
 	}
 
-	readStream := encoding.CreateReadStream(data)
+	readStream := core.CreateReadStream(data)
 	err = m.Serialize(readStream)
 	return int64(readStream.GetBytesProcessed()), err
 }
@@ -93,7 +93,8 @@ func (m *CostMatrix) GetResponseData() []byte {
 }
 
 func (m *CostMatrix) WriteResponseData(bufferSize int) error {
-	ws, err := encoding.CreateWriteStream(bufferSize)
+	buffer := make([]byte, bufferSize)	
+	ws, err := core.CreateWriteStream(buffer)
 	if err != nil {
 		return fmt.Errorf("failed to create write stream in cost matrix WriteResponseData(): %v", err)
 	}
@@ -105,7 +106,7 @@ func (m *CostMatrix) WriteResponseData(bufferSize int) error {
 	ws.Flush()
 
 	m.cachedResponseMutex.Lock()
-	m.cachedResponse = ws.GetData()[:ws.GetBytesProcessed()]
+	m.cachedResponse = buffer[:ws.GetBytesProcessed()]
 	m.cachedResponseMutex.Unlock()
 	return nil
 }
