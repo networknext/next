@@ -17,7 +17,7 @@ import (
 
 type GatewayConfig struct {
 	ChannelBufferSize     int
-	BinSyncInterval		  time.Duration
+	BinSyncInterval       time.Duration
 	UseHTTP               bool
 	RelayBackendAddresses []string
 	HTTPTimeout           time.Duration
