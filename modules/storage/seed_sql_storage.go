@@ -381,8 +381,8 @@ func SeedSQLStorage(
 		// fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:       2,
-			RouteSwitchThreshold:       5,
+			RouteSelectThreshold:       5,
+			RouteSwitchThreshold:       10,
 			MaxLatencyTradeOff:         10,
 			RTTVeto_Default:            -10,
 			RTTVeto_PacketLoss:         -20,
@@ -394,7 +394,7 @@ func SeedSQLStorage(
 			Uncommitted:                false,
 			MaxRTT:                     300,
 			HighFrequencyPings:         true,
-			RouteDiversity:             1,
+			RouteDiversity:             0,
 			MultipathThreshold:         35,
 			EnableVanityMetrics:        true,
 		}
@@ -412,12 +412,12 @@ func SeedSQLStorage(
 		localRouteShader := core.RouteShader{
 			ABTest:                    false,
 			AcceptableLatency:         int32(25),
-			AcceptablePacketLoss:      float32(1),
+			AcceptablePacketLoss:      float32(0),
 			BandwidthEnvelopeDownKbps: int32(1200),
 			BandwidthEnvelopeUpKbps:   int32(500),
 			DisableNetworkNext:        false,
-			LatencyThreshold:          int32(5),
-			Multipath:                 false,
+			LatencyThreshold:          int32(0),
+			Multipath:                 true,
 			ProMode:                   false,
 			ReduceLatency:             true,
 			ReducePacketLoss:          true,

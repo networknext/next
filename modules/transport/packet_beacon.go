@@ -16,7 +16,7 @@ const (
 
 	MaxNextBeaconPacketBytes = 4 + // Version
 		8 + // Timestamp
-		8 + // CustomerID
+		8 + // BuyerID
 		8 + // DatacenterID
 		8 + // UserHash
 		8 + // AddressHash
@@ -32,7 +32,7 @@ const (
 type NextBeaconPacket struct {
 	Version          uint32
 	Timestamp        uint64
-	CustomerID       uint64
+	BuyerID          uint64
 	DatacenterID     uint64
 	UserHash         uint64
 	AddressHash      uint64
@@ -56,7 +56,7 @@ func (packet *NextBeaconPacket) Serialize(stream encoding.Stream) error {
 	hasDatacenterID := stream.IsWriting() && packet.DatacenterID != 0
 	stream.SerializeBool(&hasDatacenterID)
 
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.BuyerID)
 
 	if hasDatacenterID {
 		stream.SerializeUint64(&packet.DatacenterID)
@@ -94,7 +94,9 @@ func WriteBeaconEntry(entry *NextBeaconPacket) ([]byte, error) {
 		entry.Timestamp = uint64(time.Now().Unix())
 	}
 
-	ws, err := encoding.CreateWriteStream(MaxNextBeaconPacketBytes)
+	buffer := [MaxNextBeaconPacketBytes]byte{}
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +106,7 @@ func WriteBeaconEntry(entry *NextBeaconPacket) ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData()[:ws.GetBytesProcessed()], nil
+	return buffer[:ws.GetBytesProcessed()], nil
 }
 
 func ReadBeaconEntry(entry *NextBeaconPacket, data []byte) error {
@@ -121,7 +123,7 @@ func (entry *NextBeaconPacket) Save() (map[string]bigquery.Value, string, error)
 
 	e["version"] = int(entry.Version)
 	e["timestamp"] = int(entry.Timestamp)
-	e["customerID"] = int(entry.CustomerID)
+	e["customerID"] = int(entry.BuyerID) // todo: should rename to buyer id at some point
 	e["datacenterID"] = int(entry.DatacenterID)
 	e["userHash"] = int(entry.UserHash)
 	e["addressHash"] = int(entry.AddressHash)

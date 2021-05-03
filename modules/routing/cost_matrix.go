@@ -28,7 +28,7 @@ type CostMatrix struct {
 }
 
 func (m *CostMatrix) Serialize(stream encoding.Stream) error {
-	
+
 	stream.SerializeUint32(&m.Version)
 
 	numRelays := uint32(len(m.RelayIDs))
@@ -93,7 +93,8 @@ func (m *CostMatrix) GetResponseData() []byte {
 }
 
 func (m *CostMatrix) WriteResponseData(bufferSize int) error {
-	ws, err := encoding.CreateWriteStream(bufferSize)
+	buffer := make([]byte, bufferSize)	
+	ws, err := encoding.CreateWriteStream(buffer)
 	if err != nil {
 		return fmt.Errorf("failed to create write stream in cost matrix WriteResponseData(): %v", err)
 	}
@@ -105,7 +106,7 @@ func (m *CostMatrix) WriteResponseData(bufferSize int) error {
 	ws.Flush()
 
 	m.cachedResponseMutex.Lock()
-	m.cachedResponse = ws.GetData()[:ws.GetBytesProcessed()]
+	m.cachedResponse = buffer[:ws.GetBytesProcessed()]
 	m.cachedResponseMutex.Unlock()
 	return nil
 }

@@ -78,7 +78,7 @@ func init() {
 	defer file.Close()
 
 	if err = backend.DecodeBinWrapper(file, database_internal); err != nil {
-		fmt.Printf("DecodeBinWrapper() error: %v\n", err)
+		core.Error("failed to read database: %v", err)
 		os.Exit(1)
 	}
 

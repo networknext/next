@@ -1,18 +1,14 @@
 package encoding
 
 import (
-	"encoding/binary"
 	"fmt"
 	"math"
 	"net"
 	"runtime/debug"
+	"encoding/binary"
 )
 
-const (
-	IPAddressNone = 0
-	IPAddressIPv4 = 1
-	IPAddressIPv6 = 2
-)
+// ---------------------------------------------------
 
 type Stream interface {
 	IsWriting() bool
@@ -43,8 +39,8 @@ type WriteStream struct {
 	err    error
 }
 
-func CreateWriteStream(bytes int) (*WriteStream, error) {
-	writer, err := CreateBitWriter(bytes)
+func CreateWriteStream(buffer []byte) (*WriteStream, error) {
+	writer, err := CreateBitWriter(buffer)
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +57,7 @@ func (stream *WriteStream) IsReading() bool {
 	return false
 }
 
+// todo: lame function name
 func (stream *WriteStream) error(err error) {
 	if err != nil && stream.err == nil {
 		stream.err = fmt.Errorf("%v\n%s", err, string(debug.Stack()))
@@ -198,7 +195,7 @@ func (stream *WriteStream) SerializeString(value *string, maxSize int) {
 	}
 	min := int32(0)
 	max := int32(maxSize - 1)
-	stream.SerializeInteger(&length, min, max)
+	stream.SerializeInteger(&length, min, max)	
 	if length > 0 {
 		stream.SerializeBytes([]byte(*value))
 	}
@@ -413,6 +410,7 @@ func CreateReadStream(buffer []byte) *ReadStream {
 	}
 }
 
+// todo: stupid name
 func (stream *ReadStream) error(err error) {
 	if err != nil && stream.err == nil {
 		stream.err = fmt.Errorf("%v\n%s", err, string(debug.Stack()))
@@ -822,3 +820,5 @@ func (stream *ReadStream) GetBitsProcessed() int {
 func (stream *ReadStream) GetBytesProcessed() int {
 	return (stream.reader.GetBitsRead() + 7) / 8
 }
+
+// --------------------------------------------------------

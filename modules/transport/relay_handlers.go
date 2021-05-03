@@ -42,14 +42,14 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 		// Get the batched updates
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			core.Debug("%s - error: relay update could not read request body: %v", request.RemoteAddr, err)
+			core.Error("%s: relay update could not read request body: %v", request.RemoteAddr, err)
 			writer.WriteHeader(http.StatusInternalServerError) // 500
 			return
 		}
 		defer request.Body.Close()
 
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
-			core.Debug("%s - error: relay update unsupported content type", request.RemoteAddr)
+			core.Error("%s: relay update unsupported content type", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -57,7 +57,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 		// Unbatch the updates
 		updates, err := unbatchRelayUpdates(body)
 		if err != nil {
-			core.Debug("%s - error: relay update could not unbatch relay updates: %v", request.RemoteAddr, err)
+			core.Error("%s: relay update could not unbatch relay updates: %v", request.RemoteAddr, err)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -74,8 +74,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 
 				var relayUpdateRequest RelayUpdateRequest
 				if err = relayUpdateRequest.UnmarshalBinary(updates[i]); err != nil {
-					// This should not happen since we only include good relay updates in Gateway's batch-send
-					core.Debug("%s - error (this should not happen): relay update could not read request packet", request.RemoteAddr)
+					core.Error("%s: relay update could not read request packet", request.RemoteAddr)
 					params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 					return
 				}
@@ -87,7 +86,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 				relay, ok := relayHash[id]
 				if !ok {
 					// If we could not find the relay, skip it and move on
-					core.Debug("%s - error: could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id)
+					core.Error("%s: could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id)
 					params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 					return
 				}
