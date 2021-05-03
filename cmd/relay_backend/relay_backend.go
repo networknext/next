@@ -426,35 +426,7 @@ func mainReturnWithCode() int {
 				for i := range allRelayData {
 					relay := &allRelayData[i]
 
-					// convert peak to mbps
-
-					var traffic routing.TrafficStats
-
-					relay.TrafficMu.Lock()
-					for i := range relay.TrafficStatsBuff {
-						stats := &relay.TrafficStatsBuff[i]
-						traffic = traffic.Add(stats)
-					}
 					numSessions := relay.PeakTrafficStats.SessionCount
-					envUp := relay.PeakTrafficStats.EnvelopeUpKbps
-					envDown := relay.PeakTrafficStats.EnvelopeDownKbps
-					elapsed := time.Since(relay.LastStatsPublishTime)
-
-					relayMap.ClearRelayData(relay.Addr.String())
-					relay.TrafficMu.Unlock()
-
-					fsrelay := database_internal.RelayMap[relay.ID]
-					if err != nil {
-						continue
-					}
-
-					// use the sum of all the stats since the last publish here and convert to mbps
-					bwSentMbps := float32(float64(traffic.AllTx()) * 8.0 / 1000000.0 / elapsed.Seconds())
-					bwRecvMbps := float32(float64(traffic.AllRx()) * 8.0 / 1000000.0 / elapsed.Seconds())
-
-					// use the peak envelope values here and convert, it's already per second so no need for time adjustment
-					envSentMbps := float32(float64(envUp) / 1000.0)
-					envRecvMbps := float32(float64(envDown) / 1000.0)
 
 					var numRouteable uint32 = 0
 					for i := range allRelayData {
@@ -472,33 +444,13 @@ func mainReturnWithCode() int {
 						}
 					}
 
-					var bwSentPercent float32
-					var bwRecvPercent float32
-					var envSentPercent float32
-					var envRecvPercent float32
-					if fsrelay.NICSpeedMbps != 0 {
-						bwSentPercent = bwSentMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-						bwRecvPercent = bwRecvMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-						envSentPercent = envSentMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-						envRecvPercent = envRecvMbps / float32(fsrelay.NICSpeedMbps) * 100.0
-					}
-
 					entries[count] = analytics.RelayStatsEntry{
-						ID:                       relay.ID,
-						CPUUsage:                 relay.CPUUsage,
-						MemUsage:                 relay.MemUsage,
-						BandwidthSentPercent:     bwSentPercent,
-						BandwidthReceivedPercent: bwRecvPercent,
-						EnvelopeSentPercent:      envSentPercent,
-						EnvelopeReceivedPercent:  envRecvPercent,
-						BandwidthSentMbps:        bwSentMbps,
-						BandwidthReceivedMbps:    bwRecvMbps,
-						EnvelopeSentMbps:         envSentMbps,
-						EnvelopeReceivedMbps:     envRecvMbps,
-						NumSessions:              uint32(numSessions),
-						MaxSessions:              relay.MaxSessions,
-						NumRoutable:              numRouteable,
-						NumUnroutable:            uint32(len(allRelayData)) - 1 - numRouteable,
+						ID:            relay.ID,
+						MaxSessions:   relay.MaxSessions,
+						NumSessions:   uint32(numSessions),
+						NumRoutable:   numRouteable,
+						NumUnroutable: uint32(len(allRelayData)) - 1 - numRouteable,
+						Timestamp:     uint64(time.Now().Unix()),
 					}
 
 					count++
