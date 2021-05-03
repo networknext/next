@@ -40,6 +40,10 @@ func init() {
 	}
 }
 
+func Error(s string, params ...interface{}) {
+		fmt.Printf("error: "+s+"\n", params...)	
+}
+
 func Debug(s string, params ...interface{}) {
 	if debugLogs {
 		fmt.Printf(s+"\n", params...)
@@ -92,6 +96,14 @@ func GenerateRelayKeyPair() ([]byte, []byte, error) {
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
 	return publicKey, privateKey, err
 }
+
+// -----------------------------------------------------
+
+const (
+	IPAddressNone = 0
+	IPAddressIPv4 = 1
+	IPAddressIPv6 = 2
+)
 
 func ParseAddress(input string) *net.UDPAddr {
 	address := &net.UDPAddr{}

@@ -7,8 +7,8 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/encoding"
 )
 
 const (
@@ -203,17 +203,18 @@ func UnmarshalPacket(packet Packet, data []byte) error {
 }
 
 func MarshalPacket(packet Packet) ([]byte, error) {
-	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	buffer := [DefaultMaxPacketSize]byte{}
+	stream, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
 		return nil, err
 	}
 
-	if err := packet.Serialize(ws); err != nil {
+	if err := packet.Serialize(stream); err != nil {
 		return nil, err
 	}
-	ws.Flush()
+	stream.Flush()
 
-	return ws.GetData()[:ws.GetBytesProcessed()], nil
+	return buffer[:stream.GetBytesProcessed()], nil
 }
 
 type ServerInitRequestPacket struct {
@@ -619,17 +620,19 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 		sessionData.Version = SessionDataVersion
 	}
 
-	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	buffer := [DefaultMaxPacketSize]byte{}
+
+	stream, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
 		return nil, err
 	}
 
-	if err := sessionData.Serialize(ws); err != nil {
+	if err := sessionData.Serialize(stream); err != nil {
 		return nil, err
 	}
-	ws.Flush()
+	stream.Flush()
 
-	return ws.GetData()[:ws.GetBytesProcessed()], nil
+	return buffer[:stream.GetBytesProcessed()], nil
 }
 
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
