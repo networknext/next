@@ -49,7 +49,9 @@ func getRouteMatrix(t *testing.T) routing.RouteMatrix {
 func TestRouteMatrixSerialize(t *testing.T) {
 	expected := getRouteMatrix(t)
 
-	ws, err := encoding.CreateWriteStream(10000)
+	buffer := make([]byte, 10000)
+
+	ws, err := encoding.CreateWriteStream(buffer)
 	assert.NoError(t, err)
 	err = expected.Serialize(ws)
 	assert.NoError(t, err)
@@ -70,7 +72,9 @@ func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
 	expected := original
 	original.CreatedAt = 19803
 
-	ws, err := encoding.CreateWriteStream(10000)
+	buffer := make([]byte, 10000)
+
+	ws, err := encoding.CreateWriteStream(buffer)
 	assert.NoError(t, err)
 	err = original.Serialize(ws)
 	assert.NoError(t, err)

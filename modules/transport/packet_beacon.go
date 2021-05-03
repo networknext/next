@@ -94,7 +94,9 @@ func WriteBeaconEntry(entry *NextBeaconPacket) ([]byte, error) {
 		entry.Timestamp = uint64(time.Now().Unix())
 	}
 
-	ws, err := encoding.CreateWriteStream(MaxNextBeaconPacketBytes)
+	buffer := [MaxNextBeaconPacketBytes]byte{}
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +106,7 @@ func WriteBeaconEntry(entry *NextBeaconPacket) ([]byte, error) {
 	}
 	ws.Flush()
 
-	return ws.GetData()[:ws.GetBytesProcessed()], nil
+	return buffer[:ws.GetBytesProcessed()], nil
 }
 
 func ReadBeaconEntry(entry *NextBeaconPacket, data []byte) error {
