@@ -342,8 +342,9 @@ func mainReturnWithCode() int {
 		relayMap.TimeoutLoop(ctx, GetRelayData, timeout, ticker.C)
 	}()
 
-	// relay ping stats
+	// relay stats
 
+	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
 	{
 		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
@@ -370,13 +371,21 @@ func mainReturnWithCode() int {
 					Timeout:        time.Minute,
 				}
 
-				pubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
+				pingPubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
 				if err != nil {
-					level.Error(logger).Log("msg", "could not create analytics pubsub publisher", "err", err)
+					level.Error(logger).Log("msg", "could not create ping stats analytics pubsub publisher", "err", err)
 					return 1
 				}
 
-				pingStatsPublisher = pubsub
+				pingStatsPublisher = pingPubsub
+
+				relayPubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create relay stats analytics pubsub publisher", "err", err)
+					return 1
+				}
+
+				relayStatsPublisher = relayPubsub
 			}
 		}
 
@@ -395,6 +404,63 @@ func mainReturnWithCode() int {
 				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+				}
+			}
+		}()
+
+		go func() {
+			publishInterval, err := envvar.GetDuration("RELAY_STATS_PUBLISH_INTERVAL", time.Second*10)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+			}
+
+			syncTimer := helpers.NewSyncTimer(publishInterval)
+			for {
+				syncTimer.Run()
+
+				allRelayData := relayMap.GetAllRelayData()
+				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
+
+				count := 0
+				for i := range allRelayData {
+					relay := &allRelayData[i]
+
+					numSessions := relay.PeakTrafficStats.SessionCount
+
+					var numRouteable uint32 = 0
+					for i := range allRelayData {
+						otherRelay := &allRelayData[i]
+
+						if relay.ID == otherRelay.ID {
+							continue
+						}
+
+						rtt, jitter, pl := statsdb.GetSample(relay.ID, otherRelay.ID)
+						if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
+							if jitter <= float32(maxJitter) && pl <= float32(maxPacketLoss) {
+								numRouteable++
+							}
+						}
+					}
+
+					entries[count] = analytics.RelayStatsEntry{
+						ID:            relay.ID,
+						MaxSessions:   relay.MaxSessions,
+						NumSessions:   uint32(numSessions),
+						NumRoutable:   numRouteable,
+						NumUnroutable: uint32(len(allRelayData)) - 1 - numRouteable,
+						Timestamp:     uint64(time.Now().Unix()),
+					}
+
+					count++
+				}
+
+				entriesToPublish := entries[:count]
+				if len(entriesToPublish) > 0 {
+					if err := relayStatsPublisher.Publish(ctx, entriesToPublish); err != nil {
+						level.Error(logger).Log("err", err)
+					}
 				}
 			}
 		}()
