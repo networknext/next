@@ -26,6 +26,7 @@ PORTAL_DIR=./cmd/portal
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
+ARTIFACT_BUCKET_PROD_DEBUG = gs://prod_debug_artifacts
 ARTIFACT_BUCKET_RELAY = gs://relay_artifacts
 SYSTEMD_SERVICE_FILE = app.service
 
@@ -305,6 +306,8 @@ dist:
 # Always run sqlite3
 export FEATURE_POSTGRESQL=false
 export JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL
+export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/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
+export SLACK_CHANNEL=portal-test
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
@@ -885,6 +888,12 @@ publish-bootstrap-script-prod:
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD)/bootstrap.sh
 	@printf "done\n"
 
+.PHONY: publish-bootstrap-script-prod-debug
+publish-bootstrap-script-prod-debug:
+	@printf "Publishing bootstrap script... \n\n"
+	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD_DEBUG)/bootstrap.sh
+	@printf "done\n"
+
 .PHONY: build-server
 build-server: build-sdk
 	@printf "Building server... "
@@ -980,6 +989,10 @@ build-debug-server-backend-artifacts-staging: build-server-backend
 build-debug-server-backend-artifacts-prod: build-server-backend
 	./deploy/build-artifacts.sh -e prod -s debug_server_backend
 
+.PHONY: build-debug-server-backend-artifacts-prod-debug
+build-debug-server-backend-artifacts-prod-debug: build-server-backend
+	./deploy/build-artifacts.sh -e prod -s debug_server_backend
+
 .PHONY: publish-debug-server-backend-artifacts-dev
 publish-debug-server-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_server_backend
@@ -992,17 +1005,25 @@ publish-debug-server-backend-artifacts-staging:
 publish-debug-server-backend-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_server_backend
 
+.PHONY: publish-debug-server-backend-artifacts-prod-debug
+publish-debug-server-backend-artifacts-prod-debug:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_server_backend
+
 .PHONY: deploy-debug-server-backend-dev
 deploy-debug-server-backend-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t debug-server-backend -n debug_server_backend -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET)
 
 .PHONY: deploy-debug-server-backend-staging
 deploy-debug-server-backend-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t debug-server-backend -n debug_server_backend -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET_STAGING)
 
 .PHONY: deploy-debug-server-backend-prod
 deploy-debug-server-backend-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET_PROD)
+
+.PHONY: deploy-debug-server-backend-prod-debug
+deploy-debug-server-backend-prod-debug:
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET_PROD_DEBUG)
 
 #############################
 #    Debug Relay Backend   #
@@ -1020,29 +1041,41 @@ build-debug-relay-backend-artifacts-staging: build-relay-backend
 build-debug-relay-backend-artifacts-prod: build-relay-backend
 	./deploy/build-artifacts.sh -e prod -s debug_relay_backend
 
+.PHONY: build-debug-relay-backend-artifacts-prod-debug
+build-debug-relay-backend-artifacts-prod-debug: build-relay-backend
+	./deploy/build-artifacts.sh -e prod -s debug_relay_backend
+
 .PHONY: publish-debug-relay-backend-artifacts-dev
 publish-debug-relay-backend-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_relay_backend
-
-.PHONY: publish-debug-relay-backend-artifacts-prod
-publish-debug-relay-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_relay_backend
 
 .PHONY: publish-debug-relay-backend-artifacts-staging
 publish-debug-relay-backend-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_relay_backend
 
+.PHONY: publish-debug-relay-backend-artifacts-prod
+publish-debug-relay-backend-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_relay_backend
+
+.PHONY: publish-debug-relay-backend-artifacts-prod-debug
+publish-debug-relay-backend-artifacts-prod-debug:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_relay_backend
+
 .PHONY: deploy-debug-relay-backend-dev
 deploy-debug-relay-backend-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t debug-relay-backend -n debug_relay_backend -b gs://development_artifacts
+	./deploy/deploy.sh -e dev -c dev-1 -t debug-relay-backend -n debug_relay_backend -b $(ARTIFACT_BUCKET)
 
 .PHONY: deploy-debug-relay-backend-staging
 deploy-debug-relay-backend-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t debug-relay-backend -n debug_relay_backend -b gs://staging_artifacts
+	./deploy/deploy.sh -e staging -c staging-1 -t debug-relay-backend -n debug_relay_backend -b $(ARTIFACT_BUCKET_STAGING)
 
 .PHONY: deploy-debug-relay-backend-prod
 deploy-debug-relay-backend-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-relay-backend -n debug_relay_backend -b gs://prod_artifacts
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-relay-backend -n debug_relay_backend -b $(ARTIFACT_BUCKET_PROD)
+
+.PHONY: deploy-debug-relay-backend-prod-debug
+deploy-debug-relay-backend-prod-debug:
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-relay-backend -n debug_relay_backend -b $(ARTIFACT_BUCKET_PROD_DEBUG)
 
 #######################
 #    Relay Backend    #
@@ -1271,7 +1304,7 @@ publish-relay-forwarder-artifacts-staging:
 .PHONY: publish-relay-forwarder-artifacts-prod
 publish-relay-forwarder-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay_forwarder
-	
+
 .PHONY: deploy-relay-forwarder-dev
 deploy-relay-forwarder-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t relay-forwarder -n relay_forwarder -b gs://development_artifacts

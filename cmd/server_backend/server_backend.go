@@ -21,28 +21,28 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/networknext/backend/modules/core"
-
 	"os"
 	"os/signal"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
+	// FUCK this logging system. FUCK IT. Marked for death!!!
+	"github.com/go-kit/kit/log"
+
+	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
+	"github.com/networknext/backend/modules/common/helpers"
+
 	"golang.org/x/sys/unix"
 
 	googlepubsub "cloud.google.com/go/pubsub"
@@ -93,56 +93,47 @@ func mainReturnWithCode() int {
 
 	fmt.Printf("\n%s\n\n", serviceName)
 
-	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
-	if err != nil {
-		fmt.Println("Failed to get debug status")
-		isDebug = false
-	}
+	isDebug, _ := envvar.GetBool("NEXT_DEBUG", false)
 
 	if isDebug {
-		fmt.Println("Instance is running as a debug instance")
+		core.Debug("running as debug")
 	}
 
 	ctx := context.Background()
 
 	gcpProjectID := backend.GetGCPProjectID()
 
-	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
+	env, err := backend.GetEnv()
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("could not get env: %v", err)
 		return 1
 	}
 
-	env, err := backend.GetEnv()
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
+	// FUCK THIS LOGGING SYSTEM!!!
+	logger := log.NewNopLogger()
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("could not get metrics handler: %v", err)
 		return 1
 	}
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
+			core.Error("could not initialize stackdriver profiler: %v", err)
 			return 1
 		}
 	}
 
-	// Create server backend metrics
 	backendMetrics, err := metrics.NewServerBackendMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create server_backend metrics", "err", err)
+		core.Error("could not create backend metrics: %v", err)
 		return 1
 	}
 
-	// Create maxmindb sync metrics
 	maxmindSyncMetrics, err := metrics.NewMaxmindSyncMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create maxmind sync metrics", "err", err)
+		core.Error("could not max mind sync metrics: %v", err)
 		return 1
 	}
 
@@ -163,24 +154,24 @@ func mainReturnWithCode() int {
 	}()
 
 	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
-		level.Error(logger).Log("err", "SERVER_BACKEND_PRIVATE_KEY not set")
+		core.Error("SERVER_BACKEND_PRIVATE_KEY not set")
 		return 1
 	}
 
 	privateKey, err := envvar.GetBase64("SERVER_BACKEND_PRIVATE_KEY", nil)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid SERVER_BACKEND_PRIVATE_KEY: %v", err)
 		return 1
 	}
 
 	if !envvar.Exists("RELAY_ROUTER_PRIVATE_KEY") {
-		level.Error(logger).Log("err", "RELAY_ROUTER_PRIVATE_KEY not set")
+		core.Error("RELAY_ROUTER_PRIVATE_KEY not set")
 		return 1
 	}
 
 	routerPrivateKeySlice, err := envvar.GetBase64("RELAY_ROUTER_PRIVATE_KEY", nil)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid RELAY_ROUTER_PRIVATE_KEY: %v", err)
 		return 1
 	}
 
@@ -209,14 +200,13 @@ func mainReturnWithCode() int {
 
 		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
 			mmdbMutex.RLock()
-			defer mmdbMutex.RUnlock()
-
 			mmdbRet := mmdb
+			mmdbMutex.RUnlock()
 			return mmdbRet
 		}
 
 		if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("max mind db sync error: %v", err)
 			return 1
 		}
 
@@ -226,7 +216,7 @@ func mainReturnWithCode() int {
 				select {
 				case <-ticker.C:
 					if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-						level.Error(logger).Log("err", err)
+						core.Error("max mind db sync error: %v", err)
 						continue
 					}
 				case <-ctx.Done():
@@ -248,12 +238,13 @@ func mainReturnWithCode() int {
 
 	staleDuration, err := envvar.GetDuration("MATRIX_STALE_DURATION", 20*time.Second)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid MATRIX_STALE_DURATION: %v", err)
 	}
 
 	// function to get the route matrix pointer under mutex
 
 	routeMatrix := &routing.RouteMatrix{}
+
 	var routeMatrixMutex sync.RWMutex
 
 	getRouteMatrix := func() *routing.RouteMatrix {
@@ -266,6 +257,7 @@ func mainReturnWithCode() int {
 	// function to get the database under mutex
 
 	database := routing.CreateEmptyDatabaseBinWrapper()
+
 	var databaseMutex sync.RWMutex
 
 	getDatabase := func() *routing.DatabaseBinWrapper {
@@ -275,7 +267,7 @@ func mainReturnWithCode() int {
 		return db
 	}
 
-	// function to clear route matrix and database at the same time
+	// function to clear route matrix and database atomically
 
 	clearEverything := func() {
 		routeMatrixMutex.RLock()
@@ -291,13 +283,13 @@ func mainReturnWithCode() int {
 		uri := envvar.Get("ROUTE_MATRIX_URI", "")
 
 		if uri == "" {
-			level.Error(logger).Log("err", fmt.Errorf("no route matrix uri specified"))
+			core.Error("ROUTE_MATRIX_URI not set")
 			return 1
 		}
 
 		syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("ROUTE_MATRIX_SYNC_INTERVAL not set")
 			return 1
 		}
 
@@ -336,14 +328,14 @@ func mainReturnWithCode() int {
 				routeMatrixReader.Close()
 
 				if err != nil {
-					core.Debug("error: failed to read route matrix data: %v", err)
+					core.Error("faired to read route matrix data: %v", err)
 					clearEverything()
 					backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
 					continue
 				}
 
 				if len(buffer) == 0 {
-					core.Debug("error: route matrix buffer is empty")
+					core.Debug("route matrix buffer is empty")
 					clearEverything()
 					backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Add(1)
 					continue
@@ -352,15 +344,14 @@ func mainReturnWithCode() int {
 				var newRouteMatrix routing.RouteMatrix
 				readStream := encoding.CreateReadStream(buffer)
 				if err := newRouteMatrix.Serialize(readStream); err != nil {
-					core.Debug("error: failed to serialize route matrix: %v", err)
+					core.Error("failed to serialize route matrix: %v", err)
 					clearEverything()
 					backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Add(1)
 					continue
 				}
 
 				if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
-					// Don't clear everything here
-					core.Debug("error: route matrix is stale")
+					core.Error("route matrix is stale")
 					backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
 					continue
 				}
@@ -369,7 +360,7 @@ func mainReturnWithCode() int {
 				duration := float64(routeEntriesTime.Milliseconds())
 				backendMetrics.RouteMatrixUpdateDuration.Set(duration)
 				if duration > 100 {
-					core.Debug("error: long route matrix duration %dms", duration)
+					core.Error("long route matrix duration %dms", duration)
 					backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
 				}
 
@@ -390,13 +381,13 @@ func mainReturnWithCode() int {
 				decoder := gob.NewDecoder(databaseBuffer)
 				err := decoder.Decode(&newDatabase)
 				if err == io.EOF {
-					core.Debug("error: database.bin is empty")
+					core.Error("database.bin is empty")
 					clearEverything()
 					backendMetrics.ErrorMetrics.BinWrapperEmpty.Add(1)
 					continue
 				}
 				if err != nil {
-					core.Debug("error: failed to read database.bin: %v", err)
+					core.Error("failed to read database.bin: %v", err)
 					clearEverything()
 					backendMetrics.ErrorMetrics.BinWrapperFailure.Add(1)
 					continue
@@ -431,28 +422,30 @@ func mainReturnWithCode() int {
 			pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			level.Info(logger).Log("msg", "Detected pubsub emulator")
+			core.Debug("detected pubsub emulator")
 		}
 
 		// Google Pubsub
 		{
 			clientCount, err := envvar.GetInt("BILLING_CLIENT_COUNT", 1)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				core.Error("invalid BILLING_CLIENT_COUNT: %v", err)
 				return 1
 			}
 
 			countThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_COUNT", 100)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				core.Error("invalid BILLING_BATCHED_MESSAGE_COUNT: %v", err)
 				return 1
 			}
 
 			byteThreshold, err := envvar.GetInt("BILLING_BATCHED_MESSAGE_MIN_BYTES", 1024)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				core.Error("invalid BILLING_BATCHED_MESSAGE_MIN_BYTES: %v", err)
 				return 1
 			}
+
+			// todo: why don't we remove our batching, and just use theirs instead? less code = less problems...
 
 			// We do our own batching so don't stack the library's batching on top of ours
 			// Specifically, don't stack the message count thresholds
@@ -463,7 +456,7 @@ func mainReturnWithCode() int {
 
 			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
 			if err != nil {
-				level.Error(logger).Log("msg", "could not create pubsub biller", "err", err)
+				core.Error("could not create pubsub biller: %v", err)
 				return 1
 			}
 
@@ -478,14 +471,14 @@ func mainReturnWithCode() int {
 
 		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("invalid POST_SESSION_PORTAL_SEND_BUFFER_SIZE: %v", err)
 			return 1
 		}
 
 		for _, host := range portalCruncherHosts {
 			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, postSessionPortalSendBufferSize)
 			if err != nil {
-				level.Error(logger).Log("msg", "could not create portal cruncher publisher", "err", err)
+				core.Error("could not create portal cruncher publisher: %v", err)
 				return 1
 			}
 
@@ -495,19 +488,19 @@ func mainReturnWithCode() int {
 
 	numPostSessionGoroutines, err := envvar.GetInt("POST_SESSION_THREAD_COUNT", 1000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid POST_SESSION_THREAD_COUNT: %v", err)
 		return 1
 	}
 
 	postSessionBufferSize, err := envvar.GetInt("POST_SESSION_BUFFER_SIZE", 1000000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid POST_SESSION_BUFFER_SIZE: %v", err)
 		return 1
 	}
 
 	postSessionPortalMaxRetries, err := envvar.GetInt("POST_SESSION_PORTAL_MAX_RETRIES", 10)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid POST_SESSION_PORTAL_MAX_RETRIES: %v", err)
 		return 1
 	}
 
@@ -532,14 +525,14 @@ func mainReturnWithCode() int {
 
 		postVanityMetricSendBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("invalid FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE: %v", err)
 			return 1
 		}
 
 		for _, host := range vanityMetricHosts {
 			vanityPublisher, err := pubsub.NewVanityMetricPublisher(host, postVanityMetricSendBufferSize)
 			if err != nil {
-				level.Error(logger).Log("msg", "could not create vanity metric publisher", "err", err)
+				core.Error("could not create vanity metric publisher: %v", err)
 				return 1
 			}
 
@@ -549,7 +542,7 @@ func mainReturnWithCode() int {
 
 	postVanityMetricMaxRetries, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_MAX_RETRIES", 10)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid FEATURE_VANITY_METRIC_POST_MAX_RETRIES: %v", err)
 		return 1
 	}
 
@@ -561,7 +554,7 @@ func mainReturnWithCode() int {
 
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("could not create local multipath veto handler: %v", err)
 		return 1
 	}
 	var multipathVetoHandler storage.MultipathVetoHandler = localMultiPathVetoHandler
@@ -571,18 +564,18 @@ func mainReturnWithCode() int {
 		// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
 		multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("invalid MULTIPATH_VETO_SYNC_FREQUENCY: %v", err)
 			return 1
 		}
 
 		multipathVetoHandler, err = storage.NewRedisMultipathVetoHandler(redisMultipathVetoHost, getDatabase)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("could not create redis multipath veto handler: %v", err)
 			return 1
 		}
 
 		if err := multipathVetoHandler.Sync(); err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("faild to sync multipath veto handler: %v", err)
 			return 1
 		}
 
@@ -594,7 +587,7 @@ func mainReturnWithCode() int {
 					select {
 					case <-ticker.C:
 						if err := multipathVetoHandler.Sync(); err != nil {
-							level.Error(logger).Log("err", err)
+							core.Error("faild to sync multipath veto handler: %v", err)
 						}
 					case <-ctx.Done():
 						return
@@ -602,17 +595,6 @@ func mainReturnWithCode() int {
 				}
 			}(ctx)
 		}
-	}
-
-	maxNearRelays, err := envvar.GetInt("MAX_NEAR_RELAYS", 32)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	if maxNearRelays > 32 {
-		level.Error(logger).Log("err", "cannot support more than 32 near relays")
-		return 1
 	}
 
 	// Start HTTP server
@@ -624,7 +606,7 @@ func mainReturnWithCode() int {
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("invalid FEATURE_ENABLE_PPROF: %v", err)
 		}
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
@@ -632,10 +614,10 @@ func mainReturnWithCode() int {
 
 		go func() {
 			httpPort := envvar.Get("HTTP_PORT", "40001")
-
+			fmt.Printf("started http server on port %s\n\n", httpPort)
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				core.Error("failed to start http server: ", err)
 				return
 			}
 		}()
@@ -643,19 +625,19 @@ func mainReturnWithCode() int {
 
 	numThreads, err := envvar.GetInt("NUM_THREADS", 1)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid NUM_THREADS: %v", err)
 		return 1
 	}
 
 	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid READ_BUFFER: %v", err)
 		return 1
 	}
 
 	writeBuffer, err := envvar.GetInt("WRITE_BUFFER", 100000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("invalid WRITE_BUFFER: %v", err)
 		return 1
 	}
 
@@ -683,12 +665,13 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	serverInitHandler := transport.ServerInitHandlerFunc(log.With(logger, "handler", "server_init"), getDatabase, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(log.With(logger, "handler", "server_update"), getDatabase, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(log.With(logger, "handler", "session_update"), getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, maxNearRelays, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
+	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
+
 			lp, err := lc.ListenPacket(ctx, "udp", "0.0.0.0:"+udpPort)
 			if err != nil {
 				panic(fmt.Sprintf("could not bind socket: %v", err))
@@ -710,7 +693,7 @@ func mainReturnWithCode() int {
 				data := dataArray[:]
 				size, fromAddr, err := conn.ReadFromUDP(data)
 				if err != nil {
-					level.Error(logger).Log("msg", "failed to read UDP packet", "err", err)
+					core.Error("failed to read udp packet: %v", err)
 					break
 				}
 
@@ -723,7 +706,6 @@ func mainReturnWithCode() int {
 				// Check the packet hash is legit and remove the hash from the beginning of the packet
 				// to continue processing the packet as normal
 				if !crypto.IsNetworkNextPacket(crypto.PacketHashKey, data) {
-					level.Error(logger).Log("err", "received non network next packet")
 					continue
 				}
 
@@ -731,7 +713,7 @@ func mainReturnWithCode() int {
 				data = data[crypto.PacketHashSize+1 : size]
 
 				var buffer bytes.Buffer
-				packet := transport.UDPPacket{SourceAddr: *fromAddr, Data: data}
+				packet := transport.UDPPacket{From: *fromAddr, Data: data}
 
 				switch packetType {
 				case transport.PacketTypeServerInitRequest:
@@ -740,8 +722,6 @@ func mainReturnWithCode() int {
 					serverUpdateHandler(&buffer, &packet)
 				case transport.PacketTypeSessionUpdate:
 					sessionUpdateHandler(&buffer, &packet)
-				default:
-					level.Error(logger).Log("err", "unknown packet type", "packet_type", packet.Data[0])
 				}
 
 				if buffer.Len() > 0 {
@@ -752,7 +732,7 @@ func mainReturnWithCode() int {
 					crypto.HashPacket(crypto.PacketHashKey, response)
 
 					if _, err := conn.WriteToUDP(response, fromAddr); err != nil {
-						level.Error(logger).Log("msg", "failed to write UDP response", "err", err)
+						core.Error("failed to write udp response packet: %v", err)
 					}
 				}
 			}
@@ -761,7 +741,7 @@ func mainReturnWithCode() int {
 		}(i)
 	}
 
-	level.Info(logger).Log("msg", "waiting for incoming connections")
+	fmt.Printf("started udp server on port %s\n\n", udpPort)
 
 	// Wait for interrupt signal
 	sigint := make(chan os.Signal, 1)
