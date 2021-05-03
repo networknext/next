@@ -15,6 +15,7 @@ const (
 	VersionNumberUpdateRequest  = 3
 	VersionNumberUpdateResponse = 0
 	MaxVersionStringLength      = 32
+	RelayTargetVersion			= "2.0.6"
 )
 
 type RelayUpdateRequest struct {
