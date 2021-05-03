@@ -1,7 +1,5 @@
 package main
 
-// todo: not today
-/*
 import (
 	"bytes"
 	"context"
@@ -81,16 +79,21 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 	}
 
-	featureNoInit, err := envvar.GetBool("FEATURE_NO_INIT", false)
+	featureNoInit, err := envvar.GetBool("FEATURE_NO_INIT", true)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 	}
 
-	// get and verify relayBackendAddr
-	relayBackendAddr := envvar.Get("RELAY_BACKEND_ADDR", "")
-	if net.ParseIP(relayBackendAddr) == nil {
-		level.Error(logger).Log("err", err)
-		return 1
+	// get and verify relayGatewayAddr
+	var relayGatewayAddr string
+	if gcpProjectID != "" {
+		relayGatewayAddr= envvar.Get("RELAY_GATEWAY_LB_IP", "")
+		if net.ParseIP(relayGatewayAddr) == nil {
+			level.Error(logger).Log("err", err)
+			return 1
+		}
+	} else {
+		relayGatewayAddr = "127.0.0.1:30000"
 	}
 
 	relayUpdateVersion, err = envvar.GetInt("RELAY_UPDATE_VERSION", 2)
@@ -130,10 +133,12 @@ func mainReturnWithCode() int {
 		relayArr[i] = newRelay
 	}
 
+	fmt.Printf("starting main logic\n")
+
 	// core logic
 	shutdown := false
-	initAddress := fmt.Sprintf("http://%s/relay_init", relayBackendAddr)
-	updateAddress := fmt.Sprintf("http://%s/relay_update", relayBackendAddr)
+	// initAddress := fmt.Sprintf("http://%s/relay_init", relayBackendAddr)
+	updateAddress := fmt.Sprintf("http://%s/relay_update", relayGatewayAddr)
 
 	for i := 0; i < numRelays; i++ {
 		go func(relay *Relay, relayArr []*Relay) {
@@ -162,12 +167,13 @@ func mainReturnWithCode() int {
 						relay.state = relayEnabled
 
 					} else {
-						err := sendInit(*relay, initAddress)
-						if err != nil {
-							level.Error(logger).Log("err", err)
-							continue
-						}
-						relay.state = relayEnabled
+						level.Error(logger).Log("err", "turn on no init")
+						// err := sendInit(*relay, initAddress)
+						// if err != nil {
+						// 	level.Error(logger).Log("err", err)
+						// 	continue
+						// }
+						// relay.state = relayEnabled
 					}
 					continue
 				}
@@ -241,34 +247,34 @@ func newRouteBase() RouteBase {
 	return *rb
 }
 
-func sendInit(relay Relay, addr string) error {
-	nonce, token := makeToken()
+// func sendInit(relay Relay, addr string) error {
+// 	nonce, token := makeToken()
 
-	initRequest := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
-		Version:        transport.VersionNumberInitRequest,
-		Nonce:          nonce,
-		Address:        relay.data.Addr,
-		EncryptedToken: token,
-		RelayVersion:   "1.1.0",
-	}
+// 	initRequest := transport.RelayInitRequest{
+// 		Magic:          transport.InitRequestMagic,
+// 		Version:        transport.VersionNumberInitRequest,
+// 		Nonce:          nonce,
+// 		Address:        relay.data.Addr,
+// 		EncryptedToken: token,
+// 		RelayVersion:   "1.1.0",
+// 	}
 
-	initBinary, err := initRequest.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	buffer := bytes.NewBuffer(initBinary)
-	resp, err := http.Post(addr, "application/octet-stream", buffer)
-	if err != nil {
-		return err
-	}
+// 	initBinary, err := initRequest.MarshalBinary()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	buffer := bytes.NewBuffer(initBinary)
+// 	resp, err := http.Post(addr, "application/octet-stream", buffer)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("response was non 200: %v", resp.StatusCode)
-	}
-	resp.Body.Close()
-	return nil
-}
+// 	if resp.StatusCode != http.StatusOK {
+// 		return fmt.Errorf("response was non 200: %v", resp.StatusCode)
+// 	}
+// 	resp.Body.Close()
+// 	return nil
+// }
 
 func sendUpdateInit(relay Relay, addr string) error {
 	updateRequest := baseUpdate(relay)
@@ -406,4 +412,3 @@ func calcMultiplier() float32 {
 	return 1.0 + float32(base-maxMultiplierPercent)/100.0
 
 }
-*/

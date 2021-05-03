@@ -1221,7 +1221,7 @@ deploy-ghost-army-prod:
 
 .PHONY: dev-fake-relays
 dev-fake-relays: build-fake-relays ## runs a local relay forwarder
-	@PORT=30000 ./dist/fake_relays
+	@PORT=30007 ./dist/fake_relays
 
 .PHONY: build-fake-relays
 build-fake-relays:
