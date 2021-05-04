@@ -206,7 +206,14 @@ func statsTable(stats map[string]map[string]routing.Stats) template.HTML {
 	return template.HTML(html.String())
 }
 
-func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func() *routing.RouteMatrix, statsdb *routing.StatsDatabase, username string, password string, maxJitter float64) func(writer http.ResponseWriter, request *http.Request) {
+func RelayDashboardHandlerFunc(
+	relayMap *routing.RelayMap,
+	GetRouteMatrix func() *routing.RouteMatrix,
+	statsdb *routing.StatsDatabase,
+	username string,
+	password string,
+	maxJitter float64,
+) func(writer http.ResponseWriter, request *http.Request) {
 	type displayRelay struct {
 		ID   uint64
 		Name string
@@ -322,6 +329,111 @@ func RelayDashboardHandlerFunc(relayMap *routing.RelayMap, GetRouteMatrix func()
 			fmt.Println(err)
 		}
 	}
+}
+
+func RelayDashboardDataHandlerFunc(
+	relayMap *routing.RelayMap,
+	GetRouteMatrix func() *routing.RouteMatrix,
+	statsdb *routing.StatsDatabase,
+	maxJitter float64,
+) func(writer http.ResponseWriter, request *http.Request) {
+
+	type displayRelay struct {
+		ID   uint64
+		Name string
+		Addr string
+	}
+
+	type response struct {
+		Analysis string
+		Relays   []displayRelay
+		Stats    map[string]map[string]routing.Stats
+	}
+
+	MaxJitter = maxJitter
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		defer request.Body.Close()
+
+		var res response
+
+		routeMatrix := GetRouteMatrix()
+		res.Analysis = string(routeMatrix.GetAnalysisData())
+
+		allRelayData := relayMap.GetAllRelayData()
+
+		for _, relayData := range allRelayData {
+			display := displayRelay{
+				ID:   relayData.ID,
+				Name: relayData.Name,
+				Addr: relayData.Addr.String(),
+			}
+			if display.Name == "" {
+				display.Name = display.Addr
+			}
+			res.Relays = append(res.Relays, display)
+		}
+
+		sort.Slice(res.Relays, func(i int, j int) bool {
+			return res.Relays[i].Name < res.Relays[j].Name
+		})
+
+		res.Stats = make(map[string]map[string]routing.Stats)
+		for _, a := range res.Relays {
+			aKey := a.Name
+			if aKey == "" {
+				aKey = a.Addr
+			}
+
+			res.Stats[aKey] = make(map[string]routing.Stats)
+
+			for _, b := range res.Relays {
+				bKey := b.Name
+				if bKey == "" {
+					bKey = b.Addr
+				}
+
+				rtt, jitter, packetloss := statsdb.GetSample(a.ID, b.ID)
+				res.Stats[aKey][bKey] = routing.Stats{RTT: float64(rtt), Jitter: float64(jitter), PacketLoss: float64(packetloss)}
+			}
+		}
+
+		// write json response here
+		type jsonRelay struct {
+			Name string
+			Addr string
+		}
+
+		type jsonResponse struct {
+			Analysis string
+			Relays   []jsonRelay
+			Stats    map[string]map[string]routing.Stats
+		}
+
+		var jResponse jsonResponse
+
+		jResponse.Analysis = res.Analysis
+		jResponse.Stats = res.Stats
+
+		for _, b := range res.Relays {
+			var jRelay jsonRelay
+			jRelay.Addr = b.Addr
+			jRelay.Name = b.Name
+			jResponse.Relays = append(jResponse.Relays, jRelay)
+		}
+
+		jData, err := json.Marshal(jResponse)
+		if err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+			errorString := fmt.Sprintf("%v", err)
+			writer.Write([]byte("Error assembling the json response:" + errorString))
+		} else {
+			writer.Header().Set("Content-Type", "application/json")
+			writer.Write(jData)
+		}
+
+	}
+
 }
 
 func DatabaseBinVersionFunc(creator *string, creationTime *string, env *string) func(w http.ResponseWriter, r *http.Request) {
