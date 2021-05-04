@@ -166,6 +166,7 @@ type OpsService struct {
 
 	Logger log.Logger
 
+	// TODO: remove RelayMay
 	RelayMap *RelayStatsMap
 }
 
@@ -699,6 +700,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			relay.InternalAddr = addrStr
 		}
 
+		// TODO: remove TrafficStats
 		if relayData, ok := s.RelayMap.Get(r.ID); ok {
 			relay.TrafficStats = relayData.TrafficStats
 			relay.CPUUsage = relayData.CPU
