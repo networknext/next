@@ -405,14 +405,14 @@ func RelayDashboardDataHandlerFunc(
 		}
 
 		type jsonResponse struct {
-			Analysis string
+			Analysis routing.JsonMatrixAnalysis
 			Relays   []jsonRelay
 			Stats    map[string]map[string]routing.Stats
 		}
 
 		var jResponse jsonResponse
 
-		jResponse.Analysis = res.Analysis
+		jResponse.Analysis = routeMatrix.GetJsonAnalysis()
 		jResponse.Stats = res.Stats
 
 		for _, b := range res.Relays {
