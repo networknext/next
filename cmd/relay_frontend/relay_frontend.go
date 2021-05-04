@@ -231,7 +231,8 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "unable to parse JWT_AUDIENCE environment variable")
 	}
 
-	fmt.Printf("starting http server\n")
+	port := envvar.Get("PORT", "30005")
+	fmt.Printf("starting http server on port %s\n", port)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
@@ -240,6 +241,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/route_matrix", frontendClient.GetRouteMatrixHandlerFunc()).Methods("GET")
 	router.HandleFunc("/database_version", frontendClient.GetRelayBackendHandlerFunc("/database_version")).Methods("GET")
 	router.HandleFunc("/relay_dashboard", frontendClient.GetRelayDashboardHandlerFunc("local", "local")).Methods("GET")
+	router.HandleFunc("/relay_dashboard_data", frontendClient.GetRelayDashboardDataHandlerFunc()).Methods("GET")
 	router.HandleFunc("/dest_relays", frontendClient.GetRelayBackendHandlerFunc("/dest_relays")).Methods("GET")
 	router.HandleFunc("/master_status", frontendClient.GetRelayBackendHandlerFunc("/status")).Methods("GET")
 	router.HandleFunc("/master", frontendClient.GetRelayBackendMasterHandlerFunc()).Methods("GET")
@@ -262,7 +264,6 @@ func mainReturnWithCode() int {
 	}
 
 	go func() {
-		port := envvar.Get("PORT", "30005")
 
 		_ = level.Info(logger).Log("addr", ":"+port)
 
