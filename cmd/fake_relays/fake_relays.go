@@ -210,10 +210,15 @@ func mainReturnWithCode() int {
 }
 
 func fakeRelay(i int) routing.Relay {
-	firstIpPart := i / 255
-	secondIpPart := i % 255
-	IP := fmt.Sprintf("100.0.%v.%v:40000", firstIpPart, secondIpPart)
-	addr, _ := net.ResolveUDPAddr("udp", IP)
+	// firstIpPart := i / 255
+	// secondIpPart := i % 255
+	// IP := fmt.Sprintf("100.0.%v.%v:40000", firstIpPart, secondIpPart)
+	IP := fmt.Sprintf("127.0.0.1:%d", 10000 + i)
+	addr, err := net.ResolveUDPAddr("udp", IP)
+	if err != nil {
+		fmt.Printf("error creating IP: %v\n", err)
+		os.Exit(1)
+	}
 
 	id := crypto.HashID(IP)
 
