@@ -241,7 +241,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/route_matrix", frontendClient.GetRouteMatrixHandlerFunc()).Methods("GET")
 	router.HandleFunc("/database_version", frontendClient.GetRelayBackendHandlerFunc("/database_version")).Methods("GET")
 	router.HandleFunc("/relay_dashboard", frontendClient.GetRelayDashboardHandlerFunc("local", "local")).Methods("GET")
-	router.HandleFunc("/relay_dashboard_data", frontendClient.GetRelayDashboardDataHandlerFunc()).Methods("GET")
+	// router.HandleFunc("/relay_dashboard_data", frontendClient.GetRelayDashboardDataHandlerFunc()).Methods("GET")
 	router.HandleFunc("/dest_relays", frontendClient.GetRelayBackendHandlerFunc("/dest_relays")).Methods("GET")
 	router.HandleFunc("/master_status", frontendClient.GetRelayBackendHandlerFunc("/status")).Methods("GET")
 	router.HandleFunc("/master", frontendClient.GetRelayBackendMasterHandlerFunc()).Methods("GET")
@@ -254,6 +254,9 @@ func mainReturnWithCode() int {
 
 	relaysCsvHandler := http.HandlerFunc(frontendClient.GetRelayBackendHandlerFunc("/relays"))
 	router.Handle("/relays", middleware.PlainHttpAuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
+
+	jsonDashboardHandler := http.HandlerFunc(frontendClient.GetRelayDashboardDataHandlerFunc())
+	router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(audience, jsonDashboardHandler, strings.Split(allowedOrigins, ",")))
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
