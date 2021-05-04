@@ -7,12 +7,16 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-// import data1 from '../../map_sessions.json'
-// import data2 from '../../map_sessions_2.json'
-// import data3 from '../../map_sessions_3.json'
-// import data4 from '../../map_sessions_4.json'
-// import data5 from '../../map_sessions_5.json'
-// import data6 from '../../map_sessions_6.json'
+import CustomScreenGridLayer from './CustomScreenGridLayer'
+import { Deck } from '@deck.gl/core'
+import mapboxgl from 'mapbox-gl'
+
+import data1 from '../../test_data/map_points_1.json'
+import data2 from '../../test_data/map_points_2.json'
+import data3 from '../../test_data/map_points_3.json'
+import data4 from '../../test_data/map_points_4.json'
+import data5 from '../../test_data/map_points_5.json'
+import data6 from '../../test_data/map_points_6.json'
 
 /**
  * This component displays the map that is visible in the map workspace
@@ -36,6 +40,7 @@ export default class SessionMap extends Vue {
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
+  private sessions: Array<any>
 
   constructor () {
     super()
@@ -50,12 +55,12 @@ export default class SessionMap extends Vue {
     }
 
     // Use this to test using the canned json files
-  /*     this.sessions = (data1 as any).map_points
-    this.sessions = this.sessions.concat((data2 as any).map_points)
-    this.sessions = this.sessions.concat((data3 as any).map_points)
-    this.sessions = this.sessions.concat((data4 as any).map_points)
-    this.sessions = this.sessions.concat((data5 as any).map_points)
-    this.sessions = this.sessions.concat((data6 as any).map_points) */
+    this.sessions = (data1 as any).result.map_points
+    this.sessions = this.sessions.concat((data2 as any).result.map_points)
+    this.sessions = this.sessions.concat((data3 as any).result.map_points)
+    this.sessions = this.sessions.concat((data4 as any).result.map_points)
+    this.sessions = this.sessions.concat((data5 as any).result.map_points)
+    this.sessions = this.sessions.concat((data6 as any).result.map_points)
   }
 
   private mounted () {
@@ -83,12 +88,12 @@ export default class SessionMap extends Vue {
       })
       .then((response: any) => {
         // check if mapbox exists - primarily for tests
-        if (!(window as any).mapboxgl) {
+        if (!mapboxgl) {
           return
         }
 
         if (!this.mapInstance) {
-          this.mapInstance = new (window as any).mapboxgl.Map({
+          this.mapInstance = new mapboxgl.Map({
             accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
             style: 'mapbox://styles/mapbox/dark-v10',
             center: [0, 0],
@@ -101,7 +106,7 @@ export default class SessionMap extends Vue {
           // this.mapInstance.setRenderWorldCopies(status === 'false')
         }
 
-        const sessions = response.map_points || []
+        const sessions = this.sessions // response.map_points || []
         let onNN: Array<any> = []
         const direct: Array<any> = []
 
@@ -124,17 +129,15 @@ export default class SessionMap extends Vue {
         const layers: Array<any> = []
 
         if (direct.length > 0) {
-          const directLayer = new (window as any).deck.ScreenGridLayer({
+          const directLayer = new CustomScreenGridLayer({
             id: 'direct-layer',
             data: direct,
+            cellSizePixels: cellSize,
             opacity: 0.8,
             getPosition: (d: Array<number>) => [d[0], d[1]],
-            getWeight: () => 1,
-            cellSizePixels: cellSize,
             colorRange: [[49, 130, 189]],
             gpuAggregation,
-            aggregation,
-            coordinateSystem: 1
+            aggregation
           })
           layers.push(directLayer)
         }
@@ -161,13 +164,14 @@ export default class SessionMap extends Vue {
               slice = []
             }
           } */
-          const nnLayer = new (window as any).deck.ScreenGridLayer({
+          const nnLayer = new CustomScreenGridLayer({
             id: 'nn-layer',
             data: onNN,
             opacity: 0.8,
             getPosition: (d: Array<number>) => [d[0], d[1]],
             getWeight: () => 1,
             cellSizePixels: cellSize,
+            pickable: true,
             colorRange: [[40, 167, 69]],
             gpuAggregation,
             aggregation
@@ -177,7 +181,7 @@ export default class SessionMap extends Vue {
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
-          this.deckGlInstance = new (window as any).deck.Deck({
+          this.deckGlInstance = new Deck({
             canvas: document.getElementById('deck-canvas'),
             width: '100%',
             height: '100%',
