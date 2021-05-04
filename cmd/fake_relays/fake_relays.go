@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"net/http"
@@ -46,7 +47,7 @@ const (
 
 	// chances are 1 in n
 	pLChance = 100000
-	pLValue  = .3
+	pLValue  = 0.3
 )
 
 func main() {
@@ -74,7 +75,7 @@ func mainReturnWithCode() int {
 	}
 
 	// numRelays to fake
-	numRelays, err := envvar.GetInt("NUM_FAKE_RELAYS", 5)
+	numRelays, err := envvar.GetInt("NUM_FAKE_RELAYS", 2)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 	}
@@ -143,7 +144,8 @@ func mainReturnWithCode() int {
 	for i := 0; i < numRelays; i++ {
 		go func(relay *Relay, relayArr []*Relay) {
 
-			var relaysToPing []uint64
+			// var relaysToPing []uint64
+			var relaysToPing []routing.RelayPingData
 			syncTimer := helpers.NewSyncTimer(1 * time.Second)
 			for {
 				syncTimer.Run()
@@ -159,7 +161,7 @@ func mainReturnWithCode() int {
 
 				if relay.state == relayDisabled {
 					if featureNoInit {
-						err := sendUpdateInit(*relay, updateAddress)
+						relaysToPing, err = sendUpdateInit(*relay, updateAddress)
 						if err != nil {
 							level.Error(logger).Log("err", err)
 							continue
@@ -187,9 +189,9 @@ func mainReturnWithCode() int {
 					relay.state = relayDisabled
 				}
 
-				relaysToPing = relaysToPingFromRelayList(relayArr, relay.data.ID)
+				// relaysToPing = relaysToPingFromRelayList(relayArr, relay.data.ID)
 
-				_, err := sendUpdate(*relay, relaysToPing, updateAddress)
+				relaysToPing, err = sendUpdate(*relay, relaysToPing, updateAddress)
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					relay.state = relayShutdown
@@ -281,24 +283,35 @@ func newRouteBase() RouteBase {
 // 	return nil
 // }
 
-func sendUpdateInit(relay Relay, addr string) error {
+func sendUpdateInit(relay Relay, addr string) ([]routing.RelayPingData, error) {
 	updateRequest := baseUpdate(relay)
 	updateBinary, err := updateRequest.MarshalBinary()
 	if err != nil {
-		return err
+		return []routing.RelayPingData{}, err
 	}
 
 	buffer := bytes.NewBuffer(updateBinary)
 	resp, err := http.Post(addr, "application/octet-stream", buffer)
 	if err != nil {
-		return err
+		return []routing.RelayPingData{}, err
 	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return []routing.RelayPingData{}, err
+	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("response was non 200: %v", resp.StatusCode)
+		return []routing.RelayPingData{}, fmt.Errorf("response was non 200: %v", resp.StatusCode)
 	}
-	resp.Body.Close()
-	return nil
+
+	updateResponse := &transport.RelayUpdateResponse{}
+	err = updateResponse.UnmarshalBinary(body)
+	if err != nil {
+		return []routing.RelayPingData{}, err
+	}
+	
+	return updateResponse.RelaysToPing, nil
 }
 
 func sendShutdown(relay Relay, addr string) error {
@@ -322,34 +335,57 @@ func sendShutdown(relay Relay, addr string) error {
 	return nil
 }
 
-func sendUpdate(relay Relay, relaysToPing []uint64, addr string) ([]uint64, error) {
+func sendUpdate(relay Relay, relaysToPing []routing.RelayPingData, addr string) ([]routing.RelayPingData, error) {
 	updateRequest := baseUpdate(relay)
 
-	numRelays := len(relaysToPing)
-	statsData := make([]routing.RelayStatsPing, len(relaysToPing))
-	for i := 0; i < numRelays; i++ {
-		if base, ok := relay.RouteBaseMap[relaysToPing[i]]; ok {
-			statsData[i] = newPacketData(relaysToPing[i], base)
-		}
-	}
-	updateRequest.PingStats = statsData
+	// Simulate ping stats
+	updateRequest.PingStats = simulateRelayPings(&relay, relaysToPing)
+
+	// Marshal the request and send it to the Gateway
+	// fmt.Printf("update Request for relay %016x: %+v\n", relay.data.ID, updateRequest)
 	updateBinary, err := updateRequest.MarshalBinary()
 	if err != nil {
-		return []uint64{}, err
+		return []routing.RelayPingData{}, err
 	}
 
 	buffer := bytes.NewBuffer(updateBinary)
 	resp, err := http.Post(addr, "application/octet-stream", buffer)
 	if err != nil {
-		return []uint64{}, err
+		return []routing.RelayPingData{}, err
 	}
+
+	// Read the response
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return []routing.RelayPingData{}, err
+	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return []uint64{}, fmt.Errorf("shutdown response was non 200: %v", resp.StatusCode)
+		return []routing.RelayPingData{}, fmt.Errorf("update response was non 200: %v", resp.StatusCode)
 	}
-	resp.Body.Close()
 
-	return relaysToPing, nil
+	// Get the latest relays to ping
+	updateResponse := &transport.RelayUpdateResponse{}
+	err = updateResponse.UnmarshalBinary(body)
+	if err != nil {
+		return []routing.RelayPingData{}, err
+	}
+
+	return updateResponse.RelaysToPing, nil
+}
+
+func simulateRelayPings(relay *Relay, relaysToPing []routing.RelayPingData) []routing.RelayStatsPing {
+	numRelays := len(relaysToPing)
+	statsData := make([]routing.RelayStatsPing, numRelays)
+
+	for i := 0; i < numRelays; i++ {
+		if base, ok := relay.RouteBaseMap[relaysToPing[i].ID]; ok {
+			statsData[i] = newPacketData(relaysToPing[i].ID, base)
+		}
+	}
+
+	return statsData
 }
 
 func relaysToPingFromRelayList(relayArr []*Relay, skipID uint64) []uint64 {
@@ -372,7 +408,7 @@ func baseUpdate(relay Relay) transport.RelayUpdateRequest {
 
 	req := transport.RelayUpdateRequest{
 		Version:      uint32(relayUpdateVersion),
-		RelayVersion: "1.1.0",
+		RelayVersion: "2.0.6",
 		Address:      relay.data.Addr,
 	}
 

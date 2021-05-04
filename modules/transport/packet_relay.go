@@ -361,3 +361,47 @@ func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 	encoding.WriteString(responseData, &index, r.TargetVersion, MaxVersionStringLength)
 	return responseData[:index], nil
 }
+
+func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
+	index := 0
+
+	var version uint32
+	if !encoding.ReadUint32(buff, &index, &version) {
+		return errors.New("could not read version")
+	}
+	if version > VersionNumberUpdateResponse {
+		return errors.New("invalid version number")
+	}
+
+	var timestamp uint64
+	if !encoding.ReadUint64(buff, &index, &timestamp) {
+		return errors.New("could not read timestamp")
+	}
+
+	r.Timestamp = int64(timestamp)
+
+	var numRelaysToPing uint32
+	if !encoding.ReadUint32(buff, &index, &numRelaysToPing) {
+		return errors.New("could not read num relays to ping")
+	}
+
+	r.RelaysToPing = make([]routing.RelayPingData, int32(numRelaysToPing))
+	for i := 0; i < int(numRelaysToPing); i++ {
+		stats := &r.RelaysToPing[i]
+
+		// todo: these could be much more efficient as byte values [0,255]
+		if !encoding.ReadUint64(buff, &index, &stats.ID) {
+			return errors.New("could not read relay ID")
+		}
+		if !encoding.ReadString(buff, &index, &stats.Address, routing.MaxRelayAddressLength) {
+			return errors.New("could not read relay address")
+		}
+	}
+	
+	if !encoding.ReadString(buff, &index, &r.TargetVersion, MaxVersionStringLength) {
+		return errors.New("could not read target version")
+	}
+
+
+	return nil
+}
