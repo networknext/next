@@ -231,7 +231,8 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "unable to parse JWT_AUDIENCE environment variable")
 	}
 
-	fmt.Printf("starting http server\n")
+	port := envvar.Get("PORT", "30005")
+	fmt.Printf("starting http server on port %s\n", port)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
@@ -262,7 +263,6 @@ func mainReturnWithCode() int {
 	}
 
 	go func() {
-		port := envvar.Get("PORT", "30005")
 
 		_ = level.Info(logger).Log("addr", ":"+port)
 
