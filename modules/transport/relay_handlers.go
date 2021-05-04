@@ -422,7 +422,7 @@ func RelayDashboardDataHandlerFunc(
 			jResponse.Relays = append(jResponse.Relays, jRelay)
 		}
 
-		jData, err := json.Marshal(jResponse)
+		jData, err := json.MarshalIndent(jResponse, "", "  ")
 		if err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)
 			errorString := fmt.Sprintf("%v", err)
