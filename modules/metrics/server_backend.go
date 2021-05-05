@@ -48,6 +48,7 @@ type ServerUpdateMetrics struct {
 	DatacenterNotFound           Counter
 	MisconfiguredDatacenterAlias Counter
 	DatacenterNotAllowed         Counter
+	ServerUpdatePacketSize       Counter
 }
 
 // EmptyServerUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -62,6 +63,7 @@ var EmptyServerUpdateMetrics = ServerUpdateMetrics{
 	DatacenterNotFound:           &EmptyCounter{},
 	MisconfiguredDatacenterAlias: &EmptyCounter{},
 	DatacenterNotAllowed:         &EmptyCounter{},
+	ServerUpdatePacketSize:       &EmptyCounter{},
 }
 
 // SessionUpdateMetrics defines the set of metrics for the session update handler in the server backend.
@@ -111,6 +113,9 @@ type SessionUpdateMetrics struct {
 	MispredictVeto                             Counter
 	WriteResponseFailure                       Counter
 	StaleRouteMatrix                           Counter
+	SessionUpdatePacketSize                    Counter
+	NextSessionResponsePacketSize              Counter
+	DirectSessionResponsePacketSize            Counter
 }
 
 // EmptySessionUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -158,6 +163,9 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	MispredictVeto:                             &EmptyCounter{},
 	WriteResponseFailure:                       &EmptyCounter{},
 	StaleRouteMatrix:                           &EmptyCounter{},
+	SessionUpdatePacketSize:                    &EmptyCounter{},
+	NextSessionResponsePacketSize:              &EmptyCounter{},
+	DirectSessionResponsePacketSize:            &EmptyCounter{},
 }
 
 // ServerBackendMetrics defines the set of metrics for the server backend.
@@ -1133,6 +1141,39 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".stale_route_matrix",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " was using a stale route matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.SessionUpdatePacketSize, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Session Update Packet Size",
+		ServiceName: serviceName,
+		ID:          handlerID + ".session_update_packet_size",
+		Unit:        "bytes",
+		Description: "The size of the incoming session update packet.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.DirectSessionResponsePacketSize, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Direct Session Response Packet Size",
+		ServiceName: serviceName,
+		ID:          handlerID + ".direct_session_response_packet_size",
+		Unit:        "bytes",
+		Description: "The size of the incoming direct session response packet.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.NextSessionResponsePacketSize, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Next Session Response Packet Size",
+		ServiceName: serviceName,
+		ID:          handlerID + ".next_session_response_packet_size",
+		Unit:        "bytes",
+		Description: "The size of the incoming next session response packet.",
 	})
 	if err != nil {
 		return nil, err
