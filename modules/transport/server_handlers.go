@@ -171,7 +171,7 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, pos
 			core.Debug("server update duration: %fms\n-----------------------------------------", milliseconds)
 		}()
 
-		metrics.ServerUpdatePacketSize.Add(float64(len(incoming.Data)))
+		metrics.ServerUpdatePacketSize.Set(float64(len(incoming.Data)))
 
 		var packet ServerUpdatePacket
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
@@ -1543,9 +1543,9 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	}
 
 	if sessionData.RouteState.Next {
-		metrics.NextSessionResponsePacketSize.Add(float64(len(sessionDataBuffer)))
+		metrics.NextSessionResponsePacketSize.Set(float64(len(sessionDataBuffer)))
 	} else {
-		metrics.DirectSessionResponsePacketSize.Add(float64(len(sessionDataBuffer)))
+		metrics.DirectSessionResponsePacketSize.Set(float64(len(sessionDataBuffer)))
 	}
 
 	if len(sessionDataBuffer) > MaxSessionDataSize {
@@ -1599,7 +1599,7 @@ func SessionUpdateHandlerFunc(
 
 		// read in the session update packet
 
-		metrics.SessionUpdatePacketSize.Add(float64(len(incoming.Data)))
+		metrics.SessionUpdatePacketSize.Set(float64(len(incoming.Data)))
 
 		var state SessionHandlerState
 
