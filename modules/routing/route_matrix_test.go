@@ -1,7 +1,6 @@
 package routing_test
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"testing"
@@ -182,9 +181,6 @@ func TestRouteMatrixGetDatacenterIDsSuccess(t *testing.T) {
 }
 
 func TestRouteMatrixGetJsonAnalysis(t *testing.T) {
-
-	dir, _ := os.Getwd()
-	fmt.Println(dir)
 
 	fileName := "../../testdata/optimize.bin.prod-5_may"
 	file, err := os.Open(fileName)
