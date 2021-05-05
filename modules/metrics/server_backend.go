@@ -672,6 +672,17 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 		return nil, err
 	}
 
+	m.ServerUpdatePacketSize, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: handlerName + " Server Update Packet Size",
+		ServiceName: serviceName,
+		ID:          handlerID + ".server_update_packet_size",
+		Unit:        "bytes",
+		Description: "The size of a server update packet",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return m, nil
 }
 
