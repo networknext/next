@@ -227,7 +227,6 @@ func (relay *FakeRelay) simulateRelayPings(relaysToPing []routing.RelayPingData)
 	for i := 0; i < numRelays; i++ {
 		if base, ok := relay.routeBaseMap[relaysToPing[i].ID]; ok {
 			statsData[i] = relay.newRelayPingStats(relaysToPing[i].ID, base)
-			fmt.Printf("ping stats: %v\n", statsData[i])
 		}
 	}
 
