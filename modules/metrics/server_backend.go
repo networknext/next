@@ -306,6 +306,28 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 	m.BillingMetrics.ErrorMetrics.BillingReadFailure = &EmptyCounter{}
 	m.BillingMetrics.ErrorMetrics.BillingWriteFailure = &EmptyCounter{}
 
+	m.BillingMetrics.BillingEntrySize, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Billing Entry Size",
+		ServiceName: "billing",
+		ID:          "billing.entry.size",
+		Unit:        "bytes",
+		Description: "The size of a billing entry",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BillingMetrics.PubsubBillingEntrySize, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Pubsub Billing Entry Size",
+		ServiceName: "billing",
+		ID:          "pubsub.billing.entry.size",
+		Unit:        "bytes",
+		Description: "The size of a pubsub billing entry",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.RouteMatrixUpdateDuration, err = handler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Route Matrix Update Duration",
 		ServiceName: serviceName,
