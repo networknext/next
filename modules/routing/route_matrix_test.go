@@ -191,6 +191,31 @@ func TestRouteMatrixGetJsonAnalysis(t *testing.T) {
 	_, err = routeMatrix.ReadFrom(file)
 	assert.NoError(t, err)
 
+	// routeMatrix.WriteAnalysisTo(os.Stdout)
+	// the line above prints:
+	// 	RTT Improvement:
+	//     None: 9706 (56.81%)
+	//     0-5ms: 2605 (15.25%)
+	//     5-10ms: 1898 (11.11%)
+	//     10-15ms: 1110 (6.50%)
+	//     15-20ms: 647 (3.79%)
+	//     20-25ms: 369 (2.16%)
+	//     25-30ms: 230 (1.35%)
+	//     30-35ms: 108 (0.63%)
+	//     35-40ms: 58 (0.34%)
+	//     40-45ms: 39 (0.23%)
+	//     45-50ms: 48 (0.28%)
+	//     50ms+: 267 (1.56%)
+	// Route Summary:
+	//     289 relays
+	//     171333 total routes
+	//     17085 relay pairs
+	//     67 destination relays
+	//     10.0 routes per relay pair on average (16 max)
+	//     3.6 relays per route on average (5 max)
+	//     14.9% of relay pairs have only one route
+	//     9.1% of relay pairs have no route
+
 	jsonMatrixAnalysis := routeMatrix.GetJsonAnalysis()
 
 	assert.Equal(t, 9706, jsonMatrixAnalysis.RttImprovementNone)
