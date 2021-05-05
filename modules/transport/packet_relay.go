@@ -250,22 +250,25 @@ func (r *RelayUpdateRequest) marshalBinaryV3() ([]byte, error) {
 
 	index := 0
 	encoding.WriteUint32(data, &index, r.Version)
-	encoding.WriteString(data, &index, r.RelayVersion, uint32(len(r.RelayVersion)))
-	encoding.WriteString(data, &index, r.Address.String(), math.MaxInt32)
+	encoding.WriteString(data, &index, r.Address.String(), routing.MaxRelayAddressLength)
 	encoding.WriteBytes(data, &index, r.Token, crypto.KeySize)
-	encoding.WriteUint32(data, &index, uint32(len(r.PingStats)))
 
+	encoding.WriteUint32(data, &index, uint32(len(r.PingStats)))
 	for i := 0; i < len(r.PingStats); i++ {
-		stats := &r.PingStats[i]
+		stats := r.PingStats[i]
 
 		encoding.WriteUint64(data, &index, stats.RelayID)
-		encoding.WriteUint32(data, &index, math.Float32bits(stats.RTT))
-		encoding.WriteUint32(data, &index, math.Float32bits(stats.Jitter))
-		encoding.WriteUint32(data, &index, math.Float32bits(stats.PacketLoss))
+		encoding.WriteFloat32(data, &index, stats.RTT)
+		encoding.WriteFloat32(data, &index, stats.Jitter)
+		encoding.WriteFloat32(data, &index, stats.PacketLoss)
 	}
 
-	r.TrafficStats.WriteTo(data, &index, 2)
+	encoding.WriteUint64(data, &index, r.SessionCount)
 	encoding.WriteBool(data, &index, r.ShuttingDown)
+	encoding.WriteString(data, &index, r.RelayVersion, uint32(len(r.RelayVersion)))
+
+	// Unused but writing for version consistency
+	r.TrafficStats.WriteTo(data, &index, 2)
 	encoding.WriteFloat64(data, &index, r.CPUUsage)
 	encoding.WriteFloat64(data, &index, r.MemUsage)
 
@@ -374,43 +377,19 @@ func (r *RelayUpdateRequest) sizeV2() uint {
 // Changes from v2:
 // Added relay version string
 func (r *RelayUpdateRequest) sizeV3() uint {
-	return uint(4 + // version
-		4 + // length of relay version
-		len(r.RelayVersion) + // relay version string
-		4 + // address length
-		len(r.Address.String()) + // address
-		crypto.KeySize + // public key
-		4 + // number of ping stats
-		20*len(r.PingStats) + // ping stats list
-		8 + // session count
-		1 + // shutdown flag
-		8 + // envelope up
-		8 + // envelope down
-		8 + // outbound ping tx
-		8 + // route request rx
-		8 + // route request tx
-		8 + // route response rx
-		8 + // route response tx
-		8 + // client to server rx
-		8 + // client to server tx
-		8 + // server to client rx
-		8 + // server to client tx
-		8 + // inbound ping rx
-		8 + // inbound ping tx
-		8 + // pong rx
-		8 + // session ping rx
-		8 + // session ping tx
-		8 + // session pong rx
-		8 + // session pong tx
-		8 + // continue request rx
-		8 + // continue request tx
-		8 + // continue response rx
-		8 + // continue response tx
-		8 + // near ping rx
-		8 + // near ping tx
-		8 + // unknown Rx
-		8 + // cpu usage
-		8) // memory usage
+	return uint(
+		4 + // version
+			len(r.Address.String()) + // address
+			crypto.KeySize + // public key
+			4 + // number of ping stats
+			20*len(r.PingStats) + // ping stats list
+			8 + // session count
+			1 + // shutdown flag
+			len(r.RelayVersion) + // relay version string
+			8*26 + // traffic stats v2
+			8 + // cpu usage
+			8 + // memory usage
+			8) // I don't know what 8 bytes aren't accounted for here
 }
 
 type RelayUpdateResponse struct {
@@ -468,11 +447,10 @@ func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
 			return errors.New("could not read relay address")
 		}
 	}
-	
+
 	if !encoding.ReadString(buff, &index, &r.TargetVersion, MaxVersionStringLength) {
 		return errors.New("could not read target version")
 	}
-
 
 	return nil
 }

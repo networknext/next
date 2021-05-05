@@ -75,7 +75,7 @@ func mainReturnWithCode() int {
 	}
 
 	// numRelays to fake
-	numRelays, err := envvar.GetInt("NUM_FAKE_RELAYS", 2)
+	numRelays, err := envvar.GetInt("NUM_FAKE_RELAYS", 10)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 	}
@@ -88,7 +88,7 @@ func mainReturnWithCode() int {
 	// get and verify relayGatewayAddr
 	var relayGatewayAddr string
 	if gcpProjectID != "" {
-		relayGatewayAddr= envvar.Get("RELAY_GATEWAY_LB_IP", "")
+		relayGatewayAddr = envvar.Get("RELAY_GATEWAY_LB_IP", "")
 		if net.ParseIP(relayGatewayAddr) == nil {
 			level.Error(logger).Log("err", err)
 			return 1
@@ -97,7 +97,7 @@ func mainReturnWithCode() int {
 		relayGatewayAddr = "127.0.0.1:30000"
 	}
 
-	relayUpdateVersion, err = envvar.GetInt("RELAY_UPDATE_VERSION", 2)
+	relayUpdateVersion, err = envvar.GetInt("RELAY_UPDATE_VERSION", 3)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
@@ -215,7 +215,7 @@ func fakeRelay(i int) routing.Relay {
 	// firstIpPart := i / 255
 	// secondIpPart := i % 255
 	// IP := fmt.Sprintf("100.0.%v.%v:40000", firstIpPart, secondIpPart)
-	IP := fmt.Sprintf("127.0.0.1:%d", 10000 + i)
+	IP := fmt.Sprintf("127.0.0.1:%d", 10000+i)
 	addr, err := net.ResolveUDPAddr("udp", IP)
 	if err != nil {
 		fmt.Printf("error creating IP: %v\n", err)
@@ -310,7 +310,7 @@ func sendUpdateInit(relay Relay, addr string) ([]routing.RelayPingData, error) {
 	if err != nil {
 		return []routing.RelayPingData{}, err
 	}
-	
+
 	return updateResponse.RelaysToPing, nil
 }
 
@@ -412,7 +412,7 @@ func baseUpdate(relay Relay) transport.RelayUpdateRequest {
 		Address:      relay.data.Addr,
 	}
 
-	if relayUpdateVersion == 2 {
+	if relayUpdateVersion == 3 {
 		req.Token = relay.data.PublicKey
 	}
 
