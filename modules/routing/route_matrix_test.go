@@ -2,6 +2,7 @@ package routing_test
 
 import (
 	"net"
+	"os"
 	"testing"
 
 	"github.com/networknext/backend/modules/core"
@@ -177,4 +178,68 @@ func TestRouteMatrixGetDatacenterIDsSuccess(t *testing.T) {
 	expected := routeMatrix.RelayIDs
 	actual := routeMatrix.GetDatacenterRelayIDs(10)
 	assert.Equal(t, expected, actual)
+}
+
+func TestRouteMatrixGetJsonAnalysis(t *testing.T) {
+
+	fileName := "../../testdata/optimize.bin.prod-5_may"
+	file, err := os.Open(fileName)
+	assert.NoError(t, err)
+	defer file.Close()
+
+	var routeMatrix routing.RouteMatrix
+	_, err = routeMatrix.ReadFrom(file)
+	assert.NoError(t, err)
+
+	// routeMatrix.WriteAnalysisTo(os.Stdout)
+	// the line above prints:
+	// 	RTT Improvement:
+	//     None: 9706 (56.81%)
+	//     0-5ms: 2605 (15.25%)
+	//     5-10ms: 1898 (11.11%)
+	//     10-15ms: 1110 (6.50%)
+	//     15-20ms: 647 (3.79%)
+	//     20-25ms: 369 (2.16%)
+	//     25-30ms: 230 (1.35%)
+	//     30-35ms: 108 (0.63%)
+	//     35-40ms: 58 (0.34%)
+	//     40-45ms: 39 (0.23%)
+	//     45-50ms: 48 (0.28%)
+	//     50ms+: 267 (1.56%)
+	// Route Summary:
+	//     289 relays
+	//     171333 total routes
+	//     17085 relay pairs
+	//     67 destination relays
+	//     10.0 routes per relay pair on average (16 max)
+	//     3.6 relays per route on average (5 max)
+	//     14.9% of relay pairs have only one route
+	//     9.1% of relay pairs have no route
+
+	jsonMatrixAnalysis := routeMatrix.GetJsonAnalysis()
+
+	assert.Equal(t, 9706, jsonMatrixAnalysis.RttImprovementNone)
+	assert.Equal(t, 2605, jsonMatrixAnalysis.RttImprovement0_5ms)
+	assert.Equal(t, 1898, jsonMatrixAnalysis.RttImprovement5_10ms)
+	assert.Equal(t, 1110, jsonMatrixAnalysis.RttImprovement10_15ms)
+	assert.Equal(t, 647, jsonMatrixAnalysis.RttImprovement15_20ms)
+	assert.Equal(t, 369, jsonMatrixAnalysis.RttImprovement20_25ms)
+	assert.Equal(t, 230, jsonMatrixAnalysis.RttImprovement25_30ms)
+	assert.Equal(t, 108, jsonMatrixAnalysis.RttImprovement30_35ms)
+	assert.Equal(t, 58, jsonMatrixAnalysis.RttImprovement35_40ms)
+	assert.Equal(t, 39, jsonMatrixAnalysis.RttImprovement40_45ms)
+	assert.Equal(t, 48, jsonMatrixAnalysis.RttImprovement45_50ms)
+	assert.Equal(t, 267, jsonMatrixAnalysis.RttImprovement50plusms)
+
+	assert.Equal(t, 289, jsonMatrixAnalysis.RelayCount)
+	assert.Equal(t, 171333, jsonMatrixAnalysis.TotalRoutes)
+	assert.Equal(t, 17085, jsonMatrixAnalysis.RelayPairs)
+	assert.Equal(t, 67, jsonMatrixAnalysis.DestinationRelays)
+	assert.Equal(t, 10.02827041264267, jsonMatrixAnalysis.AvgRoutesPerRelayPair)
+	assert.Equal(t, 16, jsonMatrixAnalysis.MaxRoutesPerRelayPair)
+	assert.Equal(t, 3.619034278276806, jsonMatrixAnalysis.AvgRelaysPerRoute)
+	assert.Equal(t, 5, jsonMatrixAnalysis.MaxRelaysPerRoute)
+	assert.Equal(t, 14.937079309335674, jsonMatrixAnalysis.RelayPairsWithOneRoutePercent)
+	assert.Equal(t, 9.089844893181153, jsonMatrixAnalysis.RelayPairsWIthNoRoutesPercent)
+
 }
