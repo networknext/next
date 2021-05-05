@@ -15,6 +15,7 @@ import (
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/fake_relays"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 
 	"github.com/go-kit/kit/log/level"
@@ -22,14 +23,10 @@ import (
 )
 
 var (
-	buildtime               string
-	commitMessage           string
-	sha                     string
-	tag                     string
-	RELAY_PUBLIC_KEY        []byte
-	RELAY_PRIVATE_KEY       []byte
-	RELAY_ROUTER_PUBLIC_KEY []byte
-	relayUpdateVersion      int
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
 )
 
 func main() {
@@ -51,28 +48,25 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Get the public, private, and router key for the fake relays
-	relayPublicKeyStr := envvar.Get("RELAY_PUBLIC_KEY", "8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
-	// relayPrivateKeyStr := envvar.Get("RELAY_PRIVATE_KEY", "ZiCSchVFo6T5gJvbQfcwU7yfELsNJaYIC2laQm9DSuA=")
-	// relayRouterPublicKeyStr := envvar.Get("RELAY_ROUTER_PUBLIC_KEY", "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
+	fakeRelayMetrics, err := metrics.NewFakeRelayMetrics(ctx, metricsHandler, serviceName, "fake_relays", "Fake Relays", "")
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create fake relays metrics", "err", err)
+		return 1
+	}
+
+	// Get the public key for the fake relays
+	relayPublicKeyStr := envvar.Get("RELAY_PUBLIC_KEY", "8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
 	relayPublicKey, err := base64.StdEncoding.DecodeString(relayPublicKeyStr)
 	if err != nil {
 		level.Error(logger).Log("msg", fmt.Sprintf("could not decode to base64: %s", relayPublicKeyStr), "err", err)
 		return 1
 	}
-
-	// relayPrivateKey, err := base64.StdEncoding.DecodeString(relayPrivateKeyStr)
-	// if err != nil {
-	// 	level.Error(logger).Log("msg", fmt.Sprintf("could not decode to base64: %s", relayPrivateKeyStr), "err", err)
-	// 	return 1
-	// }
-
-	// relayRouterPublicKey, err := base64.StdEncoding.DecodeString(relayRouterPublicKeyStr)
-	// if err != nil {
-	// 	level.Error(logger).Log("msg", fmt.Sprintf("could not decode to base64: %s", relayRouterPublicKeyStr), "err", err)
-	// 	return 1
-	// }
 
 	// Get the number of fake relays to produce
 	numRelays, err := envvar.GetInt("NUM_FAKE_RELAYS", 10)
@@ -81,8 +75,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the Relay Gateway's Load Balancer's IP
-	var gatewayAddr string
-	gatewayAddr = envvar.Get("GATEWAY_LOAD_BALANCER_IP", "127.0.0.1:30000")
+	gatewayAddr := envvar.Get("GATEWAY_LOAD_BALANCER_IP", "127.0.0.1:30000")
 	// Verify the IP is valid if not testing locally
 	if gcpProjectID != "" {
 		ip := net.ParseIP(gatewayAddr)
@@ -93,14 +86,14 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the relay update version
-	relayUpdateVersion, err = envvar.GetInt("RELAY_UPDATE_VERSION", 3)
+	relayUpdateVersion, err := envvar.GetInt("RELAY_UPDATE_VERSION", 3)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
 	// Create all the fake relays
-	relays, err := fake_relays.NewFakeRelays(numRelays, relayPublicKey, gatewayAddr, relayUpdateVersion, logger)
+	relays, err := fake_relays.NewFakeRelays(numRelays, relayPublicKey, gatewayAddr, relayUpdateVersion, logger, fakeRelayMetrics)
 	if err != nil {
 		level.Error(logger).Log("msg", "could not create fake relays", "err", err)
 		return 1
