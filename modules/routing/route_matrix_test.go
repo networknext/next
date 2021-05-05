@@ -2,6 +2,7 @@ package routing_test
 
 import (
 	"net"
+	"os"
 	"testing"
 
 	"github.com/networknext/backend/modules/core"
@@ -177,4 +178,43 @@ func TestRouteMatrixGetDatacenterIDsSuccess(t *testing.T) {
 	expected := routeMatrix.RelayIDs
 	actual := routeMatrix.GetDatacenterRelayIDs(10)
 	assert.Equal(t, expected, actual)
+}
+
+func TestRouteMatrixGetJsonAnalysis(t *testing.T) {
+
+	fileName := "../../testdata/optimize.bin.prod-5_may"
+	file, err := os.Open(fileName)
+	assert.NoError(t, err)
+	defer file.Close()
+
+	var routeMatrix routing.RouteMatrix
+	_, err = routeMatrix.ReadFrom(file)
+	assert.NoError(t, err)
+
+	jsonMatrixAnalysis := routeMatrix.GetJsonAnalysis()
+
+	assert.Equal(t, 9706, jsonMatrixAnalysis.RttImprovementNone)
+	assert.Equal(t, 2605, jsonMatrixAnalysis.RttImprovement0_5ms)
+	assert.Equal(t, 1898, jsonMatrixAnalysis.RttImprovement5_10ms)
+	assert.Equal(t, 1110, jsonMatrixAnalysis.RttImprovement10_15ms)
+	assert.Equal(t, 647, jsonMatrixAnalysis.RttImprovement15_20ms)
+	assert.Equal(t, 369, jsonMatrixAnalysis.RttImprovement20_25ms)
+	assert.Equal(t, 230, jsonMatrixAnalysis.RttImprovement25_30ms)
+	assert.Equal(t, 108, jsonMatrixAnalysis.RttImprovement30_35ms)
+	assert.Equal(t, 58, jsonMatrixAnalysis.RttImprovement35_40ms)
+	assert.Equal(t, 39, jsonMatrixAnalysis.RttImprovement40_45ms)
+	assert.Equal(t, 48, jsonMatrixAnalysis.RttImprovement45_50ms)
+	assert.Equal(t, 267, jsonMatrixAnalysis.RttImprovement50plusms)
+
+	assert.Equal(t, 289, jsonMatrixAnalysis.RelayCount)
+	assert.Equal(t, 171333, jsonMatrixAnalysis.TotalRoutes)
+	assert.Equal(t, 17085, jsonMatrixAnalysis.RelayPairs)
+	assert.Equal(t, 67, jsonMatrixAnalysis.DestinationRelays)
+	assert.Equal(t, 10.02827041264267, jsonMatrixAnalysis.AvgRoutesPerRelayPair)
+	assert.Equal(t, 16, jsonMatrixAnalysis.MaxRoutesPerRelayPair)
+	assert.Equal(t, 3.619034278276806, jsonMatrixAnalysis.AvgRelaysPerRoute)
+	assert.Equal(t, 5, jsonMatrixAnalysis.MaxRelaysPerRoute)
+	assert.Equal(t, 14.937079309335674, jsonMatrixAnalysis.RelayPairsWithOneRoutePercent)
+	assert.Equal(t, 9.089844893181153, jsonMatrixAnalysis.RelayPairsWIthNoRoutesPercent)
+
 }
