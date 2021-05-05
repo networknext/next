@@ -43,8 +43,8 @@ type BillingMetrics struct {
 	EntriesQueued          Gauge
 	EntriesFlushed         Counter
 	ErrorMetrics           BillingErrorMetrics
-	PubsubBillingEntrySize Counter
-	BillingEntrySize       Counter
+	PubsubBillingEntrySize Gauge
+	BillingEntrySize       Gauge
 }
 
 var EmptyBillingMetrics BillingMetrics = BillingMetrics{
@@ -53,8 +53,8 @@ var EmptyBillingMetrics BillingMetrics = BillingMetrics{
 	EntriesQueued:          &EmptyGauge{},
 	EntriesFlushed:         &EmptyCounter{},
 	ErrorMetrics:           EmptyBillingErrorMetrics,
-	PubsubBillingEntrySize: &EmptyCounter{},
-	BillingEntrySize:       &EmptyCounter{},
+	PubsubBillingEntrySize: &EmptyGauge{},
+	BillingEntrySize:       &EmptyGauge{},
 }
 
 type BillingErrorMetrics struct {
@@ -517,7 +517,7 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		return nil, err
 	}
 
-	billingServiceMetrics.BillingMetrics.BillingEntrySize, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	billingServiceMetrics.BillingMetrics.BillingEntrySize, err = metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Billing Entry Size",
 		ServiceName: "billing",
 		ID:          "billing.entry.size",
@@ -528,7 +528,7 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		return nil, err
 	}
 
-	billingServiceMetrics.BillingMetrics.PubsubBillingEntrySize, err = metricsHandler.NewCounter(ctx, &Descriptor{
+	billingServiceMetrics.BillingMetrics.PubsubBillingEntrySize, err = metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Pubsub Billing Entry Size",
 		ServiceName: "billing",
 		ID:          "pubsub.billing.entry.size",

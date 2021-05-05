@@ -98,7 +98,7 @@ func (biller *GooglePubSubBiller) Bill(ctx context.Context, entry *BillingEntry)
 
 	entryBytes := WriteBillingEntry(entry)
 
-	client.Metrics.PubsubBillingEntrySize.Add(float64(len(entryBytes)))
+	client.Metrics.PubsubBillingEntrySize.Set(float64(len(entryBytes)))
 
 	data := make([]byte, 4+len(entryBytes))
 	var offset int
