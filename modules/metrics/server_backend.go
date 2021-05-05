@@ -48,7 +48,7 @@ type ServerUpdateMetrics struct {
 	DatacenterNotFound           Counter
 	MisconfiguredDatacenterAlias Counter
 	DatacenterNotAllowed         Counter
-	ServerUpdatePacketSize       Counter
+	ServerUpdatePacketSize       Gauge
 }
 
 // EmptyServerUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -63,7 +63,7 @@ var EmptyServerUpdateMetrics = ServerUpdateMetrics{
 	DatacenterNotFound:           &EmptyCounter{},
 	MisconfiguredDatacenterAlias: &EmptyCounter{},
 	DatacenterNotAllowed:         &EmptyCounter{},
-	ServerUpdatePacketSize:       &EmptyCounter{},
+	ServerUpdatePacketSize:       &EmptyGauge{},
 }
 
 // SessionUpdateMetrics defines the set of metrics for the session update handler in the server backend.
@@ -113,9 +113,9 @@ type SessionUpdateMetrics struct {
 	MispredictVeto                             Counter
 	WriteResponseFailure                       Counter
 	StaleRouteMatrix                           Counter
-	SessionUpdatePacketSize                    Counter
-	NextSessionResponsePacketSize              Counter
-	DirectSessionResponsePacketSize            Counter
+	SessionUpdatePacketSize                    Gauge
+	NextSessionResponsePacketSize              Gauge
+	DirectSessionResponsePacketSize            Gauge
 }
 
 // EmptySessionUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -163,9 +163,9 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	MispredictVeto:                             &EmptyCounter{},
 	WriteResponseFailure:                       &EmptyCounter{},
 	StaleRouteMatrix:                           &EmptyCounter{},
-	SessionUpdatePacketSize:                    &EmptyCounter{},
-	NextSessionResponsePacketSize:              &EmptyCounter{},
-	DirectSessionResponsePacketSize:            &EmptyCounter{},
+	SessionUpdatePacketSize:                    &EmptyGauge{},
+	NextSessionResponsePacketSize:              &EmptyGauge{},
+	DirectSessionResponsePacketSize:            &EmptyGauge{},
 }
 
 // ServerBackendMetrics defines the set of metrics for the server backend.
@@ -1146,7 +1146,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		return nil, err
 	}
 
-	m.SessionUpdatePacketSize, err = handler.NewCounter(ctx, &Descriptor{
+	m.SessionUpdatePacketSize, err = handler.NewGauge(ctx, &Descriptor{
 		DisplayName: handlerName + " Session Update Packet Size",
 		ServiceName: serviceName,
 		ID:          handlerID + ".session_update_packet_size",
@@ -1157,7 +1157,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		return nil, err
 	}
 
-	m.DirectSessionResponsePacketSize, err = handler.NewCounter(ctx, &Descriptor{
+	m.DirectSessionResponsePacketSize, err = handler.NewGauge(ctx, &Descriptor{
 		DisplayName: handlerName + " Direct Session Response Packet Size",
 		ServiceName: serviceName,
 		ID:          handlerID + ".direct_session_response_packet_size",
@@ -1168,7 +1168,7 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		return nil, err
 	}
 
-	m.NextSessionResponsePacketSize, err = handler.NewCounter(ctx, &Descriptor{
+	m.NextSessionResponsePacketSize, err = handler.NewGauge(ctx, &Descriptor{
 		DisplayName: handlerName + " Next Session Response Packet Size",
 		ServiceName: serviceName,
 		ID:          handlerID + ".next_session_response_packet_size",
