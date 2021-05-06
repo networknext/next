@@ -12492,9 +12492,66 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
+    // run the network next hostname resolve first, and do it each time this thread is started...
+
+    const char * hostname = next_global_config.hostname;
+    const char * port = NEXT_BACKEND_PORT;
+    const char * override_port = next_platform_getenv( "NEXT_BACKEND_PORT" );
+    if ( override_port )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
+        port = override_port;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname '%s'", hostname );
+
+    next_address_t address;
+
+    if ( next_address_parse( &address, hostname ) == NEXT_OK )
+    {
+        address.port = atoi( port );
+        next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+        server->resolve_hostname_finished = true;
+        server->resolve_hostname_result = address;
+        NEXT_PLATFORM_THREAD_RETURN();
+    }
+
+    for ( int i = 0; i < 10; ++i )
+    {
+        if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
+        {
+            next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
+            next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+            server->resolve_hostname_finished = true;
+            server->resolve_hostname_result = address;
+            break;
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname (%d)", i );
+        }
+    }
+
+    if ( !server->resolve_hostname_finished )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+        server->resolve_hostname_finished = true;
+        memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
+        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+    }
+
+    // only run the autodetect datacenter code once. once we know our datacenter name, it does not change
+
+    if ( server->autodetected_datacenter )
+    {
+        NEXT_PLATFORM_THREAD_RETURN();
+    }
+
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    // autodetect datacenter is currently linux only
+    // autodetect datacenter is currently linux only (mac is just for testing...)
 
     const char * autodetect_input = server->autodetect_input;
     
@@ -12544,57 +12601,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     }
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    const char * hostname = next_global_config.hostname;
-    const char * port = NEXT_BACKEND_PORT;
-    const char * override_port = next_platform_getenv( "NEXT_BACKEND_PORT" );
-    if ( override_port )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
-        port = override_port;
-    }
-
-    next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname '%s'", hostname );
-
-    next_address_t address;
-
-    if ( next_address_parse( &address, hostname ) == NEXT_OK )
-    {
-        address.port = atoi( port );
-        next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        server->resolve_hostname_finished = true;
-        server->resolve_hostname_result = address;
-        NEXT_PLATFORM_THREAD_RETURN();
-    }
-
-    for ( int i = 0; i < 10; ++i )
-    {
-        if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
-        {
-            {
-                next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-                next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-                server->resolve_hostname_finished = true;
-                server->resolve_hostname_result = address;
-            }
-            NEXT_PLATFORM_THREAD_RETURN();
-
-        }
-        else
-        {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname (%d)", i );
-        }
-    }
-
-    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
-
-    {
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        server->resolve_hostname_finished = true;
-        memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
-        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    }
 
     NEXT_PLATFORM_THREAD_RETURN();
 }
