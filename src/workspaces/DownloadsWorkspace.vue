@@ -154,7 +154,7 @@ export default class DownloadsWorkspace extends Vue {
         event_category: 'Important Clicks'
       })
     }
-    window.open('https://storage.googleapis.com/portal_sdk_download_storage/ue4-plugin.zip')
+    window.open('https://storage.googleapis.com/network-next-ue4/ue4-plugin.zip')
     this.$apiService.sendUE4DownloadNotifications({ email: this.$store.getters.userProfile.email, customer_name: this.$store.getters.userProfile.companyName, customer_code: this.$store.getters.userProfile.companyCode })
   }
 }
