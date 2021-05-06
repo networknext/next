@@ -11184,7 +11184,6 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     return entry;
 }
 
-
 void next_server_internal_update_route( next_server_internal_t * server )
 {
     next_assert( server );
