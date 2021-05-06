@@ -24,7 +24,7 @@ import (
 const (
 	MaxRTT               = 300
 	MaxJitter            = 10
-	MaxPacketLoss		 = 30
+	MaxPacketLoss        = 30
 	MaxMultiplierPercent = 10
 
 	// Chances are 1 in N
@@ -53,6 +53,7 @@ type RouteBase struct {
 	packetLoss float32
 }
 
+// NewFakeRelays() creates numRelays fake relays for load testing
 func NewFakeRelays(numRelays int, relayPublicKey []byte, gatewayAddr string, updateVersion int, logger log.Logger, fakeRelayMetrics *metrics.FakeRelayMetrics) ([]*FakeRelay, error) {
 	relayArr := make([]*FakeRelay, numRelays)
 	// Fill up the relay array with fake relays
@@ -87,6 +88,8 @@ func NewFakeRelays(numRelays int, relayPublicKey []byte, gatewayAddr string, upd
 	return relayArr, nil
 }
 
+// StartLoop() enables a relay to send relay updates to the Relay Gateway
+// until a shutdown signal is received.
 func (relay *FakeRelay) StartLoop(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -173,7 +176,7 @@ func (relay *FakeRelay) sendInitialUpdateRequest() ([]routing.RelayPingData, err
 }
 
 func (relay *FakeRelay) sendStandardUpdateRequest(relaysToPing []routing.RelayPingData) ([]routing.RelayPingData, error) {
-	// Get the inital update request
+	// Get the update request
 	updateReq := relay.baseUpdate()
 
 	// Simulate relay pings
@@ -220,6 +223,7 @@ func (relay *FakeRelay) sendUpdateRequest(updateRequestBin []byte) ([]routing.Re
 	return updateResponse.RelaysToPing, nil
 }
 
+// Simulates relay pings between this relay and all other Fake Relays based on probabilities.
 func (relay *FakeRelay) simulateRelayPings(relaysToPing []routing.RelayPingData) []routing.RelayStatsPing {
 	numRelays := len(relaysToPing)
 	statsData := make([]routing.RelayStatsPing, numRelays)
@@ -267,10 +271,6 @@ func (relay *FakeRelay) baseUpdate() transport.RelayUpdateRequest {
 }
 
 func newRoutingRelay(index int, relayPublicKey []byte) (routing.Relay, error) {
-	// firstIpPart := i / 255
-	// secondIpPart := i % 255
-	// IP := fmt.Sprintf("100.0.%v.%v:40000", firstIpPart, secondIpPart)
-	// TODO: fix local hack
 	ipAddress := fmt.Sprintf("127.0.0.1:%d", 10000+index)
 	udpAddr, err := net.ResolveUDPAddr("udp", ipAddress)
 	if err != nil {
@@ -278,7 +278,7 @@ func newRoutingRelay(index int, relayPublicKey []byte) (routing.Relay, error) {
 	}
 
 	return routing.Relay{
-		Name:      fmt.Sprintf("fake_relay_%d", index),
+		Name:      fmt.Sprintf("staging.relay.%d", index+1),
 		ID:        crypto.HashID(ipAddress),
 		Addr:      *udpAddr,
 		PublicKey: relayPublicKey,
@@ -293,7 +293,7 @@ func newRouteBase() RouteBase {
 	}
 }
 
-// this returns the float multiplier at +/- maxMultiplierPercent
+// Returns the float multiplier at +/- MaxMultiplierPercent
 func calcMultiplier() float32 {
 	base := rand.Int31n(MaxMultiplierPercent * 2)
 	return 1.0 + float32(base-MaxMultiplierPercent)/100.0
