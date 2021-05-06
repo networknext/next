@@ -151,6 +151,10 @@ export class JSONRPCService {
   public sendPublicKeyEnteredSlackNotification (args: any): Promise<any> {
     return this.call('AuthService.CustomerEnteredPublicKeySlackNotification', args)
   }
+
+  public sendUE4DownloadNotifications (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloadedUE4PluginNotifications', args)
+  }
 }
 
 export const JSONRPCPlugin = {

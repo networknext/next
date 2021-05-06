@@ -103,7 +103,7 @@ export default class GameConfiguration extends Vue {
             const allBuyers = response.buyers
             this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
           })
-        this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email })
+        this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
