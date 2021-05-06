@@ -192,15 +192,16 @@ func TestInsertSQL(t *testing.T) {
 
 		// fields not stored in the database are not tested here
 		relay := routing.Relay{
-			ID:             rid,
-			Name:           "test.1",
-			Addr:           *addr,
-			InternalAddr:   *internalAddr,
-			ManagementAddr: "1.2.3.4",
-			SSHPort:        22,
-			SSHUser:        "fred",
-			MaxSessions:    1000,
-			PublicKey:      publicKey,
+			ID:              rid,
+			Name:            "test.1",
+			Addr:            *addr,
+			InternalAddr:    *internalAddr,
+			ManagementAddr:  "1.2.3.4",
+			SSHPort:         22,
+			SSHUser:         "fred",
+			MaxSessions:     1000,
+			PublicKey:       publicKey,
+			BillingSupplier: "some different supplier",
 			// Datacenter:     outerDatacenter,
 			MRC:                 19700000000000,
 			Overage:             26000000000000,
@@ -229,8 +230,9 @@ func TestInsertSQL(t *testing.T) {
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
 
-		fmt.Printf("checkRelay.DatabaseID: %d\n", checkRelay.DatabaseID)
-		fmt.Printf("checkRelay.Addr: %s\n", checkRelay.Addr.String())
+		// fmt.Printf("checkRelay: %s\n", checkRelay.String())
+		// fmt.Printf("checkRelay.DatabaseID: %d\n", checkRelay.DatabaseID)
+		// fmt.Printf("checkRelay.Addr: %s\n", checkRelay.Addr.String())
 
 		assert.Equal(t, relay.Name, checkRelay.Name)
 		assert.Equal(t, relay.Addr, checkRelay.Addr)
@@ -259,6 +261,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
 		assert.Equal(t, relay.Notes, checkRelay.Notes)
+		assert.Equal(t, "some different supplier", checkRelay.BillingSupplier)
 
 		// overwrite with SetRelay - test nullable fields, possible in relay_backend
 		var relayMod routing.Relay

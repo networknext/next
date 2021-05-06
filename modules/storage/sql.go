@@ -1087,6 +1087,7 @@ type sqlRelay struct {
 	PublicIPPort       sql.NullInt64
 	InternalIP         sql.NullString
 	InternalIPPort     sql.NullInt64
+	BillingSupplier    sql.NullString
 	PublicKey          []byte
 	NICSpeedMbps       int64
 	IncludedBandwithGB int64
@@ -1126,7 +1127,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	publicIP := strings.Split(r.Addr.String(), ":")[0]
 	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
 	if err != nil {
-		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+		return fmt.Errorf("unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 	rid := crypto.HashID(r.Addr.String())
 
@@ -1138,7 +1139,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
 		internalIPPort.Valid = true
 		if err != nil {
-			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
+			return fmt.Errorf("unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
 		}
 	} else {
 		internalIP = sql.NullString{}
@@ -1159,6 +1160,14 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		endDate.Valid = true
 	} else {
 		endDate = sql.NullTime{}
+	}
+
+	var billingSupplier sql.NullString
+	if r.BillingSupplier != "" {
+		billingSupplier.Valid = true
+		billingSupplier.String = r.BillingSupplier
+	} else {
+		billingSupplier.Valid = false
 	}
 
 	nullablePublicIP := sql.NullString{
@@ -1183,6 +1192,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
 		DatacenterID:       r.Datacenter.DatabaseID,
 		ManagementIP:       r.ManagementAddr,
+		BillingSupplier:    billingSupplier,
 		SSHUser:            r.SSHUser,
 		SSHPort:            r.SSHPort,
 		State:              int64(r.State),
@@ -1201,9 +1211,10 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port, notes "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
+	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier "))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
@@ -1235,6 +1246,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.InternalIP,
 		relay.InternalIPPort,
 		relay.Notes,
+		relay.BillingSupplier,
 	)
 
 	if err != nil {
