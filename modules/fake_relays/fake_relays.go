@@ -24,11 +24,11 @@ import (
 const (
 	MaxRTT               = 300
 	MaxJitter            = 10
+	MaxPacketLoss		 = 30
 	MaxMultiplierPercent = 10
 
 	// Chances are 1 in N
-	PLChance = 100
-	PLValue  = 0.3
+	PLChance = 1000
 )
 
 // FakeRelay represents a single fake relay that simulates a real relay.
@@ -244,7 +244,7 @@ func (relay *FakeRelay) newRelayPingStats(id uint64, base RouteBase) routing.Rel
 	pingStat.Jitter = base.jitter * jitterMultiplier
 
 	if rand.Int31n(PLChance) == 1 {
-		pingStat.PacketLoss = PLValue
+		pingStat.PacketLoss = float32(rand.Int31n(MaxPacketLoss)) / 100.0
 	} else {
 		pingStat.PacketLoss = float32(0)
 	}
