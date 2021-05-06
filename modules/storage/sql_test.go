@@ -993,6 +993,7 @@ func TestUpdateSQL(t *testing.T) {
 			Addr:                *addr,
 			InternalAddr:        *internalAddr,
 			ManagementAddr:      "1.2.3.4",
+			BillingSupplier:     "some other supplier",
 			SSHPort:             22,
 			SSHUser:             "fred",
 			MaxSessions:         1000,
@@ -1033,6 +1034,13 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, *newAddr, checkRelay.Addr)
 
+		// relay.Addr (null)
+		err = db.UpdateRelay(ctx, rid, "Addr", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, net.UDPAddr{}, checkRelay.Addr)
+
 		// relay.InternalAddr
 		intAddr, err := net.ResolveUDPAddr("udp", "192.168.0.2:40000")
 		assert.NoError(t, err)
@@ -1041,6 +1049,13 @@ func TestUpdateSQL(t *testing.T) {
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
 		assert.Equal(t, *intAddr, checkRelay.InternalAddr)
+
+		// relay.InternalAddr (null)
+		err = db.UpdateRelay(ctx, rid, "InternalAddr", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, net.UDPAddr{}, checkRelay.InternalAddr)
 
 		// relay.ManagementAddr
 		err = db.UpdateRelay(ctx, rid, "ManagementAddr", "9.8.7.6")
@@ -1122,6 +1137,13 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, startDateFormatted, checkRelay.StartDate)
 
+		// relay.StartDate (null)
+		err = db.UpdateRelay(ctx, rid, "StartDate", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, time.Time{}, checkRelay.StartDate)
+
 		// relay.EndDate
 		endDate := "July 7, 2025"
 		err = db.UpdateRelay(ctx, rid, "EndDate", endDate)
@@ -1131,6 +1153,13 @@ func TestUpdateSQL(t *testing.T) {
 		endDateFormatted, err := time.Parse("January 2, 2006", endDate)
 		assert.NoError(t, err)
 		assert.Equal(t, endDateFormatted, checkRelay.EndDate)
+
+		// relay.EndDate (null)
+		err = db.UpdateRelay(ctx, rid, "EndDate", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, time.Time{}, checkRelay.EndDate)
 
 		// relay.Type
 		err = db.UpdateRelay(ctx, rid, "Type", float64(2))
@@ -1166,6 +1195,27 @@ func TestUpdateSQL(t *testing.T) {
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
 		assert.Equal(t, "not the original notes", checkRelay.Notes)
+
+		// relay.Notes (null)
+		err = db.UpdateRelay(ctx, rid, "Notes", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "", checkRelay.Notes)
+
+		// relay.BillingSupplier
+		err = db.UpdateRelay(ctx, rid, "BillingSupplier", "not some other supplier")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "not some other supplier", checkRelay.BillingSupplier)
+
+		// relay.BillingSupplier (null)
+		err = db.UpdateRelay(ctx, rid, "BillingSupplier", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "", checkRelay.BillingSupplier)
 
 	})
 }
