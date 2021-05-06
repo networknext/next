@@ -11196,12 +11196,6 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
     const double current_time = next_time();
     
-    int server_state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    {
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        server_state = server->state;
-    }
-
     if ( server->next_resolve_hostname_time <= current_time )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname" );
