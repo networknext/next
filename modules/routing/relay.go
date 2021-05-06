@@ -185,13 +185,12 @@ type Relay struct {
 	InternalAddr net.UDPAddr `json:"internal_addr"`
 	PublicKey    []byte      `json:"public_key"`
 
-	Seller     Seller     `json:"seller"` // TODO: chopping block
-	Datacenter Datacenter `json:"datacenter"`
+	Seller          Seller     `json:"seller"` // TODO: chopping block
+	BillingSupplier string     `json:"billingSupplier"`
+	Datacenter      Datacenter `json:"datacenter"`
 
 	NICSpeedMbps        int32 `json:"nicSpeedMbps"`
 	IncludedBandwidthGB int32 `json:"includedBandwidthGB"`
-
-	// LastUpdateTime time.Time `json:"last_udpate_time"`
 
 	State RelayState `json:"state"`
 
@@ -199,15 +198,7 @@ type Relay struct {
 	SSHUser        string `json:"ssh_user"`
 	SSHPort        int64  `json:"ssh_port"`
 
-	// TrafficStats TrafficStats `json:"traffic_stats"`
-
 	MaxSessions uint32 `json:"max_sessions"`
-
-	// CPUUsage float32 `json:"cpu_usage"`
-	// MemUsage float32 `json:"mem_usage"`
-
-	// UpdateKey   []byte `json:"update_key"`
-	// FirestoreID string `json:"firestore_id"` // TODO: chopping block
 
 	// MRC is the monthly recurring cost for the relay
 	MRC Nibblin `json:"monthlyRecurringChargeNibblins"`
@@ -293,8 +284,9 @@ func (r *Relay) String() string {
 	relay += "\tName               : " + r.Name + "\n"
 	relay += "\tAddr               : " + r.Addr.String() + "\n"
 	relay += "\tInternalAddr       : " + r.InternalAddr.String() + "\n"
-	relay += "\tPublicKey          : " + string(r.PublicKey) + "\n"
+	relay += "\tPublicKey          : " + base64.StdEncoding.EncodeToString(r.PublicKey) + "\n"
 	relay += "\tSeller             : " + fmt.Sprintf("%d", r.Seller.DatabaseID) + "\n"
+	relay += "\tBillingSupplier    : " + fmt.Sprintf("%s", r.BillingSupplier) + "\n"
 	relay += "\tDatacenter         : " + fmt.Sprintf("%016x", r.Datacenter.ID) + "\n"
 	relay += "\tNICSpeedMbps       : " + fmt.Sprintf("%d", r.NICSpeedMbps) + "\n"
 	relay += "\tIncludedBandwidthGB: " + fmt.Sprintf("%d", r.IncludedBandwidthGB) + "\n"
