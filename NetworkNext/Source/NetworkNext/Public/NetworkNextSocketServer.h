@@ -41,8 +41,6 @@ private:
 
     TQueue<PacketData> PacketQueue;
 
-    uint32_t PacketQueueBytes;
-
 public:
 
     FNetworkNextSocketServer(const FString& InSocketDescription, const FName& InSocketProtocol);

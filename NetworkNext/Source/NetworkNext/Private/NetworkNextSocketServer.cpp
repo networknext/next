@@ -153,9 +153,6 @@ bool FNetworkNextSocketServer::RecvFrom(uint8* Data, int32 BufferSize, int32& By
     if (!NetworkNextServer)
         return false;
 
-    if (PacketQueueBytes == 0)
-        return false;
-
     if (Flags != ESocketReceiveFlags::None)
         return false;
 
