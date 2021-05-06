@@ -1283,10 +1283,9 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 		if rid == r.ID {
 			// Set the data to update the relay with
 			newRelayData := map[string]interface{}{
-				"displayName":   r.Name,
-				"publicAddress": r.Addr.String(),
-				"state":         r.State,
-				// "lastUpdateTime":  r.LastUpdateTime,
+				"displayName":     r.Name,
+				"publicAddress":   r.Addr.String(),
+				"state":           r.State,
 				"stateUpdateTime": time.Now(),
 				"publicKey":       r.PublicKey,
 				"nicSpeedMbps":    int64(r.NICSpeedMbps),
@@ -1299,7 +1298,6 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 
 			// Update the cached version
 			relayInCachedStorage.State = r.State
-			// relayInCachedStorage.LastUpdateTime = r.LastUpdateTime
 
 			fs.relayMutex.Lock()
 			fs.relays[r.ID] = relayInCachedStorage
@@ -1873,18 +1871,15 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
 			State:               r.State,
-			// LastUpdateTime:      r.LastUpdateTime,
-			MaxSessions: uint32(r.MaxSessions),
-			// UpdateKey:           r.UpdateKey,
-			// FirestoreID:         rdoc.Ref.ID,
-			MRC:          routing.Nibblin(r.MRC),
-			Overage:      routing.Nibblin(r.Overage),
-			BWRule:       bwRule,
-			ContractTerm: r.ContractTerm,
-			StartDate:    r.StartDate.UTC(),
-			EndDate:      r.EndDate.UTC(),
-			Type:         serverType,
-			Notes:        r.Notes,
+			MaxSessions:         uint32(r.MaxSessions),
+			MRC:                 routing.Nibblin(r.MRC),
+			Overage:             routing.Nibblin(r.Overage),
+			BWRule:              bwRule,
+			ContractTerm:        r.ContractTerm,
+			StartDate:           r.StartDate.UTC(),
+			EndDate:             r.EndDate.UTC(),
+			Type:                serverType,
+			Notes:               r.Notes,
 		}
 
 		// Set a default max session count of 3000 if the value isn't set in firestore

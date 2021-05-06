@@ -167,9 +167,8 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, env Environment, regex string) []
 			publicAddr: r.Addr,
 			publicKey:  r.PublicKey,
 			nicSpeed:   fmt.Sprintf("%d", r.NICSpeedMbps),
-			// firestoreID: r.FirestoreID,
-			state:   r.State,
-			version: r.Version,
+			state:      r.State,
+			version:    r.Version,
 		}
 	}
 

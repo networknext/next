@@ -2555,14 +2555,13 @@ func TestFirestore(t *testing.T) {
 		endDate, _ := time.Parse("January 2, 2006", "January 2, 2007")
 
 		expectedRelay := routing.Relay{
-			ID:          crypto.HashID(addr.String()),
-			Name:        "local",
-			Addr:        *addr,
-			PublicKey:   make([]byte, crypto.KeySize),
-			Seller:      expectedSeller,
-			Datacenter:  expectedDatacenter,
-			MaxSessions: 3000,
-			// UpdateKey:    make([]byte, 32),
+			ID:           crypto.HashID(addr.String()),
+			Name:         "local",
+			Addr:         *addr,
+			PublicKey:    make([]byte, crypto.KeySize),
+			Seller:       expectedSeller,
+			Datacenter:   expectedDatacenter,
+			MaxSessions:  3000,
 			MRC:          19700000000000,
 			Overage:      26000000000000,
 			BWRule:       routing.BWRuleBurst,
@@ -2608,10 +2607,6 @@ func TestFirestore(t *testing.T) {
 		assert.Equal(t, expectedBuyer, actualBuyer)
 		assert.Equal(t, expectedSeller, actualSeller)
 		assert.Equal(t, expectedDatacenter, actualDatacenter)
-
-		// this is random, no easy way to test so just assert it is present
-		// expectedRelay.FirestoreID = actualRelay.FirestoreID
-		// assert.NotEmpty(t, expectedRelay.FirestoreID)
 
 		assert.Equal(t, expectedRelay, actualRelay)
 	})
