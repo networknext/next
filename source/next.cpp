@@ -11202,11 +11202,11 @@ void next_server_internal_update_route( next_server_internal_t * server )
         server_state = server->state;
     }
 
-    if ( server_state == NEXT_SERVER_STATE_DIRECT_ONLY && server->next_resolve_hostname_time <= current_time )
+    if ( server->next_resolve_hostname_time <= current_time )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname" );
         next_server_internal_resolve_hostname( server );
-        server->next_resolve_hostname_time = current_time + 5.0*60.0 + next_random_float() * 5.0*60.0;
+        server->next_resolve_hostname_time = current_time + 10.0*60.0 + next_random_float() * 10.0*60.0;
     }
 
     const int max_index = server->session_manager->max_entry_index;
