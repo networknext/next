@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30204.51
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "next-seriesx-4.0.12", "build_seriesx.vcxproj", "{237DDA8C-95E6-414D-921C-746C042EFEB5}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "next-seriesx-4.0.14", "build_seriesx.vcxproj", "{237DDA8C-95E6-414D-921C-746C042EFEB5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

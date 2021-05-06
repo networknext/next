@@ -30,7 +30,7 @@ func bash(format string, args ...interface{}) bool {
 
 func main() {
 
-	version := "4.0.12"
+	version := "4.0.14"
 
 	basedir := fmt.Sprintf("next-%s", version)
 
