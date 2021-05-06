@@ -193,7 +193,7 @@ type Relay struct {
 	NICSpeedMbps        int32 `json:"nicSpeedMbps"`
 	IncludedBandwidthGB int32 `json:"includedBandwidthGB"`
 
-	LastUpdateTime time.Time `json:"last_udpate_time"`
+	// LastUpdateTime time.Time `json:"last_udpate_time"`
 
 	State RelayState `json:"state"`
 
@@ -201,15 +201,15 @@ type Relay struct {
 	SSHUser        string `json:"ssh_user"`
 	SSHPort        int64  `json:"ssh_port"`
 
-	TrafficStats TrafficStats `json:"traffic_stats"`
+	// TrafficStats TrafficStats `json:"traffic_stats"`
 
 	MaxSessions uint32 `json:"max_sessions"`
 
-	CPUUsage float32 `json:"cpu_usage"`
-	MemUsage float32 `json:"mem_usage"`
+	// CPUUsage float32 `json:"cpu_usage"`
+	// MemUsage float32 `json:"mem_usage"`
 
-	UpdateKey   []byte `json:"update_key"`
-	FirestoreID string `json:"firestore_id"` // TODO: chopping block
+	// UpdateKey   []byte `json:"update_key"`
+	// FirestoreID string `json:"firestore_id"` // TODO: chopping block
 
 	// MRC is the monthly recurring cost for the relay
 	MRC Nibblin `json:"monthlyRecurringChargeNibblins"`
@@ -737,14 +737,14 @@ func (r *Relay) String() string {
 	relay += "\tDatacenter         : " + fmt.Sprintf("%016x", r.Datacenter.ID) + "\n"
 	relay += "\tNICSpeedMbps       : " + fmt.Sprintf("%d", r.NICSpeedMbps) + "\n"
 	relay += "\tIncludedBandwidthGB: " + fmt.Sprintf("%d", r.IncludedBandwidthGB) + "\n"
-	relay += "\tLastUpdateTime     : " + r.LastUpdateTime.String() + "\n"
+	// relay += "\tLastUpdateTime     : " + r.LastUpdateTime.String() + "\n"
 	relay += "\tState              : " + fmt.Sprintf("%v", r.State) + "\n"
 	relay += "\tManagementAddr     : " + r.ManagementAddr + "\n"
 	relay += "\tSSHUser            : " + r.SSHUser + "\n"
 	relay += "\tSSHPort            : " + fmt.Sprintf("%d", r.SSHPort) + "\n"
 	relay += "\tMaxSessions        : " + fmt.Sprintf("%d", r.MaxSessions) + "\n"
-	relay += "\tCPUUsage           : " + fmt.Sprintf("%f", r.CPUUsage) + "\n"
-	relay += "\tMemUsage           : " + fmt.Sprintf("%f", r.MemUsage) + "\n"
+	// relay += "\tCPUUsage           : " + fmt.Sprintf("%f", r.CPUUsage) + "\n"
+	// relay += "\tMemUsage           : " + fmt.Sprintf("%f", r.MemUsage) + "\n"
 	relay += "\tMRC                : " + fmt.Sprintf("%v", r.MRC) + "\n"
 	relay += "\tOverage            : " + fmt.Sprintf("%v", r.Overage) + "\n"
 	relay += "\tBWRule             : " + fmt.Sprintf("%v", r.BWRule) + "\n"
