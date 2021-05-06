@@ -471,7 +471,20 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 		}
 
 		if relay.BillingSupplier.Valid {
-			r.BillingSupplier = relay.BillingSupplier.String
+			found := false
+			for _, seller := range db.Sellers() {
+				if seller.DatabaseID == relay.BillingSupplier.Int64 {
+					found = true
+					r.BillingSupplier = seller.ID
+					break
+				}
+			}
+
+			if !found {
+				errString := fmt.Sprintf("syncRelays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
+				level.Error(db.Logger).Log("during", errString, "err", err)
+			}
+
 		}
 
 		if relay.StartDate.Valid {

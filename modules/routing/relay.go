@@ -185,8 +185,8 @@ type Relay struct {
 	InternalAddr net.UDPAddr `json:"internal_addr"`
 	PublicKey    []byte      `json:"public_key"`
 
-	Seller          Seller     `json:"seller"` // TODO: chopping block
-	BillingSupplier string     `json:"billingSupplier"`
+	Seller          Seller     `json:"seller"`          // TODO: chopping block
+	BillingSupplier string     `json:"billingSupplier"` // Seller FK
 	Datacenter      Datacenter `json:"datacenter"`
 
 	NICSpeedMbps        int32 `json:"nicSpeedMbps"`

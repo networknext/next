@@ -1091,8 +1091,20 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			args = append(args, relay.DatabaseID)
 			relay.BillingSupplier = ""
 		} else {
+
+			sellerDatabaseID := 0
+			for _, seller := range db.Sellers() {
+				if seller.ID == billingSupplier {
+					sellerDatabaseID = int(seller.DatabaseID)
+				}
+			}
+
+			if sellerDatabaseID == 0 {
+				return fmt.Errorf("%s is not a valid seller ID", billingSupplier)
+			}
+
 			updateSQL.Write([]byte("update relays set billing_supplier=$1 where id=$2"))
-			args = append(args, billingSupplier, relay.DatabaseID)
+			args = append(args, sellerDatabaseID, relay.DatabaseID)
 			relay.BillingSupplier = billingSupplier
 		}
 
@@ -1138,7 +1150,7 @@ type sqlRelay struct {
 	PublicIPPort       sql.NullInt64
 	InternalIP         sql.NullString
 	InternalIPPort     sql.NullInt64
-	BillingSupplier    sql.NullString
+	BillingSupplier    sql.NullInt64
 	PublicKey          []byte
 	NICSpeedMbps       int64
 	IncludedBandwithGB int64
@@ -1213,10 +1225,14 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		endDate = sql.NullTime{}
 	}
 
-	var billingSupplier sql.NullString
+	var billingSupplier sql.NullInt64
 	if r.BillingSupplier != "" {
+		supplier, err := db.Seller(r.BillingSupplier)
+		if err != nil {
+			return fmt.Errorf("Seller %s does not exist %v", r.BillingSupplier, err)
+		}
 		billingSupplier.Valid = true
-		billingSupplier.String = r.BillingSupplier
+		billingSupplier.Int64 = supplier.DatabaseID
 	} else {
 		billingSupplier.Valid = false
 	}

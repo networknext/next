@@ -2593,6 +2593,7 @@ must be one of the following and is case-sensitive:
   StartDate            string, of the format: "January 2, 2006"
   EndDate              string, of the format: "January 2, 2006"
   Type                 any valid relay server type (see below)
+  BillingSupplier      any valid seller
   Notes                any string up to 500 characters (optional)
 
 Valid relay states:
@@ -2624,6 +2625,7 @@ must be of the form:
   "InternalAddr": "127.0.0.2:10009", // optional
   "PublicKey": "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=",
   "DatacenterID": "c62a99140dd374fd",  // datacenter ID in hex
+  "BillingSupplier": "someone other than the dc seller", // optional
   "NICSpeedMbps": 1000,
   "IncludedBandwidthGB": 10000,
   "ManagementAddr": "1.2.3.49",
