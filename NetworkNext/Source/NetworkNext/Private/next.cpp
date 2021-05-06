@@ -119,6 +119,8 @@
 #define NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER                    2
 #define NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD                   3
 #define NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED                4
+#define NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE                   5
+#define NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED                6
 
 #define NEXT_FLAGS_BAD_ROUTE_TOKEN                                 (1<<0)
 #define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                            (1<<1)
@@ -9097,6 +9099,7 @@ struct NextBackendSessionUpdatePacket
         }
 
         serialize_address( stream, client_address );
+
         serialize_address( stream, server_address );
 
         serialize_bytes( stream, client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
@@ -10178,6 +10181,7 @@ struct next_server_internal_t
     uint64_t customer_id;
     uint64_t datacenter_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
+    char autodetect_input[NEXT_MAX_DATACENTER_NAME_LENGTH];
     char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
     bool autodetected_datacenter;
 
@@ -10252,7 +10256,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context );
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
 bool next_autodetect_google( char * output )
 {
@@ -10293,6 +10297,11 @@ bool next_autodetect_google( char * output )
     char zone[256];
     zone[0] = '\0';
     file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
+        return false;
+    }
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         int length = strlen( buffer );
@@ -10359,6 +10368,11 @@ bool next_autodetect_google( char * output )
 
     bool found = false;
     file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 5 -vs 2>/dev/null", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
+        return false;
+    }
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         const char * separators = ",\n\r";
@@ -10400,6 +10414,11 @@ bool next_autodetect_amazon( char * output )
     char azid[256];
     azid[0] = '\0';
     file = popen( "curl \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 1 -vs 2>/dev/null", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
+        return false;
+    }
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         if ( strstr( buffer, "-az" ) == NULL )
@@ -10435,6 +10454,11 @@ bool next_autodetect_amazon( char * output )
 
     bool found = false;
     file = popen( "curl https://storage.googleapis.com/network-next-sdk/amazon.txt --max-time 5 -vs 2>/dev/null", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
+        return false;
+    }
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         const char * separators = ",\n\r";
@@ -10462,11 +10486,119 @@ bool next_autodetect_amazon( char * output )
     pclose( file );
 
     return found;
-
-    return false;
 }
 
-bool next_autodetect_datacenter( char * output )
+bool next_autodetect_multiplay( const char * input_datacenter, const char * address, char * output )
+{
+    FILE * file;
+
+    // are we in a multiplay datacenter?
+
+    if ( strlen( input_datacenter ) <= 10 ||
+         input_datacenter[0] != 'm' || 
+         input_datacenter[1] != 'u' || 
+         input_datacenter[2] != 'l' || 
+         input_datacenter[3] != 't' || 
+         input_datacenter[4] != 'i' || 
+         input_datacenter[5] != 'p' || 
+         input_datacenter[6] != 'l' || 
+         input_datacenter[7] != 'a' || 
+         input_datacenter[8] != 'y' || 
+         input_datacenter[9] != '.' )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in multiplay" );
+        return false;
+    }
+
+    // is this a non-autodetect multiplay datacenter? ("multiplay.[cityname].[number]")
+
+    const int length = strlen( input_datacenter );
+
+    int num_periods = 0;
+
+    for ( int i = 0; i < length; ++i )
+    {
+        if ( input_datacenter[i] == '.' )
+        {
+            num_periods++;
+            if ( num_periods > 1 )
+            {
+                strcpy( output, input_datacenter );
+                return true;
+            }
+        }
+    }
+
+    // capture the city name using form multiplay.[cityname]
+
+    const char * city = input_datacenter + 10;
+
+    // capture whois output for address
+
+    char whois_buffer[1024*256];
+    memset( whois_buffer, 0, sizeof(whois_buffer) );
+    char whois_command[1024];
+    sprintf( whois_command, "whois %s", address );
+    file = popen( whois_command, "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run whois" );
+        return false;
+    }
+    if ( fread( whois_buffer, 1, sizeof(whois_buffer), file ) == 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: fread failed on whois" );
+        return false;
+    }
+    pclose( file );
+
+    // check against multiplay supplier mappings
+
+    bool found = false;
+    char buffer[10*1024];
+    file = popen( "curl https://storage.googleapis.com/network-next-sdk/multiplay.txt --max-time 5 -vs 2>/dev/null", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
+        return false;
+    }
+    while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
+    {
+        const char * separators = ",\n\r\n";
+
+        char * substring = strtok( buffer, separators );
+        if ( substring == NULL )
+        {
+            continue;
+        }
+
+        char * supplier = strtok( NULL, separators );
+        if ( supplier == NULL )
+        {
+            continue;
+        }
+
+        if ( strstr( whois_buffer, substring ) )
+        {
+            sprintf( output, "%s.%s", supplier, city );
+            found = true;
+            break;
+        }
+    }
+    pclose( file );
+
+    // could not autodetect multiplay :(
+
+    if ( !found )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "could not autodetect multiplay datacenter :(" );
+        return false;
+    }
+
+    return found;
+}
+
+bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output )
 {
     // we need linux + curl to do any autodetect. bail if we don't have it
 
@@ -10498,10 +10630,18 @@ bool next_autodetect_datacenter( char * output )
         return true;
     }
 
+    // multiplay
+
+    bool multiplay_result = next_autodetect_multiplay( input_datacenter, public_address, output );
+    if ( multiplay_result )
+    {
+        return true;
+    }
+
     return false;
 }
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
 void next_server_internal_resolve_hostname( next_server_internal_t * server )
 {
@@ -10536,10 +10676,11 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_printf( NEXT_LOG_LEVEL_INFO, "server sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.customer_id );
-
     next_assert( server_address_string );
     next_assert( bind_address_string );
+    next_assert( datacenter_string );
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.customer_id );
 
     const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
@@ -10589,25 +10730,40 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     memcpy( server->customer_private_key, next_global_config.customer_private_key, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
     server->valid_customer_private_key = next_global_config.valid_customer_private_key;
 
-    if ( server->valid_customer_private_key )
+    const char * datacenter = datacenter_string;
+
+    const char * datacenter_env = next_platform_getenv( "NEXT_DATACENTER" );
+
+    if ( datacenter_env )
     {
-         const char * datacenter = datacenter_string;
-        const char * datacenter_env = next_platform_getenv( "NEXT_DATACENTER" );
-        if ( datacenter_env )
-        {
-            datacenter = datacenter_env;
-        }
-        if ( datacenter != NULL && datacenter[0] != 0 )
-        {
-            server->datacenter_id = next_datacenter_id( datacenter );
-            strncpy( server->datacenter_name, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
-            server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-            next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
-        }
-        else
-        {
-            server->no_datacenter_specified = true;
-        }
+        next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter override '%s'", datacenter_env );
+        datacenter = datacenter_env;
+    }
+
+    next_assert( datacenter );
+
+    strncpy( server->autodetect_input, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
+    server->autodetect_input[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+
+    const bool datacenter_is_empty_string = datacenter[0] == '\0';
+
+    const bool datacenter_is_cloud = datacenter[0] == 'c' &&
+                                     datacenter[1] == 'l' &&
+                                     datacenter[2] == 'o' &&
+                                     datacenter[3] == 'u' &&
+                                     datacenter[4] == 'd' &&
+                                     datacenter[5] == '\n';
+
+    if ( !datacenter_is_empty_string && !datacenter_is_cloud )
+    {
+        server->datacenter_id = next_datacenter_id( datacenter );
+        strncpy( server->datacenter_name, datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
+        server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+        next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+    }
+    else
+    {
+        server->no_datacenter_specified = true;
     }
 
     server->command_queue = next_queue_create( context, NEXT_COMMAND_QUEUE_LENGTH );
@@ -11267,6 +11423,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
                     case NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. signature check failed" );
+                        return;
+
+                    case NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. customer not active" );
+                        return;
+
+                    case NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. datacenter not enabled" );
                         return;
 
                     default:
@@ -12211,17 +12375,43 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     // autodetect datacenter is currently linux only
 
+    const char * autodetect_input = server->autodetect_input;
+    
+    char autodetect_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_address_t server_address_no_port = server->server_address;
+    server_address_no_port.port = 0;
+    next_address_to_string( &server_address_no_port, autodetect_address );
+
     bool autodetect_result = false;
     char autodetect_output[1024];
-    if ( server->autodetect_datacenter[0] == '\0' )
+
+    if ( server->autodetect_datacenter[0] == '\0' 
+            ||
+         ( server->autodetect_datacenter[0] == 'c' &&
+           server->autodetect_datacenter[1] == 'l' &&
+           server->autodetect_datacenter[2] == 'o' &&
+           server->autodetect_datacenter[3] == 'u' &&
+           server->autodetect_datacenter[4] == 'd' &&
+           server->autodetect_datacenter[5] == '\0' ) 
+            ||
+         ( server->autodetect_datacenter[0] == 'm' && 
+           server->autodetect_datacenter[1] == 'u' && 
+           server->autodetect_datacenter[2] == 'l' && 
+           server->autodetect_datacenter[3] == 't' && 
+           server->autodetect_datacenter[4] == 'i' && 
+           server->autodetect_datacenter[5] == 'p' && 
+           server->autodetect_datacenter[6] == 'l' && 
+           server->autodetect_datacenter[7] == 'a' && 
+           server->autodetect_datacenter[8] == 'y' && 
+           server->autodetect_datacenter[9] == '.' ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
 
-        autodetect_result = next_autodetect_datacenter( autodetect_output );
+        autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output );
         
         if ( autodetect_result )
         {
@@ -12236,7 +12426,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         }
     }
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     const char * hostname = next_global_config.hostname;
     const char * port = NEXT_BACKEND_PORT;
@@ -12661,7 +12851,6 @@ struct next_server_t
     void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes );
     next_proxy_session_manager_t * pending_session_manager;
     next_proxy_session_manager_t * session_manager;
-    next_address_t server_address;
     uint16_t bound_port;
 
     NEXT_DECLARE_SENTINEL(1)
@@ -12713,7 +12902,6 @@ next_server_t * next_server_create( void * context, const char * server_address,
         return NULL;
     }
 
-    server->server_address = server->internal->server_address;
     server->bound_port = server->internal->server_address.port;
 
     server->thread = next_platform_thread_create( server->context, next_server_internal_thread_function, server->internal );
@@ -13255,12 +13443,6 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
     memcpy( stats->tags, entry->tags, sizeof(stats->tags) );
 
     return true;
-}
-
-const next_address_t * next_server_address( next_server_t * server )
-{
-    next_assert( server );
-    return &server->server_address;
 }
 
 // ---------------------------------------------------------------
