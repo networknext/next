@@ -389,6 +389,7 @@ type relay struct {
 	EndDate             string
 	Type                string
 	Notes               string
+	BillingSupplier     string
 }
 
 type datacenter struct {
@@ -1233,7 +1234,7 @@ func main() {
 					}
 
 					// Add the Relay to storage
-					addRelay(rpcClient, env, relay)
+					addRelayJS(rpcClient, env, relay)
 					return nil
 				},
 			},
@@ -1247,19 +1248,6 @@ func main() {
 					}
 
 					removeRelay(rpcClient, env, args[0])
-					return nil
-				},
-			},
-			{
-				Name:       "traffic",
-				ShortUsage: "next relay traffic [regex]",
-				ShortHelp:  "Display detailed traffic stats for the specified relays",
-				Exec: func(ctx context.Context, args []string) error {
-					if len(args) > 0 {
-						relayTraffic(rpcClient, env, args[0])
-					} else {
-						relayTraffic(rpcClient, env, "")
-					}
 					return nil
 				},
 			},
@@ -2593,6 +2581,7 @@ must be one of the following and is case-sensitive:
   StartDate            string, of the format: "January 2, 2006"
   EndDate              string, of the format: "January 2, 2006"
   Type                 any valid relay server type (see below)
+  BillingSupplier      any valid seller (or and empty string "")
   Notes                any string up to 500 characters (optional)
 
 Valid relay states:
@@ -2624,6 +2613,7 @@ must be of the form:
   "InternalAddr": "127.0.0.2:10009", // optional
   "PublicKey": "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=",
   "DatacenterID": "c62a99140dd374fd",  // datacenter ID in hex
+  "BillingSupplier": "existing seller ID", // optional
   "NICSpeedMbps": 1000,
   "IncludedBandwidthGB": 10000,
   "ManagementAddr": "1.2.3.49",
@@ -2634,9 +2624,9 @@ must be of the form:
   "Overage": 100.00,  // US Dollars
   "BWRule": "flat",   // any valid bandwidth rule (see below)
   "ContractTerm": 12,
-  "StartDate": "December 15, 2020", // exactly this format (optional)
-  "EndDate": "December 15, 2020",   // exactly this format (optional)
-  "Type": "virtualmachine",         // any valid machine type (see below)
+  "StartDate": "2020-12-15", // December 15, 2020 - exactly this format (optional)
+  "EndDate": "2021-12-15",   // December 15, 2021 - exactly this format (optional)
+  "Type": "vm",              // any valid machine type (see below)
   "Seller": "colocrossing",
   "Notes": "any notes up to 500 characters" // optional
 }
