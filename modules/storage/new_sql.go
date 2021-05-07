@@ -123,6 +123,74 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	return db, nil
 }
 
+func NewSQLite3Staging(ctx context.Context, logger log.Logger) (*SQL, error) {
+	var sqlite3 *sql.DB
+
+	if _, err := os.Stat("/app/sqlite3-empty.sql"); err == nil || os.IsExist(err) {
+		// Boiler plate SQL file exists, load it in
+		sqlite3, err = sql.Open("sqlite3", "file:/app/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
+		if err != nil {
+			return nil, fmt.Errorf("NewSQLite3Staging() error creating db connection: %w", err)
+		}
+	} else {
+		return nil, fmt.Errorf("NewSQLite3Staging() could not find /app/sqlite3-empty.sql")
+	}
+
+	// db.Ping actually establishes the connection and validates the parameters
+	err := sqlite3.Ping()
+	if err != nil {
+		err = fmt.Errorf("NewSQLite3Staging() error pinging db: %w", err)
+		return nil, err
+	}
+
+	db := &SQL{
+		Client:             sqlite3,
+		Logger:             logger,
+		datacenters:        make(map[uint64]routing.Datacenter),
+		datacenterMaps:     make(map[uint64]routing.DatacenterMap),
+		relays:             make(map[uint64]routing.Relay),
+		customers:          make(map[string]routing.Customer),
+		buyers:             make(map[uint64]routing.Buyer),
+		sellers:            make(map[string]routing.Seller),
+		routeShaders:       make(map[uint64]core.RouteShader),
+		internalConfigs:    make(map[uint64]core.InternalConfig),
+		bannedUsers:        make(map[uint64]map[uint64]bool),
+		SyncSequenceNumber: -1,
+	}
+
+	// populate the db with basic tables
+	file, err := ioutil.ReadFile("/app/sqlite3-empty.sql") // happy path
+	if err != nil {
+		return nil, fmt.Errorf("NewSQLite3Staging() error reading from ")
+	}
+
+	requests := strings.Split(string(file), ";")
+
+	for _, request := range requests {
+		_, err := db.Client.Exec(request)
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3Staging() error executing seed file sql line: %v", err)
+			return nil, err
+		}
+	}
+
+	syncIntervalStr := os.Getenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL")
+	syncInterval, err := time.ParseDuration(syncIntervalStr)
+	if err != nil {
+		level.Error(logger).Log("envvar", "GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "value", syncIntervalStr, "err", err)
+		return nil, err
+	}
+
+	// Start a goroutine to sync from the database
+	go func() {
+		ticker := time.NewTicker(syncInterval)
+		db.SyncLoop(ctx, ticker.C)
+	}()
+
+	return db, nil
+
+}
+
 // NewPostgreSQL returns an PostgreSQL backed database pointer
 func NewPostgreSQL(
 	ctx context.Context,
