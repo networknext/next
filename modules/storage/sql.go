@@ -856,21 +856,29 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 
-		uriTuple := strings.Split(addrString, ":")
-		if len(uriTuple) < 2 {
-			return fmt.Errorf("Unable to parse URI fo Add field: %v - you may be missing the port number?", value)
-		} else if uriTuple[0] == "" || uriTuple[1] == "" {
-			return fmt.Errorf("Unable to parse URI fo Add field: %v", value)
-		}
-		updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = ($1, $2) "))
-		updateSQL.Write([]byte("where id=$3"))
-		args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
+		if addrString == "" {
+			updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = (null, null) "))
+			updateSQL.Write([]byte("where id=$1"))
+			args = append(args, relay.DatabaseID)
+			relay.InternalAddr = net.UDPAddr{}
 
-		addr, err := net.ResolveUDPAddr("udp", addrString)
-		if err != nil {
-			return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
+		} else {
+			uriTuple := strings.Split(addrString, ":")
+			if len(uriTuple) < 2 {
+				return fmt.Errorf("unable to parse URI fo Add field: %v - you may be missing the port number?", value)
+			} else if uriTuple[0] == "" || uriTuple[1] == "" {
+				return fmt.Errorf("unable to parse URI fo Add field: %v", value)
+			}
+			updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = ($1, $2) "))
+			updateSQL.Write([]byte("where id=$3"))
+			args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
+
+			addr, err := net.ResolveUDPAddr("udp", addrString)
+			if err != nil {
+				return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
+			}
+			relay.InternalAddr = *addr
 		}
-		relay.InternalAddr = *addr
 
 	case "PublicKey":
 		publicKey, ok := value.(string)
@@ -1007,14 +1015,20 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 
-		newStartDate, err := time.Parse("January 2, 2006", startDate)
-		if err != nil {
-			return fmt.Errorf("Could not parse `%s` - must be of the form 'January 2, 2006'", startDate)
-		}
+		if startDate == "" {
+			updateSQL.Write([]byte("update relays set start_date=null where id=$1"))
+			args = append(args, relay.DatabaseID)
+			relay.StartDate = time.Time{}
+		} else {
+			newStartDate, err := time.Parse("January 2, 2006", startDate)
+			if err != nil {
+				return fmt.Errorf("could not parse `%s` - must be of the form 'January 2, 2006'", startDate)
+			}
 
-		updateSQL.Write([]byte("update relays set start_date=$1 where id=$2"))
-		args = append(args, startDate, relay.DatabaseID)
-		relay.StartDate = newStartDate
+			updateSQL.Write([]byte("update relays set start_date=$1 where id=$2"))
+			args = append(args, startDate, relay.DatabaseID)
+			relay.StartDate = newStartDate
+		}
 
 	case "EndDate":
 		endDate, ok := value.(string)
@@ -1022,14 +1036,20 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 
-		newEndDate, err := time.Parse("January 2, 2006", endDate)
-		if err != nil {
-			return fmt.Errorf("Could not parse `%s` - must be of the form 'January 2, 2006'", endDate)
-		}
+		if endDate == "" {
+			updateSQL.Write([]byte("update relays set end_date=null where id=$1"))
+			args = append(args, relay.DatabaseID)
+			relay.EndDate = time.Time{}
+		} else {
+			newEndDate, err := time.Parse("January 2, 2006", endDate)
+			if err != nil {
+				return fmt.Errorf("could not parse `%s` - must be of the form 'January 2, 2006'", endDate)
+			}
 
-		updateSQL.Write([]byte("update relays set end_date=$1 where id=$2"))
-		args = append(args, endDate, relay.DatabaseID)
-		relay.EndDate = newEndDate
+			updateSQL.Write([]byte("update relays set end_date=$1 where id=$2"))
+			args = append(args, endDate, relay.DatabaseID)
+			relay.EndDate = newEndDate
+		}
 
 	case "Type":
 		machineType, ok := value.(float64)
@@ -1049,12 +1069,47 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		if !ok {
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
-		updateSQL.Write([]byte("update relays set notes=$1 where id=$2"))
-		args = append(args, notes, relay.DatabaseID)
-		relay.Notes = notes
+
+		if notes == "" {
+			updateSQL.Write([]byte("update relays set notes=null where id=$1"))
+			args = append(args, relay.DatabaseID)
+			relay.Notes = ""
+		} else {
+			updateSQL.Write([]byte("update relays set notes=$1 where id=$2"))
+			args = append(args, notes, relay.DatabaseID)
+			relay.Notes = notes
+		}
+
+	case "BillingSupplier":
+		billingSupplier, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if billingSupplier == "" {
+			updateSQL.Write([]byte("update relays set billing_supplier=null where id=$1"))
+			args = append(args, relay.DatabaseID)
+			relay.BillingSupplier = ""
+		} else {
+
+			sellerDatabaseID := 0
+			for _, seller := range db.Sellers() {
+				if seller.ID == billingSupplier {
+					sellerDatabaseID = int(seller.DatabaseID)
+				}
+			}
+
+			if sellerDatabaseID == 0 {
+				return fmt.Errorf("%s is not a valid seller ID", billingSupplier)
+			}
+
+			updateSQL.Write([]byte("update relays set billing_supplier=$1 where id=$2"))
+			args = append(args, sellerDatabaseID, relay.DatabaseID)
+			relay.BillingSupplier = billingSupplier
+		}
 
 	default:
-		return fmt.Errorf("Field '%v' does not exist on the routing.Relay type", field)
+		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
 
 	}
 
@@ -1095,6 +1150,7 @@ type sqlRelay struct {
 	PublicIPPort       sql.NullInt64
 	InternalIP         sql.NullString
 	InternalIPPort     sql.NullInt64
+	BillingSupplier    sql.NullInt64
 	PublicKey          []byte
 	NICSpeedMbps       int64
 	IncludedBandwithGB int64
@@ -1134,7 +1190,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	publicIP := strings.Split(r.Addr.String(), ":")[0]
 	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
 	if err != nil {
-		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+		return fmt.Errorf("unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 	rid := crypto.HashID(r.Addr.String())
 
@@ -1146,7 +1202,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
 		internalIPPort.Valid = true
 		if err != nil {
-			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
+			return fmt.Errorf("unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
 		}
 	} else {
 		internalIP = sql.NullString{}
@@ -1167,6 +1223,18 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		endDate.Valid = true
 	} else {
 		endDate = sql.NullTime{}
+	}
+
+	var billingSupplier sql.NullInt64
+	if r.BillingSupplier != "" {
+		supplier, err := db.Seller(r.BillingSupplier)
+		if err != nil {
+			return fmt.Errorf("Seller %s does not exist %v", r.BillingSupplier, err)
+		}
+		billingSupplier.Valid = true
+		billingSupplier.Int64 = supplier.DatabaseID
+	} else {
+		billingSupplier.Valid = false
 	}
 
 	nullablePublicIP := sql.NullString{
@@ -1191,6 +1259,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
 		DatacenterID:       r.Datacenter.DatabaseID,
 		ManagementIP:       r.ManagementAddr,
+		BillingSupplier:    billingSupplier,
 		SSHUser:            r.SSHUser,
 		SSHPort:            r.SSHPort,
 		State:              int64(r.State),
@@ -1209,9 +1278,10 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port, notes "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
+	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier "))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
@@ -1243,6 +1313,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.InternalIP,
 		relay.InternalIPPort,
 		relay.Notes,
+		relay.BillingSupplier,
 	)
 
 	if err != nil {

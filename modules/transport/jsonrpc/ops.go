@@ -630,6 +630,7 @@ type relay struct {
 	ID                  uint64                `json:"id"`
 	HexID               string                `json:"hexID"`
 	DatacenterHexID     string                `json:"datacenterHexID"`
+	BillingSupplier     string                `json:"billingSupplier"`
 	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
@@ -639,13 +640,11 @@ type relay struct {
 	NICSpeedMbps        int32                 `json:"nicSpeedMbps"`
 	IncludedBandwidthGB int32                 `json:"includedBandwidthGB"`
 	State               string                `json:"state"`
-	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
 	ManagementAddr      string                `json:"management_addr"`
 	SSHUser             string                `json:"ssh_user"`
 	SSHPort             int64                 `json:"ssh_port"`
 	MaxSessionCount     uint32                `json:"maxSessionCount"`
 	PublicKey           string                `json:"public_key"`
-	FirestoreID         string                `json:"firestore_id"`
 	Version             string                `json:"relay_version"`
 	SellerName          string                `json:"seller_name"`
 	MRC                 routing.Nibblin       `json:"monthlyRecurringChargeNibblins"`
@@ -655,9 +654,6 @@ type relay struct {
 	StartDate           time.Time             `json:"startDate"`
 	EndDate             time.Time             `json:"endDate"`
 	Type                routing.MachineType   `json:"machineType"`
-	CPUUsage            float32               `json:"cpu_usage"`
-	MemUsage            float32               `json:"mem_usage"`
-	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
 	Notes               string                `json:"notes"`
 	DatabaseID          int64
 	DatacenterID        uint64
@@ -669,6 +665,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			ID:                  r.ID,
 			HexID:               fmt.Sprintf("%016x", r.ID),
 			DatacenterHexID:     fmt.Sprintf("%016x", r.Datacenter.ID),
+			BillingSupplier:     r.BillingSupplier,
 			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
@@ -680,9 +677,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
 			State:               r.State.String(),
-			LastUpdateTime:      r.LastUpdateTime,
 			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
-			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
 			SellerName:          r.Seller.Name,
 			MRC:                 r.MRC,
@@ -698,15 +693,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 
 		if addrStr := r.InternalAddr.String(); addrStr != ":0" {
 			relay.InternalAddr = addrStr
-		}
-
-		// TODO: remove TrafficStats
-		if relayData, ok := s.RelayMap.Get(r.ID); ok {
-			relay.TrafficStats = relayData.TrafficStats
-			relay.CPUUsage = relayData.CPU
-			relay.MemUsage = relayData.Mem
-			relay.Version = relayData.Version.String()
-			relay.LastUpdateTime = relayData.LastUpdateTime
 		}
 
 		reply.Relays = append(reply.Relays, relay)
@@ -1362,7 +1348,6 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		SSHUser:             routingRelay.SSHUser,
 		SSHPort:             routingRelay.SSHPort,
 		State:               routingRelay.State.String(),
-		LastUpdateTime:      routingRelay.LastUpdateTime,
 		PublicKey:           base64.StdEncoding.EncodeToString(routingRelay.PublicKey),
 		MaxSessionCount:     routingRelay.MaxSessions,
 		SellerName:          routingRelay.Seller.Name,
@@ -1376,6 +1361,7 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		Notes:               routingRelay.Notes,
 		DatabaseID:          routingRelay.DatabaseID,
 		DatacenterID:        routingRelay.Datacenter.ID,
+		BillingSupplier:     routingRelay.BillingSupplier,
 	}
 
 	reply.Relay = relay
@@ -1413,7 +1399,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		}
 
 	// net.UDPAddr, time.Time - all sent to storer as strings
-	case "Addr", "InternalAddr", "ManagementAddr", "SSHUser", "StartDate", "EndDate":
+	case "Addr", "InternalAddr", "ManagementAddr", "SSHUser", "StartDate", "EndDate", "BillingSupplier":
 		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)

@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
@@ -272,10 +271,6 @@ func relays(
 		return
 	}
 
-	sort.SliceStable(reply.Relays, func(i int, j int) bool {
-		return reply.Relays[i].TrafficStats.SessionCount > reply.Relays[j].TrafficStats.SessionCount
-	})
-
 	relays := []struct {
 		Name        string
 		ID          string
@@ -321,20 +316,6 @@ func relays(
 			// Relay should be hidden, so don't include in final output
 			includeRelay = false
 		}
-		unitFormat(0)
-		bitsTransmitted := unitFormat(relay.TrafficStats.AllTx() * 8)
-		bitsReceived := unitFormat(relay.TrafficStats.AllRx() * 8)
-
-		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
-		lastUpdated := "n/a"
-		if relay.State == "enabled" {
-			lastUpdated = lastUpdateDuration.String()
-		}
-
-		if relaysDownFlag && lastUpdateDuration < 30*time.Second {
-			// Relay is still up and shouldn't be included in the final output
-			includeRelay = false
-		}
 
 		if !includeRelay {
 			continue
@@ -360,11 +341,11 @@ func relays(
 					relayID,
 					address,
 					relay.State,
-					fmt.Sprintf("%d", relay.TrafficStats.SessionCount),
-					bitsTransmitted,
-					bitsReceived,
+					"n/a",
+					"n/a",
+					"n/a",
 					relay.Version,
-					lastUpdated,
+					"n/a",
 				})
 			}
 
@@ -385,14 +366,10 @@ func relays(
 				Rx          string
 				LastUpdated string
 			}{
-				Name:        relay.Name,
-				ID:          relayID,
-				Address:     address,
-				State:       relay.State,
-				Sessions:    fmt.Sprintf("%d", relay.TrafficStats.SessionCount),
-				Tx:          bitsTransmitted,
-				Rx:          bitsReceived,
-				LastUpdated: lastUpdated,
+				Name:    relay.Name,
+				ID:      relayID,
+				Address: address,
+				State:   relay.State,
 			})
 		}
 
