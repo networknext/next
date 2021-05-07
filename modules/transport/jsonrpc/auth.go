@@ -1040,10 +1040,10 @@ func (s *AuthService) CustomerViewedTheDocsSlackNotification(r *http.Request, ar
 	}
 	// TODO: update this in the hubspot PR
 
-	message := fmt.Sprintf("%s viewed the SDK documentation", args.Email)
+	message := fmt.Sprintf("%s Viewed documentation", args.Email)
 
 	if args.CustomerName != "" {
-		message = fmt.Sprintf("%s from %s viewed the SDK documentation", args.Email, args.CustomerName)
+		message = fmt.Sprintf("%s from %s Viewed documentation", args.Email, args.CustomerName)
 	}
 
 	if args.CustomerCode != "" {
