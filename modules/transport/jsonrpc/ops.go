@@ -824,12 +824,18 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		return err
 	}
 
+	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
+	if err != nil {
+		err = fmt.Errorf("could not decode base64 public key %s: %v", args.PublicKey, err)
+		s.Logger.Log("err", err)
+	}
+
 	rid := crypto.HashID(args.Addr)
 	relay := routing.Relay{
 		ID:                  rid,
 		Name:                args.Name,
 		Addr:                *addr,
-		PublicKey:           []byte(args.PublicKey),
+		PublicKey:           publicKey,
 		Datacenter:          datacenter,
 		NICSpeedMbps:        int32(args.NICSpeedMbps),
 		IncludedBandwidthGB: int32(args.IncludedBandwidthGB),
@@ -1380,6 +1386,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 			return err
 		}
 
+	// relay.PublicKey
 	case "PublicKey":
 		newPublicKey := string(args.Value)
 		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, newPublicKey)
