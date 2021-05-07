@@ -1386,6 +1386,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 			return err
 		}
 
+	// relay.PublicKey
 	case "PublicKey":
 		newPublicKey := string(args.Value)
 		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, newPublicKey)
