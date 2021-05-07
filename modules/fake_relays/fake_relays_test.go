@@ -1,7 +1,6 @@
 package fake_relays
 
 import (
-	// "context"
 	"encoding/base64"
 	"fmt"
 	"math/rand"
