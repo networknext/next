@@ -230,10 +230,6 @@ func TestInsertSQL(t *testing.T) {
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
 
-		// fmt.Printf("checkRelay: %s\n", checkRelay.String())
-		// fmt.Printf("checkRelay.DatabaseID: %d\n", checkRelay.DatabaseID)
-		// fmt.Printf("checkRelay.Addr: %s\n", checkRelay.Addr.String())
-
 		assert.Equal(t, relay.Name, checkRelay.Name)
 		assert.Equal(t, relay.Addr, checkRelay.Addr)
 		assert.Equal(t, relay.InternalAddr, checkRelay.InternalAddr)
@@ -1065,12 +1061,12 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, *newAddr, checkRelay.Addr)
 
-		// relay.Addr (null)
+		// relay.Addr (zeroed-out address e.g. relay removal)
 		err = db.UpdateRelay(ctx, rid, "Addr", "")
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
-		assert.Equal(t, net.UDPAddr{}, checkRelay.Addr)
+		assert.Equal(t, ":0", checkRelay.Addr.String())
 
 		// relay.InternalAddr
 		intAddr, err := net.ResolveUDPAddr("udp", "192.168.0.2:40000")
@@ -1122,7 +1118,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
-
 		newPublicKey, err := base64.StdEncoding.DecodeString("1AKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 		assert.NoError(t, err)
 		assert.Equal(t, newPublicKey, checkRelay.PublicKey)

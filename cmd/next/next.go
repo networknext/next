@@ -1234,7 +1234,7 @@ func main() {
 					}
 
 					// Add the Relay to storage
-					addRelay(rpcClient, env, relay)
+					addRelayJS(rpcClient, env, relay)
 					return nil
 				},
 			},
@@ -2624,9 +2624,9 @@ must be of the form:
   "Overage": 100.00,  // US Dollars
   "BWRule": "flat",   // any valid bandwidth rule (see below)
   "ContractTerm": 12,
-  "StartDate": "December 15, 2020", // exactly this format (optional)
-  "EndDate": "December 15, 2020",   // exactly this format (optional)
-  "Type": "virtualmachine",         // any valid machine type (see below)
+  "StartDate": "2020-12-15", // December 15, 2020 - exactly this format (optional)
+  "EndDate": "2021-12-15",   // December 15, 2021 - exactly this format (optional)
+  "Type": "vm",              // any valid machine type (see below)
   "Seller": "colocrossing",
   "Notes": "any notes up to 500 characters" // optional
 }
