@@ -921,7 +921,8 @@ func main() {
 				regexName = args[0]
 			}
 
-			getFleetRelays(rpcClient, env, relaysCount, relaysAlphaSort, regexName)
+			// getFleetRelays(rpcClient, env, relaysCount, relaysAlphaSort, regexName)
+			queryRelayBackend(env, relaysCount, relaysAlphaSort, regexName)
 
 			return nil
 		},
