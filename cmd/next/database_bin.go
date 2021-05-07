@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 )
 
@@ -117,6 +119,139 @@ func getDatabaseBin(env Environment) {
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not find database.bin? %v\n", err), 1)
 	}
+}
+
+func createStagingDatabaseBin(numRelays int) {
+	fmt.Printf("numRelays: %+v\n", numRelays)
+
+	dbWrapper := routing.CreateEmptyDatabaseBinWrapper()
+
+	// Create Buyers
+	ghostArmyPK, err := base64.StdEncoding.DecodeString("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==")
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not decode public key: %v\n", err), 1)
+	}
+	nextPK, err := base64.StdEncoding.DecodeString("uLk+H9QWvDxBLyEAP1JBmS5U/rHXi0RyrFammau9t2c=")
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not decode public key: %v\n", err), 1)
+	}
+	stagingSellerPK, err := base64.StdEncoding.DecodeString("5w4h6mAzN5Vembvv8LC/9WePTEGuPcXgPiEj4yK1zyk=")
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not decode public key: %v\n", err), 1)
+	}
+
+	defaultRouteShader := core.RouteShader{
+		DisableNetworkNext:        false,
+		SelectionPercent:          100,
+		ABTest:                    false,
+		ProMode:                   false,
+		ReduceLatency:             true,
+		ReduceJitter:              true,
+		ReducePacketLoss:          true,
+		Multipath:                 false,
+		AcceptableLatency:         0,
+		LatencyThreshold:          10,
+		AcceptablePacketLoss:      1,
+		BandwidthEnvelopeUpKbps:   1024,
+		BandwidthEnvelopeDownKbps: 1024,
+		BannedUsers:               make(map[uint64]bool),
+	}
+	defaultInternalConfig := core.InternalConfig{
+		RouteSelectThreshold:       2,
+		RouteSwitchThreshold:       5,
+		MaxLatencyTradeOff:         20,
+		RTTVeto_Default:            -10,
+		RTTVeto_Multipath:          -20,
+		RTTVeto_PacketLoss:         -30,
+		MultipathOverloadThreshold: 500,
+		TryBeforeYouBuy:            false,
+		ForceNext:                  false,
+		LargeCustomer:              false,
+		Uncommitted:                false,
+		MaxRTT:                     300,
+		HighFrequencyPings:         true,
+		RouteDiversity:             0,
+		MultipathThreshold:         25,
+		EnableVanityMetrics:        false,
+	}
+	nextInternalConfig := core.InternalConfig{
+		RouteSelectThreshold:       0,
+		RouteSwitchThreshold:       5,
+		MaxLatencyTradeOff:         10,
+		RTTVeto_Default:            -5,
+		RTTVeto_Multipath:          -20,
+		RTTVeto_PacketLoss:         -20,
+		MultipathOverloadThreshold: 500,
+		TryBeforeYouBuy:            false,
+		ForceNext:                  true,
+		LargeCustomer:              true,
+		Uncommitted:                false,
+		MaxRTT:                     300,
+		HighFrequencyPings:         false,
+		RouteDiversity:             0,
+		MultipathThreshold:         0,
+		EnableVanityMetrics:        true,
+	}
+
+	buyerGhostArmy := routing.Buyer{
+		CompanyCode:    "ghost-army",
+		ShortName:      "ghost-army",
+		ID:             uint64(0),
+		HexID:          "0000000000000000",
+		Live:           true,
+		Debug:          false,
+		PublicKey:      ghostArmyPK,
+		RouteShader:    defaultRouteShader,
+		InternalConfig: defaultInternalConfig,
+		DatabaseID:     3,
+		CustomerID:     1,
+	}
+
+	nextRouteShader := defaultRouteShader
+	nextRouteShader.ReduceJitter = false
+	nextRouteShader.AcceptableLatency = 25
+	nextRouteShader.LatencyThreshold = 5
+
+	buyerNext := routing.Buyer{
+		CompanyCode:    "next",
+		ShortName:      "next",
+		ID:             uint64(13672574147039585173),
+		HexID:          "bdbebdbf0f7be395",
+		Live:           true,
+		Debug:          false,
+		PublicKey:      nextPK,
+		RouteShader:    nextRouteShader,
+		InternalConfig: nextInternalConfig,
+		DatabaseID:     1,
+		CustomerID:     3,
+	}
+
+	stagingSellerInternalConfig := defaultInternalConfig
+	stagingSellerInternalConfig.EnableVanityMetrics = true
+
+	buyerStagingSeller := routing.Buyer{
+		CompanyCode:    "stagingseller",
+		ShortName:      "stagingseller",
+		ID:             uint64(13053258624167246632),
+		HexID:          "b5267d8f3ecafb28",
+		Live:           true,
+		Debug:          true,
+		PublicKey:      stagingSellerPK,
+		RouteShader:    defaultRouteShader,
+		InternalConfig: stagingSellerInternalConfig,
+		DatabaseID:     2,
+		CustomerID:     2,
+	}
+
+	// Fill in buyers
+	dbWrapper.BuyerMap[buyerGhostArmy.ID] = buyerGhostArmy
+	dbWrapper.BuyerMap[buyerNext.ID] = buyerNext
+	dbWrapper.BuyerMap[buyerStagingSeller.ID] = buyerStagingSeller
+
+	// Fill in creation time and creator
+	now := time.Now().UTC()
+	dbWrapper.CreationTime = fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	dbWrapper.Creator = "next"
 }
 
 func checkMetaData() {
