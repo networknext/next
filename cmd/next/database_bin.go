@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -19,6 +22,8 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 )
 
@@ -116,6 +121,297 @@ func getDatabaseBin(env Environment) {
 	_, err = os.Stat("./database.bin")
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not find database.bin? %v\n", err), 1)
+	}
+}
+
+func createStagingDatabaseBin(numRelays int) {
+	dbWrapper := routing.CreateEmptyDatabaseBinWrapper()
+
+	// Create Buyers
+	ghostArmyPK, err := base64.StdEncoding.DecodeString("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==")
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not decode ghost army public key: %v\n", err), 1)
+	}
+	nextPK, err := base64.StdEncoding.DecodeString("uLk+H9QWvDxBLyEAP1JBmS5U/rHXi0RyrFammau9t2c=")
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not decode next public key: %v\n", err), 1)
+	}
+	stagingSellerPK, err := base64.StdEncoding.DecodeString("5w4h6mAzN5Vembvv8LC/9WePTEGuPcXgPiEj4yK1zyk=")
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not decode staging seller public key: %v\n", err), 1)
+	}
+
+	defaultRouteShader := core.RouteShader{
+		DisableNetworkNext:        false,
+		SelectionPercent:          100,
+		ABTest:                    false,
+		ProMode:                   false,
+		ReduceLatency:             true,
+		ReduceJitter:              true,
+		ReducePacketLoss:          true,
+		Multipath:                 false,
+		AcceptableLatency:         0,
+		LatencyThreshold:          10,
+		AcceptablePacketLoss:      1,
+		BandwidthEnvelopeUpKbps:   1024,
+		BandwidthEnvelopeDownKbps: 1024,
+		BannedUsers:               make(map[uint64]bool),
+	}
+	defaultInternalConfig := core.InternalConfig{
+		RouteSelectThreshold:       2,
+		RouteSwitchThreshold:       5,
+		MaxLatencyTradeOff:         20,
+		RTTVeto_Default:            -10,
+		RTTVeto_Multipath:          -20,
+		RTTVeto_PacketLoss:         -30,
+		MultipathOverloadThreshold: 500,
+		TryBeforeYouBuy:            false,
+		ForceNext:                  false,
+		LargeCustomer:              false,
+		Uncommitted:                false,
+		MaxRTT:                     300,
+		HighFrequencyPings:         true,
+		RouteDiversity:             0,
+		MultipathThreshold:         25,
+		EnableVanityMetrics:        false,
+	}
+	nextInternalConfig := core.InternalConfig{
+		RouteSelectThreshold:       0,
+		RouteSwitchThreshold:       5,
+		MaxLatencyTradeOff:         10,
+		RTTVeto_Default:            -5,
+		RTTVeto_Multipath:          -20,
+		RTTVeto_PacketLoss:         -20,
+		MultipathOverloadThreshold: 500,
+		TryBeforeYouBuy:            false,
+		ForceNext:                  true,
+		LargeCustomer:              true,
+		Uncommitted:                false,
+		MaxRTT:                     300,
+		HighFrequencyPings:         false,
+		RouteDiversity:             0,
+		MultipathThreshold:         0,
+		EnableVanityMetrics:        true,
+	}
+
+	buyerGhostArmy := routing.Buyer{
+		CompanyCode:    "ghost-army",
+		ShortName:      "ghost-army",
+		ID:             uint64(0),
+		HexID:          "0000000000000000",
+		Live:           true,
+		Debug:          false,
+		PublicKey:      ghostArmyPK,
+		RouteShader:    defaultRouteShader,
+		InternalConfig: defaultInternalConfig,
+		DatabaseID:     3,
+		CustomerID:     1,
+	}
+
+	nextRouteShader := defaultRouteShader
+	nextRouteShader.ReduceJitter = false
+	nextRouteShader.AcceptableLatency = 25
+	nextRouteShader.LatencyThreshold = 5
+
+	buyerNext := routing.Buyer{
+		CompanyCode:    "next",
+		ShortName:      "next",
+		ID:             uint64(13672574147039585173),
+		HexID:          "bdbebdbf0f7be395",
+		Live:           true,
+		Debug:          false,
+		PublicKey:      nextPK,
+		RouteShader:    nextRouteShader,
+		InternalConfig: nextInternalConfig,
+		DatabaseID:     1,
+		CustomerID:     3,
+	}
+
+	stagingSellerInternalConfig := defaultInternalConfig
+	stagingSellerInternalConfig.EnableVanityMetrics = true
+
+	buyerStagingSeller := routing.Buyer{
+		CompanyCode:    "stagingseller",
+		ShortName:      "stagingseller",
+		ID:             uint64(13053258624167246632),
+		HexID:          "b5267d8f3ecafb28",
+		Live:           true,
+		Debug:          true,
+		PublicKey:      stagingSellerPK,
+		RouteShader:    defaultRouteShader,
+		InternalConfig: stagingSellerInternalConfig,
+		DatabaseID:     2,
+		CustomerID:     2,
+	}
+
+	// Fill in buyers
+	dbWrapper.BuyerMap[buyerGhostArmy.ID] = buyerGhostArmy
+	dbWrapper.BuyerMap[buyerNext.ID] = buyerNext
+	dbWrapper.BuyerMap[buyerStagingSeller.ID] = buyerStagingSeller
+
+	// Fill in sellers
+	seller := routing.Seller{
+		ID:                        "stagingseller",
+		Name:                      "staging seller",
+		CompanyCode:               "stagingseller",
+		ShortName:                 "stagingseller",
+		Secret:                    false,
+		IngressPriceNibblinsPerGB: routing.Nibblin(2000000000),
+		EgressPriceNibblinsPerGB:  routing.Nibblin(2000000000),
+		DatabaseID:                1,
+		CustomerID:                2,
+	}
+	dbWrapper.SellerMap[seller.ID] = seller
+
+	// Create and fill in 80 datacenters
+	dcLats := []float32{25.473148, 8.336138, 3.974002, 11.528835, -6.782625, 16.11762, 22.784515, 13.454051, -13.684143, -25.716251, 28.386465, -9.001461, 35.729275, -23.68597, 22.731573, 20.626265, -0.755334, -37.303154, -29.406038, -36.14546, -12.980946, 6.360595, -19.680273, 21.58432, 35.492558, -33.262753, -36.272743, 32.88015, -24.135296, 1.369137, 9.358029, -18.619719, 42.771748, 8.044478, -36.824646, 43.10364, 18.981647, 42.92252, -19.526926, 8.532774, -7.941358, -23.263641, 19.9033, -28.536758, 3.52891, -28.147852, -44.95376, -42.636135, -42.329586, 34.248882, 6.487812, -30.750456, 4.513223, -24.993952, 11.045549, 27.094954, -22.728004, -44.744125, -6.916302, -22.527613, -39.092667, 26.74877, 25.974442, -36.02433, 2.143828, -5.857877, 38.95618, 17.282213, -0.144513, 17.445433, 38.42881, -42.732544, -22.181355, -33.241398, 23.024117, 8.085077, -26.71318, 35.670757, -3.740177, 22.568674}
+	dcLongs := []float32{-38.42964, 113.18204, -79.73726, -134.36894, 67.25631, -101.3209, -125.65295, 18.635418, 68.70198, -42.963413, 136.08423, -0.767479, 65.75526, 12.701481, -105.63024, 118.99221, 164.8634, 61.047108, 14.795948, 7.336903, 119.49511, 130.49692, -32.283775, 55.454906, -144.91634, -111.5882, -71.67173, 70.8189, 46.02046, 112.910385, -32.53742, -73.05028, -151.3967, 154.66019, -2.468881, 151.99641, 22.960653, -153.25523, -74.48333, -158.71657, 18.92894, -67.85192, 52.03432, -25.79145, 171.24294, -94.01735, 84.984695, 124.4998, -179.31459, -73.03959, 31.887484, 38.611237, 44.49918, 65.188194, -46.910576, 82.88333, -117.483894, 149.69568, 11.010858, 51.042343, -123.65307, -141.3428, -49.750027, -125.33637, -169.81088, 45.03421, 87.06563, -71.451836, -147.65901, -169.08388, 163.78036, -38.802174, -78.45084, 174.9473, -34.630817, 21.381283, -50.08629, -64.049774, 36.059612, -74.15773}
+	dbIDs := []int64{76, 62, 19, 46, 1, 7, 66, 37, 35, 5, 57, 52, 31, 44, 11, 50, 74, 42, 18, 79, 67, 9, 47, 78, 24, 77, 3, 12, 68, 4, 53, 10, 15, 71, 33, 32, 36, 25, 6, 16, 73, 27, 41, 30, 64, 45, 51, 59, 54, 23, 72, 14, 49, 26, 43, 29, 61, 55, 20, 60, 2, 75, 22, 80, 13, 48, 28, 17, 69, 63, 34, 70, 21, 39, 38, 56, 8, 40, 58, 65}
+	for i := 0; i < 80; i++ {
+		name := fmt.Sprintf("staging.%d", i+1)
+		dc := routing.Datacenter{
+			ID:   crypto.HashID(name),
+			Name: name,
+			Location: routing.Location{
+				Latitude:  dcLats[i],
+				Longitude: dcLongs[i],
+			},
+			SellerID:   1,
+			DatabaseID: dbIDs[i],
+		}
+		dbWrapper.DatacenterMap[dc.ID] = dc
+	}
+
+	// Create and fill in fake relays and any additional datacenters
+	relayPK, err := base64.StdEncoding.DecodeString("8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not decode relay public key: %v\n", err), 1)
+	}
+
+	var maxDatacenterDbID int64
+	var maxRelayDbID int64
+	for i := 0; i < numRelays; i++ {
+		// Create the IP and UDP address for the fake relay
+		ipAddress := fmt.Sprintf("127.0.0.1:%d", 10000+i)
+		udpAddr, err := net.ResolveUDPAddr("udp", ipAddress)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("could not resolve %s to udp addr: %v\n", ipAddress, err), 1)
+		}
+
+		// Get the datacenter for this relay
+		var datacenter routing.Datacenter
+
+		dcName := fmt.Sprintf("staging.%d", i+1)
+		dcID := crypto.HashID(dcName)
+		dc, exists := dbWrapper.DatacenterMap[dcID]
+		if exists {
+			// Use one of the pre-made 80 datacenters
+			datacenter = dc
+			if dc.DatabaseID > maxDatacenterDbID {
+				maxDatacenterDbID = dc.DatabaseID
+			}
+		} else {
+			// Create a new datacenter for this fake relay
+			datacenter = routing.Datacenter{
+				ID:         dcID,
+				Name:       dcName,
+				Location:   generateRandomLocation(),
+				SellerID:   1,
+				DatabaseID: maxDatacenterDbID + 1,
+			}
+
+			// Increment datacenter database ID counter
+			maxDatacenterDbID++
+
+			// Add the new datacenter to the map
+			dbWrapper.DatacenterMap[dcID] = datacenter
+		}
+
+		// Create the fake relay
+		relayID := crypto.HashID(ipAddress)
+		relay := routing.Relay{
+			ID:                  relayID,
+			Name:                fmt.Sprintf("staging.relay.%d", i+1),
+			Addr:                *udpAddr,
+			PublicKey:           relayPK,
+			Seller:              seller,
+			Datacenter:          datacenter,
+			NICSpeedMbps:        1000,
+			IncludedBandwidthGB: 1,
+			State:               routing.RelayStateEnabled,
+			MaxSessions:         8000,
+			DatabaseID:          maxRelayDbID,
+			Notes:               "I am a staging relay." + fmt.Sprintf("%d", i+1) + " - let me load test!",
+		}
+
+		// Increment the relay database ID counter
+		maxRelayDbID++
+
+		// Add the fake relay to the map and array
+		dbWrapper.RelayMap[relayID] = relay
+		dbWrapper.Relays = append(dbWrapper.Relays, relay)
+	}
+
+	// Create datacenter maps for next and stagingseller
+	dcMapsNext := make(map[uint64]routing.DatacenterMap)
+	dcMapsStagingSeller := make(map[uint64]routing.DatacenterMap)
+	for dcID, datacenter := range dbWrapper.DatacenterMap {
+		dcMapNext := routing.DatacenterMap{
+			BuyerID:      buyerNext.ID,
+			DatacenterID: dcID,
+			Alias:        datacenter.Name,
+		}
+		dcMapStagingSeller := routing.DatacenterMap{
+			BuyerID:      buyerStagingSeller.ID,
+			DatacenterID: dcID,
+			Alias:        datacenter.Name,
+		}
+		// Add the datacenter map to the mapping
+		dcMapsNext[dcID] = dcMapNext
+		dcMapsStagingSeller[dcID] = dcMapStagingSeller
+	}
+
+	// Fill in the datacenter maps for the buyers
+	dbWrapper.DatacenterMaps[buyerGhostArmy.ID] = make(map[uint64]routing.DatacenterMap)
+	dbWrapper.DatacenterMaps[buyerNext.ID] = dcMapsNext
+	dbWrapper.DatacenterMaps[buyerStagingSeller.ID] = dcMapsStagingSeller
+
+	// Fill in metadata
+	now := time.Now().UTC()
+	dbWrapper.CreationTime = fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	dbWrapper.Creator = "next"
+
+	// Encode the database bin wrapper using gob and write to disk
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	encoder.Encode(dbWrapper)
+
+	err = ioutil.WriteFile("./database.bin", buffer.Bytes(), 0644)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to write staging database file: %v\n", err), 1)
+	}
+
+	fmt.Printf("Generated staging ./database.bin with %d fake relays\n", numRelays)
+}
+
+func generateRandomLocation() routing.Location {
+	// Create a random sessionID because it has 8 bytes
+	sessionID := crypto.GenerateSessionID()
+
+	// Generate a random lat/long from the session ID
+	sessionIDBytes := [8]byte{}
+	binary.LittleEndian.PutUint64(sessionIDBytes[0:8], sessionID)
+
+	// Randomize the location by using 4 bits of the sessionID for the lat, and the other 4 for the long
+	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
+	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
+
+	lat := (float32(latBits)) / 0xFFFFFFFF
+	long := (float32(longBits)) / 0xFFFFFFFF
+
+	return routing.Location{
+		Latitude:  (-90.0 + lat*180.0) * 0.5,
+		Longitude: -180.0 + long*360.0,
 	}
 }
 
