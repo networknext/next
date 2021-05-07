@@ -517,7 +517,6 @@ func SeedSQLStorageStaging(
 		Code:                   "ghost-army",
 		AutomaticSignInDomains: "ghost_army.com.net.gov",
 		DatabaseID:             1,
-		CustomerID:             1,
 	}); err != nil {
 		return fmt.Errorf("AddCustomer() err: %w", err)
 	}
@@ -527,7 +526,6 @@ func SeedSQLStorageStaging(
 		Code:                   "stagingseller",
 		AutomaticSignInDomains: "",
 		DatabaseID:             2,
-		CustomerID:             2,
 	}); err != nil {
 		return fmt.Errorf("AddCustomer() err: %w", err)
 	}
@@ -537,7 +535,6 @@ func SeedSQLStorageStaging(
 		Code:                   "next",
 		AutomaticSignInDomains: "networknext.com",
 		DatabaseID:             3,
-		CustomerID:             3,
 	}); err != nil {
 		return fmt.Errorf("AddCustomer() err: %w", err)
 	}
