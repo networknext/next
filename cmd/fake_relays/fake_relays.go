@@ -1,54 +1,35 @@
 package main
 
-// todo: not today
-/*
 import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"expvar"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
+	"sync"
+	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/crypto"
-
-	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/fake_relays"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 
-	"github.com/networknext/backend/modules/routing"
+	"github.com/go-kit/kit/log/level"
+	"github.com/gorilla/mux"
 )
 
 var (
-	buildtime               string
-	commitMessage           string
-	sha                     string
-	tag                     string
-	RELAY_PUBLIC_KEY        []byte
-	RELAY_PRIVATE_KEY       []byte
-	RELAY_ROUTER_PUBLIC_KEY []byte
-	relayUpdateVersion      int
-)
-
-const (
-	maxRTT               = 300
-	maxJitter            = 10
-	maxMultiplierPercent = 10
-
-	// pLChance is 1 in n
-	relayDisabled = 1
-	relayEnabled  = 2
-	relayShutdown = 3
-
-	// chances are 1 in n
-	pLChance = 100000
-	pLValue  = .3
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
 )
 
 func main() {
@@ -56,16 +37,14 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-
-	// todo metrics??
-	RELAY_PUBLIC_KEY, _ = base64.StdEncoding.DecodeString("8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
-	RELAY_PRIVATE_KEY, _ = base64.StdEncoding.DecodeString("ZiCSchVFo6T5gJvbQfcwU7yfELsNJaYIC2laQm9DSuA=")
-	RELAY_ROUTER_PUBLIC_KEY, _ = base64.StdEncoding.DecodeString("SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y=")
-
 	serviceName := "fake_relays"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
-	ctx := context.Background()
+	est, _ := time.LoadLocation("EST")
+	startTime := time.Now().In(est)
+
+	// Setup the service
+	ctx, cancel := context.WithCancel(context.Background())
 
 	gcpProjectID := backend.GetGCPProjectID()
 
@@ -75,335 +54,156 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// numRelays to fake
-	numRelays, err := envvar.GetInt("NUM_FAKE_RELAYS", 5)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-	}
-
-	featureNoInit, err := envvar.GetBool("FEATURE_NO_INIT", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-	}
-
-	// get and verify relayBackendAddr
-	relayBackendAddr := envvar.Get("RELAY_BACKEND_ADDR", "")
-	if net.ParseIP(relayBackendAddr) == nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	relayUpdateVersion, err = envvar.GetInt("RELAY_UPDATE_VERSION", 2)
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
 
-	// create fake relays
-	storageRelayArr := make([]routing.Relay, numRelays)
-	for i := 0; i < numRelays; i++ {
-		storageRelayArr[i] = fakeRelay(i)
+	fakeRelayMetrics, err := metrics.NewFakeRelayMetrics(ctx, metricsHandler, serviceName, "fake_relays", "Fake Relays", "")
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create fake relays metrics", "err", err)
+		return 1
 	}
 
-	// create fake relay route Bases
-	relayArr := make([]*Relay, len(storageRelayArr))
-	for i := 0; i < numRelays; i++ {
-		relayI := storageRelayArr[i]
-		newRelay := &Relay{
-			data:         relayI,
-			state:        relayDisabled,
-			stateChanged: time.Now().Add(-5 * time.Minute),
-			RouteBaseMap: make(map[uint64]RouteBase),
-		}
-
-		for j := 0; j < numRelays; j++ {
-			if i == j {
-				continue
-			}
-
-			relayJ := storageRelayArr[j]
-
-			base := newRouteBase()
-			newRelay.RouteBaseMap[relayJ.ID] = base
-		}
-
-		relayArr[i] = newRelay
+	// Get the public key for the fake relays
+	relayPublicKeyStr := envvar.Get("RELAY_PUBLIC_KEY", "8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
+	relayPublicKey, err := base64.StdEncoding.DecodeString(relayPublicKeyStr)
+	if err != nil {
+		level.Error(logger).Log("msg", fmt.Sprintf("could not decode to base64: %s", relayPublicKeyStr), "err", err)
+		return 1
 	}
 
-	// core logic
-	shutdown := false
-	initAddress := fmt.Sprintf("http://%s/relay_init", relayBackendAddr)
-	updateAddress := fmt.Sprintf("http://%s/relay_update", relayBackendAddr)
+	// Get the number of fake relays to produce
+	numRelays, err := envvar.GetInt("NUM_FAKE_RELAYS", 10)
+	if err != nil {
+		level.Error(logger).Log("msg", "error reading NUM_FAKE_RELAYS as int", "err", err)
+	}
 
-	for i := 0; i < numRelays; i++ {
-		go func(relay *Relay, relayArr []*Relay) {
+	// Get the Relay Gateway's Load Balancer's IP
+	gatewayAddr := envvar.Get("GATEWAY_LOAD_BALANCER_IP", "127.0.0.1:30000")
+	// Verify the IP is valid if not testing locally
+	if gcpProjectID != "" {
+		ip := net.ParseIP(gatewayAddr)
+		if ip == nil {
+			level.Error(logger).Log("msg", fmt.Sprintf("could not parse relay gatway's load balancer's IP: %s", gatewayAddr), "err", err)
+			return 1
+		}
+	}
 
-			var relaysToPing []uint64
-			syncTimer := helpers.NewSyncTimer(1 * time.Second)
+	// Get the relay update version
+	relayUpdateVersion, err := envvar.GetInt("RELAY_UPDATE_VERSION", 3)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
+	// Create all the fake relays
+	relays, err := fake_relays.NewFakeRelays(numRelays, relayPublicKey, gatewayAddr, relayUpdateVersion, logger, fakeRelayMetrics)
+	if err != nil {
+		level.Error(logger).Log("msg", "could not create fake relays", "err", err)
+		return 1
+	}
+
+	// Let the relays send their updates
+	var wg sync.WaitGroup
+	for _, relay := range relays {
+		wg.Add(1)
+		go relay.StartLoop(ctx, &wg)
+	}
+
+	// Setup the status handler info
+	var statusData []byte
+	var statusMutex sync.RWMutex
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
 			for {
-				syncTimer.Run()
+				fakeRelayMetrics.FakeRelayServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				fakeRelayMetrics.FakeRelayServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
-				if shutdown {
-					err := sendShutdown(*relay, updateAddress)
-					if err != nil {
-						level.Error(logger).Log("err", err)
-						continue
-					}
-					return
-				}
+				statusDataString := fmt.Sprintf("%s\n", serviceName)
+				statusDataString += fmt.Sprintf("git hash %s\n", sha)
+				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
+				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
 
-				if relay.state == relayDisabled {
-					if featureNoInit {
-						err := sendUpdateInit(*relay, updateAddress)
-						if err != nil {
-							level.Error(logger).Log("err", err)
-							continue
-						}
-						relay.state = relayEnabled
+				statusDataString += fmt.Sprintf("%d goroutines\n", int(fakeRelayMetrics.FakeRelayServiceMetrics.Goroutines.Value()))
+				statusDataString += fmt.Sprintf("%.2f mb allocated\n", fakeRelayMetrics.FakeRelayServiceMetrics.MemoryAllocated.Value())
+				statusDataString += fmt.Sprintf("%d update invocations\n", int(fakeRelayMetrics.UpdateInvocations.Value()))
+				statusDataString += fmt.Sprintf("%d successful updates\n", int(fakeRelayMetrics.SuccessfulUpdateInvocations.Value()))
+				statusDataString += fmt.Sprintf("%d marshal binary errors\n", int(fakeRelayMetrics.ErrorMetrics.MarshalBinaryError.Value()))
+				statusDataString += fmt.Sprintf("%d unmarshal binary errors\n", int(fakeRelayMetrics.ErrorMetrics.UnmarshalBinaryError.Value()))
+				statusDataString += fmt.Sprintf("%d update post errors\n", int(fakeRelayMetrics.ErrorMetrics.UpdatePostError.Value()))
+				statusDataString += fmt.Sprintf("%d not OK response errors\n", int(fakeRelayMetrics.ErrorMetrics.NotOKResponseError.Value()))
+				statusDataString += fmt.Sprintf("%d resolve UDP address errors\n", int(fakeRelayMetrics.ErrorMetrics.ResolveUDPAddressError.Value()))
 
-					} else {
-						err := sendInit(*relay, initAddress)
-						if err != nil {
-							level.Error(logger).Log("err", err)
-							continue
-						}
-						relay.state = relayEnabled
-					}
-					continue
-				}
+				statusMutex.Lock()
+				statusData = []byte(statusDataString)
+				statusMutex.Unlock()
 
-				if relay.state == relayShutdown {
-					err = sendShutdown(*relay, updateAddress)
-					if err != nil {
-						level.Error(logger).Log("err", err)
-						continue
-					}
-					relay.state = relayDisabled
-				}
-
-				relaysToPing = relaysToPingFromRelayList(relayArr, relay.data.ID)
-
-				_, err := sendUpdate(*relay, relaysToPing, updateAddress)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					relay.state = relayShutdown
-					continue
-				}
-
+				time.Sleep(time.Second * 10)
 			}
-
-		}(relayArr[i], relayArr)
+		}()
 	}
 
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
-	shutdown = true
-	time.Sleep(5 * time.Second)
-	return 0
-}
-
-func fakeRelay(i int) routing.Relay {
-	firstIpPart := i / 255
-	secondIpPart := i % 255
-	IP := fmt.Sprintf("100.0.%v.%v:40000", firstIpPart, secondIpPart)
-	addr, _ := net.ResolveUDPAddr("udp", IP)
-
-	id := crypto.HashID(IP)
-
-	return routing.Relay{
-		Name:      fmt.Sprintf("fake_relay_%v", i),
-		ID:        id,
-		Addr:      *addr,
-		PublicKey: RELAY_PUBLIC_KEY,
-	}
-}
-
-type Relay struct {
-	data         routing.Relay
-	state        int
-	stateChanged time.Time
-	RouteBaseMap map[uint64]RouteBase
-}
-
-type RouteBase struct {
-	rtt        float32
-	jitter     float32
-	packetLoss float32
-}
-
-func newRouteBase() RouteBase {
-	rb := new(RouteBase)
-	rb.rtt = float32(rand.Int31n(maxRTT))
-	rb.jitter = float32(rand.Int31n(maxJitter))
-	rb.packetLoss = 0.0
-
-	return *rb
-}
-
-func sendInit(relay Relay, addr string) error {
-	nonce, token := makeToken()
-
-	initRequest := transport.RelayInitRequest{
-		Magic:          transport.InitRequestMagic,
-		Version:        transport.VersionNumberInitRequest,
-		Nonce:          nonce,
-		Address:        relay.data.Addr,
-		EncryptedToken: token,
-		RelayVersion:   "1.1.0",
-	}
-
-	initBinary, err := initRequest.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	buffer := bytes.NewBuffer(initBinary)
-	resp, err := http.Post(addr, "application/octet-stream", buffer)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("response was non 200: %v", resp.StatusCode)
-	}
-	resp.Body.Close()
-	return nil
-}
-
-func sendUpdateInit(relay Relay, addr string) error {
-	updateRequest := baseUpdate(relay)
-	updateBinary, err := updateRequest.MarshalBinary()
-	if err != nil {
-		return err
-	}
-
-	buffer := bytes.NewBuffer(updateBinary)
-	resp, err := http.Post(addr, "application/octet-stream", buffer)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("response was non 200: %v", resp.StatusCode)
-	}
-	resp.Body.Close()
-	return nil
-}
-
-func sendShutdown(relay Relay, addr string) error {
-	updateRequest := baseUpdate(relay)
-	updateRequest.ShuttingDown = true
-	updateBinary, err := updateRequest.MarshalBinary()
-	if err != nil {
-		return err
-	}
-
-	buffer := bytes.NewBuffer(updateBinary)
-	resp, err := http.Post(addr, "application/octet-stream", buffer)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("shutdown response was non 200: %v", resp.StatusCode)
-	}
-	resp.Body.Close()
-	return nil
-}
-
-func sendUpdate(relay Relay, relaysToPing []uint64, addr string) ([]uint64, error) {
-	updateRequest := baseUpdate(relay)
-
-	numRelays := len(relaysToPing)
-	statsData := make([]routing.RelayStatsPing, len(relaysToPing))
-	for i := 0; i < numRelays; i++ {
-		if base, ok := relay.RouteBaseMap[relaysToPing[i]]; ok {
-			statsData[i] = newPacketData(relaysToPing[i], base)
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
-	updateRequest.PingStats = statsData
-	updateBinary, err := updateRequest.MarshalBinary()
-	if err != nil {
-		return []uint64{}, err
+
+	errChan := make(chan error, 1)
+
+	port := envvar.Get("PORT", "30007")
+	fmt.Printf("starting http server on :%s\n", port)
+
+	// Start HTTP server
+	{
+		router := mux.NewRouter()
+		router.HandleFunc("/health", transport.HealthHandlerFunc())
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
+		router.Handle("/debug/vars", expvar.Handler())
+
+		go func() {
+
+			err := http.ListenAndServe(":"+port, router)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				errChan <- err
+				return
+			}
+		}()
 	}
 
-	buffer := bytes.NewBuffer(updateBinary)
-	resp, err := http.Post(addr, "application/octet-stream", buffer)
-	if err != nil {
-		return []uint64{}, err
-	}
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
-	if resp.StatusCode != http.StatusOK {
-		return []uint64{}, fmt.Errorf("shutdown response was non 200: %v", resp.StatusCode)
-	}
-	resp.Body.Close()
+	select {
+	case <-termChan:
+		level.Debug(logger).Log("msg", "Received shutdown signal")
+		fmt.Println("Received shutdown signal.")
 
-	return relaysToPing, nil
+		cancel()
+		// Wait for essential goroutines to finish up
+		wg.Wait()
+
+		level.Debug(logger).Log("msg", "Successfully shutdown")
+		fmt.Println("Successfully shutdown.")
+		return 0
+	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		return 1
+	}
 }
-
-func relaysToPingFromRelayList(relayArr []*Relay, skipID uint64) []uint64 {
-	relays := make([]uint64, 0)
-	for _, relay := range relayArr {
-		if relay.data.ID == skipID {
-			continue
-		}
-
-		if relay.state != relayEnabled {
-			continue
-		}
-		relays = append(relays, relay.data.ID)
-	}
-
-	return relays
-}
-
-func baseUpdate(relay Relay) transport.RelayUpdateRequest {
-
-	req := transport.RelayUpdateRequest{
-		Version:      uint32(relayUpdateVersion),
-		RelayVersion: "1.1.0",
-		Address:      relay.data.Addr,
-	}
-
-	if relayUpdateVersion == 2 {
-		req.Token = relay.data.PublicKey
-	}
-
-	return req
-}
-
-func makeToken() ([]byte, []byte) {
-	nonce := []byte("123456781234567812345678")
-	data := []byte("12345678123456781234567812345678")
-	token := crypto.Seal(data, nonce, RELAY_ROUTER_PUBLIC_KEY, RELAY_PRIVATE_KEY)
-
-	return nonce, token
-}
-
-func newPacketData(id uint64, base RouteBase) routing.RelayStatsPing {
-	pingStat := routing.RelayStatsPing{}
-	pingStat.RelayID = id
-
-	rttMultiplier := calcMultiplier()
-	pingStat.RTT = base.rtt * rttMultiplier
-
-	jitterMultiplier := calcMultiplier()
-	pingStat.Jitter = base.jitter * jitterMultiplier
-
-	hasPL := rand.Int31n(pLChance)
-	if hasPL == 1 {
-		pingStat.PacketLoss = pLValue
-	} else {
-		pingStat.PacketLoss = 0.0
-	}
-
-	return pingStat
-}
-
-// this returns the float multiplier at +/- maxMultiplierPercent
-func calcMultiplier() float32 {
-	base := rand.Int31n(maxMultiplierPercent * 2)
-	return 1.0 + float32(base-maxMultiplierPercent)/100.0
-
-}
-*/
