@@ -10488,6 +10488,134 @@ bool next_autodetect_amazon( char * output )
     return found;
 }
 
+// --------------------------------------------------------------------------------------------------------------
+
+#include <sys/cdefs.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <err.h>
+#include <netdb.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sysexits.h>
+#include <unistd.h>
+
+#define ANICHOST    "whois.arin.net"
+#define LNICHOST    "whois.lacnic.net"
+#define RNICHOST    "whois.ripe.net"
+#define PNICHOST    "whois.apnic.net"
+#define BNICHOST    "whois.registro.br"
+
+const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
+
+bool next_whois( const char * address, const char * hostname, int recurse, char ** buffer, size_t & bytes_remaining )
+{
+    struct addrinfo *hostres, *res;
+    char *nhost;
+    int i, s;
+    size_t c;
+
+    struct addrinfo hints;
+    int error;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_flags = 0;
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    error = getaddrinfo(hostname, "nicname", &hints, &hostres);
+    if ( error != 0 )
+    {
+        return 0;
+    }
+
+    for (res = hostres; res; res = res->ai_next) {
+        s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+        if (s < 0)
+            continue;
+        if (connect(s, res->ai_addr, res->ai_addrlen) == 0)
+            break;
+        close(s);
+    }
+
+    freeaddrinfo(hostres);
+    
+    if (res == NULL)
+        return 0;
+
+    FILE * sfi = fdopen( s, "r" );
+    FILE * sfo = fdopen( s, "w" );
+    if ( sfi == NULL || sfo == NULL )
+        return 0;
+    
+    if (strcmp(hostname, "de.whois-servers.net") == 0) {
+#ifdef __APPLE__
+        fprintf(sfo, "-T dn -C UTF-8 %s\r\n", address);
+#else
+        fprintf(sfo, "-T dn,ace -C US-ASCII %s\r\n", address);
+#endif
+    } else {
+        fprintf(sfo, "%s\r\n", address);
+    }
+    fflush(sfo);
+
+    nhost = NULL;
+
+    char buf[10*1024];
+
+    while ( fgets(buf, sizeof(buf), sfi) ) 
+    {
+        size_t len = strlen(buf);
+
+        if ( len < bytes_remaining )
+        {
+            memcpy( *buffer, buf, len );
+            bytes_remaining -= len;
+            *buffer += len;
+        }
+
+        if ( nhost == NULL )
+        {
+            if ( recurse && strcmp(hostname, ANICHOST) == 0 ) 
+            {
+                for (c = 0; c <= len; c++)
+                {
+                    buf[c] = tolower((int)buf[c]);
+                }
+                for (i = 0; ip_whois[i] != NULL; i++) 
+                {
+                    if (strstr(buf, ip_whois[i]) != NULL) 
+                    {
+                        int res = asprintf( &nhost, "%s", ip_whois[i] );  // note: nhost is allocated here
+                        if ( res == -1 )
+                        {
+                            nhost = NULL;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    close( s );
+    fclose( sfo );
+    fclose( sfi );
+
+    bool result = true;
+
+    if ( nhost != NULL) 
+    {
+        result = next_whois( address, nhost, 0, buffer, bytes_remaining );
+        free( nhost );
+    }
+
+    return result;
+}
+
 bool next_autodetect_multiplay( const char * input_datacenter, const char * address, char * output )
 {
     FILE * file;
@@ -10537,21 +10665,10 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 
     char whois_buffer[1024*256];
     memset( whois_buffer, 0, sizeof(whois_buffer) );
-    char whois_command[1024];
-    sprintf( whois_command, "whois %s", address );
-    file = popen( whois_command, "r" );
-    if ( !file )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run whois" );
-        return false;
-    }
-    if ( fread( whois_buffer, 1, sizeof(whois_buffer), file ) == 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: fread failed on whois" );
-        return false;
-    }
-    pclose( file );
-
+    char * whois_output = &whois_buffer[0];
+    size_t bytes_remaining = sizeof(whois_buffer) - 1;
+    next_whois( address, ANICHOST, 1, &whois_output, bytes_remaining );
+    
     // check against multiplay supplier mappings
 
     bool found = false;
@@ -11067,7 +11184,6 @@ next_session_entry_t * next_server_internal_check_client_to_server_packet( next_
     return entry;
 }
 
-
 void next_server_internal_update_route( next_server_internal_t * server )
 {
     next_assert( server );
@@ -11079,13 +11195,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
     const double current_time = next_time();
     
-    int server_state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    {
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        server_state = server->state;
-    }
-
-    if ( server_state == NEXT_SERVER_STATE_DIRECT_ONLY && server->next_resolve_hostname_time <= current_time )
+    if ( server->next_resolve_hostname_time <= current_time )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname" );
         next_server_internal_resolve_hostname( server );
@@ -12375,9 +12485,66 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
+    // run the network next hostname resolve first, and do it each time this thread is started...
+
+    const char * hostname = next_global_config.hostname;
+    const char * port = NEXT_BACKEND_PORT;
+    const char * override_port = next_platform_getenv( "NEXT_BACKEND_PORT" );
+    if ( override_port )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
+        port = override_port;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname '%s'", hostname );
+
+    next_address_t address;
+
+    if ( next_address_parse( &address, hostname ) == NEXT_OK )
+    {
+        address.port = atoi( port );
+        next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+        server->resolve_hostname_finished = true;
+        server->resolve_hostname_result = address;
+        NEXT_PLATFORM_THREAD_RETURN();
+    }
+
+    for ( int i = 0; i < 10; ++i )
+    {
+        if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
+        {
+            next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
+            next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+            server->resolve_hostname_finished = true;
+            server->resolve_hostname_result = address;
+            break;
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname (%d)", i );
+        }
+    }
+
+    if ( !server->resolve_hostname_finished )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
+        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+        server->resolve_hostname_finished = true;
+        memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
+        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+    }
+
+    // only run the autodetect datacenter code once. once we know our datacenter name, it does not change
+
+    if ( server->autodetected_datacenter )
+    {
+        NEXT_PLATFORM_THREAD_RETURN();
+    }
+
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    // autodetect datacenter is currently linux only
+    // autodetect datacenter is currently linux only (mac is just for testing...)
 
     const char * autodetect_input = server->autodetect_input;
     
@@ -12427,57 +12594,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     }
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    const char * hostname = next_global_config.hostname;
-    const char * port = NEXT_BACKEND_PORT;
-    const char * override_port = next_platform_getenv( "NEXT_BACKEND_PORT" );
-    if ( override_port )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
-        port = override_port;
-    }
-
-    next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname '%s'", hostname );
-
-    next_address_t address;
-
-    if ( next_address_parse( &address, hostname ) == NEXT_OK )
-    {
-        address.port = atoi( port );
-        next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        server->resolve_hostname_finished = true;
-        server->resolve_hostname_result = address;
-        NEXT_PLATFORM_THREAD_RETURN();
-    }
-
-    for ( int i = 0; i < 10; ++i )
-    {
-        if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
-        {
-            {
-                next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-                next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-                server->resolve_hostname_finished = true;
-                server->resolve_hostname_result = address;
-            }
-            NEXT_PLATFORM_THREAD_RETURN();
-
-        }
-        else
-        {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server failed to resolve hostname (%d)", i );
-        }
-    }
-
-    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
-
-    {
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        server->resolve_hostname_finished = true;
-        memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
-        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    }
 
     NEXT_PLATFORM_THREAD_RETURN();
 }
