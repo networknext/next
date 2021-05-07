@@ -2028,6 +2028,7 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 
 type sqlDatacenter struct {
 	ID        int64
+	HexID     string
 	Name      string
 	Latitude  float32
 	Longitude float32
@@ -2051,16 +2052,18 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 		return &AlreadyExistsError{resourceType: "datacenter", resourceRef: datacenter.ID}
 	}
 
+	did := fmt.Sprintf("%016x", crypto.HashID(datacenter.Name))
 	dc := sqlDatacenter{
 		Name:      datacenter.Name,
+		HexID:     did,
 		Latitude:  datacenter.Location.Latitude,
 		Longitude: datacenter.Location.Longitude,
 		SellerID:  datacenter.SellerID,
 	}
 
 	sql.Write([]byte("insert into datacenters ("))
-	sql.Write([]byte("display_name, latitude, longitude, "))
-	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4)"))
+	sql.Write([]byte("display_name, hex_id, latitude, longitude, "))
+	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4, $5)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2068,7 +2071,9 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 		return err
 	}
 
-	result, err := stmt.Exec(dc.Name,
+	result, err := stmt.Exec(
+		dc.Name,
+		dc.HexID,
 		dc.Latitude,
 		dc.Longitude,
 		dc.SellerID,
