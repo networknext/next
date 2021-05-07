@@ -1267,6 +1267,41 @@ type RouteSelectionReply struct {
 	Routes []routing.Route `json:"routes"`
 }
 
+type CheckRelayIPAddressArgs struct {
+	IpAddress string `json:"ipAddress"`
+	HexID     string `json:"hexID"`
+}
+
+type CheckRelayIPAddressReply struct {
+	Valid bool `json:"valid"`
+}
+
+// CheckRelayIPAddress is used by the Admin tool when recommissioning a relay to ensure the
+// selected IP address "matches" the HexID (which was derived from its original IP address).
+func (s *OpsService) CheckRelayIPAddress(r *http.Request, args *CheckRelayIPAddressArgs, reply *CheckRelayIPAddressReply) error {
+
+	internalIDFromHexID, err := strconv.ParseUint(args.HexID, 16, 64)
+	if err != nil {
+		reply.Valid = false
+		return err
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", args.IpAddress)
+	if err != nil {
+		reply.Valid = false
+		return err
+	}
+
+	internalIdFromIpAddress := crypto.HashID(addr.String())
+	if internalIDFromHexID != internalIdFromIpAddress {
+		reply.Valid = false
+		return err
+	}
+
+	reply.Valid = true
+	return nil
+}
+
 type UpdateRelayArgs struct {
 	RelayID    uint64      `json:"relayID"`    // used by next tool
 	HexRelayID string      `json:"hexRelayID"` // used by javascript clients
