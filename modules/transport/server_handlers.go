@@ -171,6 +171,8 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, pos
 			core.Debug("server update duration: %fms\n-----------------------------------------", milliseconds)
 		}()
 
+		metrics.ServerUpdatePacketSize.Set(float64(len(incoming.Data)))
+
 		var packet ServerUpdatePacket
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
 			core.Debug("could not read server update packet:\n\n%v\n", err)
@@ -1101,7 +1103,7 @@ func sessionPost(state *SessionHandlerState) {
 		Write the session response packet and send it back to the caller.
 	*/
 
-	if err := writeSessionResponse(state.writer, &state.response, &state.output); err != nil {
+	if err := writeSessionResponse(state.writer, &state.response, &state.output, state.metrics); err != nil {
 		core.Debug("failed to write session update response: %s", err)
 		state.metrics.WriteResponseFailure.Add(1)
 		return
@@ -1534,11 +1536,18 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 
 // ------------------------------------------------------------------
 
-func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionData *SessionData) error {
+func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionData *SessionData, metrics *metrics.SessionUpdateMetrics) error {
 	sessionDataBuffer, err := MarshalSessionData(sessionData)
 	if err != nil {
 		return err
 	}
+
+	if sessionData.RouteState.Next {
+		metrics.NextSessionResponsePacketSize.Set(float64(len(sessionDataBuffer)))
+	} else {
+		metrics.DirectSessionResponsePacketSize.Set(float64(len(sessionDataBuffer)))
+	}
+
 	if len(sessionDataBuffer) > MaxSessionDataSize {
 		return fmt.Errorf("session data of %d exceeds limit of %d bytes", len(sessionDataBuffer), MaxSessionDataSize)
 	}
@@ -1589,6 +1598,8 @@ func SessionUpdateHandlerFunc(
 		}()
 
 		// read in the session update packet
+
+		metrics.SessionUpdatePacketSize.Set(float64(len(incoming.Data)))
 
 		var state SessionHandlerState
 

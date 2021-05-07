@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -93,8 +94,9 @@ func TestRelayGatewayStart(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, g)
 
+		var wg sync.WaitGroup
 		// Start the goroutine for receiving messages
-		go g.Start(ctx)
+		go g.Start(ctx, &wg)
 
 		requestBin, err := updateRequest.MarshalBinary()
 		assert.NoError(t, err)
@@ -123,8 +125,9 @@ func TestRelayGatewayStart(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, g)
 
+		var wg sync.WaitGroup
 		// Start the goroutine for receiving messages
-		go g.Start(ctx)
+		go g.Start(ctx, &wg)
 
 		requestBin, err := updateRequest.MarshalBinary()
 		assert.NoError(t, err)
