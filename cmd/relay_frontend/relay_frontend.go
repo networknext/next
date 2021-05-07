@@ -15,10 +15,14 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/pubsub"
+	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport/middleware"
 
 	frontend "github.com/networknext/backend/modules/relay_frontend"
@@ -169,6 +173,114 @@ func mainReturnWithCode() int {
 		}
 	}()
 
+	// relay stats
+
+	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
+	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
+	{
+		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
+		if gcpProjectID != "" || emulatorOK {
+
+			pubsubCtx := ctx
+			if emulatorOK {
+				gcpProjectID = "local"
+
+				var cancelFunc context.CancelFunc
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+				defer cancelFunc()
+
+				level.Info(logger).Log("msg", "Detected pubsub emulator")
+			}
+
+			// Google Pubsub
+			{
+				settings := pubsub.PublishSettings{
+					DelayThreshold: time.Second,
+					CountThreshold: 1,
+					ByteThreshold:  1 << 14,
+					NumGoroutines:  runtime.GOMAXPROCS(0),
+					Timeout:        time.Minute,
+				}
+
+				pingPubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &frontendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create ping stats analytics pubsub publisher", "err", err)
+					return 1
+				}
+
+				pingStatsPublisher = pingPubsub
+
+				relayPubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &frontendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
+				if err != nil {
+					level.Error(logger).Log("msg", "could not create relay stats analytics pubsub publisher", "err", err)
+					return 1
+				}
+
+				relayStatsPublisher = relayPubsub
+			}
+		}
+
+		go func() {
+			publishInterval, err := envvar.GetDuration("PING_STATS_PUBLISH_INTERVAL", time.Minute)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+			}
+
+			syncTimer := helpers.NewSyncTimer(publishInterval)
+			for {
+				syncTimer.Run()
+				// TODO: Get pingstats from route matrix
+				routeMatrixBuffer := frontendClient.RouteMatrix.GetMatrix()
+
+				var routeMatrix routing.RouteMatrix
+				readStream := encoding.CreateReadStream(routeMatrixBuffer)
+				if err := routeMatrix.Serialize(readStream); err != nil {
+					level.Error(logger).Log("err", err)
+					continue
+				}
+
+				// TODO: This shouldn't be necessary - fix circular dependency issuue with routing and analytics
+				numPingStats := len(routeMatrix.PingStats)
+				if numPingStats > 0 {
+					if err := pingStatsPublisher.Publish(ctx, routeMatrix.PingStats); err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+					}
+				}
+			}
+		}()
+
+		go func() {
+			publishInterval, err := envvar.GetDuration("RELAY_STATS_PUBLISH_INTERVAL", time.Second*10)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+			}
+
+			syncTimer := helpers.NewSyncTimer(publishInterval)
+			for {
+				syncTimer.Run()
+				// TODO: Grab relay stats from route matrix
+
+				routeMatrixBuffer := frontendClient.RouteMatrix.GetMatrix()
+
+				var routeMatrix routing.RouteMatrix
+				readStream := encoding.CreateReadStream(routeMatrixBuffer)
+				if err := routeMatrix.Serialize(readStream); err != nil {
+					level.Error(logger).Log("err", err)
+					continue
+				}
+
+				if len(routeMatrix.RelayStats) > 0 {
+					if err := relayStatsPublisher.Publish(ctx, routeMatrix.RelayStats); err != nil {
+						level.Error(logger).Log("err", err)
+					}
+				}
+			}
+		}()
+	}
+
 	// Setup the status handler info
 	var statusData []byte
 	var statusMutex sync.RWMutex
@@ -200,6 +312,12 @@ func mainReturnWithCode() int {
 				statusDataString += fmt.Sprintf("%d master select errors\n", int(frontendMetrics.ErrorMetrics.MasterSelectError.Value()))
 				statusDataString += fmt.Sprintf("%d cost matrix errors\n", int(frontendMetrics.CostMatrix.Error.Value()))
 				statusDataString += fmt.Sprintf("%d route matrix errors\n", int(frontendMetrics.RouteMatrix.Error.Value()))
+				statusDataString += fmt.Sprintf("%d ping stats entries submitted\n", int(frontendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
+				statusDataString += fmt.Sprintf("%d ping stats entries queued\n", int(frontendMetrics.PingStatsMetrics.EntriesQueued.Value()))
+				statusDataString += fmt.Sprintf("%d ping stats entries flushed\n", int(frontendMetrics.PingStatsMetrics.EntriesFlushed.Value()))
+				statusDataString += fmt.Sprintf("%d relay stats entries submitted\n", int(frontendMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
+				statusDataString += fmt.Sprintf("%d relay stats entries queued\n", int(frontendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
+				statusDataString += fmt.Sprintf("%d relay stats entries flushed\n", int(frontendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 
 				statusMutex.Lock()
 				statusData = []byte(statusDataString)

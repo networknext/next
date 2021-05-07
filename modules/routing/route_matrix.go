@@ -10,11 +10,12 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const RouteMatrixSerializeVersion = 2
+const RouteMatrixSerializeVersion = 3
 
 type RouteMatrix struct {
 	RelayIDsToIndices  map[uint64]int32
@@ -30,6 +31,8 @@ type RouteMatrix struct {
 	CreatedAt          uint64
 	Version            uint32
 	DestRelays         []bool
+	PingStats          []analytics.PingStatsEntry
+	RelayStats         []analytics.RelayStatsEntry
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -108,6 +111,40 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 		for i := range m.DestRelays {
 			stream.SerializeBool(&m.DestRelays[i])
+		}
+	}
+
+	if m.Version >= 3 {
+		if stream.IsReading() {
+			m.RelayStats = make([]analytics.RelayStatsEntry, 0)
+			m.PingStats = make([]analytics.PingStatsEntry, 0)
+		}
+
+		numRelayEntries := uint32(len(m.RelayStats))
+		for i := uint32(0); i < numRelayEntries; i++ {
+			entry := &m.RelayStats[i]
+
+			stream.SerializeUint64(&entry.Timestamp)
+			stream.SerializeUint64(&entry.ID)
+			stream.SerializeUint32(&entry.NumSessions)
+			stream.SerializeUint32(&entry.MaxSessions)
+			stream.SerializeUint32(&entry.NumRoutable)
+			stream.SerializeUint32(&entry.NumUnroutable)
+		}
+
+		numPingEntries := uint32(len(m.PingStats))
+		for i := uint32(0); i < numPingEntries; i++ {
+			entry := &m.PingStats[i]
+
+			stream.SerializeUint64(&entry.Timestamp)
+			stream.SerializeUint64(&entry.RelayA)
+			stream.SerializeUint64(&entry.RelayB)
+			stream.SerializeFloat32(&entry.RTT)
+			stream.SerializeFloat32(&entry.Jitter)
+			stream.SerializeFloat32(&entry.PacketLoss)
+			stream.SerializeBool(&entry.Routable)
+			stream.SerializeString(&entry.InstanceID, 64)
+			stream.SerializeBool(&entry.Debug)
 		}
 	}
 

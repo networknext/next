@@ -42,7 +42,7 @@ type RelayFrontendSvc struct {
 
 	// cached matrix
 	costMatrix  *helpers.MatrixData
-	routeMatrix *helpers.MatrixData
+	RouteMatrix *helpers.MatrixData
 }
 
 func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*RelayFrontendSvc, error) {
@@ -54,7 +54,7 @@ func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*Rel
 	r.store = store
 	r.createdAt = time.Now().UTC()
 	r.costMatrix = new(helpers.MatrixData)
-	r.routeMatrix = new(helpers.MatrixData)
+	r.RouteMatrix = new(helpers.MatrixData)
 	return r, nil
 }
 
@@ -96,7 +96,7 @@ func (r *RelayFrontendSvc) cacheMatrixInternal(matrixAddr, matrixType string) er
 	case MatrixTypeCost:
 		r.costMatrix.SetMatrix(matrixBin)
 	case MatrixTypeNormal:
-		r.routeMatrix.SetMatrix(matrixBin)
+		r.RouteMatrix.SetMatrix(matrixBin)
 	}
 
 	return nil
@@ -131,7 +131,7 @@ func (r *RelayFrontendSvc) ResetCachedMatrix(matrixType string) error {
 		}
 
 		emptyRouteMatrixBin := emptyRouteMatrix.GetResponseData()
-		r.routeMatrix.SetMatrix(emptyRouteMatrixBin)
+		r.RouteMatrix.SetMatrix(emptyRouteMatrixBin)
 	}
 
 	return nil
@@ -220,7 +220,7 @@ func (r *RelayFrontendSvc) GetCostMatrixHandlerFunc() func(w http.ResponseWriter
 func (r *RelayFrontendSvc) GetRouteMatrixHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
-		data := r.routeMatrix.GetMatrix()
+		data := r.RouteMatrix.GetMatrix()
 		if len(data) == 0 {
 			w.WriteHeader(http.StatusNotFound)
 			return
