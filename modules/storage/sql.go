@@ -826,16 +826,24 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 
-		uriTuple := strings.Split(addrString, ":")
-		if len(uriTuple) < 2 {
-			return fmt.Errorf("Unable to parse URI fo Add field: %v - you may be missing the port number?", value)
-		} else if uriTuple[0] == "" || uriTuple[1] == "" {
-			return fmt.Errorf("Unable to parse URI fo Add field: %v", value)
+		// "removing" a relay zeroes-out the public IP address
+		if addrString == "" {
+			updateSQL.Write([]byte("update relays set (public_ip, public_ip_port) = (null, null) "))
+			updateSQL.Write([]byte("where id=$1"))
+			args = append(args, relay.DatabaseID)
+		} else {
+			uriTuple := strings.Split(addrString, ":")
+			if len(uriTuple) < 2 {
+				return fmt.Errorf("unable to parse URI fo Add field: %v - you may be missing the port number?", value)
+			} else if uriTuple[0] == "" || uriTuple[1] == "" {
+				return fmt.Errorf("unable to parse URI fo Add field: %v", value)
+			}
+			updateSQL.Write([]byte("update relays set (public_ip, public_ip_port) = ($1, $2) "))
+			updateSQL.Write([]byte("where id=$3"))
+			args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
 		}
-		updateSQL.Write([]byte("update relays set (public_ip, public_ip_port) = ($1, $2) "))
-		updateSQL.Write([]byte("where id=$3"))
-		args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
 
+		// addr will be ':0' for "removed" relays
 		addr, err := net.ResolveUDPAddr("udp", addrString)
 		if err != nil {
 			return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
@@ -867,7 +875,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 	case "PublicKey":
 		publicKey, ok := value.(string)
 		if !ok {
-			return fmt.Errorf("%v is not a valid []byte type", value)
+			return fmt.Errorf("%v is not a valid string type", value)
 		}
 
 		newPublicKey, err := base64.StdEncoding.DecodeString(publicKey)
