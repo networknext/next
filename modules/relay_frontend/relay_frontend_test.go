@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/networknext/backend/modules/analytics"
+	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
-	"github.com/networknext/backend/modules/common/helpers"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -220,7 +221,7 @@ func TestRelayFrontendSvc_CacheMatrixNormal(t *testing.T) {
 	assert.NotEqual(t, 0, len(bin))
 
 	svc := new(RelayFrontendSvc)
-	svc.routeMatrix = new(helpers.MatrixData)
+	svc.RouteMatrix = new(helpers.MatrixData)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -233,7 +234,7 @@ func TestRelayFrontendSvc_CacheMatrixNormal(t *testing.T) {
 
 	err := svc.cacheMatrixInternal(ts.URL, MatrixTypeNormal)
 	assert.NoError(t, err)
-	assert.Equal(t, bin, svc.routeMatrix.GetMatrix())
+	assert.Equal(t, bin, svc.RouteMatrix.GetMatrix())
 }
 
 func TestRelayFrontendSvc_GetCostMatrix(t *testing.T) {
@@ -304,9 +305,9 @@ func TestRelayFrontendSvc_ResetCostMatrix(t *testing.T) {
 
 func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
 	svc := &RelayFrontendSvc{}
-	svc.routeMatrix = new(helpers.MatrixData)
+	svc.RouteMatrix = new(helpers.MatrixData)
 	testMatrix := testMatrix(t)
-	svc.routeMatrix.SetMatrix(testMatrix.GetResponseData())
+	svc.RouteMatrix.SetMatrix(testMatrix.GetResponseData())
 	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixHandlerFunc()))
 
 	resp, err := http.Get(ts.URL)
@@ -328,7 +329,7 @@ func TestRelayFrontendSvc_GetRouteMatrix(t *testing.T) {
 
 func TestRelayFrontendSvc_GetRouteMatrixNotFound(t *testing.T) {
 	svc := &RelayFrontendSvc{}
-	svc.routeMatrix = new(helpers.MatrixData)
+	svc.RouteMatrix = new(helpers.MatrixData)
 	ts := httptest.NewServer(http.HandlerFunc(svc.GetRouteMatrixHandlerFunc()))
 
 	resp, err := http.Get(ts.URL)
@@ -338,10 +339,10 @@ func TestRelayFrontendSvc_GetRouteMatrixNotFound(t *testing.T) {
 
 func TestRelayFrontendSvc_ResetRouteMatrix(t *testing.T) {
 	svc := &RelayFrontendSvc{}
-	svc.routeMatrix = new(helpers.MatrixData)
+	svc.RouteMatrix = new(helpers.MatrixData)
 	testMatrix := testMatrix(t)
 	testMatrix.Version = routing.RouteMatrixSerializeVersion
-	svc.routeMatrix.SetMatrix(testMatrix.GetResponseData())
+	svc.RouteMatrix.SetMatrix(testMatrix.GetResponseData())
 
 	err := svc.ResetCachedMatrix(MatrixTypeNormal)
 	assert.NoError(t, err)
@@ -359,9 +360,11 @@ func TestRelayFrontendSvc_ResetRouteMatrix(t *testing.T) {
 		CreatedAt:          0,
 		Version:            routing.RouteMatrixSerializeVersion,
 		DestRelays:         []bool{},
+		PingStats:          []analytics.PingStatsEntry{},
+		RelayStats:         []analytics.RelayStatsEntry{},
 	}
 
-	receivedRouteMatrixBin := svc.routeMatrix.GetMatrix()
+	receivedRouteMatrixBin := svc.RouteMatrix.GetMatrix()
 	var receivedRouteMatrix routing.RouteMatrix
 
 	readStream := encoding.CreateReadStream(receivedRouteMatrixBin)

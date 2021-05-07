@@ -26,7 +26,6 @@ import (
 	// "strings"
 
 	"cloud.google.com/go/compute/metadata"
-	"cloud.google.com/go/pubsub"
 	gcStorage "cloud.google.com/go/storage"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
@@ -341,130 +340,6 @@ func mainReturnWithCode() int {
 		ticker := time.NewTicker(frequency)
 		relayMap.TimeoutLoop(ctx, GetRelayData, timeout, ticker.C)
 	}()
-
-	// relay stats
-
-	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
-	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
-	{
-		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
-		if gcpProjectID != "" || emulatorOK {
-
-			pubsubCtx := ctx
-			if emulatorOK {
-				gcpProjectID = "local"
-
-				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-				defer cancelFunc()
-
-				level.Info(logger).Log("msg", "Detected pubsub emulator")
-			}
-
-			// Google Pubsub
-			{
-				settings := pubsub.PublishSettings{
-					DelayThreshold: time.Second,
-					CountThreshold: 1,
-					ByteThreshold:  1 << 14,
-					NumGoroutines:  runtime.GOMAXPROCS(0),
-					Timeout:        time.Minute,
-				}
-
-				pingPubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &relayBackendMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
-				if err != nil {
-					level.Error(logger).Log("msg", "could not create ping stats analytics pubsub publisher", "err", err)
-					return 1
-				}
-
-				pingStatsPublisher = pingPubsub
-
-				relayPubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &relayBackendMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
-				if err != nil {
-					level.Error(logger).Log("msg", "could not create relay stats analytics pubsub publisher", "err", err)
-					return 1
-				}
-
-				relayStatsPublisher = relayPubsub
-			}
-		}
-
-		go func() {
-			publishInterval, err := envvar.GetDuration("PING_STATS_PUBLISH_INTERVAL", time.Minute)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
-			}
-
-			syncTimer := helpers.NewSyncTimer(publishInterval)
-			for {
-				syncTimer.Run()
-				cpy := statsdb.MakeCopy()
-				entries := analytics.ExtractPingStats(cpy, float32(maxJitter), float32(maxPacketLoss), instanceID, isDebug)
-				if err := pingStatsPublisher.Publish(ctx, entries); err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
-				}
-			}
-		}()
-
-		go func() {
-			publishInterval, err := envvar.GetDuration("RELAY_STATS_PUBLISH_INTERVAL", time.Second*10)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
-			}
-
-			syncTimer := helpers.NewSyncTimer(publishInterval)
-			for {
-				syncTimer.Run()
-
-				allRelayData := relayMap.GetAllRelayData()
-				entries := make([]analytics.RelayStatsEntry, len(allRelayData))
-
-				count := 0
-				for i := range allRelayData {
-					relay := &allRelayData[i]
-
-					numSessions := relay.PeakTrafficStats.SessionCount
-
-					var numRouteable uint32 = 0
-					for i := range allRelayData {
-						otherRelay := &allRelayData[i]
-
-						if relay.ID == otherRelay.ID {
-							continue
-						}
-
-						rtt, jitter, pl := statsdb.GetSample(relay.ID, otherRelay.ID)
-						if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
-							if jitter <= float32(maxJitter) && pl <= float32(maxPacketLoss) {
-								numRouteable++
-							}
-						}
-					}
-
-					entries[count] = analytics.RelayStatsEntry{
-						ID:            relay.ID,
-						MaxSessions:   relay.MaxSessions,
-						NumSessions:   uint32(numSessions),
-						NumRoutable:   numRouteable,
-						NumUnroutable: uint32(len(allRelayData)) - 1 - numRouteable,
-						Timestamp:     uint64(time.Now().Unix()),
-					}
-
-					count++
-				}
-
-				entriesToPublish := entries[:count]
-				if len(entriesToPublish) > 0 {
-					if err := relayStatsPublisher.Publish(ctx, entriesToPublish); err != nil {
-						level.Error(logger).Log("err", err)
-					}
-				}
-			}
-		}()
-	}
 
 	var gcBucket *gcStorage.BucketHandle
 	gcStoreActive, err := envvar.GetBool("FEATURE_MATRIX_CLOUDSTORE", false)
@@ -837,6 +712,47 @@ func mainReturnWithCode() int {
 				optimizeMetrics.LongUpdateCount.Add(1)
 			}
 
+			pingStats := statsdb.ExtractPingStats(float32(maxJitter), float32(maxPacketLoss), instanceID, isDebug)
+
+			allRelayData := relayMap.GetAllRelayData()
+			entries := make([]analytics.RelayStatsEntry, len(allRelayData))
+
+			count := 0
+			for i := range allRelayData {
+				relay := &allRelayData[i]
+
+				numSessions := relay.PeakTrafficStats.SessionCount
+
+				var numRouteable uint32 = 0
+				for i := range allRelayData {
+					otherRelay := &allRelayData[i]
+
+					if relay.ID == otherRelay.ID {
+						continue
+					}
+
+					rtt, jitter, pl := statsdb.GetSample(relay.ID, otherRelay.ID)
+					if rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue {
+						if jitter <= float32(maxJitter) && pl <= float32(maxPacketLoss) {
+							numRouteable++
+						}
+					}
+				}
+
+				entries[count] = analytics.RelayStatsEntry{
+					ID:            relay.ID,
+					MaxSessions:   relay.MaxSessions,
+					NumSessions:   uint32(numSessions),
+					NumRoutable:   numRouteable,
+					NumUnroutable: uint32(len(allRelayData)) - 1 - numRouteable,
+					Timestamp:     uint64(time.Now().Unix()),
+				}
+
+				count++
+			}
+
+			relayStats := entries[:count]
+
 			routeMatrixNew := routing.RouteMatrix{
 				RelayIDs:           relayIDs,
 				RelayAddresses:     relayAddresses,
@@ -850,6 +766,8 @@ func mainReturnWithCode() int {
 				CreatedAt:          uint64(time.Now().Unix()),
 				Version:            routing.RouteMatrixSerializeVersion,
 				DestRelays:         destRelays,
+				PingStats:          pingStats,
+				RelayStats:         relayStats,
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
@@ -903,12 +821,6 @@ func mainReturnWithCode() int {
 			statusDataString += fmt.Sprintf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
 			statusDataString += fmt.Sprintf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
 			statusDataString += fmt.Sprintf("route matrix bytes: %d\n", int(relayBackendMetrics.RouteMatrix.Bytes.Value()))
-			statusDataString += fmt.Sprintf("%d ping stats entries submitted\n", int(relayBackendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
-			statusDataString += fmt.Sprintf("%d ping stats entries queued\n", int(relayBackendMetrics.PingStatsMetrics.EntriesQueued.Value()))
-			statusDataString += fmt.Sprintf("%d ping stats entries flushed\n", int(relayBackendMetrics.PingStatsMetrics.EntriesFlushed.Value()))
-			statusDataString += fmt.Sprintf("%d relay stats entries submitted\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
-			statusDataString += fmt.Sprintf("%d relay stats entries queued\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
-			statusDataString += fmt.Sprintf("%d relay stats entries flushed\n", int(relayBackendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 
 			statusMutex.Lock()
 			statusData = []byte(statusDataString)
