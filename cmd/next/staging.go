@@ -20,6 +20,11 @@ const (
 	CFName     = "portal-session-history"
 )
 
+var (
+	// List of redis instances to resize
+	ResizableRedisInstances = []string{"staging-session-map", "staging-session-meta", "staging-session-slices", "staging-top-sessions"}
+)
+
 type StagingServiceConfig struct {
 	Cores int `json:"cores"`
 	Count int `json:"count"`
@@ -375,6 +380,24 @@ func StartStaging(config StagingConfig) error {
 	}
 	fmt.Println("done")
 
+	var wg sync.WaitGroup
+	// Resize Redis instances to 10 GB
+	fmt.Printf("Resizing redis instances...\n")
+	for _, instanceName := range ResizableRedisInstances {
+		wg.Add(1)
+		go func(redisInstanceName string) {
+			defer wg.Done()
+			err := resizeRedisInstance(redisInstanceName, 10)
+			if err != nil {
+				fmt.Printf("failed to resize redis instance %s to 10 GB: %v\n", redisInstanceName, err)
+			} else {
+				fmt.Printf("resized redis instance %s to 10 GB\n", redisInstanceName)
+			}
+		}(instanceName)
+	}
+	wg.Wait()
+	fmt.Println("done")
+
 	for _, instanceGroup := range instanceGroups {
 		serviceConfig := instanceGroup.ServiceConfig()
 
@@ -418,7 +441,7 @@ func StopStaging() []error {
 	instanceGroups := createInstanceGroups(DefaultStagingConfig)
 
 	var wg sync.WaitGroup
-	errChan := make(chan error, len(instanceGroups))
+	errChan := make(chan error, len(instanceGroups)+len(ResizableRedisInstances)+1)
 
 	fmt.Println("stopping staging...")
 
@@ -436,16 +459,29 @@ func StopStaging() []error {
 
 	}
 
+	// Delete bigtable
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err := deleteBigTable(); err != nil {
 			errChan <- err
 		}
 
 		fmt.Println("deleted Bigtable")
-
-		wg.Done()
 	}()
+
+	// Resize Redis instances to 1 GB
+	for _, instanceName := range ResizableRedisInstances {
+		wg.Add(1)
+		go func(redisInstanceName string) {
+			defer wg.Done()
+			err := resizeRedisInstance(redisInstanceName, 1)
+			if err != nil {
+				errChan <- err
+			}
+			fmt.Printf("resized redis instance %s to 1 GB\n", redisInstanceName)
+		}(instanceName)
+	}
 
 	wg.Wait()
 
@@ -558,6 +594,15 @@ func deleteBigTable() error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func resizeRedisInstance(instanceName string, size int) error {
+	success, output := bashQuiet(fmt.Sprintf("gcloud redis instances update %s --project=network-next-v3-staging --size=%d --region=us-central1", instanceName, size))
+	if !success {
+		return fmt.Errorf("could not resize redis instance %s to %d GB: %s", instanceName, size, output)
 	}
 
 	return nil
