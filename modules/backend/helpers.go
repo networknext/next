@@ -238,7 +238,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 				return nil, err
 			}
 		} else if env == "staging" {
-			db, err := storage.NewSQLite3Staging(ctx, logger)
+			db, err = storage.NewSQLite3Staging(ctx, logger)
 			if err != nil {
 				err := fmt.Errorf("NewSQLLite3Staging() error loading sqlite3: %w", err)
 				return nil, err
@@ -281,7 +281,7 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			filePath := envvar.Get("BIN_PATH", "./database.bin")
 			file, err := os.Open(filePath)
 			if err != nil {
-				return fmt.Errorf("could not open database file: %v", err)
+				return nil, fmt.Errorf("could not open database file: %v", err)
 			}
 			defer file.Close()
 
@@ -292,7 +292,9 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			}
 
 			// Seed staging storer
-			storage.SeedSQLStorageStaging(ctx, db, database)
+			if err = storage.SeedSQLStorageStaging(ctx, db, database); err != nil {
+				return nil, fmt.Errorf("failed to seed sql storage for staging: %v", err)
+			}
 		}
 
 		// Start a goroutine to sync from Firestore
