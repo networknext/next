@@ -320,3 +320,40 @@ func (r *RelayFrontendSvc) GetRelayDashboardHandlerFunc(username string, passwor
 		w.Write(bin)
 	}
 }
+
+func (r *RelayFrontendSvc) GetRelayDashboardDataHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+
+		if r.currentMasterBackendAddress == "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		client := &http.Client{
+			Timeout: time.Second * 10,
+		}
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/relay_dashboard_data", r.currentMasterBackendAddress), nil)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		jsonData, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonData)
+	}
+}
