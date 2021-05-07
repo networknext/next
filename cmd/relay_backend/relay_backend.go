@@ -84,8 +84,7 @@ func init() {
 
 	relayArray_internal = database_internal.Relays
 
-	gcpProjectID := backend.GetGCPProjectID()
-	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
+	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal)
 	// backend.DisplayLoadedRelays(relayArray_internal)
 
 	binCreator = database_internal.Creator
@@ -300,7 +299,7 @@ func mainReturnWithCode() int {
 					// Get the new relay array
 					relayArrayNew := databaseNew.Relays
 					// Proceed to fill up the new relay hash
-					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew)
 
 					// Pointer swap the relay bin wrapper
 					databaseMutex.Lock()
