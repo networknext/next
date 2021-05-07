@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/tidwall/gjson"
 )
 
@@ -87,6 +88,60 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 	}
 
 	reply.RelayFleet = returnFleetObject
+
+	return nil
+}
+
+type RelayDashboardJsonReply struct {
+	Dashboard string `json:"relay_dashboard"`
+}
+
+type RelayDashboardJsonArgs struct{}
+
+// RelayDashboardJson retrieves the JSON representation of the current relay dashboard
+// provided by relay_backend/relay_dashboard_data
+func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDashboardJsonArgs, reply *RelayDashboardJsonReply) error {
+
+	type jsonRelay struct {
+		Name string
+		Addr string
+	}
+
+	type jsonResponse struct {
+		Analysis string
+		Relays   []jsonRelay
+		Stats    map[string]map[string]routing.Stats
+	}
+
+	authToken, err := GetOpsToken()
+	if err != nil {
+		err = fmt.Errorf("RelayDashboardJson() error getting auth token: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	uri := rfs.RelayFrontendURI + "/relay_dashboard_data"
+
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", uri, nil)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authToken))
+
+	response, err := client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("RelayDashboardJson() error getting relays.csv: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	dashboardData, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	reply.Dashboard = string(dashboardData)
 
 	return nil
 }
