@@ -383,6 +383,171 @@ func (m *RouteMatrix) WriteAnalysisTo(writer io.Writer) {
 	fmt.Fprintf(writer, "    %.1f%% of relay pairs have no route\n", float64(relayPairsWithNoRoutes)/float64(numRelayPairs)*100)
 }
 
+// JsonMatrixAnalysis assembles the analysis into a form that can be
+// easily marshaled in the sender (json on the wire)
+type JsonMatrixAnalysis struct {
+	// RTT Improvement
+	RttImprovementNone     int `json:"rttImprovementNone"`
+	RttImprovement0_5ms    int `json:"rttImprovement0_5ms"`
+	RttImprovement5_10ms   int `json:"rttImprovement5_10ms"`
+	RttImprovement10_15ms  int `json:"rttImprovement10_15ms"`
+	RttImprovement15_20ms  int `json:"rttImprovement15_20ms"`
+	RttImprovement20_25ms  int `json:"rttImprovement20_25ms"`
+	RttImprovement25_30ms  int `json:"rttImprovement25_30ms"`
+	RttImprovement30_35ms  int `json:"rttImprovement30_35ms"`
+	RttImprovement35_40ms  int `json:"rttImprovement35_40ms"`
+	RttImprovement40_45ms  int `json:"rttImprovement40_45ms"`
+	RttImprovement45_50ms  int `json:"rttImprovement45_50ms"`
+	RttImprovement50plusms int `json:"rttImprovement50plusms"`
+
+	// Route Summary
+	RelayCount                    int     `json:"relayCount"`
+	TotalRoutes                   int     `json:"totalRoutes"`
+	RelayPairs                    int     `json:"relayPairs"`
+	DestinationRelays             int     `json:"destinationRelays"`
+	AvgRoutesPerRelayPair         float64 `json:"avgRoutesPerRelayPair"`
+	MaxRoutesPerRelayPair         int     `json:"maxRoutesPerRelayPair"`
+	AvgRelaysPerRoute             float64 `json:"avgRelaysPerRoute"`
+	MaxRelaysPerRoute             int     `json:"maxRelaysPerRoute"`
+	RelayPairsWithOneRoutePercent float64 `json:"relayPairsWithOneRoutePercent"`
+	RelayPairsWIthNoRoutesPercent float64 `json:"relayPairsWIthNoRoutesPercent"`
+}
+
+// GetJsonAnalysis returns a JsonMatrixAnalysis of the route matrix for ease
+// of transmission on the wire
+func (m *RouteMatrix) GetJsonAnalysis() JsonMatrixAnalysis {
+
+	var jsonMatrixAnalysis JsonMatrixAnalysis
+
+	src := m.RelayIDs
+	dest := m.RelayIDs
+
+	numRelayPairs := 0.0
+	numValidRelayPairs := 0.0
+
+	numValidRelayPairsWithoutImprovement := 0.0
+
+	buckets := make([]int, 11)
+
+	for i := range src {
+		for j := range dest {
+			if j < i {
+				if !m.DestRelays[i] && !m.DestRelays[j] {
+					continue
+				}
+				numRelayPairs++
+				abFlatIndex := TriMatrixIndex(i, j)
+				if len(m.RouteEntries[abFlatIndex].RouteCost) > 0 {
+					numValidRelayPairs++
+					improvement := m.RouteEntries[abFlatIndex].DirectCost - m.RouteEntries[abFlatIndex].RouteCost[0]
+					if improvement > 0.0 {
+						if improvement <= 5 {
+							buckets[0]++
+						} else if improvement <= 10 {
+							buckets[1]++
+						} else if improvement <= 15 {
+							buckets[2]++
+						} else if improvement <= 20 {
+							buckets[3]++
+						} else if improvement <= 25 {
+							buckets[4]++
+						} else if improvement <= 30 {
+							buckets[5]++
+						} else if improvement <= 35 {
+							buckets[6]++
+						} else if improvement <= 40 {
+							buckets[7]++
+						} else if improvement <= 45 {
+							buckets[8]++
+						} else if improvement <= 50 {
+							buckets[9]++
+						} else {
+							buckets[10]++
+						}
+					} else {
+						numValidRelayPairsWithoutImprovement++
+					}
+				}
+			}
+		}
+	}
+
+	jsonMatrixAnalysis.RttImprovementNone = int(numValidRelayPairsWithoutImprovement)
+	jsonMatrixAnalysis.RttImprovement0_5ms = buckets[0]
+	jsonMatrixAnalysis.RttImprovement5_10ms = buckets[1]
+	jsonMatrixAnalysis.RttImprovement10_15ms = buckets[2]
+	jsonMatrixAnalysis.RttImprovement15_20ms = buckets[3]
+	jsonMatrixAnalysis.RttImprovement20_25ms = buckets[4]
+	jsonMatrixAnalysis.RttImprovement25_30ms = buckets[5]
+	jsonMatrixAnalysis.RttImprovement30_35ms = buckets[6]
+	jsonMatrixAnalysis.RttImprovement35_40ms = buckets[7]
+	jsonMatrixAnalysis.RttImprovement40_45ms = buckets[8]
+	jsonMatrixAnalysis.RttImprovement45_50ms = buckets[9]
+	jsonMatrixAnalysis.RttImprovement50plusms = buckets[10]
+
+	totalRoutes := uint64(0)
+	maxRouteLength := int32(0)
+	maxRoutesPerRelayPair := int32(0)
+	relayPairs := 0
+	relayPairsWithNoRoutes := 0
+	relayPairsWithOneRoute := 0
+	totalRouteLength := uint64(0)
+
+	for i := range src {
+		for j := range dest {
+			if j < i {
+				if !m.DestRelays[i] && !m.DestRelays[j] {
+					continue
+				}
+				relayPairs++
+				ijFlatIndex := TriMatrixIndex(i, j)
+				n := m.RouteEntries[ijFlatIndex].NumRoutes
+				if n > maxRoutesPerRelayPair {
+					maxRoutesPerRelayPair = n
+				}
+				totalRoutes += uint64(n)
+				if n == 0 {
+					relayPairsWithNoRoutes++
+				}
+				if n == 1 {
+					relayPairsWithOneRoute++
+				}
+				for k := 0; k < int(n); k++ {
+					numRelays := m.RouteEntries[ijFlatIndex].RouteNumRelays[k]
+					totalRouteLength += uint64(numRelays)
+					if numRelays > maxRouteLength {
+						maxRouteLength = numRelays
+					}
+				}
+			}
+		}
+	}
+
+	numDestRelays := 0
+	for i := range m.DestRelays {
+		if m.DestRelays[i] {
+			numDestRelays++
+		}
+	}
+
+	averageNumRoutes := float64(totalRoutes) / float64(numRelayPairs)
+	averageRouteLength := float64(totalRouteLength) / float64(totalRoutes)
+
+	jsonMatrixAnalysis.RelayCount = len(m.RelayIDs)
+	jsonMatrixAnalysis.TotalRoutes = int(totalRoutes)
+	jsonMatrixAnalysis.RelayPairs = relayPairs
+	jsonMatrixAnalysis.DestinationRelays = numDestRelays
+	jsonMatrixAnalysis.AvgRoutesPerRelayPair = averageNumRoutes
+	jsonMatrixAnalysis.MaxRoutesPerRelayPair = int(maxRoutesPerRelayPair)
+	jsonMatrixAnalysis.AvgRelaysPerRoute = averageRouteLength
+	jsonMatrixAnalysis.MaxRelaysPerRoute = int(maxRouteLength)
+	jsonMatrixAnalysis.RelayPairsWithOneRoutePercent = float64(relayPairsWithOneRoute) / float64(numRelayPairs) * 100
+	jsonMatrixAnalysis.RelayPairsWIthNoRoutesPercent = float64(relayPairsWithNoRoutes) / float64(numRelayPairs) * 100
+
+	return jsonMatrixAnalysis
+
+}
+
 func (m *RouteMatrix) GetResponseData() []byte {
 	m.cachedResponseMutex.RLock()
 	response := m.cachedResponse
