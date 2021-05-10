@@ -19,6 +19,12 @@ type RelayData struct {
 	ShuttingDown   bool
 	LastUpdateTime time.Time
 	Version        string
+
+	// relay stats for datascience
+	CPUUsage             float32
+	MemUsage             float32
+	LastStatsPublishTime time.Time
+	PeakTrafficStats     PeakTrafficStats
 }
 
 type RelayCleanupCallback func(relayData RelayData) error

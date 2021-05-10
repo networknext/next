@@ -482,6 +482,12 @@ func main() {
 	relayupdatefs.BoolVar(&updateOpts.force, "force", false, "force the relay update regardless of the version")
 	relayupdatefs.BoolVar(&updateOpts.hard, "hard", false, "hard update the relay(s), killing the process immediately")
 
+	fakerelaysfs := flag.NewFlagSet("fake relays", flag.ExitOnError)
+
+	// Create staging database.bin with N fake relays
+	var fakeRelayCount int
+	fakerelaysfs.IntVar(&fakeRelayCount, "n", 80, "number of fake relays for the staging environment (default: 80)")
+
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 
 	// Limit the number of relays displayed, in descending order of sessions carried
@@ -876,6 +882,18 @@ func main() {
 				Exec: func(ctx context.Context, args []string) error {
 
 					getDatabaseBin(env)
+
+					return nil
+				},
+			},
+			{
+				Name:       "staging",
+				ShortUsage: "next database staging -n <numRelays>",
+				ShortHelp:  "Generate a database.bin file for the staging environment with n fake relays (default: 80).",
+				FlagSet:    fakerelaysfs,
+				Exec: func(ctx context.Context, args []string) error {
+
+					createStagingDatabaseBin(fakeRelayCount)
 
 					return nil
 				},
