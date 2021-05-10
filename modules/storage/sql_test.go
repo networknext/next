@@ -1019,6 +1019,8 @@ func TestUpdateSQL(t *testing.T) {
 		_, err = rand.Read(publicKey)
 		assert.NoError(t, err)
 
+		initialRelayVersion := "2.0.6"
+
 		relay := routing.Relay{
 			ID:                  rid,
 			Name:                "test.1",
@@ -1042,6 +1044,7 @@ func TestUpdateSQL(t *testing.T) {
 			Type:                routing.BareMetal,
 			State:               routing.RelayStateMaintenance,
 			Notes:               "the original notes",
+			Version:             initialRelayVersion,
 		}
 
 		err = db.AddRelay(ctx, relay)
@@ -1247,6 +1250,16 @@ func TestUpdateSQL(t *testing.T) {
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
 		assert.Equal(t, "", checkRelay.BillingSupplier)
+
+		// relay.Version
+		err = db.UpdateRelay(ctx, rid, "Version", "")
+		assert.Error(t, err)
+
+		err = db.UpdateRelay(ctx, rid, "Version", "7.6.4")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "7.6.4", checkRelay.Version)
 
 	})
 }

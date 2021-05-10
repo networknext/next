@@ -1108,6 +1108,20 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			relay.BillingSupplier = billingSupplier
 		}
 
+	case "Version":
+		version, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if version == "" {
+			return fmt.Errorf("relay version must not be an empty string")
+		}
+
+		updateSQL.Write([]byte("update relays set relay_version=$1 where id=$2"))
+		args = append(args, version, relay.DatabaseID)
+		relay.Version = version
+
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
 
@@ -1246,6 +1260,11 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	nullablePublicIPPort := sql.NullInt64{
 		Valid: true,
 		Int64: publicIPPort,
+	}
+
+	// field is not null but we also don't want an empty string
+	if r.Version == "" {
+		return fmt.Errorf("relay version can not be an empty string and must be a valid value (e.g. '2.0.6')")
 	}
 
 	relay := sqlRelay{

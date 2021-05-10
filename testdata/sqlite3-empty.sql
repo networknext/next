@@ -130,7 +130,7 @@ create table relays (
   machine_type integer not null,
   relay_state integer not null,
   billing_supplier integer,
-  relay_version varchar,
+  relay_version varchar not null,
   notes varchar,
   constraint fk_bw_billing_rule foreign key (bw_billing_rule) references bw_billing_rules(id),
   constraint fk_datacenter foreign key (datacenter) references datacenters(id),
@@ -153,7 +153,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/05/10 12:00:13
+-- File generation: 2021/05/10 12:56:30
 
 -- machine_types
 insert into machine_types values (0, 'none');
