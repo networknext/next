@@ -42,17 +42,13 @@ type RelayBackendMetrics struct {
 	Goroutines              Gauge
 	MemoryAllocated         Gauge
 	RouteMatrix             RouteMatrixMetrics
-	PingStatsMetrics        AnalyticsMetrics
-	RelayStatsMetrics       AnalyticsMetrics
 	RouteMatrixStatsMetrics AnalyticsMetrics
 }
 
 var EmptyRelayBackendMetrics RelayBackendMetrics = RelayBackendMetrics{
-	Goroutines:        &EmptyGauge{},
-	MemoryAllocated:   &EmptyGauge{},
-	RouteMatrix:       EmptyRouteMatrixMetrics,
-	PingStatsMetrics:  EmptyAnalyticsMetrics,
-	RelayStatsMetrics: EmptyAnalyticsMetrics,
+	Goroutines:      &EmptyGauge{},
+	MemoryAllocated: &EmptyGauge{},
+	RouteMatrix:     EmptyRouteMatrixMetrics,
 }
 
 type RelayUpdateMetrics struct {
@@ -156,106 +152,6 @@ func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*Relay
 	if err != nil {
 		return nil, err
 	}
-
-	relayBackendMetrics.PingStatsMetrics.EntriesReceived = &EmptyCounter{}
-
-	relayBackendMetrics.PingStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Ping Stats Entries Written",
-		ServiceName: "relay_backend",
-		ID:          "relay_backend.ping_stats.entries.submitted",
-		Unit:        "entries",
-		Description: "The number of ping stats entries the relay backend submitted to be published",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	relayBackendMetrics.PingStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Ping Stats Entries Queued",
-		ServiceName: "relay_backend",
-		ID:          "relay_backend.ping_stats.entries.queued",
-		Unit:        "entries",
-		Description: "The number of ping stats entries the relay backend has queued. This should always be 0",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	relayBackendMetrics.PingStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Ping Stats Entries Flushed",
-		ServiceName: "relay_backend",
-		ID:          "relay_backend.ping_stats.entries.flushed",
-		Unit:        "entries",
-		Description: "The number of ping stats entries the relay backend has flushed",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	relayBackendMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Ping Stats Publish Failure",
-		ServiceName: "relay_backend",
-		ID:          "relay_backend.ping_stats.error.publish_failure",
-		Unit:        "entries",
-		Description: "The number of ping stats entries the relay backend has failed to publish",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	relayBackendMetrics.PingStatsMetrics.ErrorMetrics.ReadFailure = &EmptyCounter{}
-
-	relayBackendMetrics.PingStatsMetrics.ErrorMetrics.WriteFailure = &EmptyCounter{}
-
-	relayBackendMetrics.RelayStatsMetrics.EntriesReceived = &EmptyCounter{}
-
-	relayBackendMetrics.RelayStatsMetrics.EntriesSubmitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Stats Entries Written",
-		ServiceName: "relay_backend",
-		ID:          "relay_backend.relay_stats.entries.submitted",
-		Unit:        "entries",
-		Description: "The number of relay stats entries the relay backend submitted to be published",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	relayBackendMetrics.RelayStatsMetrics.EntriesQueued, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Stats Entries Queued",
-		ServiceName: "relay_backend",
-		ID:          "relay_backend.relay_stats.entries.queued",
-		Unit:        "entries",
-		Description: "The number of relay stats entries the relay backend has queued. This should always be 0",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	relayBackendMetrics.RelayStatsMetrics.EntriesFlushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Stats Entries Flushed",
-		ServiceName: "relay_backend",
-		ID:          "relay_backend.relay_stats.entries.flushed",
-		Unit:        "entries",
-		Description: "The number of relay stats entries the relay backend has flushed",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.PublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Relay Backend Relay Stats Publish Failure",
-		ServiceName: "relay_backend",
-		ID:          "relay_backend.relay_stats.error.publish_failure",
-		Unit:        "entries",
-		Description: "The number of relay stats entries the relay backend has failed to publish",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.ReadFailure = &EmptyCounter{}
-
-	relayBackendMetrics.RelayStatsMetrics.ErrorMetrics.WriteFailure = &EmptyCounter{}
 
 	//RelayNamesHash
 	relayBackendMetrics.RouteMatrixStatsMetrics.EntriesReceived, err = metricsHandler.NewCounter(ctx, &Descriptor{

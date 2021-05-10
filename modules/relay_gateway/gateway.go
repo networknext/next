@@ -52,9 +52,7 @@ func NewGatewayHTTPClient(cfg *GatewayConfig, updateChan chan []byte, gatewayMet
 }
 
 // Starts goroutines for batch-sending relay update requests to the relay backends
-func (httpClient *GatewayHTTPClient) Start(ctx context.Context) error {
-	var wg sync.WaitGroup
-
+func (httpClient *GatewayHTTPClient) Start(ctx context.Context, wg *sync.WaitGroup) error {
 	// Create worker goroutines to pull updates from the update channel
 	for i := 0; i < httpClient.Cfg.NumGoroutines; i++ {
 		wg.Add(1)
@@ -70,7 +68,28 @@ func (httpClient *GatewayHTTPClient) Start(ctx context.Context) error {
 			for {
 				select {
 				case <-ctx.Done():
-					// TODO: flush all messages to relay backends
+					// Flush all remaining updates to the relay backends
+					level.Debug(httpClient.logger).Log("msg", "received shutdown signal")
+					// Copy the buffer so we can clear it without affecting the worker goroutines
+					updateBufferMutex.Lock()
+
+					bufferCopy := updateBuffer
+					updateBuffer = make([]byte, 0)
+					numUpdatesFlushed := updateBufferMessageCount
+					updateBufferMessageCount = 0
+
+					updateBufferMutex.Unlock()
+
+					// Send the buffer to all relay backends
+					for _, address := range httpClient.Cfg.RelayBackendAddresses {
+						wg.Add(1)
+						go httpClient.PostRelayUpdate(bufferCopy, address, wg)
+					}
+
+					// Set the number of relay update requests sent to the relay backends (not necessarily successful)
+					httpClient.gatewayMetrics.UpdatesFlushed.Add(float64(numUpdatesFlushed))
+					level.Info(httpClient.logger).Log("msg", fmt.Sprintf("Sent %d relay updates to the relay backends", numUpdatesFlushed))
+					level.Debug(httpClient.logger).Log("msg", "finished shutdown")
 					return
 				case update := <-httpClient.updateChan:
 					// Create a byte slice with an offset
@@ -104,7 +123,8 @@ func (httpClient *GatewayHTTPClient) Start(ctx context.Context) error {
 
 						// Send the buffer to all relay backends
 						for _, address := range httpClient.Cfg.RelayBackendAddresses {
-							go httpClient.PostRelayUpdate(bufferCopy, address)
+							wg.Add(1)
+							go httpClient.PostRelayUpdate(bufferCopy, address, wg)
 						}
 
 						// Set the number of relay update requests sent to the relay backends (not necessarily successful)
@@ -116,16 +136,12 @@ func (httpClient *GatewayHTTPClient) Start(ctx context.Context) error {
 		}()
 	}
 
-	// Wait until either there is an error or the context is done
-	select {
-	case <-ctx.Done():
-		// Let the goroutines finish up
-		wg.Wait()
-		return ctx.Err()
-	}
+	return nil
 }
 
-func (httpClient *GatewayHTTPClient) PostRelayUpdate(bufferCopy []byte, address string) {
+func (httpClient *GatewayHTTPClient) PostRelayUpdate(bufferCopy []byte, address string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	// Post to relay backend
 	buffer := bytes.NewBuffer(bufferCopy)
 

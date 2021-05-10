@@ -5,7 +5,6 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/routing"
 )
 
 const (
@@ -28,52 +27,6 @@ type PingStatsEntry struct {
 
 	InstanceID string
 	Debug      bool
-}
-
-func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPacketLoss float32, instanceID string, isDebug bool) []PingStatsEntry {
-	length := routing.TriMatrixLength(len(statsdb.Entries))
-	entries := make([]PingStatsEntry, length)
-
-	if length > 0 { // prevent crash with only 1 relay
-		ids := make([]uint64, len(statsdb.Entries))
-
-		idx := 0
-		for k := range statsdb.Entries {
-			ids[idx] = k
-			idx++
-		}
-
-		for i := 1; i < len(ids); i++ {
-			for j := 0; j < i; j++ {
-				idA := ids[i]
-				idB := ids[j]
-
-				rtt, jitter, pl := statsdb.GetSample(idA, idB)
-				routable := rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue
-
-				if jitter > maxJitter {
-					routable = false
-				}
-
-				if pl > maxPacketLoss {
-					routable = false
-				}
-
-				entries[routing.TriMatrixIndex(i, j)] = PingStatsEntry{
-					RelayA:     idA,
-					RelayB:     idB,
-					RTT:        rtt,
-					Jitter:     jitter,
-					PacketLoss: pl,
-					Routable:   routable,
-					InstanceID: instanceID,
-					Debug:      isDebug,
-				}
-			}
-		}
-	}
-
-	return entries
 }
 
 func WritePingStatsEntries(entries []PingStatsEntry) []byte {
@@ -178,8 +131,20 @@ type RelayStatsEntry struct {
 
 	ID uint64
 
-	CPUUsage float32
-	MemUsage float32
+	NumSessions uint32
+	MaxSessions uint32
+
+	NumRoutable   uint32
+	NumUnroutable uint32
+
+	// all of below are deprecated
+	Tx                        uint64
+	Rx                        uint64
+	PeakSessions              uint64
+	PeakSentBandwidthMbps     float32
+	PeakReceivedBandwidthMbps float32
+	CPUUsage                  float32
+	MemUsage                  float32
 
 	// percent = (sent||received) / nic speed
 
@@ -196,19 +161,6 @@ type RelayStatsEntry struct {
 
 	EnvelopeSentMbps     float32
 	EnvelopeReceivedMbps float32
-
-	NumSessions uint32
-	MaxSessions uint32
-
-	NumRoutable   uint32
-	NumUnroutable uint32
-
-	// all of below is deprecated
-	Tx                        uint64
-	Rx                        uint64
-	PeakSessions              uint64
-	PeakSentBandwidthMbps     float32
-	PeakReceivedBandwidthMbps float32
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
