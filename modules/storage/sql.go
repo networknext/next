@@ -1108,6 +1108,20 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			relay.BillingSupplier = billingSupplier
 		}
 
+	case "Version":
+		version, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if version == "" {
+			return fmt.Errorf("relay version must not be an empty string")
+		}
+
+		updateSQL.Write([]byte("update relays set relay_version=$1 where id=$2"))
+		args = append(args, version, relay.DatabaseID)
+		relay.Version = version
+
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
 
@@ -1168,6 +1182,7 @@ type sqlRelay struct {
 	StartDate          sql.NullTime
 	EndDate            sql.NullTime
 	MachineType        int64
+	Version            string
 	DatabaseID         int64
 }
 
@@ -1247,6 +1262,11 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		Int64: publicIPPort,
 	}
 
+	// field is not null but we also don't want an empty string
+	if r.Version == "" {
+		return fmt.Errorf("relay version can not be an empty string and must be a valid value (e.g. '2.0.6')")
+	}
+
 	relay := sqlRelay{
 		Name:               r.Name,
 		HexID:              fmt.Sprintf("%016x", rid),
@@ -1272,6 +1292,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		EndDate:            endDate,
 		MachineType:        int64(r.Type),
 		Notes:              r.Notes,
+		Version:            r.Version,
 	}
 
 	sqlQuery.Write([]byte("insert into relays ("))
@@ -1279,9 +1300,9 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
-	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier "))
+	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version "))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
@@ -1314,6 +1335,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.InternalIPPort,
 		relay.Notes,
 		relay.BillingSupplier,
+		relay.Version,
 	)
 
 	if err != nil {
