@@ -127,10 +127,16 @@ func NewSQLite3Staging(ctx context.Context, logger log.Logger) (*SQL, error) {
 	var sqlite3 *sql.DB
 
 	if _, err := os.Stat("/app/sqlite3-empty.sql"); err == nil || os.IsExist(err) {
+
+		err = os.Remove("/app/network_next.db")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error removing old db file: %v", err)
+		}
+
 		// Boiler plate SQL file exists, load it in
 		sqlite3, err = sql.Open("sqlite3", "file:/app/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
 		if err != nil {
-			return nil, fmt.Errorf("NewSQLite3Staging() error creating db connection: %w", err)
+			return nil, fmt.Errorf("NewSQLite3Staging() error creating db connection: %v", err)
 		}
 	} else {
 		return nil, fmt.Errorf("NewSQLite3Staging() could not find /app/sqlite3-empty.sql")
@@ -139,7 +145,7 @@ func NewSQLite3Staging(ctx context.Context, logger log.Logger) (*SQL, error) {
 	// db.Ping actually establishes the connection and validates the parameters
 	err := sqlite3.Ping()
 	if err != nil {
-		err = fmt.Errorf("NewSQLite3Staging() error pinging db: %w", err)
+		err = fmt.Errorf("NewSQLite3Staging() error pinging db: %v", err)
 		return nil, err
 	}
 
