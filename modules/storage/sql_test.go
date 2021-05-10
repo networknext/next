@@ -50,6 +50,7 @@ func TestInsertSQL(t *testing.T) {
 	var outerBuyer routing.Buyer
 	var outerSeller routing.Seller
 	var outerDatacenter routing.Datacenter
+	var initialRelayVersion string
 
 	// currentLocation, err := os.Getwd()
 	// assert.NoError(t, err)
@@ -190,6 +191,8 @@ func TestInsertSQL(t *testing.T) {
 		_, err = rand.Read(publicKey)
 		assert.NoError(t, err)
 
+		initialRelayVersion = "2.0.6"
+
 		// fields not stored in the database are not tested here
 		relay := routing.Relay{
 			ID:              rid,
@@ -214,6 +217,7 @@ func TestInsertSQL(t *testing.T) {
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
 			Notes:               "the original notes",
+			Version:             initialRelayVersion,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -258,6 +262,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
 		assert.Equal(t, relay.Notes, checkRelay.Notes)
 		assert.Equal(t, outerSeller.ShortName, checkRelay.BillingSupplier)
+		assert.Equal(t, initialRelayVersion, checkRelay.Version)
 
 		// overwrite with SetRelay - test nullable fields, possible in relay_backend
 		var relayMod routing.Relay
