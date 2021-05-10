@@ -265,26 +265,10 @@ ifndef BEACON_ENTRY_VETO
 export BEACON_ENTRY_VETO = false
 endif
 
-## Relay Backend 1.5
-
-ifndef FEATURE_NEW_BACKEND
-export FEATURE_NEW_BACKEND = false
-endif
-
-ifndef FEATURE_RB15_ENABLED
-export FEATURE_RB15_ENABLED = false
-endif
+## New Relay Backend
 
 ifndef MATRIX_STORE_ADDRESS
 export MATRIX_STORE_ADDRESS = 127.0.0.1:6379
-endif
-
-ifndef FEATURE_RB20_ENABLED
-export FEATURE_RB20_ENABLED = false
-endif
-
-ifndef FEATURE_RB15_ADDRESSES
-export FEATURE_RB15_ADDRESSES = 127.0.0.1
 endif
 
 ifndef FEATURE_NEW_RELAY_BACKEND_ADDRESSES
@@ -1221,7 +1205,7 @@ deploy-ghost-army-prod:
 
 .PHONY: dev-fake-relays
 dev-fake-relays: build-fake-relays ## runs a local relay forwarder
-	@PORT=30000 ./dist/fake_relays
+	@PORT=30007 ./dist/fake_relays
 
 .PHONY: build-fake-relays
 build-fake-relays:
