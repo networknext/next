@@ -11,8 +11,8 @@ import (
 	"os/signal"
 	"runtime"
 	"strings"
-	"syscall"
 	"sync"
+	"syscall"
 	"time"
 
 	"cloud.google.com/go/pubsub"
@@ -173,6 +173,8 @@ func mainReturnWithCode() int {
 		}
 	}()
 
+	errChan := make(chan error, 1)
+
 	// relay stats
 
 	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
@@ -224,7 +226,7 @@ func mainReturnWithCode() int {
 			publishInterval, err := envvar.GetDuration("PING_STATS_PUBLISH_INTERVAL", time.Minute)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+				errChan <- err
 			}
 
 			syncTimer := helpers.NewSyncTimer(publishInterval)
@@ -243,7 +245,7 @@ func mainReturnWithCode() int {
 				if numPingStats > 0 {
 					if err := pingStatsPublisher.Publish(ctx, routeMatrix.PingStats); err != nil {
 						level.Error(logger).Log("err", err)
-						os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+						errChan <- err
 					}
 				}
 			}
@@ -253,7 +255,7 @@ func mainReturnWithCode() int {
 			publishInterval, err := envvar.GetDuration("RELAY_STATS_PUBLISH_INTERVAL", time.Second*10)
 			if err != nil {
 				level.Error(logger).Log("err", err)
-				os.Exit(1) // todo: don't os.Exit() here, but find a way to exit
+				errChan <- err
 			}
 
 			syncTimer := helpers.NewSyncTimer(publishInterval)
@@ -324,8 +326,6 @@ func mainReturnWithCode() int {
 			}
 		}()
 	}
-
-	errChan := make(chan error, 1)
 
 	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
