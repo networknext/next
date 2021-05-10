@@ -362,6 +362,7 @@ func TestInsertSQL(t *testing.T) {
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
 			Notes:               "the original notes",
+			Version:             initialRelayVersion,
 		}
 
 		err = db.AddRelay(ctx, relay3)
@@ -411,6 +412,7 @@ func TestInsertSQL(t *testing.T) {
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
 			// Notes: "the original notes"
+			Version: initialRelayVersion,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -609,6 +611,7 @@ func TestDeleteSQL(t *testing.T) {
 			Type:           routing.BareMetal,
 			State:          routing.RelayStateMaintenance,
 			Notes:          "the original notes",
+			Version:        "2.0.6",
 		}
 
 		err = db.AddRelay(ctx, relay)
