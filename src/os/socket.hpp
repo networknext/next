@@ -121,6 +121,16 @@ namespace os
       return false;
     }
 
+    // set high priority ToS
+    #if defined(IP_TOS)
+    int tos = 0xA0;
+    if ( setsockopt( socket_fd, IPPROTO_IP, IP_TOS, (const char *)&tos, sizeof(tos) ) != 0 )
+    {
+        LOG(ERROR, "failed to set socket tos (ipv4)");
+        return false;
+    }
+    #endif
+
     // if bound to port 0, find the actual port we got
     // port 0 is a "wildcard" so using it will bind to any available port
     if (bind_addr.port == 0) {
