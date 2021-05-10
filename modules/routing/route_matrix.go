@@ -115,12 +115,14 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	}
 
 	if m.Version >= 3 {
-		if stream.IsReading() {
-			m.RelayStats = make([]analytics.RelayStatsEntry, 0)
-			m.PingStats = make([]analytics.PingStatsEntry, 0)
-		}
 
 		numRelayEntries := uint32(len(m.RelayStats))
+		stream.SerializeUint32(&numRelayEntries)
+
+		if stream.IsReading() {
+			m.RelayStats = make([]analytics.RelayStatsEntry, numRelayEntries)
+		}
+
 		for i := uint32(0); i < numRelayEntries; i++ {
 			entry := &m.RelayStats[i]
 
@@ -133,6 +135,12 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 
 		numPingEntries := uint32(len(m.PingStats))
+		stream.SerializeUint32(&numPingEntries)
+
+		if stream.IsReading() {
+			m.PingStats = make([]analytics.PingStatsEntry, numPingEntries)
+		}
+
 		for i := uint32(0); i < numPingEntries; i++ {
 			entry := &m.PingStats[i]
 
