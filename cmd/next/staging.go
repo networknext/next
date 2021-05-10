@@ -31,37 +31,37 @@ type StagingServiceConfig struct {
 }
 
 type StagingConfig struct {
-	RelayGateway   StagingServiceConfig `json:relay-gateway"`
-	RelayBackend   StagingServiceConfig `json:"relay-backend"`
-	Relays         StagingServiceConfig `json:"relays"`
-	RelayFrontend  StagingServiceConfig `json:"relay-gateway"`
-	RelayPusher    StagingServiceConfig `json:"relay-pusher"`
-	PortalCruncher StagingServiceConfig `json:"portal-cruncher"`
+	RelayGateway   StagingServiceConfig `json:"relayGateway"`
+	RelayBackend   StagingServiceConfig `json:"relayBackend"`
+	FakeRelays     StagingServiceConfig `json:"fakeRelays"`
+	RelayFrontend  StagingServiceConfig `json:"relayGateway"`
+	RelayPusher    StagingServiceConfig `json:"relayPusher"`
+	PortalCruncher StagingServiceConfig `json:"portalCruncher"`
 	Vanity         StagingServiceConfig `json:"vanity"`
 	Api            StagingServiceConfig `json:"api"`
 	Analytics      StagingServiceConfig `json:"analytics"`
 	Billing        StagingServiceConfig `json:"billing"`
 	Beacon         StagingServiceConfig `json:"beacon"`
-	BeaconInserter StagingServiceConfig `json:"beacon-inserter"`
+	BeaconInserter StagingServiceConfig `json:"beaconInserter"`
 	Portal         StagingServiceConfig `json:"portal"`
-	ServerBackend  StagingServiceConfig `json:"server-backend"`
-	FakeServer     StagingServiceConfig `json:"fake-server"`
+	ServerBackend  StagingServiceConfig `json:"serverBackend"`
+	FakeServer     StagingServiceConfig `json:"fakeServer"`
 }
 
 var DefaultStagingConfig = StagingConfig{
 	RelayGateway: StagingServiceConfig{
-		Cores: 2,
+		Cores: 4,
 		Count: -1,
 	},
 
 	RelayBackend: StagingServiceConfig{
-		Cores: 16,
+		Cores: 8,
 		Count: 2,
 	},
 
-	Relays: StagingServiceConfig{
-		Cores: 4,
-		Count: 80,
+	FakeRelays: StagingServiceConfig{
+		Cores: 16,
+		Count: 1,
 	},
 
 	RelayFrontend: StagingServiceConfig{
@@ -612,17 +612,17 @@ func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups := make([]InstanceGroup, 0)
 
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-backend", config.RelayBackend))
-	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-staging", config.Relays))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("portal-cruncher", config.PortalCruncher))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("vanity", config.Vanity))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-pusher", config.RelayPusher))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("fake-relays", config.FakeRelays))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-gateway-mig", false, config.RelayGateway))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-frontend-mig", false, config.RelayFrontend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("api-mig", false, config.Api))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("analytics-mig", false, config.Analytics))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-mig", false, config.Beacon))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-inserter-mig", false, config.BeaconInserter))
+	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-mig", false, config.Beacon))
+	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-inserter-mig", false, config.BeaconInserter))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-mig", false, config.Portal))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", true, config.ServerBackend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("fake-server-mig", true, config.FakeServer))
