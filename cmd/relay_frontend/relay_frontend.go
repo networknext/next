@@ -235,20 +235,22 @@ func mainReturnWithCode() int {
 				syncTimer.Run()
 				routeMatrixBuffer := frontendClient.GetRouteMatrix()
 
-				var routeMatrix routing.RouteMatrix
-				readStream := encoding.CreateReadStream(routeMatrixBuffer)
-				if err := routeMatrix.Serialize(readStream); err != nil {
-					level.Error(logger).Log("err", err)
-					continue
-				}
-
-				numPingStats := len(routeMatrix.PingStats)
-
-				core.Debug("Number of ping stats to be published: %d", numPingStats)
-				if numPingStats > 0 {
-					if err := pingStatsPublisher.Publish(ctx, routeMatrix.PingStats); err != nil {
+				if len(routeMatrixBuffer) > 0 {
+					var routeMatrix routing.RouteMatrix
+					readStream := encoding.CreateReadStream(routeMatrixBuffer)
+					if err := routeMatrix.Serialize(readStream); err != nil {
 						level.Error(logger).Log("err", err)
-						errChan <- err
+						continue
+					}
+
+					numPingStats := len(routeMatrix.PingStats)
+
+					core.Debug("Number of ping stats to be published: %d", numPingStats)
+					if numPingStats > 0 {
+						if err := pingStatsPublisher.Publish(ctx, routeMatrix.PingStats); err != nil {
+							level.Error(logger).Log("err", err)
+							errChan <- err
+						}
 					}
 				}
 			}
@@ -267,19 +269,21 @@ func mainReturnWithCode() int {
 
 				routeMatrixBuffer := frontendClient.GetRouteMatrix()
 
-				var routeMatrix routing.RouteMatrix
-				readStream := encoding.CreateReadStream(routeMatrixBuffer)
-				if err := routeMatrix.Serialize(readStream); err != nil {
-					level.Error(logger).Log("err", err)
-					continue
-				}
-
-				numRelayStats := len(routeMatrix.RelayStats)
-
-				core.Debug("Number of relay stats to be published: %d", len(routeMatrix.RelayStats))
-				if numRelayStats > 0 {
-					if err := relayStatsPublisher.Publish(ctx, routeMatrix.RelayStats); err != nil {
+				if len(routeMatrixBuffer) > 0 {
+					var routeMatrix routing.RouteMatrix
+					readStream := encoding.CreateReadStream(routeMatrixBuffer)
+					if err := routeMatrix.Serialize(readStream); err != nil {
 						level.Error(logger).Log("err", err)
+						continue
+					}
+
+					numRelayStats := len(routeMatrix.RelayStats)
+
+					core.Debug("Number of relay stats to be published: %d", len(routeMatrix.RelayStats))
+					if numRelayStats > 0 {
+						if err := relayStatsPublisher.Publish(ctx, routeMatrix.RelayStats); err != nil {
+							level.Error(logger).Log("err", err)
+						}
 					}
 				}
 			}
