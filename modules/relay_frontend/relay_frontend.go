@@ -124,14 +124,14 @@ func (r *RelayFrontendSvc) ResetCachedMatrix(matrixType string) error {
 		emptyCostMatrixBin := emptyCostMatrix.GetResponseData()
 		r.costMatrix.SetMatrix(emptyCostMatrixBin)
 	case MatrixTypeNormal:
-		emptyRouteMatrix := routing.RouteMatrix{Version: routing.RouteMatrixSerializeVersion}
-		err := emptyRouteMatrix.WriteResponseData(10000)
+		emptyrouteMatrix := routing.RouteMatrix{Version: routing.RouteMatrixSerializeVersion}
+		err := emptyrouteMatrix.WriteResponseData(10000)
 		if err != nil {
 			return err
 		}
 
-		emptyRouteMatrixBin := emptyRouteMatrix.GetResponseData()
-		r.routeMatrix.SetMatrix(emptyRouteMatrixBin)
+		emptyrouteMatrixBin := emptyrouteMatrix.GetResponseData()
+		r.routeMatrix.SetMatrix(emptyrouteMatrixBin)
 	}
 
 	return nil
@@ -319,6 +319,14 @@ func (r *RelayFrontendSvc) GetRelayDashboardHandlerFunc(username string, passwor
 		w.WriteHeader(http.StatusOK)
 		w.Write(bin)
 	}
+}
+
+func (r *RelayFrontendSvc) GetRouteMatrix() []byte {
+	return r.routeMatrix.GetMatrix()
+}
+
+func (r *RelayFrontendSvc) GetCostMatrix() []byte {
+	return r.costMatrix.GetMatrix()
 }
 
 func (r *RelayFrontendSvc) GetRelayDashboardDataHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
