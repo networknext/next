@@ -229,8 +229,7 @@ func mainReturnWithCode() int {
 			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
-				// TODO: Get pingstats from route matrix
-				routeMatrixBuffer := frontendClient.RouteMatrix.GetMatrix()
+				routeMatrixBuffer := frontendClient.GetRouteMatrix()
 
 				var routeMatrix routing.RouteMatrix
 				readStream := encoding.CreateReadStream(routeMatrixBuffer)
@@ -239,7 +238,6 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				// TODO: This shouldn't be necessary - fix circular dependency issuue with routing and analytics
 				numPingStats := len(routeMatrix.PingStats)
 				if numPingStats > 0 {
 					if err := pingStatsPublisher.Publish(ctx, routeMatrix.PingStats); err != nil {
@@ -260,9 +258,8 @@ func mainReturnWithCode() int {
 			syncTimer := helpers.NewSyncTimer(publishInterval)
 			for {
 				syncTimer.Run()
-				// TODO: Grab relay stats from route matrix
 
-				routeMatrixBuffer := frontendClient.RouteMatrix.GetMatrix()
+				routeMatrixBuffer := frontendClient.GetRouteMatrix()
 
 				var routeMatrix routing.RouteMatrix
 				readStream := encoding.CreateReadStream(routeMatrixBuffer)

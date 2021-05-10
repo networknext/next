@@ -42,7 +42,7 @@ type RelayFrontendSvc struct {
 
 	// cached matrix
 	costMatrix  *helpers.MatrixData
-	RouteMatrix *helpers.MatrixData
+	routeMatrix *helpers.MatrixData
 }
 
 func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*RelayFrontendSvc, error) {
@@ -54,7 +54,7 @@ func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*Rel
 	r.store = store
 	r.createdAt = time.Now().UTC()
 	r.costMatrix = new(helpers.MatrixData)
-	r.RouteMatrix = new(helpers.MatrixData)
+	r.routeMatrix = new(helpers.MatrixData)
 	return r, nil
 }
 
@@ -95,7 +95,7 @@ func (r *RelayFrontendSvc) cacheMatrixInternal(matrixAddr, matrixType string) er
 	case MatrixTypeCost:
 		r.costMatrix.SetMatrix(matrixBin)
 	case MatrixTypeNormal:
-		r.RouteMatrix.SetMatrix(matrixBin)
+		r.routeMatrix.SetMatrix(matrixBin)
 	}
 
 	return nil
@@ -117,14 +117,14 @@ func (r *RelayFrontendSvc) ResetCachedMatrix(matrixType string) error {
 		emptyCostMatrixBin := emptyCostMatrix.GetResponseData()
 		r.costMatrix.SetMatrix(emptyCostMatrixBin)
 	case MatrixTypeNormal:
-		emptyRouteMatrix := routing.RouteMatrix{Version: routing.RouteMatrixSerializeVersion}
-		err := emptyRouteMatrix.WriteResponseData(10000)
+		emptyrouteMatrix := routing.RouteMatrix{Version: routing.RouteMatrixSerializeVersion}
+		err := emptyrouteMatrix.WriteResponseData(10000)
 		if err != nil {
 			return err
 		}
 
-		emptyRouteMatrixBin := emptyRouteMatrix.GetResponseData()
-		r.RouteMatrix.SetMatrix(emptyRouteMatrixBin)
+		emptyrouteMatrixBin := emptyrouteMatrix.GetResponseData()
+		r.routeMatrix.SetMatrix(emptyrouteMatrixBin)
 	}
 
 	return nil
@@ -201,7 +201,7 @@ func (r *RelayFrontendSvc) GetCostMatrixHandlerFunc() func(w http.ResponseWriter
 func (r *RelayFrontendSvc) GetRouteMatrixHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
-		data := r.RouteMatrix.GetMatrix()
+		data := r.routeMatrix.GetMatrix()
 		if len(data) == 0 {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -297,4 +297,13 @@ func (r *RelayFrontendSvc) GetRelayDashboardHandlerFunc(username string, passwor
 		w.WriteHeader(http.StatusOK)
 		w.Write(bin)
 	}
+}
+
+func (r *RelayFrontendSvc) GetRouteMatrix() []byte {
+	return r.routeMatrix.GetMatrix()
+}
+
+func (r *RelayFrontendSvc) GetCostMatrix() []byte {
+	return r.costMatrix.GetMatrix()
+
 }
