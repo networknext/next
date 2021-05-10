@@ -487,3 +487,102 @@ func SeedSQLStorage(
 
 	return nil
 }
+
+// Seeds the SQLite storer for the staging environment
+func SeedSQLStorageStaging(
+	ctx context.Context,
+	db Storer,
+	database *routing.DatabaseBinWrapper,
+) error {
+	// When using SQLite it is ok to "seed" each version of the storer
+	// and let them sync up later on. When using a local PostgreSQL server
+	// we can only seed storage once, externally (via SQL file).
+	// TODO: setup "only seed once" checking for PostgreSQL
+	var err error
+
+	pgsql, err := envvar.GetBool("FEATURE_POSTGRESQL", false)
+	if err != nil {
+		return fmt.Errorf("could not parse FEATURE_POSTGRESQL boolean: %v", err)
+	}
+
+	// only seed if we're using sqlite3
+	if pgsql {
+		return nil
+	}
+
+	// Add customers manually in order by customerID
+
+	if err = db.AddCustomer(ctx, routing.Customer{
+		Name:                   "Ghost Army",
+		Code:                   "ghost-army",
+		AutomaticSignInDomains: "ghost_army.com.net.gov",
+		DatabaseID:             1,
+	}); err != nil {
+		return fmt.Errorf("AddCustomer() err: %w", err)
+	}
+
+	if err = db.AddCustomer(ctx, routing.Customer{
+		Name:                   "staging seller",
+		Code:                   "stagingseller",
+		AutomaticSignInDomains: "",
+		DatabaseID:             2,
+	}); err != nil {
+		return fmt.Errorf("AddCustomer() err: %w", err)
+	}
+
+	if err = db.AddCustomer(ctx, routing.Customer{
+		Name:                   "Network Next",
+		Code:                   "next",
+		AutomaticSignInDomains: "networknext.com",
+		DatabaseID:             3,
+	}); err != nil {
+		return fmt.Errorf("AddCustomer() err: %w", err)
+	}
+
+	// Add buyers, as well as their internal configs and route shaders
+	for buyerID, buyer := range database.BuyerMap {
+		if err = db.AddBuyer(ctx, buyer); err != nil {
+			return fmt.Errorf("AddBuyer() err: %w", err)
+		}
+		if err = db.AddInternalConfig(ctx, buyer.InternalConfig, buyerID); err != nil {
+			return fmt.Errorf("AddInternalConfig() err: %w", err)
+		}
+		if err = db.AddRouteShader(ctx, buyer.RouteShader, buyerID); err != nil {
+			return fmt.Errorf("AddRouteShader() err: %w", err)
+		}
+	}
+
+	// Add sellers
+	for _, seller := range database.SellerMap {
+		if err = db.AddSeller(ctx, seller); err != nil {
+			return fmt.Errorf("AddSeller() err: %w", err)
+		}
+	}
+
+	// Add datacenters
+	for _, datacenter := range database.DatacenterMap {
+		if err = db.AddDatacenter(ctx, datacenter); err != nil {
+			return fmt.Errorf("AddDatacenter() err: %w", err)
+		}
+	}
+
+	// Add datacenter maps
+	for buyerID, _ := range database.BuyerMap {
+		if dcMaps, ok := database.DatacenterMaps[buyerID]; ok {
+			for _, dcMap := range dcMaps {
+				if err = db.AddDatacenterMap(ctx, dcMap); err != nil {
+					return fmt.Errorf("AddDatacenterMap() err: %w", err)
+				}
+			}
+		}
+	}
+
+	// Add relays
+	for _, relay := range database.Relays {
+		if err = db.AddRelay(ctx, relay); err != nil {
+			return fmt.Errorf("AddRelay() err: %w", err)
+		}
+	}
+
+	return nil
+}

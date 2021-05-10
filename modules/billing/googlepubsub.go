@@ -98,6 +98,8 @@ func (biller *GooglePubSubBiller) Bill(ctx context.Context, entry *BillingEntry)
 
 	entryBytes := WriteBillingEntry(entry)
 
+	client.Metrics.PubsubBillingEntrySize.Set(float64(len(entryBytes)))
+
 	data := make([]byte, 4+len(entryBytes))
 	var offset int
 	encoding.WriteUint32(data, &offset, uint32(len(entryBytes)))
@@ -116,6 +118,7 @@ func (biller *GooglePubSubBiller) Bill(ctx context.Context, entry *BillingEntry)
 		result = client.Topic.Publish(ctx, &pubsub.Message{Data: client.buffer})
 
 		client.Metrics.EntriesFlushed.Add(float64(client.bufferMessageCount))
+
 		client.buffer = make([]byte, 0)
 		client.bufferMessageCount = 0
 	}
