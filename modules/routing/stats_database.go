@@ -3,6 +3,8 @@ package routing
 import (
 	"math"
 	"sync"
+
+	"github.com/networknext/backend/modules/analytics"
 )
 
 const (
@@ -90,6 +92,52 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 	entry.JitterHistory = HistoryNotSet()
 	entry.PacketLossHistory = HistoryNotSet()
 	return entry
+}
+
+func (sdb *StatsDatabase) ExtractPingStats(maxJitter float32, maxPacketLoss float32, instanceID string, isDebug bool) []analytics.PingStatsEntry {
+	length := TriMatrixLength(len(sdb.Entries))
+	entries := make([]analytics.PingStatsEntry, length)
+
+	if length > 0 { // prevent crash with only 1 relay
+		ids := make([]uint64, len(sdb.Entries))
+
+		idx := 0
+		for k := range sdb.Entries {
+			ids[idx] = k
+			idx++
+		}
+
+		for i := 1; i < len(ids); i++ {
+			for j := 0; j < i; j++ {
+				idA := ids[i]
+				idB := ids[j]
+
+				rtt, jitter, pl := sdb.GetSample(idA, idB)
+				routable := rtt != InvalidRouteValue && jitter != InvalidRouteValue && pl != InvalidRouteValue
+
+				if jitter > maxJitter {
+					routable = false
+				}
+
+				if pl > maxPacketLoss {
+					routable = false
+				}
+
+				entries[TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
+					RelayA:     idA,
+					RelayB:     idB,
+					RTT:        rtt,
+					Jitter:     jitter,
+					PacketLoss: pl,
+					Routable:   routable,
+					InstanceID: instanceID,
+					Debug:      isDebug,
+				}
+			}
+		}
+	}
+
+	return entries
 }
 
 // Process ping stats stats coming up from a relay.

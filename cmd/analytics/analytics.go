@@ -215,104 +215,102 @@ func main() {
 		}
 	}
 
-	/*
-		var relayStatsWriter analytics.RelayStatsWriter = &analytics.NoOpRelayStatsWriter{}
-		{
-			// BigQuery
-			if gcpOK {
-				if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_RELAY_STATS"); ok {
-					bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-					if err != nil {
-						level.Error(logger).Log("err", err)
-						os.Exit(1)
-					}
-					b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, logger, &analyticsMetrics.RelayStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_RELAY_STATS"))
-					relayStatsWriter = &b
-
-					go b.WriteLoop(ctx)
-				}
-			}
-
-			_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-			if emulatorOK {
-				gcpProjectID = "local"
-
-				relayStatsWriter = &analytics.LocalRelayStatsWriter{
-					Logger: logger,
-				}
-
-				level.Info(logger).Log("msg", "detected pubsub emulator")
-			}
-
-			// google pubsub forwarder
-			if gcpOK || emulatorOK {
-				topicName := "relay_stats"
-				subscriptionName := "relay_stats"
-
-				pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-				defer cancelFunc()
-
-				pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, &analyticsMetrics.RelayStatsMetrics, gcpProjectID, topicName, subscriptionName)
+	var relayStatsWriter analytics.RelayStatsWriter = &analytics.NoOpRelayStatsWriter{}
+	{
+		// BigQuery
+		if gcpOK {
+			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_RELAY_STATS"); ok {
+				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
+				b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, logger, &analyticsMetrics.RelayStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_RELAY_STATS"))
+				relayStatsWriter = &b
 
-				go pubsubForwarder.Forward(ctx)
+				go b.WriteLoop(ctx)
 			}
 		}
 
-		var relayNamesHashWriter analytics.RouteMatrixStatsWriter = &analytics.NoOpRouteMatrixStatsWriter{}
-		{
-			// BigQuery
-			if gcpOK {
-				if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ROUTE_MATRIX_STATS"); ok {
-					bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-					if err != nil {
-						level.Error(logger).Log("err", err)
-						os.Exit(1)
-					}
-					b, err := analytics.NewGoogleBigQueryRouteMatrixStatsWriter(bqClient, logger, &analyticsMetrics.RouteMatrixStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ROUTE_MATRIX_STATS"))
-					if err != nil {
-						level.Error(logger).Log("err", err)
-						os.Exit(1)
-					}
+		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+		if emulatorOK {
+			gcpProjectID = "local"
 
-					relayNamesHashWriter = &b
-
-					go b.WriteLoop(ctx)
-				}
+			relayStatsWriter = &analytics.LocalRelayStatsWriter{
+				Logger: logger,
 			}
 
-			_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-			if emulatorOK {
-				gcpProjectID = "local"
-
-				relayNamesHashWriter = &analytics.LocalRouteMatrixStatsWriter{
-					Logger: logger,
-				}
-
-				level.Info(logger).Log("msg", "detected pubsub emulator")
-			}
-
-			// google pubsub forwarder
-			if gcpOK || emulatorOK {
-				topicName := "route_matrix_stats"
-				subscriptionName := "route_matrix_stats"
-
-				pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-				defer cancelFunc()
-
-				pubsubForwarder, err := analytics.NewRouteMatrixStatsPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, &analyticsMetrics.RouteMatrixStatsMetrics, gcpProjectID, topicName, subscriptionName)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
-
-				go pubsubForwarder.Forward(ctx)
-			}
+			level.Info(logger).Log("msg", "detected pubsub emulator")
 		}
-	*/
+
+		// google pubsub forwarder
+		if gcpOK || emulatorOK {
+			topicName := "relay_stats"
+			subscriptionName := "relay_stats"
+
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+			defer cancelFunc()
+
+			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, &analyticsMetrics.RelayStatsMetrics, gcpProjectID, topicName, subscriptionName)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+				os.Exit(1)
+			}
+
+			go pubsubForwarder.Forward(ctx)
+		}
+	}
+
+	/* 	var relayNamesHashWriter analytics.RouteMatrixStatsWriter = &analytics.NoOpRouteMatrixStatsWriter{}
+	   	{
+	   		// BigQuery
+	   		if gcpOK {
+	   			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ROUTE_MATRIX_STATS"); ok {
+	   				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+	   				if err != nil {
+	   					level.Error(logger).Log("err", err)
+	   					os.Exit(1)
+	   				}
+	   				b, err := analytics.NewGoogleBigQueryRouteMatrixStatsWriter(bqClient, logger, &analyticsMetrics.RouteMatrixStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ROUTE_MATRIX_STATS"))
+	   				if err != nil {
+	   					level.Error(logger).Log("err", err)
+	   					os.Exit(1)
+	   				}
+
+	   				relayNamesHashWriter = &b
+
+	   				go b.WriteLoop(ctx)
+	   			}
+	   		}
+
+	   		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	   		if emulatorOK {
+	   			gcpProjectID = "local"
+
+	   			relayNamesHashWriter = &analytics.LocalRouteMatrixStatsWriter{
+	   				Logger: logger,
+	   			}
+
+	   			level.Info(logger).Log("msg", "detected pubsub emulator")
+	   		}
+
+	   		// google pubsub forwarder
+	   		if gcpOK || emulatorOK {
+	   			topicName := "route_matrix_stats"
+	   			subscriptionName := "route_matrix_stats"
+
+	   			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+	   			defer cancelFunc()
+
+	   			pubsubForwarder, err := analytics.NewRouteMatrixStatsPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, &analyticsMetrics.RouteMatrixStatsMetrics, gcpProjectID, topicName, subscriptionName)
+	   			if err != nil {
+	   				level.Error(logger).Log("err", err)
+	   				os.Exit(1)
+	   			}
+
+	   			go pubsubForwarder.Forward(ctx)
+	   		}
+	   	} */
 
 	// Setup the stats print routine
 	{
