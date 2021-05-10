@@ -518,7 +518,7 @@ func SeedSQLStorageStaging(
 		AutomaticSignInDomains: "ghost_army.com.net.gov",
 		DatabaseID:             1,
 	}); err != nil {
-		return fmt.Errorf("AddCustomer() err: %w", err)
+		return fmt.Errorf("AddCustomer() ghost army err: %v", err)
 	}
 
 	if err = db.AddCustomer(ctx, routing.Customer{
@@ -527,7 +527,7 @@ func SeedSQLStorageStaging(
 		AutomaticSignInDomains: "",
 		DatabaseID:             2,
 	}); err != nil {
-		return fmt.Errorf("AddCustomer() err: %w", err)
+		return fmt.Errorf("AddCustomer() staging seller err: %v", err)
 	}
 
 	if err = db.AddCustomer(ctx, routing.Customer{
@@ -536,33 +536,45 @@ func SeedSQLStorageStaging(
 		AutomaticSignInDomains: "networknext.com",
 		DatabaseID:             3,
 	}); err != nil {
-		return fmt.Errorf("AddCustomer() err: %w", err)
+		return fmt.Errorf("AddCustomer() next err: %v", err)
 	}
 
-	// Add buyers, as well as their internal configs and route shaders
-	for buyerID, buyer := range database.BuyerMap {
-		if err = db.AddBuyer(ctx, buyer); err != nil {
-			return fmt.Errorf("AddBuyer() err: %w", err)
-		}
-		if err = db.AddInternalConfig(ctx, buyer.InternalConfig, buyerID); err != nil {
-			return fmt.Errorf("AddInternalConfig() err: %w", err)
-		}
-		if err = db.AddRouteShader(ctx, buyer.RouteShader, buyerID); err != nil {
-			return fmt.Errorf("AddRouteShader() err: %w", err)
-		}
+	// Add buyers in order
+	nextBuyerID := uint64(13672574147039585173)
+	stagingSellerBuyerID := uint64(13053258624167246632)
+	ghostArmyBuyerID := uint64(0)
+
+	if err = db.AddBuyer(ctx, database.BuyerMap[nextBuyerID]); err != nil {
+		return fmt.Errorf("AddBuyer() next err: %v", err)
+	}
+	if err = db.AddBuyer(ctx, database.BuyerMap[stagingSellerBuyerID]); err != nil {
+		return fmt.Errorf("AddBuyer() staging seller err: %v", err)
+	}
+	if err = db.AddBuyer(ctx, database.BuyerMap[ghostArmyBuyerID]); err != nil {
+		return fmt.Errorf("AddBuyer() ghost army err: %v", err)
 	}
 
 	// Add sellers
 	for _, seller := range database.SellerMap {
 		if err = db.AddSeller(ctx, seller); err != nil {
-			return fmt.Errorf("AddSeller() err: %w", err)
+			return fmt.Errorf("AddSeller() err: %v", err)
+		}
+	}
+
+	// Add buyer internal configs and route shaders
+	for buyerID, buyer := range database.BuyerMap {
+		if err = db.AddInternalConfig(ctx, buyer.InternalConfig, buyerID); err != nil {
+			return fmt.Errorf("AddInternalConfig() err: %v", err)
+		}
+		if err = db.AddRouteShader(ctx, buyer.RouteShader, buyerID); err != nil {
+			return fmt.Errorf("AddRouteShader() err: %v", err)
 		}
 	}
 
 	// Add datacenters
 	for _, datacenter := range database.DatacenterMap {
 		if err = db.AddDatacenter(ctx, datacenter); err != nil {
-			return fmt.Errorf("AddDatacenter() err: %w", err)
+			return fmt.Errorf("AddDatacenter() err: %v", err)
 		}
 	}
 
@@ -571,7 +583,7 @@ func SeedSQLStorageStaging(
 		if dcMaps, ok := database.DatacenterMaps[buyerID]; ok {
 			for _, dcMap := range dcMaps {
 				if err = db.AddDatacenterMap(ctx, dcMap); err != nil {
-					return fmt.Errorf("AddDatacenterMap() err: %w", err)
+					return fmt.Errorf("AddDatacenterMap() err: %v", err)
 				}
 			}
 		}
@@ -580,7 +592,7 @@ func SeedSQLStorageStaging(
 	// Add relays
 	for _, relay := range database.Relays {
 		if err = db.AddRelay(ctx, relay); err != nil {
-			return fmt.Errorf("AddRelay() err: %w", err)
+			return fmt.Errorf("AddRelay() err: %v", err)
 		}
 	}
 
