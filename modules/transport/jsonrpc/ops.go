@@ -782,6 +782,9 @@ type JSAddRelayArgs struct {
 	StartDate           string `json:"startDate"`
 	EndDate             string `json:"endDate"`
 	Type                int64  `json:"machineType"`
+	Notes               string `json:"notes"`
+	BillingSupplier     string `json:"billingSupplier"`
+	Version             string `json:"relay_version"`
 }
 
 type JSAddRelayReply struct{}
@@ -835,6 +838,9 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		BWRule:              routing.BandWidthRule(args.BWRule),
 		ContractTerm:        int32(args.ContractTerm),
 		Type:                routing.MachineType(args.Type),
+		Notes:               args.Notes,
+		BillingSupplier:     args.BillingSupplier,
+		Version:             args.Version,
 	}
 
 	var internalAddr *net.UDPAddr
@@ -1362,6 +1368,7 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		DatabaseID:          routingRelay.DatabaseID,
 		DatacenterID:        routingRelay.Datacenter.ID,
 		BillingSupplier:     routingRelay.BillingSupplier,
+		Version:             routingRelay.Version,
 	}
 
 	reply.Relay = relay
@@ -1399,7 +1406,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		}
 
 	// net.UDPAddr, time.Time - all sent to storer as strings
-	case "Addr", "InternalAddr", "ManagementAddr", "SSHUser", "StartDate", "EndDate", "BillingSupplier":
+	case "Addr", "InternalAddr", "ManagementAddr", "SSHUser", "StartDate", "EndDate", "BillingSupplier", "Version":
 		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
