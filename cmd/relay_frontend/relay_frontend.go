@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 	"sync"
 	"time"
 
@@ -52,7 +53,7 @@ func mainReturnWithCode() int {
 	startTime := time.Now().In(est)
 
 	// Setup the service
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	gcpProjectID := backend.GetGCPProjectID()
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
@@ -324,6 +325,8 @@ func mainReturnWithCode() int {
 		}()
 	}
 
+	errChan := make(chan error, 1)
+
 	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		statusMutex.RLock()
@@ -346,7 +349,8 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("msg", "unable to parse JWT_AUDIENCE environment variable")
 	}
 
-	fmt.Printf("starting http server\n")
+	port := envvar.Get("PORT", "30005")
+	fmt.Printf("starting http server on port %s\n", port)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/health", transport.HealthHandlerFunc())
@@ -361,12 +365,15 @@ func mainReturnWithCode() int {
 	router.Handle("/debug/vars", expvar.Handler())
 
 	// Wrap the following endpoints in auth and CORS middleware
-	//	Note: the next tool is unaware of CORS and its requests simply pass through
+	// NOTE: the next tool is unaware of CORS and its requests simply pass through
 	costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
 	router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
 
 	relaysCsvHandler := http.HandlerFunc(frontendClient.GetRelayBackendHandlerFunc("/relays"))
 	router.Handle("/relays", middleware.PlainHttpAuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
+
+	jsonDashboardHandler := http.HandlerFunc(frontendClient.GetRelayDashboardDataHandlerFunc())
+	router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(audience, jsonDashboardHandler, strings.Split(allowedOrigins, ",")))
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
@@ -377,24 +384,35 @@ func mainReturnWithCode() int {
 	}
 
 	go func() {
-		port := envvar.Get("PORT", "30005")
 
 		_ = level.Info(logger).Log("addr", ":"+port)
 
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
 			_ = level.Error(logger).Log("err", err)
-			os.Exit(1) // TODO: don't os.Exit() here, but find a way to exit
+			errChan <- err
 		}
 	}()
 
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case <-sigint:
-		cancelFunc()
+	case <-termChan: // Exit with an error code of 0 if we receive SIGINT or SIGTERM
+		level.Debug(logger).Log("msg", "Received shutdown signal")
+		fmt.Println("Received shutdown signal.")
+
+		cancel()
+
+		level.Debug(logger).Log("msg", "Successfully shutdown.")
+		fmt.Println("Successfully shutdown.")
+		return 0
+	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		cancel()
+		return 1
 	}
+
 	return 0
 }
 

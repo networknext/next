@@ -83,8 +83,7 @@ func init() {
 
 	relayArray_internal = database_internal.Relays
 
-	gcpProjectID := backend.GetGCPProjectID()
-	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal, gcpProjectID)
+	backend.SortAndHashRelayArray(relayArray_internal, relayHash_internal)
 	// backend.DisplayLoadedRelays(relayArray_internal)
 
 	binCreator = database_internal.Creator
@@ -299,7 +298,7 @@ func mainReturnWithCode() int {
 					// Get the new relay array
 					relayArrayNew := databaseNew.Relays
 					// Proceed to fill up the new relay hash
-					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew, gcpProjectID)
+					backend.SortAndHashRelayArray(relayArrayNew, relayHashNew)
 
 					// Pointer swap the relay bin wrapper
 					databaseMutex.Lock()
@@ -951,6 +950,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
+	router.HandleFunc("/relay_dashboard_data", transport.RelayDashboardDataHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, maxJitter))
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 	router.HandleFunc("/dest_relays", destRelayFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())

@@ -97,6 +97,7 @@ create table banned_users (
 
 create table datacenters (
   id integer primary key autoincrement,
+  hex_id varchar(16),
   display_name varchar not null unique,
   latitude numeric not null,
   longitude numeric not null,
@@ -128,11 +129,13 @@ create table relays (
   datacenter integer not null,
   machine_type integer not null,
   relay_state integer not null,
+  billing_supplier integer,
   notes varchar,
   constraint fk_bw_billing_rule foreign key (bw_billing_rule) references bw_billing_rules(id),
   constraint fk_datacenter foreign key (datacenter) references datacenters(id),
   constraint fk_machine_type foreign key (machine_type) references machine_types(id),
-  constraint fk_relay_state foreign key (relay_state) references relay_states(id)
+  constraint fk_relay_state foreign key (relay_state) references relay_states(id),
+  constraint fk_billing_supplier foreign key (billing_supplier) references sellers(id)
 );
 
 -- datacenter_maps is a junction table between dcs and buyers
@@ -149,12 +152,12 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/03/09 09:25:23
+-- File generation: 2021/05/06 13:51:17
 
 -- machine_types
 insert into machine_types values (0, 'none');
-insert into machine_types values (1, 'vm');
-insert into machine_types values (2, 'bare-metal');
+insert into machine_types values (1, 'bare-metal');
+insert into machine_types values (2, 'vm');
 
 -- bw_billing_rules
 insert into bw_billing_rules values (0, 'none');
