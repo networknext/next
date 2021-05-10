@@ -235,7 +235,7 @@ func mainReturnWithCode() int {
 				syncTimer.Run()
 				routeMatrixBuffer := frontendClient.GetRouteMatrix()
 
-				var routeMatrix routing.RouteMatrix
+				var routeMatrix *routing.RouteMatrix
 				readStream := encoding.CreateReadStream(routeMatrixBuffer)
 				if err := routeMatrix.Serialize(readStream); err != nil {
 					level.Error(logger).Log("err", err)
@@ -267,7 +267,7 @@ func mainReturnWithCode() int {
 
 				routeMatrixBuffer := frontendClient.GetRouteMatrix()
 
-				var routeMatrix routing.RouteMatrix
+				var routeMatrix *routing.RouteMatrix
 				readStream := encoding.CreateReadStream(routeMatrixBuffer)
 				if err := routeMatrix.Serialize(readStream); err != nil {
 					level.Error(logger).Log("err", err)
