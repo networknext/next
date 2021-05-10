@@ -688,6 +688,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			EndDate:             r.EndDate,
 			Type:                r.Type,
 			Notes:               r.Notes,
+			Version:             r.Version,
 			DatabaseID:          r.DatabaseID,
 		}
 
