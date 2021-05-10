@@ -19,6 +19,7 @@ import (
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
@@ -242,6 +243,8 @@ func mainReturnWithCode() int {
 				}
 
 				numPingStats := len(routeMatrix.PingStats)
+
+				core.Debug("Number of ping stats to be published: %d", numPingStats)
 				if numPingStats > 0 {
 					if err := pingStatsPublisher.Publish(ctx, routeMatrix.PingStats); err != nil {
 						level.Error(logger).Log("err", err)
@@ -271,7 +274,10 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				if len(routeMatrix.RelayStats) > 0 {
+				numRelayStats := len(routeMatrix.RelayStats)
+
+				core.Debug("Number of relay stats to be published: %d", len(routeMatrix.RelayStats))
+				if numRelayStats > 0 {
 					if err := relayStatsPublisher.Publish(ctx, routeMatrix.RelayStats); err != nil {
 						level.Error(logger).Log("err", err)
 					}
