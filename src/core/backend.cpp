@@ -397,7 +397,7 @@ namespace core
       double cpu_percent = os::GetCPU();
       if ( cpu_percent > 100.0 )
         cpu_percent = 100.0;
-      cpu = (uint8_t) cpu_percent;
+      cpu = (uint8_t) floor(cpu_percent + 0.5f);
       #endif
       encoding::write_uint8(req, index, cpu);
     }
