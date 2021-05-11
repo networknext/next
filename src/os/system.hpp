@@ -63,8 +63,6 @@ namespace os
        &guest,
        &guest_nice);
 
-      // iowait is added to non-idle because the relay is basically the only thing running on the servers
-      // thus waiting is consumed cpu time since threads are locked to cores
       int non_idle = user + nice + system + irq + softirq + steal + guest + guest_nice + iowait;
 
       int total = idle + non_idle;
