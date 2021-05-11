@@ -1,8 +1,8 @@
 package encoding
 
 import (
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestBitpacker(t *testing.T) {
@@ -22,7 +22,7 @@ func TestBitpacker(t *testing.T) {
 
 	data := [32]byte{}
 	for i := range data {
-		data[i] = byte(65+i)
+		data[i] = byte(65 + i)
 	}
 
 	writer.WriteBits(0, 1)

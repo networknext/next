@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/networknext/backend/modules/analytics"
+	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
-	"github.com/networknext/backend/modules/common/helpers"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -359,6 +360,8 @@ func TestRelayFrontendSvc_ResetRouteMatrix(t *testing.T) {
 		CreatedAt:          0,
 		Version:            routing.RouteMatrixSerializeVersion,
 		DestRelays:         []bool{},
+		PingStats:          []analytics.PingStatsEntry{},
+		RelayStats:         []analytics.RelayStatsEntry{},
 	}
 
 	receivedRouteMatrixBin := svc.routeMatrix.GetMatrix()

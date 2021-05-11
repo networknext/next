@@ -50,6 +50,7 @@ func TestInsertSQL(t *testing.T) {
 	var outerBuyer routing.Buyer
 	var outerSeller routing.Seller
 	var outerDatacenter routing.Datacenter
+	var initialRelayVersion string
 
 	// currentLocation, err := os.Getwd()
 	// assert.NoError(t, err)
@@ -190,17 +191,20 @@ func TestInsertSQL(t *testing.T) {
 		_, err = rand.Read(publicKey)
 		assert.NoError(t, err)
 
+		initialRelayVersion = "2.0.6"
+
 		// fields not stored in the database are not tested here
 		relay := routing.Relay{
-			ID:             rid,
-			Name:           "test.1",
-			Addr:           *addr,
-			InternalAddr:   *internalAddr,
-			ManagementAddr: "1.2.3.4",
-			SSHPort:        22,
-			SSHUser:        "fred",
-			MaxSessions:    1000,
-			PublicKey:      publicKey,
+			ID:              rid,
+			Name:            "test.1",
+			Addr:            *addr,
+			InternalAddr:    *internalAddr,
+			ManagementAddr:  "1.2.3.4",
+			SSHPort:         22,
+			SSHUser:         "fred",
+			MaxSessions:     1000,
+			PublicKey:       publicKey,
+			BillingSupplier: outerSeller.ShortName,
 			// Datacenter:     outerDatacenter,
 			MRC:                 19700000000000,
 			Overage:             26000000000000,
@@ -213,6 +217,7 @@ func TestInsertSQL(t *testing.T) {
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
 			Notes:               "the original notes",
+			Version:             initialRelayVersion,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -228,9 +233,6 @@ func TestInsertSQL(t *testing.T) {
 		// check only the fields set above
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
-
-		fmt.Printf("checkRelay.DatabaseID: %d\n", checkRelay.DatabaseID)
-		fmt.Printf("checkRelay.Addr: %s\n", checkRelay.Addr.String())
 
 		assert.Equal(t, relay.Name, checkRelay.Name)
 		assert.Equal(t, relay.Addr, checkRelay.Addr)
@@ -259,6 +261,8 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
 		assert.Equal(t, relay.Notes, checkRelay.Notes)
+		assert.Equal(t, outerSeller.ShortName, checkRelay.BillingSupplier)
+		assert.Equal(t, initialRelayVersion, checkRelay.Version)
 
 		// overwrite with SetRelay - test nullable fields, possible in relay_backend
 		var relayMod routing.Relay
@@ -358,6 +362,7 @@ func TestInsertSQL(t *testing.T) {
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
 			Notes:               "the original notes",
+			Version:             initialRelayVersion,
 		}
 
 		err = db.AddRelay(ctx, relay3)
@@ -407,6 +412,7 @@ func TestInsertSQL(t *testing.T) {
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
 			// Notes: "the original notes"
+			Version: initialRelayVersion,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -605,6 +611,7 @@ func TestDeleteSQL(t *testing.T) {
 			Type:           routing.BareMetal,
 			State:          routing.RelayStateMaintenance,
 			Notes:          "the original notes",
+			Version:        "2.0.6",
 		}
 
 		err = db.AddRelay(ctx, relay)
@@ -685,9 +692,9 @@ func TestUpdateSQL(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
-	var customerWithID routing.Customer
+	var customerWithID, customerWithID2 routing.Customer
 	var buyerWithID routing.Buyer
-	var sellerWithID routing.Seller
+	var sellerWithID, sellerWithID2 routing.Seller
 	var datacenterWithID routing.Datacenter
 	// var outerDatacenterMap routing.DatacenterMap
 
@@ -716,6 +723,19 @@ func TestUpdateSQL(t *testing.T) {
 
 		assert.Equal(t, customerWithID.AutomaticSignInDomains, checkCustomer.AutomaticSignInDomains)
 		assert.Equal(t, customerWithID.Name, checkCustomer.Name)
+
+		// we need a second customer to check Relay.BillingSupplier
+		customer2 := routing.Customer{
+			Code:                   "DifferentSupplier",
+			Name:                   "Different Supplier, Ltd.",
+			AutomaticSignInDomains: "differentsupplier.com",
+		}
+
+		err = db.AddCustomer(ctx, customer2)
+		assert.NoError(t, err)
+
+		customerWithID2, err = db.Customer("DifferentSupplier")
+		assert.NoError(t, err)
 
 	})
 
@@ -785,6 +805,24 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, true, sellerWithID.Secret)
 		assert.Equal(t, checkSeller.IngressPriceNibblinsPerGB, sellerWithID.IngressPriceNibblinsPerGB)
 		assert.Equal(t, checkSeller.EgressPriceNibblinsPerGB, sellerWithID.EgressPriceNibblinsPerGB)
+
+		// we need a second seller to test Relay.BillingSupplier
+		seller2 := routing.Seller{
+			ID:                        "DifferentSupplier",
+			ShortName:                 "DifferentSeller",
+			IngressPriceNibblinsPerGB: 10,
+			EgressPriceNibblinsPerGB:  20,
+			Secret:                    true,
+			CustomerID:                customerWithID2.DatabaseID,
+			CompanyCode:               customerWithID2.Code,
+		}
+
+		err = db.AddSeller(ctx, seller2)
+		assert.NoError(t, err)
+
+		sellerWithID2, err = db.Seller("DifferentSupplier")
+		assert.NoError(t, err)
+
 	})
 
 	t.Run("SetDatacenter", func(t *testing.T) {
@@ -984,12 +1022,15 @@ func TestUpdateSQL(t *testing.T) {
 		_, err = rand.Read(publicKey)
 		assert.NoError(t, err)
 
+		initialRelayVersion := "2.0.6"
+
 		relay := routing.Relay{
 			ID:                  rid,
 			Name:                "test.1",
 			Addr:                *addr,
 			InternalAddr:        *internalAddr,
 			ManagementAddr:      "1.2.3.4",
+			BillingSupplier:     sellerWithID.ShortName,
 			SSHPort:             22,
 			SSHUser:             "fred",
 			MaxSessions:         1000,
@@ -1006,6 +1047,7 @@ func TestUpdateSQL(t *testing.T) {
 			Type:                routing.BareMetal,
 			State:               routing.RelayStateMaintenance,
 			Notes:               "the original notes",
+			Version:             initialRelayVersion,
 		}
 
 		err = db.AddRelay(ctx, relay)
@@ -1030,6 +1072,13 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, *newAddr, checkRelay.Addr)
 
+		// relay.Addr (zeroed-out address e.g. relay removal)
+		err = db.UpdateRelay(ctx, rid, "Addr", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, ":0", checkRelay.Addr.String())
+
 		// relay.InternalAddr
 		intAddr, err := net.ResolveUDPAddr("udp", "192.168.0.2:40000")
 		assert.NoError(t, err)
@@ -1038,6 +1087,13 @@ func TestUpdateSQL(t *testing.T) {
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
 		assert.Equal(t, *intAddr, checkRelay.InternalAddr)
+
+		// relay.InternalAddr (null)
+		err = db.UpdateRelay(ctx, rid, "InternalAddr", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, net.UDPAddr{}, checkRelay.InternalAddr)
 
 		// relay.ManagementAddr
 		err = db.UpdateRelay(ctx, rid, "ManagementAddr", "9.8.7.6")
@@ -1073,7 +1129,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
-
 		newPublicKey, err := base64.StdEncoding.DecodeString("1AKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
 		assert.NoError(t, err)
 		assert.Equal(t, newPublicKey, checkRelay.PublicKey)
@@ -1119,6 +1174,13 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, startDateFormatted, checkRelay.StartDate)
 
+		// relay.StartDate (null)
+		err = db.UpdateRelay(ctx, rid, "StartDate", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, time.Time{}, checkRelay.StartDate)
+
 		// relay.EndDate
 		endDate := "July 7, 2025"
 		err = db.UpdateRelay(ctx, rid, "EndDate", endDate)
@@ -1128,6 +1190,13 @@ func TestUpdateSQL(t *testing.T) {
 		endDateFormatted, err := time.Parse("January 2, 2006", endDate)
 		assert.NoError(t, err)
 		assert.Equal(t, endDateFormatted, checkRelay.EndDate)
+
+		// relay.EndDate (null)
+		err = db.UpdateRelay(ctx, rid, "EndDate", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, time.Time{}, checkRelay.EndDate)
 
 		// relay.Type
 		err = db.UpdateRelay(ctx, rid, "Type", float64(2))
@@ -1163,6 +1232,37 @@ func TestUpdateSQL(t *testing.T) {
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
 		assert.Equal(t, "not the original notes", checkRelay.Notes)
+
+		// relay.Notes (null)
+		err = db.UpdateRelay(ctx, rid, "Notes", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "", checkRelay.Notes)
+
+		// relay.BillingSupplier
+		err = db.UpdateRelay(ctx, rid, "BillingSupplier", sellerWithID2.ID)
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, sellerWithID2.ID, checkRelay.BillingSupplier)
+
+		// relay.BillingSupplier (null)
+		err = db.UpdateRelay(ctx, rid, "BillingSupplier", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "", checkRelay.BillingSupplier)
+
+		// relay.Version
+		err = db.UpdateRelay(ctx, rid, "Version", "")
+		assert.Error(t, err)
+
+		err = db.UpdateRelay(ctx, rid, "Version", "7.6.4")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, "7.6.4", checkRelay.Version)
 
 	})
 }

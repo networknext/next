@@ -68,6 +68,7 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 	relay += "  InternalAddr       : " + reply.Relay.InternalAddr + "\n"
 	relay += "  PublicKey          : " + string(reply.Relay.PublicKey) + "\n"
 	relay += "  Datacenter         : " + fmt.Sprintf("%016x", reply.Relay.DatacenterID) + "\n"
+	relay += "  BillingSupplier    : " + fmt.Sprintf("%s", reply.Relay.BillingSupplier) + "\n"
 	relay += "  Seller             : " + reply.Relay.SellerName + "\n"
 	relay += "  NICSpeedMbps       : " + fmt.Sprintf("%d", reply.Relay.NICSpeedMbps) + "\n"
 	relay += "  IncludedBandwidthGB: " + fmt.Sprintf("%d", reply.Relay.IncludedBandwidthGB) + "\n"
@@ -83,6 +84,7 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 	relay += "  StartDate          : " + startDate + "\n"
 	relay += "  EndDate            : " + endDate + "\n"
 	relay += "  Type               : " + fmt.Sprintf("%s", machineType) + "\n"
+	relay += "  Version            : " + reply.Relay.Version + "\n"
 	relay += "  Notes:\n" + reply.Relay.Notes + "\n"
 
 	fmt.Printf("%s\n", relay)
