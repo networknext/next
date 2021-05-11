@@ -392,11 +392,14 @@ namespace core
 
       encoding::write_string(req, index, RELAY_VERSION);
 
+      uint8_t cpu = 0;
       #if defined(linux) || defined(__linux) || defined(__linux__)
-      encoding::write_uint8(req, index, os::GetCPU());
-      #else
-      encoding::write_uint8(req, index, 0);
+      double cpu_percent = os::GetCPU();
+      if ( cpu_percent > 100.0 )
+        cpu_percent = 100.0;
+      cpu = (uint8_t) cpu_percent;
       #endif
+      encoding::write_uint8(req, index, cpu);
     }
 
     // todo: this whole loop here is naff... the retry loop shouldn't occur in place here, but in the regular, 1 sec delay updates!

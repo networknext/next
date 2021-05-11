@@ -79,7 +79,7 @@ namespace os
       prev = curr;
     }
 
-    return usage;
+    return usage * 100.0;
   }
 }  // namespace os
 
