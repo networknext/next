@@ -12,7 +12,7 @@ var UnknownDatacenter = Datacenter{
 type Datacenter struct {
 	ID         uint64
 	Name       string
-	AliasName  string // convenience field in server_handlers.go
+	AliasName  string // TODO: remove (convenience field in server_handlers.go)
 	Location   Location
 	SellerID   int64 // sql FK
 	DatabaseID int64 // sql PK

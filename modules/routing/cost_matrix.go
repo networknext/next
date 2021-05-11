@@ -93,7 +93,7 @@ func (m *CostMatrix) GetResponseData() []byte {
 }
 
 func (m *CostMatrix) WriteResponseData(bufferSize int) error {
-	buffer := make([]byte, bufferSize)	
+	buffer := make([]byte, bufferSize)
 	ws, err := encoding.CreateWriteStream(buffer)
 	if err != nil {
 		return fmt.Errorf("failed to create write stream in cost matrix WriteResponseData(): %v", err)

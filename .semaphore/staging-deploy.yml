@@ -92,6 +92,10 @@ blocks:
           commands:
             - make build-debug-relay-backend-artifacts-staging
             - make publish-debug-relay-backend-artifacts-staging
+        - name: Fake Relays
+          commands:
+            - make build-fake-relays-artifacts-staging
+            - make publish-fake-relays-artifacts-staging
         - name: Fake Server
           commands:
             - make build-fake-server-artifacts-staging

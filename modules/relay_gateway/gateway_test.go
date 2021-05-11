@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -61,8 +62,8 @@ func TestRelayGatewayStart(t *testing.T) {
 	token := crypto.Seal(data, nonce, relayRouterPublicKey, relayPrivateKey)
 
 	updateRequest := transport.RelayUpdateRequest{
-		Version:      2,
-		RelayVersion: "2.0.0",
+		Version:      4,
+		RelayVersion: "2.0.8",
 		Address:      *udp,
 		Token:        token,
 		PingStats: []routing.RelayStatsPing{
@@ -75,9 +76,7 @@ func TestRelayGatewayStart(t *testing.T) {
 		},
 		SessionCount: 0,
 		ShuttingDown: false,
-		TrafficStats: routing.TrafficStats{},
-		CPUUsage:     0,
-		MemUsage:     0,
+		CPU:          0,
 	}
 
 	t.Run("test single update", func(t *testing.T) {
@@ -93,8 +92,9 @@ func TestRelayGatewayStart(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, g)
 
+		var wg sync.WaitGroup
 		// Start the goroutine for receiving messages
-		go g.Start(ctx)
+		go g.Start(ctx, &wg)
 
 		requestBin, err := updateRequest.MarshalBinary()
 		assert.NoError(t, err)
@@ -123,8 +123,9 @@ func TestRelayGatewayStart(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, g)
 
+		var wg sync.WaitGroup
 		// Start the goroutine for receiving messages
-		go g.Start(ctx)
+		go g.Start(ctx, &wg)
 
 		requestBin, err := updateRequest.MarshalBinary()
 		assert.NoError(t, err)
