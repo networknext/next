@@ -720,7 +720,7 @@ func mainReturnWithCode() int {
 			for i := range allRelayData {
 				relay := &allRelayData[i]
 
-				numSessions := relay.PeakTrafficStats.SessionCount
+				numSessions := relay.SessionCount
 
 				var numRouteable uint32 = 0
 				for i := range allRelayData {

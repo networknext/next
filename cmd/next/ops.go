@@ -84,6 +84,7 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 	relay += "  StartDate          : " + startDate + "\n"
 	relay += "  EndDate            : " + endDate + "\n"
 	relay += "  Type               : " + fmt.Sprintf("%s", machineType) + "\n"
+	relay += "  Version            : " + reply.Relay.Version + "\n"
 	relay += "  Notes:\n" + reply.Relay.Notes + "\n"
 
 	fmt.Printf("%s\n", relay)

@@ -220,6 +220,9 @@ type Relay struct {
 
 	// Simple text field for Ops to save data unique to each relay
 	Notes string `json:"notes"`
+
+	// Version, checked by fleet relays to see if they need to update
+	Version string `json:"relay_version"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -306,6 +309,7 @@ func (r *Relay) String() string {
 	relay += "\tEndDate            : " + r.EndDate.String() + "\n"
 	relay += "\tType               : " + fmt.Sprintf("%v", r.Type) + "\n"
 	relay += "\tDatabaseID         : " + fmt.Sprintf("%d", r.DatabaseID) + "\n"
+	relay += "\tVersion            : " + r.Version + "\n"
 	relay += "\tNotes:\n" + fmt.Sprintf("%v", r.Notes) + "\n"
 
 	return relay
