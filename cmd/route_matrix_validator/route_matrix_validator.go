@@ -12,9 +12,9 @@ import (
 
 	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"

@@ -449,6 +449,8 @@ func addRelayJS(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 		StartDate:           r.StartDate,
 		EndDate:             r.EndDate,
 		Type:                int64(machineType),
+		BillingSupplier:     r.BillingSupplier,
+		Version:             r.Version,
 	}
 
 	var reply localjsonrpc.JSAddRelayReply

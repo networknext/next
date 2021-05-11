@@ -10,7 +10,7 @@ const (
 	IPAddressNone = 0
 	IPAddressIPv4 = 1
 	IPAddressIPv6 = 2
-	AddressSize = 19
+	AddressSize   = 19
 )
 
 func WriteBool(data []byte, index *int, value bool) {
