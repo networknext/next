@@ -259,11 +259,11 @@ func (relay *FakeRelay) newRelayPingStats(id uint64, base RouteBase) routing.Rel
 func (relay *FakeRelay) baseUpdate() transport.RelayUpdateRequest {
 	req := transport.RelayUpdateRequest{
 		Version:      uint32(relay.updateVersion),
-		RelayVersion: "2.0.6", // TODO: change to constant in modules/tranpsort/packet_relay
+		RelayVersion: "2.0.8",
 		Address:      relay.data.Addr,
 	}
 
-	if relay.updateVersion >= 2 {
+	if relay.updateVersion >= 3 {
 		req.Token = relay.data.PublicKey
 	}
 
