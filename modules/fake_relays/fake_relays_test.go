@@ -1,13 +1,11 @@
 package fake_relays
 
-// todo
-/*
 import (
 	"encoding/base64"
 	"fmt"
 	"math/rand"
-	// "net/http"
-	// "net/http/httptest"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -25,7 +23,7 @@ func TestFakeNewRelays(t *testing.T) {
 	fakeRelayMetrics := metrics.EmptyFakeRelayMetrics
 
 	t.Run("failed to resolve udp address", func(t *testing.T) {
-		relays, err := NewFakeRelays(100000, []byte{}, "", 3, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(100000, []byte{}, "", 4, logger, fakeRelayMetrics)
 		assert.Error(t, err)
 		assert.Equal(t, fmt.Errorf("error resolving UDP address: address 65536: invalid port\n"), err)
 		assert.Equal(t, 0, len(relays))
@@ -48,13 +46,13 @@ func TestSendRequests(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("shutdown marshal error", func(t *testing.T) {
-		relays, err := NewFakeRelays(1, []byte{}, "", 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, "", 2, logger, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 
 		err = relays[0].sendShutdownRequest()
 		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf("error marshaling shutdown request: invalid update request version: 4"), err)
+		assert.Equal(t, fmt.Errorf("error marshaling shutdown request: invalid update request version: 2"), err)
 	})
 
 	t.Run("shutdown response not OK", func(t *testing.T) {
@@ -69,7 +67,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 3, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -91,7 +89,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 3, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -101,13 +99,13 @@ func TestSendRequests(t *testing.T) {
 	})
 
 	t.Run("initial update request marshal error", func(t *testing.T) {
-		relays, err := NewFakeRelays(1, []byte{}, "", 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, "", 2, logger, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 
 		err = relays[0].sendInitialUpdateRequest()
 		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf("error marshaling update request: invalid update request version: 4"), err)
+		assert.Equal(t, fmt.Errorf("error marshaling update request: invalid update request version: 2"), err)
 	})
 
 	t.Run("initial update request response not OK", func(t *testing.T) {
@@ -122,7 +120,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 3, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -169,7 +167,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 3, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -179,13 +177,13 @@ func TestSendRequests(t *testing.T) {
 	})
 
 	t.Run("standard update request marshal error", func(t *testing.T) {
-		relays, err := NewFakeRelays(1, []byte{}, "", 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, "", 2, logger, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 
 		err = relays[0].sendStandardUpdateRequest()
 		assert.Error(t, err)
-		assert.Equal(t, fmt.Errorf("error marshaling update request: invalid update request version: 4"), err)
+		assert.Equal(t, fmt.Errorf("error marshaling update request: invalid update request version: 2"), err)
 	})
 
 	t.Run("standard update request response not OK", func(t *testing.T) {
@@ -200,7 +198,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 3, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -222,7 +220,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 3, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -247,7 +245,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 3, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -263,7 +261,7 @@ func TestSimulatedPingStats(t *testing.T) {
 	relayPublicKey, err := base64.StdEncoding.DecodeString("8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
 	assert.NoError(t, err)
 
-	relays, err := NewFakeRelays(1, relayPublicKey, "", 3, logger, fakeRelayMetrics)
+	relays, err := NewFakeRelays(1, relayPublicKey, "", 4, logger, fakeRelayMetrics)
 	assert.NoError(t, err)
 
 	// Seed the RNG
@@ -284,4 +282,3 @@ func TestSimulatedPingStats(t *testing.T) {
 
 	assert.Equal(t, expectedStats, stats)
 }
-*/
