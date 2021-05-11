@@ -115,16 +115,16 @@ func (writer *BitWriter) WriteAlign() error {
 }
 
 func (writer *BitWriter) WriteBytes(data []byte) error {
-	
+
 	headBytes := (4 - (writer.bitsWritten%32)/8) % 4
 	if headBytes > len(data) {
 		headBytes = len(data)
 	}
-	
+
 	for i := 0; i < headBytes; i++ {
 		writer.WriteBits(uint32(data[i]), 8)
 	}
-	
+
 	if headBytes == len(data) {
 		return nil
 	}
@@ -132,9 +132,9 @@ func (writer *BitWriter) WriteBytes(data []byte) error {
 	if err := writer.FlushBits(); err != nil {
 		return err
 	}
-	
+
 	numWords := (len(data) - headBytes) / 4
-	
+
 	for i := 0; i < numWords; i++ {
 		*(*uint32)(unsafe.Pointer(&writer.buffer[writer.wordIndex*4])) = *(*uint32)(unsafe.Pointer(&data[headBytes+i*4]))
 		writer.bitsWritten += 32

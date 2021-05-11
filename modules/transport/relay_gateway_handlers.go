@@ -25,7 +25,7 @@ const (
 	GatewayRelayInitHandlerFunc() initializes all relays with version < 2.0.
 	It does not perform any crypto checks and responds with an OK to get the relay
 	to start making relay updates, where the primary work is done.
-	
+
 	NOTE: Relay init is deprecated. Remove this function once all relays have been upgraded to 2.0.x.
 */
 func GatewayRelayInitHandlerFunc() func(writer http.ResponseWriter, request *http.Request) {
@@ -56,9 +56,9 @@ type GatewayRelayUpdateHandlerConfig struct {
 
 /*
 	GatewayRelayUpdateHandlerFunc() receives relay updates. It's purpose is to verify the update
-	and insert it into the update channel as quickly as possible so that the relay backends can 
-	receive the latest info and produce an accurate route matrix. 
-	
+	and insert it into the update channel as quickly as possible so that the relay backends can
+	receive the latest info and produce an accurate route matrix.
+
 	Additionally, it responds to each relay with the set of relays to ping, which is derived from the database.
 */
 func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(writer http.ResponseWriter, request *http.Request) {
@@ -129,7 +129,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 
 		id := crypto.HashID(relayUpdateRequest.Address.String())
 
-		_, ok := relayHash[id]
+		relay, ok := relayHash[id]
 		if !ok {
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
 			level.Error(params.Logger).Log("err", fmt.Sprintf("%s - error: could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id))
@@ -173,7 +173,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 			})
 		}
 		response.Timestamp = time.Now().Unix()
-		response.TargetVersion = RelayTargetVersion
+		response.TargetVersion = relay.Version
 
 		responseData, err = response.MarshalBinary()
 		if err != nil {

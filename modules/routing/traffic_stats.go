@@ -421,25 +421,3 @@ func (rts *TrafficStats) readFromV2(data []byte, index *int) error {
 
 	return nil
 }
-
-type PeakTrafficStats struct {
-	SessionCount     uint64
-	EnvelopeUpKbps   uint64
-	EnvelopeDownKbps uint64
-}
-
-func (pts *PeakTrafficStats) MaxValues(other PeakTrafficStats) PeakTrafficStats {
-	if pts.SessionCount > other.SessionCount {
-		other.SessionCount = pts.SessionCount
-	}
-
-	if pts.EnvelopeUpKbps > other.EnvelopeDownKbps {
-		other.EnvelopeUpKbps = pts.EnvelopeUpKbps
-	}
-
-	if pts.EnvelopeDownKbps > other.EnvelopeDownKbps {
-		other.EnvelopeDownKbps = pts.EnvelopeDownKbps
-	}
-
-	return other
-}

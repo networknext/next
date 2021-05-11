@@ -390,6 +390,7 @@ type relay struct {
 	Type                string
 	Notes               string
 	BillingSupplier     string
+	Version             string
 }
 
 type datacenter struct {
@@ -2601,6 +2602,8 @@ must be one of the following and is case-sensitive:
   Type                 any valid relay server type (see below)
   BillingSupplier      any valid seller (or and empty string "")
   Notes                any string up to 500 characters (optional)
+  Version              relay version number, e.g. "2.0.6"
+
 
 Valid relay states:
    enabled
@@ -2647,6 +2650,7 @@ must be of the form:
   "Type": "vm",              // any valid machine type (see below)
   "Seller": "colocrossing",
   "Notes": "any notes up to 500 characters" // optional
+  "Version": "2.0.6" // required
 }
 
 All fields are required except as noted (InternalAddr, Notes).

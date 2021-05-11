@@ -2,8 +2,8 @@ package encoding
 
 import (
 	"net"
-	"testing"
 	"strconv"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -59,7 +59,7 @@ func parseAddress(input string) *net.UDPAddr {
 func createTestObject() *TestObject {
 	testObject := TestObject{}
 	for i := range testObject.bytes {
-		testObject.bytes[i] = byte(65+i)
+		testObject.bytes[i] = byte(65 + i)
 	}
 	for i := range testObject.items {
 		testObject.items[i] = uint32(i)
