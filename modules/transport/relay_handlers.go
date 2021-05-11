@@ -103,9 +103,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 				relayData.SessionCount = int(relayUpdateRequest.SessionCount)
 				relayData.ShuttingDown = relayUpdateRequest.ShuttingDown
 				relayData.Version = relayUpdateRequest.RelayVersion
-				relayData.PeakTrafficStats.SessionCount = relayUpdateRequest.SessionCount
-				relayData.PeakTrafficStats.EnvelopeDownKbps = relayUpdateRequest.TrafficStats.EnvelopeDownKbps
-				relayData.PeakTrafficStats.EnvelopeUpKbps = relayUpdateRequest.TrafficStats.EnvelopeUpKbps
+				relayData.CPU = relayUpdateRequest.CPU
 
 				params.RelayMap.Lock()
 				params.RelayMap.UpdateRelayData(relayData)

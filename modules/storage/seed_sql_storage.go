@@ -581,7 +581,7 @@ func SeedSQLStorageStaging(
 	}
 
 	// Add datacenter maps
-	for buyerID, _ := range database.BuyerMap {
+	for buyerID := range database.BuyerMap {
 		if dcMaps, ok := database.DatacenterMaps[buyerID]; ok {
 			for _, dcMap := range dcMaps {
 				if err = db.AddDatacenterMap(ctx, dcMap); err != nil {
