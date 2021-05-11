@@ -46,8 +46,6 @@ namespace os
 
     // read the line and get cpu times
     {
-      static CPUUsageCache prev;
-      CPUUsageCache curr;
       int user, nice, system, idle, iowait, irq, softirq, steal, guest, guest_nice;
 
       sscanf(
@@ -67,16 +65,11 @@ namespace os
 
       // iowait is added to non-idle because the relay is basically the only thing running on the servers
       // thus waiting is consumed cpu time since threads are locked to cores
-      curr.Idle = idle;
       int non_idle = user + nice + system + irq + softirq + steal + guest + guest_nice + iowait;
-      curr.Total = curr.Idle + non_idle;
 
-      int total = curr.Total - prev.Total;
-      idle = curr.Idle - prev.Idle;
+      int total = idle + non_idle;
 
       usage = static_cast<double>(total - idle) / static_cast<double>(total);
-
-      prev = curr;
     }
 
     return usage * 100.0;
