@@ -147,7 +147,7 @@ func (r *RelayUpdateRequest) unmarshalBinaryV4(buff []byte, index int) error {
 	return nil
 }
 
-// Marshals a RelayUpdateRequest. Useful for tests.
+// Marshals a RelayUpdateRequest. Useful for tests and fake relays.
 func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 	switch r.Version {
 	case 3:
