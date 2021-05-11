@@ -127,10 +127,16 @@ func NewSQLite3Staging(ctx context.Context, logger log.Logger) (*SQL, error) {
 	var sqlite3 *sql.DB
 
 	if _, err := os.Stat("/app/sqlite3-empty.sql"); err == nil || os.IsExist(err) {
+
+		err = os.Remove("/app/network_next.db")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error removing old db file: %v", err)
+		}
+
 		// Boiler plate SQL file exists, load it in
 		sqlite3, err = sql.Open("sqlite3", "file:/app/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
 		if err != nil {
-			return nil, fmt.Errorf("NewSQLite3Staging() error creating db connection: %w", err)
+			return nil, fmt.Errorf("NewSQLite3Staging() error creating db connection: %v", err)
 		}
 	} else {
 		return nil, fmt.Errorf("NewSQLite3Staging() could not find /app/sqlite3-empty.sql")
@@ -139,7 +145,7 @@ func NewSQLite3Staging(ctx context.Context, logger log.Logger) (*SQL, error) {
 	// db.Ping actually establishes the connection and validates the parameters
 	err := sqlite3.Ping()
 	if err != nil {
-		err = fmt.Errorf("NewSQLite3Staging() error pinging db: %w", err)
+		err = fmt.Errorf("NewSQLite3Staging() error pinging db: %v", err)
 		return nil, err
 	}
 
@@ -419,7 +425,8 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
-	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , relays.billing_supplier from relays "))
+	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays "))
 	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
 	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
 	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
@@ -459,6 +466,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			&relay.InternalIPPort,
 			&relay.Notes,
 			&relay.BillingSupplier,
+			&relay.Version,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays(): error parsing returned row", "err", err)
@@ -517,6 +525,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			Notes:               relay.Notes,
 			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
+			Version:             relay.Version,
 		}
 
 		// nullable values follow
