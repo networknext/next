@@ -3,7 +3,6 @@
 namespace core
 {
   const size_t MAX_RELAYS = 1024;
-  // TODO make this an array of structs composed of id, rtt, jitter, and pl, would be cache friendly
   struct RelayStats
   {
     unsigned int num_relays;
@@ -12,4 +11,4 @@ namespace core
     std::array<float, MAX_RELAYS> jitter;
     std::array<float, MAX_RELAYS> packet_loss;
   };
-}  // namespace core
+}

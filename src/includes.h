@@ -28,18 +28,6 @@
 #include <iomanip>
 #include <iostream>
 
-// disabled for now
-/*
-#if defined(linux) || defined(__linux) || defined(__linux__)
-#include <glibtop.h>
-#include <glibtop/cpu.h>
-#include <glibtop/mem.h>
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include <linux/wireless.h>
-#endif // defined(linux) || defined(__linux) || defined(__linux__)
-*/
-
 #ifdef __APPLE__
 #include <sys/types.h>
 #include <sys/socket.h>

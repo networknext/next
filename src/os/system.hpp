@@ -1,78 +1,12 @@
 #pragma once
 
-// todo: not right now
-/*
 #include "util/logger.hpp"
 
 #if defined(linux) || defined(__linux) || defined(__linux__)
 
 namespace os
 {
-  class LibTopWrapper
-  {
-   public:
-    LibTopWrapper();
-
-    auto get_cpu() -> double;
-    auto get_mem() -> double;
-  };
-
-  INLINE LibTopWrapper::LibTopWrapper()
-  {
-    glibtop_init();
-  }
-
-  INLINE auto LibTopWrapper::get_cpu() -> double
-  {
-    static struct
-    {
-      uint64_t total = 0;
-      uint64_t idle = 0;
-    } last_cpu, curr_cpu;
-    glibtop_cpu cpu;
-    glibtop_get_cpu(&cpu);
-
-    curr_cpu.total = cpu.total - last_cpu.total;
-    curr_cpu.idle = cpu.idle - last_cpu.idle;
-
-    last_cpu.total = cpu.total;
-    last_cpu.idle = cpu.idle;
-
-    return static_cast<double>(curr_cpu.total - curr_cpu.idle) / static_cast<double>(curr_cpu.total);
-  }
-
-  INLINE auto LibTopWrapper::get_mem() -> double
-  {
-    glibtop_mem mem;
-    glibtop_get_mem(&mem);
-    return static_cast<double>(mem.user) / static_cast<double>(mem.total);
-  }
-
-  struct SysUsage
-  {
-    double cpu;
-    double mem;
-  };
-
-  INLINE auto GetUsage() -> SysUsage
-  {
-    static LibTopWrapper wrapper;
-    return SysUsage{
-     .cpu = wrapper.get_cpu(),
-     .mem = wrapper.get_mem(),
-    };
-  }
-
-  struct CPUUsageCache
-  {
-    int Idle;
-    int Total;
-  };
-
-  // This should basically do what libtop does
-  // mainly a sanity check in case libtop behaves weird
-  // after the binary is deployed
-  INLINE auto GetUsageAlt() -> std::tuple<double, bool>
+  INLINE double GetCPU()
   {
     double usage = 0.0;
     // get the first line of /proc/stat
@@ -84,7 +18,7 @@ namespace os
       if (f == nullptr) {
         LOG(ERROR, "could not open /proc/stat");
         perror("OS msg:");
-        return {0, false};
+        return 0.0;
       }
 
       size_t line_length = 0;
@@ -104,7 +38,7 @@ namespace os
       if (fgets(line_buff.data(), line_buff.size(), f) == nullptr) {
         LOG(ERROR, "could not read first line of /proc/stat");
         perror("OS msg:");
-        return {0, false};
+        return 0.0;
       }
 
       fclose(f);
@@ -145,9 +79,8 @@ namespace os
       prev = curr;
     }
 
-    return {usage, true};
+    return usage;
   }
 }  // namespace os
 
 #endif // #if defined(linux) || defined(__linux) || defined(__linux__)
-*/

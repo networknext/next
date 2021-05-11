@@ -89,7 +89,7 @@ namespace core
 {
   using namespace std::chrono_literals;
 
-  const char* RELAY_VERSION = "2.0.7";
+  const char* RELAY_VERSION = "2.0.8";
 
   const char* const UPDATE_ENDPOINT = "/relay_update";
 
@@ -391,6 +391,12 @@ namespace core
       encoding::write_uint8(req, index, shutdown);
 
       encoding::write_string(req, index, RELAY_VERSION);
+
+      #if defined(linux) || defined(__linux) || defined(__linux__)
+      encoding::write_uint8(req, index, os::GetCPU());
+      #else
+      encoding::write_uint8(req, index, 0);
+      #endif
     }
 
     // todo: this whole loop here is naff... the retry loop shouldn't occur in place here, but in the regular, 1 sec delay updates!
