@@ -38,19 +38,23 @@ var EmptyBillingServiceMetrics BillingServiceMetrics = BillingServiceMetrics{
 }
 
 type BillingMetrics struct {
-	EntriesReceived  Counter
-	EntriesSubmitted Counter
-	EntriesQueued    Gauge
-	EntriesFlushed   Counter
-	ErrorMetrics     BillingErrorMetrics
+	EntriesReceived        Counter
+	EntriesSubmitted       Counter
+	EntriesQueued          Gauge
+	EntriesFlushed         Counter
+	ErrorMetrics           BillingErrorMetrics
+	PubsubBillingEntrySize Gauge
+	BillingEntrySize       Gauge
 }
 
 var EmptyBillingMetrics BillingMetrics = BillingMetrics{
-	EntriesReceived:  &EmptyCounter{},
-	EntriesSubmitted: &EmptyCounter{},
-	EntriesQueued:    &EmptyGauge{},
-	EntriesFlushed:   &EmptyCounter{},
-	ErrorMetrics:     EmptyBillingErrorMetrics,
+	EntriesReceived:        &EmptyCounter{},
+	EntriesSubmitted:       &EmptyCounter{},
+	EntriesQueued:          &EmptyGauge{},
+	EntriesFlushed:         &EmptyCounter{},
+	ErrorMetrics:           EmptyBillingErrorMetrics,
+	PubsubBillingEntrySize: &EmptyGauge{},
+	BillingEntrySize:       &EmptyGauge{},
 }
 
 type BillingErrorMetrics struct {
@@ -508,6 +512,28 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		ID:          "billing.entries.written",
 		Unit:        "entries",
 		Description: "The total number of billing entries written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.BillingEntrySize, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Billing Entry Size",
+		ServiceName: "billing",
+		ID:          "billing.entry.size",
+		Unit:        "bytes",
+		Description: "The size of a billing entry",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.PubsubBillingEntrySize, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Pubsub Billing Entry Size",
+		ServiceName: "billing",
+		ID:          "pubsub.billing.entry.size",
+		Unit:        "bytes",
+		Description: "The size of a pubsub billing entry",
 	})
 	if err != nil {
 		return nil, err

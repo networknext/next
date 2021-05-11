@@ -20,43 +20,48 @@ const (
 	CFName     = "portal-session-history"
 )
 
+var (
+	// List of redis instances to resize
+	ResizableRedisInstances = []string{"staging-session-map", "staging-session-meta", "staging-session-slices", "staging-top-sessions"}
+)
+
 type StagingServiceConfig struct {
 	Cores int `json:"cores"`
 	Count int `json:"count"`
 }
 
 type StagingConfig struct {
-	RelayGateway   StagingServiceConfig `json:relay-gateway"`
-	RelayBackend   StagingServiceConfig `json:"relay-backend"`
-	Relays         StagingServiceConfig `json:"relays"`
-	RelayFrontend  StagingServiceConfig `json:"relay-gateway"`
-	RelayPusher    StagingServiceConfig `json:"relay-pusher"`
-	PortalCruncher StagingServiceConfig `json:"portal-cruncher"`
+	RelayGateway   StagingServiceConfig `json:"relayGateway"`
+	RelayBackend   StagingServiceConfig `json:"relayBackend"`
+	FakeRelays     StagingServiceConfig `json:"fakeRelays"`
+	RelayFrontend  StagingServiceConfig `json:"relayGateway"`
+	RelayPusher    StagingServiceConfig `json:"relayPusher"`
+	PortalCruncher StagingServiceConfig `json:"portalCruncher"`
 	Vanity         StagingServiceConfig `json:"vanity"`
 	Api            StagingServiceConfig `json:"api"`
 	Analytics      StagingServiceConfig `json:"analytics"`
 	Billing        StagingServiceConfig `json:"billing"`
 	Beacon         StagingServiceConfig `json:"beacon"`
-	BeaconInserter StagingServiceConfig `json:"beacon-inserter"`
+	BeaconInserter StagingServiceConfig `json:"beaconInserter"`
 	Portal         StagingServiceConfig `json:"portal"`
-	ServerBackend  StagingServiceConfig `json:"server-backend"`
-	FakeServer     StagingServiceConfig `json:"fake-server"`
+	ServerBackend  StagingServiceConfig `json:"serverBackend"`
+	FakeServer     StagingServiceConfig `json:"fakeServer"`
 }
 
 var DefaultStagingConfig = StagingConfig{
 	RelayGateway: StagingServiceConfig{
-		Cores: 2,
+		Cores: 4,
 		Count: -1,
 	},
 
 	RelayBackend: StagingServiceConfig{
-		Cores: 16,
+		Cores: 8,
 		Count: 2,
 	},
 
-	Relays: StagingServiceConfig{
-		Cores: 4,
-		Count: 80,
+	FakeRelays: StagingServiceConfig{
+		Cores: 16,
+		Count: 1,
 	},
 
 	RelayFrontend: StagingServiceConfig{
@@ -375,6 +380,24 @@ func StartStaging(config StagingConfig) error {
 	}
 	fmt.Println("done")
 
+	var wg sync.WaitGroup
+	// Resize Redis instances to 10 GB
+	fmt.Printf("Resizing redis instances...\n")
+	for _, instanceName := range ResizableRedisInstances {
+		wg.Add(1)
+		go func(redisInstanceName string) {
+			defer wg.Done()
+			err := resizeRedisInstance(redisInstanceName, 10)
+			if err != nil {
+				fmt.Printf("failed to resize redis instance %s to 10 GB: %v\n", redisInstanceName, err)
+			} else {
+				fmt.Printf("resized redis instance %s to 10 GB\n", redisInstanceName)
+			}
+		}(instanceName)
+	}
+	wg.Wait()
+	fmt.Println("done")
+
 	for _, instanceGroup := range instanceGroups {
 		serviceConfig := instanceGroup.ServiceConfig()
 
@@ -418,7 +441,7 @@ func StopStaging() []error {
 	instanceGroups := createInstanceGroups(DefaultStagingConfig)
 
 	var wg sync.WaitGroup
-	errChan := make(chan error, len(instanceGroups))
+	errChan := make(chan error, len(instanceGroups)+len(ResizableRedisInstances)+1)
 
 	fmt.Println("stopping staging...")
 
@@ -436,16 +459,29 @@ func StopStaging() []error {
 
 	}
 
+	// Delete bigtable
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err := deleteBigTable(); err != nil {
 			errChan <- err
 		}
 
 		fmt.Println("deleted Bigtable")
-
-		wg.Done()
 	}()
+
+	// Resize Redis instances to 1 GB
+	for _, instanceName := range ResizableRedisInstances {
+		wg.Add(1)
+		go func(redisInstanceName string) {
+			defer wg.Done()
+			err := resizeRedisInstance(redisInstanceName, 1)
+			if err != nil {
+				errChan <- err
+			}
+			fmt.Printf("resized redis instance %s to 1 GB\n", redisInstanceName)
+		}(instanceName)
+	}
 
 	wg.Wait()
 
@@ -563,21 +599,30 @@ func deleteBigTable() error {
 	return nil
 }
 
+func resizeRedisInstance(instanceName string, size int) error {
+	success, output := bashQuiet(fmt.Sprintf("gcloud redis instances update %s --project=network-next-v3-staging --size=%d --region=us-central1", instanceName, size))
+	if !success {
+		return fmt.Errorf("could not resize redis instance %s to %d GB: %s", instanceName, size, output)
+	}
+
+	return nil
+}
+
 func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups := make([]InstanceGroup, 0)
 
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-backend", config.RelayBackend))
-	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-staging", config.Relays))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("portal-cruncher", config.PortalCruncher))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("vanity", config.Vanity))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-pusher", config.RelayPusher))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("fake-relays", config.FakeRelays))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-gateway-mig", false, config.RelayGateway))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-frontend-mig", false, config.RelayFrontend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("api-mig", false, config.Api))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("analytics-mig", false, config.Analytics))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-mig", false, config.Beacon))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-inserter-mig", false, config.BeaconInserter))
+	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-mig", false, config.Beacon))
+	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-inserter-mig", false, config.BeaconInserter))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-mig", false, config.Portal))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", true, config.ServerBackend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("fake-server-mig", true, config.FakeServer))
