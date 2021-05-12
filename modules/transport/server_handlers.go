@@ -15,6 +15,10 @@ import (
 	"github.com/networknext/backend/modules/storage"
 )
 
+const (
+	UDPIPPacketHeaderSize = 32
+)
+
 type UDPPacket struct {
 	From net.UDPAddr
 	Data []byte
@@ -1542,12 +1546,6 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 		return err
 	}
 
-	if sessionData.RouteState.Next {
-		metrics.NextSessionResponsePacketSize.Set(float64(len(sessionDataBuffer)))
-	} else {
-		metrics.DirectSessionResponsePacketSize.Set(float64(len(sessionDataBuffer)))
-	}
-
 	if len(sessionDataBuffer) > MaxSessionDataSize {
 		return fmt.Errorf("session data of %d exceeds limit of %d bytes", len(sessionDataBuffer), MaxSessionDataSize)
 	}
@@ -1559,6 +1557,13 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	}
 	packetHeader := append([]byte{PacketTypeSessionResponse}, make([]byte, crypto.PacketHashSize)...)
 	responseData := append(packetHeader, responsePacketData...)
+
+	if sessionData.RouteState.Next {
+		metrics.NextSessionResponsePacketSize.Set(float64(len(responseData) + UDPIPPacketHeaderSize))
+	} else {
+		metrics.DirectSessionResponsePacketSize.Set(float64(len(responseData) + UDPIPPacketHeaderSize))
+	}
+
 	if _, err := w.Write(responseData); err != nil {
 		return err
 	}
