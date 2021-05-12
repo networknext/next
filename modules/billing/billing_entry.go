@@ -821,8 +821,16 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&entry.Timestamp, 32)
 	stream.SerializeUint64(&entry.SessionID)
 
-	// // todo: serialize intelligently, eg. up to 1hr, up to 16 bits, 32 bits worst case only.
-	stream.SerializeBits(&entry.SliceNumber, 32)
+	small := false
+	if entry.SliceNumber < 1024 {
+		small = true
+	}
+	stream.SerializeBool(&small)
+	if small {
+		stream.SerializeBits(&entry.SliceNumber, 10)
+	} else {
+		stream.SerializeBits(&entry.SliceNumber, 32)	
+	}
 
 	stream.SerializeInteger(&entry.DirectRTT, 0, 1023)
 	stream.SerializeInteger(&entry.DirectJitter, 0, 255)
@@ -838,8 +846,6 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBool(&entry.UseDebug)
 	stream.SerializeString(&entry.Debug, BillingEntryMaxDebugLength)
-
-	// todo: Summary
 
 	/*
 		2. First slice only
