@@ -778,16 +778,16 @@ type BillingEntry2 struct {
 
 	// network next only
 
-	NextRTT                         uint8
-	NextJitter                      uint8
-	NextPacketLoss                  uint8
-	PredictedNextRTT                uint8
-	NearRelayRTT                    uint8
-	NumNextRelays                   uint8
+	NextRTT                         int32
+	NextJitter                      int32
+	NextPacketLoss                  int32
+	PredictedNextRTT                int32
+	NearRelayRTT                    int32
+	NumNextRelays                   int32
 	NextRelays                      [BillingEntryMaxRelays]uint64
 	NextRelayPrice                  [BillingEntryMaxRelays]uint64
 	TotalPrice                      uint64
-	RouteDiversity                  uint8
+	RouteDiversity                  int32
 	Committed                       bool
 	Multipath                       bool
 	RTTReduction                    bool
@@ -894,6 +894,34 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 			stream.SerializeInteger(&entry.NearRelayPacketLosses[i], 0, 100)
 		}
 
+	}
+
+	/*
+		4. Network Next Only
+
+		These values are serialized only when a slice is on network next.
+	*/
+
+	if entry.Next {
+
+		stream.SerializeInteger(&entry.NextRTT, 0, 255)
+		stream.SerializeInteger(&entry.NextJitter, 0, 255)
+		stream.SerializeInteger(&entry.NextPacketLoss, 0, 100)
+		stream.SerializeInteger(&entry.PredictedNextRTT, 0, 255)
+		stream.SerializeInteger(&entry.NearRelayRTT, 0, 255)
+
+		stream.SerializeInteger(&entry.NumNextRelays, 0, BillingEntryMaxRelays)
+		for i := 0; i < int(entry.NumNextRelays); i++ {
+			stream.SerializeUint64(&entry.NextRelays[i])
+			stream.SerializeUint64(&entry.NextRelayPrice[i])
+		}
+
+		stream.SerializeUint64(&entry.TotalPrice)
+		stream.SerializeInteger(&entry.RouteDiversity, 1, 31)
+		stream.SerializeBool(&entry.Committed)
+		stream.SerializeBool(&entry.Multipath)
+		stream.SerializeBool(&entry.RTTReduction)
+		stream.SerializeBool(&entry.PacketLossReduction)
 	}
 
 	// -------------------
