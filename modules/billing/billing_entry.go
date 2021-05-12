@@ -716,3 +716,259 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	return true
 }
+
+// ------------------------------------------------------------------------
+
+const BillingEntryVersion2 = uint8(0)
+
+type BillingEntry2 struct {
+
+	// always
+
+	Version             uint32
+	Timestamp           uint32
+	SessionID           uint64
+	SliceNumber         uint32
+	DirectRTT           int32
+	DirectJitter        int32
+	DirectPacketLoss    int32
+	RealPacketLoss      int32
+	RealPacketLoss_Frac uint32
+	RealJitter          uint32
+	Next                bool
+	Flagged             bool
+	Summary             bool
+	UseDebug            bool
+	Debug               string
+
+	// first slice only
+
+	DatacenterID      uint64
+	BuyerID           uint64
+	UserHash          uint64
+	EnvelopeBytesUp   uint64
+	EnvelopeBytesDown uint64
+	Latitude          float32
+	Longitude         float32
+	ISP               string
+	ConnectionType    int32
+	PlatformType      int32
+	SDKVersion        string
+	NumTags           int32
+	Tags              [BillingEntryMaxTags]uint64
+	ABTest            bool
+	Pro               bool
+
+	// summary slice only
+
+	ClientToServerPacketsSent       uint64
+	ServerToClientPacketsSent       uint64
+	ClientToServerPacketsLost       uint64
+	ServerToClientPacketsLost       uint64
+	ClientToServerPacketsOutOfOrder uint64
+	ServerToClientPacketsOutOfOrder uint64
+	NumNearRelays                   int32
+	NearRelayIDs                    [BillingEntryMaxNearRelays]uint64
+	NearRelayRTTs                   [BillingEntryMaxNearRelays]int32
+	NearRelayJitters                [BillingEntryMaxNearRelays]int32
+	NearRelayPacketLosses           [BillingEntryMaxNearRelays]int32
+
+	// network next only
+
+	NextRTT             int32
+	NextJitter          int32
+	NextPacketLoss      int32
+	PredictedNextRTT    int32
+	NearRelayRTT        int32
+	NumNextRelays       int32
+	NextRelays          [BillingEntryMaxRelays]uint64
+	NextRelayPrice      [BillingEntryMaxRelays]uint64
+	TotalPrice          uint64
+	RouteDiversity      int32
+	Committed           bool
+	Multipath           bool
+	RTTReduction        bool
+	PacketLossReduction bool
+
+	// error state only
+
+	FallbackToDirect     bool
+	MultipathVetoed      bool
+	Mispredicted         bool
+	Vetoed               bool
+	LatencyWorse         bool
+	NoRoute              bool
+	NextLatencyTooHigh   bool
+	RouteChanged         bool
+	CommitVeto           bool
+	LackOfDiversity      bool
+	MultipathRestricted  bool
+	UnknownDatacenter    bool
+	DatacenterNotEnabled bool
+	BuyerNotLive         bool
+	StaleRouteMatrix     bool
+}
+
+func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
+
+	/*
+		1. Always
+
+		These values are serialized in every slice
+	*/
+
+	stream.SerializeBits(&entry.Version, 8)
+	stream.SerializeBits(&entry.Timestamp, 32)
+	stream.SerializeUint64(&entry.SessionID)
+
+	// // todo: serialize intelligently, eg. up to 1hr, up to 16 bits, 32 bits worst case only.
+	stream.SerializeBits(&entry.SliceNumber, 32)
+
+	stream.SerializeInteger(&entry.DirectRTT, 0, 1023)
+	stream.SerializeInteger(&entry.DirectJitter, 0, 255)
+	stream.SerializeInteger(&entry.DirectPacketLoss, 0, 100)
+
+	stream.SerializeInteger(&entry.RealPacketLoss, 0, 100)
+	stream.SerializeBits(&entry.RealPacketLoss_Frac, 8)
+	stream.SerializeBits(&entry.RealJitter, 8)
+
+	stream.SerializeBool(&entry.Next)
+	stream.SerializeBool(&entry.Flagged)
+	stream.SerializeBool(&entry.Summary)
+
+	stream.SerializeBool(&entry.UseDebug)
+	stream.SerializeString(&entry.Debug, BillingEntryMaxDebugLength)
+
+	// todo: Summary
+
+	/*
+		2. First slice only
+
+		These values are serialized only for slice 0.
+	*/
+
+	if entry.SliceNumber == 0 {
+
+		stream.SerializeUint64(&entry.DatacenterID)
+		stream.SerializeUint64(&entry.BuyerID)
+		stream.SerializeUint64(&entry.UserHash)
+		stream.SerializeUint64(&entry.EnvelopeBytesUp)
+		stream.SerializeUint64(&entry.EnvelopeBytesDown)
+		stream.SerializeFloat32(&entry.Latitude)
+		stream.SerializeFloat32(&entry.Longitude)
+		stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
+		stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
+		stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+		stream.SerializeString(&entry.SDKVersion, 10)        // todo: constant
+		stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
+		for i := 0; i < int(entry.NumTags); i++ {
+			stream.SerializeUint64(&entry.Tags[i])
+		}
+		stream.SerializeBool(&entry.ABTest)
+		stream.SerializeBool(&entry.Pro)
+
+	}
+
+	/*
+		3. Summary slice only
+
+		These values are serialized only for the summary slice (at the end of the session)
+	*/
+
+	if entry.Summary {
+
+		stream.SerializeUint64(&entry.ClientToServerPacketsSent)
+		stream.SerializeUint64(&entry.ServerToClientPacketsSent)
+		stream.SerializeUint64(&entry.ClientToServerPacketsLost)
+		stream.SerializeUint64(&entry.ServerToClientPacketsLost)
+		stream.SerializeUint64(&entry.ClientToServerPacketsOutOfOrder)
+		stream.SerializeUint64(&entry.ServerToClientPacketsOutOfOrder)
+		stream.SerializeInteger(&entry.NumNearRelays, 0, BillingEntryMaxNearRelays)
+		for i := 0; i < int(entry.NumNearRelays); i++ {
+			stream.SerializeUint64(&entry.NearRelayIDs[i])
+			stream.SerializeInteger(&entry.NearRelayRTTs[i], 0, 255)
+			stream.SerializeInteger(&entry.NearRelayJitters[i], 0, 255)
+			stream.SerializeInteger(&entry.NearRelayPacketLosses[i], 0, 100)
+		}
+
+	}
+
+	/*
+		4. Network Next Only
+
+		These values are serialized only when a slice is on network next.
+	*/
+
+	if entry.Next {
+
+		stream.SerializeInteger(&entry.NextRTT, 0, 255)
+		stream.SerializeInteger(&entry.NextJitter, 0, 255)
+		stream.SerializeInteger(&entry.NextPacketLoss, 0, 100)
+		stream.SerializeInteger(&entry.PredictedNextRTT, 0, 255)
+		stream.SerializeInteger(&entry.NearRelayRTT, 0, 255)
+
+		stream.SerializeInteger(&entry.NumNextRelays, 0, BillingEntryMaxRelays)
+		for i := 0; i < int(entry.NumNextRelays); i++ {
+			stream.SerializeUint64(&entry.NextRelays[i])
+			stream.SerializeUint64(&entry.NextRelayPrice[i])
+		}
+
+		stream.SerializeUint64(&entry.TotalPrice)
+		stream.SerializeInteger(&entry.RouteDiversity, 1, 31)
+		stream.SerializeBool(&entry.Committed)
+		stream.SerializeBool(&entry.Multipath)
+		stream.SerializeBool(&entry.RTTReduction)
+		stream.SerializeBool(&entry.PacketLossReduction)
+	}
+
+	/*
+		5. Error State Only
+
+		These values are only serialized when the session is in an error state (rare).
+	*/
+
+	errorState := false
+
+	if stream.IsWriting() {
+		errorState =
+			entry.FallbackToDirect ||
+				entry.MultipathVetoed ||
+				entry.Mispredicted ||
+				entry.Vetoed ||
+				entry.LatencyWorse ||
+				entry.NoRoute ||
+				entry.NextLatencyTooHigh ||
+				entry.RouteChanged ||
+				entry.CommitVeto ||
+				entry.LackOfDiversity ||
+				entry.MultipathRestricted ||
+				entry.UnknownDatacenter ||
+				entry.DatacenterNotEnabled ||
+				entry.BuyerNotLive ||
+				entry.StaleRouteMatrix
+	}
+
+	stream.SerializeBool(&errorState)
+
+	if errorState {
+
+		stream.SerializeBool(&entry.FallbackToDirect)
+		stream.SerializeBool(&entry.MultipathVetoed)
+		stream.SerializeBool(&entry.Mispredicted)
+		stream.SerializeBool(&entry.Vetoed)
+		stream.SerializeBool(&entry.LatencyWorse)
+		stream.SerializeBool(&entry.NoRoute)
+		stream.SerializeBool(&entry.NextLatencyTooHigh)
+		stream.SerializeBool(&entry.RouteChanged)
+		stream.SerializeBool(&entry.CommitVeto)
+		stream.SerializeBool(&entry.LackOfDiversity)
+		stream.SerializeBool(&entry.MultipathRestricted)
+		stream.SerializeBool(&entry.UnknownDatacenter)
+		stream.SerializeBool(&entry.DatacenterNotEnabled)
+		stream.SerializeBool(&entry.BuyerNotLive)
+		stream.SerializeBool(&entry.StaleRouteMatrix)
+
+	}
+
+	return stream.Error()
+}
