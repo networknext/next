@@ -886,6 +886,13 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&entry.ServerToClientPacketsLost)
 		stream.SerializeUint64(&entry.ClientToServerPacketsOutOfOrder)
 		stream.SerializeUint64(&entry.ServerToClientPacketsOutOfOrder)
+		stream.SerializeInteger(&entry.NumNearRelays, 0, BillingEntryMaxNearRelays)
+		for i := 0; i < int(entry.NumNearRelays); i++ {
+			stream.SerializeUint64(&entry.NearRelayIDs[i])
+			stream.SerializeInteger(&entry.NearRelayRTTs[i], 0, 255)
+			stream.SerializeInteger(&entry.NearRelayJitters[i], 0, 255)
+			stream.SerializeInteger(&entry.NearRelayPacketLosses[i], 0, 100)
+		}
 
 	}
 
