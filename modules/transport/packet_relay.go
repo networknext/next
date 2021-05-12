@@ -185,7 +185,7 @@ func (r *RelayUpdateRequest) marshalBinaryV3() ([]byte, error) {
 }
 
 func (r *RelayUpdateRequest) marshalBinaryV4() ([]byte, error) {
-	data := make([]byte, 10*1024)
+	data := make([]byte, r.sizeV4())
 
 	index := 0
 	encoding.WriteUint32(data, &index, r.Version)
@@ -211,6 +211,22 @@ func (r *RelayUpdateRequest) marshalBinaryV4() ([]byte, error) {
 	return data[:index], nil
 }
 
+func (r *RelayUpdateRequest) sizeV4() int {
+	return (
+		4 + // version
+		4 + // length of relay version
+		len(r.RelayVersion) + // relay version string
+		4 + // address length
+		len(r.Address.String()) + // address
+		crypto.KeySize + // public key
+		4 + // number of ping stats
+		len(r.PingStats)*(8 + 4 + 4 + 4) + // ping stats list
+		8 + // session count
+		1 + // shutting down
+		len(r.RelayVersion) + // relay version
+		1) // CPU
+}
+
 type RelayUpdateResponse struct {
 	Timestamp     int64
 	RelaysToPing  []routing.RelayPingData
@@ -219,7 +235,7 @@ type RelayUpdateResponse struct {
 
 func (r RelayUpdateResponse) MarshalBinary() ([]byte, error) {
 	index := 0
-	responseData := make([]byte, 10*1024)
+	responseData := make([]byte, r.size())
 	encoding.WriteUint32(responseData, &index, VersionNumberUpdateResponse)
 	encoding.WriteUint64(responseData, &index, uint64(r.Timestamp))
 	encoding.WriteUint32(responseData, &index, uint32(len(r.RelaysToPing)))
@@ -272,4 +288,12 @@ func (r *RelayUpdateResponse) UnmarshalBinary(buff []byte) error {
 	}
 
 	return nil
+}
+
+func (r RelayUpdateResponse) size() int {
+	return (4 + // Version
+		8 + // Timestamp
+		4 + // Num relays to ping
+		len(r.RelaysToPing)*(8+routing.MaxRelayAddressLength) + // Relays to ping
+		len(r.TargetVersion)) // Target Version
 }
