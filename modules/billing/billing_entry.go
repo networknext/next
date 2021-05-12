@@ -770,11 +770,11 @@ type BillingEntry2 struct {
 	ServerToClientPacketsLost       uint64
 	ClientToServerPacketsOutOfOrder uint64
 	ServerToClientPacketsOutOfOrder uint64
-	NumNearRelays                   uint8
+	NumNearRelays                   int32
 	NearRelayIDs                    [BillingEntryMaxNearRelays]uint64
-	NearRelayRTTs                   [BillingEntryMaxNearRelays]uint8
-	NearRelayJitters                [BillingEntryMaxNearRelays]uint8
-	NearRelayPacketLosses           [BillingEntryMaxNearRelays]uint8
+	NearRelayRTTs                   [BillingEntryMaxNearRelays]int32
+	NearRelayJitters                [BillingEntryMaxNearRelays]int32
+	NearRelayPacketLosses           [BillingEntryMaxNearRelays]int32
 
 	// network next only
 
@@ -863,14 +863,31 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
 		stream.SerializeInteger(&entry.PlatformType, 0, 10) // todo: constant
 		stream.SerializeString(&entry.SDKVersion, 10) // todo: constant
+		stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
+		for i := 0; i < int(entry.NumTags); i++ {
+			stream.SerializeUint64(&entry.Tags[i])
+		}
+		stream.SerializeBool(&entry.ABTest)
+		stream.SerializeBool(&entry.Pro)
+
 	}
 
 	/*
-	NumTags                         uint8
-	Tags                            [BillingEntryMaxTags]uint64
-	ABTest                          bool
-	Pro                             bool
+		3. Summary slice only
+
+		These values are serialized only for the summary slice (at the end of the session)
 	*/
+
+	if entry.Summary {
+
+		stream.SerializeUint64(&entry.ClientToServerPacketsSent)
+		stream.SerializeUint64(&entry.ServerToClientPacketsSent)
+		stream.SerializeUint64(&entry.ClientToServerPacketsLost)
+		stream.SerializeUint64(&entry.ServerToClientPacketsLost)
+		stream.SerializeUint64(&entry.ClientToServerPacketsOutOfOrder)
+		stream.SerializeUint64(&entry.ServerToClientPacketsOutOfOrder)
+
+	}
 
 	// -------------------
 
