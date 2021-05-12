@@ -758,7 +758,10 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 			return err
 		}
 
+		db.buyerMutex.RLock()
 		buyer := db.buyers[uint64(sqlMap.BuyerID)]
+		db.buyerMutex.RUnlock()
+
 		ephemeralBuyerID := buyer.ID
 
 		dcMap := routing.DatacenterMap{
@@ -919,7 +922,10 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 			EnableVanityMetrics:        sqlIC.EnableVanityMetrics,
 		}
 
+		db.buyerMutex.RLock()
 		buyer := db.buyers[uint64(buyerID)]
+		db.buyerMutex.RUnlock()
+
 		buyer.InternalConfig = internalConfig
 
 		db.buyerMutex.Lock()
@@ -1008,7 +1014,10 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
 		}
 
+		db.buyerMutex.RLock()
 		buyer := db.buyers[uint64(buyerID)]
+		db.buyerMutex.RUnlock()
+
 		buyer.RouteShader = routeShader
 
 		db.buyerMutex.Lock()
