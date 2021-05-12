@@ -96,7 +96,7 @@ const (
 
 type BillingEntry struct {
 	Version                         uint8
-	Timestamp                       uint64
+	Timestamp                       uint64 // todo: reduce to 32 bits seconds since 1970 or something
 	BuyerID                         uint64
 	UserHash                        uint64
 	SessionID                       uint64
@@ -129,7 +129,7 @@ type BillingEntry struct {
 	Longitude                       float32
 	ISP                             string
 	ABTest                          bool
-	RouteDecision                   uint64 // Deprecated with server_backend4
+	RouteDecision                   uint64 // deprecated
 	ConnectionType                  uint8
 	PlatformType                    uint8
 	SDKVersion                      string
@@ -139,18 +139,21 @@ type BillingEntry struct {
 	UseDebug                        bool
 	Debug                           string
 	FallbackToDirect                bool
-	ClientFlags                     uint32
-	UserFlags                       uint64
+	ClientFlags                     uint32 // deprecated
+	UserFlags                       uint64 // deprecated
 	NearRelayRTT                    float32
 	PacketsOutOfOrderClientToServer uint64
 	PacketsOutOfOrderServerToClient uint64
-	JitterClientToServer            float32
-	JitterServerToClient            float32
+	JitterClientToServer            float32 // deprecated
+	JitterServerToClient            float32 // deprecated
+
+	// todo: summary only
 	NumNearRelays                   uint8
 	NearRelayIDs                    [BillingEntryMaxNearRelays]uint64
 	NearRelayRTTs                   [BillingEntryMaxNearRelays]float32
 	NearRelayJitters                [BillingEntryMaxNearRelays]float32
 	NearRelayPacketLosses           [BillingEntryMaxNearRelays]float32
+
 	RelayWentAway                   bool
 	RouteLost                       bool
 	NumTags                         uint8
@@ -715,4 +718,194 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 	}
 
 	return true
+}
+
+// ------------------------------------------------------------------------
+
+const BillingEntryVersion2 = uint8(28)
+
+type BillingEntry2 struct {
+	
+	// always
+
+	Version                         uint32
+	Timestamp                       uint32
+	SessionID                       uint64
+	SliceNumber                     uint32
+	DirectRTT                       int32
+	DirectJitter                    int32
+	DirectPacketLoss                int32
+	RealPacketLoss                  int32
+	RealPacketLoss_Frac				uint32
+	RealJitter                      uint32
+	Next                            bool
+	Flagged                         bool
+	Summary                         bool
+	UseDebug                        bool
+	Debug                           string
+
+	// first slice only
+
+	DatacenterID                    uint64
+	BuyerID                         uint64
+	UserHash                        uint64
+	EnvelopeBytesUp                 uint64
+	EnvelopeBytesDown               uint64
+	Latitude                        float32
+	Longitude                       float32
+	ISP                             string
+	ConnectionType                  int32
+	PlatformType                    int32
+	SDKVersion                      string
+	NumTags                         int32
+	Tags                            [BillingEntryMaxTags]uint64
+	ABTest                          bool
+	Pro                             bool
+
+	// summary slice only
+
+	ClientToServerPacketsSent       uint64
+	ServerToClientPacketsSent       uint64
+	ClientToServerPacketsLost       uint64
+	ServerToClientPacketsLost       uint64
+	ClientToServerPacketsOutOfOrder uint64
+	ServerToClientPacketsOutOfOrder uint64
+	NumNearRelays                   uint8
+	NearRelayIDs                    [BillingEntryMaxNearRelays]uint64
+	NearRelayRTTs                   [BillingEntryMaxNearRelays]uint8
+	NearRelayJitters                [BillingEntryMaxNearRelays]uint8
+	NearRelayPacketLosses           [BillingEntryMaxNearRelays]uint8
+
+	// network next only
+
+	NextRTT                         uint8
+	NextJitter                      uint8
+	NextPacketLoss                  uint8
+	PredictedNextRTT                uint8
+	NearRelayRTT                    uint8
+	NumNextRelays                   uint8
+	NextRelays                      [BillingEntryMaxRelays]uint64
+	NextRelayPrice                  [BillingEntryMaxRelays]uint64
+	TotalPrice                      uint64
+	RouteDiversity                  uint8
+	Committed                       bool
+	Multipath                       bool
+	RTTReduction                    bool
+	PacketLossReduction             bool
+
+	// error state only
+
+	FallbackToDirect                bool
+	MultipathVetoed                 bool
+	Mispredicted                    bool
+	Vetoed                          bool
+	LatencyWorse                    bool
+	NoRoute                         bool
+	NextLatencyTooHigh              bool
+	RouteChanged                    bool
+	CommitVeto                      bool
+	LackOfDiversity                 bool
+	MultipathRestricted             bool
+	UnknownDatacenter               bool
+	DatacenterNotEnabled            bool
+	BuyerNotLive                    bool
+	StaleRouteMatrix                bool
+}
+
+func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
+
+	/*
+		1. Always
+
+		These values are serialized in every slice
+	*/
+
+	stream.SerializeBits(&entry.Version, 8)
+	stream.SerializeBits(&entry.Timestamp, 32)
+	stream.SerializeUint64(&entry.SessionID)
+
+	// // todo: serialize intelligently, eg. up to 1hr, up to 16 bits, 32 bits worst case only.
+	stream.SerializeBits(&entry.SliceNumber, 32)			
+
+	stream.SerializeInteger(&entry.DirectRTT, 0, 1023)
+	stream.SerializeInteger(&entry.DirectJitter, 0, 255)
+	stream.SerializeInteger(&entry.DirectPacketLoss, 0, 100)
+
+	stream.SerializeInteger(&entry.RealPacketLoss, 0, 100)
+	stream.SerializeBits(&entry.RealPacketLoss_Frac, 8)
+	stream.SerializeBits(&entry.RealJitter, 8)
+
+	stream.SerializeBool(&entry.Next)
+	stream.SerializeBool(&entry.Flagged)
+	stream.SerializeBool(&entry.Summary)
+
+	stream.SerializeBool(&entry.UseDebug)
+	stream.SerializeString(&entry.Debug, BillingEntryMaxDebugLength)
+
+	// todo: Summary
+
+	/*
+		2. First slice only
+
+		These values are serialized only for slice 0.
+	*/
+
+	if entry.SliceNumber == 0 {
+
+		stream.SerializeUint64(&entry.DatacenterID)
+		stream.SerializeUint64(&entry.BuyerID)
+		stream.SerializeUint64(&entry.UserHash)
+		stream.SerializeUint64(&entry.EnvelopeBytesUp)
+		stream.SerializeUint64(&entry.EnvelopeBytesDown)
+		stream.SerializeFloat32(&entry.Latitude)
+		stream.SerializeFloat32(&entry.Longitude)
+		stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
+		stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
+		stream.SerializeInteger(&entry.PlatformType, 0, 10) // todo: constant
+		stream.SerializeString(&entry.SDKVersion, 10) // todo: constant
+	}
+
+	/*
+	NumTags                         uint8
+	Tags                            [BillingEntryMaxTags]uint64
+	ABTest                          bool
+	Pro                             bool
+	*/
+
+	// -------------------
+
+	/*
+	stream.SerializeInteger(&obj.a, -10, 10)
+	stream.SerializeInteger(&obj.b, -10, 10)
+
+	stream.SerializeInteger(&obj.c, -100, 10000)
+
+	stream.SerializeBits(&obj.d, 6)
+	stream.SerializeBits(&obj.e, 8)
+	stream.SerializeBits(&obj.f, 7)
+
+	stream.SerializeAlign()
+
+	stream.SerializeBool(&obj.g)
+
+	for i := range obj.items {
+		stream.SerializeBits(&obj.items[i], 8)
+	}
+
+	stream.SerializeFloat32(&obj.floatValue)
+
+	stream.SerializeFloat64(&obj.doubleValue)
+
+	stream.SerializeUint64(&obj.uint64Value)
+
+	stream.SerializeBytes(obj.bytes[:])
+
+	stream.SerializeString(&obj.str, 256)
+
+	stream.SerializeAddress(&obj.addressA)
+	stream.SerializeAddress(&obj.addressB)
+	stream.SerializeAddress(&obj.addressC)
+	*/
+
+	return stream.Error()
 }
