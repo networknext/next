@@ -924,40 +924,54 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		stream.SerializeBool(&entry.PacketLossReduction)
 	}
 
-	// -------------------
-
 	/*
-	stream.SerializeInteger(&obj.a, -10, 10)
-	stream.SerializeInteger(&obj.b, -10, 10)
+		5. Error State Only
 
-	stream.SerializeInteger(&obj.c, -100, 10000)
+		These values are only serialized when the session is in an error state (rare).
+	*/
 
-	stream.SerializeBits(&obj.d, 6)
-	stream.SerializeBits(&obj.e, 8)
-	stream.SerializeBits(&obj.f, 7)
+	errorState := false
 
-	stream.SerializeAlign()
-
-	stream.SerializeBool(&obj.g)
-
-	for i := range obj.items {
-		stream.SerializeBits(&obj.items[i], 8)
+	if stream.IsWriting() {
+		errorState = 
+			entry.FallbackToDirect ||
+			entry.MultipathVetoed ||
+			entry.Mispredicted ||
+			entry.Vetoed ||
+			entry.LatencyWorse ||
+			entry.NoRoute ||
+			entry.NextLatencyTooHigh ||
+			entry.RouteChanged ||
+			entry.CommitVeto ||
+			entry.LackOfDiversity ||
+			entry.MultipathRestricted ||
+			entry.UnknownDatacenter ||
+			entry.DatacenterNotEnabled ||
+			entry.BuyerNotLive ||
+			entry.StaleRouteMatrix
 	}
 
-	stream.SerializeFloat32(&obj.floatValue)
+	stream.SerializeBool(&errorState)
 
-	stream.SerializeFloat64(&obj.doubleValue)
+	if errorState {
 
-	stream.SerializeUint64(&obj.uint64Value)
+		stream.SerializeBool(&entry.FallbackToDirect)
+		stream.SerializeBool(&entry.MultipathVetoed)
+		stream.SerializeBool(&entry.Mispredicted)
+		stream.SerializeBool(&entry.Vetoed)
+		stream.SerializeBool(&entry.LatencyWorse)
+		stream.SerializeBool(&entry.NoRoute)
+		stream.SerializeBool(&entry.NextLatencyTooHigh)
+		stream.SerializeBool(&entry.RouteChanged)
+		stream.SerializeBool(&entry.CommitVeto)
+		stream.SerializeBool(&entry.LackOfDiversity)
+		stream.SerializeBool(&entry.MultipathRestricted)
+		stream.SerializeBool(&entry.UnknownDatacenter)
+		stream.SerializeBool(&entry.DatacenterNotEnabled)
+		stream.SerializeBool(&entry.BuyerNotLive)
+		stream.SerializeBool(&entry.StaleRouteMatrix)
 
-	stream.SerializeBytes(obj.bytes[:])
-
-	stream.SerializeString(&obj.str, 256)
-
-	stream.SerializeAddress(&obj.addressA)
-	stream.SerializeAddress(&obj.addressB)
-	stream.SerializeAddress(&obj.addressC)
-	*/
+	}
 
 	return stream.Error()
 }
