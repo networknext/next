@@ -336,6 +336,7 @@ func createStagingDatabaseBin(numRelays int) {
 			MaxSessions:         8000,
 			DatabaseID:          maxRelayDbID,
 			Notes:               "I am a staging relay." + fmt.Sprintf("%d", i+1) + " - let me load test!",
+			Version:             "2.0.8",
 		}
 
 		// Increment the relay database ID counter
