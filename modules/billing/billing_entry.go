@@ -96,7 +96,7 @@ const (
 
 type BillingEntry struct {
 	Version                         uint8
-	Timestamp                       uint64 // todo: reduce to 32 bits seconds since 1970 or something
+	Timestamp                       uint64
 	BuyerID                         uint64
 	UserHash                        uint64
 	SessionID                       uint64
@@ -129,7 +129,7 @@ type BillingEntry struct {
 	Longitude                       float32
 	ISP                             string
 	ABTest                          bool
-	RouteDecision                   uint64 // deprecated
+	RouteDecision                   uint64
 	ConnectionType                  uint8
 	PlatformType                    uint8
 	SDKVersion                      string
@@ -139,21 +139,18 @@ type BillingEntry struct {
 	UseDebug                        bool
 	Debug                           string
 	FallbackToDirect                bool
-	ClientFlags                     uint32 // deprecated
-	UserFlags                       uint64 // deprecated
+	ClientFlags                     uint32
+	UserFlags                       uint64
 	NearRelayRTT                    float32
 	PacketsOutOfOrderClientToServer uint64
 	PacketsOutOfOrderServerToClient uint64
-	JitterClientToServer            float32 // deprecated
-	JitterServerToClient            float32 // deprecated
-
-	// todo: summary only
+	JitterClientToServer            float32
+	JitterServerToClient            float32
 	NumNearRelays                   uint8
 	NearRelayIDs                    [BillingEntryMaxNearRelays]uint64
 	NearRelayRTTs                   [BillingEntryMaxNearRelays]float32
 	NearRelayJitters                [BillingEntryMaxNearRelays]float32
 	NearRelayPacketLosses           [BillingEntryMaxNearRelays]float32
-
 	RelayWentAway                   bool
 	RouteLost                       bool
 	NumTags                         uint8
@@ -722,45 +719,45 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 // ------------------------------------------------------------------------
 
-const BillingEntryVersion2 = uint8(28)
+const BillingEntryVersion2 = uint8(0)
 
 type BillingEntry2 struct {
-	
+
 	// always
 
-	Version                         uint32
-	Timestamp                       uint32
-	SessionID                       uint64
-	SliceNumber                     uint32
-	DirectRTT                       int32
-	DirectJitter                    int32
-	DirectPacketLoss                int32
-	RealPacketLoss                  int32
-	RealPacketLoss_Frac				uint32
-	RealJitter                      uint32
-	Next                            bool
-	Flagged                         bool
-	Summary                         bool
-	UseDebug                        bool
-	Debug                           string
+	Version             uint32
+	Timestamp           uint32
+	SessionID           uint64
+	SliceNumber         uint32
+	DirectRTT           int32
+	DirectJitter        int32
+	DirectPacketLoss    int32
+	RealPacketLoss      int32
+	RealPacketLoss_Frac uint32
+	RealJitter          uint32
+	Next                bool
+	Flagged             bool
+	Summary             bool
+	UseDebug            bool
+	Debug               string
 
 	// first slice only
 
-	DatacenterID                    uint64
-	BuyerID                         uint64
-	UserHash                        uint64
-	EnvelopeBytesUp                 uint64
-	EnvelopeBytesDown               uint64
-	Latitude                        float32
-	Longitude                       float32
-	ISP                             string
-	ConnectionType                  int32
-	PlatformType                    int32
-	SDKVersion                      string
-	NumTags                         int32
-	Tags                            [BillingEntryMaxTags]uint64
-	ABTest                          bool
-	Pro                             bool
+	DatacenterID      uint64
+	BuyerID           uint64
+	UserHash          uint64
+	EnvelopeBytesUp   uint64
+	EnvelopeBytesDown uint64
+	Latitude          float32
+	Longitude         float32
+	ISP               string
+	ConnectionType    int32
+	PlatformType      int32
+	SDKVersion        string
+	NumTags           int32
+	Tags              [BillingEntryMaxTags]uint64
+	ABTest            bool
+	Pro               bool
 
 	// summary slice only
 
@@ -778,38 +775,38 @@ type BillingEntry2 struct {
 
 	// network next only
 
-	NextRTT                         int32
-	NextJitter                      int32
-	NextPacketLoss                  int32
-	PredictedNextRTT                int32
-	NearRelayRTT                    int32
-	NumNextRelays                   int32
-	NextRelays                      [BillingEntryMaxRelays]uint64
-	NextRelayPrice                  [BillingEntryMaxRelays]uint64
-	TotalPrice                      uint64
-	RouteDiversity                  int32
-	Committed                       bool
-	Multipath                       bool
-	RTTReduction                    bool
-	PacketLossReduction             bool
+	NextRTT             int32
+	NextJitter          int32
+	NextPacketLoss      int32
+	PredictedNextRTT    int32
+	NearRelayRTT        int32
+	NumNextRelays       int32
+	NextRelays          [BillingEntryMaxRelays]uint64
+	NextRelayPrice      [BillingEntryMaxRelays]uint64
+	TotalPrice          uint64
+	RouteDiversity      int32
+	Committed           bool
+	Multipath           bool
+	RTTReduction        bool
+	PacketLossReduction bool
 
 	// error state only
 
-	FallbackToDirect                bool
-	MultipathVetoed                 bool
-	Mispredicted                    bool
-	Vetoed                          bool
-	LatencyWorse                    bool
-	NoRoute                         bool
-	NextLatencyTooHigh              bool
-	RouteChanged                    bool
-	CommitVeto                      bool
-	LackOfDiversity                 bool
-	MultipathRestricted             bool
-	UnknownDatacenter               bool
-	DatacenterNotEnabled            bool
-	BuyerNotLive                    bool
-	StaleRouteMatrix                bool
+	FallbackToDirect     bool
+	MultipathVetoed      bool
+	Mispredicted         bool
+	Vetoed               bool
+	LatencyWorse         bool
+	NoRoute              bool
+	NextLatencyTooHigh   bool
+	RouteChanged         bool
+	CommitVeto           bool
+	LackOfDiversity      bool
+	MultipathRestricted  bool
+	UnknownDatacenter    bool
+	DatacenterNotEnabled bool
+	BuyerNotLive         bool
+	StaleRouteMatrix     bool
 }
 
 func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
@@ -825,7 +822,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&entry.SessionID)
 
 	// // todo: serialize intelligently, eg. up to 1hr, up to 16 bits, 32 bits worst case only.
-	stream.SerializeBits(&entry.SliceNumber, 32)			
+	stream.SerializeBits(&entry.SliceNumber, 32)
 
 	stream.SerializeInteger(&entry.DirectRTT, 0, 1023)
 	stream.SerializeInteger(&entry.DirectJitter, 0, 255)
@@ -861,8 +858,8 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		stream.SerializeFloat32(&entry.Longitude)
 		stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
 		stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
-		stream.SerializeInteger(&entry.PlatformType, 0, 10) // todo: constant
-		stream.SerializeString(&entry.SDKVersion, 10) // todo: constant
+		stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+		stream.SerializeString(&entry.SDKVersion, 10)        // todo: constant
 		stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
 		for i := 0; i < int(entry.NumTags); i++ {
 			stream.SerializeUint64(&entry.Tags[i])
@@ -933,22 +930,22 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	errorState := false
 
 	if stream.IsWriting() {
-		errorState = 
+		errorState =
 			entry.FallbackToDirect ||
-			entry.MultipathVetoed ||
-			entry.Mispredicted ||
-			entry.Vetoed ||
-			entry.LatencyWorse ||
-			entry.NoRoute ||
-			entry.NextLatencyTooHigh ||
-			entry.RouteChanged ||
-			entry.CommitVeto ||
-			entry.LackOfDiversity ||
-			entry.MultipathRestricted ||
-			entry.UnknownDatacenter ||
-			entry.DatacenterNotEnabled ||
-			entry.BuyerNotLive ||
-			entry.StaleRouteMatrix
+				entry.MultipathVetoed ||
+				entry.Mispredicted ||
+				entry.Vetoed ||
+				entry.LatencyWorse ||
+				entry.NoRoute ||
+				entry.NextLatencyTooHigh ||
+				entry.RouteChanged ||
+				entry.CommitVeto ||
+				entry.LackOfDiversity ||
+				entry.MultipathRestricted ||
+				entry.UnknownDatacenter ||
+				entry.DatacenterNotEnabled ||
+				entry.BuyerNotLive ||
+				entry.StaleRouteMatrix
 	}
 
 	stream.SerializeBool(&errorState)
