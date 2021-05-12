@@ -129,7 +129,7 @@ type BillingEntry struct {
 	Longitude                       float32
 	ISP                             string
 	ABTest                          bool
-	RouteDecision                   uint64
+	RouteDecision                   uint64 // Deprecated with server_backend4
 	ConnectionType                  uint8
 	PlatformType                    uint8
 	SDKVersion                      string
