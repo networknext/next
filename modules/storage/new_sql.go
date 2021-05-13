@@ -576,6 +576,8 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 
 	}
 
+	fmt.Printf("dyncRelays() setting up %d relays\n", len(relays))
+
 	db.relayMutex.Lock()
 	db.relays = relays
 	db.relayMutex.Unlock()
