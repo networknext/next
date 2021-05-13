@@ -787,10 +787,11 @@ type BillingEntry2 struct {
 	NextRelayPrice      [BillingEntryMaxRelays]uint64
 	TotalPrice          uint64
 	RouteDiversity      int32
-	Committed           bool
+	Uncommitted         bool
 	Multipath           bool
 	RTTReduction        bool
 	PacketLossReduction bool
+	RouteChanged        bool
 
 	// error state only
 
@@ -801,9 +802,7 @@ type BillingEntry2 struct {
 	LatencyWorse         bool
 	NoRoute              bool
 	NextLatencyTooHigh   bool
-	RouteChanged         bool
 	CommitVeto           bool
-	LackOfDiversity      bool
 	MultipathRestricted  bool
 	UnknownDatacenter    bool
 	DatacenterNotEnabled bool
@@ -923,10 +922,11 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 		stream.SerializeUint64(&entry.TotalPrice)
 		stream.SerializeInteger(&entry.RouteDiversity, 1, 31)
-		stream.SerializeBool(&entry.Committed)
+		stream.SerializeBool(&entry.Uncommitted)
 		stream.SerializeBool(&entry.Multipath)
 		stream.SerializeBool(&entry.RTTReduction)
 		stream.SerializeBool(&entry.PacketLossReduction)
+		stream.SerializeBool(&entry.RouteChanged)
 	}
 
 	/*
@@ -946,9 +946,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 				entry.LatencyWorse ||
 				entry.NoRoute ||
 				entry.NextLatencyTooHigh ||
-				entry.RouteChanged ||
 				entry.CommitVeto ||
-				entry.LackOfDiversity ||
 				entry.MultipathRestricted ||
 				entry.UnknownDatacenter ||
 				entry.DatacenterNotEnabled ||
@@ -967,9 +965,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		stream.SerializeBool(&entry.LatencyWorse)
 		stream.SerializeBool(&entry.NoRoute)
 		stream.SerializeBool(&entry.NextLatencyTooHigh)
-		stream.SerializeBool(&entry.RouteChanged)
 		stream.SerializeBool(&entry.CommitVeto)
-		stream.SerializeBool(&entry.LackOfDiversity)
 		stream.SerializeBool(&entry.MultipathRestricted)
 		stream.SerializeBool(&entry.UnknownDatacenter)
 		stream.SerializeBool(&entry.DatacenterNotEnabled)
@@ -1077,9 +1073,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 			for i := 0; i < int(entry.NumNearRelays); i++ {
 				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
-				nearRelayRTTs[i] = entry.NearRelayRTTs[i]
-				nearRelayJitters[i] = entry.NearRelayJitters[i]
-				nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
+				nearRelayRTTs[i] = int(entry.NearRelayRTTs[i])
+				nearRelayJitters[i] = int(entry.NearRelayJitters[i])
+				nearRelayPacketLosses[i] = int(entry.NearRelayPacketLosses[i])
 			}
 
 			e["nearRelayIDs"] = nearRelayIDs
@@ -1091,207 +1087,116 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 	}
 
-	return e, "", nil
-}
+	/*
+		4. Network Next Only
 
-/*
-// Implements the bigquery.ValueSaver interface for a billing entry so it can be used in Put()
-func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
-
-	e := make(map[string]bigquery.Value)
-
-	e["timestamp"] = int(entry.Timestamp)
-
-	e["buyerId"] = int(entry.BuyerID)
-	e["sessionId"] = int(entry.SessionID)
-	e["datacenterID"] = int(entry.DatacenterID)
-	e["userHash"] = int(entry.UserHash)
-	e["latitude"] = entry.Latitude
-	e["longitude"] = entry.Longitude
-	e["isp"] = entry.ISP
-	e["connectionType"] = int(entry.ConnectionType)
-	e["platformType"] = int(entry.PlatformType)
-	e["sdkVersion"] = entry.SDKVersion
-
-	e["sliceNumber"] = int(entry.SliceNumber)
-
-	e["flagged"] = entry.Flagged
-	e["fallbackToDirect"] = entry.FallbackToDirect
-	e["multipathVetoed"] = entry.MultipathVetoed
-	e["abTest"] = entry.ABTest
-	e["committed"] = entry.Committed
-	e["multipath"] = entry.Multipath
-	e["rttReduction"] = entry.RTTReduction
-	e["packetLossReduction"] = entry.PacketLossReduction
-	e["relayWentAway"] = entry.RelayWentAway
-	e["routeLost"] = entry.RouteLost
-	e["mispredicted"] = entry.Mispredicted
-	e["vetoed"] = entry.Vetoed
-	e["latencyWorse"] = entry.LatencyWorse
-	e["noRoute"] = entry.NoRoute
-	e["nextLatencyTooHigh"] = entry.NextLatencyTooHigh
-	e["routeChanged"] = entry.RouteChanged
-	e["commitVeto"] = entry.CommitVeto
-
-	if entry.Pro {
-		e["pro"] = entry.Pro
-	}
-
-	if entry.BuyerNotLive {
-		e["buyerNotLive"] = entry.BuyerNotLive
-	}
-
-	if entry.UnknownDatacenter {
-		e["unknownDatacenter"] = entry.UnknownDatacenter
-	}
-
-	if entry.DatacenterNotEnabled {
-		e["datacenterNotEnabled"] = entry.DatacenterNotEnabled
-	}
-
-	if entry.StaleRouteMatrix {
-		e["staleRouteMatrix"] = entry.StaleRouteMatrix
-	}
-
-	if entry.RouteDiversity > 0 {
-		e["routeDiversity"] = entry.RouteDiversity
-	}
-
-	if entry.LackOfDiversity {
-		e["lackOfDiversity"] = entry.LackOfDiversity
-	}
-
-	if entry.MultipathRestricted {
-		e["multipathRestricted"] = entry.MultipathRestricted
-	}
-
-	e["directRTT"] = entry.DirectRTT
-	e["directJitter"] = entry.DirectJitter
-	e["directPacketLoss"] = entry.DirectPacketLoss
-
-	if entry.ClientToServerPacketsSent > 0 {
-		e["clientToServerPacketsSent"] = int(entry.ClientToServerPacketsSent)
-	}
-
-	if entry.ServerToClientPacketsSent > 0 {
-		e["serverToClientPacketsSent"] = int(entry.ServerToClientPacketsSent)
-	}
-
-	if entry.ClientToServerPacketsLost > 0 {
-		e["clientToServerPacketsLost"] = int(entry.ClientToServerPacketsLost)
-	}
-
-	if entry.ServerToClientPacketsLost > 0 {
-		e["serverToClientPacketsLost"] = int(entry.ServerToClientPacketsLost)
-	}
-
-	// IMPORTANT: This is derived from *PacketsSent and *PacketsLost, and is valid for both next and direct
-	if entry.PacketLoss > 0.0 {
-		e["packetLoss"] = entry.PacketLoss
-	}
-
-	if entry.PacketsOutOfOrderClientToServer != 0 {
-		e["packetsOutOfOrderClientToServer"] = int(entry.PacketsOutOfOrderClientToServer)
-	}
-
-	if entry.PacketsOutOfOrderServerToClient != 0 {
-		e["packetsOutOfOrderServerToClient"] = int(entry.PacketsOutOfOrderServerToClient)
-	}
-
-	if entry.JitterClientToServer != 0 {
-		e["jitterClientToServer"] = entry.JitterClientToServer
-	}
-
-	if entry.JitterServerToClient != 0 {
-		e["jitterServerToClient"] = entry.JitterServerToClient
-	}
-
-	if entry.UseDebug && entry.Debug != "" {
-		e["debug"] = entry.Debug
-	}
-
-	if entry.ClientFlags != 0 {
-		e["clientFlags"] = int(entry.ClientFlags)
-	}
-
-	if entry.UserFlags != 0 {
-		e["userFlags"] = int(entry.UserFlags)
-	}
-
-	if entry.NumTags > 0 {
-		tags := make([]bigquery.Value, entry.NumTags)
-		for i := 0; i < int(entry.NumTags); i++ {
-			tags[i] = int(entry.Tags[i])
-		}
-		e["tags"] = tags
-	}
+		These values are serialized only when a slice is on network next.
+	*/
 
 	if entry.Next {
 
-		e["next"] = entry.Next
+		e["nextRTT"] = int(entry.NextRTT)
+		e["nextJitter"] = int(entry.NextJitter)
+		e["nextPacketLoss"] = int(entry.NextPacketLoss)
+		e["predictedNextRTT"] = int(entry.PredictedNextRTT)
+		e["nearRelayRTT"] = int(entry.NearRelayRTT)
 
-		e["nextRTT"] = entry.NextRTT
-		e["nextJitter"] = entry.NextJitter
-		e["nextPacketLoss"] = entry.NextPacketLoss
+		if entry.NumNextRelays > 0 {
+	
+			nextRelays := make([]bigquery.Value, entry.NumNextRelays)
+			nextRelayPrice := make([]bigquery.Value, entry.NumNextRelays)
 
-		e["totalPrice"] = int(entry.TotalPrice)
-
-		e["nextBytesUp"] = int(entry.NextBytesUp)
-		e["nextBytesDown"] = int(entry.NextBytesDown)
-		e["envelopeBytesUp"] = int(entry.EnvelopeBytesUp)
-		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
-
-		if entry.PredictedNextRTT > 0.0 {
-			e["predictedNextRTT"] = entry.PredictedNextRTT
-		}
-
-		if entry.NearRelayRTT != 0 {
-			e["nearRelayRTT"] = entry.NearRelayRTT
-		}
-
-		nextRelays := make([]bigquery.Value, entry.NumNextRelays)
-		nextRelaysPrice := make([]bigquery.Value, entry.NumNextRelays)
-
-		for i := 0; i < int(entry.NumNextRelays); i++ {
-			nextRelays[i] = int(entry.NextRelays[i])
-			nextRelaysPrice[i] = int(entry.NextRelaysPrice[i])
-		}
-
-		e["nextRelays"] = nextRelays
-		e["nextRelaysPrice"] = nextRelaysPrice
-
-		if entry.NumNearRelays > 0 && entry.UseDebug {
-			// IMPORTANT: Only write this data if debug is on because it is very large
-
-			e["numNearRelays"] = int(entry.NumNearRelays)
-
-			nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
-			nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
-			nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
-			nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
-
-			for i := 0; i < int(entry.NumNearRelays); i++ {
-				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
-				nearRelayRTTs[i] = entry.NearRelayRTTs[i]
-				nearRelayJitters[i] = entry.NearRelayJitters[i]
-				nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
+			for i := 0; i < int(entry.NumNextRelays); i++ {
+				nextRelays[i] = int(entry.NextRelays[i])
+				nextRelayPrice[i] = int(entry.NextRelayPrice[i])
 			}
 
-			e["nearRelayIDs"] = nearRelayIDs
-			e["nearRelayRTTs"] = nearRelayRTTs
-			e["nearRelayJitters"] = nearRelayJitters
-			e["nearRelayPacketLosses"] = nearRelayPacketLosses
+			e["nextRelays"] = nextRelays
+			e["nextRelayPrice"] = nextRelayPrice
+
+		}
+
+		e["totalPrice"] = int(entry.TotalPrice)
+		e["routeDiversity"] = int(entry.RouteDiversity)
+
+		if entry.Uncommitted {
+			e["uncommitted"] = true
+		}
+
+		if entry.Multipath {
+			e["multipath"] = true
+		}
+
+		if entry.RTTReduction {
+			e["rttReduction"] = true
+		}
+
+		if entry.PacketLossReduction {
+			e["packetLossReduction"] = true
+		}
+
+		if entry.RouteChanged {
+			e["routeChanged"] = true
 		}
 	}
 
-	// todo: this is deprecated. we don't really need this anymore. should
-	// be made nullable in the schema and we just stop writing this.
-	e["initial"] = entry.Initial
+	/*
+		5. Error State Only
 
-	// todo: this is deprecated and should be made nullable in the schema
-	// at this point we should stop writing this
-	e["routeDecision"] = int(entry.RouteDecision)
+		These values are only serialized when the session is in an error state (rare).
+	*/
+
+	if entry.FallbackToDirect {
+		e["fallbackToDirect"] = true
+	}
+
+	if entry.MultipathVetoed {
+		e["multipathVetoed"] = true
+	}
+
+	if entry.Mispredicted {
+		e["mispredicted"] = true
+	}
+
+	if entry.Vetoed {
+		e["vetoed"] = true
+	}
+
+	if entry.LatencyWorse {
+		e["latencyWorse"] = true
+	}
+
+	if entry.NoRoute {
+		e["noRoute"] = true
+	}
+
+	if entry.NextLatencyTooHigh {
+		e["nextLatencyTooHigh"] = true
+	}
+
+	if entry.CommitVeto {
+		e["commitVeto"] = true
+	}
+
+	if entry.MultipathRestricted {
+		e["multipathRestricted"] = true
+	}
+
+	if entry.UnknownDatacenter {
+		e["unknownDatacenter"] = true
+	}
+
+	if entry.DatacenterNotEnabled {
+		e["datacenterNotEnabled"] = true
+	}
+
+	if entry.BuyerNotLive {
+		e["buyerNotLive"] = true
+	}
+
+	if entry.StaleRouteMatrix {
+		e["staleRouteMatrix"] = true
+	}
 
 	return e, "", nil
 }
-*/
