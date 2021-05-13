@@ -1156,6 +1156,35 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 	return nil
 }
 
+//         Column         |          Type          | Nullable
+// -----------------------+------------------------+----------
+//  id                    | integer                | not null
+//  hex_id                | character varying(16)  | not null
+//  contract_term         | integer                | not null
+//  display_name          | character varying      | not null
+//  end_date              | date                   |
+//  included_bandwidth_gb | integer                | not null
+//  internal_ip           | inet                   |
+//  internal_ip_port      | integer                |
+//  management_ip         | character varying      | not null
+//  max_sessions          | integer                | not null
+//  mrc                   | bigint                 | not null
+//  overage               | bigint                 | not null
+//  port_speed            | integer                | not null
+//  public_ip             | inet                   |
+//  public_ip_port        | integer                |
+//  public_key            | bytea                  | not null
+//  ssh_port              | integer                | not null
+//  ssh_user              | character varying      | not null
+//  start_date            | date                   |
+//  bw_billing_rule       | integer                | not null
+//  datacenter            | integer                | not null
+//  machine_type          | integer                | not null
+//  relay_state           | integer                | not null
+//  notes                 | character varying(500) |
+//  billing_supplier      | integer                |
+//  relay_version         | character varying      | not null
+
 type sqlRelay struct {
 	ID                 uint64
 	HexID              string
@@ -1178,7 +1207,7 @@ type sqlRelay struct {
 	Overage            int64
 	BWRule             int64
 	ContractTerm       int64
-	Notes              string
+	Notes              sql.NullString
 	StartDate          sql.NullTime
 	EndDate            sql.NullTime
 	MachineType        int64
@@ -1262,6 +1291,15 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		Int64: publicIPPort,
 	}
 
+	nullableNotes := sql.NullString{
+		Valid: false,
+	}
+
+	if r.Notes != "" {
+		nullableNotes.Valid = true
+		nullableNotes.String = r.Notes
+	}
+
 	// field is not null but we also don't want an empty string
 	if r.Version == "" {
 		return fmt.Errorf("relay version can not be an empty string and must be a valid value (e.g. '2.0.6')")
@@ -1291,7 +1329,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		StartDate:          startDate,
 		EndDate:            endDate,
 		MachineType:        int64(r.Type),
-		Notes:              r.Notes,
+		Notes:              nullableNotes,
 		Version:            r.Version,
 	}
 
