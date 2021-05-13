@@ -227,7 +227,10 @@ func createStagingDatabaseBin(numRelays int) {
 		CustomerID:     3,
 	}
 
+	stagingSellerRouteShader := defaultRouteShader
+	stagingSellerRouteShader.SelectionPercent = 1
 	stagingSellerInternalConfig := defaultInternalConfig
+	stagingSellerInternalConfig.LargeCustomer = true
 	stagingSellerInternalConfig.EnableVanityMetrics = true
 
 	buyerStagingSeller := routing.Buyer{
@@ -238,7 +241,7 @@ func createStagingDatabaseBin(numRelays int) {
 		Live:           true,
 		Debug:          true,
 		PublicKey:      stagingSellerPK,
-		RouteShader:    defaultRouteShader,
+		RouteShader:    stagingSellerRouteShader,
 		InternalConfig: stagingSellerInternalConfig,
 		DatabaseID:     2,
 		CustomerID:     2,
@@ -336,6 +339,7 @@ func createStagingDatabaseBin(numRelays int) {
 			MaxSessions:         8000,
 			DatabaseID:          maxRelayDbID,
 			Notes:               "I am a staging relay." + fmt.Sprintf("%d", i+1) + " - let me load test!",
+			Version:             "2.0.8",
 		}
 
 		// Increment the relay database ID counter
