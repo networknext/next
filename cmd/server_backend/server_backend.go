@@ -295,7 +295,7 @@ func mainReturnWithCode() int {
 
 		go func() {
 			httpClient := &http.Client{
-				Timeout: time.Second * 2,
+				Timeout: time.Second * 4,
 			}
 
 			syncTimer := helpers.NewSyncTimer(syncInterval)
