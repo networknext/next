@@ -102,10 +102,12 @@ func (sdb *StatsDatabase) ExtractPingStats(maxJitter float32, maxPacketLoss floa
 		ids := make([]uint64, len(sdb.Entries))
 
 		idx := 0
+		sdb.mu.Lock()
 		for k := range sdb.Entries {
 			ids[idx] = k
 			idx++
 		}
+		sdb.mu.Unlock()
 
 		for i := 1; i < len(ids); i++ {
 			for j := 0; j < i; j++ {
