@@ -1053,6 +1053,33 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 		}
 	}
 
+	/*
+		3. Summary slice only
+
+		These values are serialized only for the summary slice (at the end of the session)
+	*/
+
+	if entry.Summary {
+
+		e["clientToServerPacketsSent"] = entry.ClientToServerPacketsSent
+		e["serverToClientPacketsSent"] = entry.ServerToClientPacketsSent
+		e["clientToServerPacketsLost"] = entry.ClientToServerPacketsLost
+		e["serverToClientPacketsLost"] = entry.ServerToClientPacketsLost
+		e["clientToServerPacketsOutOfOrder"] = entry.ClientToServerPacketsOutOfOrder
+		e["serverToClientPacketsOutOfOrder"] = entry.ServerToClientPacketsOutOfOrder
+
+		/*
+		stream.SerializeInteger(&entry.NumNearRelays, 0, BillingEntryMaxNearRelays)
+		for i := 0; i < int(entry.NumNearRelays); i++ {
+			stream.SerializeUint64(&entry.NearRelayIDs[i])
+			stream.SerializeInteger(&entry.NearRelayRTTs[i], 0, 255)
+			stream.SerializeInteger(&entry.NearRelayJitters[i], 0, 255)
+			stream.SerializeInteger(&entry.NearRelayPacketLosses[i], 0, 100)
+		}
+		*/
+
+	}
+
 	return e, "", nil
 }
 
