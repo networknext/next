@@ -1068,15 +1068,26 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 		e["clientToServerPacketsOutOfOrder"] = entry.ClientToServerPacketsOutOfOrder
 		e["serverToClientPacketsOutOfOrder"] = entry.ServerToClientPacketsOutOfOrder
 
-		/*
-		stream.SerializeInteger(&entry.NumNearRelays, 0, BillingEntryMaxNearRelays)
-		for i := 0; i < int(entry.NumNearRelays); i++ {
-			stream.SerializeUint64(&entry.NearRelayIDs[i])
-			stream.SerializeInteger(&entry.NearRelayRTTs[i], 0, 255)
-			stream.SerializeInteger(&entry.NearRelayJitters[i], 0, 255)
-			stream.SerializeInteger(&entry.NearRelayPacketLosses[i], 0, 100)
+		if entry.NumNearRelays > 0 {
+			
+			nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
+
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
+				nearRelayRTTs[i] = entry.NearRelayRTTs[i]
+				nearRelayJitters[i] = entry.NearRelayJitters[i]
+				nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
+			}
+
+			e["nearRelayIDs"] = nearRelayIDs
+			e["nearRelayRTTs"] = nearRelayRTTs
+			e["nearRelayJitters"] = nearRelayJitters
+			e["nearRelayPacketLosses"] = nearRelayPacketLosses
+
 		}
-		*/
 
 	}
 
