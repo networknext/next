@@ -3,6 +3,8 @@ package billing
 import (
 	"fmt"
 
+	"cloud.google.com/go/bigquery"
+
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -716,3 +718,569 @@ func ReadBillingEntry(entry *BillingEntry, data []byte) bool {
 
 	return true
 }
+
+// ------------------------------------------------------------------------
+
+const BillingEntryVersion2 = uint8(0)
+
+type BillingEntry2 struct {
+
+	// always
+
+	Version             uint32
+	Timestamp           uint32
+	SessionID           uint64
+	SliceNumber         uint32
+	DirectRTT           int32
+	DirectJitter        int32
+	DirectPacketLoss    int32
+	RealPacketLoss      int32
+	RealPacketLoss_Frac uint32
+	RealJitter          uint32
+	Next                bool
+	Flagged             bool
+	Summary             bool
+	UseDebug            bool
+	Debug               string
+
+	// first slice only
+
+	DatacenterID      uint64
+	BuyerID           uint64
+	UserHash          uint64
+	EnvelopeBytesUp   uint64
+	EnvelopeBytesDown uint64
+	Latitude          float32
+	Longitude         float32
+	ISP               string
+	ConnectionType    int32
+	PlatformType      int32
+	SDKVersion        string
+	NumTags           int32
+	Tags              [BillingEntryMaxTags]uint64
+	ABTest            bool
+	Pro               bool
+
+	// summary slice only
+
+	ClientToServerPacketsSent       uint64
+	ServerToClientPacketsSent       uint64
+	ClientToServerPacketsLost       uint64
+	ServerToClientPacketsLost       uint64
+	ClientToServerPacketsOutOfOrder uint64
+	ServerToClientPacketsOutOfOrder uint64
+	NumNearRelays                   int32
+	NearRelayIDs                    [BillingEntryMaxNearRelays]uint64
+	NearRelayRTTs                   [BillingEntryMaxNearRelays]int32
+	NearRelayJitters                [BillingEntryMaxNearRelays]int32
+	NearRelayPacketLosses           [BillingEntryMaxNearRelays]int32
+
+	// network next only
+
+	NextRTT             int32
+	NextJitter          int32
+	NextPacketLoss      int32
+	PredictedNextRTT    int32
+	NearRelayRTT        int32
+	NumNextRelays       int32
+	NextRelays          [BillingEntryMaxRelays]uint64
+	NextRelayPrice      [BillingEntryMaxRelays]uint64
+	TotalPrice          uint64
+	RouteDiversity      int32
+	Committed           bool
+	Multipath           bool
+	RTTReduction        bool
+	PacketLossReduction bool
+
+	// error state only
+
+	FallbackToDirect     bool
+	MultipathVetoed      bool
+	Mispredicted         bool
+	Vetoed               bool
+	LatencyWorse         bool
+	NoRoute              bool
+	NextLatencyTooHigh   bool
+	RouteChanged         bool
+	CommitVeto           bool
+	LackOfDiversity      bool
+	MultipathRestricted  bool
+	UnknownDatacenter    bool
+	DatacenterNotEnabled bool
+	BuyerNotLive         bool
+	StaleRouteMatrix     bool
+}
+
+func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
+
+	/*
+		1. Always
+
+		These values are serialized in every slice
+	*/
+
+	stream.SerializeBits(&entry.Version, 8)
+	stream.SerializeBits(&entry.Timestamp, 32)
+	stream.SerializeUint64(&entry.SessionID)
+
+	small := false
+	if entry.SliceNumber < 1024 {
+		small = true
+	}
+	stream.SerializeBool(&small)
+	if small {
+		stream.SerializeBits(&entry.SliceNumber, 10)
+	} else {
+		stream.SerializeBits(&entry.SliceNumber, 32)	
+	}
+
+	stream.SerializeInteger(&entry.DirectRTT, 0, 1023)
+	stream.SerializeInteger(&entry.DirectJitter, 0, 255)
+	stream.SerializeInteger(&entry.DirectPacketLoss, 0, 100)
+
+	stream.SerializeInteger(&entry.RealPacketLoss, 0, 100)
+	stream.SerializeBits(&entry.RealPacketLoss_Frac, 8)
+	stream.SerializeBits(&entry.RealJitter, 8)
+
+	stream.SerializeBool(&entry.Next)
+	stream.SerializeBool(&entry.Flagged)
+	stream.SerializeBool(&entry.Summary)
+
+	stream.SerializeBool(&entry.UseDebug)
+	stream.SerializeString(&entry.Debug, BillingEntryMaxDebugLength)
+
+	/*
+		2. First slice only
+
+		These values are serialized only for slice 0.
+	*/
+
+	if entry.SliceNumber == 0 {
+
+		stream.SerializeUint64(&entry.DatacenterID)
+		stream.SerializeUint64(&entry.BuyerID)
+		stream.SerializeUint64(&entry.UserHash)
+		stream.SerializeUint64(&entry.EnvelopeBytesUp)
+		stream.SerializeUint64(&entry.EnvelopeBytesDown)
+		stream.SerializeFloat32(&entry.Latitude)
+		stream.SerializeFloat32(&entry.Longitude)
+		stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
+		stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
+		stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+		stream.SerializeString(&entry.SDKVersion, 10)        // todo: constant
+		stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
+		for i := 0; i < int(entry.NumTags); i++ {
+			stream.SerializeUint64(&entry.Tags[i])
+		}
+		stream.SerializeBool(&entry.ABTest)
+		stream.SerializeBool(&entry.Pro)
+
+	}
+
+	/*
+		3. Summary slice only
+
+		These values are serialized only for the summary slice (at the end of the session)
+	*/
+
+	if entry.Summary {
+
+		stream.SerializeUint64(&entry.ClientToServerPacketsSent)
+		stream.SerializeUint64(&entry.ServerToClientPacketsSent)
+		stream.SerializeUint64(&entry.ClientToServerPacketsLost)
+		stream.SerializeUint64(&entry.ServerToClientPacketsLost)
+		stream.SerializeUint64(&entry.ClientToServerPacketsOutOfOrder)
+		stream.SerializeUint64(&entry.ServerToClientPacketsOutOfOrder)
+		stream.SerializeInteger(&entry.NumNearRelays, 0, BillingEntryMaxNearRelays)
+		for i := 0; i < int(entry.NumNearRelays); i++ {
+			stream.SerializeUint64(&entry.NearRelayIDs[i])
+			stream.SerializeInteger(&entry.NearRelayRTTs[i], 0, 255)
+			stream.SerializeInteger(&entry.NearRelayJitters[i], 0, 255)
+			stream.SerializeInteger(&entry.NearRelayPacketLosses[i], 0, 100)
+		}
+
+	}
+
+	/*
+		4. Network Next Only
+
+		These values are serialized only when a slice is on network next.
+	*/
+
+	if entry.Next {
+
+		stream.SerializeInteger(&entry.NextRTT, 0, 255)
+		stream.SerializeInteger(&entry.NextJitter, 0, 255)
+		stream.SerializeInteger(&entry.NextPacketLoss, 0, 100)
+		stream.SerializeInteger(&entry.PredictedNextRTT, 0, 255)
+		stream.SerializeInteger(&entry.NearRelayRTT, 0, 255)
+
+		stream.SerializeInteger(&entry.NumNextRelays, 0, BillingEntryMaxRelays)
+		for i := 0; i < int(entry.NumNextRelays); i++ {
+			stream.SerializeUint64(&entry.NextRelays[i])
+			stream.SerializeUint64(&entry.NextRelayPrice[i])
+		}
+
+		stream.SerializeUint64(&entry.TotalPrice)
+		stream.SerializeInteger(&entry.RouteDiversity, 1, 31)
+		stream.SerializeBool(&entry.Committed)
+		stream.SerializeBool(&entry.Multipath)
+		stream.SerializeBool(&entry.RTTReduction)
+		stream.SerializeBool(&entry.PacketLossReduction)
+	}
+
+	/*
+		5. Error State Only
+
+		These values are only serialized when the session is in an error state (rare).
+	*/
+
+	errorState := false
+
+	if stream.IsWriting() {
+		errorState =
+			entry.FallbackToDirect ||
+				entry.MultipathVetoed ||
+				entry.Mispredicted ||
+				entry.Vetoed ||
+				entry.LatencyWorse ||
+				entry.NoRoute ||
+				entry.NextLatencyTooHigh ||
+				entry.RouteChanged ||
+				entry.CommitVeto ||
+				entry.LackOfDiversity ||
+				entry.MultipathRestricted ||
+				entry.UnknownDatacenter ||
+				entry.DatacenterNotEnabled ||
+				entry.BuyerNotLive ||
+				entry.StaleRouteMatrix
+	}
+
+	stream.SerializeBool(&errorState)
+
+	if errorState {
+
+		stream.SerializeBool(&entry.FallbackToDirect)
+		stream.SerializeBool(&entry.MultipathVetoed)
+		stream.SerializeBool(&entry.Mispredicted)
+		stream.SerializeBool(&entry.Vetoed)
+		stream.SerializeBool(&entry.LatencyWorse)
+		stream.SerializeBool(&entry.NoRoute)
+		stream.SerializeBool(&entry.NextLatencyTooHigh)
+		stream.SerializeBool(&entry.RouteChanged)
+		stream.SerializeBool(&entry.CommitVeto)
+		stream.SerializeBool(&entry.LackOfDiversity)
+		stream.SerializeBool(&entry.MultipathRestricted)
+		stream.SerializeBool(&entry.UnknownDatacenter)
+		stream.SerializeBool(&entry.DatacenterNotEnabled)
+		stream.SerializeBool(&entry.BuyerNotLive)
+		stream.SerializeBool(&entry.StaleRouteMatrix)
+
+	}
+
+	return stream.Error()
+}
+
+func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
+
+	e := make(map[string]bigquery.Value)
+
+	/*
+		1. Always
+
+		These values are written for every slice.
+	*/
+
+	e["timestamp"] = int(entry.Timestamp)
+	e["sessionID"] = int(entry.SessionID)
+	e["sliceNumber"] = int(entry.SliceNumber)
+	e["directRTT"] = int(entry.DirectRTT)
+	e["directJitter"] = int(entry.DirectJitter)
+	e["directPacketLoss"] = int(entry.DirectPacketLoss)
+	e["realPacketLoss"] = float64(entry.RealPacketLoss)+float64(entry.RealPacketLoss_Frac)/256.0
+	e["realJitter"] = int(entry.RealJitter)
+
+	if entry.Next {
+		e["next"] = true
+	}
+
+	if entry.Flagged {
+		e["flagged"] = true
+	}
+
+	if entry.Summary {
+		e["summary"] = true
+	}
+
+	if entry.UseDebug {
+		e["debug"] = entry.Debug
+	}
+
+	/*
+		2. First slice only
+
+		These values are serialized only for slice 0.
+	*/
+
+	if entry.SliceNumber == 0 {
+
+		e["datacenterID"] = entry.DatacenterID
+		e["buyerID"] = entry.BuyerID
+		e["userHash"] = entry.UserHash
+		e["envelopeBytesUp"] = entry.EnvelopeBytesUp
+		e["envelopeBytesDown"] = entry.EnvelopeBytesDown
+		e["latitude"] = entry.Latitude
+		e["longitude"] = entry.Longitude
+		e["isp"] = entry.ISP
+		e["connectionType"] = entry.ConnectionType
+		e["platformType"] = entry.PlatformType
+		e["sdkVersion"] = entry.SDKVersion
+		
+		if entry.NumTags > 0 {
+			tags := make([]bigquery.Value, entry.NumTags)
+			for i := 0; i < int(entry.NumTags); i++ {
+				tags[i] = int(entry.Tags[i])
+			}
+			e["tags"] = tags
+		}
+
+		if entry.ABTest {
+			e["abTest"] = true
+		}
+
+		if entry.Pro {
+			e["pro"] = true
+		}
+	}
+
+	/*
+		3. Summary slice only
+
+		These values are serialized only for the summary slice (at the end of the session)
+	*/
+
+	if entry.Summary {
+
+		e["clientToServerPacketsSent"] = entry.ClientToServerPacketsSent
+		e["serverToClientPacketsSent"] = entry.ServerToClientPacketsSent
+		e["clientToServerPacketsLost"] = entry.ClientToServerPacketsLost
+		e["serverToClientPacketsLost"] = entry.ServerToClientPacketsLost
+		e["clientToServerPacketsOutOfOrder"] = entry.ClientToServerPacketsOutOfOrder
+		e["serverToClientPacketsOutOfOrder"] = entry.ServerToClientPacketsOutOfOrder
+
+		/*
+		stream.SerializeInteger(&entry.NumNearRelays, 0, BillingEntryMaxNearRelays)
+		for i := 0; i < int(entry.NumNearRelays); i++ {
+			stream.SerializeUint64(&entry.NearRelayIDs[i])
+			stream.SerializeInteger(&entry.NearRelayRTTs[i], 0, 255)
+			stream.SerializeInteger(&entry.NearRelayJitters[i], 0, 255)
+			stream.SerializeInteger(&entry.NearRelayPacketLosses[i], 0, 100)
+		}
+		*/
+
+	}
+
+	return e, "", nil
+}
+
+/*
+// Implements the bigquery.ValueSaver interface for a billing entry so it can be used in Put()
+func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
+
+	e := make(map[string]bigquery.Value)
+
+	e["timestamp"] = int(entry.Timestamp)
+
+	e["buyerId"] = int(entry.BuyerID)
+	e["sessionId"] = int(entry.SessionID)
+	e["datacenterID"] = int(entry.DatacenterID)
+	e["userHash"] = int(entry.UserHash)
+	e["latitude"] = entry.Latitude
+	e["longitude"] = entry.Longitude
+	e["isp"] = entry.ISP
+	e["connectionType"] = int(entry.ConnectionType)
+	e["platformType"] = int(entry.PlatformType)
+	e["sdkVersion"] = entry.SDKVersion
+
+	e["sliceNumber"] = int(entry.SliceNumber)
+
+	e["flagged"] = entry.Flagged
+	e["fallbackToDirect"] = entry.FallbackToDirect
+	e["multipathVetoed"] = entry.MultipathVetoed
+	e["abTest"] = entry.ABTest
+	e["committed"] = entry.Committed
+	e["multipath"] = entry.Multipath
+	e["rttReduction"] = entry.RTTReduction
+	e["packetLossReduction"] = entry.PacketLossReduction
+	e["relayWentAway"] = entry.RelayWentAway
+	e["routeLost"] = entry.RouteLost
+	e["mispredicted"] = entry.Mispredicted
+	e["vetoed"] = entry.Vetoed
+	e["latencyWorse"] = entry.LatencyWorse
+	e["noRoute"] = entry.NoRoute
+	e["nextLatencyTooHigh"] = entry.NextLatencyTooHigh
+	e["routeChanged"] = entry.RouteChanged
+	e["commitVeto"] = entry.CommitVeto
+
+	if entry.Pro {
+		e["pro"] = entry.Pro
+	}
+
+	if entry.BuyerNotLive {
+		e["buyerNotLive"] = entry.BuyerNotLive
+	}
+
+	if entry.UnknownDatacenter {
+		e["unknownDatacenter"] = entry.UnknownDatacenter
+	}
+
+	if entry.DatacenterNotEnabled {
+		e["datacenterNotEnabled"] = entry.DatacenterNotEnabled
+	}
+
+	if entry.StaleRouteMatrix {
+		e["staleRouteMatrix"] = entry.StaleRouteMatrix
+	}
+
+	if entry.RouteDiversity > 0 {
+		e["routeDiversity"] = entry.RouteDiversity
+	}
+
+	if entry.LackOfDiversity {
+		e["lackOfDiversity"] = entry.LackOfDiversity
+	}
+
+	if entry.MultipathRestricted {
+		e["multipathRestricted"] = entry.MultipathRestricted
+	}
+
+	e["directRTT"] = entry.DirectRTT
+	e["directJitter"] = entry.DirectJitter
+	e["directPacketLoss"] = entry.DirectPacketLoss
+
+	if entry.ClientToServerPacketsSent > 0 {
+		e["clientToServerPacketsSent"] = int(entry.ClientToServerPacketsSent)
+	}
+
+	if entry.ServerToClientPacketsSent > 0 {
+		e["serverToClientPacketsSent"] = int(entry.ServerToClientPacketsSent)
+	}
+
+	if entry.ClientToServerPacketsLost > 0 {
+		e["clientToServerPacketsLost"] = int(entry.ClientToServerPacketsLost)
+	}
+
+	if entry.ServerToClientPacketsLost > 0 {
+		e["serverToClientPacketsLost"] = int(entry.ServerToClientPacketsLost)
+	}
+
+	// IMPORTANT: This is derived from *PacketsSent and *PacketsLost, and is valid for both next and direct
+	if entry.PacketLoss > 0.0 {
+		e["packetLoss"] = entry.PacketLoss
+	}
+
+	if entry.PacketsOutOfOrderClientToServer != 0 {
+		e["packetsOutOfOrderClientToServer"] = int(entry.PacketsOutOfOrderClientToServer)
+	}
+
+	if entry.PacketsOutOfOrderServerToClient != 0 {
+		e["packetsOutOfOrderServerToClient"] = int(entry.PacketsOutOfOrderServerToClient)
+	}
+
+	if entry.JitterClientToServer != 0 {
+		e["jitterClientToServer"] = entry.JitterClientToServer
+	}
+
+	if entry.JitterServerToClient != 0 {
+		e["jitterServerToClient"] = entry.JitterServerToClient
+	}
+
+	if entry.UseDebug && entry.Debug != "" {
+		e["debug"] = entry.Debug
+	}
+
+	if entry.ClientFlags != 0 {
+		e["clientFlags"] = int(entry.ClientFlags)
+	}
+
+	if entry.UserFlags != 0 {
+		e["userFlags"] = int(entry.UserFlags)
+	}
+
+	if entry.NumTags > 0 {
+		tags := make([]bigquery.Value, entry.NumTags)
+		for i := 0; i < int(entry.NumTags); i++ {
+			tags[i] = int(entry.Tags[i])
+		}
+		e["tags"] = tags
+	}
+
+	if entry.Next {
+
+		e["next"] = entry.Next
+
+		e["nextRTT"] = entry.NextRTT
+		e["nextJitter"] = entry.NextJitter
+		e["nextPacketLoss"] = entry.NextPacketLoss
+
+		e["totalPrice"] = int(entry.TotalPrice)
+
+		e["nextBytesUp"] = int(entry.NextBytesUp)
+		e["nextBytesDown"] = int(entry.NextBytesDown)
+		e["envelopeBytesUp"] = int(entry.EnvelopeBytesUp)
+		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
+
+		if entry.PredictedNextRTT > 0.0 {
+			e["predictedNextRTT"] = entry.PredictedNextRTT
+		}
+
+		if entry.NearRelayRTT != 0 {
+			e["nearRelayRTT"] = entry.NearRelayRTT
+		}
+
+		nextRelays := make([]bigquery.Value, entry.NumNextRelays)
+		nextRelaysPrice := make([]bigquery.Value, entry.NumNextRelays)
+
+		for i := 0; i < int(entry.NumNextRelays); i++ {
+			nextRelays[i] = int(entry.NextRelays[i])
+			nextRelaysPrice[i] = int(entry.NextRelaysPrice[i])
+		}
+
+		e["nextRelays"] = nextRelays
+		e["nextRelaysPrice"] = nextRelaysPrice
+
+		if entry.NumNearRelays > 0 && entry.UseDebug {
+			// IMPORTANT: Only write this data if debug is on because it is very large
+
+			e["numNearRelays"] = int(entry.NumNearRelays)
+
+			nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
+
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
+				nearRelayRTTs[i] = entry.NearRelayRTTs[i]
+				nearRelayJitters[i] = entry.NearRelayJitters[i]
+				nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
+			}
+
+			e["nearRelayIDs"] = nearRelayIDs
+			e["nearRelayRTTs"] = nearRelayRTTs
+			e["nearRelayJitters"] = nearRelayJitters
+			e["nearRelayPacketLosses"] = nearRelayPacketLosses
+		}
+	}
+
+	// todo: this is deprecated. we don't really need this anymore. should
+	// be made nullable in the schema and we just stop writing this.
+	e["initial"] = entry.Initial
+
+	// todo: this is deprecated and should be made nullable in the schema
+	// at this point we should stop writing this
+	e["routeDecision"] = int(entry.RouteDecision)
+
+	return e, "", nil
+}
+*/
