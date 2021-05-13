@@ -3,6 +3,8 @@ package billing
 import (
 	"fmt"
 
+	"cloud.google.com/go/bigquery"
+
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -978,3 +980,280 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 	return stream.Error()
 }
+
+func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
+
+	e := make(map[string]bigquery.Value)
+
+	/*
+		1. Always
+
+		These values are written for every slice.
+	*/
+
+	e["timestamp"] = int(entry.Timestamp)
+	e["sessionID"] = int(entry.SessionID)
+	e["sliceNumber"] = int(entry.SliceNumber)
+	e["directRTT"] = int(entry.DirectRTT)
+	e["directJitter"] = int(entry.DirectJitter)
+	e["directPacketLoss"] = int(entry.DirectPacketLoss)
+	e["realPacketLoss"] = float64(entry.RealPacketLoss)+float64(entry.RealPacketLoss_Frac)/256.0
+	e["realJitter"] = int(entry.RealJitter)
+
+	if entry.Next {
+		e["next"] = true
+	}
+
+	if entry.Flagged {
+		e["flagged"] = true
+	}
+
+	if entry.Summary {
+		e["summary"] = true
+	}
+
+	if entry.UseDebug {
+		e["debug"] = entry.Debug
+	}
+
+	/*
+		2. First slice only
+
+		These values are serialized only for slice 0.
+	*/
+
+	if entry.SliceNumber == 0 {
+
+		e["datacenterID"] = entry.DatacenterID
+		e["buyerID"] = entry.BuyerID
+		e["userHash"] = entry.UserHash
+		e["envelopeBytesUp"] = entry.EnvelopeBytesUp
+		e["envelopeBytesDown"] = entry.EnvelopeBytesDown
+		e["latitude"] = entry.Latitude
+		e["longitude"] = entry.Longitude
+		e["isp"] = entry.ISP
+		e["connectionType"] = entry.ConnectionType
+		e["platformType"] = entry.PlatformType
+		e["sdkVersion"] = entry.SDKVersion
+		
+		if entry.NumTags > 0 {
+			tags := make([]bigquery.Value, entry.NumTags)
+			for i := 0; i < int(entry.NumTags); i++ {
+				tags[i] = int(entry.Tags[i])
+			}
+			e["tags"] = tags
+		}
+
+		if entry.ABTest {
+			e["abTest"] = true
+		}
+
+		if entry.Pro {
+			e["pro"] = true
+		}
+	}
+
+	return e, "", nil
+}
+
+/*
+// Implements the bigquery.ValueSaver interface for a billing entry so it can be used in Put()
+func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
+
+	e := make(map[string]bigquery.Value)
+
+	e["timestamp"] = int(entry.Timestamp)
+
+	e["buyerId"] = int(entry.BuyerID)
+	e["sessionId"] = int(entry.SessionID)
+	e["datacenterID"] = int(entry.DatacenterID)
+	e["userHash"] = int(entry.UserHash)
+	e["latitude"] = entry.Latitude
+	e["longitude"] = entry.Longitude
+	e["isp"] = entry.ISP
+	e["connectionType"] = int(entry.ConnectionType)
+	e["platformType"] = int(entry.PlatformType)
+	e["sdkVersion"] = entry.SDKVersion
+
+	e["sliceNumber"] = int(entry.SliceNumber)
+
+	e["flagged"] = entry.Flagged
+	e["fallbackToDirect"] = entry.FallbackToDirect
+	e["multipathVetoed"] = entry.MultipathVetoed
+	e["abTest"] = entry.ABTest
+	e["committed"] = entry.Committed
+	e["multipath"] = entry.Multipath
+	e["rttReduction"] = entry.RTTReduction
+	e["packetLossReduction"] = entry.PacketLossReduction
+	e["relayWentAway"] = entry.RelayWentAway
+	e["routeLost"] = entry.RouteLost
+	e["mispredicted"] = entry.Mispredicted
+	e["vetoed"] = entry.Vetoed
+	e["latencyWorse"] = entry.LatencyWorse
+	e["noRoute"] = entry.NoRoute
+	e["nextLatencyTooHigh"] = entry.NextLatencyTooHigh
+	e["routeChanged"] = entry.RouteChanged
+	e["commitVeto"] = entry.CommitVeto
+
+	if entry.Pro {
+		e["pro"] = entry.Pro
+	}
+
+	if entry.BuyerNotLive {
+		e["buyerNotLive"] = entry.BuyerNotLive
+	}
+
+	if entry.UnknownDatacenter {
+		e["unknownDatacenter"] = entry.UnknownDatacenter
+	}
+
+	if entry.DatacenterNotEnabled {
+		e["datacenterNotEnabled"] = entry.DatacenterNotEnabled
+	}
+
+	if entry.StaleRouteMatrix {
+		e["staleRouteMatrix"] = entry.StaleRouteMatrix
+	}
+
+	if entry.RouteDiversity > 0 {
+		e["routeDiversity"] = entry.RouteDiversity
+	}
+
+	if entry.LackOfDiversity {
+		e["lackOfDiversity"] = entry.LackOfDiversity
+	}
+
+	if entry.MultipathRestricted {
+		e["multipathRestricted"] = entry.MultipathRestricted
+	}
+
+	e["directRTT"] = entry.DirectRTT
+	e["directJitter"] = entry.DirectJitter
+	e["directPacketLoss"] = entry.DirectPacketLoss
+
+	if entry.ClientToServerPacketsSent > 0 {
+		e["clientToServerPacketsSent"] = int(entry.ClientToServerPacketsSent)
+	}
+
+	if entry.ServerToClientPacketsSent > 0 {
+		e["serverToClientPacketsSent"] = int(entry.ServerToClientPacketsSent)
+	}
+
+	if entry.ClientToServerPacketsLost > 0 {
+		e["clientToServerPacketsLost"] = int(entry.ClientToServerPacketsLost)
+	}
+
+	if entry.ServerToClientPacketsLost > 0 {
+		e["serverToClientPacketsLost"] = int(entry.ServerToClientPacketsLost)
+	}
+
+	// IMPORTANT: This is derived from *PacketsSent and *PacketsLost, and is valid for both next and direct
+	if entry.PacketLoss > 0.0 {
+		e["packetLoss"] = entry.PacketLoss
+	}
+
+	if entry.PacketsOutOfOrderClientToServer != 0 {
+		e["packetsOutOfOrderClientToServer"] = int(entry.PacketsOutOfOrderClientToServer)
+	}
+
+	if entry.PacketsOutOfOrderServerToClient != 0 {
+		e["packetsOutOfOrderServerToClient"] = int(entry.PacketsOutOfOrderServerToClient)
+	}
+
+	if entry.JitterClientToServer != 0 {
+		e["jitterClientToServer"] = entry.JitterClientToServer
+	}
+
+	if entry.JitterServerToClient != 0 {
+		e["jitterServerToClient"] = entry.JitterServerToClient
+	}
+
+	if entry.UseDebug && entry.Debug != "" {
+		e["debug"] = entry.Debug
+	}
+
+	if entry.ClientFlags != 0 {
+		e["clientFlags"] = int(entry.ClientFlags)
+	}
+
+	if entry.UserFlags != 0 {
+		e["userFlags"] = int(entry.UserFlags)
+	}
+
+	if entry.NumTags > 0 {
+		tags := make([]bigquery.Value, entry.NumTags)
+		for i := 0; i < int(entry.NumTags); i++ {
+			tags[i] = int(entry.Tags[i])
+		}
+		e["tags"] = tags
+	}
+
+	if entry.Next {
+
+		e["next"] = entry.Next
+
+		e["nextRTT"] = entry.NextRTT
+		e["nextJitter"] = entry.NextJitter
+		e["nextPacketLoss"] = entry.NextPacketLoss
+
+		e["totalPrice"] = int(entry.TotalPrice)
+
+		e["nextBytesUp"] = int(entry.NextBytesUp)
+		e["nextBytesDown"] = int(entry.NextBytesDown)
+		e["envelopeBytesUp"] = int(entry.EnvelopeBytesUp)
+		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
+
+		if entry.PredictedNextRTT > 0.0 {
+			e["predictedNextRTT"] = entry.PredictedNextRTT
+		}
+
+		if entry.NearRelayRTT != 0 {
+			e["nearRelayRTT"] = entry.NearRelayRTT
+		}
+
+		nextRelays := make([]bigquery.Value, entry.NumNextRelays)
+		nextRelaysPrice := make([]bigquery.Value, entry.NumNextRelays)
+
+		for i := 0; i < int(entry.NumNextRelays); i++ {
+			nextRelays[i] = int(entry.NextRelays[i])
+			nextRelaysPrice[i] = int(entry.NextRelaysPrice[i])
+		}
+
+		e["nextRelays"] = nextRelays
+		e["nextRelaysPrice"] = nextRelaysPrice
+
+		if entry.NumNearRelays > 0 && entry.UseDebug {
+			// IMPORTANT: Only write this data if debug is on because it is very large
+
+			e["numNearRelays"] = int(entry.NumNearRelays)
+
+			nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
+
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
+				nearRelayRTTs[i] = entry.NearRelayRTTs[i]
+				nearRelayJitters[i] = entry.NearRelayJitters[i]
+				nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
+			}
+
+			e["nearRelayIDs"] = nearRelayIDs
+			e["nearRelayRTTs"] = nearRelayRTTs
+			e["nearRelayJitters"] = nearRelayJitters
+			e["nearRelayPacketLosses"] = nearRelayPacketLosses
+		}
+	}
+
+	// todo: this is deprecated. we don't really need this anymore. should
+	// be made nullable in the schema and we just stop writing this.
+	e["initial"] = entry.Initial
+
+	// todo: this is deprecated and should be made nullable in the schema
+	// at this point we should stop writing this
+	e["routeDecision"] = int(entry.RouteDecision)
+
+	return e, "", nil
+}
+*/
