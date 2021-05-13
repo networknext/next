@@ -803,7 +803,6 @@ type BillingEntry2 struct {
 	NoRoute              bool
 	NextLatencyTooHigh   bool
 	CommitVeto           bool
-	MultipathRestricted  bool
 	UnknownDatacenter    bool
 	DatacenterNotEnabled bool
 	BuyerNotLive         bool
@@ -947,7 +946,6 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 				entry.NoRoute ||
 				entry.NextLatencyTooHigh ||
 				entry.CommitVeto ||
-				entry.MultipathRestricted ||
 				entry.UnknownDatacenter ||
 				entry.DatacenterNotEnabled ||
 				entry.BuyerNotLive ||
@@ -966,7 +964,6 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		stream.SerializeBool(&entry.NoRoute)
 		stream.SerializeBool(&entry.NextLatencyTooHigh)
 		stream.SerializeBool(&entry.CommitVeto)
-		stream.SerializeBool(&entry.MultipathRestricted)
 		stream.SerializeBool(&entry.UnknownDatacenter)
 		stream.SerializeBool(&entry.DatacenterNotEnabled)
 		stream.SerializeBool(&entry.BuyerNotLive)
@@ -1176,10 +1173,6 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 	if entry.CommitVeto {
 		e["commitVeto"] = true
-	}
-
-	if entry.MultipathRestricted {
-		e["multipathRestricted"] = true
 	}
 
 	if entry.UnknownDatacenter {
