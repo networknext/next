@@ -49,7 +49,7 @@ This is a monorepo that contains the Network Next backend.
 	1. Analytics (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
 	2. Relay Frontend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
 	3. Relay Backend (`make deploy-relay-backend-prod-1`, and after 10 minutes, `make deploy-relay-backend-prod-2`)
-		- Check the `/status` of Relay Backend 1 to ensure routes are produced before deploying Relay Backend 2
+		- Check the `/status` and `/relay_dashboard` of Relay Backend 1 to ensure routes are produced before deploying Relay Backend 2
 	4. Relay Gateway (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
 	5. Relay Forwarder (`make deploy-relay-forwarder-prod`)
 6. The following services can be deployed at any time:
