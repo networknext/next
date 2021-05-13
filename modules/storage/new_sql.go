@@ -522,7 +522,6 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			BWRule:              bwRule,
 			ContractTerm:        int32(relay.ContractTerm),
 			Type:                machineType,
-			Notes:               relay.Notes,
 			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
 			Version:             relay.Version,
@@ -570,6 +569,10 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 
 		if relay.EndDate.Valid {
 			r.EndDate = relay.EndDate.Time
+		}
+
+		if relay.Notes.Valid {
+			r.Notes = relay.Notes.String
 		}
 
 		relays[internalID] = r
