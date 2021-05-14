@@ -93,7 +93,8 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 }
 
 type RelayDashboardJsonReply struct {
-	Dashboard string `json:"relay_dashboard"`
+	Dashboard     string `json:"relay_dashboard"`
+	DashboardJSON []byte `json:"relay_dashboard_json"`
 }
 
 type RelayDashboardJsonArgs struct{}
@@ -142,6 +143,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	}
 
 	reply.Dashboard = string(dashboardData)
+	reply.DashboardJSON = dashboardData
 
 	return nil
 }
