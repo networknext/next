@@ -133,8 +133,7 @@ func (psf *PubSubForwarder) Forward2(ctx context.Context, wg *sync.WaitGroup) {
 
 		billingEntries := make([]BillingEntry2, len(entries))
 		for i := range billingEntries {
-			if err = ReadBillingEntry2(&billingEntries[i], entries[i]); err != nil {
-
+			if err = ReadBillingEntry2(&billingEntries[i], entries[i]); err == nil {
 				if err := psf.Biller.Bill2(ctx, &billingEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
 					// Nack if we failed to submit the billing entry

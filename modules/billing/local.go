@@ -34,7 +34,7 @@ func (local *LocalBiller) Bill(ctx context.Context, entry *BillingEntry) error {
 }
 
 func (local *LocalBiller) Bill2(ctx context.Context, entry *BillingEntry2) error {
-	local.Metrics.EntriesSubmitted.Add(1)
+	local.Metrics.Entries2Submitted.Add(1)
 
 	if local.Logger == nil {
 		return errors.New("no logger for local biller, can't display entry")
@@ -45,7 +45,7 @@ func (local *LocalBiller) Bill2(ctx context.Context, entry *BillingEntry2) error
 	output := fmt.Sprintf("%#v", entry)
 	level.Debug(local.Logger).Log("entry", output)
 
-	local.Metrics.EntriesFlushed.Add(1)
+	local.Metrics.Entries2Flushed.Add(1)
 
 	return nil
 }

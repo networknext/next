@@ -1236,7 +1236,8 @@ const (
 		1 + // UnknownDatacenter
 		1 + // DatacenterNotEnabled
 		1 + // BuyerNotLive
-		1 // StaleRouteMatrix
+		1 + // StaleRouteMatrix
+		2 // 2 extra bytes to let size be divisible by 4
 )
 
 type BillingEntry2 struct {
@@ -1381,7 +1382,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
 		stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
 		stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
-		stream.SerializeString(&entry.SDKVersion, 10)        // todo: constant
+		stream.SerializeString(&entry.SDKVersion, 12)        // todo: constant
 		stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
 		for i := 0; i < int(entry.NumTags); i++ {
 			stream.SerializeUint64(&entry.Tags[i])
@@ -1436,7 +1437,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		}
 
 		stream.SerializeUint64(&entry.TotalPrice)
-		stream.SerializeInteger(&entry.RouteDiversity, 1, 31)
+		stream.SerializeInteger(&entry.RouteDiversity, 0, 31)
 		stream.SerializeBool(&entry.Uncommitted)
 		stream.SerializeBool(&entry.Multipath)
 		stream.SerializeBool(&entry.RTTReduction)
@@ -1678,7 +1679,7 @@ func (entry *BillingEntry2) Validate() bool {
 			return false
 		}
 
-		if entry.RouteDiversity < 1 || entry.RouteDiversity > 31 {
+		if entry.RouteDiversity < 0 || entry.RouteDiversity > 31 {
 			fmt.Printf("invalid route diversity\n")
 			return false
 		}

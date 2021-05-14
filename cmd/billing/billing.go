@@ -297,6 +297,11 @@ func main() {
 			Metrics: &billingServiceMetrics.BillingMetrics,
 		}
 
+		biller2 = &billing.LocalBiller{
+			Logger:  logger,
+			Metrics: &billingServiceMetrics.BillingMetrics,
+		}
+
 		level.Info(logger).Log("msg", "Detected pubsub emulator")
 	}
 
@@ -346,7 +351,7 @@ func main() {
 				}
 
 				wg.Add(1)
-				go pubsubForwarder.Forward(ctx, wg)
+				go pubsubForwarder.Forward2(ctx, wg)
 			}
 		}
 	}
@@ -375,6 +380,13 @@ func main() {
 				fmt.Printf("%d billing entries with NaN\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingEntriesWithNaN.Value()))
 				fmt.Printf("%d invalid billing entries\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingInvalidEntries.Value()))
 				fmt.Printf("%d billing entry write failures\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingWriteFailure.Value()))
+				fmt.Printf("%d billing entry 2s received\n", int(billingServiceMetrics.BillingMetrics.Entries2Received.Value()))
+				fmt.Printf("%d billing entry 2s submitted\n", int(billingServiceMetrics.BillingMetrics.Entries2Submitted.Value()))
+				fmt.Printf("%d billing entry 2s queued\n", int(billingServiceMetrics.BillingMetrics.Entries2Queued.Value()))
+				fmt.Printf("%d billing entry 2s flushed\n", int(billingServiceMetrics.BillingMetrics.Entries2Flushed.Value()))
+				fmt.Printf("%d billing entry 2s with NaN\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2EntriesWithNaN.Value()))
+				fmt.Printf("%d invalid billing entry 2s\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2InvalidEntries.Value()))
+				fmt.Printf("%d billing entry 2 write failures\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2WriteFailure.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
