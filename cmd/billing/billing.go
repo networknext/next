@@ -108,7 +108,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get billing feature configs
+	// Get billing feature config
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
 			Name:        "FEATURE_BILLING",
@@ -123,11 +123,11 @@ func main() {
 			Description: "Inserts and writes BillingEntry2 to BigQuery",
 		},
 	})
-	featureBilling := envVarConfig.FeatureByName("FEATURE_BILLING").Value
-	featureBilling2 := envVarConfig.FeatureByName("FEATURE_BILLING2").Value
+	featureConfig = envVarConfig
+	featureBilling := featureConfig.FeatureEnabled(config.FEATURE_BILLING)
+	featureBilling2 := featureConfig.FeatureEnabled(config.FEATURE_BILLING2)
 
-	fmt.Printf("billing is %v, billing2 is %v\n", featureBilling, featureBilling2)
-	// Create a no-op biller
+	// Create no-op billers
 	var biller billing.Biller = &billing.NoOpBiller{}
 	var biller2 billing.Biller = &billing.NoOpBiller{}
 
