@@ -109,18 +109,19 @@ func main() {
 	}
 
 	// Get billing feature config
+	var featureConfig config.Config
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
 			Name:        "FEATURE_BILLING",
 			Enum:        config.FEATURE_BILLING,
 			Value:       true,
-			Description: "Inserts and writes BillingEntry to BigQuery",
+			Description: "Receives BillingEntry types from Google Pub/Sub and writes them to BigQuery",
 		},
 		{
 			Name:        "FEATURE_BILLING2",
 			Enum:        config.FEATURE_BILLING2,
 			Value:       false,
-			Description: "Inserts and writes BillingEntry2 to BigQuery",
+			Description: "Receives BillingEntry2 types from Google Pub/Sub and writes them to BigQuery",
 		},
 	})
 	featureConfig = envVarConfig
