@@ -1679,7 +1679,7 @@ func (entry *BillingEntry2) Validate() bool {
 			return false
 		}
 
-		if entry.RouteDiversity < 0 || entry.RouteDiversity > 31 {
+		if entry.RouteDiversity < 1 || entry.RouteDiversity > 31 {
 			fmt.Printf("invalid route diversity\n")
 			return false
 		}
