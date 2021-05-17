@@ -159,17 +159,16 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, env Environment, regex string) []
 
 	for i, r := range reply.Relays {
 		relays[i] = relayInfo{
-			id:          r.ID,
-			name:        r.Name,
-			user:        r.SSHUser,
-			sshAddr:     r.ManagementAddr,
-			sshPort:     fmt.Sprintf("%d", r.SSHPort),
-			publicAddr:  r.Addr,
-			publicKey:   r.PublicKey,
-			nicSpeed:    fmt.Sprintf("%d", r.NICSpeedMbps),
-			firestoreID: r.FirestoreID,
-			state:       r.State,
-			version:     r.Version,
+			id:         r.ID,
+			name:       r.Name,
+			user:       r.SSHUser,
+			sshAddr:    r.ManagementAddr,
+			sshPort:    fmt.Sprintf("%d", r.SSHPort),
+			publicAddr: r.Addr,
+			publicKey:  r.PublicKey,
+			nicSpeed:   fmt.Sprintf("%d", r.NICSpeedMbps),
+			state:      r.State,
+			version:    r.Version,
 		}
 	}
 
@@ -614,12 +613,6 @@ func checkRelays(
 			includeRelay = false
 		}
 
-		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
-		if relaysDownFlag && lastUpdateDuration < 30*time.Second {
-			// Relay is still up and shouldn't be included in the final output
-			includeRelay = false
-		}
-
 		if !includeRelay {
 			continue
 		}
@@ -787,44 +780,6 @@ func relayLogs(rpcClient jsonrpc.RPCClient, env Environment, lines uint, regexes
 			}
 		}
 	}
-}
-
-func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
-	args := localjsonrpc.RelaysArgs{
-		Regex: regex,
-	}
-
-	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	type trafficStats struct {
-		Name      string `table:"Name"`
-		PingsTx   string `table:"Pings Tx"`
-		PingsRx   string `table:"Pings Rx"`
-		GameTx    string `table:"Game Tx"`
-		GameRx    string `table:"Game Rx"`
-		UnknownRx string `table:"Unknown Rx"`
-	}
-
-	statsList := []trafficStats{}
-
-	for i := range reply.Relays {
-		relay := &reply.Relays[i]
-
-		statsList = append(statsList, trafficStats{
-			Name:      relay.Name,
-			PingsTx:   unitFormat(relay.TrafficStats.OtherStatsTx() * 8),
-			PingsRx:   unitFormat(relay.TrafficStats.OtherStatsRx() * 8),
-			GameTx:    unitFormat(relay.TrafficStats.GameStatsTx() * 8),
-			GameRx:    unitFormat(relay.TrafficStats.GameStatsRx() * 8),
-			UnknownRx: unitFormat(relay.TrafficStats.UnknownRx * 8),
-		})
-	}
-
-	table.Output(statsList)
 }
 
 type relayIDAndName struct {

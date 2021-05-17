@@ -123,6 +123,80 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	return db, nil
 }
 
+func NewSQLite3Staging(ctx context.Context, logger log.Logger) (*SQL, error) {
+	var sqlite3 *sql.DB
+
+	if _, err := os.Stat("/app/sqlite3-empty.sql"); err == nil || os.IsExist(err) {
+
+		err = os.Remove("/app/network_next.db")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error removing old db file: %v", err)
+		}
+
+		// Boiler plate SQL file exists, load it in
+		sqlite3, err = sql.Open("sqlite3", "file:/app/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
+		if err != nil {
+			return nil, fmt.Errorf("NewSQLite3Staging() error creating db connection: %v", err)
+		}
+	} else {
+		return nil, fmt.Errorf("NewSQLite3Staging() could not find /app/sqlite3-empty.sql")
+	}
+
+	// db.Ping actually establishes the connection and validates the parameters
+	err := sqlite3.Ping()
+	if err != nil {
+		err = fmt.Errorf("NewSQLite3Staging() error pinging db: %v", err)
+		return nil, err
+	}
+
+	db := &SQL{
+		Client:             sqlite3,
+		Logger:             logger,
+		datacenters:        make(map[uint64]routing.Datacenter),
+		datacenterMaps:     make(map[uint64]routing.DatacenterMap),
+		relays:             make(map[uint64]routing.Relay),
+		customers:          make(map[string]routing.Customer),
+		buyers:             make(map[uint64]routing.Buyer),
+		sellers:            make(map[string]routing.Seller),
+		routeShaders:       make(map[uint64]core.RouteShader),
+		internalConfigs:    make(map[uint64]core.InternalConfig),
+		bannedUsers:        make(map[uint64]map[uint64]bool),
+		SyncSequenceNumber: -1,
+	}
+
+	// populate the db with basic tables
+	file, err := ioutil.ReadFile("/app/sqlite3-empty.sql") // happy path
+	if err != nil {
+		return nil, fmt.Errorf("NewSQLite3Staging() error reading from ")
+	}
+
+	requests := strings.Split(string(file), ";")
+
+	for _, request := range requests {
+		_, err := db.Client.Exec(request)
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3Staging() error executing seed file sql line: %v", err)
+			return nil, err
+		}
+	}
+
+	syncIntervalStr := os.Getenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL")
+	syncInterval, err := time.ParseDuration(syncIntervalStr)
+	if err != nil {
+		level.Error(logger).Log("envvar", "GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "value", syncIntervalStr, "err", err)
+		return nil, err
+	}
+
+	// Start a goroutine to sync from the database
+	go func() {
+		ticker := time.NewTicker(syncInterval)
+		db.SyncLoop(ctx, ticker.C)
+	}()
+
+	return db, nil
+
+}
+
 // NewPostgreSQL returns an PostgreSQL backed database pointer
 func NewPostgreSQL(
 	ctx context.Context,
@@ -351,7 +425,8 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
-	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes from relays "))
+	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays "))
 	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
 	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
 	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
@@ -390,6 +465,8 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			&relay.InternalIP,
 			&relay.InternalIPPort,
 			&relay.Notes,
+			&relay.BillingSupplier,
+			&relay.Version,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays(): error parsing returned row", "err", err)
@@ -445,9 +522,9 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			BWRule:              bwRule,
 			ContractTerm:        int32(relay.ContractTerm),
 			Type:                machineType,
-			Notes:               relay.Notes,
 			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
+			Version:             relay.Version,
 		}
 
 		// nullable values follow
@@ -469,12 +546,33 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			r.Addr = *publicAddr
 		}
 
+		if relay.BillingSupplier.Valid {
+			found := false
+			for _, seller := range db.Sellers() {
+				if seller.DatabaseID == relay.BillingSupplier.Int64 {
+					found = true
+					r.BillingSupplier = seller.ID
+					break
+				}
+			}
+
+			if !found {
+				errString := fmt.Sprintf("syncRelays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
+				level.Error(db.Logger).Log("during", errString, "err", err)
+			}
+
+		}
+
 		if relay.StartDate.Valid {
 			r.StartDate = relay.StartDate.Time
 		}
 
 		if relay.EndDate.Valid {
 			r.EndDate = relay.EndDate.Time
+		}
+
+		if relay.Notes.Valid {
+			r.Notes = relay.Notes.String
 		}
 
 		relays[internalID] = r
@@ -663,7 +761,10 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 			return err
 		}
 
+		db.buyerMutex.RLock()
 		buyer := db.buyers[uint64(sqlMap.BuyerID)]
+		db.buyerMutex.RUnlock()
+
 		ephemeralBuyerID := buyer.ID
 
 		dcMap := routing.DatacenterMap{
@@ -824,7 +925,10 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 			EnableVanityMetrics:        sqlIC.EnableVanityMetrics,
 		}
 
+		db.buyerMutex.RLock()
 		buyer := db.buyers[uint64(buyerID)]
+		db.buyerMutex.RUnlock()
+
 		buyer.InternalConfig = internalConfig
 
 		db.buyerMutex.Lock()
@@ -913,7 +1017,10 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
 		}
 
+		db.buyerMutex.RLock()
 		buyer := db.buyers[uint64(buyerID)]
+		db.buyerMutex.RUnlock()
+
 		buyer.RouteShader = routeShader
 
 		db.buyerMutex.Lock()
