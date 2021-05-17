@@ -41,7 +41,7 @@ func init() {
 }
 
 func Error(s string, params ...interface{}) {
-		fmt.Printf("error: "+s+"\n", params...)	
+	fmt.Printf("error: "+s+"\n", params...)
 }
 
 func Debug(s string, params ...interface{}) {

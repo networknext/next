@@ -237,6 +237,12 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 				err := fmt.Errorf("NewPostgreSQL() error loading PostgreSQL: %w", err)
 				return nil, err
 			}
+		} else if env == "staging" {
+			db, err = storage.NewSQLite3Staging(ctx, logger)
+			if err != nil {
+				err := fmt.Errorf("NewSQLLite3Staging() error loading sqlite3: %w", err)
+				return nil, err
+			}
 		} else {
 			db, err = storage.NewSQLite3(ctx, logger)
 			if err != nil {
@@ -269,6 +275,26 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			}
 
 			storage.SeedSQLStorage(ctx, db, relayPublicKey, customerID, customerPublicKey)
+		}
+
+		if env == "staging" && !pgsql {
+			filePath := envvar.Get("BIN_PATH", "./database.bin")
+			file, err := os.Open(filePath)
+			if err != nil {
+				return nil, fmt.Errorf("could not open database file: %v", err)
+			}
+			defer file.Close()
+
+			database := routing.CreateEmptyDatabaseBinWrapper()
+
+			if err = DecodeBinWrapper(file, database); err != nil {
+				return nil, fmt.Errorf("failed to read database: %v", err)
+			}
+
+			// Seed staging storer
+			if err = storage.SeedSQLStorageStaging(ctx, db, database); err != nil {
+				return nil, fmt.Errorf("failed to seed sql storage for staging: %v", err)
+			}
 		}
 
 		// Start a goroutine to sync from Firestore
@@ -364,16 +390,10 @@ func DecodeBinWrapper(file *os.File, binWrapper *routing.DatabaseBinWrapper) err
 }
 
 // Sorts a relay array and hash via Name
-func SortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay, gcpProjectID string) {
+func SortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay) {
 	sort.SliceStable(relayArray, func(i, j int) bool {
 		return relayArray[i].Name < relayArray[j].Name
 	})
-
-	if gcpProjectID == "" {
-		// TODO: hack override for local testing for single relay
-		// relayArray[0].Addr = *ParseAddress("127.0.0.1:35000")
-		// relayArray[0].ID = 0xde0fb1e9a25b1948
-	}
 
 	for i := range relayArray {
 		relayHash[relayArray[i].ID] = relayArray[i]

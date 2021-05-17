@@ -1,11 +1,11 @@
 package encoding
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math"
 	"net"
 	"runtime/debug"
-	"encoding/binary"
 )
 
 // ---------------------------------------------------
@@ -195,7 +195,7 @@ func (stream *WriteStream) SerializeString(value *string, maxSize int) {
 	}
 	min := int32(0)
 	max := int32(maxSize - 1)
-	stream.SerializeInteger(&length, min, max)	
+	stream.SerializeInteger(&length, min, max)
 	if length > 0 {
 		stream.SerializeBytes([]byte(*value))
 	}

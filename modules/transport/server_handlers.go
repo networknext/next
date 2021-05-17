@@ -15,6 +15,10 @@ import (
 	"github.com/networknext/backend/modules/storage"
 )
 
+const (
+	UDPIPPacketHeaderSize = 32
+)
+
 type UDPPacket struct {
 	From net.UDPAddr
 	Data []byte
@@ -170,6 +174,8 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, pos
 			}
 			core.Debug("server update duration: %fms\n-----------------------------------------", milliseconds)
 		}()
+
+		metrics.ServerUpdatePacketSize.Set(float64(len(incoming.Data)))
 
 		var packet ServerUpdatePacket
 		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
@@ -1101,7 +1107,7 @@ func sessionPost(state *SessionHandlerState) {
 		Write the session response packet and send it back to the caller.
 	*/
 
-	if err := writeSessionResponse(state.writer, &state.response, &state.output); err != nil {
+	if err := writeSessionResponse(state.writer, &state.response, &state.output, state.metrics); err != nil {
 		core.Debug("failed to write session update response: %s", err)
 		state.metrics.WriteResponseFailure.Add(1)
 		return
@@ -1534,11 +1540,12 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 
 // ------------------------------------------------------------------
 
-func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionData *SessionData) error {
+func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionData *SessionData, metrics *metrics.SessionUpdateMetrics) error {
 	sessionDataBuffer, err := MarshalSessionData(sessionData)
 	if err != nil {
 		return err
 	}
+
 	if len(sessionDataBuffer) > MaxSessionDataSize {
 		return fmt.Errorf("session data of %d exceeds limit of %d bytes", len(sessionDataBuffer), MaxSessionDataSize)
 	}
@@ -1550,6 +1557,13 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	}
 	packetHeader := append([]byte{PacketTypeSessionResponse}, make([]byte, crypto.PacketHashSize)...)
 	responseData := append(packetHeader, responsePacketData...)
+
+	if sessionData.RouteState.Next {
+		metrics.NextSessionResponsePacketSize.Set(float64(len(responseData) + UDPIPPacketHeaderSize))
+	} else {
+		metrics.DirectSessionResponsePacketSize.Set(float64(len(responseData) + UDPIPPacketHeaderSize))
+	}
+
 	if _, err := w.Write(responseData); err != nil {
 		return err
 	}
@@ -1589,6 +1603,8 @@ func SessionUpdateHandlerFunc(
 		}()
 
 		// read in the session update packet
+
+		metrics.SessionUpdatePacketSize.Set(float64(len(incoming.Data)))
 
 		var state SessionHandlerState
 
