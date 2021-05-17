@@ -43,7 +43,7 @@ This is a monorepo that contains the Network Next backend.
 	1. API (Rolling Replace, Maximum Surge 2, Maximum Unavailable 0, Minimum Wait Time 0)
 	2. Vanity (`make deploy-vanity-prod-#`)
 	---- 
-	1. Server Backend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 1, Minimum Wait Time 0)
+	1. Server Backend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
 		- Note: there is a 1 hour connection drain on server backend instances to reduce fallbacks to direct.
 5. Deploy the Relay Backend half of the backend next because it provides the route matrix. If any changes were made to the route matrix, wait for the Server Backend connection drain to finish before proceeding.
 	1. Analytics (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
