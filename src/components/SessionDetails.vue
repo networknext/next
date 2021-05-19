@@ -274,6 +274,10 @@ import 'uplot/dist/uPlot.min.css'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from './types/AlertTypes'
 import { FeatureEnum } from './types/FeatureTypes'
+
+import { Deck } from '@deck.gl/core'
+import mapboxgl from 'mapbox-gl'
+import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 // import data1 from '../../test_data/session_details.json'
 
 /**
@@ -448,7 +452,7 @@ export default class SessionDetails extends Vue {
           this.viewState.longitude = this.meta.location.longitude
 
           if (!this.mapInstance) {
-            this.mapInstance = new (window as any).mapboxgl.Map({
+            this.mapInstance = new mapboxgl.Map({
               accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
               style: 'mapbox://styles/mapbox/dark-v10',
               center: [
@@ -461,7 +465,7 @@ export default class SessionDetails extends Vue {
               container: 'session-tool-map'
             })
           }
-          const sessionLocationLayer = new (window as any).deck.ScreenGridLayer({
+          const sessionLocationLayer = new ScreenGridLayer({
             id: 'session-location-layer',
             data: [this.meta],
             opacity: 0.8,
@@ -475,7 +479,7 @@ export default class SessionDetails extends Vue {
 
           if (!this.deckGlInstance) {
             // creating the deck.gl instance
-            this.deckGlInstance = new (window as any).deck.Deck({
+            this.deckGlInstance = new Deck({
               canvas: document.getElementById('session-tool-deck-canvas'),
               width: '100%',
               height: '100%',

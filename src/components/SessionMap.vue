@@ -7,9 +7,9 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import CustomScreenGridLayer from './CustomScreenGridLayer'
 import { Deck } from '@deck.gl/core'
 import mapboxgl from 'mapbox-gl'
+import CustomScreenGridLayer from './CustomScreenGridLayer'
 
 import data1 from '../../test_data/map_points_1.json'
 import data2 from '../../test_data/map_points_2.json'
@@ -55,12 +55,21 @@ export default class SessionMap extends Vue {
     }
 
     // Use this to test using the canned json files
-    this.sessions = (data1 as any).result.map_points
+    /* this.sessions = (data1 as any).result.map_points
     this.sessions = this.sessions.concat((data2 as any).result.map_points)
     this.sessions = this.sessions.concat((data3 as any).result.map_points)
     this.sessions = this.sessions.concat((data4 as any).result.map_points)
     this.sessions = this.sessions.concat((data5 as any).result.map_points)
-    this.sessions = this.sessions.concat((data6 as any).result.map_points)
+    this.sessions = this.sessions.concat((data6 as any).result.map_points) */
+    this.sessions = []
+    for (let i = 0; i < 90; i = i + 10) {
+      for (let j = 0; j < 90; j = j + 10) {
+        this.sessions.push([j, i, true, null])
+        this.sessions.push([j, -i, true, null])
+        this.sessions.push([-j, i, true, null])
+        this.sessions.push([-j, -i, true, null])
+      }
+    }
   }
 
   private mounted () {
@@ -131,13 +140,7 @@ export default class SessionMap extends Vue {
         if (direct.length > 0) {
           const directLayer = new CustomScreenGridLayer({
             id: 'direct-layer',
-            data: direct,
-            cellSizePixels: cellSize,
-            opacity: 0.8,
-            getPosition: (d: Array<number>) => [d[0], d[1]],
-            colorRange: [[49, 130, 189]],
-            gpuAggregation,
-            aggregation
+            data: direct
           })
           layers.push(directLayer)
         }
@@ -167,14 +170,17 @@ export default class SessionMap extends Vue {
           const nnLayer = new CustomScreenGridLayer({
             id: 'nn-layer',
             data: onNN,
-            opacity: 0.8,
             getPosition: (d: Array<number>) => [d[0], d[1]],
-            getWeight: () => 1,
-            cellSizePixels: cellSize,
             pickable: true,
+            cellSizePixels: cellSize,
             colorRange: [[40, 167, 69]],
+            aggregation,
             gpuAggregation,
-            aggregation
+            onClick: (info: any) => {
+              console.log('info')
+              console.log(info)
+              console.log(info.object.points)
+            }
           })
           layers.push(nnLayer)
         }
