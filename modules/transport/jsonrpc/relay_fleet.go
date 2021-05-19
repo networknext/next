@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
-	"github.com/tidwall/gjson"
 )
 
 // RelayFleetService provides access to real-time data provided by the endpoints
@@ -39,19 +37,13 @@ type RelayFleetReply struct {
 // RelayFleet retrieves the CSV file from relay_frontend/relays, converts it to
 // json and puts it on the wire.
 func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, reply *RelayFleetReply) error {
-
-	authToken, err := GetOpsToken()
-	if err != nil {
-		err = fmt.Errorf("RelayFleet() error getting auth token: %w", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
+	authHeader := r.Header.Get("Authorization")
 
 	uri := rfs.RelayFrontendURI + "/relays"
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authToken))
+	req.Header.Set("Authorization", authHeader)
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -113,18 +105,13 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 		Stats    map[string]map[string]routing.Stats
 	}
 
-	authToken, err := GetOpsToken()
-	if err != nil {
-		err = fmt.Errorf("RelayDashboardJson() error getting auth token: %w", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
+	authHeader := r.Header.Get("Authorization")
 
 	uri := rfs.RelayFrontendURI + "/relay_dashboard_data"
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authToken))
+	req.Header.Set("Authorization", authHeader)
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -144,50 +131,4 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	reply.Dashboard = string(dashboardData)
 
 	return nil
-}
-
-// GetOpsToken is a hack to get a usable token since we can't get the
-// Authorization header from the request.
-//
-// TODO: This function can be removed once relay_frontend/relays
-// has been moved to an internal IP address.
-//
-// See issue #3030: https://github.com/networknext/backend/issues/3030
-func GetOpsToken() (string, error) {
-	req, err := http.NewRequest(
-		http.MethodPost,
-		"https://networknext.auth0.com/oauth/token",
-		strings.NewReader(`{
-				"client_id":"6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb",
-				"client_secret":"EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj",
-				"audience":"https://portal.networknext.com",
-				"grant_type":"client_credentials"
-			}`),
-	)
-	if err != nil {
-		return "", err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("auth0 returned code %d", res.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	token := gjson.ParseBytes(body).Get("access_token").String()
-
-	return token, nil
-
 }
