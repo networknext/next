@@ -228,10 +228,10 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
     // TODO: Figure out why 5 and 16 are so important?!
     const latIdx = Math.floor(
       (yIndex * cellSize[1] + gridOrigin[1] + 90 + cellSize[1] / 2) / cellSize[1]
-    ) + Math.round(Math.abs(boundingBox.yMin) / 10)
+    ) + Math.round(Math.abs(boundingBox.yMin) / cellSize[1])
     const lonIdx = Math.floor(
       (xIndex * cellSize[0] + gridOrigin[0] + 180 + cellSize[0] / 2) / cellSize[0]
-    ) + Math.round(Math.abs(boundingBox.xMin) / 10)
+    ) + Math.round(Math.abs(boundingBox.xMin) / cellSize[0])
     return `${latIdx}-${lonIdx}`
   }
 

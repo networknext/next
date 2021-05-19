@@ -11,12 +11,12 @@ import { Deck } from '@deck.gl/core'
 import mapboxgl from 'mapbox-gl'
 import CustomScreenGridLayer from './CustomScreenGridLayer'
 
-import data1 from '../../test_data/map_points_1.json'
+/* import data1 from '../../test_data/map_points_1.json'
 import data2 from '../../test_data/map_points_2.json'
 import data3 from '../../test_data/map_points_3.json'
 import data4 from '../../test_data/map_points_4.json'
 import data5 from '../../test_data/map_points_5.json'
-import data6 from '../../test_data/map_points_6.json'
+import data6 from '../../test_data/map_points_6.json' */
 
 /**
  * This component displays the map that is visible in the map workspace
@@ -40,7 +40,7 @@ export default class SessionMap extends Vue {
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
-  private sessions: Array<any>
+  // private sessions: Array<any>
 
   constructor () {
     super()
@@ -61,15 +61,6 @@ export default class SessionMap extends Vue {
     this.sessions = this.sessions.concat((data4 as any).result.map_points)
     this.sessions = this.sessions.concat((data5 as any).result.map_points)
     this.sessions = this.sessions.concat((data6 as any).result.map_points) */
-    this.sessions = []
-    for (let i = 0; i < 90; i = i + 10) {
-      for (let j = 0; j < 90; j = j + 10) {
-        this.sessions.push([j, i, true, null])
-        this.sessions.push([j, -i, true, null])
-        this.sessions.push([-j, i, true, null])
-        this.sessions.push([-j, -i, true, null])
-      }
-    }
   }
 
   private mounted () {
@@ -115,7 +106,7 @@ export default class SessionMap extends Vue {
           // this.mapInstance.setRenderWorldCopies(status === 'false')
         }
 
-        const sessions = this.sessions // response.map_points || []
+        const sessions = response.map_points || []
         let onNN: Array<any> = []
         const direct: Array<any> = []
 
