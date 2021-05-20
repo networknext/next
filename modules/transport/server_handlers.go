@@ -972,7 +972,7 @@ func sessionFilterNearRelays(state *SessionHandlerState) {
 		return
 	}
 
-	// IMPORTANT: On slice 4, grab the *processed* near relay RTTs from ReframeRelays, 
+	// IMPORTANT: On slice 4, grab the *processed* near relay RTTs from ReframeRelays,
 	// which are set to 255 for any near relays excluded because of high jitter or PL
 	// and hold them as the near relay RTTs to use from now on.
 
@@ -1261,6 +1261,8 @@ func sessionPost(state *SessionHandlerState) {
 
 	/*
 		Send the billing entry to the vanity metrics system (real-time path)
+
+		TODO: once buildBillingEntry() is deprecated, modify vanity metrics to use BillingEntry2
 	*/
 
 	if state.postSessionHandler.useVanityMetrics {
@@ -1596,6 +1598,7 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 
 		TODO: once buildBillingEntry() is deprecated, modify buildPostNearRelayData() to use int32 instead of float32.
 	*/
+
 	var nearRelayRTTs [core.MaxNearRelays]int32
 	var nearRelayJitters [core.MaxNearRelays]int32
 	var nearRelayPacketLosses [core.MaxNearRelays]int32
@@ -1603,6 +1606,18 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		nearRelayRTTs[i] = int32(state.postNearRelayRTT[i])
 		nearRelayJitters[i] = int32(state.postNearRelayJitter[i])
 		nearRelayPacketLosses[i] = int32(state.postNearRelayPacketLoss[i])
+	}
+
+	/*
+		Determine if we should write the summary slice. Should only happen
+		when the session is finished and we have not already written the
+		summary slice.
+
+		The end of a session occurs when the client ping times out.
+	*/
+
+	if state.packet.ClientPingTimedOut && !state.out.WroteSummary {
+		state.out.WroteSummary = true
 	}
 
 	/*
@@ -1622,7 +1637,7 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		RealJitter:                      uint32(state.realJitter),    // TODO: verify
 		Next:                            state.packet.Next,
 		Flagged:                         state.packet.Reported,
-		Summary:                         false, // TODO: calculate this
+		Summary:                         state.out.WroteSummary,
 		UseDebug:                        state.buyer.Debug,
 		Debug:                           debugString,
 		DatacenterID:                    state.datacenter.ID,
