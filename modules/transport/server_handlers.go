@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	UDPIPPacketHeaderSize = 32
+	UDPIPPacketHeaderSize = 28 // IP: 20, UDP: 8
 )
 
 type UDPPacket struct {
@@ -829,10 +829,41 @@ func sessionGetNearRelays(state *SessionHandlerState) bool {
 	}
 
 	state.response.NumNearRelays = int32(len(state.response.NearRelayIDs))
-	state.response.HighFrequencyPings = state.buyer.InternalConfig.HighFrequencyPings
+	state.response.HighFrequencyPings = state.buyer.InternalConfig.HighFrequencyPings && !state.buyer.InternalConfig.LargeCustomer
 	state.response.NearRelaysChanged = true
 
 	return true
+}
+
+func sessionFilterNearRelays(state *SessionHandlerState) {
+
+	/*
+		Reduce the % of sessions running near relay pings for large customers.
+
+		We do this by only running near relay pings for the first 3 slices, and then holding
+		the near relay ping results fixed for the rest of the session.
+	*/
+
+	if !state.buyer.InternalConfig.LargeCustomer {
+		return
+	}
+
+	if state.packet.SliceNumber < 4 {
+		return
+	}
+
+	if state.packet.SliceNumber == 4 {
+
+		// todo: save current near relay stats in route state
+
+	}
+
+	// todo: grab the held relay stats from route state
+
+	state.response.ExcludeNearRelays = true
+	for i := 0; i < core.MaxNearRelays; i++ {
+		state.response.NearRelayExcluded[i] = true
+	}
 }
 
 func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
@@ -849,6 +880,8 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		the history of latency, jitter and packet loss across the entire session
 		in order to exclude near relays with bad performance from being selected.
 	*/
+
+	sessionFilterNearRelays(state) // IMPORTANT: Reduce % of sessions that run near relay pings for large customers
 
 	routeShader := &state.buyer.RouteShader
 
