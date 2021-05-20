@@ -405,8 +405,39 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Create a local biller
+	// Setup feature config for billing and vanity metrics
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_BILLING",
+			Enum:        config.FEATURE_BILLING,
+			Value:       true,
+			Description: "Inserts BillingEntry types to Google Pub/Sub",
+		},
+		{
+			Name:        "FEATURE_BILLING2",
+			Enum:        config.FEATURE_BILLING2,
+			Value:       false,
+			Description: "Inserts BillingEntry2 types to Google Pub/Sub",
+		},
+		{
+			Name:        "FEATURE_VANITY_METRIC",
+			Enum:        config.FEATURE_VANITY_METRIC,
+			Value:       false,
+			Description: "Vanity metrics for fast aggregate statistic lookup",
+		},
+	})
+	featureConfig = envVarConfig
+
+	featureBilling := featureConfig.FeatureEnabled(config.FEATURE_BILLING)
+	featureBilling2 := featureConfig.FeatureEnabled(config.FEATURE_BILLING2)
+
+	// Create local billers
 	var biller billing.Biller = &billing.LocalBiller{
+		Logger:  logger,
+		Metrics: backendMetrics.BillingMetrics,
+	}
+	var biller2 billing.Biller = &billing.LocalBiller{
 		Logger:  logger,
 		Metrics: backendMetrics.BillingMetrics,
 	}
@@ -454,13 +485,30 @@ func mainReturnWithCode() int {
 			settings.ByteThreshold = byteThreshold
 			settings.NumGoroutines = runtime.GOMAXPROCS(0)
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
-			if err != nil {
-				core.Error("could not create pubsub biller: %v", err)
-				return 1
+			if featureBilling {
+
+				billingTopicID := envvar.Get("BILLING_TOPIC_NAME", "billing")
+
+				pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, billingTopicID, clientCount, countThreshold, byteThreshold, &settings)
+				if err != nil {
+					core.Error("could not create pubsub biller: %v", err)
+					return 1
+				}
+
+				biller = pubsub
 			}
 
-			biller = pubsub
+			if featureBilling2 {
+				billing2TopicID := envvar.Get("FEATURE_BILLING2_TOPIC_NAME", "billing2")
+
+				pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, billing2TopicID, clientCount, countThreshold, byteThreshold, &settings)
+				if err != nil {
+					core.Error("could not create pubsub biller2: %v", err)
+					return 1
+				}
+
+				biller2 = pubsub
+			}
 		}
 	}
 
@@ -504,17 +552,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Setup feature config for vanity metrics
-	var featureConfig config.Config
-	envVarConfig := config.NewEnvVarConfig([]config.Feature{
-		{
-			Name:        "FEATURE_VANITY_METRIC",
-			Enum:        config.FEATURE_VANITY_METRIC,
-			Value:       false,
-			Description: "Vanity metrics for fast aggregate statistic lookup",
-		},
-	})
-	featureConfig = envVarConfig
 	// Determine if should use vanity metrics
 	useVanityMetrics := featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC)
 
@@ -549,7 +586,7 @@ func mainReturnWithCode() int {
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, logger, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, biller2, featureBilling, featureBilling2, logger, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx)
 
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
