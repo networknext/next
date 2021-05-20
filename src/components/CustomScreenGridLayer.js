@@ -47,12 +47,17 @@ const DIMENSIONS = {
 }
 
 export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
+  constructor (props) {
+    super(props)
+    log.once(`CustomScreenGridLayer: ${this.id} loaded`)()
+  }
+
   initializeState () {
     const { gl } = this.context
     if (!CustomScreenGridCellLayer.isSupported(gl)) {
       // max aggregated value is sampled from a float texture
       this.setState({ supported: false })
-      log.error(`ScreenGridLayer: ${this.id} is not supported on this browser`)()
+      log.error(`CustomScreenGridLayer: ${this.id} is not supported on this browser`)()
       return
     }
     super.initializeState({
@@ -143,10 +148,6 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
     if (mode === 'hover') {
       return
     }
-    console.log('state')
-    console.log(this.state)
-    console.log('props')
-    console.log(this.props)
     const { index } = info
     if (index >= 0) {
       const { gpuGridAggregator, gpuAggregation, weights } = this.state
@@ -163,6 +164,7 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
       })
 
       // perform CPU aggregation for full list of points for each cell
+      // TODO: Move this to only happen on aggregations
       const { props } = this
       let { gridHash } = this.state
       if (!gridHash) {
@@ -179,13 +181,36 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
           projectPoints
         })
         gridHash = cpuAggregation.gridHash
-        console.log('gridHash')
-        console.log(gridHash)
       }
       const lookUpKey = this.getHashKeyForIndex(index)
-      console.log('lookUpKey')
-      console.log(lookUpKey)
-      Object.assign(info.object, gridHash[lookUpKey])
+      let lookUpObject = gridHash[lookUpKey]
+
+      if (!lookUpObject) {
+        // Very rarely there are rounding errors that make one or both key indices off by 1 so we should check for that
+        // Even more rarely, the hashmap drops some entries. We should leave the object as undefined and have an error check on the session map side.
+        // This generally happens when an aggregated point is over water. Zooming in will fix the issue
+        console.log('Invalid Key!!!!')
+        const lookUpPieces = lookUpKey.split('-')
+        Object.keys(gridHash).every((key) => {
+          const keyPieces = key.split('-')
+          // If latIdx is correct and lonIdx is off by one use that
+          if ((Math.abs(parseInt(keyPieces[0]) - parseInt(lookUpPieces[0])) === 0) && (Math.abs(parseInt(keyPieces[1]) - parseInt(lookUpPieces[1])) === 1)) {
+            lookUpObject = gridHash[key]
+            return lookUpObject
+          }
+          // If latIdx is off by one and lonIdx is off by one use that
+          if ((Math.abs(parseInt(keyPieces[0]) - parseInt(lookUpPieces[0])) === 1) && (Math.abs(parseInt(keyPieces[1]) - parseInt(lookUpPieces[1])) === 1)) {
+            lookUpObject = gridHash[key]
+            return lookUpObject
+          }
+          // If both are off by one use that
+          if ((Math.abs(parseInt(keyPieces[0]) - parseInt(lookUpPieces[0])) === 1) && (Math.abs(parseInt(keyPieces[1]) - parseInt(lookUpPieces[1])) === 0)) {
+            lookUpObject = gridHash[key]
+            return lookUpObject
+          }
+        })
+      }
+      Object.assign(info.object, lookUpObject)
     }
 
     return info
@@ -201,37 +226,13 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
     const yIndex = Math.floor(index / gridSize[0])
     const xIndex = index - yIndex * gridSize[0]
 
-    console.log('viewport')
-    console.log(this.context.viewport)
-
-    console.log('index')
-    console.log(index)
-
-    console.log('boundingBox')
-    console.log(boundingBox)
-    console.log('gridSize')
-    console.log(gridSize)
-    console.log('gridOrigin')
-    console.log(gridOrigin)
-    console.log('cellSize')
-    console.log(cellSize)
-    console.log('yIndex')
-    console.log(yIndex)
-    console.log('xIndex')
-    console.log(xIndex)
-
-    console.log('numInstances')
-    console.log(this.getNumInstances())
-
     // This will match the index to the hash-key to access aggregation data from CPU aggregation results.
-
-    // TODO: Figure out why 5 and 16 are so important?!
     const latIdx = Math.floor(
-      (yIndex * cellSize[1] + gridOrigin[1] + 90 + cellSize[1] / 2) / cellSize[1]
-    ) + Math.round(Math.abs(boundingBox.yMin) / cellSize[1])
+      (yIndex * cellSize[1] + gridOrigin[1] + 90 + Math.abs(boundingBox.yMin) + cellSize[1] / 2) / cellSize[1]
+    )
     const lonIdx = Math.floor(
-      (xIndex * cellSize[0] + gridOrigin[0] + 180 + cellSize[0] / 2) / cellSize[0]
-    ) + Math.round(Math.abs(boundingBox.xMin) / cellSize[0])
+      (xIndex * cellSize[0] + gridOrigin[0] + 180 + Math.abs(boundingBox.xMin) + cellSize[0] / 2) / cellSize[0]
+    )
     return `${latIdx}-${lonIdx}`
   }
 

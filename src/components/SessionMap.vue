@@ -168,9 +168,12 @@ export default class SessionMap extends Vue {
             aggregation,
             gpuAggregation,
             onClick: (info: any) => {
-              console.log('info')
-              console.log(info)
-              console.log(info.object.points)
+              const points: any = info.object.points || []
+              if (points.length === 0) {
+                this.$root.$emit('failedMapPointLookup')
+                return
+              }
+              this.$root.$emit('showModal', points)
             }
           })
           layers.push(nnLayer)

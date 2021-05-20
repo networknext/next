@@ -52,6 +52,10 @@ export default class Alert extends Vue {
     this.message = ''
   }
 
+  public toggleSlots (toggle: boolean) {
+    this.showSlots = toggle
+  }
+
   public resendVerificationEmail () {
     const userId = this.$store.getters.userProfile.auth0ID
     const email = this.$store.getters.userProfile.email
