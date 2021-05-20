@@ -22,7 +22,7 @@ const (
 
 var (
 	// List of redis instances to resize
-	ResizableRedisInstances = []string{"staging-session-map", "staging-session-meta", "staging-session-slices", "staging-top-sessions"}
+	ResizableRedisInstances = []string{"staging-all-redis"}
 )
 
 type StagingServiceConfig struct {
@@ -381,17 +381,17 @@ func StartStaging(config StagingConfig) error {
 	fmt.Println("done")
 
 	var wg sync.WaitGroup
-	// Resize Redis instances to 10 GB
+	// Resize Redis instances to 100 GB
 	fmt.Printf("Resizing redis instances...\n")
 	for _, instanceName := range ResizableRedisInstances {
 		wg.Add(1)
 		go func(redisInstanceName string) {
 			defer wg.Done()
-			err := resizeRedisInstance(redisInstanceName, 10)
+			err := resizeRedisInstance(redisInstanceName, 100)
 			if err != nil {
-				fmt.Printf("failed to resize redis instance %s to 10 GB: %v\n", redisInstanceName, err)
+				fmt.Printf("failed to resize redis instance %s to 100 GB: %v\n", redisInstanceName, err)
 			} else {
-				fmt.Printf("resized redis instance %s to 10 GB\n", redisInstanceName)
+				fmt.Printf("resized redis instance %s to 100 GB\n", redisInstanceName)
 			}
 		}(instanceName)
 	}
