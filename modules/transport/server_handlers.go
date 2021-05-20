@@ -1616,8 +1616,8 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		The end of a session occurs when the client ping times out.
 	*/
 
-	if state.packet.ClientPingTimedOut && !state.out.WroteSummary {
-		state.out.WroteSummary = true
+	if state.packet.ClientPingTimedOut && !state.output.WroteSummary {
+		state.output.WroteSummary = true
 	}
 
 	/*
@@ -1637,7 +1637,7 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		RealJitter:                      uint32(state.realJitter),    // TODO: verify
 		Next:                            state.packet.Next,
 		Flagged:                         state.packet.Reported,
-		Summary:                         state.out.WroteSummary,
+		Summary:                         state.output.WroteSummary,
 		UseDebug:                        state.buyer.Debug,
 		Debug:                           debugString,
 		DatacenterID:                    state.datacenter.ID,
