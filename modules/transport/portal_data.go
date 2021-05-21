@@ -1005,7 +1005,7 @@ func (s SessionMapPoint) Size() uint64 {
 }
 
 func (s SessionMapPoint) RedisString() string {
-	return fmt.Sprintf("%.2f|%.2f|%v", s.Latitude, s.Longitude, s.SessionID)
+	return fmt.Sprintf("%.2f|%.2f|%016x", s.Latitude, s.Longitude, s.SessionID)
 }
 
 func (s *SessionMapPoint) ParseRedisString(values []string) error {
@@ -1022,7 +1022,7 @@ func (s *SessionMapPoint) ParseRedisString(values []string) error {
 	}
 	index++
 
-	if s.SessionID, err = strconv.ParseUint(values[index], 10, 64); err != nil {
+	if s.SessionID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
 		return fmt.Errorf("[SessionMapPoint] failed to read session ID from redis data: %v", err)
 	}
 	index++
