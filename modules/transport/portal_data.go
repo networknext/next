@@ -19,7 +19,7 @@ const (
 	SessionPortalDataVersion = 1
 	SessionMetaVersion       = 0
 	SessionSliceVersion      = 2
-	SessionMapPointVersion   = 0
+	SessionMapPointVersion   = 1
 	MaxSessionIDLength       = 1024
 )
 
@@ -981,8 +981,10 @@ func (s *SessionMapPoint) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionMapPoint] invalid read at longitude")
 	}
 
-	if !encoding.ReadUint64(data, &index, &s.SessionID) {
-		return errors.New("[SessionMapPoint] invalid read at session ID")
+	if version >= 1 {
+		if !encoding.ReadUint64(data, &index, &s.SessionID) {
+			return errors.New("[SessionMapPoint] invalid read at session ID")
+		}
 	}
 
 	return nil
