@@ -106,7 +106,7 @@ export default class SessionMap extends Vue {
           // this.mapInstance.setRenderWorldCopies(status === 'false')
         }
 
-        const sessions = response.map_points || []
+        const sessions = response.map_points[0] || []
         let onNN: Array<any> = []
         const direct: Array<any> = []
 
@@ -171,6 +171,10 @@ export default class SessionMap extends Vue {
               const points: any = info.object.points || []
               if (points.length === 0) {
                 this.$root.$emit('failedMapPointLookup')
+                return
+              }
+              if (points.length === 1 && points[0].source[3]) {
+                this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
                 return
               }
               this.$root.$emit('showModal', points)
