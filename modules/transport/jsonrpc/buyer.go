@@ -755,6 +755,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
 	for _, buyer := range buyers {
+		isLargeCustomer := buyer.InternalConfig.LargeCustomer
 		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", buyer.CompanyCode, err)
@@ -776,8 +777,8 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, false})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, false})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, isLargeCustomer})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, isLargeCustomer})
 			}
 		}
 
