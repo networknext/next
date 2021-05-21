@@ -20,6 +20,7 @@ const (
 	SessionMetaVersion       = 0
 	SessionSliceVersion      = 2
 	SessionMapPointVersion   = 0
+	MaxSessionIDLength       = 1024
 )
 
 type SessionCountData struct {
@@ -957,6 +958,7 @@ func (s *SessionSlice) ParseRedisString(values []string) error {
 type SessionMapPoint struct {
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
+	SessionID uint64  `json:"id"`
 }
 
 func (s *SessionMapPoint) UnmarshalBinary(data []byte) error {
@@ -979,6 +981,10 @@ func (s *SessionMapPoint) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionMapPoint] invalid read at longitude")
 	}
 
+	if !encoding.ReadUint64(data, &index, &s.SessionID) {
+		return errors.New("[SessionMapPoint] invalid read at session ID")
+	}
+
 	return nil
 }
 
@@ -989,16 +995,17 @@ func (s SessionMapPoint) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint32(data, &index, SessionMapPointVersion)
 	encoding.WriteFloat64(data, &index, s.Latitude)
 	encoding.WriteFloat64(data, &index, s.Longitude)
+	encoding.WriteUint64(data, &index, s.SessionID)
 
 	return data, nil
 }
 
 func (s SessionMapPoint) Size() uint64 {
-	return 4 + 8 + 8
+	return 4 + 8 + 8 + 8
 }
 
 func (s SessionMapPoint) RedisString() string {
-	return fmt.Sprintf("%.2f|%.2f", s.Latitude, s.Longitude)
+	return fmt.Sprintf("%.2f|%.2f|%v", s.Latitude, s.Longitude, s.SessionID)
 }
 
 func (s *SessionMapPoint) ParseRedisString(values []string) error {
@@ -1012,6 +1019,11 @@ func (s *SessionMapPoint) ParseRedisString(values []string) error {
 
 	if s.Longitude, err = strconv.ParseFloat(values[index], 64); err != nil {
 		return fmt.Errorf("[SessionMapPoint] failed to read longitude from redis data: %v", err)
+	}
+	index++
+
+	if s.SessionID, err = strconv.ParseUint(values[index], 10, 64); err != nil {
+		return fmt.Errorf("[SessionMapPoint] failed to read session ID from redis data: %v", err)
 	}
 	index++
 
