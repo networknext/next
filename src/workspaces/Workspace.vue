@@ -6,7 +6,7 @@
           v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"
         />
         <router-view />
-        <GenericModal v-show="modalToggle"/>
+        <MapPointsModal v-show="showModal" :points="modalPoints"/>
       </main>
       <v-tour v-show="$store.getters.currentPage === 'map'" name="mapTour" :steps="mapTourSteps" :options="mapTourOptions" :callbacks="mapTourCallbacks"></v-tour>
     </div>
@@ -21,7 +21,7 @@ import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
-import GenericModal from '@/components/GenericModal.vue'
+import MapPointsModal from '@/components/MapPointsModal.vue'
 
 /**
  * This component is the base component for all other workspace components
@@ -31,7 +31,7 @@ import GenericModal from '@/components/GenericModal.vue'
 
 @Component({
   components: {
-    GenericModal,
+    MapPointsModal,
     MapWorkspace,
     SessionCounts,
     SessionsWorkspace,
@@ -43,10 +43,11 @@ export default class Workspace extends Vue {
   private mapTourSteps: Array<any>
   private mapTourOptions: any
   private mapTourCallbacks: any
-  private modalToggle: boolean
+  private showModal: boolean
+  private modalPoints: Array<any>
 
   $refs!: {
-    drillDownSessions: GenericModal;
+    drillDownSessions: MapPointsModal;
   }
 
   constructor () {
@@ -106,7 +107,8 @@ export default class Workspace extends Vue {
       }
     }
 
-    this.modalToggle = false
+    this.showModal = false
+    this.modalPoints = []
   }
 
   private mounted () {
@@ -118,15 +120,16 @@ export default class Workspace extends Vue {
     this.$root.$on('hideModal', this.hideModalCallback)
   }
 
-  private showModalCallback () {
-    if (!this.modalToggle) {
-      this.modalToggle = true
+  private showModalCallback (points: Array<any>) {
+    if (!this.showModal) {
+      this.modalPoints = points
+      this.showModal = true
     }
   }
 
   private hideModalCallback () {
-    if (this.modalToggle) {
-      this.modalToggle = false
+    if (this.showModal) {
+      this.showModal = false
     }
   }
 }

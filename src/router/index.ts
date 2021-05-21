@@ -146,6 +146,10 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
+  // Close modal if open on map page
+  if (to.name === 'session-details' && from.name === 'map') {
+    router.app.$root.$emit('hideModal')
+  }
   store.commit('UPDATE_CURRENT_PAGE', to.name)
   if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
     (window as any).Intercom('update')

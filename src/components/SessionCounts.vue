@@ -167,8 +167,12 @@ export default class SessionCounts extends Vue {
       this.$refs.sessionCountAlert.setMessage('Map point lookup was unsuccessful. Please zoom in closer and try again')
       this.$refs.sessionCountAlert.setAlertType(AlertType.WARNING)
       setTimeout(() => {
-        this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
-        this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
+        if (this.$store.getters.isAnonymousPlus) {
+          this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+          this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
+        } else {
+          this.$refs.sessionCountAlert.resetAlert()
+        }
         this.$refs.sessionCountAlert.toggleSlots(true)
         this.alertToggle = false
       }, 10000)
