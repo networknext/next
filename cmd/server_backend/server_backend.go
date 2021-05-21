@@ -360,7 +360,7 @@ func mainReturnWithCode() int {
 				duration := float64(routeEntriesTime.Milliseconds())
 				backendMetrics.RouteMatrixUpdateDuration.Set(duration)
 				if duration > 100 {
-					core.Error("long route matrix duration %dms", duration)
+					core.Error("long route matrix duration %dms", int(duration))
 					backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
 				}
 
