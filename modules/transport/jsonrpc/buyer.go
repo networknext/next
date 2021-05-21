@@ -775,13 +775,13 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 
 			sessionID := fmt.Sprintf("%016x", point.SessionID)
 
-			// if point.Latitude != 0 && point.Longitude != 0 {
-			mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
-			mapPointsGlobal = append(mapPointsGlobal, point)
+			if point.Latitude != 0 && point.Longitude != 0 {
+				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
+				mapPointsGlobal = append(mapPointsGlobal, point)
 
-			mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
-			mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
-			// }
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
+			}
 		}
 
 		for _, nextPointString := range nextPointStrings {
@@ -794,13 +794,13 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 
 			sessionID := fmt.Sprintf("%016x", point.SessionID)
 
-			// if point.Latitude != 0 && point.Longitude != 0 {
-			mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
-			mapPointsGlobal = append(mapPointsGlobal, point)
+			if point.Latitude != 0 && point.Longitude != 0 {
+				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
+				mapPointsGlobal = append(mapPointsGlobal, point)
 
-			mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true, sessionID})
-			mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true, sessionID})
-			// }
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true, sessionID})
+			}
 		}
 
 		s.mapPointsBuyerCache[buyer.CompanyCode], err = json.Marshal(mapPointsBuyers[buyer.CompanyCode])
