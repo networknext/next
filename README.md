@@ -22,21 +22,42 @@ This is a monorepo that contains the Network Next backend.
 4. Once your pull request has been reviewed merge it into `master`
 5. To deploy to dev, merge either your branch or `master` into the `dev` branch
 6. Semaphore will build your PR and copy artifacts to the google cloud gs://dev_artifacts bucket automatically.
-7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. For dev there are managed instances for `analytics`, `billing`, `portal`, and `server_backend`.
-8. The relay backend must be deployed with the make tool via `make deploy-relay-backend-dev`.
+7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. For dev, there are managed instances for all services except the `relay_backend` and `portal_cruncher`.
+8. The relay backends are deployed with the make tool via `make deploy-relay-backend-dev-1` and `make deploy-relay-backend-dev-2`. Wait 5 - 10 minutes between each deploy to avoid sessions falling back to direct.
+9. The portal crunchers are deployed with the make tool via `make deploy-portal-cruncher-1` and `make deploy-portal-cruncher-2`.
 
 ### Production Release
 
 1. Ensure tests pass locally as a sanity check
 2. Create a PR to push your changes to the "prod" branch
-5. Semaphore will build your PR and copy artifacts to the google cloud gs://prod_artifacts bucket automatically.
-4. Manually trigger a deploy to the relay backend with the make tool via `make deploy-relay-backend-prod`.
-5. Manually trigger a deploy to the portal cruncher with the make tool via `make deploy-portal-cruncher-prod`.
-6. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code, in this order: 
-	1. portal
-	2. billing
-	3. analytics
-	3. server_backend
+3. Semaphore will build your PR and copy artifacts to the google cloud gs://prod_artifacts bucket automatically.
+4. Deploy the Server Backend half of the backend first, since it only relies on the route matrix. Deploy supporting services in order of consumer to producer, and roll the Server Backend MIG as the last step:
+	
+	----
+	1. Portal (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
+	2. Portal Cruncher (`make deploy-portal-cruncher-prod-#`)
+	3. Ghost Army (`make deploy-ghost-army-prod`)
+	----
+	1. Billing (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
+	----
+	1. API (Rolling Replace, Maximum Surge 2, Maximum Unavailable 0, Minimum Wait Time 0)
+	2. Vanity (`make deploy-vanity-prod-#`)
+	---- 
+	1. Server Backend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
+		- Note: there is a 1 hour connection drain on server backend instances to reduce fallbacks to direct.
+5. Deploy the Relay Backend half of the backend next because it provides the route matrix. If any changes were made to the route matrix, wait for the Server Backend connection drain to finish before proceeding.
+	1. Analytics (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
+	2. Relay Frontend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
+	3. Relay Backend (`make deploy-relay-backend-prod-1`, and after 10 minutes, `make deploy-relay-backend-prod-2`)
+		- Check the `/status` and `/relay_dashboard` of Relay Backend 1 to ensure routes are produced before deploying Relay Backend 2
+	4. Relay Gateway (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
+	5. Relay Forwarder (`make deploy-relay-forwarder-prod`)
+6. The following services can be deployed at any time:
+	1. Relay Pusher (`make deploy-relay-pusher-prod`)
+	----
+	1. Beacon Inserter (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
+	2. Beacon (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30)
+
 
 ## Development
 
@@ -220,28 +241,16 @@ nn=> \i hp-pgsql-seed.sql
 
 At this point your local PostgreSQL server is ready to go. Note: installing and setting up a local PostgreSQL server is beyond the scope of this document.  
 
-## Local Billing
+## Local Billing, Analytics, Beacon Inserter, 
 
-It is also possible to locally debug what data is being sent to the `billing` service. To verify that the data being sent to `billing` is correct:
+It is also possible to locally debug what data is being sent to the `billing`, `analytics`, or `beacon_inserter` services. To verify that the data being sent to the service is correct:
 
 1. Make sure you have the pubsub emulator installed (instructions are in [Recommended Setup](#Recommended-Setup))
 2. Define `PUBSUB_EMULATOR_HOST` in the makefile or in the command (ex. define it as `127.0.0.1:9000`)
 3. Along with the rest of the [Happy Path](#Running-the-"Happy-Path"), run the Google Pub/Sub Emulator with `gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000`
-3. run `make BACKEND_LOG_LEVEL=debug dev-billing`
+3. run `make BACKEND_LOG_LEVEL=debug dev-billing`, `make BACKEND_LOG_LEVEL=debug dev-analytics`, or `make BACKEND_LOG_LEVEL=debug dev-beacon-inserter`
 
-This will use a local billing implementation to print out the billing entry to the console window.
-
-## Backend
-
-All of these services are controlled and deployed by us.
-
-- [`cmd/portal`](cmd/portal)
-- [`cmd/relay`](cmd/relay)
-- [`cmd/relay_backend`](cmd/relay_backend)
-- [`cmd/server_backend`](cmd/server_backend)
-- [`cmd/portal_cruncher`](cmd/portal_cruncher)
-- [`cmd/billing`](cmd/billing)
-- [`cmd/analytics`](cmd/analytics)
+This will use a local implementation to print out the entry to the console window.
 
 ## SDK
 
