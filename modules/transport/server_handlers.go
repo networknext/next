@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	UDPIPPacketHeaderSize = 32
+	UDPIPPacketHeaderSize = 28 // IP: 20, UDP: 8
 )
 
 type UDPPacket struct {
@@ -829,7 +829,7 @@ func sessionGetNearRelays(state *SessionHandlerState) bool {
 	}
 
 	state.response.NumNearRelays = int32(len(state.response.NearRelayIDs))
-	state.response.HighFrequencyPings = state.buyer.InternalConfig.HighFrequencyPings
+	state.response.HighFrequencyPings = state.buyer.InternalConfig.HighFrequencyPings && !state.buyer.InternalConfig.LargeCustomer
 	state.response.NearRelaysChanged = true
 
 	return true
@@ -870,7 +870,26 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 	state.destRelays = make([]int32, len(destRelayIDs))
 
+	/*
+		If we are holding near relays, use the held near relay RTT as input
+		instead of the near relay ping data sent up from the SDK.
+	*/
+
+	if state.input.HoldNearRelays {
+		core.Debug("using held near relay RTTs")
+		for i := range state.packet.NearRelayIDs {
+			state.packet.NearRelayRTT[i] = state.input.HoldNearRelayRTT[i] // when set to 255, near relay is excluded from routing
+			state.packet.NearRelayJitter[i] = 0
+			state.packet.NearRelayPacketLoss[i] = 0
+		}
+	}
+
+	/*
+		Reframe the near relays to get them in a relay index form relative to the current route matrix.
+	*/
+
 	core.ReframeRelays(
+
 		// input
 		routeShader,
 		routeState,
@@ -885,6 +904,7 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		state.packet.NearRelayJitter,
 		state.packet.NearRelayPacketLoss,
 		destRelayIDs,
+
 		// output
 		state.nearRelayRTTs[:],
 		state.nearRelayJitters[:],
@@ -903,8 +923,47 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		}
 	}
 
+	sessionFilterNearRelays(state) // IMPORTANT: Reduce % of sessions that run near relay pings for large customers
+
 	return true
 
+}
+
+func sessionFilterNearRelays(state *SessionHandlerState) {
+
+	/*
+		Reduce the % of sessions running near relay pings for large customers.
+
+		We do this by only running near relay pings for the first 3 slices, and then holding
+		the near relay ping results fixed for the rest of the session.
+	*/
+
+	if !state.buyer.InternalConfig.LargeCustomer {
+		return
+	}
+
+	if state.packet.SliceNumber < 4 {
+		return
+	}
+
+	// IMPORTANT: On slice 4, grab the *processed* near relay RTTs from ReframeRelays, 
+	// which are set to 255 for any near relays excluded because of high jitter or PL
+	// and hold them as the near relay RTTs to use from now on.
+
+	if state.packet.SliceNumber == 4 {
+		core.Debug("holding near relays")
+		state.output.HoldNearRelays = true
+		for i := 0; i < len(state.packet.NearRelayIDs); i++ {
+			state.output.HoldNearRelayRTT[i] = state.nearRelayRTTs[i]
+		}
+	}
+
+	// tell the SDK to stop pinging near relays
+
+	state.response.ExcludeNearRelays = true
+	for i := 0; i < core.MaxNearRelays; i++ {
+		state.response.NearRelayExcluded[i] = true
+	}
 }
 
 func sessionMakeRouteDecision(state *SessionHandlerState) {
