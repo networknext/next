@@ -2215,22 +2215,23 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 	}
 
 	internalConfig := sqlInternalConfig{
-		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
-		RTTVetoDefault:             int64(ic.RTTVeto_Default),
-		RTTVetoPacketLoss:          int64(ic.RTTVeto_PacketLoss),
-		RTTVetoMultipath:           int64(ic.RTTVeto_Multipath),
-		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-		ForceNext:                  ic.ForceNext,
-		LargeCustomer:              ic.LargeCustomer,
-		Uncommitted:                ic.Uncommitted,
-		MaxRTT:                     int64(ic.MaxRTT),
-		HighFrequencyPings:         ic.HighFrequencyPings,
-		RouteDiversity:             int64(ic.RouteDiversity),
-		MultipathThreshold:         int64(ic.MultipathThreshold),
-		EnableVanityMetrics:        ic.EnableVanityMetrics,
+		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
+		RTTVetoDefault:                 int64(ic.RTTVeto_Default),
+		RTTVetoPacketLoss:              int64(ic.RTTVeto_PacketLoss),
+		RTTVetoMultipath:               int64(ic.RTTVeto_Multipath),
+		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
+		ForceNext:                      ic.ForceNext,
+		LargeCustomer:                  ic.LargeCustomer,
+		Uncommitted:                    ic.Uncommitted,
+		MaxRTT:                         int64(ic.MaxRTT),
+		HighFrequencyPings:             ic.HighFrequencyPings,
+		RouteDiversity:                 int64(ic.RouteDiversity),
+		MultipathThreshold:             int64(ic.MultipathThreshold),
+		EnableVanityMetrics:            ic.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
@@ -2238,8 +2239,8 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
 	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, buyer_id) "))
-	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"))
+	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number, buyer_id) "))
+	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2264,6 +2265,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		internalConfig.RouteDiversity,
 		internalConfig.MultipathThreshold,
 		internalConfig.EnableVanityMetrics,
+		internalConfig.ReducePacketLossMinSliceNumber,
 		buyer.DatabaseID,
 	)
 
@@ -2494,6 +2496,14 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		updateSQL.Write([]byte("update rs_internal_configs set enable_vanity_metrics=$1 where buyer_id=$2"))
 		args = append(args, enableVanityMetrics, buyer.DatabaseID)
 		ic.EnableVanityMetrics = enableVanityMetrics
+	case "ReducePacketLossMinSliceNumber":
+		reducePacketLossMinSliceNumber, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("ReducePacketLossMinSliceNumber: %v is not a valid int32 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set reduce_pl_min_slice_number=$1 where buyer_id=$2"))
+		args = append(args, reducePacketLossMinSliceNumber, buyer.DatabaseID)
+		ic.ReducePacketLossMinSliceNumber = reducePacketLossMinSliceNumber
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
