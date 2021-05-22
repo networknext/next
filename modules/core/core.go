@@ -1527,42 +1527,44 @@ type RouteState struct {
 }
 
 type InternalConfig struct {
-	RouteSelectThreshold       int32
-	RouteSwitchThreshold       int32
-	MaxLatencyTradeOff         int32
-	RTTVeto_Default            int32
-	RTTVeto_Multipath          int32
-	RTTVeto_PacketLoss         int32
-	MultipathOverloadThreshold int32
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-	Uncommitted                bool
-	MaxRTT                     int32
-	HighFrequencyPings         bool
-	RouteDiversity             int32
-	MultipathThreshold         int32
-	EnableVanityMetrics        bool
+	RouteSelectThreshold           int32
+	RouteSwitchThreshold           int32
+	MaxLatencyTradeOff             int32
+	RTTVeto_Default                int32
+	RTTVeto_Multipath              int32
+	RTTVeto_PacketLoss             int32
+	MultipathOverloadThreshold     int32
+	TryBeforeYouBuy                bool
+	ForceNext                      bool
+	LargeCustomer                  bool
+	Uncommitted                    bool
+	MaxRTT                         int32
+	HighFrequencyPings             bool
+	RouteDiversity                 int32
+	MultipathThreshold             int32
+	EnableVanityMetrics            bool
+	ReducePacketLossMinSliceNumber int32
 }
 
 func NewInternalConfig() InternalConfig {
 	return InternalConfig{
-		RouteSelectThreshold:       2,
-		RouteSwitchThreshold:       5,
-		MaxLatencyTradeOff:         20,
-		RTTVeto_Default:            -10,
-		RTTVeto_Multipath:          -20,
-		RTTVeto_PacketLoss:         -30,
-		MultipathOverloadThreshold: 500,
-		TryBeforeYouBuy:            false,
-		ForceNext:                  false,
-		LargeCustomer:              false,
-		Uncommitted:                false,
-		MaxRTT:                     300,
-		HighFrequencyPings:         true,
-		RouteDiversity:             0,
-		MultipathThreshold:         25,
-		EnableVanityMetrics:        false,
+		RouteSelectThreshold:           2,
+		RouteSwitchThreshold:           5,
+		MaxLatencyTradeOff:             20,
+		RTTVeto_Default:                -10,
+		RTTVeto_Multipath:              -20,
+		RTTVeto_PacketLoss:             -30,
+		MultipathOverloadThreshold:     500,
+		TryBeforeYouBuy:                false,
+		ForceNext:                      false,
+		LargeCustomer:                  false,
+		Uncommitted:                    false,
+		MaxRTT:                         300,
+		HighFrequencyPings:             true,
+		RouteDiversity:                 0,
+		MultipathThreshold:             25,
+		EnableVanityMetrics:            false,
+		ReducePacketLossMinSliceNumber: 0,
 	}
 }
 
@@ -1641,7 +1643,7 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 	return true
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
 
 	if EarlyOutDirect(routeShader, routeState) {
 		return false
@@ -1678,7 +1680,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	// should we try to reduce packet loss?
 
 	reducePacketLoss := false
-	if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss {
+	if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss && internal.ReducePacketLossMinSliceNumber >= sliceNumber {
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}
