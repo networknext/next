@@ -1680,7 +1680,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	// should we try to reduce packet loss?
 
 	reducePacketLoss := false
-	if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss && internal.ReducePacketLossMinSliceNumber > sliceNumber {
+	if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss && internal.ReducePacketLossMinSliceNumber >= sliceNumber {
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}
