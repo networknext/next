@@ -1489,6 +1489,14 @@ func TestInternalConfig(t *testing.T) {
 		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, false, checkInternalConfig.EnableVanityMetrics)
+
+		// ReducePacketLossMinSliceNumber
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "ReducePacketLossMinSliceNumber", int32(50))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(50), checkInternalConfig.ReducePacketLossMinSliceNumber)
+
 	})
 
 	t.Run("RemoveInternalConfig", func(t *testing.T) {
