@@ -1950,7 +1950,8 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 	switch args.Field {
 	case "RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
 		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
-		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold":
+		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold",
+		"ReducePacketLossMinSliceNumber":
 		newInt, err := strconv.ParseInt(args.Value, 10, 32)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
