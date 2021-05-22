@@ -143,7 +143,7 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metri
 		*/
 
 		if !datacenterExists(database, packet.DatacenterID) {
-			core.Error("unknown datacenter %s [%x] for buyer id %x", packet.DatacenterName, packet.DatacenterID, packet.BuyerID)
+			core.Error("unknown datacenter %s [%016x] for buyer id %016x", packet.DatacenterName, packet.DatacenterID, packet.BuyerID)
 			metrics.DatacenterNotFound.Add(1)
 			return
 		}
@@ -946,7 +946,7 @@ func sessionFilterNearRelays(state *SessionHandlerState) {
 		return
 	}
 
-	// IMPORTANT: On slice 4, grab the *processed* near relay RTTs from ReframeRelays, 
+	// IMPORTANT: On slice 4, grab the *processed* near relay RTTs from ReframeRelays,
 	// which are set to 255 for any near relays excluded because of high jitter or PL
 	// and hold them as the near relay RTTs to use from now on.
 
