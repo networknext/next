@@ -295,7 +295,7 @@ func mainReturnWithCode() int {
 
 		go func() {
 			httpClient := &http.Client{
-				Timeout: time.Second * 2,
+				Timeout: time.Second * 4,
 			}
 
 			syncTimer := helpers.NewSyncTimer(syncInterval)
@@ -359,8 +359,8 @@ func mainReturnWithCode() int {
 				routeEntriesTime := time.Since(start)
 				duration := float64(routeEntriesTime.Milliseconds())
 				backendMetrics.RouteMatrixUpdateDuration.Set(duration)
-				if duration > 100 {
-					core.Error("long route matrix duration %dms", duration)
+				if duration > 250 {
+					core.Error("long route matrix duration %dms", int(duration))
 					backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
 				}
 
