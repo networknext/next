@@ -143,7 +143,7 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metri
 		*/
 
 		if !datacenterExists(database, packet.DatacenterID) {
-			core.Error("unknown datacenter %s [%x] for buyer id %x", packet.DatacenterName, packet.DatacenterID, packet.BuyerID)
+			core.Error("unknown datacenter %s [%x] from %s for buyer id %x", packet.DatacenterName, incoming.From.String(), packet.DatacenterID, packet.BuyerID)
 			metrics.DatacenterNotFound.Add(1)
 			return
 		}
@@ -946,7 +946,7 @@ func sessionFilterNearRelays(state *SessionHandlerState) {
 		return
 	}
 
-	// IMPORTANT: On slice 4, grab the *processed* near relay RTTs from ReframeRelays, 
+	// IMPORTANT: On slice 4, grab the *processed* near relay RTTs from ReframeRelays,
 	// which are set to 255 for any near relays excluded because of high jitter or PL
 	// and hold them as the near relay RTTs to use from now on.
 
@@ -991,11 +991,13 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 	routeRelays := [core.MaxRelaysPerRoute]int32{}
 
+	sliceNumber := int32(state.packet.SliceNumber)
+
 	if !state.input.RouteState.Next {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, state.nearRelayIndices[:], state.nearRelayRTTs[:], state.destRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.routeDiversity, state.debug) {
+		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, state.nearRelayIndices[:], state.nearRelayRTTs[:], state.destRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.routeDiversity, state.debug, sliceNumber) {
 			BuildNextTokens(&state.output, state.database, &state.buyer, &state.packet, routeNumRelays, routeRelays[:routeNumRelays], state.routeMatrix.RelayIDs, state.routerPrivateKey, &state.response)
 		}
 
