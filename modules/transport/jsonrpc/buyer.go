@@ -1803,22 +1803,23 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 }
 
 type JSInternalConfig struct {
-	RouteSelectThreshold       int64 `json:"routeSelectThreshold"`
-	RouteSwitchThreshold       int64 `json:"routeSwitchThreshold"`
-	MaxLatencyTradeOff         int64 `json:"maxLatencyTradeOff"`
-	RTTVeto_Default            int64 `json:"rttVeto_Default"`
-	RTTVeto_Multipath          int64 `json:"rttVeto_Multipath"`
-	RTTVeto_PacketLoss         int64 `json:"rttVeto_PacketLoss"`
-	MultipathOverloadThreshold int64 `json:"multipathOverloadThreshold"`
-	TryBeforeYouBuy            bool  `json:"tryBeforeYouBuy"`
-	ForceNext                  bool  `json:"forceNext"`
-	LargeCustomer              bool  `json:"largeCustomer"`
-	Uncommitted                bool  `json:"uncommitted"`
-	MaxRTT                     int64 `json:"maxRTT"`
-	HighFrequencyPings         bool  `json:"highFrequencyPings"`
-	RouteDiversity             int64 `json:"routeDiversity"`
-	MultipathThreshold         int64 `json:"multipathThreshold"`
-	EnableVanityMetrics        bool  `json:"enableVanityMetrics"`
+	RouteSelectThreshold           int64 `json:"routeSelectThreshold"`
+	RouteSwitchThreshold           int64 `json:"routeSwitchThreshold"`
+	MaxLatencyTradeOff             int64 `json:"maxLatencyTradeOff"`
+	RTTVeto_Default                int64 `json:"rttVeto_Default"`
+	RTTVeto_Multipath              int64 `json:"rttVeto_Multipath"`
+	RTTVeto_PacketLoss             int64 `json:"rttVeto_PacketLoss"`
+	MultipathOverloadThreshold     int64 `json:"multipathOverloadThreshold"`
+	TryBeforeYouBuy                bool  `json:"tryBeforeYouBuy"`
+	ForceNext                      bool  `json:"forceNext"`
+	LargeCustomer                  bool  `json:"largeCustomer"`
+	Uncommitted                    bool  `json:"uncommitted"`
+	MaxRTT                         int64 `json:"maxRTT"`
+	HighFrequencyPings             bool  `json:"highFrequencyPings"`
+	RouteDiversity                 int64 `json:"routeDiversity"`
+	MultipathThreshold             int64 `json:"multipathThreshold"`
+	EnableVanityMetrics            bool  `json:"enableVanityMetrics"`
+	ReducePacketLossMinSliceNumber int64 `json:"reducePacketLossMinSliceNumber"`
 }
 
 type InternalConfigArg struct {
@@ -1848,22 +1849,23 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 	}
 
 	jsonIC := JSInternalConfig{
-		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
-		RTTVeto_Default:            int64(ic.RTTVeto_Default),
-		RTTVeto_Multipath:          int64(ic.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:         int64(ic.RTTVeto_PacketLoss),
-		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-		ForceNext:                  ic.ForceNext,
-		LargeCustomer:              ic.LargeCustomer,
-		Uncommitted:                ic.Uncommitted,
-		MaxRTT:                     int64(ic.MaxRTT),
-		HighFrequencyPings:         ic.HighFrequencyPings,
-		RouteDiversity:             int64(ic.RouteDiversity),
-		MultipathThreshold:         int64(ic.MultipathThreshold),
-		EnableVanityMetrics:        ic.EnableVanityMetrics,
+		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
+		RTTVeto_Default:                int64(ic.RTTVeto_Default),
+		RTTVeto_Multipath:              int64(ic.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:             int64(ic.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
+		ForceNext:                      ic.ForceNext,
+		LargeCustomer:                  ic.LargeCustomer,
+		Uncommitted:                    ic.Uncommitted,
+		MaxRTT:                         int64(ic.MaxRTT),
+		HighFrequencyPings:             ic.HighFrequencyPings,
+		RouteDiversity:                 int64(ic.RouteDiversity),
+		MultipathThreshold:             int64(ic.MultipathThreshold),
+		EnableVanityMetrics:            ic.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 	}
 
 	reply.InternalConfig = jsonIC
