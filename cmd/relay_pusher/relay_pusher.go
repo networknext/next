@@ -90,25 +90,25 @@ func mainReturnWithCode() int {
 	// Setup GCP storage
 	bucketName := envvar.Get("ARTIFACT_BUCKET", "")
 	if bucketName == "" {
-		level.Error(logger).Log("msg", "gcp bucket not specified", "err")
+		level.Error(logger).Log("err", "gcp bucket not specified")
 		return 1
 	}
 
 	databaseBinFileName := envvar.Get("DATABASE_FILE_NAME", "")
 	if databaseBinFileName == "" {
-		level.Error(logger).Log("msg", "DB binary file name not specified", "err")
+		level.Error(logger).Log("err", "DB binary file name not specified")
 		return 1
 	}
 
 	databaseBinFileOutputLocation := envvar.Get("DB_OUTPUT_LOCATION", "")
 	if databaseBinFileOutputLocation == "" {
-		level.Error(logger).Log("msg", "DB output file location not specified", "err")
+		level.Error(logger).Log("err", "DB output file location not specified")
 		return 1
 	}
 
 	dbSyncInterval, err := envvar.GetDuration("DB_SYNC_INTERVAL", time.Minute*1)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to get DB sync interval", "err")
+		level.Error(logger).Log("err", "failed to get DB sync interval")
 		return 1
 	}
 
@@ -116,7 +116,7 @@ func mainReturnWithCode() int {
 
 	relayBackendNames := envvar.GetList("RELAY_BACKEND_INSTANCE_NAMES", []string{})
 	if len(relayBackendNames) == 0 {
-		level.Error(logger).Log("msg", "relay backend names not specified", "err")
+		level.Error(logger).Log("err", "relay backend names not specified")
 		return 1
 	}
 	for _, relayBackendName := range relayBackendNames {
@@ -125,20 +125,26 @@ func mainReturnWithCode() int {
 
 	debugRelayBackendName := envvar.Get("DEBUG_RELAY_BACKEND_INSTANCE_NAME", "")
 	if debugRelayBackendName == "" {
-		level.Error(logger).Log("msg", "debug relay backend name not specified", "err")
+		level.Error(logger).Log("err", "debug relay backend name not specified")
 	} else {
 		remoteDBLocations = append(remoteDBLocations, debugRelayBackendName)
 	}
 
 	relayGatewayMIGName := envvar.Get("RELAY_GATEWAY_MIG_NAME", "")
 	if relayGatewayMIGName == "" {
-		level.Error(logger).Log("msg", "relay gateway mig name not specified", "err")
+		level.Error(logger).Log("err", "relay gateway mig name not specified")
+		return 1
+	}
+
+	apiMIGName := envvar.Get("API_MIG_NAME", "")
+	if apiMIGName == "" {
+		level.Error(logger).Log("err", "api mig name not specified")
 		return 1
 	}
 
 	serverBackendMIGName := envvar.Get("SERVER_BACKEND_MIG_NAME", "")
 	if serverBackendMIGName == "" {
-		level.Error(logger).Log("msg", "server backend mig name not specified", "err")
+		level.Error(logger).Log("err", "server backend mig name not specified")
 		return 1
 	}
 
@@ -147,7 +153,7 @@ func mainReturnWithCode() int {
 	// Check if the debug server backend exists and push files to it as well
 	debugServerBackendName := envvar.Get("DEBUG_SERVER_BACKEND_NAME", "")
 	if debugServerBackendName == "" {
-		level.Error(logger).Log("msg", "debug server backend name not specified", "err")
+		level.Error(logger).Log("err", "debug server backend name not specified")
 	} else {
 		serverBackendInstanceNames = append(serverBackendInstanceNames, debugServerBackendName)
 	}
@@ -165,25 +171,25 @@ func mainReturnWithCode() int {
 
 	ispFileName := envvar.Get("MAXMIND_ISP_DB_FILE_NAME", "")
 	if ispFileName == "" {
-		level.Error(logger).Log("msg", "ISP temp file not defined", "err", err)
+		level.Error(logger).Log("err", "ISP temp file not defined", "err")
 		return 1
 	}
 
 	cityFileName := envvar.Get("MAXMIND_CITY_DB_FILE_NAME", "")
 	if cityFileName == "" {
-		level.Error(logger).Log("msg", "city temp file not defined", "err", err)
+		level.Error(logger).Log("err", "city temp file not defined", "err")
 		return 1
 	}
 
 	ispURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
 	if ispURI == "" {
-		level.Error(logger).Log("msg", "maxmind DB ISP location not defined", "err", err)
+		level.Error(logger).Log("err", "maxmind DB ISP location not defined")
 		return 1
 	}
 
 	cityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
 	if cityURI == "" {
-		level.Error(logger).Log("msg", "maxmind DB city location not defined", "err", err)
+		level.Error(logger).Log("err", "maxmind DB city location not defined")
 		return 1
 	}
 
