@@ -361,6 +361,14 @@ func mainReturnWithCode() int {
 					databaseInstanceNames = append(databaseInstanceNames, relayGatewayMIGInstanceNames...)
 				}
 
+				apiMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, apiMIGName)
+				if err != nil {
+					level.Error(logger).Log("msg", "failed to fetch api mig instance names", "err", err)
+				} else {
+					// Add the gateway mig instance names to the list
+					databaseInstanceNames = append(databaseInstanceNames, apiMIGInstanceNames...)
+				}
+
 				if err := gcpStorage.CopyFromBucketToRemote(ctx, databaseBinFileName, databaseInstanceNames, databaseBinFileOutputLocation); err != nil {
 					level.Error(logger).Log("msg", "failed to copy database bin file to database locations", "err", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.DatabaseSCPWriteFailure.Add(1)
