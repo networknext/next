@@ -148,6 +148,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// We sometimes have two server backend MIGs running depending on the env
+	serverBackendMIGName2 := envvar.Get("SERVER_BACKEND_MIG_NAME_2", "")
+	if serverBackendMIGName2 == "" {
+		level.Error(logger).Log("err", "server backend 2 mig name not specified")
+	}
+
 	serverBackendInstanceNames := make([]string, 0)
 
 	// Check if the debug server backend exists and push files to it as well
@@ -321,6 +327,17 @@ func mainReturnWithCode() int {
 				} else {
 					// Add the server backend mig instance names to the list
 					maxmindInstanceNames = append(maxmindInstanceNames, serverBackendMIGInstanceNames...)
+				}
+
+				// Add the instances for the second server backend MIG if it is in use
+				if serverBackendMIGName2 != "" {
+					serverBackendMIG2InstanceNames, err := getMIGInstanceNames(gcpProjectID, serverBackendMIGName2)
+					if err != nil {
+						level.Error(logger).Log("msg", "failed to fetch server backend 2 mig instance names", "err", err)
+					} else {
+						// Add the server backend 2 mig instance names to the list
+						maxmindInstanceNames = append(maxmindInstanceNames, serverBackendMIG2InstanceNames...)
+					}
 				}
 
 				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), maxmindInstanceNames, cityFileName); err != nil {
