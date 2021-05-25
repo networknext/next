@@ -43,7 +43,9 @@ func getTestSessionData(largeCustomer bool, sessionID uint64, userHash uint64, b
 	relayID4 := crypto.HashID("127.0.0.1:10003")
 
 	return transport.SessionPortalData{
+		Version: transport.SessionPortalDataVersion,
 		Meta: transport.SessionMeta{
+			Version:         transport.SessionMetaVersion,
 			ID:              sessionID,
 			UserHash:        userHash,
 			DatacenterName:  "local",
@@ -81,6 +83,7 @@ func getTestSessionData(largeCustomer bool, sessionID uint64, userHash uint64, b
 			BuyerID:  buyerID,
 		},
 		Point: transport.SessionMapPoint{
+			Version:   transport.SessionMapPointVersion,
 			Latitude:  45,
 			Longitude: 90,
 		},
