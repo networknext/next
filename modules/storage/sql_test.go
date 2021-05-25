@@ -242,6 +242,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.SSHUser, checkRelay.SSHUser)
 		assert.Equal(t, relay.MaxSessions, checkRelay.MaxSessions)
 		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
+		assert.Equal(t, outerSeller.ShortName, relay.BillingSupplier)
 		assert.Equal(t, relay.Datacenter.DatabaseID, checkRelay.Datacenter.DatabaseID)
 		assert.Equal(t, relay.MRC, checkRelay.MRC)
 		assert.Equal(t, relay.Overage, checkRelay.Overage)
@@ -287,7 +288,7 @@ func TestInsertSQL(t *testing.T) {
 		relayMod.State = checkRelay.State
 		relayMod.IncludedBandwidthGB = checkRelay.IncludedBandwidthGB
 		relayMod.NICSpeedMbps = checkRelay.NICSpeedMbps
-		relayMod.Notes = checkRelay.Notes
+		// Notes
 		relayMod.DatabaseID = checkRelay.DatabaseID
 
 		relayMod.Seller = checkRelay.Seller
@@ -327,7 +328,14 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, routing.Nibblin(10), checkRelayMod.Seller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(20), checkRelayMod.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelayMod.Seller.CustomerID)
-		assert.Equal(t, relayMod.Notes, checkRelayMod.Notes)
+
+		// test nulls
+		assert.Equal(t, "", relayMod.Notes)
+		assert.Equal(t, net.UDPAddr{}, relayMod.Addr)
+		assert.Equal(t, net.UDPAddr{}, relayMod.InternalAddr)
+		assert.True(t, relayMod.EndDate.IsZero())
+		assert.True(t, relayMod.StartDate.IsZero())
+		assert.Equal(t, "", relayMod.BillingSupplier)
 
 		// relay with some null values null values (except dc to trip an error)
 		addr2, err := net.ResolveUDPAddr("udp", "127.0.0.3:40000")
