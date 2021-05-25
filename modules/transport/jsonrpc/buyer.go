@@ -1731,7 +1731,17 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 
 	if s.UseBigtable {
 
-		topSessions := append(topSessionsA, topSessionsB...)
+		// Sometimes there are duplicate sessionIDs in both top session buckets
+		// Create a set of unique top sessionIDs
+		topSessions := make(map[string]bool)
+		for _, sessionID := range topSessionsA {
+			topSessions[sessionID] = true
+		}
+		for _, sessionID := range topSessionsB {
+			if _, ok := topSessions[sessionID]; !ok {
+				topSessions[sessionID] = true
+			}
+		}
 
 		// Create the filters to use for reading rows
 		chainFilter := bigtable.ChainFilters(
@@ -1739,18 +1749,18 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			bigtable.LatestNFilter(1),     // Gets the latest cell from the "meta" column
 		)
 
-		for _, sessionID := range topSessions {
+		for sessionID, _ := range topSessions {
 			// Get the session meta from bigtable
-			metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s#", sessionID), bigtable.RowFilter(chainFilter))
+			metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", sessionID), bigtable.RowFilter(chainFilter))
 			if err != nil {
 				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-				err = fmt.Errorf("SessionDetails() failed to fetch top sessions A meta information from bigtable: %v", err)
+				err = fmt.Errorf("SessionDetails() failed to fetch top sessions meta information from bigtable: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return sessions, err
 			}
 			if len(metaRows) == 0 {
 				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-				err = fmt.Errorf("SessionDetails() failed to fetch top sessions A meta information: %v", err)
+				err = fmt.Errorf("SessionDetails() failed to fetch top sessions meta information, no rows: %v", err)
 				level.Error(s.Logger).Log("err", err)
 				return sessions, err
 			}
