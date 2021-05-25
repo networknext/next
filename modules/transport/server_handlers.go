@@ -551,9 +551,12 @@ func sessionPre(state *SessionHandlerState) bool {
 	}
 
 	if state.packet.ClientPingTimedOut {
-		core.Debug("client ping timed out")
-		state.metrics.ClientPingTimedOut.Add(1)
-		return true
+		if !state.postSessionHandler.featureBilling2 || (state.postSessionHandler.featureBilling2 && state.input.WroteSummary) {
+			// Already wrote the summary slice
+			core.Debug("client ping timed out")
+			state.metrics.ClientPingTimedOut.Add(1)
+			return true
+		}
 	}
 
 	if !datacenterExists(state.database, state.packet.DatacenterID) {
@@ -1199,16 +1202,6 @@ func sessionPost(state *SessionHandlerState) {
 	}
 
 	/*
-		The client times out at the end of each session, and holds on for 60 seconds.
-		These slices at the end have no useful information for the portal or billing,
-		so we drop them here.
-	*/
-
-	if state.packet.ClientPingTimedOut {
-		return
-	}
-
-	/*
 		Check if we should multipath veto this user.
 
 		Multipath veto detects users who spike up RTT while on multipath, indicating
@@ -1246,7 +1239,7 @@ func sessionPost(state *SessionHandlerState) {
 		Build billing data and send it to the billing system via pubsub (non-realtime path)
 	*/
 
-	if state.postSessionHandler.featureBilling {
+	if state.postSessionHandler.featureBilling && !state.packet.ClientPingTimedOut {
 		billingEntry := buildBillingEntry(state)
 
 		state.postSessionHandler.SendBillingEntry(billingEntry)
@@ -1262,10 +1255,21 @@ func sessionPost(state *SessionHandlerState) {
 		}
 	}
 
-	if state.postSessionHandler.featureBilling2 {
+	if state.postSessionHandler.featureBilling2 && !state.input.WroteSummary {
 		billingEntry2 := buildBillingEntry2(state)
 
 		state.postSessionHandler.SendBillingEntry2(billingEntry2)
+	}
+
+	/*
+		The client times out at the end of each session, and holds on for 60 seconds.
+		These slices at the end have no useful information for the portal, so we drop
+		them here. Billing needs to know if the client times out to write the summary
+		portion of the billing entry.
+	*/
+
+	if state.packet.ClientPingTimedOut {
+		return
 	}
 
 	/*
@@ -1617,6 +1621,10 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 
 	if state.packet.ClientPingTimedOut && !state.input.WroteSummary && !state.output.WroteSummary {
 		state.output.WroteSummary = true
+	}
+
+	if state.packet.ClientPingTimedOut {
+		core.Debug("CLIENT PING TIMEOUT, state output wrote summary: %v, state input wrote summary: %v", state.output.WroteSummary, state.input.WroteSummary)
 	}
 
 	/*
