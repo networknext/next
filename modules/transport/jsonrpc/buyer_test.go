@@ -1106,9 +1106,9 @@ func TestSessionMapPoints(t *testing.T) {
 	sessionID3 := fmt.Sprintf("%016x", 333)
 
 	points := []transport.SessionMapPoint{
-		{Latitude: 10, Longitude: 40},
-		{Latitude: 20, Longitude: 50},
-		{Latitude: 30, Longitude: 60},
+		{Version: transport.SessionMapPointVersion, Latitude: 10, Longitude: 40},
+		{Version: transport.SessionMapPointVersion, Latitude: 20, Longitude: 50},
+		{Version: transport.SessionMapPointVersion, Latitude: 30, Longitude: 60},
 	}
 
 	now := time.Now()
@@ -1215,9 +1215,9 @@ func TestSessionMap(t *testing.T) {
 	sessionID3 := fmt.Sprintf("%016x", 333)
 
 	points := []transport.SessionMapPoint{
-		{Latitude: 10, Longitude: 40, SessionID: uint64(123456789)},
-		{Latitude: 20, Longitude: 50, SessionID: uint64(123123123)},
-		{Latitude: 30, Longitude: 60, SessionID: uint64(456456456)},
+		{Version: transport.SessionMapPointVersion, Latitude: 10, Longitude: 40, SessionID: uint64(123456789)},
+		{Version: transport.SessionMapPointVersion, Latitude: 20, Longitude: 50, SessionID: uint64(123123123)},
+		{Version: transport.SessionMapPointVersion, Latitude: 30, Longitude: 60, SessionID: uint64(456456456)},
 	}
 
 	now := time.Now()
