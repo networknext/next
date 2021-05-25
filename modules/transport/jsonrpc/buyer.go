@@ -773,12 +773,14 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
+			sessionID := fmt.Sprintf("%016x", point.SessionID)
+
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, isLargeCustomer})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, isLargeCustomer})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
 			}
 		}
 
@@ -790,12 +792,14 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
+			sessionID := fmt.Sprintf("%016x", point.SessionID)
+
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true, sessionID})
 			}
 		}
 
