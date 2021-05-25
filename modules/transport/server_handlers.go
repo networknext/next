@@ -1623,10 +1623,6 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		state.output.WroteSummary = true
 	}
 
-	if state.packet.ClientPingTimedOut {
-		core.Debug("CLIENT PING TIMEOUT, state output wrote summary: %v, state input wrote summary: %v", state.output.WroteSummary, state.input.WroteSummary)
-	}
-
 	/*
 		Create the billing entry 2 and return it to the caller.
 	*/
