@@ -241,7 +241,7 @@ func TestUserSessions(t *testing.T) {
 	// Add user sessions to bigtable
 	metaBin1, err := transport.SessionMeta{ID: 111, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
 	assert.NoError(t, err)
-	slice1 := transport.SessionSlice{}
+	slice1 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin1, err := slice1.MarshalBinary()
 	assert.NoError(t, err)
 	sessionRowKey1 := sessionID1
@@ -252,7 +252,7 @@ func TestUserSessions(t *testing.T) {
 
 	metaBin2, err := transport.SessionMeta{ID: 222, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 	assert.NoError(t, err)
-	slice2 := transport.SessionSlice{}
+	slice2 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin2, err := slice2.MarshalBinary()
 	assert.NoError(t, err)
 	sessionRowKey2 := sessionID2
@@ -263,7 +263,7 @@ func TestUserSessions(t *testing.T) {
 
 	metaBin3, err := transport.SessionMeta{ID: 333, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 	assert.NoError(t, err)
-	slice3 := transport.SessionSlice{}
+	slice3 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin3, err := slice3.MarshalBinary()
 	assert.NoError(t, err)
 	sessionRowKey3 := sessionID3
@@ -274,7 +274,7 @@ func TestUserSessions(t *testing.T) {
 
 	metaBin4, err := transport.SessionMeta{ID: 444, UserHash: userHash3, BuyerID: 777}.MarshalBinary()
 	assert.NoError(t, err)
-	slice4 := transport.SessionSlice{}
+	slice4 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin4, err := slice4.MarshalBinary()
 	assert.NoError(t, err)
 	sessionRowKey4 := sessionID4
@@ -378,7 +378,7 @@ func TestUserSessions(t *testing.T) {
 
 		metaBin6, err := transport.SessionMeta{ID: 666, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
 		assert.NoError(t, err)
-		slice6 := transport.SessionSlice{}
+		slice6 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 		sliceBin6, err := slice6.MarshalBinary()
 		assert.NoError(t, err)
 		sessionRowKey6 := sessionID6
@@ -389,7 +389,7 @@ func TestUserSessions(t *testing.T) {
 
 		metaBin7, err := transport.SessionMeta{ID: 777, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 		assert.NoError(t, err)
-		slice7 := transport.SessionSlice{}
+		slice7 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 		sliceBin7, err := slice7.MarshalBinary()
 		assert.NoError(t, err)
 		sessionRowKey7 := sessionID7
@@ -400,7 +400,7 @@ func TestUserSessions(t *testing.T) {
 
 		metaBin8, err := transport.SessionMeta{ID: 888, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 		assert.NoError(t, err)
-		slice8 := transport.SessionSlice{}
+		slice8 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 		sliceBin8, err := slice8.MarshalBinary()
 		assert.NoError(t, err)
 		sessionRowKey8 := sessionID8
@@ -814,13 +814,13 @@ func TestSessionDetails(t *testing.T) {
 		ClientAddr: "127.0.0.1:1313",
 		ServerAddr: "10.0.0.1:50000",
 		Hops: []transport.RelayHop{
-			{ID: 1234},
-			{ID: 1234},
-			{ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
 		},
 		SDK: "3.4.4",
 		NearbyRelays: []transport.NearRelayPortalData{
-			{ID: 1, Name: "local", ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
+			{Version: transport.NearRelayPortalDataVersion, ID: 1, Name: "local", ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
 		},
 	}
 
@@ -830,36 +830,40 @@ func TestSessionDetails(t *testing.T) {
 		ClientAddr: "127.0.0.1:1313",
 		ServerAddr: "10.0.0.1:50000",
 		Hops: []transport.RelayHop{
-			{ID: 1234},
-			{ID: 1234},
-			{ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
 		},
 		SDK: "3.4.4",
 		NearbyRelays: []transport.NearRelayPortalData{
-			{ID: 1, Name: "local", ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
+			{Version: transport.NearRelayPortalDataVersion, ID: 1, Name: "local", ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
 		},
 	}
 	anonMeta.Anonymise()
 
 	slice1 := transport.SessionSlice{
+		Version:   transport.SessionSliceVersion,
 		Timestamp: time.Now(),
 		Next:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
 		Direct:    routing.Stats{RTT: 15, Jitter: 20, PacketLoss: 25},
 		Envelope:  routing.Envelope{Up: 1500, Down: 1500},
 	}
 	slice2 := transport.SessionSlice{
+		Version:   transport.SessionSliceVersion,
 		Timestamp: time.Now().Add(10 * time.Second),
 		Next:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
 		Direct:    routing.Stats{RTT: 15, Jitter: 20, PacketLoss: 25},
 		Envelope:  routing.Envelope{Up: 1500, Down: 1500},
 	}
 	slice3 := transport.SessionSlice{
+		Version:   transport.SessionSliceVersion,
 		Timestamp: time.Now().Add(20 * time.Second),
 		Next:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
 		Direct:    routing.Stats{RTT: 15, Jitter: 20, PacketLoss: 25},
 		Envelope:  routing.Envelope{Up: 1500, Down: 1500},
 	}
 	slice4 := transport.SessionSlice{
+		Version:   transport.SessionSliceVersion,
 		Timestamp: time.Now().Add(30 * time.Second),
 		Next:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
 		Direct:    routing.Stats{RTT: 15, Jitter: 20, PacketLoss: 25},
