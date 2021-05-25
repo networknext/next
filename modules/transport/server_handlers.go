@@ -1192,6 +1192,18 @@ func sessionPost(state *SessionHandlerState) {
 	}
 
 	/*
+		Determine if we should write the summary slice. Should only happen
+		when the session is finished and we have not already written the
+		summary slice.
+
+		The end of a session occurs when the client ping times out.
+	*/
+
+	if state.postSessionHandler.featureBilling2 && state.packet.ClientPingTimedOut && !state.input.WroteSummary {
+		state.output.WroteSummary = true
+	}
+
+	/*
 		Write the session response packet and send it back to the caller.
 	*/
 
@@ -1264,8 +1276,8 @@ func sessionPost(state *SessionHandlerState) {
 	/*
 		The client times out at the end of each session, and holds on for 60 seconds.
 		These slices at the end have no useful information for the portal, so we drop
-		them here. Billing needs to know if the client times out to write the summary
-		portion of the billing entry.
+		them here. Billing2 needs to know if the client times out to write the summary
+		portion of the billing entry 2.
 	*/
 
 	if state.packet.ClientPingTimedOut {
@@ -1609,18 +1621,6 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		nearRelayRTTs[i] = int32(state.postNearRelayRTT[i])
 		nearRelayJitters[i] = int32(state.postNearRelayJitter[i])
 		nearRelayPacketLosses[i] = int32(state.postNearRelayPacketLoss[i])
-	}
-
-	/*
-		Determine if we should write the summary slice. Should only happen
-		when the session is finished and we have not already written the
-		summary slice.
-
-		The end of a session occurs when the client ping times out.
-	*/
-
-	if state.packet.ClientPingTimedOut && !state.input.WroteSummary {
-		state.output.WroteSummary = true
 	}
 
 	/*
