@@ -215,6 +215,7 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, pos
 
 		// Send the number of sessions on the server to the portal cruncher
 		countData := &SessionCountData{
+			Version:     SessionCountDataVersion,
 			ServerID:    crypto.HashID(packet.ServerAddress.String()),
 			BuyerID:     buyer.ID,
 			NumSessions: packet.NumSessions,
@@ -1710,8 +1711,9 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 	hops := make([]RelayHop, state.input.RouteNumRelays)
 	for i := int32(0); i < state.input.RouteNumRelays; i++ {
 		hops[i] = RelayHop{
-			ID:   state.input.RouteRelayIDs[i],
-			Name: state.postRouteRelayNames[i],
+			Version: RelayHopVersion,
+			ID:      state.input.RouteRelayIDs[i],
+			Name:    state.postRouteRelayNames[i],
 		}
 	}
 
@@ -1723,8 +1725,9 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 	nearRelayPortalData := make([]NearRelayPortalData, state.postNearRelayCount)
 	for i := range nearRelayPortalData {
 		nearRelayPortalData[i] = NearRelayPortalData{
-			ID:   state.postNearRelayIDs[i],
-			Name: state.postNearRelayNames[i],
+			Version: NearRelayPortalDataVersion,
+			ID:      state.postNearRelayIDs[i],
+			Name:    state.postNearRelayNames[i],
 			ClientStats: routing.Stats{
 				RTT:        float64(state.postNearRelayRTT[i]),
 				Jitter:     float64(state.postNearRelayJitter[i]),
@@ -1759,7 +1762,9 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 	*/
 
 	portalData := SessionPortalData{
+		Version: SessionPortalDataVersion,
 		Meta: SessionMeta{
+			Version:         SessionMetaVersion,
 			ID:              state.packet.SessionID,
 			UserHash:        state.packet.UserHash,
 			DatacenterName:  state.datacenter.Name,
@@ -1779,6 +1784,7 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 			BuyerID:         state.packet.BuyerID,
 		},
 		Slice: SessionSlice{
+			Version:   SessionSliceVersion,
 			Timestamp: time.Now(),
 			Next: routing.Stats{
 				RTT:        float64(state.packet.NextRTT),
@@ -1811,8 +1817,10 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 			OnNetworkNext:     state.packet.Next,
 		},
 		Point: SessionMapPoint{
+			Version:   SessionMapPointVersion,
 			Latitude:  float64(state.input.Location.Latitude),
 			Longitude: float64(state.input.Location.Longitude),
+			SessionID: state.input.SessionID,
 		},
 		LargeCustomer: state.buyer.InternalConfig.LargeCustomer,
 		EverOnNext:    state.input.EverOnNext,
