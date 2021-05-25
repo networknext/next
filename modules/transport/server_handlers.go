@@ -1251,22 +1251,22 @@ func sessionPost(state *SessionHandlerState) {
 		billingEntry = buildBillingEntry(state)
 
 		state.postSessionHandler.SendBillingEntry(billingEntry)
+
+		/*
+			Send the billing entry to the vanity metrics system (real-time path)
+
+			TODO: once buildBillingEntry() is deprecated, modify vanity metrics to use BillingEntry2
+		*/
+
+		if state.postSessionHandler.useVanityMetrics {
+			state.postSessionHandler.SendVanityMetric(billingEntry)
+		}
 	}
 
 	if state.postSessionHandler.featureBilling2 {
 		billingEntry2 := buildBillingEntry2(state)
 
 		state.postSessionHandler.SendBillingEntry2(billingEntry2)
-	}
-
-	/*
-		Send the billing entry to the vanity metrics system (real-time path)
-
-		TODO: once buildBillingEntry() is deprecated, modify vanity metrics to use BillingEntry2
-	*/
-
-	if state.postSessionHandler.useVanityMetrics {
-		state.postSessionHandler.SendVanityMetric(billingEntry)
 	}
 
 	/*
@@ -1616,7 +1616,7 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		The end of a session occurs when the client ping times out.
 	*/
 
-	if state.packet.ClientPingTimedOut && !state.input.WroteSummary && !state.output.WroteSummary  {
+	if state.packet.ClientPingTimedOut && !state.input.WroteSummary && !state.output.WroteSummary {
 		state.output.WroteSummary = true
 	}
 
