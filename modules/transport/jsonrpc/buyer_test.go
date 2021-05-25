@@ -1043,6 +1043,7 @@ func TestSessionDetails(t *testing.T) {
 		err := svc.SessionDetails(req, &jsonrpc.SessionDetailsArgs{SessionID: sessionID}, &reply)
 		assert.NoError(t, err)
 		assert.Equal(t, anonMeta, reply.Meta)
+		fmt.Println(reply.Slices)
 		assert.Equal(t, 2, len(reply.Slices))
 		assert.Equal(t, slice1.Timestamp.Hour(), reply.Slices[0].Timestamp.Hour())
 		assert.Equal(t, slice1.Next, reply.Slices[0].Next)
