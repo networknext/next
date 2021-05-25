@@ -89,7 +89,7 @@ export default class GameConfiguration extends Vue {
         new_public_key: this.pubKey
       })
       .then((response: any) => {
-        this.userProfile.pubKey = response.game_config.public_key
+        this.userProfile.pubKey = response.public_key
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
         this.$refs.responseAlert.setMessage('Updated public key successfully')
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
