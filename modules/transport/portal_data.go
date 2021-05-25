@@ -17,7 +17,7 @@ import (
 const (
 	SessionCountDataVersion    = 1
 	SessionPortalDataVersion   = 1
-	SessionMetaVersion         = 1
+	SessionMetaVersion         = 2
 	SessionSliceVersion        = 2
 	SessionMapPointVersion     = 1
 	RelayHopVersion            = 1
@@ -365,6 +365,12 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 
 	s.Hops = make([]RelayHop, hopsCount)
 	for i := uint32(0); i < hopsCount; i++ {
+		if s.Version >= 2 {
+			if !encoding.ReadUint32(data, &index, &s.Hops[i].Version) {
+				return errors.New("[SessionMeta] invalid read at relay hops relay version")
+			}
+		}
+
 		if !encoding.ReadUint64(data, &index, &s.Hops[i].ID) {
 			return errors.New("[SessionMeta] invalid read at relay hops relay ID")
 		}
@@ -389,6 +395,12 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 
 	s.NearbyRelays = make([]NearRelayPortalData, nearbyRelaysCount)
 	for i := uint32(0); i < nearbyRelaysCount; i++ {
+		if s.Version >= 2 {
+			if !encoding.ReadUint32(data, &index, &s.NearbyRelays[i].Version) {
+				return errors.New("[SessionMeta] invalid read at nearby relay version")
+			}
+		}
+
 		if !encoding.ReadUint64(data, &index, &s.NearbyRelays[i].ID) {
 			return errors.New("[SessionMeta] invalid read at nearby relays relay ID")
 		}
@@ -425,7 +437,7 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 	data := make([]byte, s.Size())
 	index := 0
 
-	encoding.WriteUint32(data, &index, SessionMetaVersion)
+	encoding.WriteUint32(data, &index, s.Version)
 	encoding.WriteUint64(data, &index, s.ID)
 	encoding.WriteUint64(data, &index, s.UserHash)
 	encoding.WriteString(data, &index, s.DatacenterName, uint32(len(s.DatacenterName)))
@@ -447,6 +459,9 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 
 	encoding.WriteUint32(data, &index, uint32(len(s.Hops)))
 	for _, hop := range s.Hops {
+		if s.Version >= 2 {
+			encoding.WriteUint32(data, &index, hop.Version)
+		}
 		encoding.WriteUint64(data, &index, hop.ID)
 		encoding.WriteString(data, &index, hop.Name, uint32(len(hop.Name)))
 	}
@@ -456,6 +471,9 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 
 	encoding.WriteUint32(data, &index, uint32(len(s.NearbyRelays)))
 	for _, nearRelayData := range s.NearbyRelays {
+		if s.Version >= 2 {
+			encoding.WriteUint32(data, &index, nearRelayData.Version)
+		}
 		encoding.WriteUint64(data, &index, nearRelayData.ID)
 		encoding.WriteString(data, &index, nearRelayData.Name, uint32(len(nearRelayData.Name)))
 		encoding.WriteFloat64(data, &index, nearRelayData.ClientStats.RTT)
@@ -472,12 +490,12 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 func (s SessionMeta) Size() uint64 {
 	var relayHopsSize uint64
 	for _, hop := range s.Hops {
-		relayHopsSize += 8 + 4 + uint64(len(hop.Name))
+		relayHopsSize += 8 + 4 + 4 + uint64(len(hop.Name))
 	}
 
 	var nearbyRelaysSize uint64
 	for _, nearRelayData := range s.NearbyRelays {
-		nearbyRelaysSize += 8 + 4 + uint64(len(nearRelayData.Name)) + 8 + 8 + 8
+		nearbyRelaysSize += 8 + 4 + 4 + uint64(len(nearRelayData.Name)) + 8 + 8 + 8
 	}
 
 	return 4 + 8 + 8 + 4 + uint64(len(s.DatacenterName)) + 4 + uint64(len(s.DatacenterAlias)) + 1 + 8 + 8 + 8 + 4 + s.Location.Size() +
@@ -683,7 +701,7 @@ func (s *SessionMeta) ParseRedisString(values []string) error {
 		if err := hop.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
 			return fmt.Errorf("[SessionMeta] failed to read relay hop from redis data: %v", err)
 		}
-		index += 2
+		index += 3
 
 		s.Hops[i] = hop
 	}
@@ -710,7 +728,7 @@ func (s *SessionMeta) ParseRedisString(values []string) error {
 		if err := nearRelay.ParseRedisString([]string{values[index], values[index+1], values[index+2], values[index+3], values[index+4], values[index+5]}); err != nil {
 			return fmt.Errorf("[SessionMeta] failed to read near relay from redis data: %v", err)
 		}
-		index += 5
+		index += 6
 
 		s.NearbyRelays[i] = nearRelay
 	}

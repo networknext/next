@@ -59,24 +59,28 @@ func getTestSessionData(largeCustomer bool, sessionID uint64, userHash uint64, b
 			ServerAddr:      "127.0.0.1:50000",
 			Hops: []transport.RelayHop{
 				{
-					ID:   relayID1,
-					Name: "local.test_relay.0",
+					Version: transport.RelayHopVersion,
+					ID:      relayID1,
+					Name:    "local.test_relay.0",
 				},
 				{
-					ID:   relayID2,
-					Name: "local.test_relay.1",
+					Version: transport.RelayHopVersion,
+					ID:      relayID2,
+					Name:    "local.test_relay.1",
 				},
 			},
 			SDK:        "4.0.0",
 			Connection: 3,
 			NearbyRelays: []transport.NearRelayPortalData{
 				{
-					ID:   relayID3,
-					Name: "local.test_relay.2",
+					Version: transport.NearRelayPortalDataVersion,
+					ID:      relayID3,
+					Name:    "local.test_relay.2",
 				},
 				{
-					ID:   relayID4,
-					Name: "local.test_relay.3",
+					Version: transport.NearRelayPortalDataVersion,
+					ID:      relayID4,
+					Name:    "local.test_relay.3",
 				},
 			},
 			Platform: 1,
