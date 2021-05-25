@@ -368,7 +368,6 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 
 	for i := range redisPortalDataBuffer {
 		meta := &redisPortalDataBuffer[i].Meta
-		slice := &redisPortalDataBuffer[i].Slice
 		point := &redisPortalDataBuffer[i].Point
 		sessionID := fmt.Sprintf("%016x", meta.ID)
 		customerID := fmt.Sprintf("%016x", meta.BuyerID)
@@ -418,12 +417,16 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 		cruncher.sessionMap.Command("EXPIRE", "n-%s-%d %d", customerID, minutes, 30)
 		cruncher.sessionMap.Command("EXPIRE", "d-%s-%d %d", customerID, minutes, 30)
 
-		// Update session meta
-		cruncher.sessionMeta.Command("SET", "sm-%s \"%s\" EX %d", sessionID, meta.RedisString(), 120)
+		// Only insert the following into redis if we are not using Bigtable
+		if !cruncher.useBigtable {
+			// Update session meta
+			cruncher.sessionMeta.Command("SET", "sm-%s \"%s\" EX %d", sessionID, meta.RedisString(), 120)
 
-		// Update session slices
-		cruncher.sessionSlices.Command("RPUSH", "ss-%s %s", sessionID, slice.RedisString())
-		cruncher.sessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
+			// Update session slices
+			slice := &redisPortalDataBuffer[i].Slice
+			cruncher.sessionSlices.Command("RPUSH", "ss-%s %s", sessionID, slice.RedisString())
+			cruncher.sessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
+		}
 	}
 }
 
@@ -436,12 +439,14 @@ func (cruncher *PortalCruncher) PingRedis() error {
 		return err
 	}
 
-	if err := cruncher.sessionMeta.Ping(); err != nil {
-		return err
-	}
+	if !cruncher.useBigtable {
+		if err := cruncher.sessionMeta.Ping(); err != nil {
+			return err
+		}
 
-	if err := cruncher.sessionSlices.Ping(); err != nil {
-		return err
+		if err := cruncher.sessionSlices.Ping(); err != nil {
+			return err
+		}
 	}
 
 	return nil
