@@ -1679,7 +1679,7 @@ func (entry *BillingEntry2) Validate() bool {
 			return false
 		}
 
-		if entry.RouteDiversity < 1 || entry.RouteDiversity > 31 {
+		if entry.RouteDiversity < 0 || entry.RouteDiversity > 31 {
 			fmt.Printf("invalid route diversity\n")
 			return false
 		}
@@ -1751,16 +1751,16 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 	if entry.SliceNumber == 0 {
 
-		e["datacenterID"] = entry.DatacenterID
-		e["buyerID"] = entry.BuyerID
-		e["userHash"] = entry.UserHash
-		e["envelopeBytesUp"] = entry.EnvelopeBytesUp
-		e["envelopeBytesDown"] = entry.EnvelopeBytesDown
+		e["datacenterID"] = int(entry.DatacenterID)
+		e["buyerID"] = int(entry.BuyerID)
+		e["userHash"] = int(entry.UserHash)
+		e["envelopeBytesUp"] = int(entry.EnvelopeBytesUp)
+		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
 		e["latitude"] = entry.Latitude
 		e["longitude"] = entry.Longitude
 		e["isp"] = entry.ISP
-		e["connectionType"] = entry.ConnectionType
-		e["platformType"] = entry.PlatformType
+		e["connectionType"] = int(entry.ConnectionType)
+		e["platformType"] = int(entry.PlatformType)
 		e["sdkVersion"] = entry.SDKVersion
 
 		if entry.NumTags > 0 {
@@ -1788,12 +1788,12 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 	if entry.Summary {
 
-		e["clientToServerPacketsSent"] = entry.ClientToServerPacketsSent
-		e["serverToClientPacketsSent"] = entry.ServerToClientPacketsSent
-		e["clientToServerPacketsLost"] = entry.ClientToServerPacketsLost
-		e["serverToClientPacketsLost"] = entry.ServerToClientPacketsLost
-		e["clientToServerPacketsOutOfOrder"] = entry.ClientToServerPacketsOutOfOrder
-		e["serverToClientPacketsOutOfOrder"] = entry.ServerToClientPacketsOutOfOrder
+		e["clientToServerPacketsSent"] = int(entry.ClientToServerPacketsSent)
+		e["serverToClientPacketsSent"] = int(entry.ServerToClientPacketsSent)
+		e["clientToServerPacketsLost"] = int(entry.ClientToServerPacketsLost)
+		e["serverToClientPacketsLost"] = int(entry.ServerToClientPacketsLost)
+		e["clientToServerPacketsOutOfOrder"] = int(entry.ClientToServerPacketsOutOfOrder)
+		e["serverToClientPacketsOutOfOrder"] = int(entry.ServerToClientPacketsOutOfOrder)
 
 		if entry.NumNearRelays > 0 {
 
