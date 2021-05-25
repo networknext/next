@@ -6,10 +6,9 @@ import (
 
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
-func validate(rpcClient jsonrpc.RPCClient, env Environment, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, inputFile string) {
+func validate(env Environment, relaysStateShowFlags [6]bool, relaysStateHideFlags [6]bool, inputFile string) {
 	file, err := os.Open(inputFile)
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not open the route matrix file for reading: %v\n", err), 1)
@@ -22,12 +21,12 @@ func validate(rpcClient jsonrpc.RPCClient, env Environment, relaysStateShowFlags
 	}
 
 	var relayReply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&relayReply, "OpsService.Relays", localjsonrpc.RelaysArgs{}); err != nil {
+	if err := makeRPCCall(env, &relayReply, "OpsService.Relays", localjsonrpc.RelaysArgs{}); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
 	var dcReply localjsonrpc.DatacentersReply
-	if err := rpcClient.CallFor(&dcReply, "OpsService.Datacenters", localjsonrpc.DatacentersArgs{}); err != nil {
+	if err := makeRPCCall(env, &dcReply, "OpsService.Datacenters", localjsonrpc.DatacentersArgs{}); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}

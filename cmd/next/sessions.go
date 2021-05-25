@@ -10,27 +10,26 @@ import (
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
-func flushsessions(rpcClient jsonrpc.RPCClient, env Environment) {
+func flushsessions(env Environment) {
 	relaysargs := localjsonrpc.FlushSessionsArgs{}
 
 	var relaysreply localjsonrpc.FlushSessionsReply
-	if err := rpcClient.CallFor(&relaysreply, "BuyersService.FlushSessions", relaysargs); err != nil {
+	if err := makeRPCCall(env, &relaysreply, "BuyersService.FlushSessions", relaysargs); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
 }
 
-func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, sessionCount int64) {
+func sessions(env Environment, sessionID string, sessionCount int64) {
 	if sessionID != "" {
 		args := localjsonrpc.SessionDetailsArgs{
 			SessionID: sessionID,
 		}
 
 		var reply localjsonrpc.SessionDetailsReply
-		if err := rpcClient.CallFor(&reply, "BuyersService.SessionDetails", args); err != nil {
+		if err := makeRPCCall(env, &reply, "BuyersService.SessionDetails", args); err != nil {
 			handleJSONRPCErrorCustom(env, err, "Session not found")
 			return
 		}
@@ -240,15 +239,15 @@ func sessions(rpcClient jsonrpc.RPCClient, env Environment, sessionID string, se
 
 		return
 	}
-	sessionsByBuyer(rpcClient, env, "", sessionCount)
+	sessionsByBuyer(env, "", sessionCount)
 }
 
-func sessionsByBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyerName string, sessionCount int64) {
+func sessionsByBuyer(env Environment, buyerName string, sessionCount int64) {
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
 
 	var buyersReply localjsonrpc.BuyersReply
-	if err := rpcClient.CallFor(&buyersReply, "OpsService.Buyers", buyerArgs); err != nil {
+	if err := makeRPCCall(env, &buyersReply, "OpsService.Buyers", buyerArgs); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -269,7 +268,7 @@ func sessionsByBuyer(rpcClient jsonrpc.RPCClient, env Environment, buyerName str
 	}
 
 	var topSessionsReply localjsonrpc.TopSessionsReply
-	if err := rpcClient.CallFor(&topSessionsReply, "BuyersService.TopSessions", topSessionArgs); err != nil {
+	if err := makeRPCCall(env, &topSessionsReply, "BuyersService.TopSessions", topSessionArgs); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
