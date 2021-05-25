@@ -188,10 +188,10 @@ func TestUserSessions(t *testing.T) {
 	redisServer.ZAdd(fmt.Sprintf("sc-%016x-%d", userHash1, minutes), 150, sessionID5)
 	redisServer.ZAdd(fmt.Sprintf("sc-%016x-%d", userHash3, minutes), 150, sessionID4)
 
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{ID: 111, UserHash: userHash2, DeltaRTT: 50}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{ID: 222, UserHash: userHash1, DeltaRTT: 100}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, UserHash: userHash1, DeltaRTT: 150}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID4), transport.SessionMeta{ID: 444, UserHash: userHash3, DeltaRTT: 150}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 111, UserHash: userHash2, DeltaRTT: 50}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 222, UserHash: userHash1, DeltaRTT: 100}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 333, UserHash: userHash1, DeltaRTT: 150}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID4), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 444, UserHash: userHash3, DeltaRTT: 150}.RedisString(), time.Hour)
 
 	logger := log.NewNopLogger()
 
@@ -239,7 +239,7 @@ func TestUserSessions(t *testing.T) {
 	}()
 
 	// Add user sessions to bigtable
-	metaBin1, err := transport.SessionMeta{ID: 111, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
+	metaBin1, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 111, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
 	assert.NoError(t, err)
 	slice1 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin1, err := slice1.MarshalBinary()
@@ -250,7 +250,7 @@ func TestUserSessions(t *testing.T) {
 	metaRowKeys1 := []string{sessionRowKey1, userRowKey1}
 	sliceRowKeys1 := []string{sliceRowKey1}
 
-	metaBin2, err := transport.SessionMeta{ID: 222, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
+	metaBin2, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 222, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 	assert.NoError(t, err)
 	slice2 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin2, err := slice2.MarshalBinary()
@@ -261,7 +261,7 @@ func TestUserSessions(t *testing.T) {
 	metaRowKeys2 := []string{sessionRowKey2, userRowKey2}
 	sliceRowKeys2 := []string{sliceRowKey2}
 
-	metaBin3, err := transport.SessionMeta{ID: 333, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
+	metaBin3, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 333, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 	assert.NoError(t, err)
 	slice3 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin3, err := slice3.MarshalBinary()
@@ -272,7 +272,7 @@ func TestUserSessions(t *testing.T) {
 	metaRowKeys3 := []string{sessionRowKey3, userRowKey3}
 	sliceRowKeys3 := []string{sliceRowKey3}
 
-	metaBin4, err := transport.SessionMeta{ID: 444, UserHash: userHash3, BuyerID: 777}.MarshalBinary()
+	metaBin4, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 444, UserHash: userHash3, BuyerID: 777}.MarshalBinary()
 	assert.NoError(t, err)
 	slice4 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin4, err := slice4.MarshalBinary()
@@ -376,7 +376,7 @@ func TestUserSessions(t *testing.T) {
 		sessionID7 := fmt.Sprintf("%016x", 777)
 		sessionID8 := fmt.Sprintf("%016x", 888)
 
-		metaBin6, err := transport.SessionMeta{ID: 666, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
+		metaBin6, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 666, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
 		assert.NoError(t, err)
 		slice6 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 		sliceBin6, err := slice6.MarshalBinary()
@@ -387,7 +387,7 @@ func TestUserSessions(t *testing.T) {
 		metaRowKeys6 := []string{sessionRowKey6, userRowKey6}
 		sliceRowKeys6 := []string{sliceRowKey6}
 
-		metaBin7, err := transport.SessionMeta{ID: 777, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
+		metaBin7, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 777, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 		assert.NoError(t, err)
 		slice7 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 		sliceBin7, err := slice7.MarshalBinary()
@@ -398,7 +398,7 @@ func TestUserSessions(t *testing.T) {
 		metaRowKeys7 := []string{sessionRowKey7, userRowKey7}
 		sliceRowKeys7 := []string{sliceRowKey7}
 
-		metaBin8, err := transport.SessionMeta{ID: 888, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
+		metaBin8, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 888, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 		assert.NoError(t, err)
 		slice8 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 		sliceBin8, err := slice8.MarshalBinary()
@@ -734,9 +734,9 @@ func TestTopSessions(t *testing.T) {
 	redisServer.ZAdd(fmt.Sprintf("sc-%s-%d", buyerID1, minutes), 150, sessionID3)
 	redisServer.ZAdd(fmt.Sprintf("sc-%s-%d", buyerID1, minutes), 150, sessionID4)
 
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{ID: 111, DeltaRTT: 50, BuyerID: 222}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{ID: 222, DeltaRTT: 100, BuyerID: 111}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, DeltaRTT: 150, BuyerID: 111}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 111, DeltaRTT: 50, BuyerID: 222}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 222, DeltaRTT: 100, BuyerID: 111}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 333, DeltaRTT: 150, BuyerID: 111}.RedisString(), time.Hour)
 
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
@@ -809,6 +809,7 @@ func TestSessionDetails(t *testing.T) {
 	sessionID := fmt.Sprintf("%016x", 999)
 
 	meta := transport.SessionMeta{
+		Version:    transport.SessionMetaVersion,
 		BuyerID:    111,
 		Location:   routing.Location{Latitude: 10, Longitude: 20},
 		ClientAddr: "127.0.0.1:1313",
@@ -825,6 +826,7 @@ func TestSessionDetails(t *testing.T) {
 	}
 
 	anonMeta := transport.SessionMeta{
+		Version:    transport.SessionMetaVersion,
 		BuyerID:    111,
 		Location:   routing.Location{Latitude: 10, Longitude: 20},
 		ClientAddr: "127.0.0.1:1313",
