@@ -814,13 +814,13 @@ export default class SessionDetails extends Vue {
       series: [
         {},
         {
-          stroke: 'blue',
-          fill: 'rgba(0,0,255,0.1)',
+          stroke: 'orange',
+          fill: 'rgba(255,165,0,0.1)',
           label: 'Up'
         },
         {
-          stroke: 'orange',
-          fill: 'rgba(255,165,0,0.1)',
+          stroke: 'blue',
+          fill: 'rgba(0,0,255,0.1)',
           label: 'Down'
         }
       ],
