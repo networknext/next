@@ -144,13 +144,13 @@ type relayInfo struct {
 	version     string
 }
 
-func getRelayInfo(rpcClient jsonrpc.RPCClient, env Environment, regex string) []relayInfo {
+func getRelayInfo(env Environment, regex string) []relayInfo {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return nil
 	}
@@ -179,7 +179,7 @@ func getInfoForAllRelays(rpcClient jsonrpc.RPCClient, env Environment) []relayIn
 	args := localjsonrpc.RelaysArgs{}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return nil
 	}
@@ -204,13 +204,13 @@ func getInfoForAllRelays(rpcClient jsonrpc.RPCClient, env Environment) []relayIn
 	return relays
 }
 
-func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing.RelayState) bool {
+func updateRelayState(env Environment, info relayInfo, state routing.RelayState) bool {
 	args := localjsonrpc.RelayStateUpdateArgs{
 		RelayID:    info.id,
 		RelayState: state,
 	}
 	var reply localjsonrpc.RelayStateUpdateReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RelayStateUpdate", &args); err != nil {
 		handleRunTimeError(fmt.Sprintf("could not update relay state: %v\n", err), 1)
 	}
 
@@ -223,7 +223,7 @@ type updateOptions struct {
 	hard      bool // hard update the relay, don't clean shutdown
 }
 
-func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, opts updateOptions) {
+func updateRelays(env Environment, regexes []string, opts updateOptions) {
 	// Fetch and save the latest binary
 	url, err := env.RelayArtifactURL()
 	if err != nil {
@@ -261,7 +261,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 
 	updatedRelays := 0
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
+		relays := getRelayInfo(env, regex)
 
 		if len(relays) == 0 {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
@@ -300,12 +300,12 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				}
 			}
 
-			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard, false) {
+			if !disableRelays(env, []string{relay.name}, opts.hard, false) {
 				continue
 			}
 
 			// Update the relay's state to offline in storage
-			if !updateRelayState(rpcClient, relay, routing.RelayStateOffline) {
+			if !updateRelayState(env, relay, routing.RelayStateOffline) {
 				continue
 			}
 
@@ -379,7 +379,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 
 				var reply localjsonrpc.RelayStateUpdateReply
 
-				if err := rpcClient.CallFor(&reply, "OpsService.RelayPublicKeyUpdate", &args); err != nil {
+				if err := makeRPCCall(env, &reply, "OpsService.RelayPublicKeyUpdate", &args); err != nil {
 					fmt.Printf("could not update relay public key: %v\n", err)
 					continue
 				}
@@ -421,9 +421,9 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	}
 }
 
-func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
+func revertRelays(env Environment, regexes []string) {
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
+		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
@@ -431,7 +431,7 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		for _, relay := range relays {
 			fmt.Printf("Reverting relay '%s' (id = %016x)\n", relay.name, relay.id)
 			testForSSHKey(env)
-			if !updateRelayState(rpcClient, relay, routing.RelayStateOffline) {
+			if !updateRelayState(env, relay, routing.RelayStateOffline) {
 				continue
 			}
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
@@ -440,10 +440,10 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	}
 }
 
-func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
+func enableRelays(env Environment, regexes []string) {
 	enabledRelays := 0
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
+		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
@@ -451,7 +451,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		for _, relay := range relays {
 			fmt.Printf("Enabling relay '%s' (id = %016x)\n", relay.name, relay.id)
 			testForSSHKey(env)
-			if !updateRelayState(rpcClient, relay, routing.RelayStateOffline) {
+			if !updateRelayState(env, relay, routing.RelayStateOffline) {
 				continue
 			}
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
@@ -474,7 +474,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	fmt.Printf("%s complete\n", str)
 }
 
-func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool, maintenance bool) bool {
+func disableRelays(env Environment, regexes []string, hard bool, maintenance bool) bool {
 	success := true
 	relaysDisabled := 0
 	testForSSHKey(env)
@@ -493,7 +493,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	}
 
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
+		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
@@ -501,7 +501,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 		for _, relay := range relays {
 			fmt.Printf("%s relay '%s' (id = %016x)\n", infoText, relay.name, relay.id)
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
-			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, relayState) {
+			if !con.ConnectAndIssueCmd(script) || !updateRelayState(env, relay, relayState) {
 				success = false
 				continue
 			}
@@ -526,11 +526,11 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 }
 
 // TODO modify to use the OpsService.UpdateRelay endpoint
-func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName string, newName string) {
+func updateRelayName(env Environment, oldName string, newName string) {
 
 	var relayID uint64
 	var ok bool
-	if relayID, ok = checkForRelay(rpcClient, env, oldName); !ok {
+	if relayID, ok = checkForRelay(env, oldName); !ok {
 		// error msg printed by called function
 		return
 	}
@@ -541,7 +541,7 @@ func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName strin
 		RelayName: newName,
 	}
 
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayNameUpdate", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RelayNameUpdate", args); err != nil {
 		fmt.Printf("error renaming relay: %v\n", (err))
 	} else {
 		fmt.Printf("Relay renamed successfully: %s -> %s\n", oldName, newName)
@@ -550,7 +550,6 @@ func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName strin
 }
 
 func checkRelays(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	regex string,
 	relaysStateShowFlags [6]bool,
@@ -563,7 +562,7 @@ func checkRelays(
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -765,9 +764,9 @@ func checkRelays(
 
 }
 
-func relayLogs(rpcClient jsonrpc.RPCClient, env Environment, lines uint, regexes []string) {
+func relayLogs(env Environment, lines uint, regexes []string) {
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
+		relays := getRelayInfo(env, regex)
 		for i, relay := range relays {
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
 			if out, err := con.IssueCmdAndGetOutput("journalctl -u relay -n " + strconv.FormatUint(uint64(lines), 10) + " | cat"); err == nil {
@@ -799,14 +798,14 @@ type pingData struct {
 	routable   bool
 }
 
-func relayHeatmap(rpcClient jsonrpc.RPCClient, env Environment, relayName string) {
+func relayHeatmap(env Environment, relayName string) {
 	// Get all enabled relays
 	args := localjsonrpc.RelaysArgs{
 		Regex: "",
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
