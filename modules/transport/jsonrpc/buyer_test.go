@@ -1106,9 +1106,9 @@ func TestSessionMapPoints(t *testing.T) {
 	sessionID3 := fmt.Sprintf("%016x", 333)
 
 	points := []transport.SessionMapPoint{
-		{Latitude: 10, Longitude: 40},
-		{Latitude: 20, Longitude: 50},
-		{Latitude: 30, Longitude: 60},
+		{Version: transport.SessionMapPointVersion, Latitude: 10, Longitude: 40},
+		{Version: transport.SessionMapPointVersion, Latitude: 20, Longitude: 50},
+		{Version: transport.SessionMapPointVersion, Latitude: 30, Longitude: 60},
 	}
 
 	now := time.Now()
@@ -1215,9 +1215,9 @@ func TestSessionMap(t *testing.T) {
 	sessionID3 := fmt.Sprintf("%016x", 333)
 
 	points := []transport.SessionMapPoint{
-		{Latitude: 10, Longitude: 40},
-		{Latitude: 20, Longitude: 50},
-		{Latitude: 30, Longitude: 60},
+		{Version: transport.SessionMapPointVersion, Latitude: 10, Longitude: 40, SessionID: uint64(123456789)},
+		{Version: transport.SessionMapPointVersion, Latitude: 20, Longitude: 50, SessionID: uint64(123123123)},
+		{Version: transport.SessionMapPointVersion, Latitude: 30, Longitude: 60, SessionID: uint64(456456456)},
 	}
 
 	now := time.Now()
@@ -1259,9 +1259,9 @@ func TestSessionMap(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 3, len(mappoints))
-		assert.Equal(t, []interface{}{float64(60), float64(30), false}, mappoints[0])
-		assert.Equal(t, []interface{}{float64(40), float64(10), true}, mappoints[1])
-		assert.Equal(t, []interface{}{float64(50), float64(20), true}, mappoints[2])
+		assert.Equal(t, []interface{}{float64(60), float64(30), false, "000000001b34f908"}, mappoints[0])
+		assert.Equal(t, []interface{}{float64(40), float64(10), true, "00000000075bcd15"}, mappoints[1])
+		assert.Equal(t, []interface{}{float64(50), float64(20), true, "000000000756b5b3"}, mappoints[2])
 	})
 
 	reqContext := req.Context()
@@ -1278,8 +1278,8 @@ func TestSessionMap(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 2, len(mappoints))
-		assert.Equal(t, []interface{}{float64(60), float64(30), false}, mappoints[0])
-		assert.Equal(t, []interface{}{float64(40), float64(10), true}, mappoints[1])
+		assert.Equal(t, []interface{}{float64(60), float64(30), false, "000000001b34f908"}, mappoints[0])
+		assert.Equal(t, []interface{}{float64(40), float64(10), true, "00000000075bcd15"}, mappoints[1])
 	})
 
 	t.Run("filtered - !admin - !sameBuyer", func(t *testing.T) {
@@ -1304,7 +1304,7 @@ func TestSessionMap(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(mappoints))
-		assert.Equal(t, []interface{}{float64(50), float64(20), true}, mappoints[0])
+		assert.Equal(t, []interface{}{float64(50), float64(20), true, "000000000756b5b3"}, mappoints[0])
 	})
 }
 
