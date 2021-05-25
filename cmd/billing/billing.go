@@ -281,7 +281,7 @@ func main() {
 				// Start the background WriteLoop to batch write to BigQuery
 				wg.Add(1)
 				go func() {
-					b.WriteLoop(ctx, wg)
+					b.WriteLoop2(ctx, wg)
 				}()
 			}
 		}
