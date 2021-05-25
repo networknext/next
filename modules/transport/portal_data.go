@@ -680,7 +680,7 @@ func (s *SessionMeta) ParseRedisString(values []string) error {
 	s.Hops = make([]RelayHop, numHops)
 	for i := 0; i < int(numHops); i++ {
 		var hop RelayHop
-		if err := hop.ParseRedisString([]string{values[index], values[index+1]}); err != nil {
+		if err := hop.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
 			return fmt.Errorf("[SessionMeta] failed to read relay hop from redis data: %v", err)
 		}
 		index += 2
@@ -707,7 +707,7 @@ func (s *SessionMeta) ParseRedisString(values []string) error {
 	s.NearbyRelays = make([]NearRelayPortalData, numNearRelays)
 	for i := 0; i < int(numNearRelays); i++ {
 		var nearRelay NearRelayPortalData
-		if err := nearRelay.ParseRedisString([]string{values[index], values[index+1], values[index+2], values[index+3], values[index+4]}); err != nil {
+		if err := nearRelay.ParseRedisString([]string{values[index], values[index+1], values[index+2], values[index+3], values[index+4], values[index+5]}); err != nil {
 			return fmt.Errorf("[SessionMeta] failed to read near relay from redis data: %v", err)
 		}
 		index += 5
