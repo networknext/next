@@ -1246,9 +1246,8 @@ func sessionPost(state *SessionHandlerState) {
 		Build billing data and send it to the billing system via pubsub (non-realtime path)
 	*/
 
-	var billingEntry *billing.BillingEntry
 	if state.postSessionHandler.featureBilling {
-		billingEntry = buildBillingEntry(state)
+		billingEntry := buildBillingEntry(state)
 
 		state.postSessionHandler.SendBillingEntry(billingEntry)
 
