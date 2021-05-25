@@ -1757,7 +1757,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
 			for _, row := range metaRows {
-				var meta *transport.SessionMeta
+				var meta transport.SessionMeta
 				meta.UnmarshalBinary(row[0].Value)
 
 				buyer, err := s.Storage.Buyer(meta.BuyerID)
