@@ -2547,13 +2547,13 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		ReducePacketLoss:          rs.ReducePacketLoss,
 		ReduceJitter:              rs.ReduceJitter,
 		SelectionPercent:          int64(rs.SelectionPercent),
-		SustainedPacketLoss:       float64(rs.SustainedPacketLoss),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
 	sql.Write([]byte("insert into route_shaders ("))
 	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
-	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, sustained_packet_loss, buyer_id"))
+	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, packet_loss_sustained, buyer_id"))
 	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
@@ -2576,7 +2576,7 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		routeShader.ReducePacketLoss,
 		routeShader.ReduceJitter,
 		routeShader.SelectionPercent,
-		routeShader.SustainedPacketLoss,
+		routeShader.PacketLossSustained,
 		buyer.DatabaseID,
 	)
 
@@ -2735,14 +2735,14 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id=$2"))
 		args = append(args, selectionPercent, buyer.DatabaseID)
 		rs.SelectionPercent = selectionPercent
-	case "SustainedPacketLoss":
-		sustainedPacketLoss, ok := value.(float32)
+	case "PacketLossSustained":
+		PacketLossSustained, ok := value.(float32)
 		if !ok {
-			return fmt.Errorf("sustainedPacketLoss: %v is not a valid float32 type (%T)", value, value)
+			return fmt.Errorf("PacketLossSustained: %v is not a valid float32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set sustained_packet_loss=$1 where buyer_id=$2"))
-		args = append(args, sustainedPacketLoss, buyer.DatabaseID)
-		rs.SustainedPacketLoss = sustainedPacketLoss
+		updateSQL.Write([]byte("update route_shaders set packet_loss_sustained=$1 where buyer_id=$2"))
+		args = append(args, PacketLossSustained, buyer.DatabaseID)
+		rs.PacketLossSustained = PacketLossSustained
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
 

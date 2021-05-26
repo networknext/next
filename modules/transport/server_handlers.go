@@ -704,13 +704,13 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 	state.postRealPacketLossClientToServer = realPacketLossClientToServer
 	state.postRealPacketLossServerToClient = realPacketLossServerToClient
 
-	if state.realPacketLoss >= state.buyer.RouteShader.SustainedPacketLoss {
+	if state.realPacketLoss >= state.buyer.RouteShader.PacketLossSustained {
 		if state.output.RouteState.SustainedPLCounter < 3 {
 			state.output.RouteState.SustainedPLCounter = state.output.RouteState.SustainedPLCounter + 1
 		}
 	}
 
-	if state.realPacketLoss < state.buyer.RouteShader.SustainedPacketLoss {
+	if state.realPacketLoss < state.buyer.RouteShader.PacketLossSustained {
 		state.output.RouteState.SustainedPLCounter = 0
 	}
 }

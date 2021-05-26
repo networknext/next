@@ -3226,7 +3226,7 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedPLCounter_Not3(t *testing.T) 
 	test.routeState.UserID = 100
 
 	test.routeShader.AcceptablePacketLoss = float32(20)
-	test.routeShader.SustainedPacketLoss = float32(2.0)
+	test.routeShader.PacketLossSustained = float32(2.0)
 
 	result := test.TakeNetworkNext()
 
@@ -3299,7 +3299,7 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedPLCounter_3(t *testing.T) {
 	test.routeState.UserID = 100
 
 	test.routeShader.AcceptablePacketLoss = float32(20)
-	test.routeShader.SustainedPacketLoss = float32(2.0)
+	test.routeShader.PacketLossSustained = float32(2.0)
 
 	test.routeState.SustainedPLCounter = 3
 

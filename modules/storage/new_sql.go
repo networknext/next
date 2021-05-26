@@ -961,7 +961,7 @@ type sqlRouteShader struct {
 	ReducePacketLoss          bool
 	ReduceJitter              bool
 	SelectionPercent          int64
-	SustainedPacketLoss       float64
+	PacketLossSustained       float64
 }
 
 func (db *SQL) syncRouteShaders(ctx context.Context) error {
@@ -973,7 +973,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 
 	sql.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
-	sql.Write([]byte("reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, sustained_packet_loss, buyer_id from route_shaders "))
+	sql.Write([]byte("reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, packet_loss_sustained, buyer_id from route_shaders "))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
@@ -998,7 +998,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			&sqlRS.ReducePacketLoss,
 			&sqlRS.ReduceJitter,
 			&sqlRS.SelectionPercent,
-			&sqlRS.SustainedPacketLoss,
+			&sqlRS.PacketLossSustained,
 			&buyerID,
 		)
 		if err != nil {
@@ -1020,7 +1020,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			AcceptablePacketLoss:      float32(sqlRS.AcceptablePacketLoss),
 			BandwidthEnvelopeUpKbps:   int32(sqlRS.BandwidthEnvelopeUpKbps),
 			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
-			SustainedPacketLoss:       float32(sqlRS.SustainedPacketLoss),
+			PacketLossSustained:       float32(sqlRS.PacketLossSustained),
 		}
 
 		db.buyerMutex.RLock()

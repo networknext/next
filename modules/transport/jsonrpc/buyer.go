@@ -2027,7 +2027,7 @@ type JSRouteShader struct {
 	BandwidthEnvelopeUpKbps   int64           `json:"bandwidthEnvelopeUpKbps"`
 	BandwidthEnvelopeDownKbps int64           `json:"bandwidthEnvelopeDownKbps"`
 	BannedUsers               map[string]bool `json:"bannedUsers"`
-	SustainedPacketLoss       float64         `json:"sustainedPacketLoss"`
+	PacketLossSustained       float64         `json:"PacketLossSustained"`
 }
 type RouteShaderArg struct {
 	BuyerID string `json:"buyerID"`
@@ -2069,7 +2069,7 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
 		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
-		SustainedPacketLoss:       float64(rs.SustainedPacketLoss),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
 	reply.RouteShader = jsonRS
@@ -2108,7 +2108,7 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 		AcceptablePacketLoss:      float32(arg.RouteShader.AcceptablePacketLoss),
 		BandwidthEnvelopeUpKbps:   int32(arg.RouteShader.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int32(arg.RouteShader.BandwidthEnvelopeDownKbps),
-		SustainedPacketLoss:       float32(arg.RouteShader.SustainedPacketLoss),
+		PacketLossSustained:       float32(arg.RouteShader.PacketLossSustained),
 	}
 
 	err = s.Storage.AddRouteShader(context.Background(), rs, buyerID)
@@ -2203,7 +2203,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return err
 		}
 
-	case "AcceptablePacketLoss", "SustainedPacketLoss":
+	case "AcceptablePacketLoss", "PacketLossSustained":
 		newFloat, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid float type", args.Value)
