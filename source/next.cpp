@@ -179,6 +179,10 @@
 #define NEXT_LOW_FREQUENCY_PING_RATE                                    1
 #define NEXT_HIGH_FREQUENCY_PING_RATE                                  10
 
+#define NEXT_BEACON_ENABLED                                             0
+
+#if NEXT_BEACON_ENABLED
+
 #define NEXT_BEACON_VERSION                                             0
 
 #if !NEXT_DEVELOPMENT
@@ -188,6 +192,8 @@
 #endif // #if !NEXT_DEVELOPMENT
 
 static next_address_t next_beacon_address;
+
+#endif // #if NEXT_BEACON_ADDRESS
 
 static uint8_t next_backend_public_key[] = 
 { 
@@ -3496,6 +3502,8 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
         }
         break;
 
+#if NEXT_BEACON_ENABLED
+
         case NEXT_BEACON_PACKET:
         {
             NextBeaconPacket * packet = (NextBeaconPacket*) packet_object;
@@ -3506,6 +3514,8 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
             }
         }
         break;
+
+#endif // #if NEXT_BEACON_ENABLED
 
         default:
             return NEXT_ERROR;
@@ -3997,6 +4007,8 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
+#if NEXT_BEACON_ENABLED
+
     next_address_parse( &next_beacon_address, NEXT_BEACON_ADDRESS );
 
     const char * beacon_address_env = next_platform_getenv( "NEXT_BEACON_ADDRESS" );
@@ -4005,6 +4017,8 @@ int next_init( void * context, next_config_t * config_in )
         next_printf( NEXT_LOG_LEVEL_INFO, "beacon address override: %s", beacon_address_env );
         next_address_parse( &next_beacon_address, beacon_address_env );
     }
+
+#endif // #if NEXT_BEACON_ENABLED
 
     next_global_config = config;
 
@@ -5861,7 +5875,9 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(11)
 
+#if NEXT_BEACON_ENABLED
     uint64_t last_beacon_send_time;
+#endif // #if NEXT_BEACON_ENABLED
 
     NEXT_DECLARE_SENTINEL(12)
 
@@ -6072,7 +6088,9 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     client->special_send_sequence = 1;
     client->internal_send_sequence = 1;
 
+#if NEXT_BEACON_ENABLED
     client->last_beacon_send_time = next_time() + next_random_float() * 10.0f;
+#endif // #if NEXT_BEACON_ENABLED
 
     return client;
 }
@@ -6972,7 +6990,9 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 memset( client->upgrade_response_packet_data, 0, sizeof(client->upgrade_response_packet_data) );
                 client->upgrade_response_start_time = 0.0;
                 client->last_upgrade_response_send_time = 0.0;
+#if NEXT_BEACON_ENABLED
                 client->last_beacon_send_time = next_time() + next_random_float() * 10.0f;
+#endif // #if NEXT_BEACON_ENABLED
 
                 next_platform_mutex_acquire( &client->packets_sent_mutex );
                 client->packets_sent = 0;
@@ -7489,6 +7509,8 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     }
 }
 
+#if NEXT_BEACON_ENABLED
+
 void next_client_internal_update_beacon( next_client_internal_t * client )
 {
     next_client_internal_verify_sentinels( client );
@@ -7528,6 +7550,8 @@ void next_client_internal_update_beacon( next_client_internal_t * client )
     next_platform_socket_send_packet( client->socket, &client->server_address, packet_data, packet_bytes );
 }
 
+#endif // #if NEXT_BEACON_ENABLED
+
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_internal_thread_function( void * context )
 {
     next_client_internal_t * client = (next_client_internal_t*) context;
@@ -7560,7 +7584,9 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_inter
 
             next_client_internal_update_upgrade_response( client );
 
+#if NEXT_BEACON_ENABLED
             next_client_internal_update_beacon( client );
+#endif // #if NEXT_BEACON_ENABLED
 
             quit = next_client_internal_pump_commands( client );
 
@@ -12087,6 +12113,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
+#if NEXT_BEACON_ENABLED
+
     // beacon packet
 
     if ( packet_id == NEXT_BEACON_PACKET )
@@ -12118,6 +12146,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_server_internal_send_packet( server, &next_beacon_address, NEXT_BEACON_PACKET, &packet );
     }
+
+#endif // #if NEXT_BEACON_ENABLED
 
     // ----------------------------------
     // ENCRYPTED CLIENT TO SERVER PACKETS
@@ -16757,6 +16787,8 @@ void test_anonymize_address_ipv6()
 
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 
+#if NEXT_BEACON_ENABLED
+
 void test_beacon()
 {
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
@@ -16793,6 +16825,8 @@ void test_beacon()
     next_check( in.next == out.next );
     next_check( in.fallback_to_direct == out.fallback_to_direct );
 }
+
+#endif // #if NEXT_BEACON_ENABLED
 
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
@@ -16856,7 +16890,9 @@ void next_test()
 #if defined(NEXT_PLATFORM_HAS_IPV6)
     RUN_TEST( test_anonymize_address_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
+#if NEXT_BEACON_ENABLED
     RUN_TEST( test_beacon );
+#endif // #if NEXT_BEACON_ENABLED
 }
 
 #ifdef _MSC_VER
