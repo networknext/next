@@ -2027,7 +2027,7 @@ type JSRouteShader struct {
 	BandwidthEnvelopeUpKbps   int64           `json:"bandwidthEnvelopeUpKbps"`
 	BandwidthEnvelopeDownKbps int64           `json:"bandwidthEnvelopeDownKbps"`
 	BannedUsers               map[string]bool `json:"bannedUsers"`
-	PacketLossSustained       float64         `json:"PacketLossSustained"`
+	PacketLossSustained       float64         `json:"packetLossSustained"`
 }
 type RouteShaderArg struct {
 	BuyerID string `json:"buyerID"`
