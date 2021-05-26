@@ -10505,13 +10505,14 @@ bool next_autodetect_amazon( char * output )
 #include <sysexits.h>
 #include <unistd.h>
 
-#define ANICHOST    "whois.arin.net"
-#define LNICHOST    "whois.lacnic.net"
-#define RNICHOST    "whois.ripe.net"
-#define PNICHOST    "whois.apnic.net"
-#define BNICHOST    "whois.registro.br"
+#define ANICHOST        "whois.arin.net"
+#define LNICHOST        "whois.lacnic.net"
+#define RNICHOST        "whois.ripe.net"
+#define PNICHOST        "whois.apnic.net"
+#define BNICHOST        "whois.registro.br"
+#define AFRINICHOST     "whois.afrinic.net"
 
-const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, NULL };
+const char *ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, AFRINICHOST, NULL };
 
 bool next_whois( const char * address, const char * hostname, int recurse, char ** buffer, size_t & bytes_remaining )
 {
