@@ -621,6 +621,7 @@ func sessionUpdateNewSession(state *SessionHandlerState) {
 	state.output.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 	state.output.RouteState.UserID = state.packet.UserHash
 	state.output.RouteState.ABTest = state.buyer.RouteShader.ABTest
+	state.output.RouteState.PLSustainedCounter = 0
 
 	state.input = state.output
 }
@@ -679,11 +680,11 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 		This value is typically much higher precision (60HZ), vs. ping packets (10HZ).
 	*/
 
-	slicePacketsSentClientToServer := state.packet.PacketsSentClientToServer - state.input.PrevPacketsSentClientToServer
-	slicePacketsSentServerToClient := state.packet.PacketsSentServerToClient - state.input.PrevPacketsSentServerToClient
+	slicePacketsSentClientToServer := state.packet.PacketsSentClientToServer - state.output.PrevPacketsSentClientToServer
+	slicePacketsSentServerToClient := state.packet.PacketsSentServerToClient - state.output.PrevPacketsSentServerToClient
 
-	slicePacketsLostClientToServer := state.packet.PacketsLostClientToServer - state.input.PrevPacketsLostClientToServer
-	slicePacketsLostServerToClient := state.packet.PacketsLostServerToClient - state.input.PrevPacketsLostServerToClient
+	slicePacketsLostClientToServer := state.packet.PacketsLostClientToServer - state.output.PrevPacketsLostClientToServer
+	slicePacketsLostServerToClient := state.packet.PacketsLostServerToClient - state.output.PrevPacketsLostServerToClient
 
 	var realPacketLossClientToServer float32
 	if slicePacketsSentClientToServer != uint64(0) {
@@ -702,6 +703,16 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 
 	state.postRealPacketLossClientToServer = realPacketLossClientToServer
 	state.postRealPacketLossServerToClient = realPacketLossServerToClient
+
+	if state.realPacketLoss >= state.buyer.RouteShader.PacketLossSustained {
+		if state.output.RouteState.PLSustainedCounter < 3 {
+			state.output.RouteState.PLSustainedCounter = state.output.RouteState.PLSustainedCounter + 1
+		}
+	}
+
+	if state.realPacketLoss < state.buyer.RouteShader.PacketLossSustained {
+		state.output.RouteState.PLSustainedCounter = 0
+	}
 }
 
 func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
