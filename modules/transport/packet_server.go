@@ -17,7 +17,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 11
+	SessionDataVersion = 12
 
 	MaxSessionDataSize = 511
 
@@ -767,12 +767,16 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		}
 	}
 
-	// IMPORTANT: ADD NEW FIELDS BELOW HERE ONLY. 
+	if sessionData.Version >= 12 {
+		stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
+	}
+
+	// IMPORTANT: ADD NEW FIELDS BELOW HERE ONLY.
 
 	// >>> new fields go here <<<
 
-	// IMPORTANT: ADD NEW FIELDS ABOVE HERE ONLY. 
-	// AFTER YOU ADD NEW FIELDS, UPDATE THE COMMENTS SO FIELDS 
+	// IMPORTANT: ADD NEW FIELDS ABOVE HERE ONLY.
+	// AFTER YOU ADD NEW FIELDS, UPDATE THE COMMENTS SO FIELDS
 	// MAY ONLY BE ADDED *AFTER* YOUR NEW FIELDS.
 	// FAILING TO FOLLOW THESE INSRUCTIONS WILL BREAK PRODUCTION!!!!
 
