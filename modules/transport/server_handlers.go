@@ -215,6 +215,7 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, pos
 
 		// Send the number of sessions on the server to the portal cruncher
 		countData := &SessionCountData{
+			Version:     SessionCountDataVersion,
 			ServerID:    crypto.HashID(packet.ServerAddress.String()),
 			BuyerID:     buyer.ID,
 			NumSessions: packet.NumSessions,
@@ -551,9 +552,12 @@ func sessionPre(state *SessionHandlerState) bool {
 	}
 
 	if state.packet.ClientPingTimedOut {
-		core.Debug("client ping timed out")
-		state.metrics.ClientPingTimedOut.Add(1)
-		return true
+		if !state.postSessionHandler.featureBilling2 || (state.postSessionHandler.featureBilling2 && state.input.WroteSummary) {
+			// Already wrote the summary slice
+			core.Debug("client ping timed out")
+			state.metrics.ClientPingTimedOut.Add(1)
+			return true
+		}
 	}
 
 	if !datacenterExists(state.database, state.packet.DatacenterID) {
@@ -1191,22 +1195,24 @@ func sessionPost(state *SessionHandlerState) {
 	}
 
 	/*
+		Determine if we should write the summary slice. Should only happen
+		when the session is finished and we have not already written the
+		summary slice.
+
+		The end of a session occurs when the client ping times out.
+	*/
+
+	if state.postSessionHandler.featureBilling2 && state.packet.ClientPingTimedOut && !state.input.WroteSummary {
+		state.output.WroteSummary = true
+	}
+
+	/*
 		Write the session response packet and send it back to the caller.
 	*/
 
 	if err := writeSessionResponse(state.writer, &state.response, &state.output, state.metrics); err != nil {
 		core.Debug("failed to write session update response: %s", err)
 		state.metrics.WriteResponseFailure.Add(1)
-		return
-	}
-
-	/*
-		The client times out at the end of each session, and holds on for 60 seconds.
-		These slices at the end have no useful information for the portal or billing,
-		so we drop them here.
-	*/
-
-	if state.packet.ClientPingTimedOut {
 		return
 	}
 
@@ -1248,27 +1254,37 @@ func sessionPost(state *SessionHandlerState) {
 		Build billing data and send it to the billing system via pubsub (non-realtime path)
 	*/
 
-	var billingEntry *billing.BillingEntry
-	if state.postSessionHandler.featureBilling {
-		billingEntry = buildBillingEntry(state)
+	if state.postSessionHandler.featureBilling && !state.packet.ClientPingTimedOut {
+		billingEntry := buildBillingEntry(state)
 
 		state.postSessionHandler.SendBillingEntry(billingEntry)
+
+		/*
+			Send the billing entry to the vanity metrics system (real-time path)
+
+			TODO: once buildBillingEntry() is deprecated, modify vanity metrics to use BillingEntry2
+		*/
+
+		if state.postSessionHandler.useVanityMetrics {
+			state.postSessionHandler.SendVanityMetric(billingEntry)
+		}
 	}
 
-	if state.postSessionHandler.featureBilling2 {
+	if state.postSessionHandler.featureBilling2 && !state.input.WroteSummary {
 		billingEntry2 := buildBillingEntry2(state)
 
 		state.postSessionHandler.SendBillingEntry2(billingEntry2)
 	}
 
 	/*
-		Send the billing entry to the vanity metrics system (real-time path)
-
-		TODO: once buildBillingEntry() is deprecated, modify vanity metrics to use BillingEntry2
+		The client times out at the end of each session, and holds on for 60 seconds.
+		These slices at the end have no useful information for the portal, so we drop
+		them here. Billing2 needs to know if the client times out to write the summary
+		portion of the billing entry 2.
 	*/
 
-	if state.postSessionHandler.useVanityMetrics {
-		state.postSessionHandler.SendVanityMetric(billingEntry)
+	if state.packet.ClientPingTimedOut {
+		return
 	}
 
 	/*
@@ -1611,18 +1627,6 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 	}
 
 	/*
-		Determine if we should write the summary slice. Should only happen
-		when the session is finished and we have not already written the
-		summary slice.
-
-		The end of a session occurs when the client ping times out.
-	*/
-
-	if state.packet.ClientPingTimedOut && !state.input.WroteSummary && !state.output.WroteSummary  {
-		state.output.WroteSummary = true
-	}
-
-	/*
 		Create the billing entry 2 and return it to the caller.
 	*/
 
@@ -1635,8 +1639,8 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		DirectJitter:                    int32(state.packet.DirectJitter),
 		DirectPacketLoss:                int32(state.packet.DirectPacketLoss),
 		RealPacketLoss:                  int32(realPacketLoss),
-		RealPacketLoss_Frac:             uint32(realPacketLoss_Frac), // TODO: verify
-		RealJitter:                      uint32(state.realJitter),    // TODO: verify
+		RealPacketLoss_Frac:             uint32(realPacketLoss_Frac),
+		RealJitter:                      uint32(state.realJitter),
 		Next:                            state.packet.Next,
 		Flagged:                         state.packet.Reported,
 		Summary:                         state.output.WroteSummary,
@@ -1710,8 +1714,9 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 	hops := make([]RelayHop, state.input.RouteNumRelays)
 	for i := int32(0); i < state.input.RouteNumRelays; i++ {
 		hops[i] = RelayHop{
-			ID:   state.input.RouteRelayIDs[i],
-			Name: state.postRouteRelayNames[i],
+			Version: RelayHopVersion,
+			ID:      state.input.RouteRelayIDs[i],
+			Name:    state.postRouteRelayNames[i],
 		}
 	}
 
@@ -1723,8 +1728,9 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 	nearRelayPortalData := make([]NearRelayPortalData, state.postNearRelayCount)
 	for i := range nearRelayPortalData {
 		nearRelayPortalData[i] = NearRelayPortalData{
-			ID:   state.postNearRelayIDs[i],
-			Name: state.postNearRelayNames[i],
+			Version: NearRelayPortalDataVersion,
+			ID:      state.postNearRelayIDs[i],
+			Name:    state.postNearRelayNames[i],
 			ClientStats: routing.Stats{
 				RTT:        float64(state.postNearRelayRTT[i]),
 				Jitter:     float64(state.postNearRelayJitter[i]),
@@ -1759,7 +1765,9 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 	*/
 
 	portalData := SessionPortalData{
+		Version: SessionPortalDataVersion,
 		Meta: SessionMeta{
+			Version:         SessionMetaVersion,
 			ID:              state.packet.SessionID,
 			UserHash:        state.packet.UserHash,
 			DatacenterName:  state.datacenter.Name,
@@ -1779,6 +1787,7 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 			BuyerID:         state.packet.BuyerID,
 		},
 		Slice: SessionSlice{
+			Version:   SessionSliceVersion,
 			Timestamp: time.Now(),
 			Next: routing.Stats{
 				RTT:        float64(state.packet.NextRTT),
@@ -1811,8 +1820,10 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 			OnNetworkNext:     state.packet.Next,
 		},
 		Point: SessionMapPoint{
+			Version:   SessionMapPointVersion,
 			Latitude:  float64(state.input.Location.Latitude),
 			Longitude: float64(state.input.Location.Longitude),
+			SessionID: state.input.SessionID,
 		},
 		LargeCustomer: state.buyer.InternalConfig.LargeCustomer,
 		EverOnNext:    state.input.EverOnNext,
