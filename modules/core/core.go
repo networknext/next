@@ -1526,7 +1526,7 @@ type RouteState struct {
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
 	MultipathRestricted bool
-	SustainedPLCounter  int32
+	PLSustainedCounter  int32
 }
 
 type InternalConfig struct {
@@ -1683,7 +1683,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	// should we try to reduce packet loss?
 
 	reducePacketLoss := false
-	if (routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss && sliceNumber >= internal.ReducePacketLossMinSliceNumber) || routeState.SustainedPLCounter == 3 {
+	if (routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss && sliceNumber >= internal.ReducePacketLossMinSliceNumber) || routeState.PLSustainedCounter == 3 {
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}

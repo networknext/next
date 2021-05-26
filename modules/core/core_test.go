@@ -3201,7 +3201,7 @@ func TestTakeNetworkNext_ReducePacketLoss_AfterMinSliceNumber(t *testing.T) {
 	assert.Equal(t, int32(1), test.routeDiversity)
 }
 
-func TestTakeNetworkNext_ReducePacketLoss_SustainedPLCounter_Not3(t *testing.T) {
+func TestTakeNetworkNext_ReducePacketLoss_PLSustainedCounter_Not3(t *testing.T) {
 
 	t.Parallel()
 
@@ -3241,7 +3241,7 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedPLCounter_Not3(t *testing.T) 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(0), test.routeDiversity)
 
-	test.routeState.SustainedPLCounter = 1
+	test.routeState.PLSustainedCounter = 1
 
 	result = test.TakeNetworkNext()
 
@@ -3252,12 +3252,12 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedPLCounter_Not3(t *testing.T) 
 	expectedRouteState.Next = false
 	expectedRouteState.ReducePacketLoss = false
 	expectedRouteState.Committed = false
-	expectedRouteState.SustainedPLCounter = 1
+	expectedRouteState.PLSustainedCounter = 1
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(0), test.routeDiversity)
 
-	test.routeState.SustainedPLCounter = 2
+	test.routeState.PLSustainedCounter = 2
 
 	result = test.TakeNetworkNext()
 
@@ -3268,13 +3268,13 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedPLCounter_Not3(t *testing.T) 
 	expectedRouteState.Next = false
 	expectedRouteState.ReducePacketLoss = false
 	expectedRouteState.Committed = false
-	expectedRouteState.SustainedPLCounter = 2
+	expectedRouteState.PLSustainedCounter = 2
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(0), test.routeDiversity)
 }
 
-func TestTakeNetworkNext_ReducePacketLoss_SustainedPLCounter_3(t *testing.T) {
+func TestTakeNetworkNext_ReducePacketLoss_PLSustainedCounter_3(t *testing.T) {
 
 	t.Parallel()
 
@@ -3301,7 +3301,7 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedPLCounter_3(t *testing.T) {
 	test.routeShader.AcceptablePacketLoss = float32(20)
 	test.routeShader.PacketLossSustained = float32(2.0)
 
-	test.routeState.SustainedPLCounter = 3
+	test.routeState.PLSustainedCounter = 3
 
 	result := test.TakeNetworkNext()
 
@@ -3312,7 +3312,7 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedPLCounter_3(t *testing.T) {
 	expectedRouteState.Next = true
 	expectedRouteState.ReducePacketLoss = true
 	expectedRouteState.Committed = true
-	expectedRouteState.SustainedPLCounter = 3
+	expectedRouteState.PLSustainedCounter = 3
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(1), test.routeDiversity)

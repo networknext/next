@@ -621,7 +621,7 @@ func sessionUpdateNewSession(state *SessionHandlerState) {
 	state.output.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 	state.output.RouteState.UserID = state.packet.UserHash
 	state.output.RouteState.ABTest = state.buyer.RouteShader.ABTest
-	state.output.RouteState.SustainedPLCounter = 0
+	state.output.RouteState.PLSustainedCounter = 0
 
 	state.input = state.output
 }
@@ -705,13 +705,13 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 	state.postRealPacketLossServerToClient = realPacketLossServerToClient
 
 	if state.realPacketLoss >= state.buyer.RouteShader.PacketLossSustained {
-		if state.output.RouteState.SustainedPLCounter < 3 {
-			state.output.RouteState.SustainedPLCounter = state.output.RouteState.SustainedPLCounter + 1
+		if state.output.RouteState.PLSustainedCounter < 3 {
+			state.output.RouteState.PLSustainedCounter = state.output.RouteState.PLSustainedCounter + 1
 		}
 	}
 
 	if state.realPacketLoss < state.buyer.RouteShader.PacketLossSustained {
-		state.output.RouteState.SustainedPLCounter = 0
+		state.output.RouteState.PLSustainedCounter = 0
 	}
 }
 
