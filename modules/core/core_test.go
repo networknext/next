@@ -2381,6 +2381,8 @@ type TestData struct {
 	predictedLatency      int32
 	currentRouteNumRelays int32
 	currentRouteRelays    [MaxRelaysPerRoute]int32
+
+	sliceNumber int32
 }
 
 func NewTestData(env *TestEnvironment) *TestData {
@@ -2422,6 +2424,7 @@ func (test *TestData) TakeNetworkNext() bool {
 		test.routeRelays[:],
 		&test.routeDiversity,
 		&test.debug,
+		test.sliceNumber,
 	)
 }
 
@@ -3070,6 +3073,246 @@ func TestTakeNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 
 	expectedRouteState := RouteState{}
 	expectedRouteState.UserID = 100
+
+	assert.Equal(t, expectedRouteState, test.routeState)
+	assert.Equal(t, int32(1), test.routeDiversity)
+}
+
+func TestTakeNetworkNext_ReducePacketLoss_BeforeMinSliceNumber(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	test := NewTestData(env)
+
+	test.directLatency = int32(20)
+	test.directPacketLoss = float32(5.0)
+
+	test.sourceRelays = []int32{0}
+	test.sourceRelayCosts = []int32{10}
+
+	test.destRelays = []int32{1}
+
+	test.routeShader.AcceptableLatency = 100
+	test.routeState.UserID = 100
+
+	test.internal.ReducePacketLossMinSliceNumber = 3
+	test.sliceNumber = 0
+
+	result := test.TakeNetworkNext()
+
+	assert.False(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = false
+	expectedRouteState.ReducePacketLoss = false
+	expectedRouteState.Committed = false
+
+	assert.Equal(t, expectedRouteState, test.routeState)
+	assert.Equal(t, int32(0), test.routeDiversity)
+}
+
+func TestTakeNetworkNext_ReducePacketLoss_EqualMinSliceNumber(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	test := NewTestData(env)
+
+	test.directLatency = int32(20)
+	test.directPacketLoss = float32(5.0)
+
+	test.sourceRelays = []int32{0}
+	test.sourceRelayCosts = []int32{10}
+
+	test.destRelays = []int32{1}
+
+	test.routeShader.AcceptableLatency = 100
+	test.routeState.UserID = 100
+
+	test.internal.ReducePacketLossMinSliceNumber = 3
+	test.sliceNumber = 3
+
+	result := test.TakeNetworkNext()
+
+	assert.True(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.ReducePacketLoss = true
+	expectedRouteState.Committed = true
+
+	assert.Equal(t, expectedRouteState, test.routeState)
+	assert.Equal(t, int32(1), test.routeDiversity)
+}
+
+func TestTakeNetworkNext_ReducePacketLoss_AfterMinSliceNumber(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	test := NewTestData(env)
+
+	test.directLatency = int32(20)
+	test.directPacketLoss = float32(5.0)
+
+	test.sourceRelays = []int32{0}
+	test.sourceRelayCosts = []int32{10}
+
+	test.destRelays = []int32{1}
+
+	test.routeShader.AcceptableLatency = 100
+	test.routeState.UserID = 100
+
+	test.internal.ReducePacketLossMinSliceNumber = 3
+	test.sliceNumber = 4
+
+	result := test.TakeNetworkNext()
+
+	assert.True(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.ReducePacketLoss = true
+	expectedRouteState.Committed = true
+
+	assert.Equal(t, expectedRouteState, test.routeState)
+	assert.Equal(t, int32(1), test.routeDiversity)
+}
+
+func TestTakeNetworkNext_ReducePacketLoss_PLSustainedCounter_Not3(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	test := NewTestData(env)
+
+	test.directLatency = int32(20)
+	test.directPacketLoss = float32(5.0)
+
+	test.sourceRelays = []int32{0}
+	test.sourceRelayCosts = []int32{10}
+
+	test.destRelays = []int32{1}
+
+	test.routeShader.AcceptableLatency = 100
+	test.routeState.UserID = 100
+
+	test.routeShader.AcceptablePacketLoss = float32(20)
+	test.routeShader.PacketLossSustained = float32(2.0)
+
+	result := test.TakeNetworkNext()
+
+	assert.False(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = false
+	expectedRouteState.ReducePacketLoss = false
+	expectedRouteState.Committed = false
+
+	assert.Equal(t, expectedRouteState, test.routeState)
+	assert.Equal(t, int32(0), test.routeDiversity)
+
+	test.routeState.PLSustainedCounter = 1
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+
+	expectedRouteState = RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = false
+	expectedRouteState.ReducePacketLoss = false
+	expectedRouteState.Committed = false
+	expectedRouteState.PLSustainedCounter = 1
+
+	assert.Equal(t, expectedRouteState, test.routeState)
+	assert.Equal(t, int32(0), test.routeDiversity)
+
+	test.routeState.PLSustainedCounter = 2
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+
+	expectedRouteState = RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = false
+	expectedRouteState.ReducePacketLoss = false
+	expectedRouteState.Committed = false
+	expectedRouteState.PLSustainedCounter = 2
+
+	assert.Equal(t, expectedRouteState, test.routeState)
+	assert.Equal(t, int32(0), test.routeDiversity)
+}
+
+func TestTakeNetworkNext_ReducePacketLoss_PLSustainedCounter_3(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	test := NewTestData(env)
+
+	test.directLatency = int32(20)
+	test.directPacketLoss = float32(5.0)
+
+	test.sourceRelays = []int32{0}
+	test.sourceRelayCosts = []int32{10}
+
+	test.destRelays = []int32{1}
+
+	test.routeShader.AcceptableLatency = 100
+	test.routeState.UserID = 100
+
+	test.routeShader.AcceptablePacketLoss = float32(20)
+	test.routeShader.PacketLossSustained = float32(2.0)
+
+	test.routeState.PLSustainedCounter = 3
+
+	result := test.TakeNetworkNext()
+
+	assert.True(t, result)
+
+	expectedRouteState := RouteState{}
+	expectedRouteState.UserID = 100
+	expectedRouteState.Next = true
+	expectedRouteState.ReducePacketLoss = true
+	expectedRouteState.Committed = true
+	expectedRouteState.PLSustainedCounter = 3
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(1), test.routeDiversity)

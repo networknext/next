@@ -143,7 +143,7 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metri
 		*/
 
 		if !datacenterExists(database, packet.DatacenterID) {
-			core.Error("unknown datacenter %s [%x] for buyer id %x", packet.DatacenterName, packet.DatacenterID, packet.BuyerID)
+			core.Error("unknown datacenter %s [%016x, %s] for buyer id %016x", packet.DatacenterName, packet.DatacenterID, incoming.From.String(), packet.BuyerID)
 			metrics.DatacenterNotFound.Add(1)
 			return
 		}
@@ -627,6 +627,7 @@ func sessionUpdateNewSession(state *SessionHandlerState) {
 	state.output.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 	state.output.RouteState.UserID = state.packet.UserHash
 	state.output.RouteState.ABTest = state.buyer.RouteShader.ABTest
+	state.output.RouteState.PLSustainedCounter = 0
 
 	state.input = state.output
 }
@@ -685,11 +686,11 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 		This value is typically much higher precision (60HZ), vs. ping packets (10HZ).
 	*/
 
-	slicePacketsSentClientToServer := state.packet.PacketsSentClientToServer - state.input.PrevPacketsSentClientToServer
-	slicePacketsSentServerToClient := state.packet.PacketsSentServerToClient - state.input.PrevPacketsSentServerToClient
+	slicePacketsSentClientToServer := state.packet.PacketsSentClientToServer - state.output.PrevPacketsSentClientToServer
+	slicePacketsSentServerToClient := state.packet.PacketsSentServerToClient - state.output.PrevPacketsSentServerToClient
 
-	slicePacketsLostClientToServer := state.packet.PacketsLostClientToServer - state.input.PrevPacketsLostClientToServer
-	slicePacketsLostServerToClient := state.packet.PacketsLostServerToClient - state.input.PrevPacketsLostServerToClient
+	slicePacketsLostClientToServer := state.packet.PacketsLostClientToServer - state.output.PrevPacketsLostClientToServer
+	slicePacketsLostServerToClient := state.packet.PacketsLostServerToClient - state.output.PrevPacketsLostServerToClient
 
 	var realPacketLossClientToServer float32
 	if slicePacketsSentClientToServer != uint64(0) {
@@ -708,6 +709,16 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 
 	state.postRealPacketLossClientToServer = realPacketLossClientToServer
 	state.postRealPacketLossServerToClient = realPacketLossServerToClient
+
+	if state.realPacketLoss >= state.buyer.RouteShader.PacketLossSustained {
+		if state.output.RouteState.PLSustainedCounter < 3 {
+			state.output.RouteState.PLSustainedCounter = state.output.RouteState.PLSustainedCounter + 1
+		}
+	}
+
+	if state.realPacketLoss < state.buyer.RouteShader.PacketLossSustained {
+		state.output.RouteState.PLSustainedCounter = 0
+	}
 
 	/*
 		Calculate real jitter.
@@ -1020,11 +1031,13 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 	routeRelays := [core.MaxRelaysPerRoute]int32{}
 
+	sliceNumber := int32(state.packet.SliceNumber)
+
 	if !state.input.RouteState.Next {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, state.nearRelayIndices[:], state.nearRelayRTTs[:], state.destRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.routeDiversity, state.debug) {
+		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, state.nearRelayIndices[:], state.nearRelayRTTs[:], state.destRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.routeDiversity, state.debug, sliceNumber) {
 			BuildNextTokens(&state.output, state.database, &state.buyer, &state.packet, routeNumRelays, routeRelays[:routeNumRelays], state.routeMatrix.RelayIDs, state.routerPrivateKey, &state.response)
 		}
 

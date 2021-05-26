@@ -315,23 +315,24 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 }
 
 type internalConfig struct {
-	RouteSelectThreshold       int32
-	RouteSwitchThreshold       int32
-	MaxLatencyTradeOff         int32
-	RTTVeto_Default            int32
-	RTTVeto_PacketLoss         int32
-	RTTVeto_Multipath          int32
-	MultipathOverloadThreshold int32
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-	Uncommitted                bool
-	MaxRTT                     int32
-	HighFrequencyPings         bool
-	RouteDiversity             int32
-	MultipathThreshold         int32
-	EnableVanityMetrics        bool
-	BuyerID                    string
+	RouteSelectThreshold           int32
+	RouteSwitchThreshold           int32
+	MaxLatencyTradeOff             int32
+	RTTVeto_Default                int32
+	RTTVeto_PacketLoss             int32
+	RTTVeto_Multipath              int32
+	MultipathOverloadThreshold     int32
+	TryBeforeYouBuy                bool
+	ForceNext                      bool
+	LargeCustomer                  bool
+	Uncommitted                    bool
+	MaxRTT                         int32
+	HighFrequencyPings             bool
+	RouteDiversity                 int32
+	MultipathThreshold             int32
+	EnableVanityMetrics            bool
+	ReducePacketLossMinSliceNumber int32
+	BuyerID                        string
 }
 
 type routeShader struct {
@@ -349,6 +350,7 @@ type routeShader struct {
 	BandwidthEnvelopeUpKbps   int32
 	BandwidthEnvelopeDownKbps int32
 	BuyerID                   string
+	PacketLossSustained       float32
 }
 
 type buyer struct {
@@ -1717,22 +1719,23 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 							}
 
 							addInternalConfig(rpcClient, env, buyerID, localjsonrpc.JSInternalConfig{
-								RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
-								RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
-								MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
-								RTTVeto_Default:            int64(ic.RTTVeto_Default),
-								RTTVeto_PacketLoss:         int64(ic.RTTVeto_PacketLoss),
-								RTTVeto_Multipath:          int64(ic.RTTVeto_Multipath),
-								MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
-								TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-								ForceNext:                  ic.ForceNext,
-								LargeCustomer:              ic.LargeCustomer,
-								Uncommitted:                ic.Uncommitted,
-								HighFrequencyPings:         ic.HighFrequencyPings,
-								RouteDiversity:             int64(ic.RouteDiversity),
-								MultipathThreshold:         int64(ic.MultipathThreshold),
-								EnableVanityMetrics:        ic.EnableVanityMetrics,
-								MaxRTT:                     int64(ic.MaxRTT),
+								RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
+								RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
+								MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
+								RTTVeto_Default:                int64(ic.RTTVeto_Default),
+								RTTVeto_PacketLoss:             int64(ic.RTTVeto_PacketLoss),
+								RTTVeto_Multipath:              int64(ic.RTTVeto_Multipath),
+								MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
+								TryBeforeYouBuy:                ic.TryBeforeYouBuy,
+								ForceNext:                      ic.ForceNext,
+								LargeCustomer:                  ic.LargeCustomer,
+								Uncommitted:                    ic.Uncommitted,
+								HighFrequencyPings:             ic.HighFrequencyPings,
+								RouteDiversity:                 int64(ic.RouteDiversity),
+								MultipathThreshold:             int64(ic.MultipathThreshold),
+								EnableVanityMetrics:            ic.EnableVanityMetrics,
+								MaxRTT:                         int64(ic.MaxRTT),
+								ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 							})
 							return nil
 						},
@@ -1810,6 +1813,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
 								BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 								BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+								PacketLossSustained:       float64(rs.PacketLossSustained),
 							})
 
 							return nil
@@ -2496,6 +2500,7 @@ must be in a json file of the form:
   "RouteDiversity": 0,
   "MultipathThreshold": 25,
   "EnableVanityMetrics": true,
+  "ReducePacketLossMinSliceNumber": 0,
   "BuyerID": "205cca7361c2ae96"
 }
 
@@ -2534,22 +2539,23 @@ var nextBuyerConfigUpdateJSONLongHelp = `
 Update one field in the internal config for the specified buyer. The field
 must be one of the following and is case-sensitive:
 
-  RouteSelectThreshold        integer
-  RouteSwitchThreshold        integer
-  MaxLatencyTradeOff          integer
-  RTTVeto_Default             integer
-  RTTVeto_PacketLoss          integer
-  RTTVeto_Multipath           integer
-  MultipathOverloadThreshold  integer
-  TryBeforeYouBuy             boolean
-  ForceNext                   boolean
-  LargeCustomer               boolean
-  Uncommitted                 boolean
-  MaxRTT                      integer
-  HighFrequencyPings          boolean 
-  RouteDiversity              integer
-  MultipathThreshold          integer
-  EnableVanityMetrics         boolean
+  RouteSelectThreshold           integer
+  RouteSwitchThreshold           integer
+  MaxLatencyTradeOff             integer
+  RTTVeto_Default                integer
+  RTTVeto_PacketLoss             integer
+  RTTVeto_Multipath              integer
+  MultipathOverloadThreshold     integer
+  TryBeforeYouBuy                boolean
+  ForceNext                      boolean
+  LargeCustomer                  boolean
+  Uncommitted                    boolean
+  MaxRTT                         integer
+  HighFrequencyPings             boolean 
+  RouteDiversity                 integer
+  MultipathThreshold             integer
+  EnableVanityMetrics            boolean
+  ReducePacketLossMinSliceNumber integer
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.
@@ -2573,6 +2579,7 @@ must be one of the following and is case-sensitive:
   BandwidthEnvelopeUpKbps   integer
   BandwidthEnvelopeDownKbps integer
   MaxRTT                    integer
+  PacketLossSustained       float
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.

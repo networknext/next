@@ -521,22 +521,23 @@ func getInternalConfig(
 	}
 
 	fmt.Printf("InternalConfig for buyer %s:\n", buyerName)
-	fmt.Printf("  RouteSelectThreshold       : %d\n", reply.InternalConfig.RouteSelectThreshold)
-	fmt.Printf("  RouteSwitchThreshold       : %d\n", reply.InternalConfig.RouteSwitchThreshold)
-	fmt.Printf("  MaxLatencyTradeOff         : %d\n", reply.InternalConfig.MaxLatencyTradeOff)
-	fmt.Printf("  RTTVeto_Default            : %d\n", reply.InternalConfig.RTTVeto_Default)
-	fmt.Printf("  RTTVeto_PacketLoss         : %d\n", reply.InternalConfig.RTTVeto_PacketLoss)
-	fmt.Printf("  RTTVeto_Multipath          : %d\n", reply.InternalConfig.RTTVeto_Multipath)
-	fmt.Printf("  MultipathOverloadThreshold : %d\n", reply.InternalConfig.MultipathOverloadThreshold)
-	fmt.Printf("  TryBeforeYouBuy            : %t\n", reply.InternalConfig.TryBeforeYouBuy)
-	fmt.Printf("  ForceNext                  : %t\n", reply.InternalConfig.ForceNext)
-	fmt.Printf("  LargeCustomer              : %t\n", reply.InternalConfig.LargeCustomer)
-	fmt.Printf("  Uncommitted                : %t\n", reply.InternalConfig.Uncommitted)
-	fmt.Printf("  MaxRTT                     : %d\n", reply.InternalConfig.MaxRTT)
-	fmt.Printf("  HighFrequencyPings         : %t\n", reply.InternalConfig.HighFrequencyPings)
-	fmt.Printf("  RouteDiversity             : %d\n", reply.InternalConfig.RouteDiversity)
-	fmt.Printf("  MultipathThreshold         : %d\n", reply.InternalConfig.MultipathThreshold)
-	fmt.Printf("  EnableVanityMetrics        : %t\n", reply.InternalConfig.EnableVanityMetrics)
+	fmt.Printf("  RouteSelectThreshold          : %d\n", reply.InternalConfig.RouteSelectThreshold)
+	fmt.Printf("  RouteSwitchThreshold          : %d\n", reply.InternalConfig.RouteSwitchThreshold)
+	fmt.Printf("  MaxLatencyTradeOff            : %d\n", reply.InternalConfig.MaxLatencyTradeOff)
+	fmt.Printf("  RTTVeto_Default               : %d\n", reply.InternalConfig.RTTVeto_Default)
+	fmt.Printf("  RTTVeto_PacketLoss            : %d\n", reply.InternalConfig.RTTVeto_PacketLoss)
+	fmt.Printf("  RTTVeto_Multipath             : %d\n", reply.InternalConfig.RTTVeto_Multipath)
+	fmt.Printf("  MultipathOverloadThreshold    : %d\n", reply.InternalConfig.MultipathOverloadThreshold)
+	fmt.Printf("  TryBeforeYouBuy               : %t\n", reply.InternalConfig.TryBeforeYouBuy)
+	fmt.Printf("  ForceNext                     : %t\n", reply.InternalConfig.ForceNext)
+	fmt.Printf("  LargeCustomer                 : %t\n", reply.InternalConfig.LargeCustomer)
+	fmt.Printf("  Uncommitted                   : %t\n", reply.InternalConfig.Uncommitted)
+	fmt.Printf("  MaxRTT                        : %d\n", reply.InternalConfig.MaxRTT)
+	fmt.Printf("  HighFrequencyPings            : %t\n", reply.InternalConfig.HighFrequencyPings)
+	fmt.Printf("  RouteDiversity                : %d\n", reply.InternalConfig.RouteDiversity)
+	fmt.Printf("  MultipathThreshold            : %d\n", reply.InternalConfig.MultipathThreshold)
+	fmt.Printf("  EnableVanityMetrics           : %t\n", reply.InternalConfig.EnableVanityMetrics)
+	fmt.Printf("  ReducePacketLossMinSliceNumber: %d\n", reply.InternalConfig.ReducePacketLossMinSliceNumber)
 
 	return nil
 }
@@ -574,6 +575,7 @@ func getRouteShader(
 	fmt.Printf("  AcceptablePacketLoss     : %5.5f\n", reply.RouteShader.AcceptablePacketLoss)
 	fmt.Printf("  BandwidthEnvelopeUpKbps  : %d\n", reply.RouteShader.BandwidthEnvelopeUpKbps)
 	fmt.Printf("  BandwidthEnvelopeDownKbps: %d\n", reply.RouteShader.BandwidthEnvelopeDownKbps)
+	fmt.Printf("  PacketLossSustained      : %.2f\n", reply.RouteShader.PacketLossSustained)
 
 	return nil
 }
