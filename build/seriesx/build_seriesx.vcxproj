@@ -213,7 +213,7 @@
     <TargetRuntime>Native</TargetRuntime>
     <PreferredToolArchitecture>x64</PreferredToolArchitecture>
     <WindowsTargetPlatformVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</WindowsTargetPlatformVersion>
-    <ProjectName>next-seriesx-4.0.14</ProjectName>
+    <ProjectName>next-seriesx-4.0.15</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Gaming.Xbox.Scarlett.x64'" Label="Configuration">
