@@ -1463,6 +1463,7 @@ type RouteShader struct {
 	BandwidthEnvelopeUpKbps   int32
 	BandwidthEnvelopeDownKbps int32
 	BannedUsers               map[uint64]bool
+	PacketLossSustained       float32
 }
 
 func NewRouteShader() RouteShader {
@@ -1481,6 +1482,7 @@ func NewRouteShader() RouteShader {
 		BandwidthEnvelopeUpKbps:   1024,
 		BandwidthEnvelopeDownKbps: 1024,
 		BannedUsers:               make(map[uint64]bool),
+		PacketLossSustained:       0,
 	}
 }
 
@@ -1524,6 +1526,7 @@ type RouteState struct {
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
 	MultipathRestricted bool
+	SustainedPLCounter  int32
 }
 
 type InternalConfig struct {
@@ -1680,7 +1683,7 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 	// should we try to reduce packet loss?
 
 	reducePacketLoss := false
-	if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss && sliceNumber >= internal.ReducePacketLossMinSliceNumber {
+	if (routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss && sliceNumber >= internal.ReducePacketLossMinSliceNumber) || routeState.SustainedPLCounter == 3 {
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}

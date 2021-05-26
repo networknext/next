@@ -425,6 +425,7 @@ func SeedSQLStorage(
 			ReduceLatency:             true,
 			ReducePacketLoss:          true,
 			SelectionPercent:          int(100),
+			PacketLossSustained:       0,
 		}
 
 		gaRouteShader := core.RouteShader{
