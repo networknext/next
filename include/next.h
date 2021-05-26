@@ -143,7 +143,6 @@ struct next_config_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
-    bool disable_packet_tagging;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( next_config_t * config );
@@ -301,8 +300,8 @@ struct next_server_stats_t
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
-    uint64_t tags[NEXT_MAX_TAGS];
     int num_tags;
+    uint64_t tags[NEXT_MAX_TAGS];
 };
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0

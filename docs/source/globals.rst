@@ -17,7 +17,6 @@ Configuration struct for the Network Next SDK.
 	    int socket_send_buffer_size;
 	    int socket_receive_buffer_size;
 	    bool disable_network_next;
-	    bool disable_packet_tagging;
 	};
 
 **hostname** - The hostname for the backend the Network Next SDK is talking to. Set to "prod.spacecats.net" by default.
@@ -31,8 +30,6 @@ Configuration struct for the Network Next SDK.
 **socket_receive_buffer_size** - The size of the socket receive buffer in bytes.
 
 **disable_network_next** - Set this to true to disable Network Next entirely and always send packets across the public internet.
-
-**disable_packet_tagging** - Set this to true to disable DOCSIS 3.1 real-time packet tagging.
 
 next_default_config
 -------------------
@@ -51,7 +48,6 @@ Use this to set default values for config variables, then make only the changes 
 - **socket_send_buffer_size** -- 1000000
 - **socket_receive_buffer_size** -- 1000000
 - **disable_network_next** -- false
-- **disable_packet_tagging** -- false
 
 **Example:**
 

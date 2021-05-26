@@ -3788,7 +3788,6 @@ struct next_config_internal_t
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
-    bool disable_tagging;
 };
 
 static next_config_internal_t next_global_config;
@@ -3916,25 +3915,6 @@ int next_init( void * context, next_config_t * config_in )
     if ( config.disable_network_next )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "network next is disabled" );
-    }
-
-    config.disable_tagging = config_in ? config_in->disable_packet_tagging : false;
-
-    const char * next_disable_tagging_override = next_platform_getenv( "NEXT_DISABLE_PACKET_TAGGING" );
-    {
-        if ( next_disable_tagging_override != NULL )
-        {
-            int value = atoi( next_disable_tagging_override );
-            if ( value > 0 )
-            {
-                config.disable_tagging = true;
-            }
-        }
-    }
-
-    if ( config.disable_tagging )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "packet tagging is disabled" );
     }
 
     const char * socket_send_buffer_size_override = next_platform_getenv( "NEXT_SOCKET_SEND_BUFFER_SIZE" );
@@ -5993,7 +5973,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         return NULL;
     }
 
-    client->socket = next_platform_socket_create( client->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, !next_global_config.disable_tagging );
+    client->socket = next_platform_socket_create( client->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, true );
     if ( client->socket == NULL )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create socket" );
@@ -10860,7 +10840,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    server->socket = next_platform_socket_create( server->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, !next_global_config.disable_tagging );
+    server->socket = next_platform_socket_create( server->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, true );
     if ( server->socket == NULL )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create server socket" );
@@ -12344,44 +12324,21 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     next_pending_session_entry_t * pending_entry = next_pending_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry )
     {
-        if ( num_tags > 0 )
+        memset( pending_entry->tags, 0, sizeof(pending_entry->tags) );
+        for ( int i = 0; i < num_tags; ++i )
         {
-            memset( pending_entry->tags, 0, sizeof(pending_entry->tags) );
-            for ( int i = 0; i < num_tags; ++i )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags pending session entry %" PRIx64 " as %" PRIx64 " (internal)", pending_entry->session_id, tags[i] );
-                pending_entry->tags[i] = tags[i];
-            }
-            pending_entry->num_tags = num_tags;
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags pending session entry %" PRIx64 " as %" PRIx64 " (internal)", pending_entry->session_id, tags[i] );
+            pending_entry->tags[i] = tags[i];
         }
-        else
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server clears tags on pending session entry %" PRIx64 " (internal)", pending_entry->session_id );
-            memset( pending_entry->tags, 0, sizeof(pending_entry->tags) );
-            pending_entry->num_tags = 0;
-        }
+        pending_entry->num_tags = num_tags;
         return;
     }
 
     next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, address );    
     if ( entry )
     {
-        if ( num_tags > 0 )
-        {
-            memset( entry->tags, 0, sizeof(entry->tags) );
-            for ( int i = 0; i < num_tags; ++i )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server tags session entry %" PRIx64 " as %" PRIx64 " (internal)", entry->session_id, tags[i] );
-                entry->tags[i] = tags[i];
-            }
-            entry->num_tags = num_tags;
-        }
-        else
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server clears tags on session entry %" PRIx64 " (internal)", entry->session_id );
-            memset( entry->tags, 0, sizeof(entry->tags) );
-            entry->num_tags = 0;
-        }
+        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "could not tag session %s. please tag a session immediately after you upgrade it", next_address_to_string( address, buffer ) );    
         return;
     }
 
