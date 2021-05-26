@@ -662,6 +662,17 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 	}
 
 	/*
+		Copy input state to output and go to next slice.
+
+		During the rest of the session update we transform session.output in place,
+		before sending it back to the SDK in the session response packet.
+	*/
+
+	state.output = state.input
+	state.output.SliceNumber += 1
+	state.output.ExpireTimestamp += billing.BillingSliceSeconds
+
+	/*
 		Calculate real packet loss.
 
 		This is driven from actual game packets, not ping packets.
@@ -669,11 +680,11 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 		This value is typically much higher precision (60HZ), vs. ping packets (10HZ).
 	*/
 
-	slicePacketsSentClientToServer := state.packet.PacketsSentClientToServer - state.input.PrevPacketsSentClientToServer
-	slicePacketsSentServerToClient := state.packet.PacketsSentServerToClient - state.input.PrevPacketsSentServerToClient
+	slicePacketsSentClientToServer := state.packet.PacketsSentClientToServer - state.output.PrevPacketsSentClientToServer
+	slicePacketsSentServerToClient := state.packet.PacketsSentServerToClient - state.output.PrevPacketsSentServerToClient
 
-	slicePacketsLostClientToServer := state.packet.PacketsLostClientToServer - state.input.PrevPacketsLostClientToServer
-	slicePacketsLostServerToClient := state.packet.PacketsLostServerToClient - state.input.PrevPacketsLostServerToClient
+	slicePacketsLostClientToServer := state.packet.PacketsLostClientToServer - state.output.PrevPacketsLostClientToServer
+	slicePacketsLostServerToClient := state.packet.PacketsLostServerToClient - state.output.PrevPacketsLostServerToClient
 
 	var realPacketLossClientToServer float32
 	if slicePacketsSentClientToServer != uint64(0) {
@@ -694,25 +705,14 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 	state.postRealPacketLossServerToClient = realPacketLossServerToClient
 
 	if state.realPacketLoss >= state.buyer.RouteShader.PacketLossSustained {
-		if state.input.RouteState.PLSustainedCounter < 3 {
-			state.input.RouteState.PLSustainedCounter = state.input.RouteState.PLSustainedCounter + 1
+		if state.output.RouteState.PLSustainedCounter < 3 {
+			state.output.RouteState.PLSustainedCounter = state.output.RouteState.PLSustainedCounter + 1
 		}
 	}
 
 	if state.realPacketLoss < state.buyer.RouteShader.PacketLossSustained {
-		state.input.RouteState.PLSustainedCounter = 0
+		state.output.RouteState.PLSustainedCounter = 0
 	}
-
-	/*
-		Copy input state to output and go to next slice.
-
-		During the rest of the session update we transform session.output in place,
-		before sending it back to the SDK in the session response packet.
-	*/
-
-	state.output = state.input
-	state.output.SliceNumber += 1
-	state.output.ExpireTimestamp += billing.BillingSliceSeconds
 }
 
 func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
