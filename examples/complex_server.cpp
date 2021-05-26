@@ -409,8 +409,6 @@ void print_server_stats( next_server_t * server, ServerContext * context )
             printf( "jitter_server_to_client = %f\n", stats.jitter_server_to_client );
         }
 
-        printf( "user flags = %" PRId64 "\n", stats.user_flags );
-
         if ( stats.num_tags > 0 )
         {
             printf( "tags = [" );

@@ -32,10 +32,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.0.14"
+    #define NEXT_VERSION_FULL                              "4.0.15"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                                0
-    #define NEXT_VERSION_PATCH_INT                               14
+    #define NEXT_VERSION_PATCH_INT                               15
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -233,7 +233,6 @@ struct next_client_stats_t
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
-    uint64_t user_flags;
 };
 
 // -----------------------------------------
@@ -270,8 +269,6 @@ NEXT_EXPORT_FUNC uint64_t next_client_session_id( next_client_t * client );
 
 NEXT_EXPORT_FUNC const next_client_stats_t * next_client_stats( next_client_t * client );
 
-NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
-
 NEXT_EXPORT_FUNC const next_address_t * next_client_server_address( next_client_t * client );
 
 // -----------------------------------------
@@ -304,7 +301,6 @@ struct next_server_stats_t
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
-    uint64_t user_flags;
     uint64_t tags[NEXT_MAX_TAGS];
     int num_tags;
 };

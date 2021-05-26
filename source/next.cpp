@@ -3101,8 +3101,6 @@ struct NextClientStatsPacket
     bool bandwidth_over_limit;
     int platform_id;
     int connection_type;
-    uint64_t flags;
-    uint64_t user_flags;
     float next_kbps_up;
     float next_kbps_down;
     float direct_rtt;
@@ -3134,8 +3132,6 @@ struct NextClientStatsPacket
         serialize_bool( stream, multipath );
         serialize_bool( stream, reported );
         serialize_bool( stream, bandwidth_over_limit );
-        serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
-        serialize_uint64( stream, user_flags );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         serialize_float( stream, next_kbps_up );
@@ -5708,7 +5704,6 @@ void next_route_manager_destroy( next_route_manager_t * route_manager )
 #define NEXT_CLIENT_COMMAND_CLOSE_SESSION           1
 #define NEXT_CLIENT_COMMAND_DESTROY                 2
 #define NEXT_CLIENT_COMMAND_REPORT_SESSION          3
-#define NEXT_CLIENT_COMMAND_USER_FLAGS              4
 
 struct next_client_command_t
 {
@@ -5733,11 +5728,6 @@ struct next_client_command_destroy_t : public next_client_command_t
 struct next_client_command_report_session_t : public next_client_command_t
 {
     // ...
-};
-
-struct next_client_command_user_flags_t : public next_client_command_t
-{
-    uint64_t user_flags;
 };
 
 // ---------------------------------------------------------------
@@ -5794,7 +5784,6 @@ struct next_client_internal_t
     bool reported;
     bool fallback_to_direct;
     bool multipath;
-    uint64_t user_flags;
     uint8_t open_session_sequence;
     uint64_t upgrade_sequence;
     uint64_t session_id;
@@ -6972,7 +6961,6 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->reported = false;
                 client->fallback_to_direct = false;
                 client->multipath = false;
-                client->user_flags = 0;
                 client->upgrade_sequence = 0;
                 client->session_id = 0;
                 client->internal_send_sequence = 0;
@@ -7051,12 +7039,6 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                     next_printf( NEXT_LOG_LEVEL_INFO, "client reported session %" PRIx64, client->session_id );
                     client->reported = true;
                 }
-            }
-            break;
-
-            case NEXT_CLIENT_COMMAND_USER_FLAGS:
-            {
-                client->user_flags |= ((next_client_command_user_flags_t*)command)->user_flags;
             }
             break;
 
@@ -7180,11 +7162,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
     {
         NextClientStatsPacket packet;
 
-        next_platform_mutex_acquire( &client->route_manager_mutex );
-        const uint64_t flags = client->route_manager->flags;
-        next_platform_mutex_release( &client->route_manager_mutex );
-
-        packet.flags = flags;
         packet.reported = client->reported;
         packet.fallback_to_direct = client->fallback_to_direct;
         packet.multipath = client->multipath;
@@ -7248,9 +7225,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.packets_lost_server_to_client = client->client_stats.packets_lost_server_to_client;
         packet.packets_out_of_order_server_to_client = client->client_stats.packets_out_of_order_server_to_client;
         packet.jitter_server_to_client = client->client_stats.jitter_server_to_client;
-
-        packet.user_flags = client->user_flags;
-        client->user_flags = 0;
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_CLIENT_STATS_PACKET, &packet ) != NEXT_OK )
         {
@@ -8092,27 +8066,6 @@ const next_client_stats_t * next_client_stats( next_client_t * client )
     next_client_verify_sentinels( client );
 
     return &client->client_stats;
-}
-
-void next_client_set_user_flags( next_client_t * client, uint64_t user_flags )
-{
-    next_client_verify_sentinels( client );
-
-    next_client_command_user_flags_t * command = (next_client_command_user_flags_t*) next_malloc( client->context, sizeof( next_client_command_user_flags_t ) );
-
-    if ( !command )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "set user flags failed. could not create user flags command" );
-        return;
-    }
-
-    command->type = NEXT_CLIENT_COMMAND_USER_FLAGS;
-    command->user_flags = user_flags;
-
-    {    
-        next_platform_mutex_guard( &client->internal->command_mutex );
-        next_queue_push( client->internal->command_queue, command );
-    }
 }
 
 const next_address_t * next_client_server_address( next_client_t * client )
@@ -9062,8 +9015,6 @@ struct NextBackendSessionUpdatePacket
     bool client_ping_timed_out;
     int num_tags;
     uint64_t tags[NEXT_MAX_TAGS];
-    uint64_t flags;
-    uint64_t user_flags;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
@@ -9146,14 +9097,10 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, client_ping_timed_out );
 
         bool has_tags = Stream::IsWriting && num_tags > 0;
-        bool has_flags = Stream::IsWriting && flags != 0;
-        bool has_user_flags = Stream::IsWriting && user_flags != 0;
         bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
         bool has_out_of_order_packets = Stream::IsWriting && ( packets_out_of_order_client_to_server + packets_out_of_order_server_to_client ) > 0;
 
         serialize_bool( stream, has_tags );
-        serialize_bool( stream, has_flags );
-        serialize_bool( stream, has_user_flags );
         serialize_bool( stream, has_lost_packets );
         serialize_bool( stream, has_out_of_order_packets );
 
@@ -9164,16 +9111,6 @@ struct NextBackendSessionUpdatePacket
             {
                 serialize_uint64( stream, tags[i] );
             }
-        }
-
-        if ( has_flags )
-        {
-            serialize_bits( stream, flags, NEXT_FLAGS_COUNT );
-        }
-
-        if ( has_user_flags )
-        {
-            serialize_uint64( stream, user_flags );
         }
 
         serialize_float( stream, direct_rtt );
@@ -9244,7 +9181,6 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(1)
 
-    uint64_t stats_flags;
     bool stats_reported;
     bool stats_multipath;
     bool stats_committed;
@@ -9292,8 +9228,6 @@ struct next_session_entry_t
     float stats_jitter_client_to_server;
     float stats_jitter_server_to_client;
 
-    uint64_t stats_user_flags;
-    
     double next_tracker_update_time;
     double next_session_update_time;
     double next_session_resend_time;
@@ -11712,11 +11646,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
             entry->high_frequency_pings = packet.high_frequency_pings;
 
-            // IMPORTANT: clear user flags after we get an response/ack for the last session update.
-            // This lets us accumulate user flags between each session update packet via user_flags |= packet.user_flags
-            // so we pick up on flags that were only set for a frame inside a 10 second long slice...
-            entry->stats_user_flags = 0;
-
             return;
         }   
     }
@@ -12223,7 +12152,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             session->stats_sequence = packet_sequence;
 
-            session->stats_flags |= packet.flags;
             session->stats_reported = packet.reported;
             session->stats_multipath = packet.multipath;
             session->stats_fallback_to_direct = packet.fallback_to_direct;
@@ -12256,7 +12184,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
             session->stats_jitter_server_to_client = packet.jitter_server_to_client;
-            session->stats_user_flags |= packet.user_flags;
             session->last_client_stats_update = next_time();
         }
 
@@ -12833,7 +12760,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             {
                 packet.tags[j] = session->tags[j];
             }
-            packet.flags = session->stats_flags;
             packet.reported = session->stats_reported;
             packet.fallback_to_direct = session->stats_fallback_to_direct;
             packet.client_bandwidth_over_limit = session->stats_client_bandwidth_over_limit;
@@ -12852,7 +12778,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.packets_out_of_order_server_to_client = session->stats_packets_out_of_order_server_to_client;
             packet.jitter_client_to_server = session->stats_jitter_client_to_server;
             packet.jitter_server_to_client = session->stats_jitter_server_to_client;
-            packet.user_flags = session->stats_user_flags;
             packet.next = session->stats_next;
             packet.committed = session->stats_committed;
             packet.next_rtt = session->stats_next_rtt;
@@ -13585,7 +13510,6 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
     stats->packets_out_of_order_server_to_client = entry->stats_packets_out_of_order_server_to_client;
     stats->jitter_client_to_server = entry->stats_jitter_client_to_server;
     stats->jitter_server_to_client = entry->stats_jitter_server_to_client;
-    stats->user_flags = entry->stats_user_flags;
     stats->num_tags = entry->num_tags;
     memcpy( stats->tags, entry->tags, sizeof(stats->tags) );
 
@@ -14989,7 +14913,6 @@ static void test_packets()
     // client stats packet
     {
         static NextClientStatsPacket in, out;
-        in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN;
         in.reported = true;
         in.fallback_to_direct = true;
         in.platform_id = NEXT_PLATFORM_WINDOWS;
@@ -15011,7 +14934,6 @@ static void test_packets()
             in.near_relay_packet_loss[i] = i;
         }
         in.packets_lost_server_to_client = 1000;
-        in.user_flags = 123;
         uint64_t in_sequence = 1000;
         uint64_t out_sequence = 0;
         int packet_bytes = 0;
@@ -15020,7 +14942,6 @@ static void test_packets()
         next_check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
         next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
         next_check( in_sequence == out_sequence + 1 );
-        next_check( in.flags == out.flags );
         next_check( in.reported == out.reported );
         next_check( in.fallback_to_direct == out.fallback_to_direct );
         next_check( in.platform_id == out.platform_id );
@@ -15043,7 +14964,6 @@ static void test_packets()
         }
         next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
-        next_check( in.user_flags == out.user_flags );
     }
 
     // route update packet (direct)
@@ -15673,7 +15593,6 @@ static void test_backend_packets()
         in.num_tags = 2;
         in.tags[0] = 0x1231314141;
         in.tags[1] = 0x3344556677;
-        in.flags = NEXT_FLAGS_BAD_ROUTE_TOKEN | NEXT_FLAGS_ROUTE_REQUEST_TIMED_OUT;
         in.reported = true;
         in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
         in.direct_rtt = 10.1f;
@@ -15700,7 +15619,6 @@ static void test_backend_packets()
         in.next_kbps_down = 200.0f;
         in.packets_lost_client_to_server = 100;
         in.packets_lost_server_to_client = 200;
-        in.user_flags = 123;
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
         for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
         {
@@ -15722,7 +15640,6 @@ static void test_backend_packets()
         {
             next_check( in.tags[i] == out.tags[i] );
         }
-        next_check( in.flags == out.flags );
         next_check( in.reported == out.reported );
         next_check( in.connection_type == out.connection_type );
         next_check( in.direct_rtt == out.direct_rtt );
@@ -15749,7 +15666,6 @@ static void test_backend_packets()
         next_check( in.next_kbps_down == out.next_kbps_down );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
-        next_check( in.user_flags == out.user_flags );
         next_check( in.session_data_bytes == out.session_data_bytes );
         for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
         {
