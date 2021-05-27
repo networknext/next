@@ -1581,7 +1581,7 @@ func TestRouteShaders(t *testing.T) {
 			ReducePacketLoss:          true,
 			ReduceJitter:              true,
 			SelectionPercent:          int(100),
-			PacketLossSustained:       float32(0),
+			PacketLossSustained:       float32(10),
 		}
 
 		err = db.AddRouteShader(ctx, routeShader, outerBuyer.ID)
@@ -1603,7 +1603,7 @@ func TestRouteShaders(t *testing.T) {
 		assert.Equal(t, true, outerRouteShader.ReducePacketLoss)
 		assert.Equal(t, true, outerRouteShader.ReduceJitter)
 		assert.Equal(t, int(100), outerRouteShader.SelectionPercent)
-		assert.Equal(t, float32(0), outerRouteShader.PacketLossSustained)
+		assert.Equal(t, float32(10), outerRouteShader.PacketLossSustained)
 	})
 
 	t.Run("UpdateRouteShader", func(t *testing.T) {

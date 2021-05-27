@@ -3225,7 +3225,6 @@ func TestTakeNetworkNext_ReducePacketLoss_PLBelowSustained(t *testing.T) {
 	test.routeShader.AcceptablePacketLoss = float32(20)
 
 	// Will go next after 3 slices of sustained packet loss
-	test.realPacketLoss = float32(5.0)
 	test.routeShader.PacketLossSustained = float32(2.0)
 
 	test.sourceRelays = []int32{0}
@@ -3273,7 +3272,6 @@ func TestTakeNetworkNext_ReducePacketLoss_PLEqualSustained(t *testing.T) {
 	test.routeShader.AcceptablePacketLoss = float32(20)
 
 	// Will go next after 3 slices of sustained packet loss
-	test.realPacketLoss = float32(5.0)
 	test.routeShader.PacketLossSustained = float32(5.0)
 
 	test.sourceRelays = []int32{0}
@@ -3321,7 +3319,6 @@ func TestTakeNetworkNext_ReducePacketLoss_PLAboveSustained(t *testing.T) {
 	test.routeShader.AcceptablePacketLoss = float32(20)
 
 	// Won't go next after 3 slices of sustained packet loss
-	test.realPacketLoss = float32(5.0)
 	test.routeShader.PacketLossSustained = float32(10.0)
 
 	test.sourceRelays = []int32{0}
@@ -3369,7 +3366,6 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_ResetCount(t *testing.T
 	test.routeShader.AcceptablePacketLoss = float32(20)
 
 	// Will go next after 3 slices of sustained packet loss
-	test.realPacketLoss = float32(5.0)
 	test.routeShader.PacketLossSustained = float32(2.0)
 
 	test.sourceRelays = []int32{0}
@@ -3389,7 +3385,7 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_ResetCount(t *testing.T
 	assert.False(t, result)
 	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
 
-	test.realPacketLoss = 1
+	test.directPacketLoss = 1
 
 	result = test.TakeNetworkNext()
 
@@ -3419,7 +3415,6 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_Mix_Next(t *testing.T) 
 	test.routeShader.AcceptablePacketLoss = float32(20)
 
 	// Will go next after 3 slices of sustained packet loss
-	test.realPacketLoss = float32(5.0)
 	test.routeShader.PacketLossSustained = float32(2.0)
 
 	test.sourceRelays = []int32{0}
@@ -3434,14 +3429,14 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_Mix_Next(t *testing.T) 
 	assert.False(t, result)
 	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
 
-	test.realPacketLoss = 1
+	test.directPacketLoss = 1
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
 	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
 
-	test.realPacketLoss = 5
+	test.directPacketLoss = 5
 
 	result = test.TakeNetworkNext()
 
@@ -3453,14 +3448,14 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_Mix_Next(t *testing.T) 
 	assert.False(t, result)
 	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
 
-	test.realPacketLoss = 1
+	test.directPacketLoss = 1
 
 	result = test.TakeNetworkNext()
 
 	assert.False(t, result)
 	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
 
-	test.realPacketLoss = 5
+	test.directPacketLoss = 5
 
 	result = test.TakeNetworkNext()
 
