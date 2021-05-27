@@ -339,7 +339,7 @@ dev-server: build-sdk build-server  ## runs a local server
 
 .PHONY: dev-portal
 dev-portal: build-portal-local ## runs a local portal
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist RELAY_FRONTEND=127.0.0.1:30005 ./dist/portal
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist RELAY_FRONTEND=http://localhost:30005 ./dist/portal
 
 .PHONY: dev-beacon
 dev-beacon: build-beacon ## runs a local beacon
@@ -678,6 +678,10 @@ build-server-backend-artifacts-staging: build-server-backend
 build-billing-artifacts-prod: build-billing
 	./deploy/build-artifacts.sh -e prod -s billing
 
+.PHONY: build-debug-billing-artifacts-prod-debug
+build-debug-billing-artifacts-prod-debug: build-billing
+	./deploy/build-artifacts.sh -e prod -s debug_billing
+
 .PHONY: build-beacon-artifacts-prod
 build-beacon-artifacts-prod: build-beacon
 	./deploy/build-artifacts.sh -e prod -s beacon
@@ -817,6 +821,14 @@ publish-load-test-server-list:
 .PHONY: publish-billing-artifacts-prod
 publish-billing-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s billing
+
+.PHONY: publish-debug-billing-artifacts-prod-debug
+publish-debug-billing-artifacts-prod-debug:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_billing
+
+.PHONY: deploy-debug-billing-prod-billing
+deploy-debug-billing-prod-debug:
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-billing -n debug_billing -b $(ARTIFACT_BUCKET_PROD_DEBUG)
 
 .PHONY: publish-beacon-artifacts-prod
 publish-beacon-artifacts-prod:
