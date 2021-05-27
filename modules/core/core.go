@@ -1112,8 +1112,6 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			Debug("Number of routes in entry: %v", int(entry.NumRoutes))
 			for k := 0; k < int(entry.NumRoutes); k++ {
 				cost := entry.RouteCost[k] + sourceRelayCost[i]
-				Debug("route cost: %v", cost)
-				Debug("max cost: %v", cost)
 				if cost > maxCost {
 					break
 				}
