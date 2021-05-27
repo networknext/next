@@ -18,8 +18,7 @@ import (
 )
 
 type badBiller struct {
-	calledChan  chan bool
-	calledChan2 chan bool
+	calledChan chan bool
 }
 
 func (biller *badBiller) Bill(ctx context.Context, billingEntry *billing.BillingEntry) error {
@@ -27,31 +26,17 @@ func (biller *badBiller) Bill(ctx context.Context, billingEntry *billing.Billing
 	return errors.New("bad bill")
 }
 
-func (biller *badBiller) Bill2(ctx context.Context, billingEntry *billing.BillingEntry2) error {
-	biller.calledChan2 <- true
-	return errors.New("bad bill")
-}
-
 func (biller *badBiller) Close() {}
 
 type mockBiller struct {
-	calledChan     chan bool
-	calledChan2    chan bool
-	billedEntries  []billing.BillingEntry
-	billedEntries2 []billing.BillingEntry2
+	calledChan    chan bool
+	billedEntries []billing.BillingEntry
 }
 
 func (biller *mockBiller) Bill(ctx context.Context, billingEntry *billing.BillingEntry) error {
 	biller.billedEntries = append(biller.billedEntries, *billingEntry)
 
 	biller.calledChan <- true
-	return nil
-}
-
-func (biller *mockBiller) Bill2(ctx context.Context, billingEntry *billing.BillingEntry2) error {
-	biller.billedEntries2 = append(biller.billedEntries2, *billingEntry)
-
-	biller.calledChan2 <- true
 	return nil
 }
 
@@ -148,79 +133,6 @@ func testBillingEntry() *billing.BillingEntry {
 	}
 }
 
-func testBillingEntry2() *billing.BillingEntry2 {
-	return &billing.BillingEntry2{
-		Version:                         uint32(0),
-		Timestamp:                       rand.Uint32(),
-		SessionID:                       rand.Uint64(),
-		SliceNumber:                     rand.Uint32(),
-		DirectRTT:                       rand.Int31(),
-		DirectJitter:                    rand.Int31(),
-		DirectPacketLoss:                rand.Int31(),
-		RealPacketLoss:                  rand.Int31(),
-		RealPacketLoss_Frac:             rand.Uint32(),
-		RealJitter:                      rand.Uint32(),
-		Next:                            true,
-		Flagged:                         false,
-		Summary:                         true,
-		UseDebug:                        false,
-		Debug:                           "",
-		DatacenterID:                    rand.Uint64(),
-		BuyerID:                         rand.Uint64(),
-		UserHash:                        rand.Uint64(),
-		EnvelopeBytesDown:               rand.Uint64(),
-		EnvelopeBytesUp:                 rand.Uint64(),
-		Latitude:                        rand.Float32(),
-		Longitude:                       rand.Float32(),
-		ISP:                             "ISP",
-		ConnectionType:                  1,
-		PlatformType:                    3,
-		SDKVersion:                      "4.0.10",
-		NumTags:                         int32(5),
-		Tags:                            [billing.BillingEntryMaxTags]uint64{rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64()},
-		ABTest:                          false,
-		Pro:                             false,
-		ClientToServerPacketsSent:       rand.Uint64(),
-		ServerToClientPacketsSent:       rand.Uint64(),
-		ClientToServerPacketsLost:       rand.Uint64(),
-		ServerToClientPacketsLost:       rand.Uint64(),
-		ClientToServerPacketsOutOfOrder: rand.Uint64(),
-		ServerToClientPacketsOutOfOrder: rand.Uint64(),
-		NumNearRelays:                   int32(5),
-		NearRelayIDs:                    [billing.BillingEntryMaxNearRelays]uint64{rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64()},
-		NearRelayRTTs:                   [billing.BillingEntryMaxNearRelays]int32{rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31()},
-		NearRelayJitters:                [billing.BillingEntryMaxNearRelays]int32{rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31()},
-		NearRelayPacketLosses:           [billing.BillingEntryMaxNearRelays]int32{rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31()},
-		NextRTT:                         rand.Int31(),
-		NextJitter:                      rand.Int31(),
-		NextPacketLoss:                  rand.Int31(),
-		PredictedNextRTT:                rand.Int31(),
-		NearRelayRTT:                    rand.Int31(),
-		NumNextRelays:                   int32(5),
-		NextRelays:                      [billing.BillingEntryMaxRelays]uint64{rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64()},
-		NextRelayPrice:                  [billing.BillingEntryMaxRelays]uint64{rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64()},
-		TotalPrice:                      rand.Uint64(),
-		RouteDiversity:                  5,
-		Uncommitted:                     false,
-		Multipath:                       false,
-		RTTReduction:                    true,
-		PacketLossReduction:             true,
-		RouteChanged:                    false,
-		FallbackToDirect:                false,
-		MultipathVetoed:                 false,
-		Mispredicted:                    false,
-		Vetoed:                          false,
-		LatencyWorse:                    false,
-		NoRoute:                         false,
-		NextLatencyTooHigh:              false,
-		CommitVeto:                      false,
-		UnknownDatacenter:               false,
-		DatacenterNotEnabled:            false,
-		BuyerNotLive:                    false,
-		StaleRouteMatrix:                false,
-	}
-}
-
 func testCountData() *transport.SessionCountData {
 	return &transport.SessionCountData{
 		ServerID:    rand.Uint64(),
@@ -290,23 +202,11 @@ func TestPostSessionHandlerSendBillingEntryFull(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(context.Background(), metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics)
 	postSessionHandler.SendBillingEntry(testBillingEntry())
 
 	assert.Equal(t, postSessionHandler.BillingBufferSize(), uint64(0))
 	assert.Equal(t, 1.0, metrics.BillingBufferFull.Value())
-}
-
-func TestPostSessionHandlerSendBillingEntry2Full(t *testing.T) {
-	metricsHandler := &metrics.LocalHandler{}
-	metrics, err := metrics.NewPostSessionMetrics(context.Background(), metricsHandler, "server_backend")
-	assert.NoError(t, err)
-
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, false, true, log.NewNopLogger(), metrics)
-	postSessionHandler.SendBillingEntry2(testBillingEntry2())
-
-	assert.Equal(t, postSessionHandler.Billing2BufferSize(), uint64(0))
-	assert.Equal(t, 1.0, metrics.Billing2BufferFull.Value())
 }
 
 func TestPostSessionHandlerSendBillingEntrySuccess(t *testing.T) {
@@ -314,23 +214,11 @@ func TestPostSessionHandlerSendBillingEntrySuccess(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(context.Background(), metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics)
 	postSessionHandler.SendBillingEntry(testBillingEntry())
 
 	assert.Equal(t, postSessionHandler.BillingBufferSize(), uint64(1))
 	assert.Equal(t, 1.0, metrics.BillingEntriesSent.Value())
-}
-
-func TestPostSessionHandlerSendBillingEntry2Success(t *testing.T) {
-	metricsHandler := &metrics.LocalHandler{}
-	metrics, err := metrics.NewPostSessionMetrics(context.Background(), metricsHandler, "server_backend")
-	assert.NoError(t, err)
-
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, false, true, log.NewNopLogger(), metrics)
-	postSessionHandler.SendBillingEntry2(testBillingEntry2())
-
-	assert.Equal(t, postSessionHandler.Billing2BufferSize(), uint64(1))
-	assert.Equal(t, 1.0, metrics.BillingEntries2Sent.Value())
 }
 
 func TestPostSessionHandlerSendVanityMetricsFull(t *testing.T) {
@@ -338,7 +226,7 @@ func TestPostSessionHandlerSendVanityMetricsFull(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(context.Background(), metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), metrics)
 	postSessionHandler.SendVanityMetric(testBillingEntry())
 
 	assert.Equal(t, postSessionHandler.VanityBufferSize(), uint64(0))
@@ -350,7 +238,7 @@ func TestPostSessionHandlerSendVanityMetricSuccess(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(context.Background(), metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), metrics)
 	postSessionHandler.SendVanityMetric(testBillingEntry())
 
 	assert.Equal(t, postSessionHandler.VanityBufferSize(), uint64(1))
@@ -362,7 +250,7 @@ func TestPostSessionHandlerTransmitVanityMetricsFailure(t *testing.T) {
 		calledChan: make(chan bool, 1),
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitVanityMetrics(context.Background(), 0, []byte("data"))
 
 	assert.Zero(t, bytes)
@@ -374,7 +262,7 @@ func TestPostSessionHandlerTransmitVanityMetricsMaxRetries(t *testing.T) {
 		retryCount: 11,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitVanityMetrics(context.Background(), 0, []byte("data"))
 
 	assert.Zero(t, bytes)
@@ -386,7 +274,7 @@ func TestPostSessionHandlerTransmitVanityMetricsRetriesSuccess(t *testing.T) {
 		retryCount: 5,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitVanityMetrics(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -396,7 +284,7 @@ func TestPostSessionHandlerTransmitVanityMetricsRetriesSuccess(t *testing.T) {
 func TestPostSessionHandlerTransmitVanityMetricsSuccess(t *testing.T) {
 	publisher := &retryPublisher{}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitVanityMetrics(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -412,7 +300,7 @@ func TestPostSessionHandlerTransmitVanityMetricsMultiplePublishersSuccess(t *tes
 		retryCount: 5,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher1, publisher2}, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, []pubsub.Publisher{publisher1, publisher2}, 10, true, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitVanityMetrics(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -424,7 +312,7 @@ func TestPostSessionHandlerSendPortalCountsFull(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(context.Background(), metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics)
 	postSessionHandler.SendPortalCounts(testCountData())
 
 	assert.Equal(t, postSessionHandler.PortalCountBufferSize(), uint64(0))
@@ -436,7 +324,7 @@ func TestPostSessionHandlerSendPortalCountsSuccess(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(context.Background(), metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics)
 	postSessionHandler.SendPortalCounts(testCountData())
 
 	assert.Equal(t, postSessionHandler.PortalCountBufferSize(), uint64(1))
@@ -448,7 +336,7 @@ func TestPostSessionHandlerSendPortalDataFull(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(context.Background(), metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics)
 	postSessionHandler.SendPortalData(testPortalData())
 
 	assert.Equal(t, postSessionHandler.PortalDataBufferSize(), uint64(0))
@@ -460,7 +348,7 @@ func TestPostSessionHandlerSendPortalDataSuccess(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(context.Background(), metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), metrics)
 	postSessionHandler.SendPortalData(testPortalData())
 
 	assert.Equal(t, postSessionHandler.PortalDataBufferSize(), uint64(1))
@@ -472,7 +360,7 @@ func TestPostSessionHandlerTransmitPortalDataFailure(t *testing.T) {
 		calledChan: make(chan bool, 1),
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
 	assert.Zero(t, bytes)
@@ -484,7 +372,7 @@ func TestPostSessionHandlerTransmitPortalDataMaxRetries(t *testing.T) {
 		retryCount: 11,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
 	assert.Zero(t, bytes)
@@ -496,7 +384,7 @@ func TestPostSessionHandlerTransmitPortalDataRetriesSuccess(t *testing.T) {
 		retryCount: 5,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -506,7 +394,7 @@ func TestPostSessionHandlerTransmitPortalDataRetriesSuccess(t *testing.T) {
 func TestPostSessionHandlerTransmitPortalDataSuccess(t *testing.T) {
 	publisher := &retryPublisher{}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -522,7 +410,7 @@ func TestPostSessionHandlerTransmitPortalDataMultiplePublishersSuccess(t *testin
 		retryCount: 5,
 	}
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher1, publisher2}, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 1000, []pubsub.Publisher{publisher1, publisher2}, 10, nil, 0, false, &billing.NoOpBiller{}, log.NewNopLogger(), &metrics.EmptyPostSessionMetrics)
 	bytes, err := postSessionHandler.TransmitPortalData(context.Background(), 0, []byte("data"))
 
 	assert.Equal(t, 4, bytes)
@@ -533,8 +421,7 @@ func TestPostSessionHandlerStartProcessingBillingFailure(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	biller := &badBiller{
-		calledChan:  make(chan bool, 1),
-		calledChan2: make(chan bool, 0),
+		calledChan: make(chan bool, 1),
 	}
 	publisher := &mockPublisher{}
 
@@ -542,7 +429,7 @@ func TestPostSessionHandlerStartProcessingBillingFailure(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(ctx, metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, log.NewNopLogger(), metrics)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -561,44 +448,11 @@ func TestPostSessionHandlerStartProcessingBillingFailure(t *testing.T) {
 	assert.Equal(t, 0.0, metrics.BillingEntriesFinished.Value())
 }
 
-func TestPostSessionHandlerStartProcessingBilling2Failure(t *testing.T) {
-	ctx, ctxCancelFunc := context.WithCancel(context.Background())
-
-	biller := &badBiller{
-		calledChan:  make(chan bool, 0),
-		calledChan2: make(chan bool, 1),
-	}
-	publisher := &mockPublisher{}
-
-	metricsHandler := &metrics.LocalHandler{}
-	metrics, err := metrics.NewPostSessionMetrics(ctx, metricsHandler, "server_backend")
-	assert.NoError(t, err)
-
-	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, &billing.NoOpBiller{}, biller, false, true, log.NewNopLogger(), metrics)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		postSessionHandler.StartProcessing(ctx)
-		wg.Done()
-	}()
-
-	postSessionHandler.SendBillingEntry2(testBillingEntry2())
-	<-biller.calledChan2
-
-	ctxCancelFunc()
-	wg.Wait()
-
-	assert.Equal(t, 1.0, metrics.Billing2Failure.Value())
-	assert.Equal(t, 0.0, metrics.BillingEntries2Finished.Value())
-}
-
 func TestPostSessionHandlerStartProcessingBillingSuccess(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	biller := &mockBiller{
-		calledChan:  make(chan bool, 1),
-		calledChan2: make(chan bool, 0),
+		calledChan: make(chan bool, 1),
 	}
 	publisher := &mockPublisher{}
 
@@ -606,7 +460,7 @@ func TestPostSessionHandlerStartProcessingBillingSuccess(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(ctx, metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, log.NewNopLogger(), metrics)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -625,43 +479,10 @@ func TestPostSessionHandlerStartProcessingBillingSuccess(t *testing.T) {
 	assert.Equal(t, 0.0, metrics.BillingFailure.Value())
 }
 
-func TestPostSessionHandlerStartProcessingBilling2Success(t *testing.T) {
-	ctx, ctxCancelFunc := context.WithCancel(context.Background())
-
-	biller := &mockBiller{
-		calledChan:  make(chan bool, 0),
-		calledChan2: make(chan bool, 1),
-	}
-	publisher := &mockPublisher{}
-
-	metricsHandler := &metrics.LocalHandler{}
-	metrics, err := metrics.NewPostSessionMetrics(ctx, metricsHandler, "server_backend")
-	assert.NoError(t, err)
-
-	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, &billing.NoOpBiller{}, biller, false, true, log.NewNopLogger(), metrics)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		postSessionHandler.StartProcessing(ctx)
-		wg.Done()
-	}()
-
-	postSessionHandler.SendBillingEntry2(testBillingEntry2())
-	<-biller.calledChan2
-
-	ctxCancelFunc()
-	wg.Wait()
-
-	assert.Equal(t, 1.0, metrics.BillingEntries2Finished.Value())
-	assert.Equal(t, 0.0, metrics.Billing2Failure.Value())
-}
-
 func TestPostSessionHandlerStartProcessingVanityTransmitFailure(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	biller := &mockBiller{}
-	biller2 := &mockBiller{}
 
 	portalPublisher := &mockPublisher{}
 	vanityPublisher := &badPublisher{
@@ -672,7 +493,7 @@ func TestPostSessionHandlerStartProcessingVanityTransmitFailure(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(ctx, metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{portalPublisher}, 0, []pubsub.Publisher{vanityPublisher}, 0, true, biller, biller2, true, true, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{portalPublisher}, 0, []pubsub.Publisher{vanityPublisher}, 0, true, biller, log.NewNopLogger(), metrics)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -696,7 +517,6 @@ func TestPostSessionHandlerStartProcessingVanitySuccess(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	biller := &mockBiller{}
-	biller2 := &mockBiller{}
 
 	portalPublisher := &mockPublisher{}
 	vanityPublisher := &mockPublisher{
@@ -707,7 +527,7 @@ func TestPostSessionHandlerStartProcessingVanitySuccess(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(ctx, metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{portalPublisher}, 0, []pubsub.Publisher{vanityPublisher}, 0, true, biller, biller2, true, true, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{portalPublisher}, 0, []pubsub.Publisher{vanityPublisher}, 0, true, biller, log.NewNopLogger(), metrics)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -731,8 +551,6 @@ func TestPostSessionHandlerStartProcessingPortalCountFailure(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	biller := &mockBiller{}
-	biller2 := &mockBiller{}
-
 	publisher := &badPublisher{
 		calledChan: make(chan bool, 1),
 	}
@@ -741,7 +559,7 @@ func TestPostSessionHandlerStartProcessingPortalCountFailure(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(ctx, metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, biller2, true, true, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, log.NewNopLogger(), metrics)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -764,8 +582,6 @@ func TestPostSessionHandlerStartProcessingPortalCountSuccess(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	biller := &mockBiller{}
-	biller2 := &mockBiller{}
-
 	publisher := &mockPublisher{
 		calledChan: make(chan bool, 1),
 	}
@@ -774,7 +590,7 @@ func TestPostSessionHandlerStartProcessingPortalCountSuccess(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(ctx, metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, biller2, true, true, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, log.NewNopLogger(), metrics)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -806,8 +622,6 @@ func TestPostSessionHandlerStartProcessingPortalDataFailure(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	biller := &mockBiller{}
-	biller2 := &mockBiller{}
-
 	publisher := &badPublisher{
 		calledChan: make(chan bool, 1),
 	}
@@ -816,7 +630,7 @@ func TestPostSessionHandlerStartProcessingPortalDataFailure(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(ctx, metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, biller2, true, true, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, log.NewNopLogger(), metrics)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -839,8 +653,6 @@ func TestPostSessionHandlerStartProcessingPortalDataSuccess(t *testing.T) {
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	biller := &mockBiller{}
-	biller2 := &mockBiller{}
-
 	publisher := &mockPublisher{
 		calledChan: make(chan bool, 1),
 	}
@@ -849,7 +661,7 @@ func TestPostSessionHandlerStartProcessingPortalDataSuccess(t *testing.T) {
 	metrics, err := metrics.NewPostSessionMetrics(ctx, metricsHandler, "server_backend")
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, biller2, true, true, log.NewNopLogger(), metrics)
+	postSessionHandler := transport.NewPostSessionHandler(1, 1000, []pubsub.Publisher{publisher}, 0, nil, 0, false, biller, log.NewNopLogger(), metrics)
 
 	var wg sync.WaitGroup
 	wg.Add(1)

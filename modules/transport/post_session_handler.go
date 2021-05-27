@@ -17,7 +17,6 @@ import (
 type PostSessionHandler struct {
 	numGoroutines              int
 	postSessionBillingChannel  chan *billing.BillingEntry
-	postSessionBilling2Channel chan *billing.BillingEntry2
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
 	vanityMetricChannel        chan vanity.VanityMetrics
@@ -29,21 +28,16 @@ type PostSessionHandler struct {
 	vanityPublishMaxRetries    int
 	useVanityMetrics           bool
 	biller                     billing.Biller
-	biller2                    billing.Biller
-	featureBilling             bool
-	featureBilling2            bool
 	logger                     log.Logger
 	metrics                    *metrics.PostSessionMetrics
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
-	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, useVanityMetrics bool, biller billing.Biller, biller2 billing.Biller,
-	featureBilling bool, featureBilling2 bool, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
+	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, useVanityMetrics bool, biller billing.Biller, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
 
 	return &PostSessionHandler{
 		numGoroutines:              numGoroutines,
 		postSessionBillingChannel:  make(chan *billing.BillingEntry, chanBufferSize),
-		postSessionBilling2Channel: make(chan *billing.BillingEntry2, chanBufferSize),
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
 		vanityMetricChannel:        make(chan vanity.VanityMetrics, chanBufferSize),
@@ -53,9 +47,6 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 		vanityPublishMaxRetries:    vanityPublishMaxRetries,
 		useVanityMetrics:           useVanityMetrics,
 		biller:                     biller,
-		biller2:                    biller2,
-		featureBilling:             featureBilling,
-		featureBilling2:            featureBilling2,
 		logger:                     logger,
 		metrics:                    metrics,
 	}
@@ -64,54 +55,26 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 	var wg sync.WaitGroup
 
-	if post.featureBilling {
+	for i := 0; i < post.numGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 
-		for i := 0; i < post.numGoroutines; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				for {
-					select {
-					case billingEntry := <-post.postSessionBillingChannel:
-						if err := post.biller.Bill(ctx, billingEntry); err != nil {
-							level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
-							post.metrics.BillingFailure.Add(1)
-							continue
-						}
-
-						post.metrics.BillingEntriesFinished.Add(1)
-					case <-ctx.Done():
-						return
+			for {
+				select {
+				case billingEntry := <-post.postSessionBillingChannel:
+					if err := post.biller.Bill(ctx, billingEntry); err != nil {
+						level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
+						post.metrics.BillingFailure.Add(1)
+						continue
 					}
+
+					post.metrics.BillingEntriesFinished.Add(1)
+				case <-ctx.Done():
+					return
 				}
-			}()
-		}
-	}
-
-	if post.featureBilling2 {
-
-		for i := 0; i < post.numGoroutines; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				for {
-					select {
-					case billingEntry := <-post.postSessionBilling2Channel:
-						if err := post.biller2.Bill2(ctx, billingEntry); err != nil {
-							level.Error(post.logger).Log("msg", "could not submit billing entry 2", "err", err)
-							post.metrics.Billing2Failure.Add(1)
-							continue
-						}
-
-						post.metrics.BillingEntries2Finished.Add(1)
-					case <-ctx.Done():
-						return
-					}
-				}
-			}()
-		}
+			}
+		}()
 	}
 
 	for i := 0; i < post.numGoroutines; i++ {
@@ -233,16 +196,6 @@ func (post *PostSessionHandler) SendBillingEntry(billingEntry *billing.BillingEn
 
 }
 
-func (post *PostSessionHandler) SendBillingEntry2(billingEntry *billing.BillingEntry2) {
-	select {
-	case post.postSessionBilling2Channel <- billingEntry:
-		post.metrics.BillingEntries2Sent.Add(1)
-	default:
-		post.metrics.Billing2BufferFull.Add(1)
-	}
-
-}
-
 func (post *PostSessionHandler) SendPortalCounts(sessionPortalCounts *SessionCountData) {
 	select {
 	case post.sessionPortalCountsChannel <- sessionPortalCounts:
@@ -276,10 +229,6 @@ func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEn
 
 func (post *PostSessionHandler) BillingBufferSize() uint64 {
 	return uint64(len(post.postSessionBillingChannel))
-}
-
-func (post *PostSessionHandler) Billing2BufferSize() uint64 {
-	return uint64(len(post.postSessionBilling2Channel))
 }
 
 func (post *PostSessionHandler) PortalCountBufferSize() uint64 {
