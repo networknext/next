@@ -291,41 +291,6 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 		return nil, err
 	}
 
-	m.BillingMetrics.Entries2Received = &EmptyCounter{}
-
-	m.BillingMetrics.Entries2Submitted, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Server Backend Billing Entries 2 Submitted",
-		ServiceName: serviceName,
-		ID:          "billing.entries_submitted_2",
-		Unit:        "entries",
-		Description: "The number of billing entries 2 the server_backend has submitted to be published",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingMetrics.Entries2Queued, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Server Backend Billing Entries 2 Queued",
-		ServiceName: serviceName,
-		ID:          "billing.entries_queued_2",
-		Unit:        "entries",
-		Description: "The number of billing entries 2 the server_backend has queued waiting to be published",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingMetrics.Entries2Flushed, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Server Backend Billing Entries 2 Flushed",
-		ServiceName: serviceName,
-		ID:          "billing.entries_flushed_2",
-		Unit:        "entries",
-		Description: "The number of billing entries 2 the server_backend has flushed after publishing",
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	m.BillingMetrics.ErrorMetrics.BillingPublishFailure, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Server Backend Billing Publish Failure",
 		ServiceName: serviceName,
@@ -340,21 +305,6 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 	m.BillingMetrics.ErrorMetrics.BillingBatchedReadFailure = &EmptyCounter{}
 	m.BillingMetrics.ErrorMetrics.BillingReadFailure = &EmptyCounter{}
 	m.BillingMetrics.ErrorMetrics.BillingWriteFailure = &EmptyCounter{}
-
-	m.BillingMetrics.ErrorMetrics.Billing2PublishFailure, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Server Backend Billing 2 Publish Failure",
-		ServiceName: serviceName,
-		ID:          "billing.publish_failure_2",
-		Unit:        "entries",
-		Description: "The number of billing entries 2 the server_backend has failed to publish",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingMetrics.ErrorMetrics.Billing2BatchedReadFailure = &EmptyCounter{}
-	m.BillingMetrics.ErrorMetrics.Billing2ReadFailure = &EmptyCounter{}
-	m.BillingMetrics.ErrorMetrics.Billing2WriteFailure = &EmptyCounter{}
 
 	m.BillingMetrics.BillingEntrySize, err = handler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Billing Entry Size",
@@ -373,28 +323,6 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 		ID:          "pubsub.billing.entry.size",
 		Unit:        "bytes",
 		Description: "The size of a pubsub billing entry",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingMetrics.BillingEntry2Size, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Billing Entry Size",
-		ServiceName: "billing",
-		ID:          "billing.entry.2.size",
-		Unit:        "bytes",
-		Description: "The size of a billing entry 2",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingMetrics.PubsubBillingEntry2Size, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Pubsub Billing Entry 2 Size",
-		ServiceName: "billing",
-		ID:          "pubsub.billing.entry.2.size",
-		Unit:        "bytes",
-		Description: "The size of a pubsub billing entry 2",
 	})
 	if err != nil {
 		return nil, err
