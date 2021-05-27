@@ -664,7 +664,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	fmt.Printf("OpsService.Relays() len(s.Storage.Relays): %d\n", len(relayList))
 
 	for _, r := range s.Storage.Relays() {
-		fmt.Printf("OpsService.Relays(): r.Name: %s\n", r.Name)
 		relay := relay{
 			ID:                  r.ID,
 			HexID:               fmt.Sprintf("%016x", r.ID),
