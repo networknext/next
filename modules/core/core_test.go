@@ -2383,6 +2383,8 @@ type TestData struct {
 	currentRouteRelays    [MaxRelaysPerRoute]int32
 
 	sliceNumber int32
+
+	realPacketLoss float32
 }
 
 func NewTestData(env *TestEnvironment) *TestData {
@@ -2425,6 +2427,7 @@ func (test *TestData) TakeNetworkNext() bool {
 		&test.routeDiversity,
 		&test.debug,
 		test.sliceNumber,
+		test.realPacketLoss,
 	)
 }
 
@@ -3199,6 +3202,281 @@ func TestTakeNetworkNext_ReducePacketLoss_AfterMinSliceNumber(t *testing.T) {
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 	assert.Equal(t, int32(1), test.routeDiversity)
+}
+
+func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_3_PLLessThan_TakeNext(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	test := NewTestData(env)
+
+	// Won't go next because of latency
+	test.directLatency = int32(20)
+	test.routeShader.AcceptableLatency = 100
+
+	// Won't go next because of packet Loss
+	test.directPacketLoss = float32(5.0)
+	test.routeShader.AcceptablePacketLoss = float32(20)
+
+	// Will go next after 3 slices of sustained packet loss
+	test.realPacketLoss = float32(5.0)
+	test.routeShader.PacketLossSustained = float32(2.0)
+
+	test.sourceRelays = []int32{0}
+	test.sourceRelayCosts = []int32{10}
+
+	test.destRelays = []int32{1}
+
+	test.routeState.UserID = 100
+
+	result := test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
+
+	result = test.TakeNetworkNext()
+
+	assert.True(t, result)
+	assert.Equal(t, int32(3), test.routeState.PLSustainedCounter)
+}
+
+func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_3_PLEqual_TakeNext(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	test := NewTestData(env)
+
+	// Won't go next because of latency
+	test.directLatency = int32(20)
+	test.routeShader.AcceptableLatency = 100
+
+	// Won't go next because of packet Loss
+	test.directPacketLoss = float32(5.0)
+	test.routeShader.AcceptablePacketLoss = float32(20)
+
+	// Will go next after 3 slices of sustained packet loss
+	test.realPacketLoss = float32(5.0)
+	test.routeShader.PacketLossSustained = float32(5.0)
+
+	test.sourceRelays = []int32{0}
+	test.sourceRelayCosts = []int32{10}
+
+	test.destRelays = []int32{1}
+
+	test.routeState.UserID = 100
+
+	result := test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
+
+	result = test.TakeNetworkNext()
+
+	assert.True(t, result)
+	assert.Equal(t, int32(3), test.routeState.PLSustainedCounter)
+}
+
+func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_3_PLGreaterThan_Direct(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	test := NewTestData(env)
+
+	// Won't go next because of latency
+	test.directLatency = int32(20)
+	test.routeShader.AcceptableLatency = 100
+
+	// Won't go next because of packet Loss
+	test.directPacketLoss = float32(5.0)
+	test.routeShader.AcceptablePacketLoss = float32(20)
+
+	// Won't go next after 3 slices of sustained packet loss
+	test.realPacketLoss = float32(5.0)
+	test.routeShader.PacketLossSustained = float32(10.0)
+
+	test.sourceRelays = []int32{0}
+	test.sourceRelayCosts = []int32{10}
+
+	test.destRelays = []int32{1}
+
+	test.routeState.UserID = 100
+
+	result := test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+}
+
+func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_ResetCount(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	test := NewTestData(env)
+
+	// Won't go next because of latency
+	test.directLatency = int32(20)
+	test.routeShader.AcceptableLatency = 100
+
+	// Won't go next because of packet Loss
+	test.directPacketLoss = float32(5.0)
+	test.routeShader.AcceptablePacketLoss = float32(20)
+
+	// Will go next after 3 slices of sustained packet loss
+	test.realPacketLoss = float32(5.0)
+	test.routeShader.PacketLossSustained = float32(2.0)
+
+	test.sourceRelays = []int32{0}
+	test.sourceRelayCosts = []int32{10}
+
+	test.destRelays = []int32{1}
+
+	test.routeState.UserID = 100
+
+	result := test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
+
+	test.realPacketLoss = 1
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+}
+
+func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_Mix(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
+	test := NewTestData(env)
+
+	// Won't go next because of latency
+	test.directLatency = int32(20)
+	test.routeShader.AcceptableLatency = 100
+
+	// Won't go next because of packet Loss
+	test.directPacketLoss = float32(5.0)
+	test.routeShader.AcceptablePacketLoss = float32(20)
+
+	// Will go next after 3 slices of sustained packet loss
+	test.realPacketLoss = float32(5.0)
+	test.routeShader.PacketLossSustained = float32(2.0)
+
+	test.sourceRelays = []int32{0}
+	test.sourceRelayCosts = []int32{10}
+
+	test.destRelays = []int32{1}
+
+	test.routeState.UserID = 100
+
+	result := test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+
+	test.realPacketLoss = 1
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+
+	test.realPacketLoss = 5
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
+
+	test.realPacketLoss = 1
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
+
+	test.realPacketLoss = 5
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(1), test.routeState.PLSustainedCounter)
+
+	result = test.TakeNetworkNext()
+
+	assert.False(t, result)
+	assert.Equal(t, int32(2), test.routeState.PLSustainedCounter)
+
+	result = test.TakeNetworkNext()
+
+	assert.True(t, result)
+	assert.Equal(t, int32(3), test.routeState.PLSustainedCounter)
 }
 
 // -----------------------------------------------------------------------------
