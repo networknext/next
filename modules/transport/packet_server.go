@@ -768,10 +768,10 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	}
 
 	// IMPORTANT: Remove this in the future. We need this to stem fall back to directs 05-27-21
-	var dummyBits int32 = 0
 	// Done
 
 	if sessionData.Version >= 12 {
+		dummyBits := int32(0)
 		stream.SerializeInteger(&dummyBits, 0, 3)
 	}
 
