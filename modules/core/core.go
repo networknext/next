@@ -1022,6 +1022,14 @@ func RouteExists(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [Ma
 
 func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, debug *string) int32 {
 
+	// IMPORTANT: This shouldn't happen. Triaging...
+	if len(routeRelays) == 0 {
+		if debug != nil {
+			*debug += "no route relays?\n"
+		}
+		return -1
+	}
+
 	// IMPORTANT: This can happen. Make sure we handle it without exploding
 	if len(routeMatrix) == 0 {
 		if debug != nil {
