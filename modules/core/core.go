@@ -1105,7 +1105,6 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 	for i := range sourceRelays {
 		// IMPORTANT: RTT = 255 signals the source relay is unroutable
 		if sourceRelayCost[i] >= 255 {
-			Debug("Source Relay is unroutable!")
 			continue
 		}
 		firstRouteFromThisRelay := true
@@ -1651,7 +1650,7 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 	return true
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32, realPacketLoss float32) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
 
 	if EarlyOutDirect(routeShader, routeState) {
 		return false
@@ -1689,13 +1688,13 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// Check if the session is seeing sustained packet loss and increment/reset the counter
 
-	if realPacketLoss >= routeShader.PacketLossSustained {
+	if directPacketLoss >= routeShader.PacketLossSustained {
 		if routeState.PLSustainedCounter < 3 {
 			routeState.PLSustainedCounter = routeState.PLSustainedCounter + 1
 		}
 	}
 
-	if realPacketLoss < routeShader.PacketLossSustained {
+	if directPacketLoss < routeShader.PacketLossSustained {
 		routeState.PLSustainedCounter = 0
 	}
 

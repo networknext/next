@@ -2427,7 +2427,6 @@ func (test *TestData) TakeNetworkNext() bool {
 		&test.routeDiversity,
 		&test.debug,
 		test.sliceNumber,
-		test.realPacketLoss,
 	)
 }
 
@@ -3204,7 +3203,7 @@ func TestTakeNetworkNext_ReducePacketLoss_AfterMinSliceNumber(t *testing.T) {
 	assert.Equal(t, int32(1), test.routeDiversity)
 }
 
-func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_3_PLLessThan_TakeNext(t *testing.T) {
+func TestTakeNetworkNext_ReducePacketLoss_PLBelowSustained(t *testing.T) {
 
 	t.Parallel()
 
@@ -3252,7 +3251,7 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_3_PLLessThan_TakeNext(t
 	assert.Equal(t, int32(3), test.routeState.PLSustainedCounter)
 }
 
-func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_3_PLEqual_TakeNext(t *testing.T) {
+func TestTakeNetworkNext_ReducePacketLoss_PLEqualSustained(t *testing.T) {
 
 	t.Parallel()
 
@@ -3300,7 +3299,7 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_3_PLEqual_TakeNext(t *t
 	assert.Equal(t, int32(3), test.routeState.PLSustainedCounter)
 }
 
-func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_3_PLGreaterThan_Direct(t *testing.T) {
+func TestTakeNetworkNext_ReducePacketLoss_PLAboveSustained(t *testing.T) {
 
 	t.Parallel()
 
@@ -3398,7 +3397,7 @@ func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_ResetCount(t *testing.T
 	assert.Equal(t, int32(0), test.routeState.PLSustainedCounter)
 }
 
-func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_Mix(t *testing.T) {
+func TestTakeNetworkNext_ReducePacketLoss_SustainedCount_Mix_Next(t *testing.T) {
 
 	t.Parallel()
 
