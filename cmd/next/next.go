@@ -2579,7 +2579,7 @@ must be one of the following and is case-sensitive:
   BandwidthEnvelopeUpKbps   integer
   BandwidthEnvelopeDownKbps integer
   MaxRTT                    integer
-	PacketLossSustained				float
+	PacketLossSustained       float
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.
