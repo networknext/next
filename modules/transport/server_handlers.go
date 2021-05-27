@@ -997,7 +997,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, state.nearRelayIndices[:], state.nearRelayRTTs[:], state.destRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.routeDiversity, state.debug, sliceNumber) {
+		if core.MakeRouteDecision_TakeNetworkNext(state.routeMatrix.RouteEntries, &state.buyer.RouteShader, &state.output.RouteState, multipathVetoMap, &state.buyer.InternalConfig, int32(state.packet.DirectRTT), state.realPacketLoss, state.nearRelayIndices[:], state.nearRelayRTTs[:], state.destRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.routeDiversity, state.debug, sliceNumber, state.realPacketLoss) {
 			BuildNextTokens(&state.output, state.database, &state.buyer, &state.packet, routeNumRelays, routeRelays[:routeNumRelays], state.routeMatrix.RelayIDs, state.routerPrivateKey, &state.response)
 		}
 

@@ -1117,11 +1117,8 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			}
 			index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
 			entry := &routeMatrix[index]
-			Debug("Number of routes in entry: %v", int(entry.NumRoutes))
 			for k := 0; k < int(entry.NumRoutes); k++ {
 				cost := entry.RouteCost[k] + sourceRelayCost[i]
-				Debug("route cost: %v", cost)
-				Debug("max cost: %v", cost)
 				if cost > maxCost {
 					break
 				}
@@ -1471,6 +1468,7 @@ type RouteShader struct {
 	BandwidthEnvelopeUpKbps   int32
 	BandwidthEnvelopeDownKbps int32
 	BannedUsers               map[uint64]bool
+	PacketLossSustained       float32
 }
 
 func NewRouteShader() RouteShader {
@@ -1489,6 +1487,7 @@ func NewRouteShader() RouteShader {
 		BandwidthEnvelopeUpKbps:   1024,
 		BandwidthEnvelopeDownKbps: 1024,
 		BannedUsers:               make(map[uint64]bool),
+		PacketLossSustained:       100,
 	}
 }
 
@@ -1532,6 +1531,7 @@ type RouteState struct {
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
 	MultipathRestricted bool
+	PLSustainedCounter  int32
 }
 
 type InternalConfig struct {
@@ -1651,7 +1651,7 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 	return true
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32, realPacketLoss float32) bool {
 
 	if EarlyOutDirect(routeShader, routeState) {
 		return false
@@ -1687,8 +1687,20 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// should we try to reduce packet loss?
 
+	// Check if the session is seeing sustained packet loss and increment/reset the counter
+
+	if realPacketLoss >= routeShader.PacketLossSustained {
+		if routeState.PLSustainedCounter < 3 {
+			routeState.PLSustainedCounter = routeState.PLSustainedCounter + 1
+		}
+	}
+
+	if realPacketLoss < routeShader.PacketLossSustained {
+		routeState.PLSustainedCounter = 0
+	}
+
 	reducePacketLoss := false
-	if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss && sliceNumber >= internal.ReducePacketLossMinSliceNumber {
+	if routeShader.ReducePacketLoss && ((directPacketLoss > routeShader.AcceptablePacketLoss && sliceNumber >= internal.ReducePacketLossMinSliceNumber) || routeState.PLSustainedCounter == 3) {
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}
