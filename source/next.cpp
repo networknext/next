@@ -10613,18 +10613,25 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     // check against multiplay supplier mappings
 
     bool found = false;
-    char buffer[10*1024];
+    char multiplay_line[1024];
+    char multiplay_buffer[64*1024];
+    multiplay_buffer[0] = '\0';
     file = popen( "curl https://storage.googleapis.com/network-next-sdk/multiplay.txt --max-time 5 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
     }
-    while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
+    while ( fgets( multiplay_line, sizeof(multiplay_line), file ) != NULL ) 
     {
+        strcat( multiplay_buffer, multiplay_line );
+
+        if ( found )
+            continue;
+
         const char * separators = ",\n\r\n";
 
-        char * substring = strtok( buffer, separators );
+        char * substring = strtok( multiplay_line, separators );
         if ( substring == NULL )
         {
             continue;
@@ -10640,7 +10647,6 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
         {
             sprintf( output, "%s.%s", supplier, city );
             found = true;
-            break;
         }
     }
     pclose( file );
@@ -10650,6 +10656,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     if ( !found )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "could not autodetect multiplay datacenter :(" );
+        printf( "\nmultiplay.txt:\n\n%s\nwhois:\n%s\n\n", multiplay_buffer, whois_buffer );
         return false;
     }
 
