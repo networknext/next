@@ -607,7 +607,6 @@ type SessionData struct {
 	PrevPacketsLostServerToClient uint64
 	HoldNearRelays                bool
 	HoldNearRelayRTT              [core.MaxNearRelays]int32
-	WroteSummary                  bool
 }
 
 func UnmarshalSessionData(sessionData *SessionData, data []byte) error {
@@ -768,8 +767,11 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		}
 	}
 
+	// IMPORTANT: Remove this in the future. We need this to stem fall back to directs 05-27-21
+	// Done
+
 	if sessionData.Version >= 12 {
-		stream.SerializeBool(&sessionData.WroteSummary)
+		stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
 	}
 
 	// IMPORTANT: ADD NEW FIELDS BELOW HERE ONLY.
