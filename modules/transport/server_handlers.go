@@ -675,6 +675,7 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 	*/
 
 	state.output = state.input
+	state.output.Initial = false
 	state.output.SliceNumber += 1
 	state.output.ExpireTimestamp += billing.BillingSliceSeconds
 
