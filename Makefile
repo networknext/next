@@ -339,7 +339,7 @@ dev-server: build-sdk build-server  ## runs a local server
 
 .PHONY: dev-portal
 dev-portal: build-portal-local ## runs a local portal
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist RELAY_FRONTEND=http://localhost:30005 ./dist/portal
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist RELAY_FRONTEND=127.0.0.1:30005 ./dist/portal
 
 .PHONY: dev-beacon
 dev-beacon: build-beacon ## runs a local beacon

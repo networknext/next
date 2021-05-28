@@ -350,6 +350,7 @@ type routeShader struct {
 	BandwidthEnvelopeUpKbps   int32
 	BandwidthEnvelopeDownKbps int32
 	BuyerID                   string
+	PacketLossSustained       float32
 }
 
 type buyer struct {
@@ -1812,6 +1813,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
 								BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 								BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+								PacketLossSustained:       float64(100),
 							})
 
 							return nil
@@ -2577,6 +2579,7 @@ must be one of the following and is case-sensitive:
   BandwidthEnvelopeUpKbps   integer
   BandwidthEnvelopeDownKbps integer
   MaxRTT                    integer
+  PacketLossSustained       float
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.
