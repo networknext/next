@@ -1,11 +1,15 @@
 package transport_test
 
 import (
+	"bytes"
+	"context"
+	"encoding/binary"
 	"net"
 	"testing"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/stretchr/testify/assert"
@@ -70,3 +74,229 @@ func TestGetRouteAddressesAndPublicKeys(t *testing.T) {
 }
 
 // todo: there should be a test here that verifies correct behavior with private relay addresses
+
+func TestServerInitHandlerFunc_Init_BuyerNotFound(t *testing.T) {
+	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
+	assert.NoError(t, err)
+
+	publicKey = publicKey[8:]
+	privateKey = privateKey[8:]
+
+	buyerID := binary.LittleEndian.Uint64(publicKey[:8])
+
+	databaseWrapper := routing.CreateEmptyDatabaseBinWrapper()
+
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestPacket := transport.ServerInitRequestPacket{
+		Version:        transport.SDKVersion{4, 0, 10},
+		BuyerID:        buyerID,
+		DatacenterID:   crypto.HashID("datacenter.name"),
+		DatacenterName: "datacenter.name",
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	// We need to add the packet header (packet type + 8 hash bytes) in order to get the correct signature
+	requestDataHeader := append([]byte{transport.PacketTypeServerInitRequest}, make([]byte, crypto.PacketHashSize)...)
+	requestData = append(requestDataHeader, requestData...)
+	requestData = crypto.SignPacket(privateKey, requestData)
+
+	// Once we have the signature, we need to take off the header before passing to the handler
+	requestData = requestData[1+crypto.PacketHashSize:]
+
+	getDatabase := func() *routing.DatabaseBinWrapper {
+		return databaseWrapper
+	}
+
+	handler := transport.ServerInitHandlerFunc(getDatabase, metrics.ServerInitMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.ServerInitResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
+	assert.Equal(t, uint32(transport.InitResponseUnknownBuyer), responsePacket.Response)
+
+	assert.Equal(t, float64(1), metrics.ServerInitMetrics.BuyerNotFound.Value())
+}
+
+func TestServerInitHandlerFunc_Init_BuyerNotLive(t *testing.T) {
+	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
+	assert.NoError(t, err)
+
+	publicKey = publicKey[8:]
+	privateKey = privateKey[8:]
+
+	buyerID := binary.LittleEndian.Uint64(publicKey[:8])
+
+	databaseWrapper := routing.CreateEmptyDatabaseBinWrapper()
+
+	databaseWrapper.BuyerMap[buyerID] = routing.Buyer{
+		ID:        buyerID,
+		PublicKey: publicKey,
+		Live:      false,
+	}
+
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestPacket := transport.ServerInitRequestPacket{
+		Version:        transport.SDKVersion{4, 0, 10},
+		BuyerID:        buyerID,
+		DatacenterID:   crypto.HashID("datacenter.name"),
+		DatacenterName: "datacenter.name",
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	// We need to add the packet header (packet type + 8 hash bytes) in order to get the correct signature
+	requestDataHeader := append([]byte{transport.PacketTypeServerInitRequest}, make([]byte, crypto.PacketHashSize)...)
+	requestData = append(requestDataHeader, requestData...)
+	requestData = crypto.SignPacket(privateKey, requestData)
+
+	// Once we have the signature, we need to take off the header before passing to the handler
+	requestData = requestData[1+crypto.PacketHashSize:]
+
+	getDatabase := func() *routing.DatabaseBinWrapper {
+		return databaseWrapper
+	}
+
+	handler := transport.ServerInitHandlerFunc(getDatabase, metrics.ServerInitMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.ServerInitResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
+	assert.Equal(t, uint32(transport.InitResponseBuyerNotActive), responsePacket.Response)
+
+	assert.Equal(t, float64(1), metrics.ServerInitMetrics.BuyerNotActive.Value())
+}
+
+func TestServerInitHandlerFunc_Init_SDKToOld(t *testing.T) {
+	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
+	assert.NoError(t, err)
+
+	publicKey = publicKey[8:]
+	privateKey = privateKey[8:]
+
+	buyerID := binary.LittleEndian.Uint64(publicKey[:8])
+
+	databaseWrapper := routing.CreateEmptyDatabaseBinWrapper()
+
+	databaseWrapper.BuyerMap[buyerID] = routing.Buyer{
+		ID:        buyerID,
+		PublicKey: publicKey,
+		Live:      true,
+	}
+
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestPacket := transport.ServerInitRequestPacket{
+		Version:        transport.SDKVersion{3, 0, 0},
+		BuyerID:        buyerID,
+		DatacenterID:   crypto.HashID("datacenter.name"),
+		DatacenterName: "datacenter.name",
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	// We need to add the packet header (packet type + 8 hash bytes) in order to get the correct signature
+	requestDataHeader := append([]byte{transport.PacketTypeServerInitRequest}, make([]byte, crypto.PacketHashSize)...)
+	requestData = append(requestDataHeader, requestData...)
+	requestData = crypto.SignPacket(privateKey, requestData)
+
+	// Once we have the signature, we need to take off the header before passing to the handler
+	requestData = requestData[1+crypto.PacketHashSize:]
+
+	getDatabase := func() *routing.DatabaseBinWrapper {
+		return databaseWrapper
+	}
+
+	handler := transport.ServerInitHandlerFunc(getDatabase, metrics.ServerInitMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.ServerInitResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
+	assert.Equal(t, uint32(transport.InitResponseOldSDKVersion), responsePacket.Response)
+
+	assert.Equal(t, float64(1), metrics.ServerInitMetrics.SDKTooOld.Value())
+}
+
+func TestServerInitHandlerFunc_Init_Success_DatacenterNotFound(t *testing.T) {
+	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
+	assert.NoError(t, err)
+
+	publicKey = publicKey[8:]
+	privateKey = privateKey[8:]
+
+	buyerID := binary.LittleEndian.Uint64(publicKey[:8])
+
+	databaseWrapper := routing.CreateEmptyDatabaseBinWrapper()
+
+	databaseWrapper.BuyerMap[buyerID] = routing.Buyer{
+		ID:        buyerID,
+		PublicKey: publicKey,
+		Live:      true,
+	}
+
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestPacket := transport.ServerInitRequestPacket{
+		Version:        transport.SDKVersion{4, 0, 10},
+		BuyerID:        buyerID,
+		DatacenterID:   crypto.HashID("datacenter.name"),
+		DatacenterName: "datacenter.name",
+	}
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(t, err)
+
+	// We need to add the packet header (packet type + 8 hash bytes) in order to get the correct signature
+	requestDataHeader := append([]byte{transport.PacketTypeServerInitRequest}, make([]byte, crypto.PacketHashSize)...)
+	requestData = append(requestDataHeader, requestData...)
+	requestData = crypto.SignPacket(privateKey, requestData)
+
+	// Once we have the signature, we need to take off the header before passing to the handler
+	requestData = requestData[1+crypto.PacketHashSize:]
+
+	getDatabase := func() *routing.DatabaseBinWrapper {
+		return databaseWrapper
+	}
+
+	handler := transport.ServerInitHandlerFunc(getDatabase, metrics.ServerInitMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.ServerInitResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, requestPacket.RequestID, responsePacket.RequestID)
+	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
+
+	assert.Equal(t, float64(1), metrics.ServerInitMetrics.DatacenterNotFound.Value())
+}

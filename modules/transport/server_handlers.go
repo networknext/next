@@ -526,7 +526,7 @@ type SessionHandlerState struct {
 	*/
 }
 
-func sessionPre(state *SessionHandlerState) bool {
+func SessionPre(state *SessionHandlerState) bool {
 
 	var exists bool
 	state.buyer, exists = state.database.BuyerMap[state.packet.BuyerID]
@@ -607,7 +607,7 @@ func sessionPre(state *SessionHandlerState) bool {
 	return false
 }
 
-func sessionUpdateNewSession(state *SessionHandlerState) {
+func SessionUpdateNewSession(state *SessionHandlerState) {
 
 	core.Debug("new session")
 
@@ -632,7 +632,7 @@ func sessionUpdateNewSession(state *SessionHandlerState) {
 	state.input = state.output
 }
 
-func sessionUpdateExistingSession(state *SessionHandlerState) {
+func SessionUpdateExistingSession(state *SessionHandlerState) {
 
 	core.Debug("existing session")
 
@@ -735,7 +735,7 @@ func sessionUpdateExistingSession(state *SessionHandlerState) {
 	}
 }
 
-func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
+func SessionHandleFallbackToDirect(state *SessionHandlerState) bool {
 
 	/*
 		Fallback to direct is a state where the SDK has met some fatal error condition.
@@ -824,7 +824,7 @@ func sessionHandleFallbackToDirect(state *SessionHandlerState) bool {
 	return false
 }
 
-func sessionGetNearRelays(state *SessionHandlerState) bool {
+func SessionGetNearRelays(state *SessionHandlerState) bool {
 
 	/*
 		This function selects up to 32 near relays for the session,
@@ -866,7 +866,7 @@ func sessionGetNearRelays(state *SessionHandlerState) bool {
 	return true
 }
 
-func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
+func SessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 	/*
 		This function is called once every seconds for all slices
@@ -954,13 +954,13 @@ func sessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		}
 	}
 
-	sessionFilterNearRelays(state) // IMPORTANT: Reduce % of sessions that run near relay pings for large customers
+	SessionFilterNearRelays(state) // IMPORTANT: Reduce % of sessions that run near relay pings for large customers
 
 	return true
 
 }
 
-func sessionFilterNearRelays(state *SessionHandlerState) {
+func SessionFilterNearRelays(state *SessionHandlerState) {
 
 	/*
 		Reduce the % of sessions running near relay pings for large customers.
@@ -997,7 +997,7 @@ func sessionFilterNearRelays(state *SessionHandlerState) {
 	}
 }
 
-func sessionMakeRouteDecision(state *SessionHandlerState) {
+func SessionMakeRouteDecision(state *SessionHandlerState) {
 
 	// todo: why would we copy such a potentially large map here? really bad idea...
 	// multipathVetoMap := multipathVetoHandler.GetMapCopy(buyer.CompanyCode)
@@ -1135,7 +1135,7 @@ func sessionMakeRouteDecision(state *SessionHandlerState) {
 	}
 }
 
-func sessionPost(state *SessionHandlerState) {
+func SessionPost(state *SessionHandlerState) {
 
 	/*
 		If the buyer doesn't exist, or the signature check failed,
@@ -1156,7 +1156,7 @@ func sessionPost(state *SessionHandlerState) {
 	*/
 
 	if state.packet.SliceNumber == 0 {
-		sessionGetNearRelays(state)
+		SessionGetNearRelays(state)
 		core.Debug("first slice always goes direct")
 	}
 
@@ -1211,7 +1211,7 @@ func sessionPost(state *SessionHandlerState) {
 		Write the session response packet and send it back to the caller.
 	*/
 
-	if err := writeSessionResponse(state.writer, &state.response, &state.output, state.metrics); err != nil {
+	if err := WriteSessionResponse(state.writer, &state.response, &state.output, state.metrics); err != nil {
 		core.Debug("failed to write session update response: %s", err)
 		state.metrics.WriteResponseFailure.Add(1)
 		return
@@ -1243,20 +1243,20 @@ func sessionPost(state *SessionHandlerState) {
 		Build route relay data (for portal, billing etc...)
 	*/
 
-	buildPostRouteRelayData(state)
+	BuildPostRouteRelayData(state)
 
 	/*
 		Build post near relay data (for portal, billing etc...)
 	*/
 
-	buildPostNearRelayData(state)
+	BuildPostNearRelayData(state)
 
 	/*
 		Build billing data and send it to the billing system via pubsub (non-realtime path)
 	*/
 
 	if state.postSessionHandler.featureBilling && !state.packet.ClientPingTimedOut {
-		billingEntry := buildBillingEntry(state)
+		billingEntry := BuildBillingEntry(state)
 
 		state.postSessionHandler.SendBillingEntry(billingEntry)
 
@@ -1272,7 +1272,7 @@ func sessionPost(state *SessionHandlerState) {
 	}
 
 	if state.postSessionHandler.featureBilling2 && !state.input.WroteSummary {
-		billingEntry2 := buildBillingEntry2(state)
+		billingEntry2 := BuildBillingEntry2(state)
 
 		state.postSessionHandler.SendBillingEntry2(billingEntry2)
 	}
@@ -1292,14 +1292,14 @@ func sessionPost(state *SessionHandlerState) {
 		Send data to the portal (real-time path)
 	*/
 
-	portalData := buildPortalData(state)
+	portalData := BuildPortalData(state)
 
 	if portalData.Meta.NextRTT != 0 || portalData.Meta.DirectRTT != 0 {
 		state.postSessionHandler.SendPortalData(portalData)
 	}
 }
 
-func buildPostRouteRelayData(state *SessionHandlerState) {
+func BuildPostRouteRelayData(state *SessionHandlerState) {
 
 	/*
 		Build information about the relays involved in the current route.
@@ -1316,7 +1316,7 @@ func buildPostRouteRelayData(state *SessionHandlerState) {
 	}
 }
 
-func buildPostNearRelayData(state *SessionHandlerState) {
+func BuildPostNearRelayData(state *SessionHandlerState) {
 
 	state.postNearRelayCount = int(state.packet.NumNearRelays)
 
@@ -1350,7 +1350,7 @@ func buildPostNearRelayData(state *SessionHandlerState) {
 	}
 }
 
-func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
+func BuildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 
 	/*
 		Each slice is 10 seconds long except for the first slice with a given network next route,
@@ -1532,7 +1532,7 @@ func buildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 	return &billingEntry
 }
 
-func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
+func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 	/*
 		Each slice is 10 seconds long except for the first slice with a given network next route,
 		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
@@ -1705,7 +1705,7 @@ func buildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 	return &billingEntry2
 }
 
-func buildPortalData(state *SessionHandlerState) *SessionPortalData {
+func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 
 	/*
 		Build the relay hops for the portal
@@ -1835,7 +1835,7 @@ func buildPortalData(state *SessionHandlerState) *SessionPortalData {
 
 // ------------------------------------------------------------------
 
-func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionData *SessionData, metrics *metrics.SessionUpdateMetrics) error {
+func WriteSessionResponse(w io.Writer, response *SessionResponsePacket, sessionData *SessionData, metrics *metrics.SessionUpdateMetrics) error {
 	sessionDataBuffer, err := MarshalSessionData(sessionData)
 	if err != nil {
 		return err
@@ -1945,7 +1945,7 @@ func SessionUpdateHandlerFunc(
 			and sends session data to billing, vanity metrics and the portal.
 		*/
 
-		defer sessionPost(&state)
+		defer SessionPost(&state)
 
 		/*
 			Call session pre function
@@ -1955,7 +1955,7 @@ func SessionUpdateHandlerFunc(
 			If it returns true, one of the early out conditions has been met, so we return early.
 		*/
 
-		if sessionPre(&state) {
+		if SessionPre(&state) {
 			return
 		}
 
@@ -1973,9 +1973,9 @@ func SessionUpdateHandlerFunc(
 		*/
 
 		if state.packet.SliceNumber == 0 {
-			sessionUpdateNewSession(&state)
+			SessionUpdateNewSession(&state)
 		} else {
-			sessionUpdateExistingSession(&state)
+			SessionUpdateExistingSession(&state)
 		}
 
 		/*
@@ -1988,7 +1988,7 @@ func SessionUpdateHandlerFunc(
 			When this happens, we early out to save processing time.
 		*/
 
-		if sessionHandleFallbackToDirect(&state) {
+		if SessionHandleFallbackToDirect(&state) {
 			return
 		}
 
@@ -1998,13 +1998,13 @@ func SessionUpdateHandlerFunc(
 			We use near relay latency, jitter and packet loss for route planning.
 		*/
 
-		sessionUpdateNearRelayStats(&state)
+		SessionUpdateNearRelayStats(&state)
 
 		/*
 			Decide whether we should take network next or not.
 		*/
 
-		sessionMakeRouteDecision(&state)
+		SessionMakeRouteDecision(&state)
 
 		core.Debug("session updated successfully")
 	}
