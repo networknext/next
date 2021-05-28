@@ -44,6 +44,7 @@ type BigQueryBillingEntry struct {
 	NearRelayRTT                    bigquery.NullFloat64
 	NearRelayRTTs                   []float64
 	Next                            bigquery.NullBool
+	Initial                         bool
 	NextBytesDown                   bigquery.NullInt64
 	NextBytesUp                     bigquery.NullInt64
 	NextJitter                      bigquery.NullFloat64
