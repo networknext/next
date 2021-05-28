@@ -126,6 +126,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Tags",
 		"ABTest",
 		"Next",
+		"Initial",
 		"Committed",
 		"Flagged",
 		"Multipath",
@@ -212,6 +213,11 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			if billingEntry.Next.Bool {
 				committed = "true"
 			}
+		}
+
+		initial := "false"
+		if billingEntry.Initial {
+			initial = "true"
 		}
 		// Flagged
 		flagged := ""
@@ -556,6 +562,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			tags,
 			abTest,
 			next,
+			initial,
 			committed,
 			flagged,
 			multipath,
@@ -628,6 +635,7 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 	totalPrice,
 	clientToServerPacketsLost,
 	serverToClientPacketsLost,
+	initial,
 	committed,
 	flagged,
 	multipath,
