@@ -768,6 +768,9 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		}
 	}
 
+	// IMPORTANT: Remove this in the future. We need this to stem fall back to directs 05-27-21
+	// Done
+
 	if sessionData.Version >= 12 {
 		stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
 	}
