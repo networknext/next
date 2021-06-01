@@ -551,12 +551,9 @@ func sessionPre(state *SessionHandlerState) bool {
 	}
 
 	if state.packet.ClientPingTimedOut {
-		if !state.postSessionHandler.featureBilling2 || (state.postSessionHandler.featureBilling2 && state.input.WroteSummary) {
-			// Already wrote the summary slice
-			core.Debug("client ping timed out")
-			state.metrics.ClientPingTimedOut.Add(1)
-			return true
-		}
+		core.Debug("client ping timed out")
+		state.metrics.ClientPingTimedOut.Add(1)
+		return true
 	}
 
 	if !datacenterExists(state.database, state.packet.DatacenterID) {
@@ -1200,6 +1197,10 @@ func sessionPost(state *SessionHandlerState) {
 		summary slice.
 
 		The end of a session occurs when the client ping times out.
+
+		Check the input state to see if we wrote the summary slice since
+		the output state is not set to input state if we early out in sessionPre()
+		when the client ping times out.
 	*/
 
 	if state.postSessionHandler.featureBilling2 && state.packet.ClientPingTimedOut && !state.input.WroteSummary {
@@ -1251,10 +1252,31 @@ func sessionPost(state *SessionHandlerState) {
 	buildPostNearRelayData(state)
 
 	/*
+		Build billing 2 data and send it to the billing system via pubsub (non-realtime path)
+	*/
+
+	if state.postSessionHandler.featureBilling2 && !state.input.WroteSummary {
+		billingEntry2 := buildBillingEntry2(state)
+
+		state.postSessionHandler.SendBillingEntry2(billingEntry2)
+	}
+
+	/*
+		The client times out at the end of each session, and holds on for 60 seconds.
+		These slices at the end have no useful information for the portal, so we drop
+		them here. Billing2 needs to know if the client times out to write the summary
+		portion of the billing entry 2, but Billing1 does not.
+	*/
+
+	if state.packet.ClientPingTimedOut {
+		return
+	}
+
+	/*
 		Build billing data and send it to the billing system via pubsub (non-realtime path)
 	*/
 
-	if state.postSessionHandler.featureBilling && !state.packet.ClientPingTimedOut {
+	if state.postSessionHandler.featureBilling {
 		billingEntry := buildBillingEntry(state)
 
 		state.postSessionHandler.SendBillingEntry(billingEntry)
@@ -1268,23 +1290,6 @@ func sessionPost(state *SessionHandlerState) {
 		if state.postSessionHandler.useVanityMetrics {
 			state.postSessionHandler.SendVanityMetric(billingEntry)
 		}
-	}
-
-	if state.postSessionHandler.featureBilling2 && !state.input.WroteSummary {
-		billingEntry2 := buildBillingEntry2(state)
-
-		state.postSessionHandler.SendBillingEntry2(billingEntry2)
-	}
-
-	/*
-		The client times out at the end of each session, and holds on for 60 seconds.
-		These slices at the end have no useful information for the portal, so we drop
-		them here. Billing2 needs to know if the client times out to write the summary
-		portion of the billing entry 2.
-	*/
-
-	if state.packet.ClientPingTimedOut {
-		return
 	}
 
 	/*
