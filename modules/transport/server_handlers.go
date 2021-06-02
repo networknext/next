@@ -552,12 +552,21 @@ func sessionPre(state *SessionHandlerState) bool {
 	}
 
 	if state.packet.ClientPingTimedOut {
-		if !state.postSessionHandler.featureBilling2 || (state.postSessionHandler.featureBilling2 && state.input.WroteSummary) {
-			// Already wrote the summary slice
-			core.Debug("client ping timed out")
-			state.metrics.ClientPingTimedOut.Add(1)
-			return true
+		core.Debug("client ping timed out")
+
+		if state.postSessionHandler.featureBilling2 {
+			// Unmarshal the session data into the input to verify if we wrote the summary slice in sessionPost()
+			err := UnmarshalSessionData(&state.input, state.packet.SessionData[:])
+
+			if err != nil {
+				core.Debug("could not read session data:\n\n%s\n", err)
+				state.metrics.ReadSessionDataFailure.Add(1)
+				return true
+			}
 		}
+
+		state.metrics.ClientPingTimedOut.Add(1)
+		return true
 	}
 
 	if !datacenterExists(state.database, state.packet.DatacenterID) {
@@ -1197,13 +1206,16 @@ func sessionPost(state *SessionHandlerState) {
 
 	/*
 		Determine if we should write the summary slice. Should only happen
-		when the session is finished and we have not already written the
-		summary slice.
+		when the session is finished.
 
 		The end of a session occurs when the client ping times out.
+
+		We always set the output flag to true so that it remains recorded as true on
+		subsequent slices where the client ping has timed out. Instead, we check
+		the input when deciding to write billing entry 2.
 	*/
 
-	if state.postSessionHandler.featureBilling2 && state.packet.ClientPingTimedOut && !state.input.WroteSummary {
+	if state.postSessionHandler.featureBilling2 && state.packet.ClientPingTimedOut {
 		state.output.WroteSummary = true
 	}
 
@@ -1252,10 +1264,39 @@ func sessionPost(state *SessionHandlerState) {
 	buildPostNearRelayData(state)
 
 	/*
+		Build billing 2 data and send it to the billing system via pubsub (non-realtime path)
+
+		Check the input state to see if we wrote the summary slice since
+		the output state is not set to input state if we early out in sessionPre()
+		when the client ping times out.
+
+		Doing this ensures that we only write the summary slice once since the first time the
+		client ping times out, input flag will be false and the output flag will be true,
+		and on the following slices, both will be true.
+	*/
+
+	if state.postSessionHandler.featureBilling2 && !state.input.WroteSummary {
+		billingEntry2 := buildBillingEntry2(state)
+
+		state.postSessionHandler.SendBillingEntry2(billingEntry2)
+	}
+
+	/*
+		The client times out at the end of each session, and holds on for 60 seconds.
+		These slices at the end have no useful information for the portal, so we drop
+		them here. Billing2 needs to know if the client times out to write the summary
+		portion of the billing entry 2, but Billing1 does not.
+	*/
+
+	if state.packet.ClientPingTimedOut {
+		return
+	}
+
+	/*
 		Build billing data and send it to the billing system via pubsub (non-realtime path)
 	*/
 
-	if state.postSessionHandler.featureBilling && !state.packet.ClientPingTimedOut {
+	if state.postSessionHandler.featureBilling {
 		billingEntry := buildBillingEntry(state)
 
 		state.postSessionHandler.SendBillingEntry(billingEntry)
@@ -1269,23 +1310,6 @@ func sessionPost(state *SessionHandlerState) {
 		if state.postSessionHandler.useVanityMetrics {
 			state.postSessionHandler.SendVanityMetric(billingEntry)
 		}
-	}
-
-	if state.postSessionHandler.featureBilling2 && !state.input.WroteSummary {
-		billingEntry2 := buildBillingEntry2(state)
-
-		state.postSessionHandler.SendBillingEntry2(billingEntry2)
-	}
-
-	/*
-		The client times out at the end of each session, and holds on for 60 seconds.
-		These slices at the end have no useful information for the portal, so we drop
-		them here. Billing2 needs to know if the client times out to write the summary
-		portion of the billing entry 2.
-	*/
-
-	if state.packet.ClientPingTimedOut {
-		return
 	}
 
 	/*
@@ -1862,6 +1886,7 @@ func writeSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	if _, err := w.Write(responseData); err != nil {
 		return err
 	}
+
 	return nil
 }
 
