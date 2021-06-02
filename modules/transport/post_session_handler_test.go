@@ -231,9 +231,7 @@ func testCountData() *transport.SessionCountData {
 
 func testPortalData() *transport.SessionPortalData {
 	return &transport.SessionPortalData{
-		Version: transport.SessionPortalDataVersion,
 		Meta: transport.SessionMeta{
-			Version:         transport.SessionMetaVersion,
 			ID:              rand.Uint64(),
 			UserHash:        rand.Uint64(),
 			DatacenterName:  "local",
@@ -247,40 +245,34 @@ func testPortalData() *transport.SessionPortalData {
 			ServerAddr:      "127.0.0.1:50000",
 			Hops: []transport.RelayHop{
 				{
-					Version: transport.RelayHopVersion,
-					ID:      rand.Uint64(),
-					Name:    "local.test_relay.0",
+					ID:   rand.Uint64(),
+					Name: "local.test_relay.0",
 				},
 				{
-					Version: transport.RelayHopVersion,
-					ID:      rand.Uint64(),
-					Name:    "local.test_relay.1",
+					ID:   rand.Uint64(),
+					Name: "local.test_relay.1",
 				},
 			},
 			SDK:        "4.0.0",
 			Connection: 3,
 			NearbyRelays: []transport.NearRelayPortalData{
 				{
-					Version: transport.NearRelayPortalDataVersion,
-					ID:      rand.Uint64(),
-					Name:    "local.test_relay.2",
+					ID:   rand.Uint64(),
+					Name: "local.test_relay.2",
 				},
 				{
-					Version: transport.NearRelayPortalDataVersion,
-					ID:      rand.Uint64(),
-					Name:    "local.test_relay.3",
+					ID:   rand.Uint64(),
+					Name: "local.test_relay.3",
 				},
 			},
 			Platform: 1,
 			BuyerID:  rand.Uint64(),
 		},
 		Point: transport.SessionMapPoint{
-			Version:   transport.SessionMapPointVersion,
 			Latitude:  rand.Float64(),
 			Longitude: rand.Float64(),
 		},
 		Slice: transport.SessionSlice{
-			Version:   transport.SessionSliceVersion,
 			Timestamp: time.Now(),
 			Envelope: routing.Envelope{
 				Up:   100,
