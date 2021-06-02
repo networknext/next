@@ -242,7 +242,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.SSHUser, checkRelay.SSHUser)
 		assert.Equal(t, relay.MaxSessions, checkRelay.MaxSessions)
 		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
-		assert.Equal(t, outerSeller.ShortName, relay.BillingSupplier)
 		assert.Equal(t, relay.Datacenter.DatabaseID, checkRelay.Datacenter.DatabaseID)
 		assert.Equal(t, relay.MRC, checkRelay.MRC)
 		assert.Equal(t, relay.Overage, checkRelay.Overage)
@@ -288,7 +287,7 @@ func TestInsertSQL(t *testing.T) {
 		relayMod.State = checkRelay.State
 		relayMod.IncludedBandwidthGB = checkRelay.IncludedBandwidthGB
 		relayMod.NICSpeedMbps = checkRelay.NICSpeedMbps
-		// Notes
+		relayMod.Notes = checkRelay.Notes
 		relayMod.DatabaseID = checkRelay.DatabaseID
 
 		relayMod.Seller = checkRelay.Seller
@@ -328,14 +327,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, routing.Nibblin(10), checkRelayMod.Seller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(20), checkRelayMod.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelayMod.Seller.CustomerID)
-
-		// test nulls
-		assert.Equal(t, "", relayMod.Notes)
-		assert.Equal(t, net.UDPAddr{}, relayMod.Addr)
-		assert.Equal(t, net.UDPAddr{}, relayMod.InternalAddr)
-		assert.True(t, relayMod.EndDate.IsZero())
-		assert.True(t, relayMod.StartDate.IsZero())
-		assert.Equal(t, "", relayMod.BillingSupplier)
+		assert.Equal(t, relayMod.Notes, checkRelayMod.Notes)
 
 		// relay with some null values null values (except dc to trip an error)
 		addr2, err := net.ResolveUDPAddr("udp", "127.0.0.3:40000")
@@ -1589,6 +1581,7 @@ func TestRouteShaders(t *testing.T) {
 			ReducePacketLoss:          true,
 			ReduceJitter:              true,
 			SelectionPercent:          int(100),
+			PacketLossSustained:       float32(10),
 		}
 
 		err = db.AddRouteShader(ctx, routeShader, outerBuyer.ID)
@@ -1610,6 +1603,7 @@ func TestRouteShaders(t *testing.T) {
 		assert.Equal(t, true, outerRouteShader.ReducePacketLoss)
 		assert.Equal(t, true, outerRouteShader.ReduceJitter)
 		assert.Equal(t, int(100), outerRouteShader.SelectionPercent)
+		assert.Equal(t, float32(10), outerRouteShader.PacketLossSustained)
 	})
 
 	t.Run("UpdateRouteShader", func(t *testing.T) {
@@ -1706,6 +1700,13 @@ func TestRouteShaders(t *testing.T) {
 		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, int(90), checkRouteShader.SelectionPercent)
+
+		// PacketLossSustained
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "PacketLossSustained", float32(10))
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, float32(10), checkRouteShader.PacketLossSustained)
 
 	})
 
