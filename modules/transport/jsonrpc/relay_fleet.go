@@ -37,7 +37,6 @@ type RelayFleetReply struct {
 // RelayFleet retrieves the CSV file from relay_frontend/relays, converts it to
 // json and puts it on the wire.
 func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, reply *RelayFleetReply) error {
-
 	authHeader := r.Header.Get("Authorization")
 
 	uri := rfs.RelayFrontendURI + "/relays"
