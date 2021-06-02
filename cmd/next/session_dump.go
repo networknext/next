@@ -214,6 +214,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 				committed = "true"
 			}
 		}
+
 		initial := "false"
 		if billingEntry.Initial {
 			initial = "true"
