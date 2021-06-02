@@ -161,8 +161,6 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 		if yAxisRegex.MatchString(yAxisRelayName) {
 			filteredDashboard.Stats[yAxisRelayName] = make(map[string]routing.Stats)
 			for relayName, statsLineEntry := range relayStatsLine {
-				// fmt.Printf("relayName: %s\n", relayName)
-				// fmt.Printf("rtt      : %f\n", statsLineEntry.RTT)
 				if xAxisRegex.MatchString(relayName) {
 					filteredDashboard.Stats[yAxisRelayName][relayName] = statsLineEntry
 				}
