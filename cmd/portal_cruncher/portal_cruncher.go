@@ -201,7 +201,7 @@ func mainReturnWithCode() int {
 		level.Error(logger).Log("err", err)
 		return 1
 	}
-	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 10)
+	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		return 1
