@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
@@ -119,9 +120,6 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 		return err
 	}
 
-	xAxisRegex := regexp.MustCompile("(?i)" + args.XAxisRelayFilter)
-	yAxisRegex := regexp.MustCompile("(?i)" + args.YAxisRelayFilter)
-
 	// replace this with the actual remote call
 	jsonFile, err := os.Open("/home/johnnyb/nn/backend/testdata/relay_dashboard_prod.json")
 	if err != nil {
@@ -143,10 +141,14 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	filteredDashboard.Stats = make(map[string]map[string]routing.Stats)
 
 	// x-axis relays first
-	for _, relayEntry := range fullDashboard.Relays {
-		if xAxisRegex.MatchString(relayEntry.Name) {
-			filteredDashboard.Relays = append(filteredDashboard.Relays, relayEntry)
-			continue
+	xFilters := strings.Split(args.XAxisRelayFilter, ",")
+	for _, xFilter := range xFilters {
+		xAxisRegex := regexp.MustCompile("(?i)" + strings.TrimSpace(xFilter))
+		for _, relayEntry := range fullDashboard.Relays {
+			if xAxisRegex.MatchString(relayEntry.Name) {
+				filteredDashboard.Relays = append(filteredDashboard.Relays, relayEntry)
+				continue
+			}
 		}
 	}
 
@@ -157,12 +159,19 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	}
 
 	// then the y-axis
-	for yAxisRelayName, relayStatsLine := range fullDashboard.Stats {
-		if yAxisRegex.MatchString(yAxisRelayName) {
-			filteredDashboard.Stats[yAxisRelayName] = make(map[string]routing.Stats)
-			for relayName, statsLineEntry := range relayStatsLine {
-				if xAxisRegex.MatchString(relayName) {
-					filteredDashboard.Stats[yAxisRelayName][relayName] = statsLineEntry
+	yFilters := strings.Split(args.YAxisRelayFilter, ",")
+	for _, yFilter := range yFilters {
+		yAxisRegex := regexp.MustCompile("(?i)" + strings.TrimSpace(yFilter))
+		for yAxisRelayName, relayStatsLine := range fullDashboard.Stats {
+			if yAxisRegex.MatchString(yAxisRelayName) {
+				filteredDashboard.Stats[yAxisRelayName] = make(map[string]routing.Stats)
+				for relayName, statsLineEntry := range relayStatsLine {
+					for _, xFilter := range xFilters {
+						xAxisRegex := regexp.MustCompile("(?i)" + strings.TrimSpace(xFilter))
+						if xAxisRegex.MatchString(relayName) {
+							filteredDashboard.Stats[yAxisRelayName][relayName] = statsLineEntry
+						}
+					}
 				}
 			}
 		}
