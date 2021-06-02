@@ -2,9 +2,12 @@ package jsonrpc
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"regexp"
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
@@ -86,50 +89,94 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 }
 
 type RelayDashboardJsonReply struct {
-	Dashboard string `json:"relay_dashboard"`
+	// Dashboard string `json:"relay_dashboard"`
+	Dashboard jsonResponse `json:"relay_dashboard"`
 }
 
-type RelayDashboardJsonArgs struct{}
+type RelayDashboardJsonArgs struct {
+	XAxisRelayFilter string `json:"xAxisFilters"`
+	YAxisRelayFilter string `json:"yAxisFilters"`
+}
+
+type jsonRelay struct {
+	Name string
+	Addr string
+}
+
+type jsonResponse struct {
+	Analysis routing.JsonMatrixAnalysis
+	Relays   []jsonRelay
+	Stats    map[string]map[string]routing.Stats
+}
 
 // RelayDashboardJson retrieves the JSON representation of the current relay dashboard
 // provided by relay_backend/relay_dashboard_data
 func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDashboardJsonArgs, reply *RelayDashboardJsonReply) error {
 
-	type jsonRelay struct {
-		Name string
-		Addr string
-	}
-
-	type jsonResponse struct {
-		Analysis string
-		Relays   []jsonRelay
-		Stats    map[string]map[string]routing.Stats
-	}
-
-	authHeader := r.Header.Get("Authorization")
-
-	uri := rfs.RelayFrontendURI + "/relay_dashboard_data"
-
-	client := &http.Client{}
-	req, _ := http.NewRequest("GET", uri, nil)
-	req.Header.Set("Authorization", authHeader)
-
-	response, err := client.Do(req)
-	if err != nil {
-		err = fmt.Errorf("RelayDashboardJson() error getting relays.csv: %w", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
-	defer response.Body.Close()
-
-	dashboardData, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
+	if args.XAxisRelayFilter == "" || args.YAxisRelayFilter == "" {
+		err := fmt.Errorf("a filter must be supplied for each axis")
 		rfs.Logger.Log("err", err)
 		return err
 	}
 
-	reply.Dashboard = string(dashboardData)
+	xAxisRegex := regexp.MustCompile("(?i)" + args.XAxisRelayFilter)
+	yAxisRegex := regexp.MustCompile("(?i)" + args.YAxisRelayFilter)
+
+	// replace this with the actual remote call
+	jsonFile, err := os.Open("/home/johnnyb/nn/backend/testdata/relay_dashboard_prod.json")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer jsonFile.Close()
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+
+	var fullDashboard, filteredDashboard jsonResponse
+	json.Unmarshal(byteValue, &fullDashboard)
+
+	if len(fullDashboard.Relays) == 0 {
+		err := fmt.Errorf("relay backend returned an empty dashboard file")
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	filteredDashboard.Analysis = fullDashboard.Analysis
+	filteredDashboard.Stats = make(map[string]map[string]routing.Stats)
+
+	// x-axis relays first
+	for _, relayEntry := range fullDashboard.Relays {
+		if xAxisRegex.MatchString(relayEntry.Name) {
+			filteredDashboard.Relays = append(filteredDashboard.Relays, relayEntry)
+			continue
+		}
+	}
+
+	if len(filteredDashboard.Relays) == 0 {
+		err := fmt.Errorf("no matches found for x-axis query string")
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	// then the y-axis
+	for yAxisRelayName, relayStatsLine := range fullDashboard.Stats {
+		if yAxisRegex.MatchString(yAxisRelayName) {
+			filteredDashboard.Stats[yAxisRelayName] = make(map[string]routing.Stats)
+			for relayName, statsLineEntry := range relayStatsLine {
+				// fmt.Printf("relayName: %s\n", relayName)
+				// fmt.Printf("rtt      : %f\n", statsLineEntry.RTT)
+				if xAxisRegex.MatchString(relayName) {
+					filteredDashboard.Stats[yAxisRelayName][relayName] = statsLineEntry
+				}
+			}
+		}
+	}
+
+	if len(filteredDashboard.Stats) == 0 {
+		err := fmt.Errorf("no matches found for y-axis query string")
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	reply.Dashboard = filteredDashboard
 
 	return nil
 }
