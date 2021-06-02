@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 
@@ -119,17 +118,31 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 		return err
 	}
 
-	// replace this with the actual remote call
-	jsonFile, err := os.Open("/home/johnnyb/nn/backend/testdata/relay_dashboard_prod.json")
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer jsonFile.Close()
-	byteValue, _ := ioutil.ReadAll(jsonFile)
-
 	var fullDashboard, filteredDashboard jsonResponse
-	json.Unmarshal(byteValue, &fullDashboard)
+	authHeader := r.Header.Get("Authorization")
 
+	uri := rfs.RelayFrontendURI + "/relay_dashboard_data"
+
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", uri, nil)
+	req.Header.Set("Authorization", authHeader)
+
+	response, err := client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("RelayDashboardJson() error getting relays.csv: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	byteValue, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	json.Unmarshal(byteValue, &fullDashboard)
 	if len(fullDashboard.Relays) == 0 {
 		err := fmt.Errorf("relay backend returned an empty dashboard file")
 		rfs.Logger.Log("err", err)
