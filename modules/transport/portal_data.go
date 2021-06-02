@@ -15,18 +15,14 @@ import (
 )
 
 const (
-	SessionCountDataVersion    = 1
-	SessionPortalDataVersion   = 1
-	SessionMetaVersion         = 2
-	SessionSliceVersion        = 2
-	SessionMapPointVersion     = 1
-	RelayHopVersion            = 1
-	NearRelayPortalDataVersion = 1
-	MaxSessionIDLength         = 1024
+	SessionCountDataVersion  = 0
+	SessionPortalDataVersion = 1
+	SessionMetaVersion       = 0
+	SessionSliceVersion      = 2
+	SessionMapPointVersion   = 0
 )
 
 type SessionCountData struct {
-	Version     uint32
 	ServerID    uint64
 	BuyerID     uint64
 	NumSessions uint32
@@ -35,12 +31,13 @@ type SessionCountData struct {
 func (s *SessionCountData) UnmarshalBinary(data []byte) error {
 	index := 0
 
-	if !encoding.ReadUint32(data, &index, &s.Version) {
+	var version uint32
+	if !encoding.ReadUint32(data, &index, &version) {
 		return errors.New("[SessionCountData] invalid read at version number")
 	}
 
-	if s.Version > SessionCountDataVersion {
-		return fmt.Errorf("unknown session count version: %d", s.Version)
+	if version > SessionCountDataVersion {
+		return fmt.Errorf("unknown session count version: %d", version)
 	}
 
 	if !encoding.ReadUint64(data, &index, &s.ServerID) {
@@ -75,10 +72,9 @@ func (s *SessionCountData) Size() uint64 {
 }
 
 type SessionPortalData struct {
-	Version uint32
-	Meta    SessionMeta     `json:"meta"`
-	Slice   SessionSlice    `json:"slice"`
-	Point   SessionMapPoint `json:"point"`
+	Meta  SessionMeta     `json:"meta"`
+	Slice SessionSlice    `json:"slice"`
+	Point SessionMapPoint `json:"point"`
 
 	LargeCustomer bool `json:"largeCustomer"`
 	EverOnNext    bool `json:"everOnNext"`
@@ -87,12 +83,13 @@ type SessionPortalData struct {
 func (s *SessionPortalData) UnmarshalBinary(data []byte) error {
 	index := 0
 
-	if !encoding.ReadUint32(data, &index, &s.Version) {
+	var version uint32
+	if !encoding.ReadUint32(data, &index, &version) {
 		return errors.New("[SessionPortalData] invalid read at version number")
 	}
 
-	if s.Version > SessionPortalDataVersion {
-		return fmt.Errorf("unknown session data version: %d", s.Version)
+	if version > SessionPortalDataVersion {
+		return fmt.Errorf("unknown session data version: %d", version)
 	}
 
 	var metaSize uint32
@@ -137,7 +134,7 @@ func (s *SessionPortalData) UnmarshalBinary(data []byte) error {
 		return err
 	}
 
-	if s.Version >= 1 {
+	if version >= 1 {
 		if !encoding.ReadBool(data, &index, &s.LargeCustomer) {
 			return errors.New("[SessionPortalData] invalid read at large customer bool")
 		}
@@ -191,70 +188,42 @@ func (s *SessionPortalData) Size() uint64 {
 }
 
 type RelayHop struct {
-	Version uint32
-	ID      uint64 `json:"id"`
-	Name    string `json:"name"`
+	ID   uint64 `json:"id"`
+	Name string `json:"name"`
 }
 
 func (h RelayHop) RedisString() string {
-	return fmt.Sprintf("%d|%016x|%s", h.Version, h.ID, h.Name)
+	return fmt.Sprintf("%016x|%s", h.ID, h.Name)
 }
 
-func (h *RelayHop) ParseRedisString(values []string) error {
+func (n *RelayHop) ParseRedisString(values []string) error {
 	var index int
 	var err error
 
-	var version int64
-	if version, err = strconv.ParseInt(values[index], 10, 64); err != nil {
-		return fmt.Errorf("[RelayHop] failed to read version from redis data: %v", err)
-	}
-
-	// The original data didn't have the version serialized
-	if math.Abs(float64(version)) > RelayHopVersion {
-		version = 0
-	} else {
-		h.Version = uint32(version)
-		index++
-	}
-
-	if h.ID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
+	if n.ID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
 		return fmt.Errorf("[RelayHop] failed to read relay ID from redis data: %v", err)
 	}
 	index++
 
-	h.Name = values[index]
+	n.Name = values[index]
 	index++
 
 	return nil
 }
 
 type NearRelayPortalData struct {
-	Version     uint32
 	ID          uint64        `json:"id"`
 	Name        string        `json:"name"`
 	ClientStats routing.Stats `json:"client_stats"`
 }
 
 func (n NearRelayPortalData) RedisString() string {
-	return fmt.Sprintf("%d|%016x|%s|%s", n.Version, n.ID, n.Name, n.ClientStats.RedisString())
+	return fmt.Sprintf("%016x|%s|%s", n.ID, n.Name, n.ClientStats.RedisString())
 }
 
 func (n *NearRelayPortalData) ParseRedisString(values []string) error {
 	var index int
 	var err error
-
-	var version int64
-	if version, err = strconv.ParseInt(values[index], 10, 64); err != nil {
-		return fmt.Errorf("[NearRelayPortalData] failed to read version from redis data: %v", err)
-	}
-
-	// The original data didn't have the version serialized
-	if math.Abs(float64(version)) > NearRelayPortalDataVersion {
-		version = 0
-	} else {
-		n.Version = uint32(version)
-		index++
-	}
 
 	if n.ID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
 		return fmt.Errorf("[NearRelayPortalData] failed to read relay ID from redis data: %v", err)
@@ -273,7 +242,6 @@ func (n *NearRelayPortalData) ParseRedisString(values []string) error {
 }
 
 type SessionMeta struct {
-	Version         uint32
 	ID              uint64                `json:"id"`
 	UserHash        uint64                `json:"user_hash"`
 	DatacenterName  string                `json:"datacenter_name"`
@@ -296,12 +264,13 @@ type SessionMeta struct {
 func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 	index := 0
 
-	if !encoding.ReadUint32(data, &index, &s.Version) {
+	var version uint32
+	if !encoding.ReadUint32(data, &index, &version) {
 		return errors.New("[SessionMeta] invalid read at version number")
 	}
 
-	if s.Version > SessionMetaVersion {
-		return fmt.Errorf("unknown session meta version: %d", s.Version)
+	if version > SessionMetaVersion {
+		return fmt.Errorf("unknown session meta version: %d", version)
 	}
 
 	if !encoding.ReadUint64(data, &index, &s.ID) {
@@ -365,12 +334,6 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 
 	s.Hops = make([]RelayHop, hopsCount)
 	for i := uint32(0); i < hopsCount; i++ {
-		if s.Version >= 2 {
-			if !encoding.ReadUint32(data, &index, &s.Hops[i].Version) {
-				return errors.New("[SessionMeta] invalid read at relay hops relay version")
-			}
-		}
-
 		if !encoding.ReadUint64(data, &index, &s.Hops[i].ID) {
 			return errors.New("[SessionMeta] invalid read at relay hops relay ID")
 		}
@@ -395,12 +358,6 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 
 	s.NearbyRelays = make([]NearRelayPortalData, nearbyRelaysCount)
 	for i := uint32(0); i < nearbyRelaysCount; i++ {
-		if s.Version >= 2 {
-			if !encoding.ReadUint32(data, &index, &s.NearbyRelays[i].Version) {
-				return errors.New("[SessionMeta] invalid read at nearby relay version")
-			}
-		}
-
 		if !encoding.ReadUint64(data, &index, &s.NearbyRelays[i].ID) {
 			return errors.New("[SessionMeta] invalid read at nearby relays relay ID")
 		}
@@ -437,7 +394,7 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 	data := make([]byte, s.Size())
 	index := 0
 
-	encoding.WriteUint32(data, &index, s.Version)
+	encoding.WriteUint32(data, &index, SessionMetaVersion)
 	encoding.WriteUint64(data, &index, s.ID)
 	encoding.WriteUint64(data, &index, s.UserHash)
 	encoding.WriteString(data, &index, s.DatacenterName, uint32(len(s.DatacenterName)))
@@ -459,9 +416,6 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 
 	encoding.WriteUint32(data, &index, uint32(len(s.Hops)))
 	for _, hop := range s.Hops {
-		if s.Version >= 2 {
-			encoding.WriteUint32(data, &index, hop.Version)
-		}
 		encoding.WriteUint64(data, &index, hop.ID)
 		encoding.WriteString(data, &index, hop.Name, uint32(len(hop.Name)))
 	}
@@ -471,9 +425,6 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 
 	encoding.WriteUint32(data, &index, uint32(len(s.NearbyRelays)))
 	for _, nearRelayData := range s.NearbyRelays {
-		if s.Version >= 2 {
-			encoding.WriteUint32(data, &index, nearRelayData.Version)
-		}
 		encoding.WriteUint64(data, &index, nearRelayData.ID)
 		encoding.WriteString(data, &index, nearRelayData.Name, uint32(len(nearRelayData.Name)))
 		encoding.WriteFloat64(data, &index, nearRelayData.ClientStats.RTT)
@@ -490,12 +441,12 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 func (s SessionMeta) Size() uint64 {
 	var relayHopsSize uint64
 	for _, hop := range s.Hops {
-		relayHopsSize += 8 + 4 + 4 + uint64(len(hop.Name))
+		relayHopsSize += 8 + 4 + uint64(len(hop.Name))
 	}
 
 	var nearbyRelaysSize uint64
 	for _, nearRelayData := range s.NearbyRelays {
-		nearbyRelaysSize += 8 + 4 + 4 + uint64(len(nearRelayData.Name)) + 8 + 8 + 8
+		nearbyRelaysSize += 8 + 4 + uint64(len(nearRelayData.Name)) + 8 + 8 + 8
 	}
 
 	return 4 + 8 + 8 + 4 + uint64(len(s.DatacenterName)) + 4 + uint64(len(s.DatacenterAlias)) + 1 + 8 + 8 + 8 + 4 + s.Location.Size() +
@@ -612,7 +563,7 @@ func (s SessionMeta) RedisString() string {
 		onNetworkNextString = "1"
 	}
 
-	result := fmt.Sprintf("%d|%016x|%016x|%s|%s|%s|%.2f|%.2f|%.2f|%s|%s|%s|", s.Version, s.ID, s.UserHash, s.DatacenterName, s.DatacenterAlias, onNetworkNextString,
+	result := fmt.Sprintf("%016x|%016x|%s|%s|%s|%.2f|%.2f|%.2f|%s|%s|%s|", s.ID, s.UserHash, s.DatacenterName, s.DatacenterAlias, onNetworkNextString,
 		s.NextRTT, s.DirectRTT, s.DeltaRTT, s.Location.RedisString(), s.ClientAddr, s.ServerAddr)
 	result += fmt.Sprintf("%d|", len(s.Hops))
 	for i := 0; i < len(s.Hops); i++ {
@@ -630,19 +581,6 @@ func (s SessionMeta) RedisString() string {
 func (s *SessionMeta) ParseRedisString(values []string) error {
 	var index int
 	var err error
-
-	var version int64
-	if version, err = strconv.ParseInt(values[index], 10, 64); err != nil {
-		return fmt.Errorf("[SessionMeta] failed to read version from redis data: %v", err)
-	}
-
-	// The original data didn't have the version serialized
-	if math.Abs(float64(version)) > SessionMetaVersion {
-		version = 0
-	} else {
-		s.Version = uint32(version)
-		index++
-	}
 
 	if s.ID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
 		return fmt.Errorf("[SessionMeta] failed to read session ID from redis data: %v", err)
@@ -698,10 +636,10 @@ func (s *SessionMeta) ParseRedisString(values []string) error {
 	s.Hops = make([]RelayHop, numHops)
 	for i := 0; i < int(numHops); i++ {
 		var hop RelayHop
-		if err := hop.ParseRedisString([]string{values[index], values[index+1], values[index+2]}); err != nil {
+		if err := hop.ParseRedisString([]string{values[index], values[index+1]}); err != nil {
 			return fmt.Errorf("[SessionMeta] failed to read relay hop from redis data: %v", err)
 		}
-		index += 3
+		index += 2
 
 		s.Hops[i] = hop
 	}
@@ -725,10 +663,10 @@ func (s *SessionMeta) ParseRedisString(values []string) error {
 	s.NearbyRelays = make([]NearRelayPortalData, numNearRelays)
 	for i := 0; i < int(numNearRelays); i++ {
 		var nearRelay NearRelayPortalData
-		if err := nearRelay.ParseRedisString([]string{values[index], values[index+1], values[index+2], values[index+3], values[index+4], values[index+5]}); err != nil {
+		if err := nearRelay.ParseRedisString([]string{values[index], values[index+1], values[index+2], values[index+3], values[index+4]}); err != nil {
 			return fmt.Errorf("[SessionMeta] failed to read near relay from redis data: %v", err)
 		}
-		index += 6
+		index += 5
 
 		s.NearbyRelays[i] = nearRelay
 	}
@@ -1017,10 +955,8 @@ func (s *SessionSlice) ParseRedisString(values []string) error {
 }
 
 type SessionMapPoint struct {
-	Version   uint32
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
-	SessionID uint64  `json:"id"`
 }
 
 func (s *SessionMapPoint) UnmarshalBinary(data []byte) error {
@@ -1035,20 +971,12 @@ func (s *SessionMapPoint) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("unknown session map point version: %d", version)
 	}
 
-	s.Version = version
-
 	if !encoding.ReadFloat64(data, &index, &s.Latitude) {
 		return errors.New("[SessionMapPoint] invalid read at latitude")
 	}
 
 	if !encoding.ReadFloat64(data, &index, &s.Longitude) {
 		return errors.New("[SessionMapPoint] invalid read at longitude")
-	}
-
-	if version >= 1 {
-		if !encoding.ReadUint64(data, &index, &s.SessionID) {
-			return errors.New("[SessionMapPoint] invalid read at session ID")
-		}
 	}
 
 	return nil
@@ -1061,37 +989,21 @@ func (s SessionMapPoint) MarshalBinary() ([]byte, error) {
 	encoding.WriteUint32(data, &index, SessionMapPointVersion)
 	encoding.WriteFloat64(data, &index, s.Latitude)
 	encoding.WriteFloat64(data, &index, s.Longitude)
-	if s.Version >= 1 {
-		encoding.WriteUint64(data, &index, s.SessionID)
-	}
 
 	return data, nil
 }
 
 func (s SessionMapPoint) Size() uint64 {
-	return 4 + 8 + 8 + 8
+	return 4 + 8 + 8
 }
 
 func (s SessionMapPoint) RedisString() string {
-	return fmt.Sprintf("%d|%.2f|%.2f|%016x", s.Version, s.Latitude, s.Longitude, s.SessionID)
+	return fmt.Sprintf("%.2f|%.2f", s.Latitude, s.Longitude)
 }
 
 func (s *SessionMapPoint) ParseRedisString(values []string) error {
 	var index int
 	var err error
-
-	var version int64
-	if version, err = strconv.ParseInt(values[index], 10, 64); err != nil {
-		return fmt.Errorf("[SessionMapPoint] failed to read version from redis data: %v", err)
-	}
-
-	// The original data didn't have the version serialized
-	if math.Abs(float64(version)) > SessionMapPointVersion {
-		version = 0
-	} else {
-		s.Version = uint32(version)
-		index++
-	}
 
 	if s.Latitude, err = strconv.ParseFloat(values[index], 64); err != nil {
 		return fmt.Errorf("[SessionMapPoint] failed to read latitude from redis data: %v", err)
@@ -1102,14 +1014,6 @@ func (s *SessionMapPoint) ParseRedisString(values []string) error {
 		return fmt.Errorf("[SessionMapPoint] failed to read longitude from redis data: %v", err)
 	}
 	index++
-
-	// The original data didn't have the version serialized
-	if s.Version >= 1 {
-		if s.SessionID, err = strconv.ParseUint(values[index], 16, 64); err != nil {
-			return fmt.Errorf("[SessionMapPoint] failed to read session ID from redis data: %v", err)
-		}
-		index++
-	}
 
 	return nil
 }
