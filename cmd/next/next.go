@@ -2715,7 +2715,6 @@ Update one field for the specified seller. The field
 must be one of the following and is case-sensitive:
 
   EgressPrice  US Dollars
-  IngressPrice US Dollars
   ShortName    string
   Secret       boolean
 
