@@ -231,11 +231,10 @@ func datacenterMapsForBuyer(
 		if csvOutput {
 			var csvInfo [][]string
 			csvInfo = append(csvInfo, []string{
-				"Alias", "DatacenterName", "DatacenterID", "BuyerName", "BuyerID", "SupplierName"})
+				"DatacenterName", "DatacenterID", "BuyerName", "BuyerID", "SupplierName"})
 			for _, dcMap := range reply.DatacenterMaps {
 
 				csvInfo = append(csvInfo, []string{
-					dcMap.Alias,
 					dcMap.DatacenterName,
 					dcMap.DatacenterID,
 					dcMap.BuyerName,
@@ -323,10 +322,9 @@ func datacenterMapsForBuyer(
 		if csvOutput {
 			var csvInfo [][]string
 			csvInfo = append(csvInfo, []string{
-				"Alias", "DatacenterName", "DatacenterID", "BuyerName", "BuyerID", "SupplierName"})
+				"DatacenterName", "DatacenterID", "BuyerName", "BuyerID", "SupplierName"})
 			for _, dcMap := range reply.DatacenterMaps {
 				csvInfo = append(csvInfo, []string{
-					dcMap.Alias,
 					dcMap.DatacenterName,
 					dcMap.DatacenterID,
 					dcMap.BuyerName,
@@ -395,7 +393,6 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 		DatacenterMap: routing.DatacenterMap{
 			BuyerID:      buyerID,
 			DatacenterID: dcID,
-			Alias:        dcm.Alias,
 		},
 	}
 
@@ -449,7 +446,6 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 		DatacenterMap: routing.DatacenterMap{
 			BuyerID:      buyerID,
 			DatacenterID: dcID,
-			Alias:        dcm.Alias,
 		},
 	}
 
