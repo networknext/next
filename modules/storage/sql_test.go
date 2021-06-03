@@ -97,13 +97,12 @@ func TestInsertSQL(t *testing.T) {
 
 	t.Run("AddSeller", func(t *testing.T) {
 		seller := routing.Seller{
-			ID:                        customerShortname,
-			ShortName:                 customerShortname,
-			CompanyCode:               customerShortname,
-			Secret:                    true,
-			IngressPriceNibblinsPerGB: 10,
-			EgressPriceNibblinsPerGB:  20,
-			CustomerID:                outerCustomer.DatabaseID,
+			ID:                       customerShortname,
+			ShortName:                customerShortname,
+			CompanyCode:              customerShortname,
+			Secret:                   true,
+			EgressPriceNibblinsPerGB: 20,
+			CustomerID:               outerCustomer.DatabaseID,
 		}
 
 		err = db.AddSeller(ctx, seller)
@@ -114,7 +113,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, seller.ID, outerSeller.ID)
 		assert.Equal(t, true, outerSeller.Secret)
 		assert.Equal(t, seller.ShortName, outerSeller.ShortName)
-		assert.Equal(t, seller.IngressPriceNibblinsPerGB, outerSeller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, seller.EgressPriceNibblinsPerGB, outerSeller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, seller.CustomerID, outerSeller.CustomerID)
 	})
@@ -257,7 +255,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
 		assert.Equal(t, customerShortname, checkRelay.Seller.CompanyCode)
-		assert.Equal(t, routing.Nibblin(10), checkRelay.Seller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
 		assert.Equal(t, relay.Notes, checkRelay.Notes)
@@ -324,7 +321,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, customerShortname, checkRelayMod.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelayMod.Seller.ShortName)
 		assert.Equal(t, customerShortname, checkRelayMod.Seller.CompanyCode)
-		assert.Equal(t, routing.Nibblin(10), checkRelayMod.Seller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(20), checkRelayMod.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelayMod.Seller.CustomerID)
 		assert.Equal(t, relayMod.Notes, checkRelayMod.Notes)
@@ -453,7 +449,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
 		assert.Equal(t, customerShortname, checkRelay.Seller.CompanyCode)
-		assert.Equal(t, routing.Nibblin(10), checkRelay.Seller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
 	})
@@ -536,12 +531,11 @@ func TestDeleteSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		seller := routing.Seller{
-			ID:                        "Compcode",
-			IngressPriceNibblinsPerGB: 10,
-			EgressPriceNibblinsPerGB:  20,
-			Secret:                    true,
-			CustomerID:                outerCustomer.DatabaseID,
-			CompanyCode:               outerCustomer.Code,
+			ID:                       "Compcode",
+			EgressPriceNibblinsPerGB: 20,
+			Secret:                   true,
+			CustomerID:               outerCustomer.DatabaseID,
+			CompanyCode:              outerCustomer.Code,
 		}
 
 		err = db.AddSeller(ctx, seller)
@@ -780,12 +774,11 @@ func TestUpdateSQL(t *testing.T) {
 
 	t.Run("SetSeller", func(t *testing.T) {
 		seller := routing.Seller{
-			ID:                        "Compcode",
-			IngressPriceNibblinsPerGB: 10,
-			EgressPriceNibblinsPerGB:  20,
-			Secret:                    true,
-			CustomerID:                customerWithID.DatabaseID,
-			CompanyCode:               customerWithID.Code,
+			ID:                       "Compcode",
+			EgressPriceNibblinsPerGB: 20,
+			Secret:                   true,
+			CustomerID:               customerWithID.DatabaseID,
+			CompanyCode:              customerWithID.Code,
 		}
 
 		err = db.AddSeller(ctx, seller)
@@ -794,7 +787,6 @@ func TestUpdateSQL(t *testing.T) {
 		sellerWithID, err = db.Seller("Compcode")
 		assert.NoError(t, err)
 
-		sellerWithID.IngressPriceNibblinsPerGB = 100
 		sellerWithID.EgressPriceNibblinsPerGB = 200
 
 		err = db.SetSeller(ctx, sellerWithID)
@@ -803,18 +795,16 @@ func TestUpdateSQL(t *testing.T) {
 		checkSeller, err := db.Seller("Compcode")
 		assert.NoError(t, err)
 		assert.Equal(t, true, sellerWithID.Secret)
-		assert.Equal(t, checkSeller.IngressPriceNibblinsPerGB, sellerWithID.IngressPriceNibblinsPerGB)
 		assert.Equal(t, checkSeller.EgressPriceNibblinsPerGB, sellerWithID.EgressPriceNibblinsPerGB)
 
 		// we need a second seller to test Relay.BillingSupplier
 		seller2 := routing.Seller{
-			ID:                        "DifferentSupplier",
-			ShortName:                 "DifferentSeller",
-			IngressPriceNibblinsPerGB: 10,
-			EgressPriceNibblinsPerGB:  20,
-			Secret:                    true,
-			CustomerID:                customerWithID2.DatabaseID,
-			CompanyCode:               customerWithID2.Code,
+			ID:                       "DifferentSupplier",
+			ShortName:                "DifferentSeller",
+			EgressPriceNibblinsPerGB: 20,
+			Secret:                   true,
+			CustomerID:               customerWithID2.DatabaseID,
+			CompanyCode:              customerWithID2.Code,
 		}
 
 		err = db.AddSeller(ctx, seller2)
@@ -990,9 +980,6 @@ func TestUpdateSQL(t *testing.T) {
 		err := db.UpdateSeller(ctx, sellerWithID.ID, "EgressPriceNibblinsPerGB", 133.44)
 		assert.NoError(t, err)
 
-		err = db.UpdateSeller(ctx, sellerWithID.ID, "IngressPriceNibblinsPerGB", 144.33)
-		assert.NoError(t, err)
-
 		err = db.UpdateSeller(ctx, sellerWithID.ID, "ShortName", "newname")
 		assert.NoError(t, err)
 
@@ -1003,7 +990,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, routing.Nibblin(13344000000000), checkSeller.EgressPriceNibblinsPerGB)
-		assert.Equal(t, routing.Nibblin(14433000000000), checkSeller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, "newname", checkSeller.ShortName)
 		assert.Equal(t, false, checkSeller.Secret)
 	})

@@ -681,7 +681,7 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 	sellers := make(map[string]routing.Seller)
 	sellerIDs := make(map[int64]string)
 
-	sql.Write([]byte("select id, short_name, public_egress_price, public_ingress_price, secret, "))
+	sql.Write([]byte("select id, short_name, public_egress_price, secret, "))
 	sql.Write([]byte("customer_id from sellers"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -695,7 +695,6 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 		err = rows.Scan(&seller.DatabaseID,
 			&seller.ShortName,
 			&seller.EgressPriceNibblinsPerGB,
-			&seller.IngressPriceNibblinsPerGB,
 			&seller.Secret,
 			&seller.CustomerID,
 		)
@@ -708,15 +707,14 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 		sellerIDs[seller.DatabaseID] = db.customerIDs[seller.CustomerID]
 
 		sellers[db.customerIDs[seller.CustomerID]] = routing.Seller{
-			ID:                        db.customerIDs[seller.CustomerID],
-			ShortName:                 seller.ShortName,
-			Secret:                    seller.Secret,
-			CompanyCode:               db.customers[db.customerIDs[seller.CustomerID]].Code,
-			Name:                      db.customers[db.customerIDs[seller.CustomerID]].Name,
-			IngressPriceNibblinsPerGB: routing.Nibblin(seller.IngressPriceNibblinsPerGB),
-			EgressPriceNibblinsPerGB:  routing.Nibblin(seller.EgressPriceNibblinsPerGB),
-			DatabaseID:                seller.DatabaseID,
-			CustomerID:                seller.CustomerID,
+			ID:                       db.customerIDs[seller.CustomerID],
+			ShortName:                seller.ShortName,
+			Secret:                   seller.Secret,
+			CompanyCode:              db.customers[db.customerIDs[seller.CustomerID]].Code,
+			Name:                     db.customers[db.customerIDs[seller.CustomerID]].Name,
+			EgressPriceNibblinsPerGB: routing.Nibblin(seller.EgressPriceNibblinsPerGB),
+			DatabaseID:               seller.DatabaseID,
+			CustomerID:               seller.CustomerID,
 		}
 
 	}

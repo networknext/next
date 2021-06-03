@@ -1950,23 +1950,17 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 					// Unmarshal the JSON and create the Seller struct
 					var sellerUSD struct {
-						Name            string
-						ShortName       string
-						CustomerCode    string
-						IngressPriceUSD string
-						EgressPriceUSD  string
-						Secret          bool
+						Name           string
+						ShortName      string
+						CustomerCode   string
+						EgressPriceUSD string
+						Secret         bool
 					}
 
 					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
 						handleRunTimeError(fmt.Sprintf("Could not unmarshal seller: %v\n", err), 1)
 					}
 
-					ingressUSD, err := strconv.ParseFloat(sellerUSD.IngressPriceUSD, 64)
-					if err != nil {
-						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.IngressPriceUSD)
-						os.Exit(0)
-					}
 					egressUSD, err := strconv.ParseFloat(sellerUSD.EgressPriceUSD, 64)
 					if err != nil {
 						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.EgressPriceUSD)
@@ -1974,22 +1968,20 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					}
 
 					s := seller{
-						Name:                 sellerUSD.Name,
-						ShortName:            sellerUSD.CustomerCode,
-						CustomerCode:         sellerUSD.CustomerCode,
-						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
-						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
-						Secret:               sellerUSD.Secret,
+						Name:                sellerUSD.Name,
+						ShortName:           sellerUSD.CustomerCode,
+						CustomerCode:        sellerUSD.CustomerCode,
+						EgressPriceNibblins: routing.DollarsToNibblins(egressUSD),
+						Secret:              sellerUSD.Secret,
 					}
 
 					// Add the Seller to storage
 					addSeller(rpcClient, env, routing.Seller{
-						ID:                        s.Name,
-						Name:                      s.Name,
-						ShortName:                 s.ShortName,
-						CompanyCode:               s.CustomerCode,
-						IngressPriceNibblinsPerGB: s.IngressPriceNibblins,
-						EgressPriceNibblinsPerGB:  s.EgressPriceNibblins,
+						ID:                       s.Name,
+						Name:                     s.Name,
+						ShortName:                s.ShortName,
+						CompanyCode:              s.CustomerCode,
+						EgressPriceNibblinsPerGB: s.EgressPriceNibblins,
 					})
 					return nil
 				},
@@ -2455,7 +2447,6 @@ provided by a JSON file of the form:
 {
   "Name": "Amazon.com, Inc.",
   "CustomerCode": "microzon",
-  "IngressPriceUSD": "0.01",
   "EgressPriceUSD": "0.1",
   "Secret": false
 }

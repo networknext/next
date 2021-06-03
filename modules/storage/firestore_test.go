@@ -928,18 +928,16 @@ func TestFirestore(t *testing.T) {
 
 		expected := []routing.Seller{
 			{
-				ID:                        "id1",
-				CompanyCode:               "local",
-				Name:                      "Local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				ID:                       "id1",
+				CompanyCode:              "local",
+				Name:                     "Local",
+				EgressPriceNibblinsPerGB: 20,
 			},
 			{
-				ID:                        "id2",
-				CompanyCode:               "local-local",
-				Name:                      "Local Local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				ID:                       "id2",
+				CompanyCode:              "local-local",
+				Name:                     "Local Local",
+				EgressPriceNibblinsPerGB: 20,
 			},
 		}
 
@@ -979,11 +977,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Seller{
-				ID:                        "id",
-				CompanyCode:               "local",
-				Name:                      "Local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				ID:                       "id",
+				CompanyCode:              "local",
+				Name:                     "Local",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			actualCustomer := routing.Customer{
@@ -1013,9 +1010,8 @@ func TestFirestore(t *testing.T) {
 			sdocs.Stop()
 
 			assert.Equal(t, seller{
-				Name:                       expected.Name,
-				PricePublicIngressNibblins: int64(expected.IngressPriceNibblinsPerGB),
-				PricePublicEgressNibblins:  int64(expected.EgressPriceNibblinsPerGB),
+				Name:                      expected.Name,
+				PricePublicEgressNibblins: int64(expected.EgressPriceNibblinsPerGB),
 			}, sellerInRemoteStorage)
 		})
 
@@ -1029,11 +1025,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Seller{
-				CompanyCode:               "local",
-				ID:                        "id",
-				Name:                      "Local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				CompanyCode:              "local",
+				ID:                       "id",
+				Name:                     "Local",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			expectedCustomer := routing.Customer{
@@ -1089,11 +1084,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Seller{
-				ID:                        "id",
-				CompanyCode:               "local",
-				Name:                      "Local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				ID:                       "id",
+				CompanyCode:              "local",
+				Name:                     "Local",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			expectedCustomer := routing.Customer{
@@ -1195,11 +1189,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			seller := routing.Seller{
-				CompanyCode:               "local",
-				ID:                        "id",
-				Name:                      "local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				CompanyCode:              "local",
+				ID:                       "id",
+				Name:                     "local",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			// Add a buyer so that the customer isn't removed
@@ -1250,10 +1243,9 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			seller := routing.Seller{
-				ID:                        "id",
-				Name:                      "local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				ID:                       "id",
+				Name:                     "local",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			err = fs.SetSeller(ctx, seller)
@@ -1270,11 +1262,10 @@ func TestFirestore(t *testing.T) {
 			}()
 
 			expected := routing.Seller{
-				ID:                        "id",
-				CompanyCode:               "local",
-				Name:                      "Local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				ID:                       "id",
+				CompanyCode:              "local",
+				Name:                     "Local",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			actualCustomer := routing.Customer{
@@ -1289,7 +1280,6 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			actual := expected
-			actual.IngressPriceNibblinsPerGB = 20
 			actual.EgressPriceNibblinsPerGB = 10
 
 			err = fs.SetSeller(ctx, actual)
@@ -1299,7 +1289,6 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			assert.NotEqual(t, expected, actual)
-			actual.IngressPriceNibblinsPerGB = 10
 			actual.EgressPriceNibblinsPerGB = 20
 			assert.Equal(t, expected, actual)
 		})
@@ -1632,11 +1621,10 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			seller := routing.Seller{
-				CompanyCode:               "local",
-				ID:                        "seller ID",
-				Name:                      "Local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				CompanyCode:              "local",
+				ID:                       "seller ID",
+				Name:                     "Local",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			company := routing.Customer{
@@ -1704,11 +1692,10 @@ func TestFirestore(t *testing.T) {
 		assert.NoError(t, err)
 
 		seller := routing.Seller{
-			CompanyCode:               "local",
-			ID:                        "seller ID",
-			Name:                      "Local",
-			IngressPriceNibblinsPerGB: 10,
-			EgressPriceNibblinsPerGB:  20,
+			CompanyCode:              "local",
+			ID:                       "seller ID",
+			Name:                     "Local",
+			EgressPriceNibblinsPerGB: 20,
 		}
 
 		company := routing.Customer{
@@ -1820,11 +1807,10 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			seller := routing.Seller{
-				CompanyCode:               "local",
-				ID:                        "seller ID",
-				Name:                      "seller name",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				CompanyCode:              "local",
+				ID:                       "seller ID",
+				Name:                     "seller name",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			company := routing.Customer{
@@ -1870,11 +1856,10 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			seller := routing.Seller{
-				CompanyCode:               "local",
-				ID:                        "seller ID",
-				Name:                      "seller name",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				CompanyCode:              "local",
+				ID:                       "seller ID",
+				Name:                     "seller name",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			company := routing.Customer{
@@ -1953,11 +1938,10 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			seller := routing.Seller{
-				CompanyCode:               "local",
-				ID:                        "seller ID",
-				Name:                      "Local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				CompanyCode:              "local",
+				ID:                       "seller ID",
+				Name:                     "Local",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			company := routing.Customer{
@@ -2044,11 +2028,10 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 
 			seller := routing.Seller{
-				CompanyCode:               "local",
-				ID:                        "seller ID",
-				Name:                      "Local",
-				IngressPriceNibblinsPerGB: 10,
-				EgressPriceNibblinsPerGB:  20,
+				CompanyCode:              "local",
+				ID:                       "seller ID",
+				Name:                     "Local",
+				EgressPriceNibblinsPerGB: 20,
 			}
 
 			company := routing.Customer{
@@ -2527,11 +2510,10 @@ func TestFirestore(t *testing.T) {
 		}
 
 		expectedSeller := routing.Seller{
-			ID:                        "id",
-			CompanyCode:               "local",
-			Name:                      "Local",
-			IngressPriceNibblinsPerGB: 10,
-			EgressPriceNibblinsPerGB:  20,
+			ID:                       "id",
+			CompanyCode:              "local",
+			Name:                     "Local",
+			EgressPriceNibblinsPerGB: 20,
 		}
 
 		expectedCustomer := routing.Customer{
