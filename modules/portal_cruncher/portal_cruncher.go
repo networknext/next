@@ -84,9 +84,10 @@ func NewPortalCruncher(
 	metrics *metrics.PortalCruncherMetrics,
 	btMetrics *metrics.BigTableMetrics,
 ) (*PortalCruncher, error) {
+	var err error
 
 	redisPool := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
-	if err := storage.ValidateRedisPool(redisPool); err != nil {
+	if err = storage.ValidateRedisPool(redisPool); err != nil {
 		return nil, fmt.Errorf("failed to validate redis pool for hostname %s: %v", redisHostname, err)
 	}
 
@@ -297,7 +298,7 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 
 func (cruncher *PortalCruncher) insertCountDataIntoRedis(redisPortalCountBuffer []*transport.SessionCountData, minutes int64) {
 	sessionMapConn := cruncher.sessionPool.Get()
-	defer conn.Close()
+	defer sessionMapConn.Close()
 
 	var cmd string
 
@@ -312,10 +313,10 @@ func (cruncher *PortalCruncher) insertCountDataIntoRedis(redisPortalCountBuffer 
 
 		// Add the new session count
 		cmd = fmt.Sprintf("c-%s-%d %s %d", customerID, minutes, serverID, numSessions)
-		sessionMapConn.Do("HSET", cmd)
+		sessionMapConn.Do("HSET", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		cmd = fmt.Sprintf("c-%s-%d %d", customerID, minutes, 30)
-		sessionMapConn.Do("EXPIRE", cmd)
+		sessionMapConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 	}
 }
 
@@ -367,10 +368,10 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 	}
 
 	cmd = fmt.Sprintf(format, args...)
-	topSessionsConn.Do("ZADD", cmd)
+	topSessionsConn.Do("ZADD", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 	cmd = fmt.Sprintf("s-%d %d", minutes, 30)
-	topSessionsConn.Do("EXPIRE", cmd)
+	topSessionsConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 	for i := range redisPortalDataBuffer {
 		meta := &redisPortalDataBuffer[i].Meta
@@ -401,22 +402,22 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 		pointString := point.RedisString()
 		if next {
 			cmd = fmt.Sprintf("d-%s-%d %s", customerID, minutes-1, sessionID)
-			sessionMapConn.Do("HDEL", cmd)
+			sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 			cmd = fmt.Sprintf("d-%s-%d %s", customerID, minutes, sessionID)
-			sessionMapConn.Do("HDEL", cmd)
+			sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 			cmd = fmt.Sprintf("n-%s-%d %s %s", customerID, minutes, sessionID, pointString)
-			sessionMapConn.Do("HSET", cmd)
+			sessionMapConn.Do("HSET", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 		} else {
 			cmd = fmt.Sprintf("n-%s-%d %s", customerID, minutes-1, sessionID)
-			sessionMapConn.Do("HDEL", cmd)
+			sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 			cmd = fmt.Sprintf("n-%s-%d %s", customerID, minutes, sessionID)
-			sessionMapConn.Do("HDEL", cmd)
+			sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 			cmd = fmt.Sprintf("d-%s-%d %s %s", customerID, minutes, sessionID, pointString)
-			sessionMapConn.Do("HSET", cmd)
+			sessionMapConn.Do("HSET", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 		}
 
 		// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
@@ -425,35 +426,35 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 		topSessionsConn.Do("DEL", cmd)
 
 		cmd = fmt.Sprintf("sc-%s-%d %.2f %s", customerID, minutes, score, sessionID)
-		topSessionsConn.Do("ZADD", cmd)
+		topSessionsConn.Do("ZADD", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		cmd = fmt.Sprintf("sc-%s-%d %d", customerID, minutes, 30)
-		topSessionsConn.Do("EXPIRE", cmd)
+		topSessionsConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		// Remove the old map points minute buckets from 2 minutes ago if it didn't expire
 		cmd = fmt.Sprintf("d-%s-%d %s", customerID, minutes-2, sessionID)
-		sessionMapConn.Do("HDEL", cmd)
+		sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		cmd = fmt.Sprintf("n-%s-%d %s", customerID, minutes-2, sessionID)
-		sessionMapConn.Do("HDEL", cmd)
+		sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		// Expire map points
 		cmd = fmt.Sprintf("n-%s-%d %d", customerID, minutes, 30)
-		sessionMapConn.Do("EXPIRE", cmd)
+		sessionMapConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		cmd = fmt.Sprintf("d-%s-%d %d", customerID, minutes, 30)
-		sessionMapConn.Do("EXPIRE", cmd)
+		sessionMapConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		// Update session meta
-		cmd = fmt.Sprintf("sm-%s \"%s\" EX %d", sessionID, meta.RedisString(), 120)
-		sessionMetaConn.Do("SET", cmd)
+		cmd = fmt.Sprintf(`sm-%s %s EX %d`, sessionID, meta.RedisString(), 120)
+		sessionMetaConn.Do("SET", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		// Update session slices
 		cmd = fmt.Sprintf("ss-%s %s", sessionID, slice.RedisString())
-		sessionSlicesConn.Do("RPUSH", cmd)
+		sessionSlicesConn.Do("RPUSH", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		cmd = fmt.Sprintf("ss-%s %d", sessionID, 120)
-		sessionSlicesConn.Do("EXPIRE", cmd)
+		sessionSlicesConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 	}
 }
 
