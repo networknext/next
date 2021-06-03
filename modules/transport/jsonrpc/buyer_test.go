@@ -554,7 +554,7 @@ func TestTotalSessions(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 
 	minutes := time.Now().Unix() / 60
 
@@ -643,7 +643,7 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 
 	minutes := time.Now().Unix() / 60
 
@@ -1320,7 +1320,7 @@ func TestGameConfiguration(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
@@ -1371,7 +1371,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
@@ -1456,7 +1456,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 
 func TestSameBuyerRoleFunction(t *testing.T) {
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	var storer = storage.InMemory{}
 
 	pubkey := make([]byte, 4)
