@@ -409,11 +409,10 @@ type datacenter struct {
 type dcMapStrings struct {
 	BuyerID    string `json:"buyer_id"`
 	Datacenter string `json:"datacenter"`
-	Alias      string `json:"alias"`
 }
 
 func (dcm dcMapStrings) String() string {
-	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
+	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\n}", dcm.BuyerID, dcm.Datacenter)
 }
 
 func main() {
@@ -1599,7 +1598,6 @@ the contents of the specified json file. The json file layout
 is as follows:
 
 {
-	"alias": "some.server.alias",
 	"datacenter": "2fe32c22450fb4c9",
 	"buyer_id": "bdbebdbf0f7be395"
 }

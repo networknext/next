@@ -109,7 +109,6 @@ func SeedStorage(
 		datacenterMap := routing.DatacenterMap{
 			BuyerID:      customerID,
 			DatacenterID: datacenter.ID,
-			Alias:        "local",
 		}
 		if err := db.AddSeller(ctx, seller); err != nil {
 			return fmt.Errorf("AddSeller() err: %w", err)

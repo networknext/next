@@ -1733,7 +1733,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]rou
 	return dcs
 }
 
-// AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
+// AddDatacenterMap adds a new datacenter map for the given buyer and datacenter IDs
 func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 
 	var sql bytes.Buffer
@@ -1751,11 +1751,12 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 	datacenter, ok := db.datacenters[dcID]
 	if !ok {
+		fmt.Printf("datacenter does not exist: %016x\n", dcMap.DatacenterID)
 		return &DoesNotExistError{resourceType: "DatacenterID", resourceRef: dcMap.DatacenterID}
 	}
 
-	sql.Write([]byte("insert into datacenter_maps (alias, buyer_id, datacenter_id) "))
-	sql.Write([]byte("values ($1, $2, $3)"))
+	sql.Write([]byte("insert into datacenter_maps (buyer_id, datacenter_id) "))
+	sql.Write([]byte("values ($1, $2)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1763,7 +1764,7 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 		return err
 	}
 
-	result, err := stmt.Exec(dcMap.Alias,
+	result, err := stmt.Exec(
 		buyer.DatabaseID,
 		datacenter.DatabaseID,
 	)
@@ -1834,19 +1835,6 @@ func (db *SQL) UpdateDatacenterMap(ctx context.Context, ephemeralBuyerID uint64,
 		db.datacenterMaps[dcmID] = workingDatacenterMap
 		db.datacenterMapsMutex.Unlock()
 
-	case "Alias":
-		alias, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("%v is not a valid string value", value)
-		}
-		updateSQL.Write([]byte("update datacenter_maps set alias=$1 where datacenter_id=$2 and buyer_id=$3"))
-		args = append(args, alias, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
-		workingDatacenterMap.Alias = alias
-
-		db.datacenterMapsMutex.Lock()
-		db.datacenterMaps[dcmID] = workingDatacenterMap
-		db.datacenterMapsMutex.Unlock()
-
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.DatacenterMap type", field)
 
@@ -1888,7 +1876,7 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range db.datacenterMaps {
 		if dc.DatacenterID == dcID || dcID == 0 {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}

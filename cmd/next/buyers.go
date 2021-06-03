@@ -393,7 +393,6 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 		DatacenterMap: routing.DatacenterMap{
 			BuyerID:      buyerID,
 			DatacenterID: dcID,
-			Alias:        dcm.Alias,
 		},
 	}
 
@@ -447,7 +446,6 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 		DatacenterMap: routing.DatacenterMap{
 			BuyerID:      buyerID,
 			DatacenterID: dcID,
-			Alias:        dcm.Alias,
 		},
 	}
 

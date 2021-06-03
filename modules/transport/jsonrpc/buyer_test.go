@@ -461,7 +461,6 @@ func TestUserSessions(t *testing.T) {
 func TestDatacenterMaps(t *testing.T) {
 	var storer = storage.InMemory{}
 	dcMap := routing.DatacenterMap{
-		Alias:        "some.server.alias",
 		BuyerID:      0xbdbebdbf0f7be395,
 		DatacenterID: 0x7edb88d7b6fc0713,
 	}

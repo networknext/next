@@ -743,7 +743,7 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 
 	dcMaps := make(map[uint64]routing.DatacenterMap)
 
-	sql.Write([]byte("select alias, buyer_id, datacenter_id from datacenter_maps"))
+	sql.Write([]byte("select buyer_id, datacenter_id from datacenter_maps"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
@@ -753,7 +753,7 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 	defer rows.Close()
 
 	for rows.Next() {
-		err := rows.Scan(&sqlMap.Alias, &sqlMap.BuyerID, &sqlMap.DatacenterID)
+		err := rows.Scan(&sqlMap.BuyerID, &sqlMap.DatacenterID)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncDatacenterMaps(): error parsing returned row", "err", err)
 			return err
@@ -766,7 +766,6 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 		ephemeralBuyerID := buyer.ID
 
 		dcMap := routing.DatacenterMap{
-			Alias:        sqlMap.Alias,
 			BuyerID:      ephemeralBuyerID,
 			DatacenterID: db.datacenterIDs[sqlMap.DatacenterID],
 		}

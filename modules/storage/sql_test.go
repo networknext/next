@@ -455,7 +455,6 @@ func TestInsertSQL(t *testing.T) {
 
 	t.Run("AddDatacenterMap", func(t *testing.T) {
 		dcMap := routing.DatacenterMap{
-			Alias:        "test.map",
 			BuyerID:      outerBuyer.ID,
 			DatacenterID: outerDatacenter.ID,
 		}
@@ -465,7 +464,6 @@ func TestInsertSQL(t *testing.T) {
 
 		checkDCMaps := db.GetDatacenterMapsForBuyer(outerBuyer.ID)
 		assert.Equal(t, 1, len(checkDCMaps))
-		assert.Equal(t, dcMap.Alias, checkDCMaps[outerDatacenter.ID].Alias)
 		assert.Equal(t, dcMap.BuyerID, checkDCMaps[outerDatacenter.ID].BuyerID)
 		assert.Equal(t, dcMap.DatacenterID, checkDCMaps[outerDatacenter.ID].DatacenterID)
 	})
@@ -561,7 +559,6 @@ func TestDeleteSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		dcMap := routing.DatacenterMap{
-			Alias:        "test.map",
 			BuyerID:      outerBuyer.ID,
 			DatacenterID: outerDatacenter.ID,
 		}
@@ -900,7 +897,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		dcMap := routing.DatacenterMap{
-			Alias:        "test.map",
 			BuyerID:      buyerWithID.ID,
 			DatacenterID: datacenter1.ID,
 		}
@@ -912,16 +908,9 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter1.ID, "HexDatacenterID", hexDcID)
 		assert.NoError(t, err)
 
-		// changing the datacenter ID in the alias changes the datacenter map ID which is a
-		// combination of the buyer ID and the datacenter ID, so we have to use the new
-		// datacenter ID now to update.
-		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter2.ID, "Alias", "not.test.map")
-		assert.NoError(t, err)
-
 		checkDcMaps := db.GetDatacenterMapsForBuyer(buyerWithID.ID)
 		assert.Equal(t, 1, len(checkDcMaps))
 
-		assert.Equal(t, "not.test.map", checkDcMaps[did2].Alias)
 		assert.Equal(t, did2, checkDcMaps[did2].DatacenterID)
 		assert.Equal(t, buyerWithID.ID, checkDcMaps[did2].BuyerID)
 

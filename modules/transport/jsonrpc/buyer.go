@@ -1544,7 +1544,6 @@ func (s *BuyersService) JSRemoveDatacenterMap(r *http.Request, args *JSRemoveDat
 	}
 
 	dcMap := routing.DatacenterMap{
-		Alias:        args.Alias,
 		BuyerID:      buyerID,
 		DatacenterID: datacenterID,
 	}
@@ -1637,7 +1636,6 @@ func (s *BuyersService) JSAddDatacenterMap(r *http.Request, args *JSAddDatacente
 	dcMap := routing.DatacenterMap{
 		BuyerID:      buyerID,
 		DatacenterID: datacenterID,
-		Alias:        args.Alias,
 	}
 
 	return s.Storage.AddDatacenterMap(ctx, dcMap)
