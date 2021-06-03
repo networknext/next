@@ -111,7 +111,8 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 }
 
 type UserSessionsArgs struct {
-	UserID string `json:"user_id"`
+	UserID  string `json:"user_id"`
+	BuyerID uint64 `json:"buyer_id"`
 }
 
 type UserSessionsReply struct {
@@ -195,6 +196,9 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 					session.Anonymise()
+				} else if buyer.ID != args.BuyerID {
+					// Don't include sessions where the buyer ID does not match
+					continue
 				}
 
 				reply.Sessions = append(reply.Sessions, session)
@@ -246,17 +250,17 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		liveIDString := strings.Join(sessionIDs, ",")
 
 		if len(rowsByHash) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByHash, liveIDString, sessionSlice); err != nil {
+			if err = s.GetHistoricalSlices(r, reply, rowsByHash, liveIDString, sessionSlice, args.BuyerID); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 		} else if len(rowsByID) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByID, liveIDString, sessionSlice); err != nil {
+			if err = s.GetHistoricalSlices(r, reply, rowsByID, liveIDString, sessionSlice, args.BuyerID); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 		} else if len(rowsByHexID) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByHexID, liveIDString, sessionSlice); err != nil {
+			if err = s.GetHistoricalSlices(r, reply, rowsByHexID, liveIDString, sessionSlice, args.BuyerID); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
@@ -266,7 +270,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	return nil
 }
 
-func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, rows []bigtable.Row, liveIDString string, sessionSlice transport.SessionSlice) error {
+func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, rows []bigtable.Row, liveIDString string, sessionSlice transport.SessionSlice, buyerID uint64) error {
 	var sessionMeta transport.SessionMeta
 
 	for _, row := range rows {
@@ -295,6 +299,9 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 
 				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 					sessionMeta.Anonymise()
+				} else if buyer.ID != buyerID {
+					// Don't include sessions where the buyer ID does not match
+					continue
 				}
 
 				reply.Sessions = append(reply.Sessions, sessionMeta)
