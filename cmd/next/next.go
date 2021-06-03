@@ -412,7 +412,7 @@ type dcMapStrings struct {
 }
 
 func (dcm dcMapStrings) String() string {
-	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\n}", dcm.BuyerID, dcm.Datacenter)
+	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n}", dcm.BuyerID, dcm.Datacenter)
 }
 
 func main() {
@@ -1638,18 +1638,17 @@ The buyer and datacenter must exist. Hex IDs are required for now.
 					{
 						Name:       "remove",
 						ShortUsage: "next buyer datacenter remove <json file>",
-						ShortHelp:  "Removes the datacenter alias described in the json file from the system (see -h for an example)",
+						ShortHelp:  "Removes the datacenter map described in the json file from the system (see -h for an example)",
 						LongHelp: `Reads the specifics for the datacenter alias to be removed from
 the contents of the specified json file. The json file layout
 is as follows:
 
 {
-	"alias": "some.server.alias",
 	"datacenter": "2fe32c22450fb4c9",
 	"buyer_id": "bdbebdbf0f7be395"
 }
 
-The alias is uniquely defined by all three entries, so they must be provided. Hex IDs and names are supported."
+The alias is uniquely defined by both entries, so they must be provided. Hex IDs and names are supported."
 						`,
 						Exec: func(_ context.Context, args []string) error {
 							var err error
