@@ -11,7 +11,7 @@ import (
 )
 
 func TestNewRedisMultipathVetoHandlerCouldNotPing(t *testing.T) {
-	_, err := storage.NewRedisMultipathVetoHandler("", nil)
+	_, err := storage.NewRedisMultipathVetoHandler("", "", 0, 0, nil)
 	assert.Contains(t, err.Error(), "could not ping multipath veto redis instance")
 }
 
@@ -23,7 +23,7 @@ func TestNewRedisMultipathVetoHandlerSuccess(t *testing.T) {
 		return &routing.DatabaseBinWrapper{}
 	}
 
-	_, err = storage.NewRedisMultipathVetoHandler(redisServer.Addr(), getDatabase)
+	_, err = storage.NewRedisMultipathVetoHandler(redisServer.Addr(), "", 1, 1, getDatabase)
 	assert.NoError(t, err)
 }
 
@@ -38,7 +38,7 @@ func TestMultipathVetoUserRedisError(t *testing.T) {
 		return &routing.DatabaseBinWrapper{BuyerMap: buyerMap}
 	}
 
-	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), getDatabase)
+	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), "", 1, 1, getDatabase)
 	assert.NoError(t, err)
 
 	redisServer.Close()
@@ -58,7 +58,7 @@ func TestMultipathVetoUserSuccess(t *testing.T) {
 		return &routing.DatabaseBinWrapper{BuyerMap: buyerMap}
 	}
 
-	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), getDatabase)
+	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), "", 1, 1, getDatabase)
 	assert.NoError(t, err)
 	err = multipathVetoHandler.MultipathVetoUser("local", 1234567890)
 	assert.NoError(t, err)
@@ -77,7 +77,7 @@ func TestGetMapCopyNewCustomerCode(t *testing.T) {
 		return &routing.DatabaseBinWrapper{}
 	}
 
-	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), getDatabase)
+	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), "", 1, 1, getDatabase)
 	assert.NoError(t, err)
 
 	multipathVetoMap := multipathVetoHandler.GetMapCopy("unknown")
@@ -95,7 +95,7 @@ func TestGetMapCopyExistingCustomerCode(t *testing.T) {
 		return &routing.DatabaseBinWrapper{BuyerMap: buyerMap}
 	}
 
-	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), getDatabase)
+	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), "", 1, 1, getDatabase)
 	assert.NoError(t, err)
 	err = multipathVetoHandler.MultipathVetoUser("local", 1234567890)
 	assert.NoError(t, err)
@@ -115,7 +115,7 @@ func TestMultipathVetoHandlerSyncRedisError(t *testing.T) {
 		return &routing.DatabaseBinWrapper{BuyerMap: buyerMap}
 	}
 
-	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), getDatabase)
+	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), "", 1, 1, getDatabase)
 	assert.NoError(t, err)
 
 	redisServer.Close()
@@ -135,7 +135,7 @@ func TestMultipathVetoHandlerSyncParseError(t *testing.T) {
 		return &routing.DatabaseBinWrapper{BuyerMap: buyerMap}
 	}
 
-	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), getDatabase)
+	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), "", 1, 1, getDatabase)
 	assert.NoError(t, err)
 
 	redisServer.Set("local-zyxwvut", "1")
@@ -155,7 +155,7 @@ func TestMultipathVetoHandlerSyncSuccess(t *testing.T) {
 		return &routing.DatabaseBinWrapper{BuyerMap: buyerMap}
 	}
 
-	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), getDatabase)
+	multipathVetoHandler, err := storage.NewRedisMultipathVetoHandler(redisServer.Addr(), "", 1, 1, getDatabase)
 	assert.NoError(t, err)
 
 	for i := 0; i < 100; i++ {

@@ -85,11 +85,15 @@ type VanityMetrics struct {
 }
 
 func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int,
-	vanitySubscriber pubsub.Subscriber, redisSessions string, redisMaxIdleConnections int, redisMaxActiveConnections int,
+	vanitySubscriber pubsub.Subscriber, redisSessions string, redisPassword string, redisMaxIdleConnections int, redisMaxActiveConnections int,
 	vanityMaxUserIdleTime time.Duration, vanitySetName string, env string, logger log.Logger) (*VanityMetricHandler, error) {
 
 	// Create Redis client for userHash -> sessionID, timestamp map
-	vanitySessionsMap := storage.NewRedisPool(redisSessions, redisMaxIdleConnections, redisMaxActiveConnections)
+	vanitySessionsMap := storage.NewRedisPool(redisSessions, redisPassword, redisMaxIdleConnections, redisMaxActiveConnections)
+	if err := storage.ValidateRedisPool(vanitySessionsMap); err != nil {
+		level.Error(logger).Log("msg", "could not validate redis pool", "err", err)
+		return nil, err
+	}
 
 	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
 	vanityHourMetricsMap := map[string]bool{
