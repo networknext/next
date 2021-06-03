@@ -832,7 +832,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		Datacenter:          datacenter,
 		NICSpeedMbps:        int32(args.NICSpeedMbps),
 		IncludedBandwidthGB: int32(args.IncludedBandwidthGB),
-		State:               routing.RelayStateMaintenance,
+		State:               routing.RelayStateEnabled,
 		ManagementAddr:      args.ManagementAddr,
 		SSHUser:             args.SSHUser,
 		SSHPort:             args.SSHPort,

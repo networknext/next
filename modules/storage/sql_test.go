@@ -211,7 +211,6 @@ func TestInsertSQL(t *testing.T) {
 			StartDate:           time.Now(),
 			EndDate:             time.Now(),
 			Type:                routing.BareMetal,
-			State:               routing.RelayStateMaintenance,
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
 			Notes:               "the original notes",
@@ -248,7 +247,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.StartDate.Format("01/02/06"), checkRelay.StartDate.Format("01/02/06"))
 		assert.Equal(t, relay.EndDate.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
 		assert.Equal(t, relay.Type, checkRelay.Type)
-		assert.Equal(t, relay.State, checkRelay.State)
+		assert.Equal(t, routing.RelayStateEnabled, checkRelay.State)
 		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
 		assert.Equal(t, int32(1000), checkRelay.NICSpeedMbps)
 
