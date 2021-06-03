@@ -13,7 +13,7 @@ func TestNewRedisPool(t *testing.T) {
 	maxIdleConnections := 5
 	maxActiveConnections := 64
 
-	pool := storage.NewRedisPool(addr, maxIdleConnections, maxActiveConnections)
+	pool := storage.NewRedisPool(addr, "", maxIdleConnections, maxActiveConnections)
 	assert.Equal(t, maxIdleConnections, pool.MaxIdle)
 	assert.Equal(t, maxActiveConnections, pool.MaxActive)
 }
@@ -23,7 +23,7 @@ func TestValidateRedisPoolFailure(t *testing.T) {
 	maxIdleConnections := 5
 	maxActiveConnections := 64
 
-	pool := storage.NewRedisPool(addr, maxIdleConnections, maxActiveConnections)
+	pool := storage.NewRedisPool(addr, "", maxIdleConnections, maxActiveConnections)
 	err := storage.ValidateRedisPool(pool)
 	assert.Error(t, err)
 }
@@ -35,7 +35,7 @@ func TestValidateRedisPoolSuccess(t *testing.T) {
 	maxIdleConnections := 5
 	maxActiveConnections := 64
 
-	pool := storage.NewRedisPool(redisServer.Addr(), maxIdleConnections, maxActiveConnections)
+	pool := storage.NewRedisPool(redisServer.Addr(), "", maxIdleConnections, maxActiveConnections)
 	err = storage.ValidateRedisPool(pool)
 	assert.NoError(t, err)
 }
