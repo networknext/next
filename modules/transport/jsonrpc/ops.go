@@ -317,11 +317,10 @@ type SellersReply struct {
 }
 
 type seller struct {
-	ID                   string          `json:"id"`
-	Name                 string          `json:"name"`
-	IngressPriceNibblins routing.Nibblin `json:"ingressPriceNibblins"`
-	EgressPriceNibblins  routing.Nibblin `json:"egressPriceNibblins"`
-	Secret               bool            `json:"secret"`
+	ID                  string          `json:"id"`
+	Name                string          `json:"name"`
+	EgressPriceNibblins routing.Nibblin `json:"egressPriceNibblins"`
+	Secret              bool            `json:"secret"`
 }
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
@@ -334,11 +333,10 @@ func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersR
 		// 	return err
 		// }
 		reply.Sellers = append(reply.Sellers, seller{
-			ID:                   localSeller.ID,
-			Name:                 localSeller.Name,
-			IngressPriceNibblins: localSeller.IngressPriceNibblinsPerGB,
-			EgressPriceNibblins:  localSeller.EgressPriceNibblinsPerGB,
-			Secret:               localSeller.Secret,
+			ID:                  localSeller.ID,
+			Name:                localSeller.Name,
+			EgressPriceNibblins: localSeller.EgressPriceNibblinsPerGB,
+			Secret:              localSeller.Secret,
 		})
 	}
 
@@ -499,12 +497,11 @@ func (s *OpsService) JSAddSeller(r *http.Request, args *JSAddSellerArgs, reply *
 	defer cancelFunc()
 
 	seller := routing.Seller{
-		ID:                        args.ShortName,
-		ShortName:                 args.ShortName,
-		CompanyCode:               args.ShortName,
-		Secret:                    args.Secret,
-		IngressPriceNibblinsPerGB: routing.Nibblin(args.IngressPrice),
-		EgressPriceNibblinsPerGB:  routing.Nibblin(args.EgressPrice),
+		ID:                       args.ShortName,
+		ShortName:                args.ShortName,
+		CompanyCode:              args.ShortName,
+		Secret:                   args.Secret,
+		EgressPriceNibblinsPerGB: routing.Nibblin(args.EgressPrice),
 	}
 
 	if err := s.Storage.AddSeller(ctx, seller); err != nil {
@@ -830,7 +827,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		Datacenter:          datacenter,
 		NICSpeedMbps:        int32(args.NICSpeedMbps),
 		IncludedBandwidthGB: int32(args.IncludedBandwidthGB),
-		State:               routing.RelayStateMaintenance,
+		State:               routing.RelayStateEnabled,
 		ManagementAddr:      args.ManagementAddr,
 		SSHUser:             args.SSHUser,
 		SSHPort:             args.SSHPort,
@@ -1216,7 +1213,6 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 		}
 
 		dcmFull := DatacenterMapsFull{
-			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      company.Name,

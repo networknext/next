@@ -59,7 +59,7 @@ func ParseRelayState(str string) (RelayState, error) {
 		return RelayStateDisabled, nil
 	case "quarantine":
 		return RelayStateQuarantine, nil
-	case "decommissioned":
+	case "removed":
 		return RelayStateDecommissioned, nil
 	case "offline":
 		return RelayStateOffline, nil
