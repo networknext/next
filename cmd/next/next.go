@@ -507,7 +507,7 @@ func main() {
 	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
 	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
 	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
-	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "decommissioned", false, "only show decommissioned relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "removed", false, "only show removed relays")
 	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateOffline], "offline", false, "only show offline relays")
 
 	// Flags to hide relays in certain states
@@ -516,7 +516,7 @@ func main() {
 	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
 	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
 	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
-	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "noremoved", false, "hide removed relays")
 	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
 
 	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
@@ -2602,11 +2602,9 @@ must be one of the following and is case-sensitive:
 
 Valid relay states:
    enabled
-   maintenance
    disabled
-   quarantined (not currently in use)
-   decommissioned
-   offline
+   quarantined
+   removed
 
 Valid bandwidth rules:
    flat
