@@ -392,6 +392,8 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
+		matrixStorePassword := envvar.Get("MATRIX_STORE_PASSWORD", "")
+
 		maxIdleConnections, err := envvar.GetInt("MATRIX_STORE_MAX_IDLE_CONNS", 5)
 		if err != nil {
 			level.Error(logger).Log("msg", "error getting MATRIX_STORE_MAX_IDLE_CONNS", "err", err)
@@ -422,7 +424,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddress, maxIdleConnections, maxActiveConnections, readTimeout, writeTimeout, expireTimeout)
+		matrixStore, err = storage.NewRedisMatrixStore(matrixStoreAddress, matrixStorePassword, maxIdleConnections, maxActiveConnections, readTimeout, writeTimeout, expireTimeout)
 		if err != nil {
 			level.Error(logger).Log("msg", "error creating redis matrix store", "err", err)
 			return 1
