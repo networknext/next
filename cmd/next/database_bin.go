@@ -254,15 +254,14 @@ func createStagingDatabaseBin(numRelays int) {
 
 	// Fill in sellers
 	seller := routing.Seller{
-		ID:                        "stagingseller",
-		Name:                      "staging seller",
-		CompanyCode:               "stagingseller",
-		ShortName:                 "stagingseller",
-		Secret:                    false,
-		IngressPriceNibblinsPerGB: routing.Nibblin(2000000000),
-		EgressPriceNibblinsPerGB:  routing.Nibblin(2000000000),
-		DatabaseID:                1,
-		CustomerID:                2,
+		ID:                       "stagingseller",
+		Name:                     "staging seller",
+		CompanyCode:              "stagingseller",
+		ShortName:                "stagingseller",
+		Secret:                   false,
+		EgressPriceNibblinsPerGB: routing.Nibblin(2000000000),
+		DatabaseID:               1,
+		CustomerID:               2,
 	}
 	dbWrapper.SellerMap[seller.ID] = seller
 

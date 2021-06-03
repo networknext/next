@@ -763,12 +763,11 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 	}
 
 	newSellerData := seller{
-		CompanyCode:               s.CompanyCode,
-		ID:                        s.ID,
-		Name:                      s.Name,
-		Secret:                    s.Secret,
-		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
-		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
+		CompanyCode:              s.CompanyCode,
+		ID:                       s.ID,
+		Name:                     s.Name,
+		Secret:                   s.Secret,
+		EgressPriceNibblinsPerGB: int64(s.EgressPriceNibblinsPerGB),
 	}
 
 	// Add the seller in remote storage
@@ -871,9 +870,8 @@ func (fs *Firestore) SetSeller(ctx context.Context, seller routing.Seller) error
 
 	// Update the seller in firestore
 	newSellerData := map[string]interface{}{
-		"name":                       seller.Name,
-		"pricePublicIngressNibblins": int64(seller.IngressPriceNibblinsPerGB),
-		"pricePublicEgressNibblins":  int64(seller.EgressPriceNibblinsPerGB),
+		"name":                      seller.Name,
+		"pricePublicEgressNibblins": int64(seller.EgressPriceNibblinsPerGB),
 	}
 
 	if _, err := fs.Client.Collection("Seller").Doc(seller.ID).Set(ctx, newSellerData, firestore.MergeAll); err != nil {
@@ -1927,11 +1925,10 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		seller := routing.Seller{
-			ID:                        sdoc.Ref.ID,
-			Name:                      s.Name,
-			CompanyCode:               s.CompanyCode,
-			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
-			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
+			ID:                       sdoc.Ref.ID,
+			Name:                     s.Name,
+			CompanyCode:              s.CompanyCode,
+			EgressPriceNibblinsPerGB: routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}
 
 		relay.Seller = seller
@@ -2027,12 +2024,11 @@ func (fs *Firestore) syncSellers(ctx context.Context) error {
 		}
 
 		seller := routing.Seller{
-			ID:                        sellerDoc.Ref.ID,
-			CompanyCode:               s.CompanyCode,
-			Name:                      s.Name,
-			Secret:                    s.Secret,
-			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
-			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
+			ID:                       sellerDoc.Ref.ID,
+			CompanyCode:              s.CompanyCode,
+			Name:                     s.Name,
+			Secret:                   s.Secret,
+			EgressPriceNibblinsPerGB: routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}
 
 		sellers[sellerDoc.Ref.ID] = seller

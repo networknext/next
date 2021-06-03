@@ -130,36 +130,33 @@ func SeedSQLStorage(
 
 		// fmt.Println("Adding sellers")
 		localSeller := routing.Seller{
-			ID:                        localCust.Code,
-			ShortName:                 "local",
-			CompanyCode:               "local",
-			Secret:                    false,
-			Name:                      localCust.Name,
-			IngressPriceNibblinsPerGB: 0.1 * 1e11,
-			EgressPriceNibblinsPerGB:  0.2 * 1e11,
-			CustomerID:                localCust.DatabaseID,
+			ID:                       localCust.Code,
+			ShortName:                "local",
+			CompanyCode:              "local",
+			Secret:                   false,
+			Name:                     localCust.Name,
+			EgressPriceNibblinsPerGB: 0.2 * 1e11,
+			CustomerID:               localCust.DatabaseID,
 		}
 
 		ghostSeller := routing.Seller{
-			ID:                        ghostCust.Code,
-			ShortName:                 "ghost",
-			CompanyCode:               "ghost-army",
-			Secret:                    false,
-			Name:                      ghostCust.Name,
-			IngressPriceNibblinsPerGB: 0.3 * 1e11,
-			EgressPriceNibblinsPerGB:  0.4 * 1e11,
-			CustomerID:                ghostCust.DatabaseID,
+			ID:                       ghostCust.Code,
+			ShortName:                "ghost",
+			CompanyCode:              "ghost-army",
+			Secret:                   false,
+			Name:                     ghostCust.Name,
+			EgressPriceNibblinsPerGB: 0.4 * 1e11,
+			CustomerID:               ghostCust.DatabaseID,
 		}
 
 		hpSeller := routing.Seller{
-			ID:                        hpCust.Code,
-			ShortName:                 hpCust.Code,
-			CompanyCode:               hpCust.Code,
-			Secret:                    false,
-			Name:                      hpCust.Name,
-			IngressPriceNibblinsPerGB: 0.3 * 1e11,
-			EgressPriceNibblinsPerGB:  0.4 * 1e11,
-			CustomerID:                hpCust.DatabaseID,
+			ID:                       hpCust.Code,
+			ShortName:                hpCust.Code,
+			CompanyCode:              hpCust.Code,
+			Secret:                   false,
+			Name:                     hpCust.Name,
+			EgressPriceNibblinsPerGB: 0.4 * 1e11,
+			CustomerID:               hpCust.DatabaseID,
 		}
 
 		if err := db.AddSeller(ctx, localSeller); err != nil {

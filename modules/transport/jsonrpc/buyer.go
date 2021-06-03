@@ -1448,7 +1448,6 @@ type DatacenterMapsArgs struct {
 }
 
 type DatacenterMapsFull struct {
-	Alias          string
 	DatacenterName string
 	DatacenterID   string
 	BuyerName      string
@@ -1506,7 +1505,6 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		}
 
 		dcmFull := DatacenterMapsFull{
-			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      customer.Name,
