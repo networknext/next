@@ -242,6 +242,8 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 	case <-ctx.Done():
 		// Let the goroutines finish up
 		wg.Wait()
+		// Close the redis pool
+		cruncher.sessionPool.Close()
 		return ctx.Err()
 	}
 }
