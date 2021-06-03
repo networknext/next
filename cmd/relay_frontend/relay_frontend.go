@@ -88,7 +88,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the redis matrix store
-	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MSMaxIdleConnections, cfg.MSMaxActiveConnections, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixExpireTimeout)
+	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MatrixStorePassword, cfg.MSMaxIdleConnections, cfg.MSMaxActiveConnections, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixExpireTimeout)
 	if err != nil {
 		_ = level.Error(logger).Log("err", err)
 		return 1
@@ -446,6 +446,8 @@ func GetRelayFrontendConfig() (*frontend.RelayFrontendConfig, error) {
 	if cfg.MatrixStoreAddress == "" {
 		return nil, fmt.Errorf("MATRIX_STORE_ADDRESS not set")
 	}
+
+	cfg.MatrixStorePassword = envvar.Get("MATRIX_STORE_PASSWORD", "")
 
 	maxIdleConnections, err := envvar.GetInt("MATRIX_STORE_MAX_IDLE_CONNS", 5)
 	if err != nil {
