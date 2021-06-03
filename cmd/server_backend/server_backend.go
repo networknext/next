@@ -609,7 +609,7 @@ func mainReturnWithCode() int {
 			core.Error("invalid REDIS_MAX_ACTIVE_CONNS_MULTIPATH_VETO: %v", err)
 			return 1
 		}
-		
+
 		// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
 		multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
 		if err != nil {
