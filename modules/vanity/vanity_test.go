@@ -171,7 +171,7 @@ func TestNewVanityMetrics(t *testing.T) {
 
 	logger := log.NewNopLogger()
 
-	vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Second*5, "testSet", "", logger)
+	vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), "", 5, 5, time.Second*5, "testSet", "", logger)
 	assert.NoError(t, err)
 	assert.NotNil(t, vanityMetrics)
 }
@@ -192,7 +192,7 @@ func TestReceiveMessage(t *testing.T) {
 	t.Run("receive error", func(t *testing.T) {
 		subscriber := &BadMockSubscriber{}
 
-		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, redisServer.Addr(), 5, 5, time.Second*5, "testSet", "", logger)
+		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, redisServer.Addr(), "", 5, 5, time.Second*5, "testSet", "", logger)
 		assert.NoError(t, err)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
@@ -203,7 +203,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{vanityData: []byte("bad data")}
 		subscriber.Subscribe(pubsub.TopicVanityMetricData)
 
-		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, redisServer.Addr(), 5, 5, time.Second*5, "testSet", "", logger)
+		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, redisServer.Addr(), "", 5, 5, time.Second*5, "testSet", "", logger)
 		assert.NoError(t, err)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
@@ -218,7 +218,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{vanityData: vanityDataBytes}
 		subscriber.Subscribe(pubsub.TopicVanityMetricData)
 
-		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 0, subscriber, redisServer.Addr(), 5, 5, time.Second*5, "testSet", "", logger)
+		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 0, subscriber, redisServer.Addr(), "", 5, 5, time.Second*5, "testSet", "", logger)
 		assert.NoError(t, err)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
@@ -233,7 +233,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{vanityData: vanityDataBytes}
 		subscriber.Subscribe(pubsub.TopicVanityMetricData)
 
-		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, redisServer.Addr(), 5, 5, time.Second*5, "testSet", "", logger)
+		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, redisServer.Addr(), "", 5, 5, time.Second*5, "testSet", "", logger)
 		assert.NoError(t, err)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
@@ -244,7 +244,7 @@ func TestReceiveMessage(t *testing.T) {
 		subscriber := &SimpleMockSubscriber{}
 		subscriber.Subscribe(0)
 
-		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, redisServer.Addr(), 5, 5, time.Second*5, "testSet", "", logger)
+		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, subscriber, redisServer.Addr(), "", 5, 5, time.Second*5, "testSet", "", logger)
 		assert.NoError(t, err)
 
 		err = vanityMetrics.ReceiveMessage(ctx)
@@ -270,7 +270,7 @@ func TestUpdateMetrics(t *testing.T) {
 		sessionID := rand.Uint64()
 		sessionIDStr := fmt.Sprintf("%016x", sessionID)
 
-		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Second*15, "testSet", "", logger)
+		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), "", 5, 5, time.Second*15, "testSet", "", logger)
 		assert.NoError(t, err)
 
 		err = vanityMetrics.AddSessionID(sessionIDStr)
@@ -282,7 +282,7 @@ func TestUpdateMetrics(t *testing.T) {
 		sessionID := rand.Uint64()
 		sessionIDStr := fmt.Sprintf("%016x", sessionID)
 
-		conn := storage.NewRedisPool(redisServer.Addr(), 5, 5).Get()
+		conn := storage.NewRedisPool(redisServer.Addr(), "", 5, 5).Get()
 
 		member := fmt.Sprintf("sid-%s", sessionIDStr)
 		_, err := conn.Do("ZADD", redis.Args{}.Add("testSet").Add(time.Now().UnixNano()).Add(member)...)
@@ -290,7 +290,7 @@ func TestUpdateMetrics(t *testing.T) {
 
 		conn.Close()
 
-		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Second*15, "testSet", "", logger)
+		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), "", 5, 5, time.Second*15, "testSet", "", logger)
 		assert.NoError(t, err)
 
 		exists, err := vanityMetrics.SessionIDExists(sessionIDStr)
@@ -303,10 +303,10 @@ func TestUpdateMetrics(t *testing.T) {
 		sessionID := rand.Uint64()
 		sessionIDStr := fmt.Sprintf("%016x", sessionID)
 
-		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Millisecond*100, "testSet", "", logger)
+		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), "", 5, 5, time.Millisecond*100, "testSet", "", logger)
 		assert.NoError(t, err)
 
-		conn := storage.NewRedisPool(redisServer.Addr(), 5, 5).Get()
+		conn := storage.NewRedisPool(redisServer.Addr(), "", 5, 5).Get()
 		defer conn.Close()
 
 		err = vanityMetrics.AddSessionID(sessionIDStr)
@@ -335,7 +335,7 @@ func TestUpdateMetrics(t *testing.T) {
 		buyerID := rand.Uint64()
 		vanityData := getTestVanityData(buyerID, rand.Uint64(), rand.Uint64(), rand.Uint64())
 
-		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Second*5, "testSet", "", logger)
+		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), "", 5, 5, time.Second*5, "testSet", "", logger)
 		assert.NoError(t, err)
 
 		err = vanityMetrics.UpdateMetrics(ctx, []*vanity.VanityMetrics{&vanityData})
@@ -349,7 +349,7 @@ func TestUpdateMetrics(t *testing.T) {
 		buyerID := rand.Uint64()
 		vanityData := getTestVanityData(buyerID, rand.Uint64(), rand.Uint64(), rand.Uint64())
 
-		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Second*5, "testSet", "", logger)
+		vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), "", 5, 5, time.Second*5, "testSet", "", logger)
 		assert.NoError(t, err)
 
 		exists, err := vanityMetrics.AddNewBuyerID(ctx, fmt.Sprintf("%016x", buyerID))
@@ -414,7 +414,7 @@ func TestReadingMetrics(t *testing.T) {
 	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, tsMetricsHandler)
 	assert.NoError(t, err)
 
-	vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), 5, 5, time.Second*5, "testSet", "", logger)
+	vanityMetrics, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, 1, nil, redisServer.Addr(), "", 5, 5, time.Second*5, "testSet", "", logger)
 	assert.NoError(t, err)
 
 	startTime, err := time.Parse(time.RFC3339, "2020-12-01T15:04:05+07:00")
