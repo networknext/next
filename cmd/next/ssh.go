@@ -68,7 +68,6 @@ func (con SSHConn) Connect(isRiotRelay bool) {
 	if isRiotRelay {
 		args = append(args, "-R 9000")
 	}
-	fmt.Printf("isRiotRelay: %t\n", isRiotRelay)
 	args = append(args, "-tt", con.user+"@"+con.address)
 	if !runCommandEnv("ssh", args, nil) {
 		handleRunTimeError(fmt.Sprintln("could not start ssh session"), 1)
