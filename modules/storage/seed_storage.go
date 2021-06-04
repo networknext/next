@@ -90,18 +90,16 @@ func SeedStorage(
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
 		seller := routing.Seller{
-			ID:                        "sellerID",
-			CompanyCode:               "local",
-			Name:                      "local",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.2 * 1e9,
+			ID:                       "sellerID",
+			CompanyCode:              "local",
+			Name:                     "local",
+			EgressPriceNibblinsPerGB: 0.2 * 1e9,
 		}
 		valveSeller := routing.Seller{
-			ID:                        "valve",
-			CompanyCode:               "valve",
-			Name:                      "Valve",
-			IngressPriceNibblinsPerGB: 0.1 * 1e9,
-			EgressPriceNibblinsPerGB:  0.5 * 1e9,
+			ID:                       "valve",
+			CompanyCode:              "valve",
+			Name:                     "Valve",
+			EgressPriceNibblinsPerGB: 0.5 * 1e9,
 		}
 		did := crypto.HashID("local")
 		datacenter := routing.Datacenter{
@@ -111,7 +109,6 @@ func SeedStorage(
 		datacenterMap := routing.DatacenterMap{
 			BuyerID:      customerID,
 			DatacenterID: datacenter.ID,
-			Alias:        "local",
 		}
 		if err := db.AddSeller(ctx, seller); err != nil {
 			return fmt.Errorf("AddSeller() err: %w", err)

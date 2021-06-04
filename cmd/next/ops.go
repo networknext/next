@@ -61,6 +61,11 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 		endDate = reply.Relay.EndDate.Format("January 2, 2006")
 	}
 
+	// TODO: remove once routing.Relay.State is updated
+	if reply.Relay.State == "decommissioned" {
+		reply.Relay.State = "removed"
+	}
+
 	relay := "\nrelay info:\n"
 	relay += "  ID                 : " + fmt.Sprintf("%016x", reply.Relay.ID) + "\n"
 	relay += "  Name               : " + reply.Relay.Name + "\n"
