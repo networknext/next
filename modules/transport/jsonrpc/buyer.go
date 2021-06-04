@@ -193,22 +193,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					return err
 				}
 
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					session.Anonymise()
 				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
-					companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-					if !ok {
-						err = fmt.Errorf("UserSessions() user is not assigned to a company")
-						level.Error(s.Logger).Log("err", err)
-						return err
-					}
-					if companyCode == "" {
-						err = fmt.Errorf("UserSessions() failed to parse company code")
-						level.Error(s.Logger).Log("err", err)
-						return err
-					}
-					// Don't include sessions where the company code does not match the request's
-					if companyCode != buyer.CompanyCode {
+					if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+						// Don't show sessions where the company code does not match the request's
 						continue
 					}
 				}
@@ -309,22 +298,11 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					return err
 				}
 
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					sessionMeta.Anonymise()
 				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
-					companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-					if !ok {
-						err = fmt.Errorf("GetHistoricalSlices() user is not assigned to a company")
-						level.Error(s.Logger).Log("err", err)
-						return err
-					}
-					if companyCode == "" {
-						err = fmt.Errorf("GetHistoricalSlices() failed to parse company code")
-						level.Error(s.Logger).Log("err", err)
-						return err
-					}
-					// Don't include sessions where the company code does not match the request's
-					if companyCode != buyer.CompanyCode {
+					if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+						// Don't show sessions where the company code does not match the request's
 						continue
 					}
 				}
