@@ -43,7 +43,9 @@ func getTestSessionData(largeCustomer bool, sessionID uint64, userHash uint64, b
 	relayID4 := crypto.HashID("127.0.0.1:10003")
 
 	return transport.SessionPortalData{
+		Version: transport.SessionPortalDataVersion,
 		Meta: transport.SessionMeta{
+			Version:         transport.SessionMetaVersion,
 			ID:              sessionID,
 			UserHash:        userHash,
 			DatacenterName:  "local",
@@ -57,30 +59,35 @@ func getTestSessionData(largeCustomer bool, sessionID uint64, userHash uint64, b
 			ServerAddr:      "127.0.0.1:50000",
 			Hops: []transport.RelayHop{
 				{
-					ID:   relayID1,
-					Name: "local.test_relay.0",
+					Version: transport.RelayHopVersion,
+					ID:      relayID1,
+					Name:    "local.test_relay.0",
 				},
 				{
-					ID:   relayID2,
-					Name: "local.test_relay.1",
+					Version: transport.RelayHopVersion,
+					ID:      relayID2,
+					Name:    "local.test_relay.1",
 				},
 			},
 			SDK:        "4.0.0",
 			Connection: 3,
 			NearbyRelays: []transport.NearRelayPortalData{
 				{
-					ID:   relayID3,
-					Name: "local.test_relay.2",
+					Version: transport.NearRelayPortalDataVersion,
+					ID:      relayID3,
+					Name:    "local.test_relay.2",
 				},
 				{
-					ID:   relayID4,
-					Name: "local.test_relay.3",
+					Version: transport.NearRelayPortalDataVersion,
+					ID:      relayID4,
+					Name:    "local.test_relay.3",
 				},
 			},
 			Platform: 1,
 			BuyerID:  buyerID,
 		},
 		Point: transport.SessionMapPoint{
+			Version:   transport.SessionMapPointVersion,
 			Latitude:  45,
 			Longitude: 90,
 		},
@@ -945,7 +952,7 @@ func TestDirectSession(t *testing.T) {
 		env = "local"
 	}
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
@@ -1076,7 +1083,7 @@ func TestNextSession(t *testing.T) {
 		env = "local"
 	}
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
@@ -1207,7 +1214,7 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 		env = "local"
 	}
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
@@ -1334,7 +1341,7 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 		env = "local"
 	}
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	{
@@ -1495,7 +1502,7 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 		env = "local"
 	}
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	{
@@ -1634,7 +1641,7 @@ func TestNoReinsertion(t *testing.T) {
 		env = "local"
 	}
 
-	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*50, 0, env)
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
 	assert.EqualError(t, err, "context deadline exceeded")
 
 	minutes := time.Now().Unix() / 60
