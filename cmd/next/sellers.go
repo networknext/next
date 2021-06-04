@@ -24,6 +24,7 @@ func sellers(rpcClient jsonrpc.RPCClient, env Environment) {
 		Name           string
 		ID             string
 		EgressPriceUSD string
+		Seller         string
 	}{}
 
 	for _, seller := range reply.Sellers {
@@ -31,10 +32,12 @@ func sellers(rpcClient jsonrpc.RPCClient, env Environment) {
 			Name           string
 			ID             string
 			EgressPriceUSD string
+			Seller         string
 		}{
 			Name:           seller.Name,
 			ID:             seller.ID,
 			EgressPriceUSD: fmt.Sprintf("$%02.2f", seller.EgressPriceNibblins.ToDollars()),
+			Seller:         fmt.Sprintf("%t", seller.Secret),
 		})
 	}
 
