@@ -1463,6 +1463,7 @@ type RouteShader struct {
 	BandwidthEnvelopeUpKbps   int32
 	BandwidthEnvelopeDownKbps int32
 	BannedUsers               map[uint64]bool
+	PacketLossSustained       float32
 }
 
 func NewRouteShader() RouteShader {
