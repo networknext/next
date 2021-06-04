@@ -87,7 +87,7 @@ func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []st
 	var loopError error
 	for _, name := range instanceNames {
 		// Call gsutil to copy the tmp file over to the instance
-		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", "--verbosity", "error", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
+		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
 
 		buffer, err := runnable.CombinedOutput()
 		level.Debug(g.Logger).Log("msg", buffer)
@@ -143,7 +143,7 @@ func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName st
 	var loopError error
 	for _, name := range instanceNames {
 		// Call gsutil to copy the tmp file over to the instance
-		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", "--verbosity", "error", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
+		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
 
 		buffer, err := runnable.CombinedOutput()
 
