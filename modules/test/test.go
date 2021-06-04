@@ -1,7 +1,6 @@
 package test
 
 import (
-	"fmt"
 	"hash/fnv"
 	"net"
 	"time"
@@ -80,9 +79,6 @@ func (env *TestEnvironment) GetRelayIds() []uint64 {
 	for i := range env.relayArray {
 		relayIds[i] = RelayHash64(env.relayArray[i].name)
 	}
-	fmt.Println("relayIds")
-	fmt.Println(relayIds)
-	fmt.Println("relayIds")
 	return relayIds
 }
 

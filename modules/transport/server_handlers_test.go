@@ -2118,7 +2118,8 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testi
 
 	for i, id := range env.GetRelayIds() {
 		databaseWrapper.RelayMap[id] = routing.Relay{
-			Addr: env.GetRelayAddresses()[i],
+			Addr:      env.GetRelayAddresses()[i],
+			PublicKey: publicKey,
 		}
 	}
 
@@ -2221,11 +2222,18 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testi
 	err = transport.UnmarshalSessionData(&sessionData, responsePacket.SessionData[:])
 	assert.NoError(t, err)
 
-	assert.False(t, sessionData.RouteState.Next)
+	assert.True(t, sessionData.RouteState.Next)
+	assert.True(t, sessionData.Initial)
 }
 
-/*
 func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *testing.T) {
+	env := test.NewTestEnvironment()
+
+	env.AddRelay("losangeles", "10.0.0.1")
+	env.AddRelay("chicago", "10.0.0.2")
+
+	env.SetCost("losangeles", "chicago", 10)
+
 	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
 	assert.NoError(t, err)
 
@@ -2237,11 +2245,28 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	databaseWrapper := routing.CreateEmptyDatabaseBinWrapper()
 
 	databaseWrapper.BuyerMap[buyerID] = routing.Buyer{
-		ID:        buyerID,
-		PublicKey: publicKey,
+		ID:             buyerID,
+		PublicKey:      publicKey,
+		Live:           true,
+		Debug:          true,
+		RouteShader:    core.NewRouteShader(),
+		InternalConfig: core.NewInternalConfig(),
 	}
 
-	routeMatrix := &routing.RouteMatrix{}
+	datacenterName := "datacenter.name.0"
+	datacenterID := uint64(0)
+	databaseWrapper.DatacenterMap[datacenterID] = routing.Datacenter{
+		ID:        0,
+		Name:      datacenterName,
+		AliasName: datacenterName,
+	}
+
+	databaseWrapper.DatacenterMaps[buyerID] = make(map[uint64]routing.DatacenterMap, 0)
+	databaseWrapper.DatacenterMaps[buyerID][datacenterID] = routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+		Alias:        datacenterName,
+	}
 
 	getDatabase := func() *routing.DatabaseBinWrapper {
 		return databaseWrapper
@@ -2252,7 +2277,14 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
-		return routeMatrix
+		return env.GetRouteMatrix()
+	}
+
+	for i, id := range env.GetRelayIds() {
+		databaseWrapper.RelayMap[id] = routing.Relay{
+			Addr:      env.GetRelayAddresses()[i],
+			PublicKey: publicKey,
+		}
 	}
 
 	metricsHandler := metrics.LocalHandler{}
@@ -2270,16 +2302,70 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	routerPrivateKey := [crypto.KeySize]byte{}
 	copy(routerPrivateKey[:], routerPrivateKeySlice)
 
+	relayIDs := env.GetRelayIds()
+
+	requestSessionData := transport.SessionData{
+		Version:         transport.SessionDataVersion,
+		ExpireTimestamp: uint64(time.Now().Unix()) + 100,
+		SessionID:       uint64(123456789),
+		SliceNumber:     uint32(5),
+		Initial:         true,
+		RouteNumRelays:  2,
+		RouteRelayIDs:   [5]uint64{13303252451600817855, 11215140690934626978, 0, 0, 0},
+		RouteState: core.RouteState{
+			UserID:          100,
+			Next:            true,
+			NumNearRelays:   2,
+			NearRelayRTT:    [32]int32{10, 10},
+			NearRelayJitter: [32]int32{10, 10},
+		},
+	}
+
+	var requestSessionDataBytesFixed [511]byte
+	requestSessionDataBytes, err := transport.MarshalSessionData(&requestSessionData)
+	assert.NoError(t, err)
+
+	copy(requestSessionDataBytesFixed[:], requestSessionDataBytes)
+
 	responseBuffer := &bytes.Buffer{}
 	requestPacket := transport.SessionUpdatePacket{
-		Version:              transport.SDKVersionMin,
-		BuyerID:              buyerID,
-		DatacenterID:         crypto.HashID("datacenter.name"),
-		SessionID:            uint64(123456789),
-		SliceNumber:          uint32(4),
-		Next:                 true,
-		ClientRoutePublicKey: publicKey,
-		ServerRoutePublicKey: publicKey,
+		Version:                  transport.SDKVersionLatest,
+		BuyerID:                  buyerID,
+		DatacenterID:             datacenterID,
+		SessionID:                uint64(123456789),
+		SliceNumber:              uint32(5),
+		RetryNumber:              0,
+		SessionDataBytes:         int32(len(requestSessionDataBytes)),
+		SessionData:              requestSessionDataBytesFixed,
+		ClientAddress:            *core.ParseAddress("10.0.0.9"),
+		ServerAddress:            *core.ParseAddress("10.0.0.10"),
+		ClientRoutePublicKey:     publicKey,
+		ServerRoutePublicKey:     publicKey,
+		UserHash:                 uint64(100),
+		PlatformType:             0,
+		ConnectionType:           0,
+		Next:                     true,
+		Committed:                true,
+		Reported:                 false,
+		FallbackToDirect:         false,
+		ClientBandwidthOverLimit: false,
+		ServerBandwidthOverLimit: false,
+		ClientPingTimedOut:       false,
+		NumTags:                  0,
+		Tags:                     [8]uint64{},
+		Flags:                    0,
+		UserFlags:                0,
+		DirectRTT:                1000,
+		DirectPacketLoss:         100,
+		DirectJitter:             1000,
+		NextRTT:                  11,
+		NextJitter:               11,
+		NextPacketLoss:           1,
+		NumNearRelays:            2,
+		NearRelayIDs:             relayIDs,
+		NearRelayRTT:             []int32{10, 10},
+		NearRelayJitter:          []int32{10, 10},
+		NearRelayPacketLoss:      []int32{1, 1},
 	}
 	requestData, err := transport.MarshalPacket(&requestPacket)
 	assert.NoError(t, err)
@@ -2311,5 +2397,5 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	assert.NoError(t, err)
 
 	assert.True(t, sessionData.RouteState.Next)
+	assert.False(t, sessionData.Initial)
 }
-*/
