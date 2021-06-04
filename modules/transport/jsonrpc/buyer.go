@@ -195,6 +195,22 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 					session.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+					companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+					if !ok {
+						err = fmt.Errorf("UserSessions() user is not assigned to a company")
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+					if companyCode == "" {
+						err = fmt.Errorf("UserSessions() failed to parse company code")
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+					// Don't include sessions where the company code does not match the request's
+					if companyCode != buyer.CompanyCode {
+						continue
+					}
 				}
 
 				reply.Sessions = append(reply.Sessions, session)
@@ -295,6 +311,22 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 
 				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 					sessionMeta.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+					companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+					if !ok {
+						err = fmt.Errorf("GetHistoricalSlices() user is not assigned to a company")
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+					if companyCode == "" {
+						err = fmt.Errorf("GetHistoricalSlices() failed to parse company code")
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+					// Don't include sessions where the company code does not match the request's
+					if companyCode != buyer.CompanyCode {
+						continue
+					}
 				}
 
 				reply.Sessions = append(reply.Sessions, sessionMeta)
