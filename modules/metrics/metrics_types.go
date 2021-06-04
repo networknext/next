@@ -42,17 +42,9 @@ type BillingMetrics struct {
 	EntriesSubmitted       Counter
 	EntriesQueued          Gauge
 	EntriesFlushed         Counter
+	ErrorMetrics           BillingErrorMetrics
 	PubsubBillingEntrySize Gauge
 	BillingEntrySize       Gauge
-
-	Entries2Received        Counter
-	Entries2Submitted       Counter
-	Entries2Queued          Gauge
-	Entries2Flushed         Counter
-	PubsubBillingEntry2Size Gauge
-	BillingEntry2Size       Gauge
-
-	ErrorMetrics BillingErrorMetrics
 }
 
 var EmptyBillingMetrics BillingMetrics = BillingMetrics{
@@ -60,17 +52,9 @@ var EmptyBillingMetrics BillingMetrics = BillingMetrics{
 	EntriesSubmitted:       &EmptyCounter{},
 	EntriesQueued:          &EmptyGauge{},
 	EntriesFlushed:         &EmptyCounter{},
+	ErrorMetrics:           EmptyBillingErrorMetrics,
 	PubsubBillingEntrySize: &EmptyGauge{},
 	BillingEntrySize:       &EmptyGauge{},
-
-	Entries2Received:        &EmptyCounter{},
-	Entries2Submitted:       &EmptyCounter{},
-	Entries2Queued:          &EmptyGauge{},
-	Entries2Flushed:         &EmptyCounter{},
-	PubsubBillingEntry2Size: &EmptyGauge{},
-	BillingEntry2Size:       &EmptyGauge{},
-
-	ErrorMetrics: EmptyBillingErrorMetrics,
 }
 
 type BillingErrorMetrics struct {
@@ -80,13 +64,6 @@ type BillingErrorMetrics struct {
 	BillingWriteFailure       Counter
 	BillingInvalidEntries     Counter
 	BillingEntriesWithNaN     Counter
-
-	Billing2PublishFailure     Counter
-	Billing2ReadFailure        Counter
-	Billing2BatchedReadFailure Counter
-	Billing2WriteFailure       Counter
-	Billing2InvalidEntries     Counter
-	Billing2EntriesWithNaN     Counter
 }
 
 var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
@@ -96,13 +73,6 @@ var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
 	BillingWriteFailure:       &EmptyCounter{},
 	BillingInvalidEntries:     &EmptyCounter{},
 	BillingEntriesWithNaN:     &EmptyCounter{},
-
-	Billing2PublishFailure:     &EmptyCounter{},
-	Billing2ReadFailure:        &EmptyCounter{},
-	Billing2BatchedReadFailure: &EmptyCounter{},
-	Billing2WriteFailure:       &EmptyCounter{},
-	Billing2InvalidEntries:     &EmptyCounter{},
-	Billing2EntriesWithNaN:     &EmptyCounter{},
 }
 
 type AnalyticsMetrics struct {
@@ -569,72 +539,6 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		return nil, err
 	}
 
-	billingServiceMetrics.BillingMetrics.Entries2Received, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Billing Entries 2 Received",
-		ServiceName: "billing",
-		ID:          "billing.entries.2",
-		Unit:        "entries",
-		Description: "The total number of billing entries 2 received through Google Pub/Sub",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	billingServiceMetrics.BillingMetrics.Entries2Submitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Billing Entries 2 Submitted",
-		ServiceName: "billing",
-		ID:          "billing.entries.2.submitted",
-		Unit:        "entries",
-		Description: "The total number of billing entries 2 submitted to BigQuery",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	billingServiceMetrics.BillingMetrics.Entries2Queued, err = metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Billing Entries 2 Queued",
-		ServiceName: "billing",
-		ID:          "billing.entries.2.queued",
-		Unit:        "entries",
-		Description: "The total number of billing entries 2 waiting to be sent to BigQuery",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	billingServiceMetrics.BillingMetrics.Entries2Flushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Billing Entries 2 Written",
-		ServiceName: "billing",
-		ID:          "billing.entries.2.written",
-		Unit:        "entries",
-		Description: "The total number of billing entries 2 written to BigQuery",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	billingServiceMetrics.BillingMetrics.BillingEntry2Size, err = metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Billing Entry 2 Size",
-		ServiceName: "billing",
-		ID:          "billing.entry.2.size",
-		Unit:        "bytes",
-		Description: "The size of a billing entry 2",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	billingServiceMetrics.BillingMetrics.PubsubBillingEntry2Size, err = metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Pubsub Billing Entry 2 Size",
-		ServiceName: "billing",
-		ID:          "pubsub.billing.entry.2.size",
-		Unit:        "bytes",
-		Description: "The size of a pubsub billing entry 2",
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingPublishFailure = &EmptyCounter{}
 
 	billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
@@ -682,63 +586,6 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		ServiceName: "billing",
 		ID:          "billing.error.billing_entries_with_nan",
 		Unit:        "errors",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2PublishFailure = &EmptyCounter{}
-
-	billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2ReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Billing 2 Read Failure",
-		ServiceName: "billing",
-		ID:          "billing.error.read_failure_2",
-		Unit:        "errors",
-		Description: "The number of times a billing entry 2 failed to be read",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2BatchedReadFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Billing 2 Batched Read Failure",
-		ServiceName: "billing",
-		ID:          "billing.error.batched_read_failure_2",
-		Unit:        "errors",
-		Description: "The number of times a batch of billing entry 2s failed to be read",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2WriteFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Billing 2 Write Failure",
-		ServiceName: "billing",
-		ID:          "billing.error.write_failure_2",
-		Unit:        "errors",
-		Description: "The number of times a billing entry 2 failed to be written",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2InvalidEntries, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Billing 2 Invalid Entries",
-		ServiceName: "billing",
-		ID:          "billing.error.invalid_entries_2",
-		Unit:        "errors",
-		Description: "The number of times a billing entry 2 had invalid values",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2EntriesWithNaN, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Billing 2 Entries with NaN",
-		ServiceName: "billing",
-		ID:          "billing.error.billing_entries_with_nan_2",
-		Unit:        "errors",
-		Description: "The number of times a billing entry 2 had NaN values",
 	})
 	if err != nil {
 		return nil, err

@@ -1813,7 +1813,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
 								BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 								BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
-								PacketLossSustained:       float64(rs.PacketLossSustained),
+								PacketLossSustained:       float64(100),
 							})
 
 							return nil

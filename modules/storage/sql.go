@@ -1156,35 +1156,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 	return nil
 }
 
-//         Column         |          Type          | Nullable
-// -----------------------+------------------------+----------
-//  id                    | integer                | not null
-//  hex_id                | character varying(16)  | not null
-//  contract_term         | integer                | not null
-//  display_name          | character varying      | not null
-//  end_date              | date                   |
-//  included_bandwidth_gb | integer                | not null
-//  internal_ip           | inet                   |
-//  internal_ip_port      | integer                |
-//  management_ip         | character varying      | not null
-//  max_sessions          | integer                | not null
-//  mrc                   | bigint                 | not null
-//  overage               | bigint                 | not null
-//  port_speed            | integer                | not null
-//  public_ip             | inet                   |
-//  public_ip_port        | integer                |
-//  public_key            | bytea                  | not null
-//  ssh_port              | integer                | not null
-//  ssh_user              | character varying      | not null
-//  start_date            | date                   |
-//  bw_billing_rule       | integer                | not null
-//  datacenter            | integer                | not null
-//  machine_type          | integer                | not null
-//  relay_state           | integer                | not null
-//  notes                 | character varying(500) |
-//  billing_supplier      | integer                |
-//  relay_version         | character varying      | not null
-
 type sqlRelay struct {
 	ID                 uint64
 	HexID              string
@@ -2765,13 +2736,13 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		args = append(args, selectionPercent, buyer.DatabaseID)
 		rs.SelectionPercent = selectionPercent
 	case "PacketLossSustained":
-		PacketLossSustained, ok := value.(float32)
+		packetLossSustained, ok := value.(float32)
 		if !ok {
-			return fmt.Errorf("PacketLossSustained: %v is not a valid float32 type (%T)", value, value)
+			return fmt.Errorf("PacketLossSustained: %v is not a valid float type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set packet_loss_sustained=$1 where buyer_id=$2"))
-		args = append(args, PacketLossSustained, buyer.DatabaseID)
-		rs.PacketLossSustained = PacketLossSustained
+		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id=$2"))
+		args = append(args, packetLossSustained, buyer.DatabaseID)
+		rs.PacketLossSustained = packetLossSustained
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
 

@@ -12,12 +12,10 @@ const (
 	FEATURE_ROUTE_MATRIX_STATS FeatureEnum = 6
 	FEATURE_MATRIX_CLOUDSTORE  FeatureEnum = 7
 	FEATURE_VALVE_MATRIX       FeatureEnum = 8
-	FEATURE_BILLING 		   FeatureEnum = 9
-	FEATURE_BILLING2           FeatureEnum = 10
 )
 
 // NumFeatures is always one more than the highest FeatureEnum
-var NumFeatures = 11
+var NumFeatures = 9
 
 type Feature struct {
 	Name        string
@@ -74,30 +72,18 @@ var defaultFeatures = []Feature{
 		Name:        "FEATURE_ROUTE_MATRIX_STATS",
 		Enum:        FEATURE_ROUTE_MATRIX_STATS,
 		Value:       true,
-		Description: "Writes Route Matrix Stats to pubsub when true",
+		Description: "writes Route Matrix Stats to pubsub when true",
 	},
 	{
 		Name:        "FEATURE_MATRIX_CLOUDSTORE",
 		Enum:        FEATURE_MATRIX_CLOUDSTORE,
 		Value:       false,
-		Description: "Writes Route Matrix to cloudstore when true",
+		Description: "writes Route Matrix to cloudstore when true",
 	},
 	{
 		Name:        "FEATURE_VALVE_MATRIX",
 		Enum:        FEATURE_VALVE_MATRIX,
 		Value:       false,
-		Description: "Creates the valve matrix when true",
-	},
-	{
-		Name:        "FEATURE_BILLING",
-		Enum:        FEATURE_BILLING,
-		Value:       true,
-		Description: "Inserts and writes BillingEntry to BigQuery",
-	},
-	{
-		Name:        "FEATURE_BILLING2",
-		Enum:        FEATURE_BILLING2,
-		Value:       false,
-		Description: "Inserts and writes BillingEntry2 to BigQuery",
+		Description: "creates the valve matrix when true",
 	},
 }
