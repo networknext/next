@@ -428,15 +428,8 @@ func RelayDashboardDataHandlerFunc(
 			jResponse.Relays = append(jResponse.Relays, jRelay)
 		}
 
-		jData, err := json.MarshalIndent(jResponse, "", "  ")
-		if err != nil {
-			writer.WriteHeader(http.StatusInternalServerError)
-			errorString := fmt.Sprintf("%v", err)
-			writer.Write([]byte("Error assembling the json response:" + errorString))
-		} else {
-			writer.Header().Set("Content-Type", "application/json")
-			writer.Write(jData)
-		}
+		writer.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(writer).Encode(jResponse)
 
 	}
 
