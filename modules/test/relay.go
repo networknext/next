@@ -16,44 +16,23 @@ func RelayHash64(name string) uint64 {
 }
 
 type TestRelayData struct {
-	name       string
-	address    *net.UDPAddr
-	publicKey  []byte
-	privateKey []byte
-	index      int
-	latitude   float32
-	longitude  float32
+	name         string
+	address      *net.UDPAddr
+	publicKey    []byte
+	privateKey   []byte
+	index        int
+	latitude     float32
+	longitude    float32
+	datacenterID uint64
 }
 
-type TestEnvironment struct {
-	relayArray []*TestRelayData
-	relays     map[string]*TestRelayData
-	cost       [][]int32
-}
-
-func NewTestEnvironment() *TestEnvironment {
-	env := &TestEnvironment{}
-	env.relays = make(map[string]*TestRelayData)
-	return env
-}
-
-func (env *TestEnvironment) Clear() {
-	numRelays := len(env.relays)
-	env.cost = make([][]int32, numRelays)
-	for i := 0; i < numRelays; i++ {
-		env.cost[i] = make([]int32, numRelays)
-		for j := 0; j < numRelays; j++ {
-			env.cost[i][j] = -1
-		}
-	}
-}
-
-func (env *TestEnvironment) AddRelay(relayName string, relayAddress string) {
+func (env *TestEnvironment) AddRelay(relayName string, relayAddress string, datacenterID uint64) {
 	relay := &TestRelayData{}
 	relay.name = relayName
 	relay.address = core.ParseAddress(relayAddress)
 	relay.latitude = 0
 	relay.longitude = 0
+	relay.datacenterID = datacenterID
 
 	var err error
 	relay.publicKey, relay.privateKey, err = core.GenerateRelayKeyPair()
@@ -67,11 +46,11 @@ func (env *TestEnvironment) AddRelay(relayName string, relayAddress string) {
 }
 
 func (env *TestEnvironment) GetRelayDatacenters() []uint64 {
-	relayDatacenters := make([]uint64, len(env.relays))
-	for i := range relayDatacenters {
-		relayDatacenters[i] = uint64(i)
+	relayDatacenterIDs := make([]uint64, len(env.relayArray))
+	for i := range env.relayArray {
+		relayDatacenterIDs[i] = env.relayArray[i].datacenterID
 	}
-	return relayDatacenters
+	return relayDatacenterIDs
 }
 
 func (env *TestEnvironment) GetRelayIds() []uint64 {
