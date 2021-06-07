@@ -193,8 +193,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					return err
 				}
 
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					session.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
 				}
 
 				reply.Sessions = append(reply.Sessions, session)
@@ -293,8 +296,11 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					return err
 				}
 
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					sessionMeta.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
 				}
 
 				reply.Sessions = append(reply.Sessions, sessionMeta)
@@ -773,12 +779,14 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
+			sessionID := fmt.Sprintf("%016x", point.SessionID)
+
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, isLargeCustomer})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, isLargeCustomer})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
 			}
 		}
 
@@ -790,12 +798,14 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
+			sessionID := fmt.Sprintf("%016x", point.SessionID)
+
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true, sessionID})
 			}
 		}
 
@@ -1340,8 +1350,19 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	live := buyer.Live
+	oldBuyerID := buyer.ID
 
-	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
+	// Remove all dc Maps
+	dcMaps := s.Storage.GetDatacenterMapsForBuyer(oldBuyerID)
+	for _, dcMap := range dcMaps {
+		if err := s.Storage.RemoveDatacenterMap(ctx, dcMap); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to remove old datacenter map: %v, datacenter ID: %016x", err, dcMap.DatacenterID)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	}
+
+	if err = s.Storage.RemoveBuyer(ctx, oldBuyerID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1353,11 +1374,20 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		Live:        live,
 		PublicKey:   byteKey[8:],
 	})
-
 	if err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() buyer update failed: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
+	}
+
+	// Add back dc maps with new buyer ID
+	for _, dcMap := range dcMaps {
+		dcMap.BuyerID = buyerID
+		if err := s.Storage.AddDatacenterMap(ctx, dcMap); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add new datacenter map: %v, datacenter ID: %016x, buyer ID: %016x", err, dcMap.DatacenterID, buyerID)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 	}
 
 	// Check if buyer is associated with the ID and everything worked
