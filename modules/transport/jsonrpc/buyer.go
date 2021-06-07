@@ -1679,16 +1679,11 @@ func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
 		if companyCode == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
+
+		// Grab the user's assigned company if it exists
 		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CompanyKey).(string)
-		if !ok {
-			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
-		}
-		if requestCompanyCode == "" {
-			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
+		if !ok || requestCompanyCode == "" {
+			return false, nil
 		}
 
 		return companyCode == requestCompanyCode, nil
