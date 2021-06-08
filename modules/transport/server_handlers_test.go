@@ -22,6 +22,8 @@ import (
 )
 
 func TestGetRouteAddressesAndPublicKeys(t *testing.T) {
+	t.Parallel()
+
 	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:34567")
 	assert.NoError(t, err)
 	clientPublicKey := make([]byte, crypto.KeySize)
@@ -84,6 +86,8 @@ func TestGetRouteAddressesAndPublicKeys(t *testing.T) {
 // Server init handler tests
 
 func TestServerInitHandlerFunc_BuyerNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	env.AddBuyer("local", false)
 
@@ -118,6 +122,8 @@ func TestServerInitHandlerFunc_BuyerNotFound(t *testing.T) {
 }
 
 func TestServerInitHandlerFunc_BuyerNotLive(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", false)
 
@@ -144,6 +150,8 @@ func TestServerInitHandlerFunc_BuyerNotLive(t *testing.T) {
 }
 
 func TestServerInitHandlerFunc_SigCheckFail(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 
@@ -170,6 +178,8 @@ func TestServerInitHandlerFunc_SigCheckFail(t *testing.T) {
 }
 
 func TestServerInitHandlerFunc_SDKToOld(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 
@@ -196,6 +206,8 @@ func TestServerInitHandlerFunc_SDKToOld(t *testing.T) {
 }
 
 func TestServerInitHandlerFunc_Success_DatacenterNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 
@@ -222,6 +234,8 @@ func TestServerInitHandlerFunc_Success_DatacenterNotFound(t *testing.T) {
 }
 
 func TestServerInitHandlerFunc_Success(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 	datacenter := env.AddDatacenter("datacenter.name")
@@ -248,6 +262,8 @@ func TestServerInitHandlerFunc_Success(t *testing.T) {
 // Server update handler tests
 
 func TestServerUpdateHandlerFunc_BuyerNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	env.AddBuyer("local", false)
 
@@ -279,6 +295,8 @@ func TestServerUpdateHandlerFunc_BuyerNotFound(t *testing.T) {
 }
 
 func TestServerUpdateHandlerFunc_BuyerNotLive(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", false)
 
@@ -302,6 +320,8 @@ func TestServerUpdateHandlerFunc_BuyerNotLive(t *testing.T) {
 }
 
 func TestServerUpdateHandlerFunc_SigCheckFail(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 
@@ -325,6 +345,8 @@ func TestServerUpdateHandlerFunc_SigCheckFail(t *testing.T) {
 }
 
 func TestServerUpdateHandlerFunc_SDKToOld(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 
@@ -348,6 +370,8 @@ func TestServerUpdateHandlerFunc_SDKToOld(t *testing.T) {
 }
 
 func TestServerUpdateHandlerFunc_DatacenterNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 
@@ -371,6 +395,8 @@ func TestServerUpdateHandlerFunc_DatacenterNotFound(t *testing.T) {
 }
 
 func TestServerUpdateHandlerFunc_Success(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 	datacenter := env.AddDatacenter("datacenter.name")
@@ -393,6 +419,8 @@ func TestServerUpdateHandlerFunc_Success(t *testing.T) {
 
 // Session update handler
 func TestSessionUpdateHandlerFunc_Pre_BuyerNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	env.AddBuyer("local", false)
 
@@ -420,6 +448,8 @@ func TestSessionUpdateHandlerFunc_Pre_BuyerNotFound(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_Pre_BuyerNotLive(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, _ := env.AddBuyer("local", false)
 
@@ -440,6 +470,8 @@ func TestSessionUpdateHandlerFunc_Pre_BuyerNotLive(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_Pre_SigCheckFail(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 
@@ -463,6 +495,8 @@ func TestSessionUpdateHandlerFunc_Pre_SigCheckFail(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_Pre_ClientTimedOut(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 
@@ -487,6 +521,8 @@ func TestSessionUpdateHandlerFunc_Pre_ClientTimedOut(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 
@@ -511,6 +547,8 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 	datacenter := env.AddDatacenter("datacenter.name")
@@ -536,6 +574,8 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 	datacenter := env.AddDatacenter("datacenter.name")
@@ -562,6 +602,8 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 	datacenter := env.AddDatacenter("datacenter.name")
@@ -593,6 +635,8 @@ func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, _, privateKey := env.AddBuyer("local", true)
 	datacenter := env.AddDatacenter("datacenter.name")
@@ -641,6 +685,8 @@ func (locator *successLoccator) LocateIP(ip net.IP) (routing.Location, error) {
 }
 
 func TestSessionUpdateHandlerFunc_NewSession_LocationVeto(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -664,6 +710,8 @@ func TestSessionUpdateHandlerFunc_NewSession_LocationVeto(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_NewSession_Success(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -685,6 +733,8 @@ func TestSessionUpdateHandlerFunc_NewSession_Success(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_ExistingSession_BadSessionID(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -713,6 +763,8 @@ func TestSessionUpdateHandlerFunc_ExistingSession_BadSessionID(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_ExistingSession_BadSliceNumber(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -743,6 +795,8 @@ func TestSessionUpdateHandlerFunc_ExistingSession_BadSliceNumber(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_ExistingSession_Success(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -775,6 +829,8 @@ func TestSessionUpdateHandlerFunc_ExistingSession_Success(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_NoFallback(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -793,6 +849,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_NoFallback(t *te
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_BadRouteToken(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -813,6 +871,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_BadRouteToken(t 
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_NoNextRouteToContinue(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -833,6 +893,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_NoNextRouteToCon
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_PreviousUpdateStillPending(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -853,6 +915,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_PreviousUpdateSt
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_BadContinueToken(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -873,6 +937,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_BadContinueToken
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_RouteExpired(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -893,6 +959,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_RouteExpired(t *
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_RouteRequestTimedOut(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -913,6 +981,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_RouteRequestTime
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_ContinueRequestTimedOut(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -933,6 +1003,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_ContinueRequestT
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_UpgradeResponseTimedOut(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -953,6 +1025,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_UpgradeResponseT
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_RouteUpdateTimedOut(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -973,6 +1047,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_RouteUpdateTimed
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_DirectPongTimedOut(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -993,6 +1069,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_DirectPongTimedO
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_NextPongTimedOut(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -1013,6 +1091,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_NextPongTimedOut
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_Unknown(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -1033,6 +1113,8 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_Unknown(t *testi
 }
 
 func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_NoRelaysInDatacenter(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -1062,6 +1144,8 @@ func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_NoRelaysInDatacent
 // todo add more SessionUpdateNearRelayStats tests here
 
 func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextWithoutRouteRelays(t *testing.T) {
+	t.Parallel()
+
 	metricsHandler := metrics.LocalHandler{}
 	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
 	assert.NoError(t, err)
@@ -1095,6 +1179,8 @@ func (locator *testLocator) LocateIP(ip net.IP) (routing.Location, error) {
 }
 
 func TestSessionUpdateHandlerFunc_BuyerNotFound_NoResponse(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	env.AddBuyer("local", false)
 	datacenter := env.AddDatacenter("datacenter.name")
@@ -1150,6 +1236,8 @@ func TestSessionUpdateHandlerFunc_BuyerNotFound_NoResponse(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_SigCheckFailed_NoResponse(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
 	datacenter := env.AddDatacenter("datacenter.name")
@@ -1197,6 +1285,8 @@ func TestSessionUpdateHandlerFunc_SigCheckFailed_NoResponse(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
 	datacenter := env.AddDatacenter("losangeles")
@@ -1256,6 +1346,8 @@ func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
 }
 
 func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
 	datacenterLA := env.AddDatacenter("losangeles")
@@ -1354,6 +1446,8 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testi
 }
 
 func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *testing.T) {
+	t.Parallel()
+
 	env := test.NewTestEnvironment(t)
 	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
 	datacenterLA := env.AddDatacenter("losangeles")
