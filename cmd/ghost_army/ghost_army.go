@@ -178,6 +178,7 @@ func main() {
 		for {
 			select {
 			case slice := <-publishChan:
+				slice.Point.SessionID = slice.Meta.ID
 				sessionBytes, err := slice.MarshalBinary()
 				if err != nil {
 					fmt.Printf("could not marshal binary for slice session id %d", slice.Meta.ID)
