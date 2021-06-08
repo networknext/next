@@ -42,7 +42,7 @@ func (env *TestEnvironment) AddRelay(relayName string, relayAddress string, data
 	relay.index = len(env.relayArray)
 	env.relays[relayName] = relay
 	env.relayArray = append(env.relayArray, relay)
-	env.Clear()
+	env.ClearCost()
 }
 
 func (env *TestEnvironment) GetRelayDatacenters() []uint64 {
@@ -109,6 +109,17 @@ func (env *TestEnvironment) SetCost(sourceRelayName string, destRelayName string
 		i, j = j, i
 	}
 	env.cost[i][j] = cost
+}
+
+func (env *TestEnvironment) ClearCost() {
+	numRelays := len(env.relays)
+	env.cost = make([][]int32, numRelays)
+	for i := 0; i < numRelays; i++ {
+		env.cost[i] = make([]int32, numRelays)
+		for j := 0; j < numRelays; j++ {
+			env.cost[i][j] = -1
+		}
+	}
 }
 
 func (env *TestEnvironment) GetRelayIndex(relayName string) int {

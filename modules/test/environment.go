@@ -26,17 +26,6 @@ func NewTestEnvironment(t *testing.T) *TestEnvironment {
 	return env
 }
 
-func (env *TestEnvironment) Clear() {
-	numRelays := len(env.relays)
-	env.cost = make([][]int32, numRelays)
-	for i := 0; i < numRelays; i++ {
-		env.cost[i] = make([]int32, numRelays)
-		for j := 0; j < numRelays; j++ {
-			env.cost[i][j] = -1
-		}
-	}
-}
-
 func (env *TestEnvironment) GetDatabaseWrapper() *routing.DatabaseBinWrapper {
 	return env.DatabaseWrapper
 }

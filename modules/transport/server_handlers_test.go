@@ -177,7 +177,7 @@ func TestServerInitHandlerFunc_SigCheckFail(t *testing.T) {
 	assert.Equal(t, float64(1), metrics.ServerInitMetrics.SignatureCheckFailed.Value())
 }
 
-func TestServerInitHandlerFunc_SDKToOld(t *testing.T) {
+func TestServerInitHandlerFunc_SDKTooOld(t *testing.T) {
 	t.Parallel()
 
 	env := test.NewTestEnvironment(t)
@@ -1000,6 +1000,28 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_ContinueRequestT
 
 	assert.True(t, transport.SessionHandleFallbackToDirect(&state))
 	assert.Equal(t, float64(1), state.Metrics.FallbackToDirectContinueRequestTimedOut.Value())
+}
+
+func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_ClientTimedOut(t *testing.T) {
+	t.Parallel()
+
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+
+	state := transport.SessionHandlerState{
+		Metrics: metrics.SessionUpdateMetrics,
+		Packet: transport.SessionUpdatePacket{
+			FallbackToDirect: true,
+			Flags:            (1 << 7),
+		},
+		Output: transport.SessionData{
+			FellBackToDirect: false,
+		},
+	}
+
+	assert.True(t, transport.SessionHandleFallbackToDirect(&state))
+	assert.Equal(t, float64(1), state.Metrics.FallbackToDirectClientTimedOut.Value())
 }
 
 func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_UpgradeResponseTimedOut(t *testing.T) {
