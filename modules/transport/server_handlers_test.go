@@ -3,7 +3,6 @@ package transport_test
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -1096,195 +1095,21 @@ func (locator *testLocator) LocateIP(ip net.IP) (routing.Location, error) {
 }
 
 func TestSessionUpdateHandlerFunc_BuyerNotFound_NoResponse(t *testing.T) {
-	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
-	assert.NoError(t, err)
-
-	publicKey = publicKey[8:]
-	privateKey = privateKey[8:]
-
-	buyerID := binary.LittleEndian.Uint64(publicKey[:8])
-
-	databaseWrapper := routing.CreateEmptyDatabaseBinWrapper()
-
-	routeMatrix := &routing.RouteMatrix{}
-
-	getDatabase := func() *routing.DatabaseBinWrapper {
-		return databaseWrapper
-	}
-
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
-	}
-
-	getRouteMatrixFunc := func() *routing.RouteMatrix {
-		return routeMatrix
-	}
-
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-
-	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
-	assert.NoError(t, err)
-
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
-
-	routerPrivateKeySlice, err := base64.StdEncoding.DecodeString("ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=")
-	assert.NoError(t, err)
-
-	routerPrivateKey := [crypto.KeySize]byte{}
-	copy(routerPrivateKey[:], routerPrivateKeySlice)
-
-	responseBuffer := &bytes.Buffer{}
-	requestPacket := transport.SessionUpdatePacket{
-		Version:              transport.SDKVersionMin,
-		BuyerID:              buyerID,
-		DatacenterID:         crypto.HashID("datacenter.name"),
-		SessionID:            uint64(123456789),
-		SliceNumber:          uint32(0),
-		Next:                 false,
-		ClientRoutePublicKey: publicKey,
-		ServerRoutePublicKey: publicKey,
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	// Add the packet type byte and hash bytes to the request data so we can sign it properly
-	requestDataHeader := append([]byte{transport.PacketTypeSessionUpdate}, make([]byte, crypto.PacketHashSize)...)
-	requestData = append(requestDataHeader, requestData...)
-
-	// Sign the packet
-	requestData = crypto.SignPacket(privateKey, requestData)
-
-	// Once the packet is signed, we need to remove the header before passing to the session update handler
-	requestData = requestData[1+crypto.PacketHashSize:]
-
-	handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	// Buyer not found - no response
-	assert.Equal(t, 0, len(responseBuffer.Bytes()))
-}
-
-/*
-
-func TestSessionUpdateHandlerFunc_SigCheckFailed_NoResponse(t *testing.T) {
-	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
-	assert.NoError(t, err)
-
-	publicKey = publicKey[8:]
-	privateKey = privateKey[8:]
-
-	buyerID := binary.LittleEndian.Uint64(publicKey[:8])
-
-	databaseWrapper := routing.CreateEmptyDatabaseBinWrapper()
-
-	routeMatrix := &routing.RouteMatrix{}
-
-	getDatabase := func() *routing.DatabaseBinWrapper {
-		return databaseWrapper
-	}
-
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
-	}
-
-	getRouteMatrixFunc := func() *routing.RouteMatrix {
-		return routeMatrix
-	}
-
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-
-	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
-	assert.NoError(t, err)
-
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
-
-	routerPrivateKeySlice, err := base64.StdEncoding.DecodeString("ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=")
-	assert.NoError(t, err)
-
-	routerPrivateKey := [crypto.KeySize]byte{}
-	copy(routerPrivateKey[:], routerPrivateKeySlice)
-
-	responseBuffer := &bytes.Buffer{}
-	requestPacket := transport.SessionUpdatePacket{
-		Version:              transport.SDKVersionMin,
-		BuyerID:              buyerID,
-		DatacenterID:         crypto.HashID("datacenter.name"),
-		SessionID:            uint64(123456789),
-		SliceNumber:          uint32(0),
-		Next:                 false,
-		ClientRoutePublicKey: publicKey,
-		ServerRoutePublicKey: publicKey,
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
-
-	// Add the packet type byte and hash bytes to the request data so we can sign it properly
-	requestDataHeader := append([]byte{transport.PacketTypeSessionUpdate}, make([]byte, crypto.PacketHashSize)...)
-	requestData = append(requestDataHeader, requestData...)
-
-	// Sign the packet
-	requestData = crypto.SignPacket(privateKey[1:], requestData)
-
-	// Once the packet is signed, we need to remove the header before passing to the session update handler
-	requestData = requestData[1+crypto.PacketHashSize:]
-
-	handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
-	handler(responseBuffer, &transport.UDPPacket{
-		Data: requestData,
-	})
-
-	// Sig check failed - no response
-	assert.Equal(t, 0, len(responseBuffer.Bytes()))
-}
-
-func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
 	env := test.NewTestEnvironment(t)
+	env.AddBuyer("local", false)
+	datacenter := env.AddDatacenter("datacenter.name")
 
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 10)
-
-	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
+	unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
 	assert.NoError(t, err)
 
-	publicKey = publicKey[8:]
-	privateKey = privateKey[8:]
+	unknownBuyerID := binary.LittleEndian.Uint64(unknownPublicKey[:8])
 
-	buyerID := binary.LittleEndian.Uint64(publicKey[:8])
+	unknownPublicKey = unknownPublicKey[8:]
+	unknownPrivateKey = unknownPrivateKey[8:]
 
-	databaseWrapper := routing.CreateEmptyDatabaseBinWrapper()
-
-	databaseWrapper.BuyerMap[buyerID] = routing.Buyer{
-		ID:        buyerID,
-		PublicKey: publicKey,
-		Live:      true,
-	}
-
-	datacenterName := "datacenter.name.0"
-	datacenterID := uint64(0)
-	databaseWrapper.DatacenterMap[datacenterID] = routing.Datacenter{
-		ID:        0,
-		Name:      datacenterName,
-		AliasName: datacenterName,
-	}
-
-	databaseWrapper.DatacenterMaps[buyerID] = make(map[uint64]routing.DatacenterMap, 0)
-	databaseWrapper.DatacenterMaps[buyerID][datacenterID] = routing.DatacenterMap{
-		BuyerID:      buyerID,
-		DatacenterID: datacenterID,
-		Alias:        datacenterName,
-	}
-
-	getDatabase := func() *routing.DatabaseBinWrapper {
-		return databaseWrapper
-	}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
 
 	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &testLocator{}
@@ -1294,52 +1119,130 @@ func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
 		return env.GetRouteMatrix()
 	}
 
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], unknownPrivateKey)
 
-	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
 	assert.NoError(t, err)
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	routerPrivateKeySlice, err := base64.StdEncoding.DecodeString("ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=")
+	sessionUpdateConfig := test.SessionUpdatePacketConfig{
+		Version:      transport.SDKVersionLatest,
+		BuyerID:      unknownBuyerID,
+		DatacenterID: datacenter.ID,
+		SessionID:    123456789,
+		SliceNumber:  0,
+		Next:         false,
+		PublicKey:    unknownPublicKey,
+		PrivateKey:   unknownPrivateKey,
+	}
+
+	requestData := env.GenerateSessionUpdatePacket(sessionUpdateConfig)
+
+	handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	// Buyer not found - no response
+	assert.Equal(t, 0, len(responseBuffer.Bytes()))
+}
+
+func TestSessionUpdateHandlerFunc_SigCheckFailed_NoResponse(t *testing.T) {
+	env := test.NewTestEnvironment(t)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
+	datacenter := env.AddDatacenter("datacenter.name")
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
 	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
+		return &testLocator{}
+	}
+
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		return env.GetRouteMatrix()
+	}
 
 	routerPrivateKey := [crypto.KeySize]byte{}
-	copy(routerPrivateKey[:], routerPrivateKeySlice)
+	copy(routerPrivateKey[:], privateKey)
 
-	responseBuffer := &bytes.Buffer{}
-	requestPacket := transport.SessionUpdatePacket{
-		Version:              transport.SDKVersionMin,
-		BuyerID:              buyerID,
-		DatacenterID:         datacenterID,
-		SessionID:            uint64(123456789),
-		SliceNumber:          uint32(0),
-		Next:                 false,
-		ClientRoutePublicKey: publicKey,
-		ServerRoutePublicKey: publicKey,
-	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
 	assert.NoError(t, err)
 
-	// Add the packet type byte and hash bytes to the request data so we can sign it properly
-	requestDataHeader := append([]byte{transport.PacketTypeSessionUpdate}, make([]byte, crypto.PacketHashSize)...)
-	requestData = append(requestDataHeader, requestData...)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	// Sign the packet
-	requestData = crypto.SignPacket(privateKey, requestData)
+	sessionUpdateConfig := test.SessionUpdatePacketConfig{
+		Version:      transport.SDKVersionLatest,
+		BuyerID:      buyerID,
+		DatacenterID: datacenter.ID,
+		SessionID:    123456789,
+		SliceNumber:  0,
+		Next:         false,
+		PublicKey:    publicKey,
+		PrivateKey:   privateKey[2:],
+	}
 
-	// Once the packet is signed, we need to remove the header before passing to the session update handler
-	requestData = requestData[1+crypto.PacketHashSize:]
+	requestData := env.GenerateSessionUpdatePacket(sessionUpdateConfig)
 
-	handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
+	handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	// SigCheck Failed - no response
+	assert.Equal(t, 0, len(responseBuffer.Bytes()))
+}
+
+func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
+	env := test.NewTestEnvironment(t)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
+	datacenter := env.AddDatacenter("losangeles")
+	env.AddRelay("los.angeles.1", "10.0.0.2", datacenter.ID)
+	env.AddRelay("los.angeles.2", "10.0.0.3", datacenter.ID)
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
+		return &testLocator{}
+	}
+
+	getRouteMatrixFunc := func() *routing.RouteMatrix {
+		return env.GetRouteMatrix()
+	}
+
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], privateKey)
+
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
+	assert.NoError(t, err)
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
+
+	sessionUpdateConfig := test.SessionUpdatePacketConfig{
+		Version:      transport.SDKVersionLatest,
+		BuyerID:      buyerID,
+		DatacenterID: datacenter.ID,
+		SessionID:    123456789,
+		SliceNumber:  0,
+		Next:         false,
+		PublicKey:    publicKey,
+		PrivateKey:   privateKey,
+	}
+
+	requestData := env.GenerateSessionUpdatePacket(sessionUpdateConfig)
+
+	handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	var responsePacket transport.SessionResponsePacket
-	responsePacket.Version = requestPacket.Version // Make sure we unmarshal the response the same way we marshaled the request
+	responsePacket.Version = transport.SDKVersionLatest // Make sure we unmarshal the response the same way we marshaled the request
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -1354,49 +1257,21 @@ func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
 
 func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testing.T) {
 	env := test.NewTestEnvironment(t)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
+	datacenterLA := env.AddDatacenter("losangeles")
+	env.AddRelay("losangeles.1", "10.0.0.2", datacenterLA.ID)
+	datacenterChicago := env.AddDatacenter("chicago")
+	env.AddRelay("chicago.1", "10.0.0.4", datacenterChicago.ID)
+	env.SetCost("losangeles.1", "chicago.1", 10)
 
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 10)
-
-	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
-	assert.NoError(t, err)
-
-	publicKey = publicKey[8:]
-	privateKey = privateKey[8:]
-
-	buyerID := binary.LittleEndian.Uint64(publicKey[:8])
-
-	databaseWrapper := routing.CreateEmptyDatabaseBinWrapper()
-
-	databaseWrapper.BuyerMap[buyerID] = routing.Buyer{
-		ID:             buyerID,
-		PublicKey:      publicKey,
-		Live:           true,
-		Debug:          true,
-		RouteShader:    core.NewRouteShader(),
-		InternalConfig: core.NewInternalConfig(),
-	}
-
-	datacenterName := "datacenter.name.0"
-	datacenterID := uint64(0)
-	databaseWrapper.DatacenterMap[datacenterID] = routing.Datacenter{
-		ID:        0,
-		Name:      datacenterName,
-		AliasName: datacenterName,
-	}
-
-	databaseWrapper.DatacenterMaps[buyerID] = make(map[uint64]routing.DatacenterMap, 0)
-	databaseWrapper.DatacenterMaps[buyerID][datacenterID] = routing.DatacenterMap{
+	env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterLA.ID] = routing.DatacenterMap{
 		BuyerID:      buyerID,
-		DatacenterID: datacenterID,
-		Alias:        datacenterName,
+		DatacenterID: datacenterLA.ID,
 	}
 
-	getDatabase := func() *routing.DatabaseBinWrapper {
-		return databaseWrapper
-	}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
 
 	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &testLocator{}
@@ -1406,103 +1281,65 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testi
 		return env.GetRouteMatrix()
 	}
 
-	for i, id := range env.GetRelayIds() {
-		databaseWrapper.RelayMap[id] = routing.Relay{
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], privateKey)
+
+	relayIDs := env.GetRelayIds()
+
+	for i, id := range relayIDs {
+		env.DatabaseWrapper.RelayMap[id] = routing.Relay{
 			Addr:      env.GetRelayAddresses()[i],
 			PublicKey: publicKey,
 		}
 	}
 
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-
-	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
 	assert.NoError(t, err)
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	routerPrivateKeySlice, err := base64.StdEncoding.DecodeString("ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=")
-	assert.NoError(t, err)
-
-	routerPrivateKey := [crypto.KeySize]byte{}
-	copy(routerPrivateKey[:], routerPrivateKeySlice)
-
-	requestSessionData := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		ExpireTimestamp: uint64(time.Now().Unix()) + 100,
-		SessionID:       uint64(123456789),
-		SliceNumber:     uint32(3),
-		Initial:         false,
+	sessionDataConfig := test.SessionDataConfig{
+		Version:     transport.SessionDataVersion,
+		Initial:     false,
+		SessionID:   123456789,
+		SliceNumber: 3,
 	}
 
-	var requestSessionDataBytesFixed [511]byte
-	requestSessionDataBytes, err := transport.MarshalSessionData(&requestSessionData)
-	assert.NoError(t, err)
+	sessionDataPacket, sessionDataSize := env.GenerateSessionDataPacket(sessionDataConfig)
 
-	copy(requestSessionDataBytesFixed[:], requestSessionDataBytes)
-
-	relayIDs := env.GetRelayIds()
-	responseBuffer := &bytes.Buffer{}
-	requestPacket := transport.SessionUpdatePacket{
-		Version:                  transport.SDKVersionLatest,
-		BuyerID:                  buyerID,
-		DatacenterID:             datacenterID,
-		SessionID:                uint64(123456789),
-		SliceNumber:              uint32(3),
-		RetryNumber:              0,
-		SessionDataBytes:         int32(len(requestSessionDataBytes)),
-		SessionData:              requestSessionDataBytesFixed,
-		ClientAddress:            *core.ParseAddress("10.0.0.9"),
-		ServerAddress:            *core.ParseAddress("10.0.0.10"),
-		ClientRoutePublicKey:     publicKey,
-		ServerRoutePublicKey:     publicKey,
-		UserHash:                 uint64(100),
-		PlatformType:             0,
-		ConnectionType:           0,
-		Next:                     false,
-		Committed:                false,
-		Reported:                 false,
-		FallbackToDirect:         false,
-		ClientBandwidthOverLimit: false,
-		ServerBandwidthOverLimit: false,
-		ClientPingTimedOut:       false,
-		NumTags:                  0,
-		Tags:                     [8]uint64{},
-		Flags:                    0,
-		UserFlags:                0,
-		DirectRTT:                1000,
-		DirectPacketLoss:         100,
-		DirectJitter:             1000,
-		NextRTT:                  11,
-		NextJitter:               11,
-		NextPacketLoss:           1,
-		NumNearRelays:            2,
-		NearRelayIDs:             relayIDs,
-		NearRelayRTT:             []int32{10, 10},
-		NearRelayJitter:          []int32{10, 10},
-		NearRelayPacketLoss:      []int32{1, 1},
+	sessionUpdateConfig := test.SessionUpdatePacketConfig{
+		Version:          transport.SDKVersionLatest,
+		BuyerID:          buyerID,
+		DatacenterID:     datacenterLA.ID,
+		SessionID:        sessionDataConfig.SessionID,
+		SliceNumber:      sessionDataConfig.SliceNumber,
+		PublicKey:        publicKey,
+		PrivateKey:       privateKey,
+		SessionData:      sessionDataPacket,
+		SessionDataBytes: int32(sessionDataSize),
+		NearRelayRTT:     10,
+		NearRelayJitter:  10,
+		NearRelayPL:      1,
+		NextRTT:          10,
+		NextJitter:       10,
+		NextPacketLoss:   1,
+		DirectRTT:        1000,
+		DirectJitter:     1000,
+		DirectPacketLoss: 100,
+		ClientAddress:    "10.0.0.9",
+		ServerAddress:    "10.0.0.10",
+		UserHash:         100,
 	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
 
-	// Add the packet type byte and hash bytes to the request data so we can sign it properly
-	requestDataHeader := append([]byte{transport.PacketTypeSessionUpdate}, make([]byte, crypto.PacketHashSize)...)
-	requestData = append(requestDataHeader, requestData...)
+	requestData := env.GenerateSessionUpdatePacket(sessionUpdateConfig)
 
-	// Sign the packet
-	requestData = crypto.SignPacket(privateKey, requestData)
-
-	// Once the packet is signed, we need to remove the header before passing to the session update handler
-	requestData = requestData[1+crypto.PacketHashSize:]
-
-	handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
+	handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	var responsePacket transport.SessionResponsePacket
-	responsePacket.Version = requestPacket.Version // Make sure we unmarshal the response the same way we marshaled the request
+	responsePacket.Version = transport.SDKVersionLatest // Make sure we unmarshal the response the same way we marshaled the request
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -1518,49 +1355,16 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testi
 
 func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *testing.T) {
 	env := test.NewTestEnvironment(t)
+	buyerID, publicKey, privateKey := env.AddBuyer("local", true)
+	datacenterLA := env.AddDatacenter("losangeles")
+	env.AddRelay("losangeles.1", "10.0.0.2", datacenterLA.ID)
+	datacenterChicago := env.AddDatacenter("chicago")
+	env.AddRelay("chicago.1", "10.0.0.4", datacenterChicago.ID)
+	env.SetCost("losangeles.1", "chicago.1", 10)
 
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 10)
-
-	publicKey, privateKey, err := crypto.GenerateCustomerKeyPair()
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
 	assert.NoError(t, err)
-
-	publicKey = publicKey[8:]
-	privateKey = privateKey[8:]
-
-	buyerID := binary.LittleEndian.Uint64(publicKey[:8])
-
-	databaseWrapper := routing.CreateEmptyDatabaseBinWrapper()
-
-	databaseWrapper.BuyerMap[buyerID] = routing.Buyer{
-		ID:             buyerID,
-		PublicKey:      publicKey,
-		Live:           true,
-		Debug:          true,
-		RouteShader:    core.NewRouteShader(),
-		InternalConfig: core.NewInternalConfig(),
-	}
-
-	datacenterName := "datacenter.name.0"
-	datacenterID := uint64(0)
-	databaseWrapper.DatacenterMap[datacenterID] = routing.Datacenter{
-		ID:        0,
-		Name:      datacenterName,
-		AliasName: datacenterName,
-	}
-
-	databaseWrapper.DatacenterMaps[buyerID] = make(map[uint64]routing.DatacenterMap, 0)
-	databaseWrapper.DatacenterMaps[buyerID][datacenterID] = routing.DatacenterMap{
-		BuyerID:      buyerID,
-		DatacenterID: datacenterID,
-		Alias:        datacenterName,
-	}
-
-	getDatabase := func() *routing.DatabaseBinWrapper {
-		return databaseWrapper
-	}
+	responseBuffer := bytes.NewBuffer(nil)
 
 	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
 		return &testLocator{}
@@ -1570,38 +1374,35 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 		return env.GetRouteMatrix()
 	}
 
-	for i, id := range env.GetRelayIds() {
-		databaseWrapper.RelayMap[id] = routing.Relay{
+	routerPrivateKey := [crypto.KeySize]byte{}
+	copy(routerPrivateKey[:], privateKey)
+
+	relayIDs := env.GetRelayIds()
+
+	for i, id := range relayIDs {
+		env.DatabaseWrapper.RelayMap[id] = routing.Relay{
 			Addr:      env.GetRelayAddresses()[i],
 			PublicKey: publicKey,
 		}
 	}
 
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
+	env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterLA.ID] = routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterLA.ID,
+	}
 
-	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
+	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
 	assert.NoError(t, err)
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	routerPrivateKeySlice, err := base64.StdEncoding.DecodeString("ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M=")
-	assert.NoError(t, err)
-
-	routerPrivateKey := [crypto.KeySize]byte{}
-	copy(routerPrivateKey[:], routerPrivateKeySlice)
-
-	relayIDs := env.GetRelayIds()
-
-	requestSessionData := transport.SessionData{
-		Version:         transport.SessionDataVersion,
-		ExpireTimestamp: uint64(time.Now().Unix()) + 100,
-		SessionID:       uint64(123456789),
-		SliceNumber:     uint32(5),
-		Initial:         true,
-		RouteNumRelays:  2,
-		RouteRelayIDs:   [5]uint64{13303252451600817855, 11215140690934626978, 0, 0, 0},
+	sessionDataConfig := test.SessionDataConfig{
+		Version:        transport.SessionDataVersion,
+		Initial:        true,
+		SessionID:      123456789,
+		SliceNumber:    5,
+		RouteNumRelays: 2,
+		RouteRelayIDs:  [5]uint64{relayIDs[0], relayIDs[1], 0, 0, 0},
 		RouteState: core.RouteState{
 			UserID:          100,
 			Next:            true,
@@ -1611,72 +1412,43 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 		},
 	}
 
-	var requestSessionDataBytesFixed [511]byte
-	requestSessionDataBytes, err := transport.MarshalSessionData(&requestSessionData)
-	assert.NoError(t, err)
+	sessionDataPacket, sessionDataSize := env.GenerateSessionDataPacket(sessionDataConfig)
 
-	copy(requestSessionDataBytesFixed[:], requestSessionDataBytes)
-
-	responseBuffer := &bytes.Buffer{}
-	requestPacket := transport.SessionUpdatePacket{
-		Version:                  transport.SDKVersionLatest,
-		BuyerID:                  buyerID,
-		DatacenterID:             datacenterID,
-		SessionID:                uint64(123456789),
-		SliceNumber:              uint32(5),
-		RetryNumber:              0,
-		SessionDataBytes:         int32(len(requestSessionDataBytes)),
-		SessionData:              requestSessionDataBytesFixed,
-		ClientAddress:            *core.ParseAddress("10.0.0.9"),
-		ServerAddress:            *core.ParseAddress("10.0.0.10"),
-		ClientRoutePublicKey:     publicKey,
-		ServerRoutePublicKey:     publicKey,
-		UserHash:                 uint64(100),
-		PlatformType:             0,
-		ConnectionType:           0,
-		Next:                     true,
-		Committed:                true,
-		Reported:                 false,
-		FallbackToDirect:         false,
-		ClientBandwidthOverLimit: false,
-		ServerBandwidthOverLimit: false,
-		ClientPingTimedOut:       false,
-		NumTags:                  0,
-		Tags:                     [8]uint64{},
-		Flags:                    0,
-		UserFlags:                0,
-		DirectRTT:                1000,
-		DirectPacketLoss:         100,
-		DirectJitter:             1000,
-		NextRTT:                  11,
-		NextJitter:               11,
-		NextPacketLoss:           1,
-		NumNearRelays:            2,
-		NearRelayIDs:             relayIDs,
-		NearRelayRTT:             []int32{10, 10},
-		NearRelayJitter:          []int32{10, 10},
-		NearRelayPacketLoss:      []int32{1, 1},
+	sessionUpdateConfig := test.SessionUpdatePacketConfig{
+		Version:          transport.SDKVersionLatest,
+		BuyerID:          buyerID,
+		DatacenterID:     datacenterLA.ID,
+		SessionID:        sessionDataConfig.SessionID,
+		SliceNumber:      sessionDataConfig.SliceNumber,
+		PublicKey:        publicKey,
+		PrivateKey:       privateKey,
+		SessionData:      sessionDataPacket,
+		SessionDataBytes: int32(sessionDataSize),
+		Next:             true,
+		Committed:        true,
+		NearRelayRTT:     10,
+		NearRelayJitter:  10,
+		NearRelayPL:      1,
+		NextRTT:          11,
+		NextJitter:       11,
+		NextPacketLoss:   1,
+		DirectRTT:        1000,
+		DirectJitter:     1000,
+		DirectPacketLoss: 100,
+		ClientAddress:    "10.0.0.9",
+		ServerAddress:    "10.0.0.10",
+		UserHash:         100,
 	}
-	requestData, err := transport.MarshalPacket(&requestPacket)
-	assert.NoError(t, err)
 
-	// Add the packet type byte and hash bytes to the request data so we can sign it properly
-	requestDataHeader := append([]byte{transport.PacketTypeSessionUpdate}, make([]byte, crypto.PacketHashSize)...)
-	requestData = append(requestDataHeader, requestData...)
+	requestData := env.GenerateSessionUpdatePacket(sessionUpdateConfig)
 
-	// Sign the packet
-	requestData = crypto.SignPacket(privateKey, requestData)
-
-	// Once the packet is signed, we need to remove the header before passing to the session update handler
-	requestData = requestData[1+crypto.PacketHashSize:]
-
-	handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
+	handler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrixFunc, localMultiPathVetoHandler, env.GetDatabaseWrapper, routerPrivateKey, postSessionHandler, metrics.SessionUpdateMetrics, time.Minute)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
 
 	var responsePacket transport.SessionResponsePacket
-	responsePacket.Version = requestPacket.Version // Make sure we unmarshal the response the same way we marshaled the request
+	responsePacket.Version = transport.SDKVersionLatest // Make sure we unmarshal the response the same way we marshaled the request
 	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
 	assert.NoError(t, err)
 
@@ -1689,4 +1461,3 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	assert.True(t, sessionData.RouteState.Next)
 	assert.False(t, sessionData.Initial)
 }
-*/
