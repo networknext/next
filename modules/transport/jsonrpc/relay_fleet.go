@@ -2,9 +2,12 @@ package jsonrpc
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"strings"
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
@@ -37,7 +40,6 @@ type RelayFleetReply struct {
 // RelayFleet retrieves the CSV file from relay_frontend/relays, converts it to
 // json and puts it on the wire.
 func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, reply *RelayFleetReply) error {
-
 	authHeader := r.Header.Get("Authorization")
 
 	uri := rfs.RelayFrontendURI + "/relays"
@@ -86,26 +88,37 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 }
 
 type RelayDashboardJsonReply struct {
-	Dashboard string `json:"relay_dashboard"`
+	// Dashboard string `json:"relay_dashboard"`
+	Dashboard jsonResponse `json:"relay_dashboard"`
 }
 
-type RelayDashboardJsonArgs struct{}
+type RelayDashboardJsonArgs struct {
+	XAxisRelayFilter string `json:"xAxisFilters"`
+	YAxisRelayFilter string `json:"yAxisFilters"`
+}
+
+type jsonRelay struct {
+	Name string
+	Addr string
+}
+
+type jsonResponse struct {
+	Analysis routing.JsonMatrixAnalysis
+	Relays   []jsonRelay
+	Stats    map[string]map[string]routing.Stats
+}
 
 // RelayDashboardJson retrieves the JSON representation of the current relay dashboard
 // provided by relay_backend/relay_dashboard_data
 func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDashboardJsonArgs, reply *RelayDashboardJsonReply) error {
 
-	type jsonRelay struct {
-		Name string
-		Addr string
+	if args.XAxisRelayFilter == "" || args.YAxisRelayFilter == "" {
+		err := fmt.Errorf("a filter must be supplied for each axis")
+		rfs.Logger.Log("err", err)
+		return err
 	}
 
-	type jsonResponse struct {
-		Analysis string
-		Relays   []jsonRelay
-		Stats    map[string]map[string]routing.Stats
-	}
-
+	var fullDashboard, filteredDashboard jsonResponse
 	authHeader := r.Header.Get("Authorization")
 
 	uri := rfs.RelayFrontendURI + "/relay_dashboard_data"
@@ -122,14 +135,67 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	}
 	defer response.Body.Close()
 
-	dashboardData, err := ioutil.ReadAll(response.Body)
+	byteValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
 
-	reply.Dashboard = string(dashboardData)
+	json.Unmarshal(byteValue, &fullDashboard)
+	if len(fullDashboard.Relays) == 0 {
+		err := fmt.Errorf("relay backend returned an empty dashboard file")
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	filteredDashboard.Analysis = fullDashboard.Analysis
+	filteredDashboard.Stats = make(map[string]map[string]routing.Stats)
+
+	// x-axis relays first
+	xFilters := strings.Split(args.XAxisRelayFilter, ",")
+	for _, xFilter := range xFilters {
+		xAxisRegex := regexp.MustCompile("(?i)" + strings.TrimSpace(xFilter))
+		for _, relayEntry := range fullDashboard.Relays {
+			if xAxisRegex.MatchString(relayEntry.Name) {
+				filteredDashboard.Relays = append(filteredDashboard.Relays, relayEntry)
+				continue
+			}
+		}
+	}
+
+	if len(filteredDashboard.Relays) == 0 {
+		err := fmt.Errorf("no matches found for x-axis query string")
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	// then the y-axis
+	yFilters := strings.Split(args.YAxisRelayFilter, ",")
+	for _, yFilter := range yFilters {
+		yAxisRegex := regexp.MustCompile("(?i)" + strings.TrimSpace(yFilter))
+		for yAxisRelayName, relayStatsLine := range fullDashboard.Stats {
+			if yAxisRegex.MatchString(yAxisRelayName) {
+				filteredDashboard.Stats[yAxisRelayName] = make(map[string]routing.Stats)
+				for relayName, statsLineEntry := range relayStatsLine {
+					for _, xFilter := range xFilters {
+						xAxisRegex := regexp.MustCompile("(?i)" + strings.TrimSpace(xFilter))
+						if xAxisRegex.MatchString(relayName) {
+							filteredDashboard.Stats[yAxisRelayName][relayName] = statsLineEntry
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if len(filteredDashboard.Stats) == 0 {
+		err := fmt.Errorf("no matches found for y-axis query string")
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	reply.Dashboard = filteredDashboard
 
 	return nil
 }

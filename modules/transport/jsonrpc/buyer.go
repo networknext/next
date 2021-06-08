@@ -193,8 +193,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					return err
 				}
 
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					session.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
 				}
 
 				reply.Sessions = append(reply.Sessions, session)
@@ -293,8 +296,11 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					return err
 				}
 
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					sessionMeta.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
 				}
 
 				reply.Sessions = append(reply.Sessions, sessionMeta)
@@ -1673,16 +1679,11 @@ func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
 		if companyCode == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
+
+		// Grab the user's assigned company if it exists
 		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CompanyKey).(string)
-		if !ok {
-			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
-		}
-		if requestCompanyCode == "" {
-			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
+		if !ok || requestCompanyCode == "" {
+			return false, nil
 		}
 
 		return companyCode == requestCompanyCode, nil
@@ -2051,6 +2052,7 @@ type JSRouteShader struct {
 	BandwidthEnvelopeUpKbps   int64           `json:"bandwidthEnvelopeUpKbps"`
 	BandwidthEnvelopeDownKbps int64           `json:"bandwidthEnvelopeDownKbps"`
 	BannedUsers               map[string]bool `json:"bannedUsers"`
+	PacketLossSustained       float64         `json:"packetLossSustained"`
 }
 type RouteShaderArg struct {
 	BuyerID string `json:"buyerID"`
@@ -2092,6 +2094,7 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
 		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
 	reply.RouteShader = jsonRS
@@ -2130,6 +2133,7 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 		AcceptablePacketLoss:      float32(arg.RouteShader.AcceptablePacketLoss),
 		BandwidthEnvelopeUpKbps:   int32(arg.RouteShader.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int32(arg.RouteShader.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float32(arg.RouteShader.PacketLossSustained),
 	}
 
 	err = s.Storage.AddRouteShader(context.Background(), rs, buyerID)
@@ -2224,7 +2228,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return err
 		}
 
-	case "AcceptablePacketLoss":
+	case "AcceptablePacketLoss", "PacketLossSustained":
 		newFloat, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid float type", args.Value)

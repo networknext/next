@@ -156,7 +156,7 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metri
 
 // ----------------------------------------------------------------------------
 
-func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, postSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, PostSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
@@ -220,7 +220,7 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, pos
 			BuyerID:     buyer.ID,
 			NumSessions: packet.NumSessions,
 		}
-		postSessionHandler.SendPortalCounts(countData)
+		PostSessionHandler.SendPortalCounts(countData)
 
 		if !datacenterExists(database, packet.DatacenterID) {
 			core.Debug("datacenter does not exist %x", packet.DatacenterID)
@@ -552,12 +552,21 @@ func SessionPre(state *SessionHandlerState) bool {
 	}
 
 	if state.Packet.ClientPingTimedOut {
-		if !state.PostSessionHandler.featureBilling2 || (state.PostSessionHandler.featureBilling2 && state.Input.WroteSummary) {
-			// Already wrote the summary slice
-			core.Debug("client ping timed out")
-			state.Metrics.ClientPingTimedOut.Add(1)
-			return true
+		core.Debug("client ping timed out")
+
+		if state.PostSessionHandler.featureBilling2 {
+			// Unmarshal the session data into the input to verify if we wrote the summary slice in sessionPost()
+			err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
+
+			if err != nil {
+				core.Debug("could not read session data:\n\n%s\n", err)
+				state.Metrics.ReadSessionDataFailure.Add(1)
+				return true
+			}
 		}
+
+		state.Metrics.ClientPingTimedOut.Add(1)
+		return true
 	}
 
 	if !datacenterExists(state.Database, state.Packet.DatacenterID) {
@@ -1197,13 +1206,16 @@ func SessionPost(state *SessionHandlerState) {
 
 	/*
 		Determine if we should write the summary slice. Should only happen
-		when the session is finished and we have not already written the
-		summary slice.
+		when the session is finished.
 
 		The end of a session occurs when the client ping times out.
+
+		We always set the output flag to true so that it remains recorded as true on
+		subsequent slices where the client ping has timed out. Instead, we check
+		the input when deciding to write billing entry 2.
 	*/
 
-	if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut && !state.Input.WroteSummary {
+	if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut {
 		state.Output.WroteSummary = true
 	}
 
@@ -1234,7 +1246,7 @@ func SessionPost(state *SessionHandlerState) {
 	/*
 		if packet.Next && sessionData.RouteState.MultipathOverload {
 			if err := multipathVetoHandler.MultipathVetoUser(buyer.CompanyCode, packet.UserHash); err != nil {
-				level.Error(postSessionHandler.logger).Log("err", err)
+				level.Error(PostSessionHandler.logger).Log("err", err)
 			}
 		}
 	*/
@@ -1252,10 +1264,39 @@ func SessionPost(state *SessionHandlerState) {
 	BuildPostNearRelayData(state)
 
 	/*
+		Build billing 2 data and send it to the billing system via pubsub (non-realtime path)
+
+		Check the input state to see if we wrote the summary slice since
+		the output state is not set to input state if we early out in sessionPre()
+		when the client ping times out.
+
+		Doing this ensures that we only write the summary slice once since the first time the
+		client ping times out, input flag will be false and the output flag will be true,
+		and on the following slices, both will be true.
+	*/
+
+	if state.PostSessionHandler.featureBilling2 && !state.Input.WroteSummary {
+		billingEntry2 := BuildBillingEntry2(state)
+
+		state.PostSessionHandler.SendBillingEntry2(billingEntry2)
+	}
+
+	/*
+		The client times out at the end of each session, and holds on for 60 seconds.
+		These slices at the end have no useful information for the portal, so we drop
+		them here. Billing2 needs to know if the client times out to write the summary
+		portion of the billing entry 2, but Billing1 does not.
+	*/
+
+	if state.Packet.ClientPingTimedOut {
+		return
+	}
+
+	/*
 		Build billing data and send it to the billing system via pubsub (non-realtime path)
 	*/
 
-	if state.PostSessionHandler.featureBilling && !state.Packet.ClientPingTimedOut {
+	if state.PostSessionHandler.featureBilling {
 		billingEntry := BuildBillingEntry(state)
 
 		state.PostSessionHandler.SendBillingEntry(billingEntry)
@@ -1269,23 +1310,6 @@ func SessionPost(state *SessionHandlerState) {
 		if state.PostSessionHandler.useVanityMetrics {
 			state.PostSessionHandler.SendVanityMetric(billingEntry)
 		}
-	}
-
-	if state.PostSessionHandler.featureBilling2 && !state.Input.WroteSummary {
-		billingEntry2 := BuildBillingEntry2(state)
-
-		state.PostSessionHandler.SendBillingEntry2(billingEntry2)
-	}
-
-	/*
-		The client times out at the end of each session, and holds on for 60 seconds.
-		These slices at the end have no useful information for the portal, so we drop
-		them here. Billing2 needs to know if the client times out to write the summary
-		portion of the billing entry 2.
-	*/
-
-	if state.Packet.ClientPingTimedOut {
-		return
 	}
 
 	/*
@@ -1862,6 +1886,7 @@ func WriteSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 	if _, err := w.Write(responseData); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1873,7 +1898,7 @@ func SessionUpdateHandlerFunc(
 	multipathVetoHandler storage.MultipathVetoHandler,
 	getDatabase func() *routing.DatabaseBinWrapper,
 	routerPrivateKey [crypto.KeySize]byte,
-	postSessionHandler *PostSessionHandler,
+	PostSessionHandler *PostSessionHandler,
 	metrics *metrics.SessionUpdateMetrics,
 	staleDuration time.Duration,
 ) UDPHandlerFunc {
@@ -1936,7 +1961,7 @@ func SessionUpdateHandlerFunc(
 			SliceNumber: state.Packet.SliceNumber,
 			RouteType:   routing.RouteTypeDirect,
 		}
-		state.PostSessionHandler = postSessionHandler
+		state.PostSessionHandler = PostSessionHandler
 
 		/*
 			Session post *always* runs at the end of this function

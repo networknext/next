@@ -62,6 +62,7 @@ create table route_shaders (
   reduce_packet_loss boolean not null,
   reduce_jitter boolean not null,
   selection_percent integer not null,
+  packet_loss_sustained numeric not null,
   buyer_id integer not null unique,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
 );

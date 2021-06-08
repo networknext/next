@@ -575,6 +575,7 @@ func getRouteShader(
 	fmt.Printf("  AcceptablePacketLoss     : %5.5f\n", reply.RouteShader.AcceptablePacketLoss)
 	fmt.Printf("  BandwidthEnvelopeUpKbps  : %d\n", reply.RouteShader.BandwidthEnvelopeUpKbps)
 	fmt.Printf("  BandwidthEnvelopeDownKbps: %d\n", reply.RouteShader.BandwidthEnvelopeDownKbps)
+	fmt.Printf("  PacketLossSustained      : %.2f\n", reply.RouteShader.PacketLossSustained)
 
 	return nil
 }

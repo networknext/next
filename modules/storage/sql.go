@@ -1156,35 +1156,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 	return nil
 }
 
-//         Column         |          Type          | Nullable
-// -----------------------+------------------------+----------
-//  id                    | integer                | not null
-//  hex_id                | character varying(16)  | not null
-//  contract_term         | integer                | not null
-//  display_name          | character varying      | not null
-//  end_date              | date                   |
-//  included_bandwidth_gb | integer                | not null
-//  internal_ip           | inet                   |
-//  internal_ip_port      | integer                |
-//  management_ip         | character varying      | not null
-//  max_sessions          | integer                | not null
-//  mrc                   | bigint                 | not null
-//  overage               | bigint                 | not null
-//  port_speed            | integer                | not null
-//  public_ip             | inet                   |
-//  public_ip_port        | integer                |
-//  public_key            | bytea                  | not null
-//  ssh_port              | integer                | not null
-//  ssh_user              | character varying      | not null
-//  start_date            | date                   |
-//  bw_billing_rule       | integer                | not null
-//  datacenter            | integer                | not null
-//  machine_type          | integer                | not null
-//  relay_state           | integer                | not null
-//  notes                 | character varying(500) |
-//  billing_supplier      | integer                |
-//  relay_version         | character varying      | not null
-
 type sqlRelay struct {
 	ID                 uint64
 	HexID              string
@@ -2576,13 +2547,14 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		ReducePacketLoss:          rs.ReducePacketLoss,
 		ReduceJitter:              rs.ReduceJitter,
 		SelectionPercent:          int64(rs.SelectionPercent),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
 	sql.Write([]byte("insert into route_shaders ("))
 	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
-	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, buyer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"))
+	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, packet_loss_sustained, buyer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2604,6 +2576,7 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		routeShader.ReducePacketLoss,
 		routeShader.ReduceJitter,
 		routeShader.SelectionPercent,
+		routeShader.PacketLossSustained,
 		buyer.DatabaseID,
 	)
 
@@ -2762,6 +2735,14 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id=$2"))
 		args = append(args, selectionPercent, buyer.DatabaseID)
 		rs.SelectionPercent = selectionPercent
+	case "PacketLossSustained":
+		packetLossSustained, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("PacketLossSustained: %v is not a valid float type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update route_shaders set packet_loss_sustained=$1 where buyer_id=$2"))
+		args = append(args, packetLossSustained, buyer.DatabaseID)
+		rs.PacketLossSustained = packetLossSustained
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
 

@@ -1022,6 +1022,14 @@ func RouteExists(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [Ma
 
 func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, debug *string) int32 {
 
+	// IMPORTANT: This shouldn't happen. Triaging...
+	if len(routeRelays) == 0 {
+		if debug != nil {
+			*debug += "no route relays?\n"
+		}
+		return -1
+	}
+
 	// IMPORTANT: This can happen. Make sure we handle it without exploding
 	if len(routeMatrix) == 0 {
 		if debug != nil {
@@ -1097,7 +1105,6 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 	for i := range sourceRelays {
 		// IMPORTANT: RTT = 255 signals the source relay is unroutable
 		if sourceRelayCost[i] >= 255 {
-			Debug("Source Relay is unroutable!")
 			continue
 		}
 		firstRouteFromThisRelay := true
@@ -1109,11 +1116,8 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			}
 			index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
 			entry := &routeMatrix[index]
-			Debug("Number of routes in entry: %v", int(entry.NumRoutes))
 			for k := 0; k < int(entry.NumRoutes); k++ {
 				cost := entry.RouteCost[k] + sourceRelayCost[i]
-				Debug("route cost: %v", cost)
-				Debug("max cost: %v", cost)
 				if cost > maxCost {
 					break
 				}
@@ -1482,6 +1486,7 @@ func NewRouteShader() RouteShader {
 		BandwidthEnvelopeUpKbps:   1024,
 		BandwidthEnvelopeDownKbps: 1024,
 		BannedUsers:               make(map[uint64]bool),
+		PacketLossSustained:       100,
 	}
 }
 
@@ -1525,6 +1530,7 @@ type RouteState struct {
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
 	MultipathRestricted bool
+	PLSustainedCounter  int32
 }
 
 type InternalConfig struct {
@@ -1680,8 +1686,20 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// should we try to reduce packet loss?
 
+	// Check if the session is seeing sustained packet loss and increment/reset the counter
+
+	if directPacketLoss >= routeShader.PacketLossSustained {
+		if routeState.PLSustainedCounter < 3 {
+			routeState.PLSustainedCounter = routeState.PLSustainedCounter + 1
+		}
+	}
+
+	if directPacketLoss < routeShader.PacketLossSustained {
+		routeState.PLSustainedCounter = 0
+	}
+
 	reducePacketLoss := false
-	if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss && sliceNumber >= internal.ReducePacketLossMinSliceNumber {
+	if routeShader.ReducePacketLoss && ((directPacketLoss > routeShader.AcceptablePacketLoss && sliceNumber >= internal.ReducePacketLossMinSliceNumber) || routeState.PLSustainedCounter == 3) {
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}
