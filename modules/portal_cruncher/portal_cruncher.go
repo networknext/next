@@ -448,8 +448,9 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 		sessionMapConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		// Update session meta
-		cmd = fmt.Sprintf(`sm-%s %s EX %d`, sessionID, meta.RedisString(), 120)
-		sessionMetaConn.Do("SET", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
+		// There can be spaces in the ISP string, so manually create the string slice instead of splitting on white space
+		cmdSlice := []string{fmt.Sprintf("sm-%s", sessionID), meta.RedisString(), "EX", fmt.Sprintf("%d", 120)}
+		sessionMetaConn.Do("SET", redis.Args{}.AddFlat(cmdSlice)...)
 
 		// Update session slices
 		cmd = fmt.Sprintf("ss-%s %s", sessionID, slice.RedisString())
