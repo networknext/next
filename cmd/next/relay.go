@@ -252,13 +252,6 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		handleRunTimeError(fmt.Sprintln("failed to untar relay"), 1)
 	}
 
-	doAllEnabled := false
-
-	if regexes == nil {
-		doAllEnabled = true
-		regexes = []string{".*"}
-	}
-
 	updatedRelays := 0
 	for _, regex := range regexes {
 		relays := getRelayInfo(rpcClient, env, regex)
@@ -270,11 +263,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 
 		updates := 0
 		for _, relay := range relays {
-			if doAllEnabled && relay.state != "enabled" {
-				continue
-			}
-
-			if !opts.force && relay.version == LatestRelayVersion {
+			if (relay.state != "enabled") || (!opts.force && relay.version == LatestRelayVersion) {
 				continue
 			}
 
