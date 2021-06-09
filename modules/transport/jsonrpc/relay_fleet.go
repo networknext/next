@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
@@ -16,8 +17,11 @@ import (
 // RelayFleetService provides access to real-time data provided by the endpoints
 // mounted on the relay_frontend (/relays, /cost_matrix (tbd), etc.).
 type RelayFleetService struct {
-	RelayFrontendURI string
-	Logger           log.Logger
+	RelayFrontendURI  string
+	RelayGatewayURI   string
+	RelayForwarderURI string
+	Env               string
+	Logger            log.Logger
 }
 
 // RelayFleetEntry represents a line in the CSV file provided
@@ -196,6 +200,134 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	}
 
 	reply.Dashboard = filteredDashboard
+
+	return nil
+}
+
+type AdminFrontPageArgs struct{}
+
+type AdminFrontPageReply struct {
+	BinFileCreationTime  time.Time `json:"binFileCreationTime"`
+	BinFileCreator       string    `json:"binFileCreator"`
+	RelayGatewayStatus   []string  `json:"relayGatewayStatus"`
+	RelayFrontEndStatus  []string  `json:"relayFrontEndStatus"`
+	RelayBackEndStatus   []string  `json:"relayBackEndStatus"`
+	RelayForwarderStatus []string  `json:"relayForwarderStatus"`
+}
+
+// RelayDashboardJson retrieves the JSON representation of the current relay dashboard
+// provided by relay_backend/relay_dashboard_data
+func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPageArgs, reply *AdminFrontPageReply) error {
+
+	authHeader := r.Header.Get("Authorization")
+
+	// relay_frontend/status
+	frontEndURI := rfs.RelayFrontendURI + "/status"
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", frontEndURI, nil)
+	req.Header.Set("Authorization", authHeader)
+
+	response, err := client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("RelayFleet() error getting relay_frontend/status: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	b, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println(err)
+		err := fmt.Errorf("error parsing relay_frontend/status: %v", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	frontEndText := strings.Split(string(b), "\n")
+	reply.RelayFrontEndStatus = append(reply.RelayFrontEndStatus, frontEndText...)
+
+	// relay_frontend/master_status
+	backEndMasterURI := rfs.RelayFrontendURI + "/master_status"
+	client = &http.Client{}
+	req, _ = http.NewRequest("GET", backEndMasterURI, nil)
+	req.Header.Set("Authorization", authHeader)
+
+	response, err = client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("RelayFleet() error getting relay_frontend/master_status: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	b, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println(err)
+		err := fmt.Errorf("error parsing relay_frontend/master_status: %v", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	backEndText := strings.Split(string(b), "\n")
+	reply.RelayBackEndStatus = append(reply.RelayBackEndStatus, backEndText...)
+
+	// relay_gateway/status
+	gatewayURI := rfs.RelayGatewayURI + "/status"
+	client = &http.Client{}
+	req, _ = http.NewRequest("GET", gatewayURI, nil)
+	req.Header.Set("Authorization", authHeader)
+
+	response, err = client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("RelayFleet() error getting relay_gateway/status: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	b, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println(err)
+		err := fmt.Errorf("error parsing relay_gateway/status: %v", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	gatewayText := strings.Split(string(b), "\n")
+	reply.RelayGatewayStatus = append(reply.RelayGatewayStatus, gatewayText...)
+
+	// relay_forwarder/status
+	fmt.Printf("'%s'\n", rfs.RelayForwarderURI)
+	if rfs.RelayForwarderURI != "" {
+		gatewayURI := rfs.RelayForwarderURI + "/status"
+		client = &http.Client{}
+		req, _ = http.NewRequest("GET", gatewayURI, nil)
+		req.Header.Set("Authorization", authHeader)
+
+		response, err = client.Do(req)
+		if err != nil {
+			err = fmt.Errorf("RelayFleet() error getting relay_forwarder/status: %w", err)
+			rfs.Logger.Log("err", err)
+			return err
+		}
+		defer response.Body.Close()
+
+		b, err = ioutil.ReadAll(response.Body)
+		if err != nil {
+			fmt.Println(err)
+			err := fmt.Errorf("error parsing relay_forwarder/status: %v", err)
+			rfs.Logger.Log("err", err)
+			return err
+		}
+
+		forwaderText := strings.Split(string(b), "\n")
+		reply.RelayForwarderStatus = append(reply.RelayForwarderStatus, forwaderText...)
+	} else {
+		reply.RelayForwarderStatus = []string{"relay_forwarder dne in dev/local"}
+	}
+
+	reply.BinFileCreator = "Arthur Dent"
+	reply.BinFileCreationTime = time.Now()
 
 	return nil
 }
