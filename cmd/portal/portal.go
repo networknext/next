@@ -614,7 +614,7 @@ func main() {
 			RelayGatewayURI:   relayGateway,
 			RelayForwarderURI: relayForwarder,
 			Logger:            logger,
-			Env:               env,
+			Storage:           db,
 		}, "")
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")

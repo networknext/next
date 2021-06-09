@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/storage"
 )
 
 // RelayFleetService provides access to real-time data provided by the endpoints
@@ -20,8 +21,8 @@ type RelayFleetService struct {
 	RelayFrontendURI  string
 	RelayGatewayURI   string
 	RelayForwarderURI string
-	Env               string
 	Logger            log.Logger
+	Storage           storage.Storer
 }
 
 // RelayFleetEntry represents a line in the CSV file provided
