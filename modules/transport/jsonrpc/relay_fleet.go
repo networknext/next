@@ -1,18 +1,23 @@
 package jsonrpc
 
 import (
+	"bytes"
 	"encoding/csv"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/middleware"
 )
 
 // RelayFleetService provides access to real-time data provided by the endpoints
@@ -23,6 +28,7 @@ type RelayFleetService struct {
 	RelayForwarderURI string
 	Logger            log.Logger
 	Storage           storage.Storer
+	Env               string
 }
 
 // RelayFleetEntry represents a line in the CSV file provided
@@ -230,7 +236,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 	response, err := client.Do(req)
 	if err != nil {
-		err = fmt.Errorf("RelayFleet() error getting relay_frontend/status: %w", err)
+		err = fmt.Errorf("AdminFrontPage() error getting relay_frontend/status: %w", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
@@ -239,7 +245,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	b, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		fmt.Println(err)
-		err := fmt.Errorf("error parsing relay_frontend/status: %v", err)
+		err := fmt.Errorf("AdminFrontPage() error parsing relay_frontend/status: %v", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
@@ -255,7 +261,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 	response, err = client.Do(req)
 	if err != nil {
-		err = fmt.Errorf("RelayFleet() error getting relay_frontend/master_status: %w", err)
+		err = fmt.Errorf("AdminFrontPage() error getting relay_frontend/master_status: %w", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
@@ -264,7 +270,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	b, err = ioutil.ReadAll(response.Body)
 	if err != nil {
 		fmt.Println(err)
-		err := fmt.Errorf("error parsing relay_frontend/master_status: %v", err)
+		err := fmt.Errorf("AdminFrontPage() error parsing relay_frontend/master_status: %v", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
@@ -280,7 +286,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 	response, err = client.Do(req)
 	if err != nil {
-		err = fmt.Errorf("RelayFleet() error getting relay_gateway/status: %w", err)
+		err = fmt.Errorf("AdminFrontPage() error getting relay_gateway/status: %w", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
@@ -289,7 +295,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	b, err = ioutil.ReadAll(response.Body)
 	if err != nil {
 		fmt.Println(err)
-		err := fmt.Errorf("error parsing relay_gateway/status: %v", err)
+		err := fmt.Errorf("AdminFrontPage() error parsing relay_gateway/status: %v", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
@@ -298,7 +304,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	reply.RelayGatewayStatus = append(reply.RelayGatewayStatus, gatewayText...)
 
 	// relay_forwarder/status
-	fmt.Printf("'%s'\n", rfs.RelayForwarderURI)
 	if rfs.RelayForwarderURI != "" {
 		gatewayURI := rfs.RelayForwarderURI + "/status"
 		client = &http.Client{}
@@ -307,7 +312,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 		response, err = client.Do(req)
 		if err != nil {
-			err = fmt.Errorf("RelayFleet() error getting relay_forwarder/status: %w", err)
+			err = fmt.Errorf("AdminFrontPage() error getting relay_forwarder/status: %w", err)
 			rfs.Logger.Log("err", err)
 			return err
 		}
@@ -315,8 +320,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 		b, err = ioutil.ReadAll(response.Body)
 		if err != nil {
-			fmt.Println(err)
-			err := fmt.Errorf("error parsing relay_forwarder/status: %v", err)
+			err := fmt.Errorf("AdminFrontPage() error parsing relay_forwarder/status: %v", err)
 			rfs.Logger.Log("err", err)
 			return err
 		}
@@ -327,8 +331,100 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		reply.RelayForwarderStatus = []string{"relay_forwarder dne in dev/local"}
 	}
 
+	// TODO: reach out to db via storer for this info
 	reply.BinFileAuthor = "Arthur Dent"
 	reply.BinFileCreationTime = time.Now()
+
+	return nil
+}
+
+type BinFileHandlerArgs struct{}
+
+type BinFileHandlerReply struct {
+	Message string `json:"message"`
+}
+
+func (rfs *RelayFleetService) BinFileHandler(r *http.Request, args *BinFileHandlerArgs, reply *BinFileHandlerReply) error {
+
+	requestUser := r.Context().Value(middleware.Keys.UserKey)
+	if requestUser == nil {
+		errCode := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		err := fmt.Errorf("AdminFrontPage() error getting userid: %v", errCode)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		rfs.Logger.Log("err", fmt.Errorf("AdminFrontPage(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+	fmt.Printf("user: %s\n", requestEmail)
+
+	var dbWrapper routing.DatabaseBinWrapper
+	var enabledRelays []routing.Relay
+	relayMap := make(map[uint64]routing.Relay)
+	buyerMap := make(map[uint64]routing.Buyer)
+	sellerMap := make(map[string]routing.Seller)
+	datacenterMap := make(map[uint64]routing.Datacenter)
+	datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
+
+	buyers := rfs.Storage.Buyers()
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+		dcMapsForBuyer := rfs.Storage.GetDatacenterMapsForBuyer(buyer.ID)
+		datacenterMaps[buyer.ID] = dcMapsForBuyer
+	}
+
+	for _, seller := range rfs.Storage.Sellers() {
+		sellerMap[seller.ShortName] = seller
+	}
+
+	for _, datacenter := range rfs.Storage.Datacenters() {
+		datacenterMap[datacenter.ID] = datacenter
+	}
+
+	for _, localRelay := range rfs.Storage.Relays() {
+		if localRelay.State == routing.RelayStateEnabled {
+			enabledRelays = append(enabledRelays, localRelay)
+			relayMap[localRelay.ID] = localRelay
+		}
+	}
+
+	dbWrapper.Relays = enabledRelays
+	dbWrapper.RelayMap = relayMap
+	dbWrapper.BuyerMap = buyerMap
+	dbWrapper.SellerMap = sellerMap
+	dbWrapper.DatacenterMap = datacenterMap
+	dbWrapper.DatacenterMaps = datacenterMaps
+
+	loc, err := time.LoadLocation("UTC")
+	if err != nil {
+		err := fmt.Errorf("BinFileHandler() error generating database.bin timestamp: %v", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	now := time.Now().In(loc)
+
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	dbWrapper.CreationTime = timeStamp
+	dbWrapper.Creator = requestEmail
+
+	var buffer bytes.Buffer
+
+	encoder := gob.NewEncoder(&buffer)
+	encoder.Encode(dbWrapper)
+
+	cwd, _ := os.Getwd()
+	fmt.Printf("cwd: %s\n", cwd)
+	err = ioutil.WriteFile("database.bin", buffer.Bytes(), 0777)
+	if err != nil {
+		err := fmt.Errorf("BinFileHandler() error writing database.bin to filesystem: %v", err)
+		rfs.Logger.Log("err", err)
+		reply.Message = err.Error()
+		return err
+	}
 
 	return nil
 }

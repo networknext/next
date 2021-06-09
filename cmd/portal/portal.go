@@ -609,12 +609,20 @@ func main() {
 			level.Error(logger).Log("err", "RELAY_FORWARDER environment variable not set")
 			os.Exit(1)
 		}
+
+		env, ok := os.LookupEnv("ENV")
+		if !ok {
+			level.Error(logger).Log("err", "ENV environment variable not set")
+			os.Exit(1)
+		}
+
 		s.RegisterService(&jsonrpc.RelayFleetService{
 			RelayFrontendURI:  relayFrontEnd,
 			RelayGatewayURI:   relayGateway,
 			RelayForwarderURI: relayForwarder,
 			Logger:            logger,
 			Storage:           db,
+			Env:               env,
 		}, "")
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
