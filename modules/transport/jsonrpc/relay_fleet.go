@@ -404,23 +404,7 @@ func (rfs *RelayFleetService) NextBinFileHandler(
 	reply *NextBinFileHandlerReply,
 ) error {
 
-	requestUser := r.Context().Value(middleware.Keys.UserKey)
-	if requestUser == nil {
-		errCode := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		err := fmt.Errorf("AdminFrontPage() error getting userid: %v", errCode)
-		rfs.Logger.Log("err", err)
-		return err
-	}
-
-	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		rfs.Logger.Log("err", fmt.Errorf("AdminFrontPage(): %v: Failed to parse user ID", err.Error()))
-		return &err
-	}
-	fmt.Printf("user: %s\n", requestEmail)
-
-	dbWrapper, err := rfs.BinFileGenerator(requestEmail)
+	dbWrapper, err := rfs.BinFileGenerator("next")
 	if err != nil {
 		err := fmt.Errorf("BinFileHandler() error generating database.bin file: %v", err)
 		rfs.Logger.Log("err", err)

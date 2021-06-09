@@ -25,6 +25,8 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/ybbus/jsonrpc"
 )
 
 func getLocalDatabaseBin() {
@@ -122,6 +124,31 @@ func getDatabaseBin(env Environment) {
 	if err != nil {
 		handleRunTimeError(fmt.Sprintf("could not find database.bin? %v\n", err), 1)
 	}
+}
+
+func getDatabaseBin2(
+	rpcClient jsonrpc.RPCClient,
+	env Environment,
+) {
+
+	args := localjsonrpc.NextBinFileHandlerArgs{}
+
+	var reply localjsonrpc.NextBinFileHandlerReply
+	if err := rpcClient.CallFor(&reply, "RelayFleetService.NextBinFileHandler", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	encoder.Encode(reply.DBWrapper)
+
+	err := ioutil.WriteFile("database.bin", buffer.Bytes(), 0777)
+	if err != nil {
+		err := fmt.Errorf("BinFileHandler() error writing database.bin to filesystem: %v", err)
+		handleRunTimeError(fmt.Sprintf("could not write database.bin to the filesystem: %v\n", err), 0)
+	}
+
 }
 
 func createStagingDatabaseBin(numRelays int) {
