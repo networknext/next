@@ -11,70 +11,6 @@ import (
 	"time"
 )
 
-var (
-	lockStorerMockAddBannedUser             sync.RWMutex
-	lockStorerMockAddBuyer                  sync.RWMutex
-	lockStorerMockAddCustomer               sync.RWMutex
-	lockStorerMockAddDatacenter             sync.RWMutex
-	lockStorerMockAddDatacenterMap          sync.RWMutex
-	lockStorerMockAddInternalConfig         sync.RWMutex
-	lockStorerMockAddRelay                  sync.RWMutex
-	lockStorerMockAddRouteShader            sync.RWMutex
-	lockStorerMockAddSeller                 sync.RWMutex
-	lockStorerMockBannedUsers               sync.RWMutex
-	lockStorerMockBuyer                     sync.RWMutex
-	lockStorerMockBuyerIDFromCustomerName   sync.RWMutex
-	lockStorerMockBuyerWithCompanyCode      sync.RWMutex
-	lockStorerMockBuyers                    sync.RWMutex
-	lockStorerMockCheckSequenceNumber       sync.RWMutex
-	lockStorerMockCustomer                  sync.RWMutex
-	lockStorerMockCustomerWithName          sync.RWMutex
-	lockStorerMockCustomers                 sync.RWMutex
-	lockStorerMockDatacenter                sync.RWMutex
-	lockStorerMockDatacenters               sync.RWMutex
-	lockStorerMockGetDatacenterMapsForBuyer sync.RWMutex
-	lockStorerMockGetFeatureFlagByName      sync.RWMutex
-	lockStorerMockGetFeatureFlags           sync.RWMutex
-	lockStorerMockIncrementSequenceNumber   sync.RWMutex
-	lockStorerMockInternalConfig            sync.RWMutex
-	lockStorerMockListDatacenterMaps        sync.RWMutex
-	lockStorerMockRelay                     sync.RWMutex
-	lockStorerMockRelays                    sync.RWMutex
-	lockStorerMockRemoveBannedUser          sync.RWMutex
-	lockStorerMockRemoveBuyer               sync.RWMutex
-	lockStorerMockRemoveCustomer            sync.RWMutex
-	lockStorerMockRemoveDatacenter          sync.RWMutex
-	lockStorerMockRemoveDatacenterMap       sync.RWMutex
-	lockStorerMockRemoveFeatureFlagByName   sync.RWMutex
-	lockStorerMockRemoveInternalConfig      sync.RWMutex
-	lockStorerMockRemoveRelay               sync.RWMutex
-	lockStorerMockRemoveRouteShader         sync.RWMutex
-	lockStorerMockRemoveSeller              sync.RWMutex
-	lockStorerMockRouteShader               sync.RWMutex
-	lockStorerMockSeller                    sync.RWMutex
-	lockStorerMockSellerIDFromCustomerName  sync.RWMutex
-	lockStorerMockSellerWithCompanyCode     sync.RWMutex
-	lockStorerMockSellers                   sync.RWMutex
-	lockStorerMockSetBuyer                  sync.RWMutex
-	lockStorerMockSetCustomer               sync.RWMutex
-	lockStorerMockSetCustomerLink           sync.RWMutex
-	lockStorerMockSetDatacenter             sync.RWMutex
-	lockStorerMockSetFeatureFlagByName      sync.RWMutex
-	lockStorerMockSetRelay                  sync.RWMutex
-	lockStorerMockSetRelayMetadata          sync.RWMutex
-	lockStorerMockSetSeller                 sync.RWMutex
-	lockStorerMockSetSequenceNumber         sync.RWMutex
-	lockStorerMockSyncLoop                  sync.RWMutex
-	lockStorerMockUpdateBuyer               sync.RWMutex
-	lockStorerMockUpdateCustomer            sync.RWMutex
-	lockStorerMockUpdateDatacenter          sync.RWMutex
-	lockStorerMockUpdateDatacenterMap       sync.RWMutex
-	lockStorerMockUpdateInternalConfig      sync.RWMutex
-	lockStorerMockUpdateRelay               sync.RWMutex
-	lockStorerMockUpdateRouteShader         sync.RWMutex
-	lockStorerMockUpdateSeller              sync.RWMutex
-)
-
 // Ensure, that StorerMock does implement Storer.
 // If this is not the case, regenerate this file with moq.
 var _ Storer = &StorerMock{}
@@ -153,6 +89,9 @@ var _ Storer = &StorerMock{}
 //             },
 //             GetFeatureFlagsFunc: func() map[string]bool {
 // 	               panic("mock out the GetFeatureFlags method")
+//             },
+//             GetFleetDashboardDataFunc: func() (routing.FleetDashboardData, error) {
+// 	               panic("mock out the GetFleetDashboardData method")
 //             },
 //             IncrementSequenceNumberFunc: func(ctx context.Context) error {
 // 	               panic("mock out the IncrementSequenceNumber method")
@@ -343,6 +282,9 @@ type StorerMock struct {
 
 	// GetFeatureFlagsFunc mocks the GetFeatureFlags method.
 	GetFeatureFlagsFunc func() map[string]bool
+
+	// GetFleetDashboardDataFunc mocks the GetFleetDashboardData method.
+	GetFleetDashboardDataFunc func() (routing.FleetDashboardData, error)
 
 	// IncrementSequenceNumberFunc mocks the IncrementSequenceNumber method.
 	IncrementSequenceNumberFunc func(ctx context.Context) error
@@ -592,6 +534,9 @@ type StorerMock struct {
 		}
 		// GetFeatureFlags holds details about calls to the GetFeatureFlags method.
 		GetFeatureFlags []struct {
+		}
+		// GetFleetDashboardData holds details about calls to the GetFleetDashboardData method.
+		GetFleetDashboardData []struct {
 		}
 		// IncrementSequenceNumber holds details about calls to the IncrementSequenceNumber method.
 		IncrementSequenceNumber []struct {
@@ -880,6 +825,68 @@ type StorerMock struct {
 			Value interface{}
 		}
 	}
+	lockAddBannedUser             sync.RWMutex
+	lockAddBuyer                  sync.RWMutex
+	lockAddCustomer               sync.RWMutex
+	lockAddDatacenter             sync.RWMutex
+	lockAddDatacenterMap          sync.RWMutex
+	lockAddInternalConfig         sync.RWMutex
+	lockAddRelay                  sync.RWMutex
+	lockAddRouteShader            sync.RWMutex
+	lockAddSeller                 sync.RWMutex
+	lockBannedUsers               sync.RWMutex
+	lockBuyer                     sync.RWMutex
+	lockBuyerIDFromCustomerName   sync.RWMutex
+	lockBuyerWithCompanyCode      sync.RWMutex
+	lockBuyers                    sync.RWMutex
+	lockCheckSequenceNumber       sync.RWMutex
+	lockCustomer                  sync.RWMutex
+	lockCustomerWithName          sync.RWMutex
+	lockCustomers                 sync.RWMutex
+	lockDatacenter                sync.RWMutex
+	lockDatacenters               sync.RWMutex
+	lockGetDatacenterMapsForBuyer sync.RWMutex
+	lockGetFeatureFlagByName      sync.RWMutex
+	lockGetFeatureFlags           sync.RWMutex
+	lockGetFleetDashboardData     sync.RWMutex
+	lockIncrementSequenceNumber   sync.RWMutex
+	lockInternalConfig            sync.RWMutex
+	lockListDatacenterMaps        sync.RWMutex
+	lockRelay                     sync.RWMutex
+	lockRelays                    sync.RWMutex
+	lockRemoveBannedUser          sync.RWMutex
+	lockRemoveBuyer               sync.RWMutex
+	lockRemoveCustomer            sync.RWMutex
+	lockRemoveDatacenter          sync.RWMutex
+	lockRemoveDatacenterMap       sync.RWMutex
+	lockRemoveFeatureFlagByName   sync.RWMutex
+	lockRemoveInternalConfig      sync.RWMutex
+	lockRemoveRelay               sync.RWMutex
+	lockRemoveRouteShader         sync.RWMutex
+	lockRemoveSeller              sync.RWMutex
+	lockRouteShader               sync.RWMutex
+	lockSeller                    sync.RWMutex
+	lockSellerIDFromCustomerName  sync.RWMutex
+	lockSellerWithCompanyCode     sync.RWMutex
+	lockSellers                   sync.RWMutex
+	lockSetBuyer                  sync.RWMutex
+	lockSetCustomer               sync.RWMutex
+	lockSetCustomerLink           sync.RWMutex
+	lockSetDatacenter             sync.RWMutex
+	lockSetFeatureFlagByName      sync.RWMutex
+	lockSetRelay                  sync.RWMutex
+	lockSetRelayMetadata          sync.RWMutex
+	lockSetSeller                 sync.RWMutex
+	lockSetSequenceNumber         sync.RWMutex
+	lockSyncLoop                  sync.RWMutex
+	lockUpdateBuyer               sync.RWMutex
+	lockUpdateCustomer            sync.RWMutex
+	lockUpdateDatacenter          sync.RWMutex
+	lockUpdateDatacenterMap       sync.RWMutex
+	lockUpdateInternalConfig      sync.RWMutex
+	lockUpdateRelay               sync.RWMutex
+	lockUpdateRouteShader         sync.RWMutex
+	lockUpdateSeller              sync.RWMutex
 }
 
 // AddBannedUser calls AddBannedUserFunc.
@@ -896,9 +903,9 @@ func (mock *StorerMock) AddBannedUser(ctx context.Context, buyerID uint64, userI
 		BuyerID: buyerID,
 		UserID:  userID,
 	}
-	lockStorerMockAddBannedUser.Lock()
+	mock.lockAddBannedUser.Lock()
 	mock.calls.AddBannedUser = append(mock.calls.AddBannedUser, callInfo)
-	lockStorerMockAddBannedUser.Unlock()
+	mock.lockAddBannedUser.Unlock()
 	return mock.AddBannedUserFunc(ctx, buyerID, userID)
 }
 
@@ -915,9 +922,9 @@ func (mock *StorerMock) AddBannedUserCalls() []struct {
 		BuyerID uint64
 		UserID  uint64
 	}
-	lockStorerMockAddBannedUser.RLock()
+	mock.lockAddBannedUser.RLock()
 	calls = mock.calls.AddBannedUser
-	lockStorerMockAddBannedUser.RUnlock()
+	mock.lockAddBannedUser.RUnlock()
 	return calls
 }
 
@@ -933,9 +940,9 @@ func (mock *StorerMock) AddBuyer(ctx context.Context, buyer routing.Buyer) error
 		Ctx:   ctx,
 		Buyer: buyer,
 	}
-	lockStorerMockAddBuyer.Lock()
+	mock.lockAddBuyer.Lock()
 	mock.calls.AddBuyer = append(mock.calls.AddBuyer, callInfo)
-	lockStorerMockAddBuyer.Unlock()
+	mock.lockAddBuyer.Unlock()
 	return mock.AddBuyerFunc(ctx, buyer)
 }
 
@@ -950,9 +957,9 @@ func (mock *StorerMock) AddBuyerCalls() []struct {
 		Ctx   context.Context
 		Buyer routing.Buyer
 	}
-	lockStorerMockAddBuyer.RLock()
+	mock.lockAddBuyer.RLock()
 	calls = mock.calls.AddBuyer
-	lockStorerMockAddBuyer.RUnlock()
+	mock.lockAddBuyer.RUnlock()
 	return calls
 }
 
@@ -968,9 +975,9 @@ func (mock *StorerMock) AddCustomer(ctx context.Context, customer routing.Custom
 		Ctx:      ctx,
 		Customer: customer,
 	}
-	lockStorerMockAddCustomer.Lock()
+	mock.lockAddCustomer.Lock()
 	mock.calls.AddCustomer = append(mock.calls.AddCustomer, callInfo)
-	lockStorerMockAddCustomer.Unlock()
+	mock.lockAddCustomer.Unlock()
 	return mock.AddCustomerFunc(ctx, customer)
 }
 
@@ -985,9 +992,9 @@ func (mock *StorerMock) AddCustomerCalls() []struct {
 		Ctx      context.Context
 		Customer routing.Customer
 	}
-	lockStorerMockAddCustomer.RLock()
+	mock.lockAddCustomer.RLock()
 	calls = mock.calls.AddCustomer
-	lockStorerMockAddCustomer.RUnlock()
+	mock.lockAddCustomer.RUnlock()
 	return calls
 }
 
@@ -1003,9 +1010,9 @@ func (mock *StorerMock) AddDatacenter(ctx context.Context, datacenter routing.Da
 		Ctx:        ctx,
 		Datacenter: datacenter,
 	}
-	lockStorerMockAddDatacenter.Lock()
+	mock.lockAddDatacenter.Lock()
 	mock.calls.AddDatacenter = append(mock.calls.AddDatacenter, callInfo)
-	lockStorerMockAddDatacenter.Unlock()
+	mock.lockAddDatacenter.Unlock()
 	return mock.AddDatacenterFunc(ctx, datacenter)
 }
 
@@ -1020,9 +1027,9 @@ func (mock *StorerMock) AddDatacenterCalls() []struct {
 		Ctx        context.Context
 		Datacenter routing.Datacenter
 	}
-	lockStorerMockAddDatacenter.RLock()
+	mock.lockAddDatacenter.RLock()
 	calls = mock.calls.AddDatacenter
-	lockStorerMockAddDatacenter.RUnlock()
+	mock.lockAddDatacenter.RUnlock()
 	return calls
 }
 
@@ -1038,9 +1045,9 @@ func (mock *StorerMock) AddDatacenterMap(ctx context.Context, dcMap routing.Data
 		Ctx:   ctx,
 		DcMap: dcMap,
 	}
-	lockStorerMockAddDatacenterMap.Lock()
+	mock.lockAddDatacenterMap.Lock()
 	mock.calls.AddDatacenterMap = append(mock.calls.AddDatacenterMap, callInfo)
-	lockStorerMockAddDatacenterMap.Unlock()
+	mock.lockAddDatacenterMap.Unlock()
 	return mock.AddDatacenterMapFunc(ctx, dcMap)
 }
 
@@ -1055,9 +1062,9 @@ func (mock *StorerMock) AddDatacenterMapCalls() []struct {
 		Ctx   context.Context
 		DcMap routing.DatacenterMap
 	}
-	lockStorerMockAddDatacenterMap.RLock()
+	mock.lockAddDatacenterMap.RLock()
 	calls = mock.calls.AddDatacenterMap
-	lockStorerMockAddDatacenterMap.RUnlock()
+	mock.lockAddDatacenterMap.RUnlock()
 	return calls
 }
 
@@ -1075,9 +1082,9 @@ func (mock *StorerMock) AddInternalConfig(ctx context.Context, internalConfig co
 		InternalConfig: internalConfig,
 		BuyerID:        buyerID,
 	}
-	lockStorerMockAddInternalConfig.Lock()
+	mock.lockAddInternalConfig.Lock()
 	mock.calls.AddInternalConfig = append(mock.calls.AddInternalConfig, callInfo)
-	lockStorerMockAddInternalConfig.Unlock()
+	mock.lockAddInternalConfig.Unlock()
 	return mock.AddInternalConfigFunc(ctx, internalConfig, buyerID)
 }
 
@@ -1094,9 +1101,9 @@ func (mock *StorerMock) AddInternalConfigCalls() []struct {
 		InternalConfig core.InternalConfig
 		BuyerID        uint64
 	}
-	lockStorerMockAddInternalConfig.RLock()
+	mock.lockAddInternalConfig.RLock()
 	calls = mock.calls.AddInternalConfig
-	lockStorerMockAddInternalConfig.RUnlock()
+	mock.lockAddInternalConfig.RUnlock()
 	return calls
 }
 
@@ -1112,9 +1119,9 @@ func (mock *StorerMock) AddRelay(ctx context.Context, relay routing.Relay) error
 		Ctx:   ctx,
 		Relay: relay,
 	}
-	lockStorerMockAddRelay.Lock()
+	mock.lockAddRelay.Lock()
 	mock.calls.AddRelay = append(mock.calls.AddRelay, callInfo)
-	lockStorerMockAddRelay.Unlock()
+	mock.lockAddRelay.Unlock()
 	return mock.AddRelayFunc(ctx, relay)
 }
 
@@ -1129,9 +1136,9 @@ func (mock *StorerMock) AddRelayCalls() []struct {
 		Ctx   context.Context
 		Relay routing.Relay
 	}
-	lockStorerMockAddRelay.RLock()
+	mock.lockAddRelay.RLock()
 	calls = mock.calls.AddRelay
-	lockStorerMockAddRelay.RUnlock()
+	mock.lockAddRelay.RUnlock()
 	return calls
 }
 
@@ -1149,9 +1156,9 @@ func (mock *StorerMock) AddRouteShader(ctx context.Context, routeShader core.Rou
 		RouteShader: routeShader,
 		BuyerID:     buyerID,
 	}
-	lockStorerMockAddRouteShader.Lock()
+	mock.lockAddRouteShader.Lock()
 	mock.calls.AddRouteShader = append(mock.calls.AddRouteShader, callInfo)
-	lockStorerMockAddRouteShader.Unlock()
+	mock.lockAddRouteShader.Unlock()
 	return mock.AddRouteShaderFunc(ctx, routeShader, buyerID)
 }
 
@@ -1168,9 +1175,9 @@ func (mock *StorerMock) AddRouteShaderCalls() []struct {
 		RouteShader core.RouteShader
 		BuyerID     uint64
 	}
-	lockStorerMockAddRouteShader.RLock()
+	mock.lockAddRouteShader.RLock()
 	calls = mock.calls.AddRouteShader
-	lockStorerMockAddRouteShader.RUnlock()
+	mock.lockAddRouteShader.RUnlock()
 	return calls
 }
 
@@ -1186,9 +1193,9 @@ func (mock *StorerMock) AddSeller(ctx context.Context, seller routing.Seller) er
 		Ctx:    ctx,
 		Seller: seller,
 	}
-	lockStorerMockAddSeller.Lock()
+	mock.lockAddSeller.Lock()
 	mock.calls.AddSeller = append(mock.calls.AddSeller, callInfo)
-	lockStorerMockAddSeller.Unlock()
+	mock.lockAddSeller.Unlock()
 	return mock.AddSellerFunc(ctx, seller)
 }
 
@@ -1203,9 +1210,9 @@ func (mock *StorerMock) AddSellerCalls() []struct {
 		Ctx    context.Context
 		Seller routing.Seller
 	}
-	lockStorerMockAddSeller.RLock()
+	mock.lockAddSeller.RLock()
 	calls = mock.calls.AddSeller
-	lockStorerMockAddSeller.RUnlock()
+	mock.lockAddSeller.RUnlock()
 	return calls
 }
 
@@ -1219,9 +1226,9 @@ func (mock *StorerMock) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
 	}{
 		BuyerID: buyerID,
 	}
-	lockStorerMockBannedUsers.Lock()
+	mock.lockBannedUsers.Lock()
 	mock.calls.BannedUsers = append(mock.calls.BannedUsers, callInfo)
-	lockStorerMockBannedUsers.Unlock()
+	mock.lockBannedUsers.Unlock()
 	return mock.BannedUsersFunc(buyerID)
 }
 
@@ -1234,9 +1241,9 @@ func (mock *StorerMock) BannedUsersCalls() []struct {
 	var calls []struct {
 		BuyerID uint64
 	}
-	lockStorerMockBannedUsers.RLock()
+	mock.lockBannedUsers.RLock()
 	calls = mock.calls.BannedUsers
-	lockStorerMockBannedUsers.RUnlock()
+	mock.lockBannedUsers.RUnlock()
 	return calls
 }
 
@@ -1250,9 +1257,9 @@ func (mock *StorerMock) Buyer(id uint64) (routing.Buyer, error) {
 	}{
 		ID: id,
 	}
-	lockStorerMockBuyer.Lock()
+	mock.lockBuyer.Lock()
 	mock.calls.Buyer = append(mock.calls.Buyer, callInfo)
-	lockStorerMockBuyer.Unlock()
+	mock.lockBuyer.Unlock()
 	return mock.BuyerFunc(id)
 }
 
@@ -1265,9 +1272,9 @@ func (mock *StorerMock) BuyerCalls() []struct {
 	var calls []struct {
 		ID uint64
 	}
-	lockStorerMockBuyer.RLock()
+	mock.lockBuyer.RLock()
 	calls = mock.calls.Buyer
-	lockStorerMockBuyer.RUnlock()
+	mock.lockBuyer.RUnlock()
 	return calls
 }
 
@@ -1283,9 +1290,9 @@ func (mock *StorerMock) BuyerIDFromCustomerName(ctx context.Context, customerNam
 		Ctx:          ctx,
 		CustomerName: customerName,
 	}
-	lockStorerMockBuyerIDFromCustomerName.Lock()
+	mock.lockBuyerIDFromCustomerName.Lock()
 	mock.calls.BuyerIDFromCustomerName = append(mock.calls.BuyerIDFromCustomerName, callInfo)
-	lockStorerMockBuyerIDFromCustomerName.Unlock()
+	mock.lockBuyerIDFromCustomerName.Unlock()
 	return mock.BuyerIDFromCustomerNameFunc(ctx, customerName)
 }
 
@@ -1300,9 +1307,9 @@ func (mock *StorerMock) BuyerIDFromCustomerNameCalls() []struct {
 		Ctx          context.Context
 		CustomerName string
 	}
-	lockStorerMockBuyerIDFromCustomerName.RLock()
+	mock.lockBuyerIDFromCustomerName.RLock()
 	calls = mock.calls.BuyerIDFromCustomerName
-	lockStorerMockBuyerIDFromCustomerName.RUnlock()
+	mock.lockBuyerIDFromCustomerName.RUnlock()
 	return calls
 }
 
@@ -1316,9 +1323,9 @@ func (mock *StorerMock) BuyerWithCompanyCode(code string) (routing.Buyer, error)
 	}{
 		Code: code,
 	}
-	lockStorerMockBuyerWithCompanyCode.Lock()
+	mock.lockBuyerWithCompanyCode.Lock()
 	mock.calls.BuyerWithCompanyCode = append(mock.calls.BuyerWithCompanyCode, callInfo)
-	lockStorerMockBuyerWithCompanyCode.Unlock()
+	mock.lockBuyerWithCompanyCode.Unlock()
 	return mock.BuyerWithCompanyCodeFunc(code)
 }
 
@@ -1331,9 +1338,9 @@ func (mock *StorerMock) BuyerWithCompanyCodeCalls() []struct {
 	var calls []struct {
 		Code string
 	}
-	lockStorerMockBuyerWithCompanyCode.RLock()
+	mock.lockBuyerWithCompanyCode.RLock()
 	calls = mock.calls.BuyerWithCompanyCode
-	lockStorerMockBuyerWithCompanyCode.RUnlock()
+	mock.lockBuyerWithCompanyCode.RUnlock()
 	return calls
 }
 
@@ -1344,9 +1351,9 @@ func (mock *StorerMock) Buyers() []routing.Buyer {
 	}
 	callInfo := struct {
 	}{}
-	lockStorerMockBuyers.Lock()
+	mock.lockBuyers.Lock()
 	mock.calls.Buyers = append(mock.calls.Buyers, callInfo)
-	lockStorerMockBuyers.Unlock()
+	mock.lockBuyers.Unlock()
 	return mock.BuyersFunc()
 }
 
@@ -1357,9 +1364,9 @@ func (mock *StorerMock) BuyersCalls() []struct {
 } {
 	var calls []struct {
 	}
-	lockStorerMockBuyers.RLock()
+	mock.lockBuyers.RLock()
 	calls = mock.calls.Buyers
-	lockStorerMockBuyers.RUnlock()
+	mock.lockBuyers.RUnlock()
 	return calls
 }
 
@@ -1373,9 +1380,9 @@ func (mock *StorerMock) CheckSequenceNumber(ctx context.Context) (bool, int64, e
 	}{
 		Ctx: ctx,
 	}
-	lockStorerMockCheckSequenceNumber.Lock()
+	mock.lockCheckSequenceNumber.Lock()
 	mock.calls.CheckSequenceNumber = append(mock.calls.CheckSequenceNumber, callInfo)
-	lockStorerMockCheckSequenceNumber.Unlock()
+	mock.lockCheckSequenceNumber.Unlock()
 	return mock.CheckSequenceNumberFunc(ctx)
 }
 
@@ -1388,9 +1395,9 @@ func (mock *StorerMock) CheckSequenceNumberCalls() []struct {
 	var calls []struct {
 		Ctx context.Context
 	}
-	lockStorerMockCheckSequenceNumber.RLock()
+	mock.lockCheckSequenceNumber.RLock()
 	calls = mock.calls.CheckSequenceNumber
-	lockStorerMockCheckSequenceNumber.RUnlock()
+	mock.lockCheckSequenceNumber.RUnlock()
 	return calls
 }
 
@@ -1404,9 +1411,9 @@ func (mock *StorerMock) Customer(code string) (routing.Customer, error) {
 	}{
 		Code: code,
 	}
-	lockStorerMockCustomer.Lock()
+	mock.lockCustomer.Lock()
 	mock.calls.Customer = append(mock.calls.Customer, callInfo)
-	lockStorerMockCustomer.Unlock()
+	mock.lockCustomer.Unlock()
 	return mock.CustomerFunc(code)
 }
 
@@ -1419,9 +1426,9 @@ func (mock *StorerMock) CustomerCalls() []struct {
 	var calls []struct {
 		Code string
 	}
-	lockStorerMockCustomer.RLock()
+	mock.lockCustomer.RLock()
 	calls = mock.calls.Customer
-	lockStorerMockCustomer.RUnlock()
+	mock.lockCustomer.RUnlock()
 	return calls
 }
 
@@ -1435,9 +1442,9 @@ func (mock *StorerMock) CustomerWithName(name string) (routing.Customer, error) 
 	}{
 		Name: name,
 	}
-	lockStorerMockCustomerWithName.Lock()
+	mock.lockCustomerWithName.Lock()
 	mock.calls.CustomerWithName = append(mock.calls.CustomerWithName, callInfo)
-	lockStorerMockCustomerWithName.Unlock()
+	mock.lockCustomerWithName.Unlock()
 	return mock.CustomerWithNameFunc(name)
 }
 
@@ -1450,9 +1457,9 @@ func (mock *StorerMock) CustomerWithNameCalls() []struct {
 	var calls []struct {
 		Name string
 	}
-	lockStorerMockCustomerWithName.RLock()
+	mock.lockCustomerWithName.RLock()
 	calls = mock.calls.CustomerWithName
-	lockStorerMockCustomerWithName.RUnlock()
+	mock.lockCustomerWithName.RUnlock()
 	return calls
 }
 
@@ -1463,9 +1470,9 @@ func (mock *StorerMock) Customers() []routing.Customer {
 	}
 	callInfo := struct {
 	}{}
-	lockStorerMockCustomers.Lock()
+	mock.lockCustomers.Lock()
 	mock.calls.Customers = append(mock.calls.Customers, callInfo)
-	lockStorerMockCustomers.Unlock()
+	mock.lockCustomers.Unlock()
 	return mock.CustomersFunc()
 }
 
@@ -1476,9 +1483,9 @@ func (mock *StorerMock) CustomersCalls() []struct {
 } {
 	var calls []struct {
 	}
-	lockStorerMockCustomers.RLock()
+	mock.lockCustomers.RLock()
 	calls = mock.calls.Customers
-	lockStorerMockCustomers.RUnlock()
+	mock.lockCustomers.RUnlock()
 	return calls
 }
 
@@ -1492,9 +1499,9 @@ func (mock *StorerMock) Datacenter(datacenterID uint64) (routing.Datacenter, err
 	}{
 		DatacenterID: datacenterID,
 	}
-	lockStorerMockDatacenter.Lock()
+	mock.lockDatacenter.Lock()
 	mock.calls.Datacenter = append(mock.calls.Datacenter, callInfo)
-	lockStorerMockDatacenter.Unlock()
+	mock.lockDatacenter.Unlock()
 	return mock.DatacenterFunc(datacenterID)
 }
 
@@ -1507,9 +1514,9 @@ func (mock *StorerMock) DatacenterCalls() []struct {
 	var calls []struct {
 		DatacenterID uint64
 	}
-	lockStorerMockDatacenter.RLock()
+	mock.lockDatacenter.RLock()
 	calls = mock.calls.Datacenter
-	lockStorerMockDatacenter.RUnlock()
+	mock.lockDatacenter.RUnlock()
 	return calls
 }
 
@@ -1520,9 +1527,9 @@ func (mock *StorerMock) Datacenters() []routing.Datacenter {
 	}
 	callInfo := struct {
 	}{}
-	lockStorerMockDatacenters.Lock()
+	mock.lockDatacenters.Lock()
 	mock.calls.Datacenters = append(mock.calls.Datacenters, callInfo)
-	lockStorerMockDatacenters.Unlock()
+	mock.lockDatacenters.Unlock()
 	return mock.DatacentersFunc()
 }
 
@@ -1533,9 +1540,9 @@ func (mock *StorerMock) DatacentersCalls() []struct {
 } {
 	var calls []struct {
 	}
-	lockStorerMockDatacenters.RLock()
+	mock.lockDatacenters.RLock()
 	calls = mock.calls.Datacenters
-	lockStorerMockDatacenters.RUnlock()
+	mock.lockDatacenters.RUnlock()
 	return calls
 }
 
@@ -1549,9 +1556,9 @@ func (mock *StorerMock) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]rou
 	}{
 		BuyerID: buyerID,
 	}
-	lockStorerMockGetDatacenterMapsForBuyer.Lock()
+	mock.lockGetDatacenterMapsForBuyer.Lock()
 	mock.calls.GetDatacenterMapsForBuyer = append(mock.calls.GetDatacenterMapsForBuyer, callInfo)
-	lockStorerMockGetDatacenterMapsForBuyer.Unlock()
+	mock.lockGetDatacenterMapsForBuyer.Unlock()
 	return mock.GetDatacenterMapsForBuyerFunc(buyerID)
 }
 
@@ -1564,9 +1571,9 @@ func (mock *StorerMock) GetDatacenterMapsForBuyerCalls() []struct {
 	var calls []struct {
 		BuyerID uint64
 	}
-	lockStorerMockGetDatacenterMapsForBuyer.RLock()
+	mock.lockGetDatacenterMapsForBuyer.RLock()
 	calls = mock.calls.GetDatacenterMapsForBuyer
-	lockStorerMockGetDatacenterMapsForBuyer.RUnlock()
+	mock.lockGetDatacenterMapsForBuyer.RUnlock()
 	return calls
 }
 
@@ -1580,9 +1587,9 @@ func (mock *StorerMock) GetFeatureFlagByName(flagName string) (map[string]bool, 
 	}{
 		FlagName: flagName,
 	}
-	lockStorerMockGetFeatureFlagByName.Lock()
+	mock.lockGetFeatureFlagByName.Lock()
 	mock.calls.GetFeatureFlagByName = append(mock.calls.GetFeatureFlagByName, callInfo)
-	lockStorerMockGetFeatureFlagByName.Unlock()
+	mock.lockGetFeatureFlagByName.Unlock()
 	return mock.GetFeatureFlagByNameFunc(flagName)
 }
 
@@ -1595,9 +1602,9 @@ func (mock *StorerMock) GetFeatureFlagByNameCalls() []struct {
 	var calls []struct {
 		FlagName string
 	}
-	lockStorerMockGetFeatureFlagByName.RLock()
+	mock.lockGetFeatureFlagByName.RLock()
 	calls = mock.calls.GetFeatureFlagByName
-	lockStorerMockGetFeatureFlagByName.RUnlock()
+	mock.lockGetFeatureFlagByName.RUnlock()
 	return calls
 }
 
@@ -1608,9 +1615,9 @@ func (mock *StorerMock) GetFeatureFlags() map[string]bool {
 	}
 	callInfo := struct {
 	}{}
-	lockStorerMockGetFeatureFlags.Lock()
+	mock.lockGetFeatureFlags.Lock()
 	mock.calls.GetFeatureFlags = append(mock.calls.GetFeatureFlags, callInfo)
-	lockStorerMockGetFeatureFlags.Unlock()
+	mock.lockGetFeatureFlags.Unlock()
 	return mock.GetFeatureFlagsFunc()
 }
 
@@ -1621,9 +1628,35 @@ func (mock *StorerMock) GetFeatureFlagsCalls() []struct {
 } {
 	var calls []struct {
 	}
-	lockStorerMockGetFeatureFlags.RLock()
+	mock.lockGetFeatureFlags.RLock()
 	calls = mock.calls.GetFeatureFlags
-	lockStorerMockGetFeatureFlags.RUnlock()
+	mock.lockGetFeatureFlags.RUnlock()
+	return calls
+}
+
+// GetFleetDashboardData calls GetFleetDashboardDataFunc.
+func (mock *StorerMock) GetFleetDashboardData() (routing.FleetDashboardData, error) {
+	if mock.GetFleetDashboardDataFunc == nil {
+		panic("StorerMock.GetFleetDashboardDataFunc: method is nil but Storer.GetFleetDashboardData was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetFleetDashboardData.Lock()
+	mock.calls.GetFleetDashboardData = append(mock.calls.GetFleetDashboardData, callInfo)
+	mock.lockGetFleetDashboardData.Unlock()
+	return mock.GetFleetDashboardDataFunc()
+}
+
+// GetFleetDashboardDataCalls gets all the calls that were made to GetFleetDashboardData.
+// Check the length with:
+//     len(mockedStorer.GetFleetDashboardDataCalls())
+func (mock *StorerMock) GetFleetDashboardDataCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetFleetDashboardData.RLock()
+	calls = mock.calls.GetFleetDashboardData
+	mock.lockGetFleetDashboardData.RUnlock()
 	return calls
 }
 
@@ -1637,9 +1670,9 @@ func (mock *StorerMock) IncrementSequenceNumber(ctx context.Context) error {
 	}{
 		Ctx: ctx,
 	}
-	lockStorerMockIncrementSequenceNumber.Lock()
+	mock.lockIncrementSequenceNumber.Lock()
 	mock.calls.IncrementSequenceNumber = append(mock.calls.IncrementSequenceNumber, callInfo)
-	lockStorerMockIncrementSequenceNumber.Unlock()
+	mock.lockIncrementSequenceNumber.Unlock()
 	return mock.IncrementSequenceNumberFunc(ctx)
 }
 
@@ -1652,9 +1685,9 @@ func (mock *StorerMock) IncrementSequenceNumberCalls() []struct {
 	var calls []struct {
 		Ctx context.Context
 	}
-	lockStorerMockIncrementSequenceNumber.RLock()
+	mock.lockIncrementSequenceNumber.RLock()
 	calls = mock.calls.IncrementSequenceNumber
-	lockStorerMockIncrementSequenceNumber.RUnlock()
+	mock.lockIncrementSequenceNumber.RUnlock()
 	return calls
 }
 
@@ -1668,9 +1701,9 @@ func (mock *StorerMock) InternalConfig(buyerID uint64) (core.InternalConfig, err
 	}{
 		BuyerID: buyerID,
 	}
-	lockStorerMockInternalConfig.Lock()
+	mock.lockInternalConfig.Lock()
 	mock.calls.InternalConfig = append(mock.calls.InternalConfig, callInfo)
-	lockStorerMockInternalConfig.Unlock()
+	mock.lockInternalConfig.Unlock()
 	return mock.InternalConfigFunc(buyerID)
 }
 
@@ -1683,9 +1716,9 @@ func (mock *StorerMock) InternalConfigCalls() []struct {
 	var calls []struct {
 		BuyerID uint64
 	}
-	lockStorerMockInternalConfig.RLock()
+	mock.lockInternalConfig.RLock()
 	calls = mock.calls.InternalConfig
-	lockStorerMockInternalConfig.RUnlock()
+	mock.lockInternalConfig.RUnlock()
 	return calls
 }
 
@@ -1699,9 +1732,9 @@ func (mock *StorerMock) ListDatacenterMaps(dcID uint64) map[uint64]routing.Datac
 	}{
 		DcID: dcID,
 	}
-	lockStorerMockListDatacenterMaps.Lock()
+	mock.lockListDatacenterMaps.Lock()
 	mock.calls.ListDatacenterMaps = append(mock.calls.ListDatacenterMaps, callInfo)
-	lockStorerMockListDatacenterMaps.Unlock()
+	mock.lockListDatacenterMaps.Unlock()
 	return mock.ListDatacenterMapsFunc(dcID)
 }
 
@@ -1714,9 +1747,9 @@ func (mock *StorerMock) ListDatacenterMapsCalls() []struct {
 	var calls []struct {
 		DcID uint64
 	}
-	lockStorerMockListDatacenterMaps.RLock()
+	mock.lockListDatacenterMaps.RLock()
 	calls = mock.calls.ListDatacenterMaps
-	lockStorerMockListDatacenterMaps.RUnlock()
+	mock.lockListDatacenterMaps.RUnlock()
 	return calls
 }
 
@@ -1730,9 +1763,9 @@ func (mock *StorerMock) Relay(id uint64) (routing.Relay, error) {
 	}{
 		ID: id,
 	}
-	lockStorerMockRelay.Lock()
+	mock.lockRelay.Lock()
 	mock.calls.Relay = append(mock.calls.Relay, callInfo)
-	lockStorerMockRelay.Unlock()
+	mock.lockRelay.Unlock()
 	return mock.RelayFunc(id)
 }
 
@@ -1745,9 +1778,9 @@ func (mock *StorerMock) RelayCalls() []struct {
 	var calls []struct {
 		ID uint64
 	}
-	lockStorerMockRelay.RLock()
+	mock.lockRelay.RLock()
 	calls = mock.calls.Relay
-	lockStorerMockRelay.RUnlock()
+	mock.lockRelay.RUnlock()
 	return calls
 }
 
@@ -1758,9 +1791,9 @@ func (mock *StorerMock) Relays() []routing.Relay {
 	}
 	callInfo := struct {
 	}{}
-	lockStorerMockRelays.Lock()
+	mock.lockRelays.Lock()
 	mock.calls.Relays = append(mock.calls.Relays, callInfo)
-	lockStorerMockRelays.Unlock()
+	mock.lockRelays.Unlock()
 	return mock.RelaysFunc()
 }
 
@@ -1771,9 +1804,9 @@ func (mock *StorerMock) RelaysCalls() []struct {
 } {
 	var calls []struct {
 	}
-	lockStorerMockRelays.RLock()
+	mock.lockRelays.RLock()
 	calls = mock.calls.Relays
-	lockStorerMockRelays.RUnlock()
+	mock.lockRelays.RUnlock()
 	return calls
 }
 
@@ -1791,9 +1824,9 @@ func (mock *StorerMock) RemoveBannedUser(ctx context.Context, buyerID uint64, us
 		BuyerID: buyerID,
 		UserID:  userID,
 	}
-	lockStorerMockRemoveBannedUser.Lock()
+	mock.lockRemoveBannedUser.Lock()
 	mock.calls.RemoveBannedUser = append(mock.calls.RemoveBannedUser, callInfo)
-	lockStorerMockRemoveBannedUser.Unlock()
+	mock.lockRemoveBannedUser.Unlock()
 	return mock.RemoveBannedUserFunc(ctx, buyerID, userID)
 }
 
@@ -1810,9 +1843,9 @@ func (mock *StorerMock) RemoveBannedUserCalls() []struct {
 		BuyerID uint64
 		UserID  uint64
 	}
-	lockStorerMockRemoveBannedUser.RLock()
+	mock.lockRemoveBannedUser.RLock()
 	calls = mock.calls.RemoveBannedUser
-	lockStorerMockRemoveBannedUser.RUnlock()
+	mock.lockRemoveBannedUser.RUnlock()
 	return calls
 }
 
@@ -1828,9 +1861,9 @@ func (mock *StorerMock) RemoveBuyer(ctx context.Context, id uint64) error {
 		Ctx: ctx,
 		ID:  id,
 	}
-	lockStorerMockRemoveBuyer.Lock()
+	mock.lockRemoveBuyer.Lock()
 	mock.calls.RemoveBuyer = append(mock.calls.RemoveBuyer, callInfo)
-	lockStorerMockRemoveBuyer.Unlock()
+	mock.lockRemoveBuyer.Unlock()
 	return mock.RemoveBuyerFunc(ctx, id)
 }
 
@@ -1845,9 +1878,9 @@ func (mock *StorerMock) RemoveBuyerCalls() []struct {
 		Ctx context.Context
 		ID  uint64
 	}
-	lockStorerMockRemoveBuyer.RLock()
+	mock.lockRemoveBuyer.RLock()
 	calls = mock.calls.RemoveBuyer
-	lockStorerMockRemoveBuyer.RUnlock()
+	mock.lockRemoveBuyer.RUnlock()
 	return calls
 }
 
@@ -1863,9 +1896,9 @@ func (mock *StorerMock) RemoveCustomer(ctx context.Context, code string) error {
 		Ctx:  ctx,
 		Code: code,
 	}
-	lockStorerMockRemoveCustomer.Lock()
+	mock.lockRemoveCustomer.Lock()
 	mock.calls.RemoveCustomer = append(mock.calls.RemoveCustomer, callInfo)
-	lockStorerMockRemoveCustomer.Unlock()
+	mock.lockRemoveCustomer.Unlock()
 	return mock.RemoveCustomerFunc(ctx, code)
 }
 
@@ -1880,9 +1913,9 @@ func (mock *StorerMock) RemoveCustomerCalls() []struct {
 		Ctx  context.Context
 		Code string
 	}
-	lockStorerMockRemoveCustomer.RLock()
+	mock.lockRemoveCustomer.RLock()
 	calls = mock.calls.RemoveCustomer
-	lockStorerMockRemoveCustomer.RUnlock()
+	mock.lockRemoveCustomer.RUnlock()
 	return calls
 }
 
@@ -1898,9 +1931,9 @@ func (mock *StorerMock) RemoveDatacenter(ctx context.Context, id uint64) error {
 		Ctx: ctx,
 		ID:  id,
 	}
-	lockStorerMockRemoveDatacenter.Lock()
+	mock.lockRemoveDatacenter.Lock()
 	mock.calls.RemoveDatacenter = append(mock.calls.RemoveDatacenter, callInfo)
-	lockStorerMockRemoveDatacenter.Unlock()
+	mock.lockRemoveDatacenter.Unlock()
 	return mock.RemoveDatacenterFunc(ctx, id)
 }
 
@@ -1915,9 +1948,9 @@ func (mock *StorerMock) RemoveDatacenterCalls() []struct {
 		Ctx context.Context
 		ID  uint64
 	}
-	lockStorerMockRemoveDatacenter.RLock()
+	mock.lockRemoveDatacenter.RLock()
 	calls = mock.calls.RemoveDatacenter
-	lockStorerMockRemoveDatacenter.RUnlock()
+	mock.lockRemoveDatacenter.RUnlock()
 	return calls
 }
 
@@ -1933,9 +1966,9 @@ func (mock *StorerMock) RemoveDatacenterMap(ctx context.Context, dcMap routing.D
 		Ctx:   ctx,
 		DcMap: dcMap,
 	}
-	lockStorerMockRemoveDatacenterMap.Lock()
+	mock.lockRemoveDatacenterMap.Lock()
 	mock.calls.RemoveDatacenterMap = append(mock.calls.RemoveDatacenterMap, callInfo)
-	lockStorerMockRemoveDatacenterMap.Unlock()
+	mock.lockRemoveDatacenterMap.Unlock()
 	return mock.RemoveDatacenterMapFunc(ctx, dcMap)
 }
 
@@ -1950,9 +1983,9 @@ func (mock *StorerMock) RemoveDatacenterMapCalls() []struct {
 		Ctx   context.Context
 		DcMap routing.DatacenterMap
 	}
-	lockStorerMockRemoveDatacenterMap.RLock()
+	mock.lockRemoveDatacenterMap.RLock()
 	calls = mock.calls.RemoveDatacenterMap
-	lockStorerMockRemoveDatacenterMap.RUnlock()
+	mock.lockRemoveDatacenterMap.RUnlock()
 	return calls
 }
 
@@ -1968,9 +2001,9 @@ func (mock *StorerMock) RemoveFeatureFlagByName(ctx context.Context, flagName st
 		Ctx:      ctx,
 		FlagName: flagName,
 	}
-	lockStorerMockRemoveFeatureFlagByName.Lock()
+	mock.lockRemoveFeatureFlagByName.Lock()
 	mock.calls.RemoveFeatureFlagByName = append(mock.calls.RemoveFeatureFlagByName, callInfo)
-	lockStorerMockRemoveFeatureFlagByName.Unlock()
+	mock.lockRemoveFeatureFlagByName.Unlock()
 	return mock.RemoveFeatureFlagByNameFunc(ctx, flagName)
 }
 
@@ -1985,9 +2018,9 @@ func (mock *StorerMock) RemoveFeatureFlagByNameCalls() []struct {
 		Ctx      context.Context
 		FlagName string
 	}
-	lockStorerMockRemoveFeatureFlagByName.RLock()
+	mock.lockRemoveFeatureFlagByName.RLock()
 	calls = mock.calls.RemoveFeatureFlagByName
-	lockStorerMockRemoveFeatureFlagByName.RUnlock()
+	mock.lockRemoveFeatureFlagByName.RUnlock()
 	return calls
 }
 
@@ -2003,9 +2036,9 @@ func (mock *StorerMock) RemoveInternalConfig(ctx context.Context, buyerID uint64
 		Ctx:     ctx,
 		BuyerID: buyerID,
 	}
-	lockStorerMockRemoveInternalConfig.Lock()
+	mock.lockRemoveInternalConfig.Lock()
 	mock.calls.RemoveInternalConfig = append(mock.calls.RemoveInternalConfig, callInfo)
-	lockStorerMockRemoveInternalConfig.Unlock()
+	mock.lockRemoveInternalConfig.Unlock()
 	return mock.RemoveInternalConfigFunc(ctx, buyerID)
 }
 
@@ -2020,9 +2053,9 @@ func (mock *StorerMock) RemoveInternalConfigCalls() []struct {
 		Ctx     context.Context
 		BuyerID uint64
 	}
-	lockStorerMockRemoveInternalConfig.RLock()
+	mock.lockRemoveInternalConfig.RLock()
 	calls = mock.calls.RemoveInternalConfig
-	lockStorerMockRemoveInternalConfig.RUnlock()
+	mock.lockRemoveInternalConfig.RUnlock()
 	return calls
 }
 
@@ -2038,9 +2071,9 @@ func (mock *StorerMock) RemoveRelay(ctx context.Context, id uint64) error {
 		Ctx: ctx,
 		ID:  id,
 	}
-	lockStorerMockRemoveRelay.Lock()
+	mock.lockRemoveRelay.Lock()
 	mock.calls.RemoveRelay = append(mock.calls.RemoveRelay, callInfo)
-	lockStorerMockRemoveRelay.Unlock()
+	mock.lockRemoveRelay.Unlock()
 	return mock.RemoveRelayFunc(ctx, id)
 }
 
@@ -2055,9 +2088,9 @@ func (mock *StorerMock) RemoveRelayCalls() []struct {
 		Ctx context.Context
 		ID  uint64
 	}
-	lockStorerMockRemoveRelay.RLock()
+	mock.lockRemoveRelay.RLock()
 	calls = mock.calls.RemoveRelay
-	lockStorerMockRemoveRelay.RUnlock()
+	mock.lockRemoveRelay.RUnlock()
 	return calls
 }
 
@@ -2073,9 +2106,9 @@ func (mock *StorerMock) RemoveRouteShader(ctx context.Context, buyerID uint64) e
 		Ctx:     ctx,
 		BuyerID: buyerID,
 	}
-	lockStorerMockRemoveRouteShader.Lock()
+	mock.lockRemoveRouteShader.Lock()
 	mock.calls.RemoveRouteShader = append(mock.calls.RemoveRouteShader, callInfo)
-	lockStorerMockRemoveRouteShader.Unlock()
+	mock.lockRemoveRouteShader.Unlock()
 	return mock.RemoveRouteShaderFunc(ctx, buyerID)
 }
 
@@ -2090,9 +2123,9 @@ func (mock *StorerMock) RemoveRouteShaderCalls() []struct {
 		Ctx     context.Context
 		BuyerID uint64
 	}
-	lockStorerMockRemoveRouteShader.RLock()
+	mock.lockRemoveRouteShader.RLock()
 	calls = mock.calls.RemoveRouteShader
-	lockStorerMockRemoveRouteShader.RUnlock()
+	mock.lockRemoveRouteShader.RUnlock()
 	return calls
 }
 
@@ -2108,9 +2141,9 @@ func (mock *StorerMock) RemoveSeller(ctx context.Context, id string) error {
 		Ctx: ctx,
 		ID:  id,
 	}
-	lockStorerMockRemoveSeller.Lock()
+	mock.lockRemoveSeller.Lock()
 	mock.calls.RemoveSeller = append(mock.calls.RemoveSeller, callInfo)
-	lockStorerMockRemoveSeller.Unlock()
+	mock.lockRemoveSeller.Unlock()
 	return mock.RemoveSellerFunc(ctx, id)
 }
 
@@ -2125,9 +2158,9 @@ func (mock *StorerMock) RemoveSellerCalls() []struct {
 		Ctx context.Context
 		ID  string
 	}
-	lockStorerMockRemoveSeller.RLock()
+	mock.lockRemoveSeller.RLock()
 	calls = mock.calls.RemoveSeller
-	lockStorerMockRemoveSeller.RUnlock()
+	mock.lockRemoveSeller.RUnlock()
 	return calls
 }
 
@@ -2141,9 +2174,9 @@ func (mock *StorerMock) RouteShader(buyerID uint64) (core.RouteShader, error) {
 	}{
 		BuyerID: buyerID,
 	}
-	lockStorerMockRouteShader.Lock()
+	mock.lockRouteShader.Lock()
 	mock.calls.RouteShader = append(mock.calls.RouteShader, callInfo)
-	lockStorerMockRouteShader.Unlock()
+	mock.lockRouteShader.Unlock()
 	return mock.RouteShaderFunc(buyerID)
 }
 
@@ -2156,9 +2189,9 @@ func (mock *StorerMock) RouteShaderCalls() []struct {
 	var calls []struct {
 		BuyerID uint64
 	}
-	lockStorerMockRouteShader.RLock()
+	mock.lockRouteShader.RLock()
 	calls = mock.calls.RouteShader
-	lockStorerMockRouteShader.RUnlock()
+	mock.lockRouteShader.RUnlock()
 	return calls
 }
 
@@ -2172,9 +2205,9 @@ func (mock *StorerMock) Seller(id string) (routing.Seller, error) {
 	}{
 		ID: id,
 	}
-	lockStorerMockSeller.Lock()
+	mock.lockSeller.Lock()
 	mock.calls.Seller = append(mock.calls.Seller, callInfo)
-	lockStorerMockSeller.Unlock()
+	mock.lockSeller.Unlock()
 	return mock.SellerFunc(id)
 }
 
@@ -2187,9 +2220,9 @@ func (mock *StorerMock) SellerCalls() []struct {
 	var calls []struct {
 		ID string
 	}
-	lockStorerMockSeller.RLock()
+	mock.lockSeller.RLock()
 	calls = mock.calls.Seller
-	lockStorerMockSeller.RUnlock()
+	mock.lockSeller.RUnlock()
 	return calls
 }
 
@@ -2205,9 +2238,9 @@ func (mock *StorerMock) SellerIDFromCustomerName(ctx context.Context, customerNa
 		Ctx:          ctx,
 		CustomerName: customerName,
 	}
-	lockStorerMockSellerIDFromCustomerName.Lock()
+	mock.lockSellerIDFromCustomerName.Lock()
 	mock.calls.SellerIDFromCustomerName = append(mock.calls.SellerIDFromCustomerName, callInfo)
-	lockStorerMockSellerIDFromCustomerName.Unlock()
+	mock.lockSellerIDFromCustomerName.Unlock()
 	return mock.SellerIDFromCustomerNameFunc(ctx, customerName)
 }
 
@@ -2222,9 +2255,9 @@ func (mock *StorerMock) SellerIDFromCustomerNameCalls() []struct {
 		Ctx          context.Context
 		CustomerName string
 	}
-	lockStorerMockSellerIDFromCustomerName.RLock()
+	mock.lockSellerIDFromCustomerName.RLock()
 	calls = mock.calls.SellerIDFromCustomerName
-	lockStorerMockSellerIDFromCustomerName.RUnlock()
+	mock.lockSellerIDFromCustomerName.RUnlock()
 	return calls
 }
 
@@ -2238,9 +2271,9 @@ func (mock *StorerMock) SellerWithCompanyCode(code string) (routing.Seller, erro
 	}{
 		Code: code,
 	}
-	lockStorerMockSellerWithCompanyCode.Lock()
+	mock.lockSellerWithCompanyCode.Lock()
 	mock.calls.SellerWithCompanyCode = append(mock.calls.SellerWithCompanyCode, callInfo)
-	lockStorerMockSellerWithCompanyCode.Unlock()
+	mock.lockSellerWithCompanyCode.Unlock()
 	return mock.SellerWithCompanyCodeFunc(code)
 }
 
@@ -2253,9 +2286,9 @@ func (mock *StorerMock) SellerWithCompanyCodeCalls() []struct {
 	var calls []struct {
 		Code string
 	}
-	lockStorerMockSellerWithCompanyCode.RLock()
+	mock.lockSellerWithCompanyCode.RLock()
 	calls = mock.calls.SellerWithCompanyCode
-	lockStorerMockSellerWithCompanyCode.RUnlock()
+	mock.lockSellerWithCompanyCode.RUnlock()
 	return calls
 }
 
@@ -2266,9 +2299,9 @@ func (mock *StorerMock) Sellers() []routing.Seller {
 	}
 	callInfo := struct {
 	}{}
-	lockStorerMockSellers.Lock()
+	mock.lockSellers.Lock()
 	mock.calls.Sellers = append(mock.calls.Sellers, callInfo)
-	lockStorerMockSellers.Unlock()
+	mock.lockSellers.Unlock()
 	return mock.SellersFunc()
 }
 
@@ -2279,9 +2312,9 @@ func (mock *StorerMock) SellersCalls() []struct {
 } {
 	var calls []struct {
 	}
-	lockStorerMockSellers.RLock()
+	mock.lockSellers.RLock()
 	calls = mock.calls.Sellers
-	lockStorerMockSellers.RUnlock()
+	mock.lockSellers.RUnlock()
 	return calls
 }
 
@@ -2297,9 +2330,9 @@ func (mock *StorerMock) SetBuyer(ctx context.Context, buyer routing.Buyer) error
 		Ctx:   ctx,
 		Buyer: buyer,
 	}
-	lockStorerMockSetBuyer.Lock()
+	mock.lockSetBuyer.Lock()
 	mock.calls.SetBuyer = append(mock.calls.SetBuyer, callInfo)
-	lockStorerMockSetBuyer.Unlock()
+	mock.lockSetBuyer.Unlock()
 	return mock.SetBuyerFunc(ctx, buyer)
 }
 
@@ -2314,9 +2347,9 @@ func (mock *StorerMock) SetBuyerCalls() []struct {
 		Ctx   context.Context
 		Buyer routing.Buyer
 	}
-	lockStorerMockSetBuyer.RLock()
+	mock.lockSetBuyer.RLock()
 	calls = mock.calls.SetBuyer
-	lockStorerMockSetBuyer.RUnlock()
+	mock.lockSetBuyer.RUnlock()
 	return calls
 }
 
@@ -2332,9 +2365,9 @@ func (mock *StorerMock) SetCustomer(ctx context.Context, customer routing.Custom
 		Ctx:      ctx,
 		Customer: customer,
 	}
-	lockStorerMockSetCustomer.Lock()
+	mock.lockSetCustomer.Lock()
 	mock.calls.SetCustomer = append(mock.calls.SetCustomer, callInfo)
-	lockStorerMockSetCustomer.Unlock()
+	mock.lockSetCustomer.Unlock()
 	return mock.SetCustomerFunc(ctx, customer)
 }
 
@@ -2349,9 +2382,9 @@ func (mock *StorerMock) SetCustomerCalls() []struct {
 		Ctx      context.Context
 		Customer routing.Customer
 	}
-	lockStorerMockSetCustomer.RLock()
+	mock.lockSetCustomer.RLock()
 	calls = mock.calls.SetCustomer
-	lockStorerMockSetCustomer.RUnlock()
+	mock.lockSetCustomer.RUnlock()
 	return calls
 }
 
@@ -2371,9 +2404,9 @@ func (mock *StorerMock) SetCustomerLink(ctx context.Context, customerName string
 		BuyerID:      buyerID,
 		SellerID:     sellerID,
 	}
-	lockStorerMockSetCustomerLink.Lock()
+	mock.lockSetCustomerLink.Lock()
 	mock.calls.SetCustomerLink = append(mock.calls.SetCustomerLink, callInfo)
-	lockStorerMockSetCustomerLink.Unlock()
+	mock.lockSetCustomerLink.Unlock()
 	return mock.SetCustomerLinkFunc(ctx, customerName, buyerID, sellerID)
 }
 
@@ -2392,9 +2425,9 @@ func (mock *StorerMock) SetCustomerLinkCalls() []struct {
 		BuyerID      uint64
 		SellerID     string
 	}
-	lockStorerMockSetCustomerLink.RLock()
+	mock.lockSetCustomerLink.RLock()
 	calls = mock.calls.SetCustomerLink
-	lockStorerMockSetCustomerLink.RUnlock()
+	mock.lockSetCustomerLink.RUnlock()
 	return calls
 }
 
@@ -2410,9 +2443,9 @@ func (mock *StorerMock) SetDatacenter(ctx context.Context, datacenter routing.Da
 		Ctx:        ctx,
 		Datacenter: datacenter,
 	}
-	lockStorerMockSetDatacenter.Lock()
+	mock.lockSetDatacenter.Lock()
 	mock.calls.SetDatacenter = append(mock.calls.SetDatacenter, callInfo)
-	lockStorerMockSetDatacenter.Unlock()
+	mock.lockSetDatacenter.Unlock()
 	return mock.SetDatacenterFunc(ctx, datacenter)
 }
 
@@ -2427,9 +2460,9 @@ func (mock *StorerMock) SetDatacenterCalls() []struct {
 		Ctx        context.Context
 		Datacenter routing.Datacenter
 	}
-	lockStorerMockSetDatacenter.RLock()
+	mock.lockSetDatacenter.RLock()
 	calls = mock.calls.SetDatacenter
-	lockStorerMockSetDatacenter.RUnlock()
+	mock.lockSetDatacenter.RUnlock()
 	return calls
 }
 
@@ -2447,9 +2480,9 @@ func (mock *StorerMock) SetFeatureFlagByName(ctx context.Context, flagName strin
 		FlagName: flagName,
 		FlagVal:  flagVal,
 	}
-	lockStorerMockSetFeatureFlagByName.Lock()
+	mock.lockSetFeatureFlagByName.Lock()
 	mock.calls.SetFeatureFlagByName = append(mock.calls.SetFeatureFlagByName, callInfo)
-	lockStorerMockSetFeatureFlagByName.Unlock()
+	mock.lockSetFeatureFlagByName.Unlock()
 	return mock.SetFeatureFlagByNameFunc(ctx, flagName, flagVal)
 }
 
@@ -2466,9 +2499,9 @@ func (mock *StorerMock) SetFeatureFlagByNameCalls() []struct {
 		FlagName string
 		FlagVal  bool
 	}
-	lockStorerMockSetFeatureFlagByName.RLock()
+	mock.lockSetFeatureFlagByName.RLock()
 	calls = mock.calls.SetFeatureFlagByName
-	lockStorerMockSetFeatureFlagByName.RUnlock()
+	mock.lockSetFeatureFlagByName.RUnlock()
 	return calls
 }
 
@@ -2484,9 +2517,9 @@ func (mock *StorerMock) SetRelay(ctx context.Context, relay routing.Relay) error
 		Ctx:   ctx,
 		Relay: relay,
 	}
-	lockStorerMockSetRelay.Lock()
+	mock.lockSetRelay.Lock()
 	mock.calls.SetRelay = append(mock.calls.SetRelay, callInfo)
-	lockStorerMockSetRelay.Unlock()
+	mock.lockSetRelay.Unlock()
 	return mock.SetRelayFunc(ctx, relay)
 }
 
@@ -2501,9 +2534,9 @@ func (mock *StorerMock) SetRelayCalls() []struct {
 		Ctx   context.Context
 		Relay routing.Relay
 	}
-	lockStorerMockSetRelay.RLock()
+	mock.lockSetRelay.RLock()
 	calls = mock.calls.SetRelay
-	lockStorerMockSetRelay.RUnlock()
+	mock.lockSetRelay.RUnlock()
 	return calls
 }
 
@@ -2519,9 +2552,9 @@ func (mock *StorerMock) SetRelayMetadata(ctx context.Context, relay routing.Rela
 		Ctx:   ctx,
 		Relay: relay,
 	}
-	lockStorerMockSetRelayMetadata.Lock()
+	mock.lockSetRelayMetadata.Lock()
 	mock.calls.SetRelayMetadata = append(mock.calls.SetRelayMetadata, callInfo)
-	lockStorerMockSetRelayMetadata.Unlock()
+	mock.lockSetRelayMetadata.Unlock()
 	return mock.SetRelayMetadataFunc(ctx, relay)
 }
 
@@ -2536,9 +2569,9 @@ func (mock *StorerMock) SetRelayMetadataCalls() []struct {
 		Ctx   context.Context
 		Relay routing.Relay
 	}
-	lockStorerMockSetRelayMetadata.RLock()
+	mock.lockSetRelayMetadata.RLock()
 	calls = mock.calls.SetRelayMetadata
-	lockStorerMockSetRelayMetadata.RUnlock()
+	mock.lockSetRelayMetadata.RUnlock()
 	return calls
 }
 
@@ -2554,9 +2587,9 @@ func (mock *StorerMock) SetSeller(ctx context.Context, seller routing.Seller) er
 		Ctx:    ctx,
 		Seller: seller,
 	}
-	lockStorerMockSetSeller.Lock()
+	mock.lockSetSeller.Lock()
 	mock.calls.SetSeller = append(mock.calls.SetSeller, callInfo)
-	lockStorerMockSetSeller.Unlock()
+	mock.lockSetSeller.Unlock()
 	return mock.SetSellerFunc(ctx, seller)
 }
 
@@ -2571,9 +2604,9 @@ func (mock *StorerMock) SetSellerCalls() []struct {
 		Ctx    context.Context
 		Seller routing.Seller
 	}
-	lockStorerMockSetSeller.RLock()
+	mock.lockSetSeller.RLock()
 	calls = mock.calls.SetSeller
-	lockStorerMockSetSeller.RUnlock()
+	mock.lockSetSeller.RUnlock()
 	return calls
 }
 
@@ -2589,9 +2622,9 @@ func (mock *StorerMock) SetSequenceNumber(ctx context.Context, value int64) erro
 		Ctx:   ctx,
 		Value: value,
 	}
-	lockStorerMockSetSequenceNumber.Lock()
+	mock.lockSetSequenceNumber.Lock()
 	mock.calls.SetSequenceNumber = append(mock.calls.SetSequenceNumber, callInfo)
-	lockStorerMockSetSequenceNumber.Unlock()
+	mock.lockSetSequenceNumber.Unlock()
 	return mock.SetSequenceNumberFunc(ctx, value)
 }
 
@@ -2606,9 +2639,9 @@ func (mock *StorerMock) SetSequenceNumberCalls() []struct {
 		Ctx   context.Context
 		Value int64
 	}
-	lockStorerMockSetSequenceNumber.RLock()
+	mock.lockSetSequenceNumber.RLock()
 	calls = mock.calls.SetSequenceNumber
-	lockStorerMockSetSequenceNumber.RUnlock()
+	mock.lockSetSequenceNumber.RUnlock()
 	return calls
 }
 
@@ -2624,9 +2657,9 @@ func (mock *StorerMock) SyncLoop(ctx context.Context, c <-chan time.Time) {
 		Ctx: ctx,
 		C:   c,
 	}
-	lockStorerMockSyncLoop.Lock()
+	mock.lockSyncLoop.Lock()
 	mock.calls.SyncLoop = append(mock.calls.SyncLoop, callInfo)
-	lockStorerMockSyncLoop.Unlock()
+	mock.lockSyncLoop.Unlock()
 	mock.SyncLoopFunc(ctx, c)
 }
 
@@ -2641,9 +2674,9 @@ func (mock *StorerMock) SyncLoopCalls() []struct {
 		Ctx context.Context
 		C   <-chan time.Time
 	}
-	lockStorerMockSyncLoop.RLock()
+	mock.lockSyncLoop.RLock()
 	calls = mock.calls.SyncLoop
-	lockStorerMockSyncLoop.RUnlock()
+	mock.lockSyncLoop.RUnlock()
 	return calls
 }
 
@@ -2663,9 +2696,9 @@ func (mock *StorerMock) UpdateBuyer(ctx context.Context, buyerID uint64, field s
 		Field:   field,
 		Value:   value,
 	}
-	lockStorerMockUpdateBuyer.Lock()
+	mock.lockUpdateBuyer.Lock()
 	mock.calls.UpdateBuyer = append(mock.calls.UpdateBuyer, callInfo)
-	lockStorerMockUpdateBuyer.Unlock()
+	mock.lockUpdateBuyer.Unlock()
 	return mock.UpdateBuyerFunc(ctx, buyerID, field, value)
 }
 
@@ -2684,9 +2717,9 @@ func (mock *StorerMock) UpdateBuyerCalls() []struct {
 		Field   string
 		Value   interface{}
 	}
-	lockStorerMockUpdateBuyer.RLock()
+	mock.lockUpdateBuyer.RLock()
 	calls = mock.calls.UpdateBuyer
-	lockStorerMockUpdateBuyer.RUnlock()
+	mock.lockUpdateBuyer.RUnlock()
 	return calls
 }
 
@@ -2706,9 +2739,9 @@ func (mock *StorerMock) UpdateCustomer(ctx context.Context, customerID string, f
 		Field:      field,
 		Value:      value,
 	}
-	lockStorerMockUpdateCustomer.Lock()
+	mock.lockUpdateCustomer.Lock()
 	mock.calls.UpdateCustomer = append(mock.calls.UpdateCustomer, callInfo)
-	lockStorerMockUpdateCustomer.Unlock()
+	mock.lockUpdateCustomer.Unlock()
 	return mock.UpdateCustomerFunc(ctx, customerID, field, value)
 }
 
@@ -2727,9 +2760,9 @@ func (mock *StorerMock) UpdateCustomerCalls() []struct {
 		Field      string
 		Value      interface{}
 	}
-	lockStorerMockUpdateCustomer.RLock()
+	mock.lockUpdateCustomer.RLock()
 	calls = mock.calls.UpdateCustomer
-	lockStorerMockUpdateCustomer.RUnlock()
+	mock.lockUpdateCustomer.RUnlock()
 	return calls
 }
 
@@ -2749,9 +2782,9 @@ func (mock *StorerMock) UpdateDatacenter(ctx context.Context, datacenterID uint6
 		Field:        field,
 		Value:        value,
 	}
-	lockStorerMockUpdateDatacenter.Lock()
+	mock.lockUpdateDatacenter.Lock()
 	mock.calls.UpdateDatacenter = append(mock.calls.UpdateDatacenter, callInfo)
-	lockStorerMockUpdateDatacenter.Unlock()
+	mock.lockUpdateDatacenter.Unlock()
 	return mock.UpdateDatacenterFunc(ctx, datacenterID, field, value)
 }
 
@@ -2770,9 +2803,9 @@ func (mock *StorerMock) UpdateDatacenterCalls() []struct {
 		Field        string
 		Value        interface{}
 	}
-	lockStorerMockUpdateDatacenter.RLock()
+	mock.lockUpdateDatacenter.RLock()
 	calls = mock.calls.UpdateDatacenter
-	lockStorerMockUpdateDatacenter.RUnlock()
+	mock.lockUpdateDatacenter.RUnlock()
 	return calls
 }
 
@@ -2794,9 +2827,9 @@ func (mock *StorerMock) UpdateDatacenterMap(ctx context.Context, buyerID uint64,
 		Field:        field,
 		Value:        value,
 	}
-	lockStorerMockUpdateDatacenterMap.Lock()
+	mock.lockUpdateDatacenterMap.Lock()
 	mock.calls.UpdateDatacenterMap = append(mock.calls.UpdateDatacenterMap, callInfo)
-	lockStorerMockUpdateDatacenterMap.Unlock()
+	mock.lockUpdateDatacenterMap.Unlock()
 	return mock.UpdateDatacenterMapFunc(ctx, buyerID, datacenterID, field, value)
 }
 
@@ -2817,9 +2850,9 @@ func (mock *StorerMock) UpdateDatacenterMapCalls() []struct {
 		Field        string
 		Value        interface{}
 	}
-	lockStorerMockUpdateDatacenterMap.RLock()
+	mock.lockUpdateDatacenterMap.RLock()
 	calls = mock.calls.UpdateDatacenterMap
-	lockStorerMockUpdateDatacenterMap.RUnlock()
+	mock.lockUpdateDatacenterMap.RUnlock()
 	return calls
 }
 
@@ -2839,9 +2872,9 @@ func (mock *StorerMock) UpdateInternalConfig(ctx context.Context, buyerID uint64
 		Field:   field,
 		Value:   value,
 	}
-	lockStorerMockUpdateInternalConfig.Lock()
+	mock.lockUpdateInternalConfig.Lock()
 	mock.calls.UpdateInternalConfig = append(mock.calls.UpdateInternalConfig, callInfo)
-	lockStorerMockUpdateInternalConfig.Unlock()
+	mock.lockUpdateInternalConfig.Unlock()
 	return mock.UpdateInternalConfigFunc(ctx, buyerID, field, value)
 }
 
@@ -2860,9 +2893,9 @@ func (mock *StorerMock) UpdateInternalConfigCalls() []struct {
 		Field   string
 		Value   interface{}
 	}
-	lockStorerMockUpdateInternalConfig.RLock()
+	mock.lockUpdateInternalConfig.RLock()
 	calls = mock.calls.UpdateInternalConfig
-	lockStorerMockUpdateInternalConfig.RUnlock()
+	mock.lockUpdateInternalConfig.RUnlock()
 	return calls
 }
 
@@ -2882,9 +2915,9 @@ func (mock *StorerMock) UpdateRelay(ctx context.Context, relayID uint64, field s
 		Field:   field,
 		Value:   value,
 	}
-	lockStorerMockUpdateRelay.Lock()
+	mock.lockUpdateRelay.Lock()
 	mock.calls.UpdateRelay = append(mock.calls.UpdateRelay, callInfo)
-	lockStorerMockUpdateRelay.Unlock()
+	mock.lockUpdateRelay.Unlock()
 	return mock.UpdateRelayFunc(ctx, relayID, field, value)
 }
 
@@ -2903,9 +2936,9 @@ func (mock *StorerMock) UpdateRelayCalls() []struct {
 		Field   string
 		Value   interface{}
 	}
-	lockStorerMockUpdateRelay.RLock()
+	mock.lockUpdateRelay.RLock()
 	calls = mock.calls.UpdateRelay
-	lockStorerMockUpdateRelay.RUnlock()
+	mock.lockUpdateRelay.RUnlock()
 	return calls
 }
 
@@ -2925,9 +2958,9 @@ func (mock *StorerMock) UpdateRouteShader(ctx context.Context, buyerID uint64, f
 		Field:   field,
 		Value:   value,
 	}
-	lockStorerMockUpdateRouteShader.Lock()
+	mock.lockUpdateRouteShader.Lock()
 	mock.calls.UpdateRouteShader = append(mock.calls.UpdateRouteShader, callInfo)
-	lockStorerMockUpdateRouteShader.Unlock()
+	mock.lockUpdateRouteShader.Unlock()
 	return mock.UpdateRouteShaderFunc(ctx, buyerID, field, value)
 }
 
@@ -2946,9 +2979,9 @@ func (mock *StorerMock) UpdateRouteShaderCalls() []struct {
 		Field   string
 		Value   interface{}
 	}
-	lockStorerMockUpdateRouteShader.RLock()
+	mock.lockUpdateRouteShader.RLock()
 	calls = mock.calls.UpdateRouteShader
-	lockStorerMockUpdateRouteShader.RUnlock()
+	mock.lockUpdateRouteShader.RUnlock()
 	return calls
 }
 
@@ -2968,9 +3001,9 @@ func (mock *StorerMock) UpdateSeller(ctx context.Context, sellerID string, field
 		Field:    field,
 		Value:    value,
 	}
-	lockStorerMockUpdateSeller.Lock()
+	mock.lockUpdateSeller.Lock()
 	mock.calls.UpdateSeller = append(mock.calls.UpdateSeller, callInfo)
-	lockStorerMockUpdateSeller.Unlock()
+	mock.lockUpdateSeller.Unlock()
 	return mock.UpdateSellerFunc(ctx, sellerID, field, value)
 }
 
@@ -2989,8 +3022,8 @@ func (mock *StorerMock) UpdateSellerCalls() []struct {
 		Field    string
 		Value    interface{}
 	}
-	lockStorerMockUpdateSeller.RLock()
+	mock.lockUpdateSeller.RLock()
 	calls = mock.calls.UpdateSeller
-	lockStorerMockUpdateSeller.RUnlock()
+	mock.lockUpdateSeller.RUnlock()
 	return calls
 }
