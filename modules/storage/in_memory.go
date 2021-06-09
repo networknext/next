@@ -599,3 +599,7 @@ func (m *InMemory) UpdateDatacenter(ctx context.Context, datacenterID uint64, fi
 func (fs *InMemory) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateDatacenterMap not implemented in InMemory storer")
 }
+
+func (fs *InMemory) GetFleetDashboardData() (routing.FleetDashboardData, error) {
+	return routing.FleetDashboardData{}, fmt.Errorf("GetFleetDashboardData not implemented in Firestore storer")
+}
