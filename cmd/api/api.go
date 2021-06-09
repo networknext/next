@@ -161,7 +161,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", 5, 5, time.Minute*5, "", env, logger)
+	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", "", 5, 5, time.Minute*5, "", env, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "error creating vanity metric handler", "err", err)
 		return 1
