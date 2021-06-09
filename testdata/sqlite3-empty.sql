@@ -19,6 +19,11 @@ create table bw_billing_rules (
   primary key (id)
 );
 
+create table fleet_dashboard (
+  bin_file_creation_time date not null,
+  bin_file_author varchar not null
+)
+
 create table customers (
   id integer primary key autoincrement,
   automatic_signin_domain varchar null,
@@ -62,7 +67,7 @@ create table route_shaders (
   reduce_packet_loss boolean not null,
   reduce_jitter boolean not null,
   selection_percent integer not null,
-  packet_loss_sustained numeric not null,
+  packet_loss_sustained integer not null,
   buyer_id integer not null unique,
   constraint fk_buyer_id foreign key (buyer_id) references buyers(id)
 );
@@ -155,7 +160,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/05/22 12:54:51
+-- File generation: 2021/06/09 11:50:00
 
 -- machine_types
 insert into machine_types values (0, 'none');
