@@ -1153,6 +1153,8 @@ func main() {
 					var regexes []string
 					if len(args) > 0 {
 						regexes = args
+					} else {
+						handleRunTimeError(fmt.Sprintln("please provide at least one relay name or substring"), 1)
 					}
 
 					updateRelays(env, rpcClient, regexes, updateOpts)
