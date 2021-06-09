@@ -2384,3 +2384,7 @@ func (fs *Firestore) UpdateDatacenter(ctx context.Context, datacenterID uint64, 
 func (fs *Firestore) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateDatacenterMap not implemented in Firestore storer")
 }
+
+func (fs *Firestore) GetFleetDashboardData() (routing.FleetDashboardData, error) {
+	return routing.FleetDashboardData{}, fmt.Errorf("GetFleetDashboardData not implemented in Firestore storer")
+}
