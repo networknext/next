@@ -208,7 +208,7 @@ type AdminFrontPageArgs struct{}
 
 type AdminFrontPageReply struct {
 	BinFileCreationTime  time.Time `json:"binFileCreationTime"`
-	BinFileCreator       string    `json:"binFileCreator"`
+	BinFileAuthor        string    `json:"binFileAuthor"`
 	RelayGatewayStatus   []string  `json:"relayGatewayStatus"`
 	RelayFrontEndStatus  []string  `json:"relayFrontEndStatus"`
 	RelayBackEndStatus   []string  `json:"relayBackEndStatus"`
@@ -326,7 +326,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		reply.RelayForwarderStatus = []string{"relay_forwarder dne in dev/local"}
 	}
 
-	reply.BinFileCreator = "Arthur Dent"
+	reply.BinFileAuthor = "Arthur Dent"
 	reply.BinFileCreationTime = time.Now()
 
 	return nil

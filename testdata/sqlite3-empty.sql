@@ -22,7 +22,7 @@ create table bw_billing_rules (
 create table fleet_dashboard (
   bin_file_creation_time date not null,
   bin_file_author varchar not null
-)
+);
 
 create table customers (
   id integer primary key autoincrement,
@@ -160,7 +160,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/06/09 11:50:00
+-- File generation: 2021/06/09 12:29:50
 
 -- machine_types
 insert into machine_types values (0, 'none');
