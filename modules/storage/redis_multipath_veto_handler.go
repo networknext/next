@@ -18,8 +18,8 @@ type RedisMultipathVetoHandler struct {
 	cachedMultipathVetoesMutex sync.RWMutex
 }
 
-func NewRedisMultipathVetoHandler(redisHost string, getDatabase func() *routing.DatabaseBinWrapper) (*RedisMultipathVetoHandler, error) {
-	redisPool := NewRedisPool(redisHost, 5, 64)
+func NewRedisMultipathVetoHandler(redisHost string, redisPassword string, redisMaxIdleConns int, redisMaxActiveConns int, getDatabase func() *routing.DatabaseBinWrapper) (*RedisMultipathVetoHandler, error) {
+	redisPool := NewRedisPool(redisHost, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	conn := redisPool.Get()
 	defer conn.Close()
 

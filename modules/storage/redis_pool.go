@@ -7,14 +7,14 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-func NewRedisPool(hostname string, maxIdleConnections int, maxActiveConnections int) *redis.Pool {
+func NewRedisPool(hostname string, password string, maxIdleConnections int, maxActiveConnections int) *redis.Pool {
 	pool := redis.Pool{
 		MaxIdle:     maxIdleConnections,
 		MaxActive:   maxActiveConnections,
 		IdleTimeout: 60 * time.Second,
 		Wait:        true,
 		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", hostname)
+			return redis.Dial("tcp", hostname, redis.DialPassword(password))
 		},
 	}
 
