@@ -338,13 +338,17 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	return nil
 }
 
-type BinFileHandlerArgs struct{}
+type AdminBinFileHandlerArgs struct{}
 
-type BinFileHandlerReply struct {
+type AdminBinFileHandlerReply struct {
 	Message string `json:"message"`
 }
 
-func (rfs *RelayFleetService) BinFileHandler(r *http.Request, args *BinFileHandlerArgs, reply *BinFileHandlerReply) error {
+func (rfs *RelayFleetService) AdminBinFileHandler(
+	r *http.Request,
+	args *AdminBinFileHandlerArgs,
+	reply *AdminBinFileHandlerReply,
+) error {
 
 	requestUser := r.Context().Value(middleware.Keys.UserKey)
 	if requestUser == nil {
@@ -361,6 +365,73 @@ func (rfs *RelayFleetService) BinFileHandler(r *http.Request, args *BinFileHandl
 		return &err
 	}
 	fmt.Printf("user: %s\n", requestEmail)
+
+	var buffer bytes.Buffer
+
+	dbWrapper, err := rfs.BinFileGenerator(requestEmail)
+	if err != nil {
+		err := fmt.Errorf("BinFileHandler() error generating database.bin file: %v", err)
+		rfs.Logger.Log("err", err)
+		reply.Message = err.Error()
+		return err
+	}
+
+	encoder := gob.NewEncoder(&buffer)
+	encoder.Encode(dbWrapper)
+
+	cwd, _ := os.Getwd()
+	fmt.Printf("cwd: %s\n", cwd)
+	err = ioutil.WriteFile("database.bin", buffer.Bytes(), 0777)
+	if err != nil {
+		err := fmt.Errorf("BinFileHandler() error writing database.bin to filesystem: %v", err)
+		rfs.Logger.Log("err", err)
+		reply.Message = err.Error()
+		return err
+	}
+
+	return nil
+}
+
+type NextBinFileHandlerArgs struct{}
+
+type NextBinFileHandlerReply struct {
+	DBWrapper routing.DatabaseBinWrapper `json:"dbWrapper"`
+}
+
+func (rfs *RelayFleetService) NextBinFileHandler(
+	r *http.Request,
+	args *NextBinFileHandlerArgs,
+	reply *NextBinFileHandlerReply,
+) error {
+
+	requestUser := r.Context().Value(middleware.Keys.UserKey)
+	if requestUser == nil {
+		errCode := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		err := fmt.Errorf("AdminFrontPage() error getting userid: %v", errCode)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		rfs.Logger.Log("err", fmt.Errorf("AdminFrontPage(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+	fmt.Printf("user: %s\n", requestEmail)
+
+	dbWrapper, err := rfs.BinFileGenerator(requestEmail)
+	if err != nil {
+		err := fmt.Errorf("BinFileHandler() error generating database.bin file: %v", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	reply.DBWrapper = dbWrapper
+	return nil
+}
+
+func (rfs *RelayFleetService) BinFileGenerator(userEmail string) (routing.DatabaseBinWrapper, error) {
 
 	var dbWrapper routing.DatabaseBinWrapper
 	var enabledRelays []routing.Relay
@@ -401,30 +472,13 @@ func (rfs *RelayFleetService) BinFileHandler(r *http.Request, args *BinFileHandl
 
 	loc, err := time.LoadLocation("UTC")
 	if err != nil {
-		err := fmt.Errorf("BinFileHandler() error generating database.bin timestamp: %v", err)
-		rfs.Logger.Log("err", err)
-		return err
+		return routing.DatabaseBinWrapper{}, err
 	}
 	now := time.Now().In(loc)
 
 	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
 	dbWrapper.CreationTime = timeStamp
-	dbWrapper.Creator = requestEmail
+	dbWrapper.Creator = userEmail
 
-	var buffer bytes.Buffer
-
-	encoder := gob.NewEncoder(&buffer)
-	encoder.Encode(dbWrapper)
-
-	cwd, _ := os.Getwd()
-	fmt.Printf("cwd: %s\n", cwd)
-	err = ioutil.WriteFile("database.bin", buffer.Bytes(), 0777)
-	if err != nil {
-		err := fmt.Errorf("BinFileHandler() error writing database.bin to filesystem: %v", err)
-		rfs.Logger.Log("err", err)
-		reply.Message = err.Error()
-		return err
-	}
-
-	return nil
+	return dbWrapper, nil
 }
