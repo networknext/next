@@ -24,6 +24,7 @@ type RelayFrontendConfig struct {
 	MasterTimeVariance     time.Duration
 	UpdateRetryCount       int
 	MatrixStoreAddress     string
+	MatrixStorePassword    string
 	MSMaxIdleConnections   int
 	MSMaxActiveConnections int
 	MSReadTimeout          time.Duration

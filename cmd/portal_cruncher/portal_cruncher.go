@@ -194,10 +194,18 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	redisHostTopSessions := envvar.Get("REDIS_HOST_TOP_SESSIONS", "127.0.0.1:6379")
-	redisHostSessionMap := envvar.Get("REDIS_HOST_SESSION_MAP", "127.0.0.1:6379")
-	redisHostSessionMeta := envvar.Get("REDIS_HOST_SESSION_META", "127.0.0.1:6379")
-	redisHostSessionSlices := envvar.Get("REDIS_HOST_SESSION_SLICES", "127.0.0.1:6379")
+	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.Get("REDIS_PASSWORD", "")
+	redisMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 10)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
 
 	// Determine if should insert into Bigtable
 	useBigtable := featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE)
@@ -217,10 +225,10 @@ func mainReturnWithCode() int {
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx,
 		portalSubscriber,
-		redisHostTopSessions,
-		redisHostSessionMap,
-		redisHostSessionMeta,
-		redisHostSessionSlices,
+		redisHostname,
+		redisPassword,
+		redisMaxIdleConns,
+		redisMaxActiveConns,
 		useBigtable,
 		gcpProjectID,
 		btInstanceID,
