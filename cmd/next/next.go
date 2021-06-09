@@ -926,7 +926,7 @@ func main() {
 				ShortHelp:  "Generate a local database.bin file based on the current database state.",
 				Exec: func(ctx context.Context, args []string) error {
 
-					getDatabaseBin(env)
+					getDatabaseBin2(rpcClient, env)
 
 					return nil
 				},

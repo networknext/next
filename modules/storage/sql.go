@@ -3340,3 +3340,7 @@ func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field 
 
 	return nil
 }
+
+func (db *SQL) GetFleetDashboardData() (routing.FleetDashboardData, error) {
+	return routing.FleetDashboardData{}, fmt.Errorf("GetFleetDashboardData not implemented in Firestore storer")
+}
