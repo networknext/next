@@ -347,5 +347,7 @@ func (self *Entry) Into(data *transport.SessionPortalData, dcmap DatacenterMap, 
 		pt := &data.Point
 		pt.Latitude = self.Latitude
 		pt.Longitude = self.Longitude
+		pt.SessionID = uint64(self.SessionID)
+		pt.Version = transport.SessionMapPointVersion
 	}
 }
