@@ -143,6 +143,9 @@ func mainReturnWithCode() int {
 		sd = &sdHandler
 	}
 
+	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.Get("REDIS_PASSWORD", "")
+
 	// Create metric handler for tracking performance of api service
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
@@ -161,7 +164,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", "", 5, 5, time.Minute*5, "", env, logger)
+	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, redisHostname, redisPassword, 5, 5, time.Minute*5, "", env, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "error creating vanity metric handler", "err", err)
 		return 1
