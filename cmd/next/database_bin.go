@@ -144,7 +144,7 @@ func createStagingDatabaseBin(numRelays int) {
 	defaultRouteShader := core.RouteShader{
 		DisableNetworkNext:        false,
 		SelectionPercent:          100,
-		PacketLossSustained:       0,
+		PacketLossSustained:       100,
 		ABTest:                    false,
 		ProMode:                   false,
 		ReduceLatency:             true,
