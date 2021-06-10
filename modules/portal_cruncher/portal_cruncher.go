@@ -451,6 +451,7 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 			sessionMetaConn.Do("SET", redis.Args{}.AddFlat(cmdSlice)...)
 
 			// Update session slices
+			slice := &redisPortalDataBuffer[i].Slice
 			cmd = fmt.Sprintf("ss-%s %s", sessionID, slice.RedisString())
 			sessionSlicesConn.Do("RPUSH", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
@@ -633,7 +634,7 @@ func SeedBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []s
 	return nil
 }
 
-func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData, env string) error {
+func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData) error {
 	for j := range btPortalDataBuffer {
 		meta := &btPortalDataBuffer[j].Meta
 		slice := &btPortalDataBuffer[j].Slice
