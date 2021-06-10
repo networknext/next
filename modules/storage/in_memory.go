@@ -596,6 +596,14 @@ func (m *InMemory) UpdateDatacenter(ctx context.Context, datacenterID uint64, fi
 	return fmt.Errorf("UpdateDatacenter not impemented in InMemory storer")
 }
 
-func (fs *InMemory) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
+func (m *InMemory) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateDatacenterMap not implemented in InMemory storer")
+}
+
+func (m *InMemory) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error) {
+	return routing.DatabaseBinFileMetaData{}, fmt.Errorf("GetDatabaseBinFileMetaData not implemented in InMemory storer")
+}
+
+func (m *InMemory) UpdateDatabaseBinFileMetaData(ctx context.Context, field string, value interface{}) error {
+	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in InMemory storer")
 }

@@ -205,4 +205,10 @@ type Storer interface {
 	// BannedUsers returns the set of banned users for the specified buyer ID. This method
 	// is designed to be used by syncRouteShaders() though it can be used by client code.
 	BannedUsers(buyerID uint64) (map[uint64]bool, error)
+
+	// GetDatabaseBinFileMetaData returns data from the database_bin_meta table
+	GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error)
+
+	// UpdateDatabaseBinFileMetaData updates the specified field in an database_bin_meta table
+	UpdateDatabaseBinFileMetaData(ctx context.Context, field string, value interface{}) error
 }
