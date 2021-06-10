@@ -16,9 +16,6 @@
   },
   "dependencies": {
     "@auth0/auth0-spa-js": "^1.10.0",
-    "@deck.gl/aggregation-layers": "^8.4.15",
-    "@deck.gl/core": "^8.4.15",
-    "@deck.gl/layers": "^8.4.15",
     "@fortawesome/fontawesome-svg-core": "^1.2.29",
     "@fortawesome/free-solid-svg-icons": "^5.13.1",
     "@fortawesome/vue-fontawesome": "^0.1.10",
@@ -26,7 +23,6 @@
     "core-js": "^3.6.5",
     "jquery": "^3.5.1",
     "lodash": "^4.17.19",
-    "mapbox-gl": "^2.2.0",
     "popper.js": "^1.16.1",
     "uplot": "^1.0.11",
     "vue": "^2.6.11",
@@ -62,7 +58,7 @@
     "eslint-plugin-standard": "^4.0.0",
     "eslint-plugin-vue": "^5.2.3",
     "miragejs": "^0.1.40",
-    "node-sass": "^4.12.0",
+    "node-sass": "4.14.0",
     "sass-loader": "^8.0.2",
     "typescript": "~3.9.3",
     "vue-template-compiler": "^2.6.11"

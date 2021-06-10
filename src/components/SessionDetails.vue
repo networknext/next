@@ -275,9 +275,6 @@ import Alert from '@/components/Alert.vue'
 import { AlertType } from './types/AlertTypes'
 import { FeatureEnum } from './types/FeatureTypes'
 
-import { Deck } from '@deck.gl/core'
-import mapboxgl from 'mapbox-gl'
-import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 // import data1 from '../../test_data/session_details.json'
 
 /**
@@ -452,7 +449,7 @@ export default class SessionDetails extends Vue {
           this.viewState.longitude = this.meta.location.longitude
 
           if (!this.mapInstance) {
-            this.mapInstance = new mapboxgl.Map({
+            this.mapInstance = new (window as any).mapboxgl.Map({
               accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
               style: 'mapbox://styles/mapbox/dark-v10',
               center: [
@@ -465,7 +462,7 @@ export default class SessionDetails extends Vue {
               container: 'session-tool-map'
             })
           }
-          const sessionLocationLayer = new ScreenGridLayer({
+          const sessionLocationLayer = new (window as any).deck.ScreenGridLayer({
             id: 'session-location-layer',
             data: [this.meta],
             opacity: 0.8,
@@ -479,7 +476,7 @@ export default class SessionDetails extends Vue {
 
           if (!this.deckGlInstance) {
             // creating the deck.gl instance
-            this.deckGlInstance = new Deck({
+            this.deckGlInstance = new (window as any).deck.Deck({
               canvas: document.getElementById('session-tool-deck-canvas'),
               width: '100%',
               height: '100%',
@@ -820,12 +817,12 @@ export default class SessionDetails extends Vue {
         {
           stroke: 'blue',
           fill: 'rgba(0,0,255,0.1)',
-          label: 'Up'
+          label: 'Down'
         },
         {
           stroke: 'orange',
           fill: 'rgba(255,165,0,0.1)',
-          label: 'Down'
+          label: 'Up'
         }
       ],
       axes: [

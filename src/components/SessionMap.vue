@@ -7,16 +7,20 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { Deck } from '@deck.gl/core'
-import mapboxgl from 'mapbox-gl'
 import CustomScreenGridLayer from './CustomScreenGridLayer'
 
-/* import data1 from '../../test_data/map_points_1.json'
-import data2 from '../../test_data/map_points_2.json'
-import data3 from '../../test_data/map_points_3.json'
-import data4 from '../../test_data/map_points_4.json'
-import data5 from '../../test_data/map_points_5.json'
-import data6 from '../../test_data/map_points_6.json' */
+/* import data1 from '../../test_data/ghost-army-map-points-1.json'
+import data2 from '../../test_data/ghost-army-map-points-2.json'
+import data3 from '../../test_data/ghost-army-map-points-3.json'
+import data4 from '../../test_data/ghost-army-map-points-4.json'
+import data5 from '../../test_data/ghost-army-map-points-5.json'
+import data6 from '../../test_data/ghost-army-map-points-6.json'
+import data7 from '../../test_data/ghost-army-map-points-7.json'
+import data8 from '../../test_data/ghost-army-map-points-8.json'
+import data9 from '../../test_data/ghost-army-map-points-9.json'
+import data10 from '../../test_data/ghost-army-map-points-10.json'
+import data11 from '../../test_data/ghost-army-map-points-11.json'
+import data12 from '../../test_data/ghost-army-map-points-12.json' */
 
 /**
  * This component displays the map that is visible in the map workspace
@@ -40,6 +44,7 @@ export default class SessionMap extends Vue {
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
+
   // private sessions: Array<any>
 
   constructor () {
@@ -60,7 +65,13 @@ export default class SessionMap extends Vue {
     this.sessions = this.sessions.concat((data3 as any).result.map_points)
     this.sessions = this.sessions.concat((data4 as any).result.map_points)
     this.sessions = this.sessions.concat((data5 as any).result.map_points)
-    this.sessions = this.sessions.concat((data6 as any).result.map_points) */
+    this.sessions = this.sessions.concat((data6 as any).result.map_points)
+    this.sessions = this.sessions.concat((data7 as any).result.map_points)
+    this.sessions = this.sessions.concat((data8 as any).result.map_points)
+    this.sessions = this.sessions.concat((data9 as any).result.map_points)
+    this.sessions = this.sessions.concat((data10 as any).result.map_points)
+    this.sessions = this.sessions.concat((data11 as any).result.map_points)
+    this.sessions = this.sessions.concat((data12 as any).result.map_points) */
   }
 
   private mounted () {
@@ -88,12 +99,12 @@ export default class SessionMap extends Vue {
       })
       .then((response: any) => {
         // check if mapbox exists - primarily for tests
-        if (!mapboxgl) {
+        if (!(window as any).mapboxgl) {
           return
         }
 
         if (!this.mapInstance) {
-          this.mapInstance = new mapboxgl.Map({
+          this.mapInstance = new (window as any).mapboxgl.Map({
             accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
             style: 'mapbox://styles/mapbox/dark-v10',
             center: [0, 0],
@@ -185,7 +196,7 @@ export default class SessionMap extends Vue {
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
-          this.deckGlInstance = new Deck({
+          this.deckGlInstance = new (window as any).deck.Deck({
             canvas: document.getElementById('deck-canvas'),
             width: '100%',
             height: '100%',

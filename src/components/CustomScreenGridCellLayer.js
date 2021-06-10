@@ -18,9 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import GL from '@luma.gl/constants'
-import { Model, Geometry, FEATURES, hasFeatures } from '@luma.gl/core'
-import { Layer, log, picking } from '@deck.gl/core'
 import { defaultColorRange, colorRangeToFlatArray } from './CustomGridAggregationUtils'
 
 const fs = `\
@@ -117,16 +114,16 @@ const defaultProps = {
   colorRange: defaultColorRange
 }
 
-export default class CustomScreenGridCellLayer extends Layer {
+export default class CustomScreenGridCellLayer extends window.deck.Layer {
   static isSupported (gl) {
-    return hasFeatures(gl, [FEATURES.TEXTURE_FLOAT])
+    return window.luma.hasFeatures(gl, [window.luma.FEATURES.TEXTURE_FLOAT])
   }
 
   getShaders () {
     return super.getShaders({
       vs,
       fs,
-      modules: [picking]
+      modules: [window.deck.picking]
     })
   }
 
@@ -205,11 +202,11 @@ export default class CustomScreenGridCellLayer extends Layer {
   // Private Methods
 
   _getModel (gl) {
-    return new Model(gl, {
+    return new window.luma.Model(gl, {
       ...this.getShaders(),
       id: this.props.id,
-      geometry: new Geometry({
-        drawMode: GL.TRIANGLE_FAN,
+      geometry: new window.luma.Geometry({
+        drawMode: 0x0006,
         attributes: {
           positions: new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0])
         }
@@ -221,7 +218,7 @@ export default class CustomScreenGridCellLayer extends Layer {
   _shouldUseMinMax () {
     const { minColor, maxColor, colorDomain, colorRange } = this.props
     if (minColor || maxColor) {
-      log.deprecated('ScreenGridLayer props: minColor and maxColor', 'colorRange, colorDomain')()
+      window.deck.log.deprecated('ScreenGridLayer props: minColor and maxColor', 'colorRange, colorDomain')()
       return true
     }
     // minColor and maxColor not supplied, check if colorRange or colorDomain supplied.

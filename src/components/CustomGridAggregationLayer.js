@@ -18,20 +18,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import { _AggregationLayer, _GPUGridAggregator, _BinSorter } from '@deck.gl/aggregation-layers'
-import { Buffer } from '@luma.gl/core'
-import { log } from '@deck.gl/core'
-import GL from '@luma.gl/constants'
 import { pointToDensityGridDataCPU } from './CustomGridAggregationUtils'
 
-export default class CustomGridAggregationLayer extends _AggregationLayer {
+export default class CustomGridAggregationLayer extends window.deck._AggregationLayer {
   initializeState ({ dimensions }) {
     const { gl } = this.context
     super.initializeState(dimensions)
     this.setState({
       // CPU aggregation results
       layerData: {},
-      gpuGridAggregator: new _GPUGridAggregator(gl, { id: `${this.id}-gpu-aggregator` }),
+      gpuGridAggregator: new window.deck._GPUGridAggregator(gl, { id: `${this.id}-gpu-aggregator` }),
       cpuGridAggregator: pointToDensityGridDataCPU
     })
   }
@@ -87,7 +83,7 @@ export default class CustomGridAggregationLayer extends _AggregationLayer {
 
   updateAggregationState (opts) {
     // Sublayers should implement this method.
-    log.assert(false)
+    window.deck.log.assert(false)
   }
 
   allocateResources (numRow, numCol) {
@@ -100,11 +96,11 @@ export default class CustomGridAggregationLayer extends _AggregationLayer {
         if (weight.aggregationBuffer) {
           weight.aggregationBuffer.delete()
         }
-        weight.aggregationBuffer = new Buffer(gl, {
+        weight.aggregationBuffer = new window.luma.Buffer(gl, {
           byteLength: dataBytes,
           accessor: {
             size: 4,
-            type: GL.FLOAT,
+            type: 0x1406,
             divisor: 1
           }
         })
@@ -175,7 +171,7 @@ export default class CustomGridAggregationLayer extends _AggregationLayer {
   _updateWeightBins () {
     const { getValue } = this.state
 
-    const sortedBins = new _BinSorter(this.state.layerData.data || [], { getValue })
+    const sortedBins = new window.deck._BinSorter(this.state.layerData.data || [], { getValue })
     this.setState({ sortedBins })
   }
 

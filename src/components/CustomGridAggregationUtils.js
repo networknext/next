@@ -18,14 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import { createIterable, log, COORDINATE_SYSTEM } from '@deck.gl/core'
-import GL from '@luma.gl/constants'
-import { Texture2D, isWebGL2 } from '@luma.gl/core'
-import { AGGREGATION_OPERATION } from '@deck.gl/aggregation-layers'
-
 const DEFAULT_PARAMETERS = {
-  [GL.TEXTURE_MAG_FILTER]: GL.NEAREST,
-  [GL.TEXTURE_MIN_FILTER]: GL.NEAREST
+  0x2800: 0x2600,
+  0x2801: 0x2600
 }
 
 export const defaultColorRange = [
@@ -51,14 +46,14 @@ export function getFloatTexture (gl, opts = {}) {
     unpackFlipY = true,
     parameters = DEFAULT_PARAMETERS
   } = opts
-  const texture = new Texture2D(gl, {
+  const texture = new window.luma.Texture2D(gl, {
     data,
-    format: isWebGL2(gl) ? GL.RGBA32F : GL.RGBA,
-    type: GL.FLOAT,
+    format: window.luma.isWebGL2(gl) ? 0x8814 : 0x1908,
+    type: 0x1406,
     border: 0,
     mipmaps: false,
     parameters,
-    dataFormat: GL.RGBA,
+    dataFormat: 0x1908,
     width,
     height,
     unpackFlipY
@@ -118,13 +113,13 @@ function getTranslation (boundingBox, gridOffset, coordinateSystem, viewport) {
   // Origin to define grid
   // DEFAULT coordinate system is treated as LNGLAT
   const worldOrigin =
-    coordinateSystem === COORDINATE_SYSTEM.CARTESIAN ? [-width / 2, -height / 2] : [-180, -90]
+    coordinateSystem === window.deck.COORDINATE_SYSTEM.CARTESIAN ? [-width / 2, -height / 2] : [-180, -90]
 
   // Other coordinate systems not supported/verified yet
-  log.assert(
-    coordinateSystem === COORDINATE_SYSTEM.CARTESIAN ||
-      coordinateSystem === COORDINATE_SYSTEM.LNGLAT ||
-      coordinateSystem === COORDINATE_SYSTEM.DEFAULT
+  window.deck.log.assert(
+    coordinateSystem === window.deck.COORDINATE_SYSTEM.CARTESIAN ||
+      coordinateSystem === window.deck.COORDINATE_SYSTEM.LNGLAT ||
+      coordinateSystem === window.deck.COORDINATE_SYSTEM.DEFAULT
   )
 
   const { xMin, yMin } = boundingBox
@@ -193,7 +188,7 @@ export function getGridParams (boundingBox, cellSize, viewport, coordinateSystem
   const gridOffset = getGridOffset(
     boundingBox,
     cellSize,
-    coordinateSystem !== COORDINATE_SYSTEM.CARTESIAN
+    coordinateSystem !== window.deck.COORDINATE_SYSTEM.CARTESIAN
   )
 
   const translation = getTranslation(boundingBox, gridOffset, coordinateSystem, viewport)
@@ -268,7 +263,7 @@ function pointsToGridHashing (props, aggregationParams) {
   // calculate count per cell
   const gridHash = {}
 
-  const { iterable, objectInfo } = createIterable(data)
+  const { iterable, objectInfo } = window.deck.createIterable(data)
   const position = new Array(3)
   for (const pt of iterable) {
     objectInfo.index++
@@ -418,16 +413,16 @@ export function wrapGetValueFunc (getValue, context = {}) {
 
 // Function to convert from aggregation/accessor props (like colorAggregation and getColorWeight) to getValue prop (like getColorValue)
 export function getValueFunc (aggregation, accessor, context) {
-  const op = AGGREGATION_OPERATION[aggregation] || AGGREGATION_OPERATION.SUM
+  const op = window.deck.AGGREGATION_OPERATION[aggregation] || window.deck.AGGREGATION_OPERATION.SUM
   accessor = wrapAccessor(accessor, context)
   switch (op) {
-    case AGGREGATION_OPERATION.MIN:
+    case window.deck.AGGREGATION_OPERATION.MIN:
       return pts => getMin(pts, accessor)
-    case AGGREGATION_OPERATION.SUM:
+    case window.deck.AGGREGATION_OPERATION.SUM:
       return pts => getSum(pts, accessor)
-    case AGGREGATION_OPERATION.MEAN:
+    case window.deck.AGGREGATION_OPERATION.MEAN:
       return pts => getMean(pts, accessor)
-    case AGGREGATION_OPERATION.MAX:
+    case window.deck.AGGREGATION_OPERATION.MAX:
       return pts => getMax(pts, accessor)
     default:
       return null

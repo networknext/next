@@ -18,14 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-import { log } from '@deck.gl/core'
-import GL from '@luma.gl/constants'
-import { _GPUGridAggregator, AGGREGATION_OPERATION } from '@deck.gl/aggregation-layers'
 import CustomScreenGridCellLayer from './CustomScreenGridCellLayer'
 import CustomGridAggregationLayer from './CustomGridAggregationLayer'
 import { getBoundingBox, getFloatTexture, getValueFunc, pointToDensityGridDataCPU } from './CustomGridAggregationUtils'
-import { parse } from '@fortawesome/fontawesome-svg-core'
-import { last } from 'lodash'
 
 const defaultProps = {
   ...CustomScreenGridCellLayer.defaultProps,
@@ -49,7 +44,7 @@ const DIMENSIONS = {
 export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
   constructor (props) {
     super(props)
-    log.once(`CustomScreenGridLayer: ${this.id} loaded`)()
+    window.deck.log.once(`CustomScreenGridLayer: ${this.id} loaded`)()
   }
 
   initializeState () {
@@ -57,7 +52,7 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
     if (!CustomScreenGridCellLayer.isSupported(gl)) {
       // max aggregated value is sampled from a float texture
       this.setState({ supported: false })
-      log.error(`CustomScreenGridLayer: ${this.id} is not supported on this browser`)()
+      window.deck.log.error(`CustomScreenGridLayer: ${this.id} is not supported on this browser`)()
       return
     }
     super.initializeState({
@@ -67,7 +62,7 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
     const weights = {
       count: {
         size: 1,
-        operation: AGGREGATION_OPERATION.SUM,
+        operation: window.deck.AGGREGATION_OPERATION.SUM,
         needMax: true,
         maxTexture: getFloatTexture(gl, { id: `${this.id}-max-texture` })
       }
@@ -87,7 +82,7 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
       [POSITION_ATTRIBUTE_NAME]: {
         size: 3,
         accessor: 'getPosition',
-        type: GL.DOUBLE,
+        type: 0x140a,
         fp64: this.use64bitPositions()
       },
       // this attribute is used in gpu aggregation path only
@@ -158,7 +153,7 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
 
       // Each instance (one cell) is aggregated into single pixel,
       // Get current instance's aggregation details.
-      info.object = _GPUGridAggregator.getAggregationData({
+      info.object = window.deck._GPUGridAggregator.getAggregationData({
         pixelIndex: index,
         ...aggregationResults
       })
@@ -189,7 +184,6 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
         // Very rarely there are rounding errors that make one or both key indices off by 1 so we should check for that
         // Even more rarely, the hashmap drops some entries. We should leave the object as undefined and have an error check on the session map side.
         // This generally happens when an aggregated point is over water. Zooming in will fix the issue
-        console.log('Invalid Key!!!!')
         const lookUpPieces = lookUpKey.split('-')
         Object.keys(gridHash).every((key) => {
           const keyPieces = key.split('-')
@@ -253,8 +247,8 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
     const { viewportChanged } = opts.changeFlags
     let gpuAggregation = opts.props.gpuAggregation
     if (this.state.gpuAggregation !== opts.props.gpuAggregation) {
-      if (gpuAggregation && !_GPUGridAggregator.isSupported(this.context.gl)) {
-        log.warn('GPU Grid Aggregation not supported, falling back to CPU')()
+      if (gpuAggregation && !window.deck._GPUGridAggregator.isSupported(this.context.gl)) {
+        window.deck.log.warn('GPU Grid Aggregation not supported, falling back to CPU')()
         gpuAggregation = false
       }
     }
@@ -317,7 +311,7 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
     const { count } = this.state.weights
     if (count) {
       count.getWeight = getWeight
-      count.operation = AGGREGATION_OPERATION[aggregation]
+      count.operation = window.deck.AGGREGATION_OPERATION[aggregation]
     }
     this.setState({ getValue: getValueFunc(aggregation, getWeight, { data }) })
   }
