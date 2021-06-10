@@ -19,7 +19,7 @@ create table bw_billing_rules (
   primary key (id)
 );
 
-create table fleet_dashboard (
+create table database_bin_meta (
   bin_file_creation_time date not null,
   bin_file_author varchar not null
 );
@@ -160,7 +160,7 @@ create table metadata (
   sync_sequence_number bigint not null
 );
 
--- File generation: 2021/06/09 12:29:50
+-- File generation: 2021/06/10 16:24:45
 
 -- machine_types
 insert into machine_types values (0, 'none');

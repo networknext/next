@@ -2,10 +2,12 @@ package routing
 
 import "time"
 
-// FleetDashboardData will grow with time to include more fields. This
-// data is stored in the fleet_data table and makes up part of the
-// data sent to the Admin UI dashboard view.
-type FleetDashboardData struct {
+// Fleet dashboard data will grow with time to include more types
+// and tables.
+
+// DatabaseBinFileMetaData is stored in the database_bin_meta table and
+// makes up part of the data sent to the Admin UI dashboard view.
+type DatabaseBinFileMetaData struct {
 	DatabaseBinFileAuthor       string
 	DatabaseBinFileCreationTime time.Time
 }

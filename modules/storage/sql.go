@@ -3341,12 +3341,12 @@ func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field 
 	return nil
 }
 
-func (db *SQL) GetFleetDashboardData() (routing.FleetDashboardData, error) {
+func (db *SQL) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error) {
 	var querySQL bytes.Buffer
-	var dashboardData routing.FleetDashboardData
+	var dashboardData routing.DatabaseBinFileMetaData
 
 	querySQL.Write([]byte("select bin_file_creation_time, bin_file_author "))
-	querySQL.Write([]byte("from fleet_dashboard order by employment_date desc limit 1"))
+	querySQL.Write([]byte("from database_bin_tracker order by employment_date desc limit 1"))
 
 	row := db.Client.QueryRow(querySQL.String())
 	switch err := row.Scan(&dashboardData.DatabaseBinFileCreationTime, &dashboardData.DatabaseBinFileAuthor); err {
@@ -3360,6 +3360,7 @@ func (db *SQL) GetFleetDashboardData() (routing.FleetDashboardData, error) {
 	return dashboardData, nil
 }
 
-func (db *SQL) UpdateFleetDashboardData(ctx context.Context, field string, value interface{}) error {
-	return fmt.Errorf("GetFleetDashboardData not implemented in Firestore storer")
+func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, field string, value interface{}) error {
+
+	return nil
 }

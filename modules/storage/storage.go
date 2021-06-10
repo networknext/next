@@ -206,9 +206,9 @@ type Storer interface {
 	// is designed to be used by syncRouteShaders() though it can be used by client code.
 	BannedUsers(buyerID uint64) (map[uint64]bool, error)
 
-	// GetFleetDashboardData returns data from the fleet_dashboard table
-	GetFleetDashboardData() (routing.FleetDashboardData, error)
+	// GetDatabaseBinFileMetaData returns data from the database_bin_meta table
+	GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error)
 
-	// UpdateFleetDashboardData updates the specified field in an fleet_dashboard table
-	UpdateFleetDashboardData(ctx context.Context, field string, value interface{}) error
+	// UpdateDatabaseBinFileMetaData updates the specified field in an database_bin_meta table
+	UpdateDatabaseBinFileMetaData(ctx context.Context, field string, value interface{}) error
 }
