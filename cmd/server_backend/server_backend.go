@@ -45,6 +45,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"cloud.google.com/go/compute/metadata"
 	googlepubsub "cloud.google.com/go/pubsub"
 )
 
@@ -661,15 +662,55 @@ func mainReturnWithCode() int {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
 
+		httpPort := envvar.Get("HTTP_PORT", "40001")
+
+		srv := &http.Server{
+			Addr:    ":" + httpPort,
+			Handler: router,
+		}
+
 		go func() {
-			httpPort := envvar.Get("HTTP_PORT", "40001")
 			fmt.Printf("started http server on port %s\n\n", httpPort)
-			err := http.ListenAndServe(":"+httpPort, router)
+			err := srv.ListenAndServe()
 			if err != nil {
-				core.Error("failed to start http server: ", err)
+				core.Error("failed to start http server: %v", err)
 				return
 			}
 		}()
+
+		if gcpProjectID != "" {
+			metadataSyncInterval, err := envvar.GetDuration("METADATA_SYNC_INTERVAL", time.Minute*1)
+			if err != nil {
+				core.Error("invalid METADATA_SYNC_INTERVAL: %v", err)
+				return 1
+			}
+			connectionDrainMetadata := envvar.Get("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
+
+			// Start a goroutine to shutdown the HTTP server when the metadata changes
+			go func() {
+				for {
+					ticker := time.NewTicker(metadataSyncInterval)
+					select {
+					case <-ticker.C:
+						// Get metadata value for connection drain
+						val, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
+						if err != nil {
+							core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
+						}
+
+						if val == "true" {
+							core.Debug("connection drain metadata field %s is true, shutting down HTTP server", connectionDrainMetadata)
+							// Shutdown the HTTP server
+							ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+							defer cancel()
+							srv.Shutdown(ctxTimeout)
+						}
+					case <-ctx.Done():
+						return
+					}
+				}
+			}()
+		}
 	}
 
 	numThreads, err := envvar.GetInt("NUM_THREADS", 1)
