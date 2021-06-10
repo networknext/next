@@ -3346,7 +3346,7 @@ func (db *SQL) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, er
 	var dashboardData routing.DatabaseBinFileMetaData
 
 	querySQL.Write([]byte("select bin_file_creation_time, bin_file_author "))
-	querySQL.Write([]byte("from database_bin_tracker order by employment_date desc limit 1"))
+	querySQL.Write([]byte("from database_bin_meta order by bin_file_creation_time desc limit 1"))
 
 	row := db.Client.QueryRow(querySQL.String())
 	switch err := row.Scan(&dashboardData.DatabaseBinFileCreationTime, &dashboardData.DatabaseBinFileAuthor); err {
@@ -3360,7 +3360,40 @@ func (db *SQL) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, er
 	return dashboardData, nil
 }
 
-func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, field string, value interface{}) error {
+func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routing.DatabaseBinFileMetaData) error {
+
+	var sql bytes.Buffer
+
+	// Add the metadata record to the database_bin_meta table
+	sql.Write([]byte("insert into database_bin_meta ("))
+	sql.Write([]byte("bin_file_creation_time, bin_file_author "))
+	sql.Write([]byte(") values ($1, $2)"))
+
+	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateDatabaseBinFileMetaData SQL", "err", err)
+		fmt.Println(err)
+		return err
+	}
+
+	result, err := stmt.Exec(metaData.DatabaseBinFileCreationTime, metaData.DatabaseBinFileAuthor)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() error adding DatabaseBinFileMetaData", "err", err)
+		fmt.Println(err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() RowsAffected returned an error", "err", err)
+		fmt.Println(err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() RowsAffected <> 1", "err", err)
+		fmt.Println(err)
+		return err
+	}
 
 	return nil
 }

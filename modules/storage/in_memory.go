@@ -604,6 +604,6 @@ func (m *InMemory) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData
 	return routing.DatabaseBinFileMetaData{}, fmt.Errorf("GetDatabaseBinFileMetaData not implemented in InMemory storer")
 }
 
-func (m *InMemory) UpdateDatabaseBinFileMetaData(ctx context.Context, field string, value interface{}) error {
+func (m *InMemory) UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error {
 	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in InMemory storer")
 }

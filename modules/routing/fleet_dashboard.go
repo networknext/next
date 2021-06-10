@@ -11,3 +11,11 @@ type DatabaseBinFileMetaData struct {
 	DatabaseBinFileAuthor       string
 	DatabaseBinFileCreationTime time.Time
 }
+
+func (dmfmd *DatabaseBinFileMetaData) String() string {
+	data := "\nrouting.DatabaseBinFileMetaData:\n"
+	data += "  DatabaseBinFileAuthor      : " + dmfmd.DatabaseBinFileAuthor + "\n"
+	data += "  DatabaseBinFileCreationTime: " + dmfmd.DatabaseBinFileCreationTime.String() + "\n"
+
+	return data
+}

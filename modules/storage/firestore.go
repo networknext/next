@@ -2389,6 +2389,6 @@ func (fs *Firestore) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaDa
 	return routing.DatabaseBinFileMetaData{}, fmt.Errorf("GetDatabaseBinFileMetaData not implemented in Firestore storer")
 }
 
-func (fs *Firestore) UpdateDatabaseBinFileMetaData(ctx context.Context, field string, value interface{}) error {
+func (fs *Firestore) UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error {
 	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in Firestore storer")
 }

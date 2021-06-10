@@ -210,5 +210,5 @@ type Storer interface {
 	GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error)
 
 	// UpdateDatabaseBinFileMetaData updates the specified field in an database_bin_meta table
-	UpdateDatabaseBinFileMetaData(ctx context.Context, field string, value interface{}) error
+	UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error
 }
