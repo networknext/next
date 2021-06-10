@@ -383,22 +383,23 @@ func SeedSQLStorage(
 		// fmt.Printf("ghostBuyer ID: %016x\n", ghostBuyer.ID)
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:       5,
-			RouteSwitchThreshold:       10,
-			MaxLatencyTradeOff:         10,
-			RTTVeto_Default:            -10,
-			RTTVeto_PacketLoss:         -20,
-			RTTVeto_Multipath:          -20,
-			MultipathOverloadThreshold: 500,
-			TryBeforeYouBuy:            false,
-			ForceNext:                  true,
-			LargeCustomer:              false,
-			Uncommitted:                false,
-			MaxRTT:                     300,
-			HighFrequencyPings:         true,
-			RouteDiversity:             0,
-			MultipathThreshold:         35,
-			EnableVanityMetrics:        true,
+			RouteSelectThreshold:           5,
+			RouteSwitchThreshold:           10,
+			MaxLatencyTradeOff:             10,
+			RTTVeto_Default:                -10,
+			RTTVeto_PacketLoss:             -20,
+			RTTVeto_Multipath:              -20,
+			MultipathOverloadThreshold:     500,
+			TryBeforeYouBuy:                false,
+			ForceNext:                      true,
+			LargeCustomer:                  false,
+			Uncommitted:                    false,
+			MaxRTT:                         300,
+			HighFrequencyPings:             true,
+			RouteDiversity:                 0,
+			MultipathThreshold:             35,
+			EnableVanityMetrics:            true,
+			ReducePacketLossMinSliceNumber: 10,
 		}
 
 		err = db.AddInternalConfig(ctx, internalConfig, localBuyer.ID)
@@ -424,6 +425,7 @@ func SeedSQLStorage(
 			ReduceLatency:             true,
 			ReducePacketLoss:          true,
 			SelectionPercent:          int(100),
+			PacketLossSustained:       float32(100),
 		}
 
 		gaRouteShader := core.RouteShader{
@@ -439,6 +441,7 @@ func SeedSQLStorage(
 			ReduceLatency:             true,
 			ReducePacketLoss:          true,
 			SelectionPercent:          int(100),
+			PacketLossSustained:       float32(100),
 		}
 
 		err = db.AddRouteShader(ctx, localRouteShader, localBuyer.ID)

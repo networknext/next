@@ -1022,6 +1022,14 @@ func RouteExists(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [Ma
 
 func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, debug *string) int32 {
 
+	// IMPORTANT: This shouldn't happen. Triaging...
+	if len(routeRelays) == 0 {
+		if debug != nil {
+			*debug += "no route relays?\n"
+		}
+		return -1
+	}
+
 	// IMPORTANT: This can happen. Make sure we handle it without exploding
 	if len(routeMatrix) == 0 {
 		if debug != nil {
@@ -1097,7 +1105,6 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 	for i := range sourceRelays {
 		// IMPORTANT: RTT = 255 signals the source relay is unroutable
 		if sourceRelayCost[i] >= 255 {
-			Debug("Source Relay is unroutable!")
 			continue
 		}
 		firstRouteFromThisRelay := true
@@ -1109,11 +1116,8 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			}
 			index := TriMatrixIndex(int(sourceRelayIndex), int(destRelayIndex))
 			entry := &routeMatrix[index]
-			Debug("Number of routes in entry: %v", int(entry.NumRoutes))
 			for k := 0; k < int(entry.NumRoutes); k++ {
 				cost := entry.RouteCost[k] + sourceRelayCost[i]
-				Debug("route cost: %v", cost)
-				Debug("max cost: %v", cost)
 				if cost > maxCost {
 					break
 				}
@@ -1463,6 +1467,7 @@ type RouteShader struct {
 	BandwidthEnvelopeUpKbps   int32
 	BandwidthEnvelopeDownKbps int32
 	BannedUsers               map[uint64]bool
+	PacketLossSustained       float32
 }
 
 func NewRouteShader() RouteShader {
@@ -1481,6 +1486,7 @@ func NewRouteShader() RouteShader {
 		BandwidthEnvelopeUpKbps:   1024,
 		BandwidthEnvelopeDownKbps: 1024,
 		BannedUsers:               make(map[uint64]bool),
+		PacketLossSustained:       100,
 	}
 }
 
@@ -1524,45 +1530,48 @@ type RouteState struct {
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
 	MultipathRestricted bool
+	PLSustainedCounter  int32
 }
 
 type InternalConfig struct {
-	RouteSelectThreshold       int32
-	RouteSwitchThreshold       int32
-	MaxLatencyTradeOff         int32
-	RTTVeto_Default            int32
-	RTTVeto_Multipath          int32
-	RTTVeto_PacketLoss         int32
-	MultipathOverloadThreshold int32
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-	Uncommitted                bool
-	MaxRTT                     int32
-	HighFrequencyPings         bool
-	RouteDiversity             int32
-	MultipathThreshold         int32
-	EnableVanityMetrics        bool
+	RouteSelectThreshold           int32
+	RouteSwitchThreshold           int32
+	MaxLatencyTradeOff             int32
+	RTTVeto_Default                int32
+	RTTVeto_Multipath              int32
+	RTTVeto_PacketLoss             int32
+	MultipathOverloadThreshold     int32
+	TryBeforeYouBuy                bool
+	ForceNext                      bool
+	LargeCustomer                  bool
+	Uncommitted                    bool
+	MaxRTT                         int32
+	HighFrequencyPings             bool
+	RouteDiversity                 int32
+	MultipathThreshold             int32
+	EnableVanityMetrics            bool
+	ReducePacketLossMinSliceNumber int32
 }
 
 func NewInternalConfig() InternalConfig {
 	return InternalConfig{
-		RouteSelectThreshold:       2,
-		RouteSwitchThreshold:       5,
-		MaxLatencyTradeOff:         20,
-		RTTVeto_Default:            -10,
-		RTTVeto_Multipath:          -20,
-		RTTVeto_PacketLoss:         -30,
-		MultipathOverloadThreshold: 500,
-		TryBeforeYouBuy:            false,
-		ForceNext:                  false,
-		LargeCustomer:              false,
-		Uncommitted:                false,
-		MaxRTT:                     300,
-		HighFrequencyPings:         true,
-		RouteDiversity:             0,
-		MultipathThreshold:         25,
-		EnableVanityMetrics:        false,
+		RouteSelectThreshold:           2,
+		RouteSwitchThreshold:           5,
+		MaxLatencyTradeOff:             20,
+		RTTVeto_Default:                -10,
+		RTTVeto_Multipath:              -20,
+		RTTVeto_PacketLoss:             -30,
+		MultipathOverloadThreshold:     500,
+		TryBeforeYouBuy:                false,
+		ForceNext:                      false,
+		LargeCustomer:                  false,
+		Uncommitted:                    false,
+		MaxRTT:                         300,
+		HighFrequencyPings:             true,
+		RouteDiversity:                 0,
+		MultipathThreshold:             25,
+		EnableVanityMetrics:            false,
+		ReducePacketLossMinSliceNumber: 0,
 	}
 }
 
@@ -1641,7 +1650,7 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 	return true
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
 
 	if EarlyOutDirect(routeShader, routeState) {
 		return false
@@ -1677,8 +1686,20 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// should we try to reduce packet loss?
 
+	// Check if the session is seeing sustained packet loss and increment/reset the counter
+
+	if directPacketLoss >= routeShader.PacketLossSustained {
+		if routeState.PLSustainedCounter < 3 {
+			routeState.PLSustainedCounter = routeState.PLSustainedCounter + 1
+		}
+	}
+
+	if directPacketLoss < routeShader.PacketLossSustained {
+		routeState.PLSustainedCounter = 0
+	}
+
 	reducePacketLoss := false
-	if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss {
+	if routeShader.ReducePacketLoss && ((directPacketLoss > routeShader.AcceptablePacketLoss && sliceNumber >= internal.ReducePacketLossMinSliceNumber) || routeState.PLSustainedCounter == 3) {
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}

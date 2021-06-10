@@ -140,6 +140,9 @@ func mainReturnWithCode() int {
 	// Get the redis host for the user session map
 	redisUserSessions := envvar.Get("FEATURE_VANITY_METRIC_REDIS_HOST_USER_SESSIONS_MAP", "127.0.0.1:6379")
 
+	// Get the redis password for the user session map
+	redisPassword := envvar.Get("FEATURE_VANITY_METRIC_REDIS_PASSWORD_USER_SESSIONS_MAP", "")
+
 	// Get the max idle time for a sessionID in redis
 	vanityMaxUserIdleTime, err := envvar.GetDuration("FEATURE_VANITY_METRIC_MAX_USER_IDLE_TIME", time.Minute*5)
 	if err != nil {
@@ -198,7 +201,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the vanity metric handler for writing to StackDriver
-	vanityMetricHandler, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, messageChanSize, vanitySubscriber, redisUserSessions, redisMaxIdleConnections, redisMaxActiveConnections, vanityMaxUserIdleTime, vanitySetName, env, logger)
+	vanityMetricHandler, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, messageChanSize, vanitySubscriber, redisUserSessions, redisPassword, redisMaxIdleConnections, redisMaxActiveConnections, vanityMaxUserIdleTime, vanitySetName, env, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "error creating vanity metric handler", "err", err)
 		return 1

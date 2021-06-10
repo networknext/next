@@ -193,8 +193,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					return err
 				}
 
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					session.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
 				}
 
 				reply.Sessions = append(reply.Sessions, session)
@@ -293,8 +296,11 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					return err
 				}
 
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					sessionMeta.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
 				}
 
 				reply.Sessions = append(reply.Sessions, sessionMeta)
@@ -755,6 +761,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
 	for _, buyer := range buyers {
+		isLargeCustomer := buyer.InternalConfig.LargeCustomer
 		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", buyer.CompanyCode, err)
@@ -772,12 +779,14 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
+			sessionID := fmt.Sprintf("%016x", point.SessionID)
+
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, false})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, false})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
 			}
 		}
 
@@ -789,12 +798,14 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
+			sessionID := fmt.Sprintf("%016x", point.SessionID)
+
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true, sessionID})
 			}
 		}
 
@@ -1339,8 +1350,19 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	live := buyer.Live
+	oldBuyerID := buyer.ID
 
-	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
+	// Remove all dc Maps
+	dcMaps := s.Storage.GetDatacenterMapsForBuyer(oldBuyerID)
+	for _, dcMap := range dcMaps {
+		if err := s.Storage.RemoveDatacenterMap(ctx, dcMap); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to remove old datacenter map: %v, datacenter ID: %016x", err, dcMap.DatacenterID)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	}
+
+	if err = s.Storage.RemoveBuyer(ctx, oldBuyerID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1352,11 +1374,20 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		Live:        live,
 		PublicKey:   byteKey[8:],
 	})
-
 	if err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() buyer update failed: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
+	}
+
+	// Add back dc maps with new buyer ID
+	for _, dcMap := range dcMaps {
+		dcMap.BuyerID = buyerID
+		if err := s.Storage.AddDatacenterMap(ctx, dcMap); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add new datacenter map: %v, datacenter ID: %016x, buyer ID: %016x", err, dcMap.DatacenterID, buyerID)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 	}
 
 	// Check if buyer is associated with the ID and everything worked
@@ -1648,16 +1679,11 @@ func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
 		if companyCode == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
+
+		// Grab the user's assigned company if it exists
 		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CompanyKey).(string)
-		if !ok {
-			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
-		}
-		if requestCompanyCode == "" {
-			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
+		if !ok || requestCompanyCode == "" {
+			return false, nil
 		}
 
 		return companyCode == requestCompanyCode, nil
@@ -1802,22 +1828,23 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 }
 
 type JSInternalConfig struct {
-	RouteSelectThreshold       int64 `json:"routeSelectThreshold"`
-	RouteSwitchThreshold       int64 `json:"routeSwitchThreshold"`
-	MaxLatencyTradeOff         int64 `json:"maxLatencyTradeOff"`
-	RTTVeto_Default            int64 `json:"rttVeto_Default"`
-	RTTVeto_Multipath          int64 `json:"rttVeto_Multipath"`
-	RTTVeto_PacketLoss         int64 `json:"rttVeto_PacketLoss"`
-	MultipathOverloadThreshold int64 `json:"multipathOverloadThreshold"`
-	TryBeforeYouBuy            bool  `json:"tryBeforeYouBuy"`
-	ForceNext                  bool  `json:"forceNext"`
-	LargeCustomer              bool  `json:"largeCustomer"`
-	Uncommitted                bool  `json:"uncommitted"`
-	MaxRTT                     int64 `json:"maxRTT"`
-	HighFrequencyPings         bool  `json:"highFrequencyPings"`
-	RouteDiversity             int64 `json:"routeDiversity"`
-	MultipathThreshold         int64 `json:"multipathThreshold"`
-	EnableVanityMetrics        bool  `json:"enableVanityMetrics"`
+	RouteSelectThreshold           int64 `json:"routeSelectThreshold"`
+	RouteSwitchThreshold           int64 `json:"routeSwitchThreshold"`
+	MaxLatencyTradeOff             int64 `json:"maxLatencyTradeOff"`
+	RTTVeto_Default                int64 `json:"rttVeto_Default"`
+	RTTVeto_Multipath              int64 `json:"rttVeto_Multipath"`
+	RTTVeto_PacketLoss             int64 `json:"rttVeto_PacketLoss"`
+	MultipathOverloadThreshold     int64 `json:"multipathOverloadThreshold"`
+	TryBeforeYouBuy                bool  `json:"tryBeforeYouBuy"`
+	ForceNext                      bool  `json:"forceNext"`
+	LargeCustomer                  bool  `json:"largeCustomer"`
+	Uncommitted                    bool  `json:"uncommitted"`
+	MaxRTT                         int64 `json:"maxRTT"`
+	HighFrequencyPings             bool  `json:"highFrequencyPings"`
+	RouteDiversity                 int64 `json:"routeDiversity"`
+	MultipathThreshold             int64 `json:"multipathThreshold"`
+	EnableVanityMetrics            bool  `json:"enableVanityMetrics"`
+	ReducePacketLossMinSliceNumber int64 `json:"reducePacketLossMinSliceNumber"`
 }
 
 type InternalConfigArg struct {
@@ -1847,22 +1874,23 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 	}
 
 	jsonIC := JSInternalConfig{
-		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
-		RTTVeto_Default:            int64(ic.RTTVeto_Default),
-		RTTVeto_Multipath:          int64(ic.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:         int64(ic.RTTVeto_PacketLoss),
-		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-		ForceNext:                  ic.ForceNext,
-		LargeCustomer:              ic.LargeCustomer,
-		Uncommitted:                ic.Uncommitted,
-		MaxRTT:                     int64(ic.MaxRTT),
-		HighFrequencyPings:         ic.HighFrequencyPings,
-		RouteDiversity:             int64(ic.RouteDiversity),
-		MultipathThreshold:         int64(ic.MultipathThreshold),
-		EnableVanityMetrics:        ic.EnableVanityMetrics,
+		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
+		RTTVeto_Default:                int64(ic.RTTVeto_Default),
+		RTTVeto_Multipath:              int64(ic.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:             int64(ic.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
+		ForceNext:                      ic.ForceNext,
+		LargeCustomer:                  ic.LargeCustomer,
+		Uncommitted:                    ic.Uncommitted,
+		MaxRTT:                         int64(ic.MaxRTT),
+		HighFrequencyPings:             ic.HighFrequencyPings,
+		RouteDiversity:                 int64(ic.RouteDiversity),
+		MultipathThreshold:             int64(ic.MultipathThreshold),
+		EnableVanityMetrics:            ic.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 	}
 
 	reply.InternalConfig = jsonIC
@@ -1888,22 +1916,23 @@ func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalC
 	}
 
 	ic := core.InternalConfig{
-		RouteSelectThreshold:       int32(arg.InternalConfig.RouteSelectThreshold),
-		RouteSwitchThreshold:       int32(arg.InternalConfig.RouteSwitchThreshold),
-		MaxLatencyTradeOff:         int32(arg.InternalConfig.MaxLatencyTradeOff),
-		RTTVeto_Default:            int32(arg.InternalConfig.RTTVeto_Default),
-		RTTVeto_Multipath:          int32(arg.InternalConfig.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:         int32(arg.InternalConfig.RTTVeto_PacketLoss),
-		MultipathOverloadThreshold: int32(arg.InternalConfig.MultipathOverloadThreshold),
-		TryBeforeYouBuy:            arg.InternalConfig.TryBeforeYouBuy,
-		ForceNext:                  arg.InternalConfig.ForceNext,
-		LargeCustomer:              arg.InternalConfig.LargeCustomer,
-		Uncommitted:                arg.InternalConfig.Uncommitted,
-		MaxRTT:                     int32(arg.InternalConfig.MaxRTT),
-		HighFrequencyPings:         arg.InternalConfig.HighFrequencyPings,
-		RouteDiversity:             int32(arg.InternalConfig.RouteDiversity),
-		MultipathThreshold:         int32(arg.InternalConfig.MultipathThreshold),
-		EnableVanityMetrics:        arg.InternalConfig.EnableVanityMetrics,
+		RouteSelectThreshold:           int32(arg.InternalConfig.RouteSelectThreshold),
+		RouteSwitchThreshold:           int32(arg.InternalConfig.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int32(arg.InternalConfig.MaxLatencyTradeOff),
+		RTTVeto_Default:                int32(arg.InternalConfig.RTTVeto_Default),
+		RTTVeto_Multipath:              int32(arg.InternalConfig.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:             int32(arg.InternalConfig.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold:     int32(arg.InternalConfig.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                arg.InternalConfig.TryBeforeYouBuy,
+		ForceNext:                      arg.InternalConfig.ForceNext,
+		LargeCustomer:                  arg.InternalConfig.LargeCustomer,
+		Uncommitted:                    arg.InternalConfig.Uncommitted,
+		MaxRTT:                         int32(arg.InternalConfig.MaxRTT),
+		HighFrequencyPings:             arg.InternalConfig.HighFrequencyPings,
+		RouteDiversity:                 int32(arg.InternalConfig.RouteDiversity),
+		MultipathThreshold:             int32(arg.InternalConfig.MultipathThreshold),
+		EnableVanityMetrics:            arg.InternalConfig.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int32(arg.InternalConfig.ReducePacketLossMinSliceNumber),
 	}
 
 	err = s.Storage.AddInternalConfig(context.Background(), ic, buyerID)
@@ -1946,7 +1975,8 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 	switch args.Field {
 	case "RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
 		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
-		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold":
+		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold",
+		"ReducePacketLossMinSliceNumber":
 		newInt, err := strconv.ParseInt(args.Value, 10, 32)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
@@ -2022,6 +2052,7 @@ type JSRouteShader struct {
 	BandwidthEnvelopeUpKbps   int64           `json:"bandwidthEnvelopeUpKbps"`
 	BandwidthEnvelopeDownKbps int64           `json:"bandwidthEnvelopeDownKbps"`
 	BannedUsers               map[string]bool `json:"bannedUsers"`
+	PacketLossSustained       float64         `json:"packetLossSustained"`
 }
 type RouteShaderArg struct {
 	BuyerID string `json:"buyerID"`
@@ -2063,6 +2094,7 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
 		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
 	reply.RouteShader = jsonRS
@@ -2101,6 +2133,7 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 		AcceptablePacketLoss:      float32(arg.RouteShader.AcceptablePacketLoss),
 		BandwidthEnvelopeUpKbps:   int32(arg.RouteShader.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int32(arg.RouteShader.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float32(arg.RouteShader.PacketLossSustained),
 	}
 
 	err = s.Storage.AddRouteShader(context.Background(), rs, buyerID)
@@ -2195,7 +2228,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return err
 		}
 
-	case "AcceptablePacketLoss":
+	case "AcceptablePacketLoss", "PacketLossSustained":
 		newFloat, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid float type", args.Value)

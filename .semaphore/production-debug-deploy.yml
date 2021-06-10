@@ -32,6 +32,10 @@ blocks:
           commands:
             - make build-debug-relay-backend-artifacts-prod-debug
             - make publish-debug-relay-backend-artifacts-prod-debug
+        - name: Debug Billing
+          commands:
+            - make build-debug-billing-artifacts-prod-debug
+            - make publish-debug-billing-artifacts-prod-debug
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod-debug

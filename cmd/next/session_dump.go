@@ -11,16 +11,15 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 	"google.golang.org/api/iterator"
 )
 
-func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64) {
+func dumpSession(env Environment, sessionID uint64) {
 
 	// make a call for all the relays (there is no relay "singular" endpoint)
 	var relaysReply localjsonrpc.RelaysReply
 	relaysArg := localjsonrpc.RelaysArgs{} // empty args returns all relays
-	if err := rpcClient.CallFor(&relaysReply, "OpsService.Relays", relaysArg); err != nil {
+	if err := makeRPCCall(env, &relaysReply, "OpsService.Relays", relaysArg); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
@@ -32,7 +31,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 	// make a call for the datacenters
 	var dcsReply localjsonrpc.DatacentersReply
 	dcsArgs := localjsonrpc.DatacentersArgs{}
-	if err := rpcClient.CallFor(&dcsReply, "OpsService.Datacenters", dcsArgs); err != nil {
+	if err := makeRPCCall(env, &dcsReply, "OpsService.Datacenters", dcsArgs); err != nil {
 		handleJSONRPCError(env, err)
 	}
 	dcNames := make(map[int64]string)
@@ -126,6 +125,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Tags",
 		"ABTest",
 		"Next",
+		"Initial",
 		"Committed",
 		"Flagged",
 		"Multipath",
@@ -212,6 +212,11 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			if billingEntry.Next.Bool {
 				committed = "true"
 			}
+		}
+
+		initial := "false"
+		if billingEntry.Initial {
+			initial = "true"
 		}
 		// Flagged
 		flagged := ""
@@ -556,6 +561,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			tags,
 			abTest,
 			next,
+			initial,
 			committed,
 			flagged,
 			multipath,
@@ -628,6 +634,7 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 	totalPrice,
 	clientToServerPacketsLost,
 	serverToClientPacketsLost,
+	initial,
 	committed,
 	flagged,
 	multipath,
