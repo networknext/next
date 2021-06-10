@@ -208,4 +208,7 @@ type Storer interface {
 
 	// GetFleetDashboardData returns data from the fleet_dashboard table
 	GetFleetDashboardData() (routing.FleetDashboardData, error)
+
+	// UpdateFleetDashboardData updates the specified field in an fleet_dashboard table
+	UpdateFleetDashboardData(ctx context.Context, field string, value interface{}) error
 }

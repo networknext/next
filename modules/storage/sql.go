@@ -3342,5 +3342,24 @@ func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field 
 }
 
 func (db *SQL) GetFleetDashboardData() (routing.FleetDashboardData, error) {
-	return routing.FleetDashboardData{}, fmt.Errorf("GetFleetDashboardData not implemented in Firestore storer")
+	var querySQL bytes.Buffer
+	var dashboardData routing.FleetDashboardData
+
+	querySQL.Write([]byte("select bin_file_creation_time, bin_file_author "))
+	querySQL.Write([]byte("from fleet_dashboard order by employment_date desc limit 1"))
+
+	row := db.Client.QueryRow(querySQL.String())
+	switch err := row.Scan(&dashboardData.DatabaseBinFileCreationTime, &dashboardData.DatabaseBinFileAuthor); err {
+	case sql.ErrNoRows:
+		fmt.Println("No rows were returned!")
+		level.Error(db.Logger).Log("during", "GetFleetDashboardData() no rows were returned!")
+	default:
+		level.Error(db.Logger).Log("during", "GetFleetDashboardData() QueryRow returned an error: %v", err)
+	}
+
+	return dashboardData, nil
+}
+
+func (db *SQL) UpdateFleetDashboardData(ctx context.Context, field string, value interface{}) error {
+	return fmt.Errorf("GetFleetDashboardData not implemented in Firestore storer")
 }

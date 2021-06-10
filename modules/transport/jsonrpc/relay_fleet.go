@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 	"time"
@@ -344,6 +345,9 @@ type AdminBinFileHandlerReply struct {
 	Message string `json:"message"`
 }
 
+// AdminBinFileHandler generates and commits a database.bin file
+// for the Admin UI tool. The Admin UI (js) can not commit or
+// otherwise work with the bin file.
 func (rfs *RelayFleetService) AdminBinFileHandler(
 	r *http.Request,
 	args *AdminBinFileHandlerArgs,
@@ -353,7 +357,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	requestUser := r.Context().Value(middleware.Keys.UserKey)
 	if requestUser == nil {
 		errCode := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		err := fmt.Errorf("AdminFrontPage() error getting userid: %v", errCode)
+		err := fmt.Errorf("AdminBinFileHandler() error getting userid: %v", errCode)
 		rfs.Logger.Log("err", err)
 		return err
 	}
@@ -361,7 +365,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		rfs.Logger.Log("err", fmt.Errorf("AdminFrontPage(): %v: Failed to parse user ID", err.Error()))
+		rfs.Logger.Log("err", fmt.Errorf("AdminBinFileHandler(): %v: Failed to parse user ID", err.Error()))
 		return &err
 	}
 	fmt.Printf("user: %s\n", requestEmail)
@@ -370,7 +374,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 
 	dbWrapper, err := rfs.BinFileGenerator(requestEmail)
 	if err != nil {
-		err := fmt.Errorf("BinFileHandler() error generating database.bin file: %v", err)
+		err := fmt.Errorf("AdminBinFileHandler() error generating database.bin file: %v", err)
 		rfs.Logger.Log("err", err)
 		reply.Message = err.Error()
 		return err
@@ -379,14 +383,57 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	encoder := gob.NewEncoder(&buffer)
 	encoder.Encode(dbWrapper)
 
-	cwd, _ := os.Getwd()
-	fmt.Printf("cwd: %s\n", cwd)
-	err = ioutil.WriteFile("database.bin", buffer.Bytes(), 0777)
+	tempDir := os.TempDir()
+	fmt.Printf("tempDir: %s\n", tempDir)
+
+	tempFile, err := ioutil.TempFile("", "database.bin")
 	if err != nil {
-		err := fmt.Errorf("BinFileHandler() error writing database.bin to filesystem: %v", err)
+		err := fmt.Errorf("AdminBinFileHandler() error writing database.bin to temporary file: %v", err)
 		rfs.Logger.Log("err", err)
 		reply.Message = err.Error()
 		return err
+	}
+	// defer os.Remove(tempFile.Name())
+	fmt.Println(tempFile.Name())
+	_, err = tempFile.Write(buffer.Bytes())
+	if err != nil {
+		err := fmt.Errorf("AdminBinFileHandler() error writing database.bin to filesystem: %v", err)
+		rfs.Logger.Log("err", err)
+		reply.Message = err.Error()
+		return err
+	}
+
+	// should come from env var?
+	bucketName := "gs://"
+	switch rfs.Env {
+	case "dev":
+		os.Exit(1)
+		// bucketName += "dev_database_bin_testing"
+	case "prod":
+		os.Exit(1)
+		// bucketName += "prod_database_bin_testing"
+	case "staging":
+		os.Exit(1)
+		// bucketName += "staging_database_bin_testing"
+	case "local":
+		bucketName += "happy_path_testing"
+	}
+
+	// enforce target file name, copy in /tmp has random numbers appended
+	bucketName += "/database.bin"
+
+	fmt.Printf("Env: %s\n", rfs.Env)
+	// gsutil cp database.bin gs://${bucketName}
+	gsutilCpCommand := exec.Command("gsutil", "cp", tempFile.Name(), bucketName)
+
+	err = gsutilCpCommand.Run()
+	if err != nil {
+		err := fmt.Errorf("AdminBinFileHandler() copying database.bin to %s: %v", bucketName, err)
+		rfs.Logger.Log("err", err)
+		fmt.Println(err)
+		reply.Message = err.Error()
+	} else {
+		reply.Message = "success!"
 	}
 
 	return nil
@@ -398,6 +445,8 @@ type NextBinFileHandlerReply struct {
 	DBWrapper routing.DatabaseBinWrapper `json:"dbWrapper"`
 }
 
+// NextBinFileHandler generates and returns a DatabaseBinWrapper struct
+// for the next CLI tool. The next tool handles the commit.
 func (rfs *RelayFleetService) NextBinFileHandler(
 	r *http.Request,
 	args *NextBinFileHandlerArgs,
