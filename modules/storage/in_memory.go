@@ -596,6 +596,14 @@ func (m *InMemory) UpdateDatacenter(ctx context.Context, datacenterID uint64, fi
 	return fmt.Errorf("UpdateDatacenter not impemented in InMemory storer")
 }
 
-func (fs *InMemory) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
+func (m *InMemory) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateDatacenterMap not implemented in InMemory storer")
+}
+
+func (m *InMemory) GetFleetDashboardData() (routing.FleetDashboardData, error) {
+	return routing.FleetDashboardData{}, fmt.Errorf("GetFleetDashboardData not implemented in InMemory storer")
+}
+
+func (m *InMemory) UpdateFleetDashboardData(ctx context.Context, field string, value interface{}) error {
+	return fmt.Errorf("GetFleetDashboardData not implemented in InMemory storer")
 }
