@@ -51,6 +51,24 @@ func TestGooglePubSubBill(t *testing.T) {
 	})
 }
 
+func TestGooglePubSubBill2(t *testing.T) {
+	checkGooglePubsubEmulator(t)
+	ctx := context.Background()
+
+	t.Run("uninitialized billing clients", func(t *testing.T) {
+		biller := &billing.GooglePubSubBiller{}
+		err := biller.Bill2(ctx, &billing.BillingEntry2{})
+		assert.EqualError(t, err, "billing: clients not initialized")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		biller, err := billing.NewGooglePubSubBiller(context.Background(), &metrics.EmptyBillingMetrics, log.NewNopLogger(), "default", "billing", 1, 0, 0, &pubsub.DefaultPublishSettings)
+		assert.NoError(t, err)
+
+		biller.Bill2(ctx, &billing.BillingEntry2{})
+	})
+}
+
 func TestLocalBill(t *testing.T) {
 	t.Run("no logger", func(t *testing.T) {
 		biller := billing.LocalBiller{
@@ -71,7 +89,32 @@ func TestLocalBill(t *testing.T) {
 	})
 }
 
+func TestLocalBill2(t *testing.T) {
+	t.Run("no logger", func(t *testing.T) {
+		biller := billing.LocalBiller{
+			Metrics: &metrics.EmptyBillingMetrics,
+		}
+		err := biller.Bill2(context.Background(), &billing.BillingEntry2{})
+		assert.EqualError(t, err, "no logger for local biller, can't display entry")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		biller := billing.LocalBiller{
+			Logger:  log.NewNopLogger(),
+			Metrics: &metrics.EmptyBillingMetrics,
+		}
+
+		err := biller.Bill2(context.Background(), &billing.BillingEntry2{})
+		assert.NoError(t, err)
+	})
+}
+
 func TestNoOpBill(t *testing.T) {
 	biller := billing.NoOpBiller{}
 	biller.Bill(context.Background(), nil)
+}
+
+func TestNoOpBill2(t *testing.T) {
+	biller := billing.NoOpBiller{}
+	biller.Bill2(context.Background(), nil)
 }

@@ -12,14 +12,13 @@ import (
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
-func buyers(rpcClient jsonrpc.RPCClient, env Environment, signed bool) {
+func buyers(env Environment, signed bool) {
 	args := localjsonrpc.BuyersArgs{}
 
 	var reply localjsonrpc.BuyersReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Buyers", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Buyers", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -58,13 +57,13 @@ func buyers(rpcClient jsonrpc.RPCClient, env Environment, signed bool) {
 	table.Output(buyers)
 }
 
-func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {
+func removeBuyer(env Environment, id string) {
 	args := localjsonrpc.RemoveBuyerArgs{
 		ID: id,
 	}
 
 	var reply localjsonrpc.RemoveBuyerReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RemoveBuyer", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RemoveBuyer", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -72,11 +71,11 @@ func removeBuyer(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	fmt.Printf("Buyer with ID \"%s\" removed from storage.\n", id)
 }
 
-func routingRulesSettingsByID(rpcClient jsonrpc.RPCClient, env Environment, buyerID string) {
+func routingRulesSettingsByID(env Environment, buyerID string) {
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
-	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+	if err := makeRPCCall(env, &buyers, "OpsService.Buyers", buyerArgs); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -96,7 +95,7 @@ func routingRulesSettingsByID(rpcClient jsonrpc.RPCClient, env Environment, buye
 			}
 
 			var reply localjsonrpc.RoutingRulesSettingsReply
-			if err := rpcClient.CallFor(&reply, "OpsService.RoutingRulesSettings", args); err != nil {
+			if err := makeRPCCall(env, &reply, "OpsService.RoutingRulesSettings", args); err != nil {
 				handleJSONRPCError(env, err)
 				return
 			}
@@ -123,11 +122,11 @@ func routingRulesSettingsByID(rpcClient jsonrpc.RPCClient, env Environment, buye
 
 }
 
-func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerName string) {
+func routingRulesSettings(env Environment, buyerName string) {
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
-	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+	if err := makeRPCCall(env, &buyers, "OpsService.Buyers", buyerArgs); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -166,7 +165,7 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerNam
 	}
 
 	var reply localjsonrpc.RoutingRulesSettingsReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RoutingRulesSettings", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RoutingRulesSettings", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -189,7 +188,6 @@ func routingRulesSettings(rpcClient jsonrpc.RPCClient, env Environment, buyerNam
 }
 
 func datacenterMapsForBuyer(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyer string,
 	csvOutput bool,
@@ -202,7 +200,7 @@ func datacenterMapsForBuyer(
 			DatacenterID: 0,
 		}
 
-		if err := rpcClient.CallFor(&reply, "OpsService.ListDatacenterMaps", arg); err != nil {
+		if err := makeRPCCall(env, &reply, "OpsService.ListDatacenterMaps", arg); err != nil {
 			fmt.Printf("rpc error: %v\n", err)
 			handleJSONRPCError(env, err)
 			return
@@ -267,7 +265,7 @@ func datacenterMapsForBuyer(
 
 		buyerArgs := localjsonrpc.BuyersArgs{}
 		var buyersReply localjsonrpc.BuyersReply
-		if err = rpcClient.CallFor(&buyersReply, "OpsService.Buyers", buyerArgs); err != nil {
+		if err = makeRPCCall(env, &buyersReply, "OpsService.Buyers", buyerArgs); err != nil {
 			handleJSONRPCError(env, err)
 			return
 		}
@@ -281,7 +279,7 @@ func datacenterMapsForBuyer(
 		if buyerID == 0 {
 			fmt.Printf("No match for provided buyer ID: %v\n\n", buyer)
 			fmt.Println("Here is a current list of buyers in the system:")
-			buyers(rpcClient, env, false)
+			buyers(env, false)
 			return
 		}
 
@@ -290,7 +288,7 @@ func datacenterMapsForBuyer(
 		}
 
 		var reply localjsonrpc.DatacenterMapsReply
-		if err := rpcClient.CallFor(&reply, "BuyersService.DatacenterMapsForBuyer", args); err != nil {
+		if err := makeRPCCall(env, &reply, "BuyersService.DatacenterMapsForBuyer", args); err != nil {
 			fmt.Printf("rpc error: %v\n", err)
 			handleJSONRPCError(env, err)
 			return
@@ -355,7 +353,7 @@ func datacenterMapsForBuyer(
 
 }
 
-func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStrings) error {
+func addDatacenterMap(env Environment, dcm dcMapStrings) error {
 
 	var err error
 	var buyerID uint64
@@ -363,7 +361,7 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
-	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+	if err = makeRPCCall(env, &buyers, "OpsService.Buyers", buyerArgs); err != nil {
 		handleRunTimeError(fmt.Sprintln("Unable to retrive buyer list."), 1)
 	}
 	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
@@ -378,7 +376,7 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 
 	dcArgs := localjsonrpc.DatacentersArgs{}
 	var dcReply localjsonrpc.DatacentersReply
-	if err = rpcClient.CallFor(&dcReply, "OpsService.Datacenters", dcArgs); err != nil {
+	if err = makeRPCCall(env, &dcReply, "OpsService.Datacenters", dcArgs); err != nil {
 		handleRunTimeError(fmt.Sprintln("Unable to retrive datacenter list."), 1)
 	}
 	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
@@ -400,7 +398,7 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 	}
 
 	var reply localjsonrpc.AddDatacenterMapReply
-	if err := rpcClient.CallFor(&reply, "BuyersService.AddDatacenterMap", arg); err != nil {
+	if err := makeRPCCall(env, &reply, "BuyersService.AddDatacenterMap", arg); err != nil {
 		handleJSONRPCError(env, err)
 		return nil
 	}
@@ -409,7 +407,7 @@ func addDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStr
 
 }
 
-func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMapStrings) error {
+func removeDatacenterMap(env Environment, dcm dcMapStrings) error {
 
 	var err error
 	var buyerID uint64
@@ -417,7 +415,7 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
-	if err = rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+	if err = makeRPCCall(env, &buyers, "OpsService.Buyers", buyerArgs); err != nil {
 		handleRunTimeError(fmt.Sprintln("Unable to retrive buyer list."), 1)
 	}
 	r := regexp.MustCompile("(?i)" + dcm.BuyerID) // case-insensitive regex
@@ -432,7 +430,7 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 
 	dcArgs := localjsonrpc.DatacentersArgs{}
 	var dcReply localjsonrpc.DatacentersReply
-	if err = rpcClient.CallFor(&dcReply, "OpsService.Datacenters", dcArgs); err != nil {
+	if err = makeRPCCall(env, &dcReply, "OpsService.Datacenters", dcArgs); err != nil {
 		handleRunTimeError(fmt.Sprintln("Unable to retrive datacenter list."), 1)
 	}
 	r = regexp.MustCompile("(?i)" + dcm.Datacenter) // case-insensitive regex
@@ -454,7 +452,7 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 	}
 
 	var reply localjsonrpc.RemoveDatacenterMapReply
-	if err := rpcClient.CallFor(&reply, "BuyersService.RemoveDatacenterMap", arg); err != nil {
+	if err := makeRPCCall(env, &reply, "BuyersService.RemoveDatacenterMap", arg); err != nil {
 		handleJSONRPCError(env, err)
 		return nil
 	}
@@ -464,14 +462,13 @@ func removeDatacenterMap(rpcClient jsonrpc.RPCClient, env Environment, dcm dcMap
 }
 
 func buyerIDFromName(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 ) (string, uint64) {
 
 	buyerArgs := localjsonrpc.BuyersArgs{}
 	var buyers localjsonrpc.BuyersReply
-	if err := rpcClient.CallFor(&buyers, "OpsService.Buyers", buyerArgs); err != nil {
+	if err := makeRPCCall(env, &buyers, "OpsService.Buyers", buyerArgs); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
@@ -502,13 +499,12 @@ func buyerIDFromName(
 }
 
 func getInternalConfig(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 ) error {
 	var reply localjsonrpc.InternalConfigReply
 
-	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
 
 	buyerIDHex := fmt.Sprintf("%016x", buyerID)
 
@@ -516,7 +512,7 @@ func getInternalConfig(
 		BuyerID: buyerIDHex,
 	}
 
-	if err := rpcClient.CallFor(&reply, "BuyersService.InternalConfig", arg); err != nil {
+	if err := makeRPCCall(env, &reply, "BuyersService.InternalConfig", arg); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
@@ -543,20 +539,19 @@ func getInternalConfig(
 }
 
 func getRouteShader(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 ) error {
 	var reply localjsonrpc.RouteShaderReply
 
-	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
 
 	buyerIDHex := fmt.Sprintf("%016x", buyerID)
 
 	arg := localjsonrpc.RouteShaderArg{
 		BuyerID: buyerIDHex,
 	}
-	if err := rpcClient.CallFor(&reply, "BuyersService.RouteShader", arg); err != nil {
+	if err := makeRPCCall(env, &reply, "BuyersService.RouteShader", arg); err != nil {
 		fmt.Println("No RouteShader stored for this buyer (they use the defaults).")
 		return nil
 	}
@@ -575,12 +570,12 @@ func getRouteShader(
 	fmt.Printf("  AcceptablePacketLoss     : %5.5f\n", reply.RouteShader.AcceptablePacketLoss)
 	fmt.Printf("  BandwidthEnvelopeUpKbps  : %d\n", reply.RouteShader.BandwidthEnvelopeUpKbps)
 	fmt.Printf("  BandwidthEnvelopeDownKbps: %d\n", reply.RouteShader.BandwidthEnvelopeDownKbps)
+	fmt.Printf("  PacketLossSustained      : %.2f\n", reply.RouteShader.PacketLossSustained)
 
 	return nil
 }
 
 func addInternalConfig(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerID uint64,
 	ic localjsonrpc.JSInternalConfig,
@@ -593,7 +588,7 @@ func addInternalConfig(
 		InternalConfig: ic,
 	}
 	// Storer method checks BuyerID validity
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.JSAddInternalConfig", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "BuyersService.JSAddInternalConfig", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -603,12 +598,11 @@ func addInternalConfig(
 }
 
 func removeInternalConfig(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 ) error {
 
-	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
 
 	emptyReply := localjsonrpc.RemoveInternalConfigReply{}
 
@@ -616,7 +610,7 @@ func removeInternalConfig(
 		BuyerID: fmt.Sprintf("%016x", buyerID),
 	}
 	// Storer method checks BuyerID validity
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveInternalConfig", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "BuyersService.RemoveInternalConfig", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -626,14 +620,13 @@ func removeInternalConfig(
 }
 
 func updateInternalConfig(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 	field string,
 	value string,
 ) error {
 
-	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
 
 	emptyReply := localjsonrpc.UpdateInternalConfigReply{}
 
@@ -642,7 +635,7 @@ func updateInternalConfig(
 		Field:   field,
 		Value:   value,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.UpdateInternalConfig", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "BuyersService.UpdateInternalConfig", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -652,7 +645,6 @@ func updateInternalConfig(
 }
 
 func addRouteShader(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerID uint64,
 	rs localjsonrpc.JSRouteShader,
@@ -664,7 +656,7 @@ func addRouteShader(
 		BuyerID:     fmt.Sprintf("%016x", buyerID),
 		RouteShader: rs,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.JSAddRouteShader", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "BuyersService.JSAddRouteShader", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -674,19 +666,18 @@ func addRouteShader(
 }
 
 func removeRouteShader(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 ) error {
 
-	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
 
 	emptyReply := localjsonrpc.RemoveRouteShaderReply{}
 
 	args := localjsonrpc.RemoveRouteShaderArg{
 		BuyerID: fmt.Sprintf("%016x", buyerID),
 	}
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveRouteShader", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "BuyersService.RemoveRouteShader", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -696,14 +687,13 @@ func removeRouteShader(
 }
 
 func updateRouteShader(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 	field string,
 	value string,
 ) error {
 
-	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
 
 	emptyReply := localjsonrpc.UpdateRouteShaderReply{}
 
@@ -712,7 +702,7 @@ func updateRouteShader(
 		Field:   field,
 		Value:   value,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.UpdateRouteShader", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "BuyersService.UpdateRouteShader", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -722,19 +712,18 @@ func updateRouteShader(
 }
 
 func getBannedUsers(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 ) error {
 
-	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
 
 	reply := localjsonrpc.GetBannedUserReply{}
 
 	args := localjsonrpc.GetBannedUserArg{
 		BuyerID: buyerID,
 	}
-	if err := rpcClient.CallFor(&reply, "BuyersService.GetBannedUsers", args); err != nil {
+	if err := makeRPCCall(env, &reply, "BuyersService.GetBannedUsers", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -747,13 +736,12 @@ func getBannedUsers(
 }
 
 func addBannedUser(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 	userID uint64,
 ) error {
 
-	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
 
 	emptyReply := localjsonrpc.BannedUserReply{}
 
@@ -761,7 +749,7 @@ func addBannedUser(
 		BuyerID: buyerID,
 		UserID:  userID,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.AddBannedUser", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "BuyersService.AddBannedUser", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -771,13 +759,12 @@ func addBannedUser(
 }
 
 func removeBannedUser(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 	userID uint64,
 ) error {
 
-	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
 
 	emptyReply := localjsonrpc.BannedUserReply{}
 
@@ -785,7 +772,7 @@ func removeBannedUser(
 		BuyerID: buyerID,
 		UserID:  userID,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.RemoveBannedUser", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "BuyersService.RemoveBannedUser", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}
@@ -794,16 +781,16 @@ func removeBannedUser(
 	return nil
 }
 
-func getBuyerInfo(rpcClient jsonrpc.RPCClient, env Environment, buyerRegex string) {
+func getBuyerInfo(env Environment, buyerRegex string) {
 
-	_, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	_, buyerID := buyerIDFromName(env, buyerRegex)
 
 	arg := localjsonrpc.BuyerArg{
 		BuyerID: buyerID,
 	}
 
 	var reply localjsonrpc.BuyerReply
-	if err := rpcClient.CallFor(&reply, "BuyersService.Buyer", arg); err != nil {
+	if err := makeRPCCall(env, &reply, "BuyersService.Buyer", arg); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
@@ -821,14 +808,13 @@ func getBuyerInfo(rpcClient jsonrpc.RPCClient, env Environment, buyerRegex strin
 }
 
 func updateBuyer(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	buyerRegex string,
 	field string,
 	value string,
 ) error {
 
-	buyerName, buyerID := buyerIDFromName(rpcClient, env, buyerRegex)
+	buyerName, buyerID := buyerIDFromName(env, buyerRegex)
 
 	emptyReply := localjsonrpc.UpdateBuyerReply{}
 
@@ -837,7 +823,7 @@ func updateBuyer(
 		Field:   field,
 		Value:   value,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "BuyersService.UpdateBuyer", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "BuyersService.UpdateBuyer", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}

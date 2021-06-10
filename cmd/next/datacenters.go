@@ -10,7 +10,6 @@ import (
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
 type datacenterReply struct {
@@ -21,7 +20,6 @@ type datacenterReply struct {
 }
 
 func datacenters(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	filter string,
 	signed bool,
@@ -38,7 +36,7 @@ func datacenters(
 	})
 
 	var reply localjsonrpc.DatacentersReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Datacenters", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Datacenters", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -105,13 +103,13 @@ func datacenters(
 
 }
 
-func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, dc datacenter) {
+func addDatacenter(env Environment, dc datacenter) {
 
 	var sellerReply localjsonrpc.SellerReply
 	var sellerArg localjsonrpc.SellerArg
 
 	sellerArg.ID = dc.SellerID
-	if err := rpcClient.CallFor(&sellerReply, "OpsService.Seller", sellerArg); err != nil {
+	if err := makeRPCCall(env, &sellerReply, "OpsService.Seller", sellerArg); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -132,7 +130,7 @@ func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, dc datacenter) 
 	}
 
 	var reply localjsonrpc.AddDatacenterReply
-	if err := rpcClient.CallFor(&reply, "OpsService.AddDatacenter", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.AddDatacenter", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -140,13 +138,13 @@ func addDatacenter(rpcClient jsonrpc.RPCClient, env Environment, dc datacenter) 
 	fmt.Printf("Datacenter \"%s\" added to storage.\n", datacenter.Name)
 }
 
-func removeDatacenter(rpcClient jsonrpc.RPCClient, env Environment, name string) {
+func removeDatacenter(env Environment, name string) {
 	args := localjsonrpc.RemoveDatacenterArgs{
 		Name: name,
 	}
 
 	var reply localjsonrpc.RemoveDatacenterReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RemoveDatacenter", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RemoveDatacenter", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -154,7 +152,7 @@ func removeDatacenter(rpcClient jsonrpc.RPCClient, env Environment, name string)
 	fmt.Printf("Datacenter \"%x\" removed from storage.\n", name)
 }
 
-func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter string) {
+func listDatacenterMaps(env Environment, datacenter string) {
 
 	var dcIDs []uint64
 	var err error
@@ -162,7 +160,7 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 	// get list of datacenters matching the given id/name/substring
 	datacentersArgs := localjsonrpc.DatacentersArgs{}
 	var datacenters localjsonrpc.DatacentersReply
-	if err = rpcClient.CallFor(&datacenters, "OpsService.Datacenters", datacentersArgs); err != nil {
+	if err = makeRPCCall(env, &datacenters, "OpsService.Datacenters", datacentersArgs); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -187,7 +185,7 @@ func listDatacenterMaps(rpcClient jsonrpc.RPCClient, env Environment, datacenter
 			DatacenterID: id,
 		}
 
-		if err := rpcClient.CallFor(&reply, "OpsService.ListDatacenterMaps", arg); err != nil {
+		if err := makeRPCCall(env, &reply, "OpsService.ListDatacenterMaps", arg); err != nil {
 			fmt.Printf("rpc error: %v\n", err)
 			handleJSONRPCError(env, err)
 			return

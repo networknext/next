@@ -167,6 +167,14 @@ var UnverifiedRole = func(req *http.Request) (bool, error) {
 	return false, nil
 }
 
+var AssignedToCompanyRole = func(req *http.Request) (bool, error) {
+	requestCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
+	if !ok || requestCompanyCode == "" {
+		return false, nil
+	}
+	return true, nil
+}
+
 func VerifyAllRoles(req *http.Request, roleFuncs ...RoleFunc) bool {
 	for _, f := range roleFuncs {
 		authorized, err := f(req)

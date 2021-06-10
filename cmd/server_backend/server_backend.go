@@ -45,6 +45,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"cloud.google.com/go/compute/metadata"
 	googlepubsub "cloud.google.com/go/pubsub"
 )
 
@@ -405,8 +406,39 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Create a local biller
+	// Setup feature config for billing and vanity metrics
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_BILLING",
+			Enum:        config.FEATURE_BILLING,
+			Value:       true,
+			Description: "Inserts BillingEntry types to Google Pub/Sub",
+		},
+		{
+			Name:        "FEATURE_BILLING2",
+			Enum:        config.FEATURE_BILLING2,
+			Value:       false,
+			Description: "Inserts BillingEntry2 types to Google Pub/Sub",
+		},
+		{
+			Name:        "FEATURE_VANITY_METRIC",
+			Enum:        config.FEATURE_VANITY_METRIC,
+			Value:       false,
+			Description: "Vanity metrics for fast aggregate statistic lookup",
+		},
+	})
+	featureConfig = envVarConfig
+
+	featureBilling := featureConfig.FeatureEnabled(config.FEATURE_BILLING)
+	featureBilling2 := featureConfig.FeatureEnabled(config.FEATURE_BILLING2)
+
+	// Create local billers
 	var biller billing.Biller = &billing.LocalBiller{
+		Logger:  logger,
+		Metrics: backendMetrics.BillingMetrics,
+	}
+	var biller2 billing.Biller = &billing.LocalBiller{
 		Logger:  logger,
 		Metrics: backendMetrics.BillingMetrics,
 	}
@@ -454,13 +486,30 @@ func mainReturnWithCode() int {
 			settings.ByteThreshold = byteThreshold
 			settings.NumGoroutines = runtime.GOMAXPROCS(0)
 
-			pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, "billing", clientCount, countThreshold, byteThreshold, &settings)
-			if err != nil {
-				core.Error("could not create pubsub biller: %v", err)
-				return 1
+			if featureBilling {
+
+				billingTopicID := envvar.Get("BILLING_TOPIC_NAME", "billing")
+
+				pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, billingTopicID, clientCount, countThreshold, byteThreshold, &settings)
+				if err != nil {
+					core.Error("could not create pubsub biller: %v", err)
+					return 1
+				}
+
+				biller = pubsub
 			}
 
-			biller = pubsub
+			if featureBilling2 {
+				billing2TopicID := envvar.Get("FEATURE_BILLING2_TOPIC_NAME", "billing2")
+
+				pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, billing2TopicID, clientCount, countThreshold, byteThreshold, &settings)
+				if err != nil {
+					core.Error("could not create pubsub biller2: %v", err)
+					return 1
+				}
+
+				biller2 = pubsub
+			}
 		}
 	}
 
@@ -504,17 +553,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Setup feature config for vanity metrics
-	var featureConfig config.Config
-	envVarConfig := config.NewEnvVarConfig([]config.Feature{
-		{
-			Name:        "FEATURE_VANITY_METRIC",
-			Enum:        config.FEATURE_VANITY_METRIC,
-			Value:       false,
-			Description: "Vanity metrics for fast aggregate statistic lookup",
-		},
-	})
-	featureConfig = envVarConfig
 	// Determine if should use vanity metrics
 	useVanityMetrics := featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC)
 
@@ -549,7 +587,7 @@ func mainReturnWithCode() int {
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, logger, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, biller2, featureBilling, featureBilling2, logger, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx)
 
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
@@ -561,6 +599,18 @@ func mainReturnWithCode() int {
 
 	redisMultipathVetoHost := envvar.Get("REDIS_HOST_MULTIPATH_VETO", "")
 	if redisMultipathVetoHost != "" {
+		redisMultipathVetoPassword := envvar.Get("REDIS_PASSWORD_MULTIPATH_VETO", "")
+		redisMultipathVetoMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS_MULTIPATH_VETO", 5)
+		if err != nil {
+			core.Error("invalid REDIS_MAX_IDLE_CONNS_MULTIPATH_VETO: %v", err)
+			return 1
+		}
+		redisMultipathVetoMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS_MULTIPATH_VETO", 64)
+		if err != nil {
+			core.Error("invalid REDIS_MAX_ACTIVE_CONNS_MULTIPATH_VETO: %v", err)
+			return 1
+		}
+
 		// Create the multipath veto handler to handle syncing multipath vetoes to and from redis
 		multipathVetoSyncFrequency, err := envvar.GetDuration("MULTIPATH_VETO_SYNC_FREQUENCY", time.Second*10)
 		if err != nil {
@@ -568,7 +618,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		multipathVetoHandler, err = storage.NewRedisMultipathVetoHandler(redisMultipathVetoHost, getDatabase)
+		multipathVetoHandler, err = storage.NewRedisMultipathVetoHandler(redisMultipathVetoHost, redisMultipathVetoPassword, redisMultipathVetoMaxIdleConns, redisMultipathVetoMaxActiveConns, getDatabase)
 		if err != nil {
 			core.Error("could not create redis multipath veto handler: %v", err)
 			return 1
@@ -612,15 +662,55 @@ func mainReturnWithCode() int {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
 
+		httpPort := envvar.Get("HTTP_PORT", "40001")
+
+		srv := &http.Server{
+			Addr:    ":" + httpPort,
+			Handler: router,
+		}
+
 		go func() {
-			httpPort := envvar.Get("HTTP_PORT", "40001")
 			fmt.Printf("started http server on port %s\n\n", httpPort)
-			err := http.ListenAndServe(":"+httpPort, router)
+			err := srv.ListenAndServe()
 			if err != nil {
-				core.Error("failed to start http server: ", err)
+				core.Error("failed to start http server: %v", err)
 				return
 			}
 		}()
+
+		if gcpProjectID != "" {
+			metadataSyncInterval, err := envvar.GetDuration("METADATA_SYNC_INTERVAL", time.Minute*1)
+			if err != nil {
+				core.Error("invalid METADATA_SYNC_INTERVAL: %v", err)
+				return 1
+			}
+			connectionDrainMetadata := envvar.Get("CONNECTION_DRAIN_METADATA_FIELD", "connection-drain")
+
+			// Start a goroutine to shutdown the HTTP server when the metadata changes
+			go func() {
+				for {
+					ticker := time.NewTicker(metadataSyncInterval)
+					select {
+					case <-ticker.C:
+						// Get metadata value for connection drain
+						val, err := metadata.InstanceAttributeValue(connectionDrainMetadata)
+						if err != nil {
+							core.Error("failed to get instance attribute value for connection drain metadata field %s: %v", connectionDrainMetadata, err)
+						}
+
+						if val == "true" {
+							core.Debug("connection drain metadata field %s is true, shutting down HTTP server", connectionDrainMetadata)
+							// Shutdown the HTTP server
+							ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*10)
+							defer cancel()
+							srv.Shutdown(ctxTimeout)
+						}
+					case <-ctx.Done():
+						return
+					}
+				}
+			}()
+		}
 	}
 
 	numThreads, err := envvar.GetInt("NUM_THREADS", 1)

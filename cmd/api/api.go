@@ -3,23 +3,24 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
+	"sync"
 	"time"
-
-	"github.com/networknext/backend/modules/envvar"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/vanity"
 )
@@ -32,9 +33,42 @@ var (
 	gcpProjectID  string
 	vanityMetrics *vanity.VanityMetricHandler
 	sd            *metrics.StackDriverHandler
-	storer        storage.Storer
 	env           string
+
+	buyerCodeMap   map[string]routing.Buyer
+	buyerCodeMutex sync.RWMutex
+
+	binCreator      string
+	binCreationTime string
 )
+
+func init() {
+	database := routing.CreateEmptyDatabaseBinWrapper()
+
+	buyerCodeMap = make(map[string]routing.Buyer)
+
+	filePath := envvar.Get("BIN_PATH", "./database.bin")
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Printf("could not load database binary: %s\n", filePath)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	if err = backend.DecodeBinWrapper(file, database); err != nil {
+		fmt.Printf("DecodeBinWrapper() error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Store a map of company code to buyer
+	for _, buyer := range database.BuyerMap {
+		buyerCodeMap[buyer.CompanyCode] = buyer
+	}
+
+	// Store the creator and creation time from the database
+	binCreator = database.Creator
+	binCreationTime = database.CreationTime
+}
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -75,13 +109,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Get storer for customer code to buyerID lookup
-	storer, err = backend.GetStorer(ctx, logger, gcpProjectID, env)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
@@ -116,6 +143,9 @@ func mainReturnWithCode() int {
 		sd = &sdHandler
 	}
 
+	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.Get("REDIS_PASSWORD", "")
+
 	// Create metric handler for tracking performance of api service
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
@@ -134,20 +164,108 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, "", 5, 5, time.Minute*5, "", env, logger)
+	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, redisHostname, redisPassword, 5, 5, time.Minute*5, "", env, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "error creating vanity metric handler", "err", err)
 		return 1
 	}
 
 	errChan := make(chan error, 1)
+
+	// Setup file watchman on database.bin
+	{
+		// Get absolute path of database.bin
+		databaseFilePath := envvar.Get("BIN_PATH", "./database.bin")
+		absPath, err := filepath.Abs(databaseFilePath)
+		if err != nil {
+			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", databaseFilePath), "err", err)
+			return 1
+		}
+
+		// Check if file exists
+		if _, err := os.Stat(absPath); err != nil {
+			level.Error(logger).Log("msg", fmt.Sprintf("%s does not exist", absPath), "err", err)
+			return 1
+		}
+
+		// Get the directory of the database.bin
+		// Used to watch over file creation and modification
+		directoryPath := filepath.Dir(absPath)
+
+		binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
+		if err != nil {
+			level.Error(logger).Log("msg", "failed to get BIN_SYNC_INTERVAL", "err", err)
+			return 1
+		}
+
+		ticker := time.NewTicker(binSyncInterval)
+
+		// Setup goroutine to watch for replaced file and update buyerCodeMap
+		go func() {
+			level.Debug(logger).Log("msg", fmt.Sprintf("started watchman on %s", directoryPath))
+			for {
+				select {
+				case <-ticker.C:
+					// File has changed
+					file, err := os.Open(absPath)
+					if err != nil {
+						level.Error(logger).Log("msg", fmt.Sprintf("could not load database binary at %s", absPath), "err", err)
+						continue
+					}
+
+					// Setup new buyer code map to read into
+					databaseNew := routing.CreateEmptyDatabaseBinWrapper()
+
+					if err = backend.DecodeBinWrapper(file, databaseNew); err == io.EOF {
+						// Sometimes we receive an EOF error since the file is still being replaced
+						// so early out here and proceed on the next notification
+						file.Close()
+						level.Debug(logger).Log("msg", "DecodeBinWrapper() EOF error, will wait for next notification")
+						continue
+					} else if err != nil {
+						file.Close()
+						level.Error(logger).Log("msg", "DecodeBinWrapper() error", "err", err)
+						continue
+					}
+
+					// Close the file since it is no longer needed
+					file.Close()
+
+					if databaseNew.IsEmpty() {
+						// Don't want to use an empty bin wrapper
+						// so early out here and use existing values
+						level.Debug(logger).Log("msg", "new bin wrapper is empty, keeping previous values")
+						continue
+					}
+
+					// Store the creator and creation time from the database
+					binCreator = databaseNew.Creator
+					binCreationTime = databaseNew.CreationTime
+
+					// Store the latest buyer info from the database
+					buyerCodeMapNew := make(map[string]routing.Buyer)
+
+					for _, buyer := range databaseNew.BuyerMap {
+						buyerCodeMapNew[buyer.CompanyCode] = buyer
+					}
+
+					// Pointer swap the buyer code map
+					buyerCodeMutex.Lock()
+					buyerCodeMap = buyerCodeMapNew
+					buyerCodeMutex.Unlock()
+				}
+			}
+		}()
+	}
+
 	// Start HTTP server
 	{
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/vanity", VanityMetricHandlerFunc())
-			router.HandleFunc("/health", HealthHandlerFunc())
+			router.HandleFunc("/health", transport.HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+			router.HandleFunc("/database_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 
 			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 			if err != nil {
@@ -201,9 +319,11 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 			companyCode := rawCompanyCode[0]
 
 			// Vanity metrics for specific buyer
-			buyer, err := storer.BuyerWithCompanyCode(companyCode)
-			if err != nil {
-				errStr := fmt.Sprintf("id is not valid: %v", err)
+			buyerCodeMutex.RLock()
+			buyer, ok := buyerCodeMap[companyCode]
+			buyerCodeMutex.RUnlock()
+			if !ok {
+				errStr := fmt.Sprintf("id %s is not valid", companyCode)
 				http.Error(w, errStr, http.StatusBadRequest)
 				return
 			}
@@ -264,21 +384,5 @@ func VanityMetricHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(data)
 		return
-	}
-}
-
-func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-
-		statusCode := http.StatusOK
-
-		w.WriteHeader(statusCode)
-		w.Write([]byte(http.StatusText(statusCode)))
 	}
 }
