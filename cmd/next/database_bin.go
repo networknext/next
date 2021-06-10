@@ -24,7 +24,6 @@ import (
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
 func getLocalDatabaseBin() {
@@ -85,14 +84,13 @@ func getLocalDatabaseBin() {
 }
 
 func getDatabaseBin(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 ) {
 
 	args := localjsonrpc.NextBinFileHandlerArgs{}
-
 	var reply localjsonrpc.NextBinFileHandlerReply
-	if err := rpcClient.CallFor(&reply, "RelayFleetService.NextBinFileHandler", args); err != nil {
+
+	if err := makeRPCCall(env, &reply, "RelayFleetService.NextBinFileHandler", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
