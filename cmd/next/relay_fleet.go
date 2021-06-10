@@ -9,11 +9,9 @@ import (
 
 	"github.com/modood/table"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
 func getFleetRelays(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	relayCount int64,
 	alphaSort bool,
@@ -21,10 +19,10 @@ func getFleetRelays(
 
 ) {
 
-	var reply localjsonrpc.RelayFleetReply
-	var args localjsonrpc.RelayFleetArgs
+	var reply localjsonrpc.RelayFleetReply = localjsonrpc.RelayFleetReply{}
+	var args = localjsonrpc.RelayFleetArgs{}
 
-	if err := rpcClient.CallFor(&reply, "RelayFleetService.RelayFleet", args); err != nil {
+	if err := makeRPCCall(env, &reply, "RelayFleetService.RelayFleet", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}

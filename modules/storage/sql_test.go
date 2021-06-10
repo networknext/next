@@ -1323,22 +1323,23 @@ func TestInternalConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:       2,
-			RouteSwitchThreshold:       5,
-			MaxLatencyTradeOff:         10,
-			RTTVeto_Default:            -10,
-			RTTVeto_PacketLoss:         -20,
-			RTTVeto_Multipath:          -20,
-			MultipathOverloadThreshold: 500,
-			TryBeforeYouBuy:            true,
-			ForceNext:                  true,
-			LargeCustomer:              true,
-			Uncommitted:                true,
-			MaxRTT:                     300,
-			HighFrequencyPings:         true,
-			RouteDiversity:             10,
-			MultipathThreshold:         35,
-			EnableVanityMetrics:        true,
+			RouteSelectThreshold:           2,
+			RouteSwitchThreshold:           5,
+			MaxLatencyTradeOff:             10,
+			RTTVeto_Default:                -10,
+			RTTVeto_PacketLoss:             -20,
+			RTTVeto_Multipath:              -20,
+			MultipathOverloadThreshold:     500,
+			TryBeforeYouBuy:                true,
+			ForceNext:                      true,
+			LargeCustomer:                  true,
+			Uncommitted:                    true,
+			MaxRTT:                         300,
+			HighFrequencyPings:             true,
+			RouteDiversity:                 10,
+			MultipathThreshold:             35,
+			EnableVanityMetrics:            true,
+			ReducePacketLossMinSliceNumber: 10,
 		}
 
 		err = db.AddInternalConfig(ctx, internalConfig, outerBuyer.ID)
@@ -1364,6 +1365,7 @@ func TestInternalConfig(t *testing.T) {
 		assert.Equal(t, int32(35), outerInternalConfig.MultipathThreshold)
 		assert.Equal(t, int32(300), outerInternalConfig.MaxRTT)
 		assert.Equal(t, true, outerInternalConfig.EnableVanityMetrics)
+		assert.Equal(t, int32(10), outerInternalConfig.ReducePacketLossMinSliceNumber)
 	})
 
 	t.Run("UpdateInternalConfig", func(t *testing.T) {
@@ -1487,6 +1489,14 @@ func TestInternalConfig(t *testing.T) {
 		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, false, checkInternalConfig.EnableVanityMetrics)
+
+		// ReducePacketLossMinSliceNumber
+		err = db.UpdateInternalConfig(ctx, outerBuyer.ID, "ReducePacketLossMinSliceNumber", int32(50))
+		assert.NoError(t, err)
+		checkInternalConfig, err = db.InternalConfig(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(50), checkInternalConfig.ReducePacketLossMinSliceNumber)
+
 	})
 
 	t.Run("RemoveInternalConfig", func(t *testing.T) {
@@ -1571,6 +1581,7 @@ func TestRouteShaders(t *testing.T) {
 			ReducePacketLoss:          true,
 			ReduceJitter:              true,
 			SelectionPercent:          int(100),
+			PacketLossSustained:       float32(10),
 		}
 
 		err = db.AddRouteShader(ctx, routeShader, outerBuyer.ID)
@@ -1592,6 +1603,7 @@ func TestRouteShaders(t *testing.T) {
 		assert.Equal(t, true, outerRouteShader.ReducePacketLoss)
 		assert.Equal(t, true, outerRouteShader.ReduceJitter)
 		assert.Equal(t, int(100), outerRouteShader.SelectionPercent)
+		assert.Equal(t, float32(10), outerRouteShader.PacketLossSustained)
 	})
 
 	t.Run("UpdateRouteShader", func(t *testing.T) {
@@ -1688,6 +1700,13 @@ func TestRouteShaders(t *testing.T) {
 		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, int(90), checkRouteShader.SelectionPercent)
+
+		// PacketLossSustained
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "PacketLossSustained", float32(10))
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, float32(10), checkRouteShader.PacketLossSustained)
 
 	})
 

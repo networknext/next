@@ -660,6 +660,7 @@ type relay struct {
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
+
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,

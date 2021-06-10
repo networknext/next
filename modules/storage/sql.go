@@ -1178,7 +1178,7 @@ type sqlRelay struct {
 	Overage            int64
 	BWRule             int64
 	ContractTerm       int64
-	Notes              string
+	Notes              sql.NullString
 	StartDate          sql.NullTime
 	EndDate            sql.NullTime
 	MachineType        int64
@@ -1262,6 +1262,15 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		Int64: publicIPPort,
 	}
 
+	nullableNotes := sql.NullString{
+		Valid: false,
+	}
+
+	if r.Notes != "" {
+		nullableNotes.Valid = true
+		nullableNotes.String = r.Notes
+	}
+
 	// field is not null but we also don't want an empty string
 	if r.Version == "" {
 		return fmt.Errorf("relay version can not be an empty string and must be a valid value (e.g. '2.0.6')")
@@ -1291,7 +1300,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		StartDate:          startDate,
 		EndDate:            endDate,
 		MachineType:        int64(r.Type),
-		Notes:              r.Notes,
+		Notes:              nullableNotes,
 		Version:            r.Version,
 	}
 
@@ -2177,22 +2186,23 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 	}
 
 	internalConfig := sqlInternalConfig{
-		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
-		RTTVetoDefault:             int64(ic.RTTVeto_Default),
-		RTTVetoPacketLoss:          int64(ic.RTTVeto_PacketLoss),
-		RTTVetoMultipath:           int64(ic.RTTVeto_Multipath),
-		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-		ForceNext:                  ic.ForceNext,
-		LargeCustomer:              ic.LargeCustomer,
-		Uncommitted:                ic.Uncommitted,
-		MaxRTT:                     int64(ic.MaxRTT),
-		HighFrequencyPings:         ic.HighFrequencyPings,
-		RouteDiversity:             int64(ic.RouteDiversity),
-		MultipathThreshold:         int64(ic.MultipathThreshold),
-		EnableVanityMetrics:        ic.EnableVanityMetrics,
+		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
+		RTTVetoDefault:                 int64(ic.RTTVeto_Default),
+		RTTVetoPacketLoss:              int64(ic.RTTVeto_PacketLoss),
+		RTTVetoMultipath:               int64(ic.RTTVeto_Multipath),
+		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
+		ForceNext:                      ic.ForceNext,
+		LargeCustomer:                  ic.LargeCustomer,
+		Uncommitted:                    ic.Uncommitted,
+		MaxRTT:                         int64(ic.MaxRTT),
+		HighFrequencyPings:             ic.HighFrequencyPings,
+		RouteDiversity:                 int64(ic.RouteDiversity),
+		MultipathThreshold:             int64(ic.MultipathThreshold),
+		EnableVanityMetrics:            ic.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
@@ -2200,8 +2210,8 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
 	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, buyer_id) "))
-	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"))
+	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number, buyer_id) "))
+	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2226,6 +2236,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		internalConfig.RouteDiversity,
 		internalConfig.MultipathThreshold,
 		internalConfig.EnableVanityMetrics,
+		internalConfig.ReducePacketLossMinSliceNumber,
 		buyer.DatabaseID,
 	)
 
@@ -2456,6 +2467,14 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		updateSQL.Write([]byte("update rs_internal_configs set enable_vanity_metrics=$1 where buyer_id=$2"))
 		args = append(args, enableVanityMetrics, buyer.DatabaseID)
 		ic.EnableVanityMetrics = enableVanityMetrics
+	case "ReducePacketLossMinSliceNumber":
+		reducePacketLossMinSliceNumber, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("ReducePacketLossMinSliceNumber: %v is not a valid int32 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set reduce_pl_min_slice_number=$1 where buyer_id=$2"))
+		args = append(args, reducePacketLossMinSliceNumber, buyer.DatabaseID)
+		ic.ReducePacketLossMinSliceNumber = reducePacketLossMinSliceNumber
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
@@ -2528,13 +2547,14 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		ReducePacketLoss:          rs.ReducePacketLoss,
 		ReduceJitter:              rs.ReduceJitter,
 		SelectionPercent:          int64(rs.SelectionPercent),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
 	sql.Write([]byte("insert into route_shaders ("))
 	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
-	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, buyer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"))
+	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, packet_loss_sustained, buyer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2556,6 +2576,7 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		routeShader.ReducePacketLoss,
 		routeShader.ReduceJitter,
 		routeShader.SelectionPercent,
+		routeShader.PacketLossSustained,
 		buyer.DatabaseID,
 	)
 
@@ -2714,6 +2735,14 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id=$2"))
 		args = append(args, selectionPercent, buyer.DatabaseID)
 		rs.SelectionPercent = selectionPercent
+	case "PacketLossSustained":
+		packetLossSustained, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("PacketLossSustained: %v is not a valid float type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update route_shaders set packet_loss_sustained=$1 where buyer_id=$2"))
+		args = append(args, packetLossSustained, buyer.DatabaseID)
+		rs.PacketLossSustained = packetLossSustained
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
 

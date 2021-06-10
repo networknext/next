@@ -2,14 +2,15 @@ package jsonrpc
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
-	"github.com/tidwall/gjson"
 )
 
 // RelayFleetService provides access to real-time data provided by the endpoints
@@ -39,19 +40,13 @@ type RelayFleetReply struct {
 // RelayFleet retrieves the CSV file from relay_frontend/relays, converts it to
 // json and puts it on the wire.
 func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, reply *RelayFleetReply) error {
-
-	authToken, err := GetOpsToken()
-	if err != nil {
-		err = fmt.Errorf("RelayFleet() error getting auth token: %w", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
+	authHeader := r.Header.Get("Authorization")
 
 	uri := rfs.RelayFrontendURI + "/relays"
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authToken))
+	req.Header.Set("Authorization", authHeader)
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -93,38 +88,44 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 }
 
 type RelayDashboardJsonReply struct {
-	Dashboard string `json:"relay_dashboard"`
+	// Dashboard string `json:"relay_dashboard"`
+	Dashboard jsonResponse `json:"relay_dashboard"`
 }
 
-type RelayDashboardJsonArgs struct{}
+type RelayDashboardJsonArgs struct {
+	XAxisRelayFilter string `json:"xAxisFilters"`
+	YAxisRelayFilter string `json:"yAxisFilters"`
+}
+
+type jsonRelay struct {
+	Name string
+	Addr string
+}
+
+type jsonResponse struct {
+	Analysis routing.JsonMatrixAnalysis
+	Relays   []jsonRelay
+	Stats    map[string]map[string]routing.Stats
+}
 
 // RelayDashboardJson retrieves the JSON representation of the current relay dashboard
 // provided by relay_backend/relay_dashboard_data
 func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDashboardJsonArgs, reply *RelayDashboardJsonReply) error {
 
-	type jsonRelay struct {
-		Name string
-		Addr string
-	}
-
-	type jsonResponse struct {
-		Analysis string
-		Relays   []jsonRelay
-		Stats    map[string]map[string]routing.Stats
-	}
-
-	authToken, err := GetOpsToken()
-	if err != nil {
-		err = fmt.Errorf("RelayDashboardJson() error getting auth token: %w", err)
+	if args.XAxisRelayFilter == "" || args.YAxisRelayFilter == "" {
+		err := fmt.Errorf("a filter must be supplied for each axis")
 		rfs.Logger.Log("err", err)
 		return err
 	}
+
+	var fullDashboard, filteredDashboard jsonResponse
+	authHeader := r.Header.Get("Authorization")
 
 	uri := rfs.RelayFrontendURI + "/relay_dashboard_data"
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authToken))
+	req.Header.Set("Authorization", authHeader)
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -134,60 +135,67 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	}
 	defer response.Body.Close()
 
-	dashboardData, err := ioutil.ReadAll(response.Body)
+	byteValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
 
-	reply.Dashboard = string(dashboardData)
+	json.Unmarshal(byteValue, &fullDashboard)
+	if len(fullDashboard.Relays) == 0 {
+		err := fmt.Errorf("relay backend returned an empty dashboard file")
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	filteredDashboard.Analysis = fullDashboard.Analysis
+	filteredDashboard.Stats = make(map[string]map[string]routing.Stats)
+
+	// x-axis relays first
+	xFilters := strings.Split(args.XAxisRelayFilter, ",")
+	for _, xFilter := range xFilters {
+		xAxisRegex := regexp.MustCompile("(?i)" + strings.TrimSpace(xFilter))
+		for _, relayEntry := range fullDashboard.Relays {
+			if xAxisRegex.MatchString(relayEntry.Name) {
+				filteredDashboard.Relays = append(filteredDashboard.Relays, relayEntry)
+				continue
+			}
+		}
+	}
+
+	if len(filteredDashboard.Relays) == 0 {
+		err := fmt.Errorf("no matches found for x-axis query string")
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	// then the y-axis
+	yFilters := strings.Split(args.YAxisRelayFilter, ",")
+	for _, yFilter := range yFilters {
+		yAxisRegex := regexp.MustCompile("(?i)" + strings.TrimSpace(yFilter))
+		for yAxisRelayName, relayStatsLine := range fullDashboard.Stats {
+			if yAxisRegex.MatchString(yAxisRelayName) {
+				filteredDashboard.Stats[yAxisRelayName] = make(map[string]routing.Stats)
+				for relayName, statsLineEntry := range relayStatsLine {
+					for _, xFilter := range xFilters {
+						xAxisRegex := regexp.MustCompile("(?i)" + strings.TrimSpace(xFilter))
+						if xAxisRegex.MatchString(relayName) {
+							filteredDashboard.Stats[yAxisRelayName][relayName] = statsLineEntry
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if len(filteredDashboard.Stats) == 0 {
+		err := fmt.Errorf("no matches found for y-axis query string")
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	reply.Dashboard = filteredDashboard
 
 	return nil
-}
-
-// GetOpsToken is a hack to get a usable token since we can't get the
-// Authorization header from the request.
-//
-// TODO: This function can be removed once relay_frontend/relays
-// has been moved to an internal IP address.
-//
-// See issue #3030: https://github.com/networknext/backend/issues/3030
-func GetOpsToken() (string, error) {
-	req, err := http.NewRequest(
-		http.MethodPost,
-		"https://networknext.auth0.com/oauth/token",
-		strings.NewReader(`{
-				"client_id":"6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb",
-				"client_secret":"EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj",
-				"audience":"https://portal.networknext.com",
-				"grant_type":"client_credentials"
-			}`),
-	)
-	if err != nil {
-		return "", err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("auth0 returned code %d", res.StatusCode)
-	}
-
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	token := gjson.ParseBytes(body).Get("access_token").String()
-
-	return token, nil
-
 }
