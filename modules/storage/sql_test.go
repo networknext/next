@@ -1778,6 +1778,9 @@ func TestDatabaseBinMetaData(t *testing.T) {
 
 	t.Run("AddDatabaseBinMetaData", func(t *testing.T) {
 
+		_, err := db.GetDatabaseBinFileMetaData()
+		assert.Error(t, err)
+
 		testTime := time.Now()
 		ctx := context.Background()
 
@@ -1786,7 +1789,7 @@ func TestDatabaseBinMetaData(t *testing.T) {
 			DatabaseBinFileCreationTime: testTime,
 		}
 
-		err := db.UpdateDatabaseBinFileMetaData(ctx, metaData)
+		err = db.UpdateDatabaseBinFileMetaData(ctx, metaData)
 		assert.NoError(t, err)
 
 		checkMetaData, err := db.GetDatabaseBinFileMetaData()

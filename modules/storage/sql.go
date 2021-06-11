@@ -3351,13 +3351,15 @@ func (db *SQL) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, er
 	row := db.Client.QueryRow(querySQL.String())
 	switch err := row.Scan(&dashboardData.DatabaseBinFileCreationTime, &dashboardData.DatabaseBinFileAuthor); err {
 	case sql.ErrNoRows:
-		fmt.Println("No rows were returned!")
 		level.Error(db.Logger).Log("during", "GetFleetDashboardData() no rows were returned!")
+		return routing.DatabaseBinFileMetaData{}, err
+	case nil:
+		return dashboardData, nil
 	default:
 		level.Error(db.Logger).Log("during", "GetFleetDashboardData() QueryRow returned an error: %v", err)
+		return routing.DatabaseBinFileMetaData{}, err
 	}
 
-	return dashboardData, nil
 }
 
 func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routing.DatabaseBinFileMetaData) error {
@@ -3372,7 +3374,6 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing UpdateDatabaseBinFileMetaData SQL", "err", err)
-		fmt.Println(err)
 		return err
 	}
 
@@ -3380,18 +3381,15 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() error adding DatabaseBinFileMetaData", "err", err)
-		fmt.Println(err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
 		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() RowsAffected returned an error", "err", err)
-		fmt.Println(err)
 		return err
 	}
 	if rows != 1 {
 		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() RowsAffected <> 1", "err", err)
-		fmt.Println(err)
 		return err
 	}
 
