@@ -97,8 +97,6 @@ func TestBuyersList(t *testing.T) {
 }
 
 func TestUserSessions(t *testing.T) {
-	t.Parallel()
-
 	checkBigtableEmulation(t)
 
 	var storer = storage.InMemory{}
@@ -337,6 +335,8 @@ func TestUserSessions(t *testing.T) {
 
 	t.Run("Live Sessions", func(t *testing.T) {
 
+		time.Sleep(500 * time.Millisecond)
+
 		t.Run("list live - ID", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
@@ -421,6 +421,8 @@ func TestUserSessions(t *testing.T) {
 		assert.NoError(t, err)
 		err = btClient.InsertSessionSliceData(ctx, []string{btCfName}, sliceBin8, sliceRowKeys8)
 		assert.NoError(t, err)
+
+		time.Sleep(500 * time.Millisecond)
 
 		t.Run("list live and historic - ID", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
