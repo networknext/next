@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -387,8 +386,6 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 
 	encoder := gob.NewEncoder(&buffer)
 	encoder.Encode(dbWrapper)
-
-	tempDir := os.TempDir()
 
 	tempFile, err := ioutil.TempFile("", "database.bin")
 	if err != nil {
