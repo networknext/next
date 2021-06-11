@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -394,7 +395,8 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 		reply.Message = err.Error()
 		return err
 	}
-	// defer os.Remove(tempFile.Name())
+	defer os.Remove(tempFile.Name())
+
 	_, err = tempFile.Write(buffer.Bytes())
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error writing database.bin to filesystem: %v", err)
