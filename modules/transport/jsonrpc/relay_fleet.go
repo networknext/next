@@ -444,7 +444,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 		err := fmt.Errorf("AdminBinFileHandler() error writing bin file metadata to db: %v", err)
 		rfs.Logger.Log("err", err)
 		reply.Message = err.Error()
-	} else {
+	}
 
 	return nil
 }
