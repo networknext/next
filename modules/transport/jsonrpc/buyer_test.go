@@ -97,8 +97,6 @@ func TestBuyersList(t *testing.T) {
 }
 
 func TestUserSessions(t *testing.T) {
-	t.Parallel()
-
 	checkBigtableEmulation(t)
 
 	var storer = storage.InMemory{}
