@@ -337,6 +337,8 @@ func TestUserSessions(t *testing.T) {
 
 		time.Sleep(500 * time.Millisecond)
 
+		t.Parallel()
+
 		t.Run("list live - ID", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
@@ -423,6 +425,8 @@ func TestUserSessions(t *testing.T) {
 		assert.NoError(t, err)
 
 		time.Sleep(500 * time.Millisecond)
+
+		t.Parallel()
 
 		t.Run("list live and historic - ID", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
