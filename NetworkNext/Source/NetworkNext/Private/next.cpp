@@ -10589,8 +10589,8 @@ bool next_whois( const char * address, const char * hostname, int recurse, char 
                 {
                     if (strstr(buf, ip_whois[i]) != NULL) 
                     {
-                        int res = asprintf( &nhost, "%s", ip_whois[i] );  // note: nhost is allocated here
-                        if ( res == -1 )
+                        int result = asprintf( &nhost, "%s", ip_whois[i] );  // note: nhost is allocated here
+                        if ( result == -1 )
                         {
                             nhost = NULL;
                         }

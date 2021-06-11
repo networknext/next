@@ -104,13 +104,7 @@ bool FNetworkNextSocketServer::Bind(const FInternetAddr& Addr)
 
     UE_LOG(LogNetworkNext, Display, TEXT("Created network next server"));
 
-    next_address_t server_address = *next_server_address( NetworkNextServer );
-    server_address.port = 0;
-    char server_address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_address_to_string(&server_address, server_address_string);
-    ServerAddress = FString(server_address_string);
-
-    UE_LOG(LogNetworkNext, Display, TEXT("Server address is %s"), *ServerAddress);
+    UE_LOG(LogNetworkNext, Display, TEXT("Server address is %s"), *ServerAddressOnly);
 
     UE_LOG(LogNetworkNext, Display, TEXT("Server port is %d"), GetPortNo());
 
