@@ -250,7 +250,7 @@ func mainReturnWithCode() int {
 
 	errChan := make(chan error, 1)
 	go func() {
-		if err := portalCruncher.Start(ctx, redisGoroutineCount, btGoroutineCount, redisPingFrequency, redisFlushFrequency, redisFlushCount); err != nil {
+		if err := portalCruncher.Start(ctx, redisGoroutineCount, btGoroutineCount, redisPingFrequency, redisFlushFrequency, redisFlushCount, env); err != nil {
 			level.Error(logger).Log("err", err)
 			errChan <- err
 			return

@@ -1751,124 +1751,59 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		}
 	}
 
-	var sessionMetasNext []transport.SessionMeta
-	var sessionMetasDirect []transport.SessionMeta
+	sessionMetaClient := s.RedisPoolSessionMeta.Get()
+	defer sessionMetaClient.Close()
 
-	if s.UseBigtable {
-
-		// Sometimes there are duplicate sessionIDs in both top session buckets
-		// Create a set of unique top sessionIDs
-		topSessions := make(map[string]bool)
-		for _, sessionID := range topSessionsA {
-			topSessions[sessionID] = true
-		}
-		for _, sessionID := range topSessionsB {
-			if _, ok := topSessions[sessionID]; !ok {
-				topSessions[sessionID] = true
-			}
-		}
-
-		// Create the filters to use for reading rows
-		chainFilter := bigtable.ChainFilters(
-			bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
-			bigtable.LatestNFilter(1),     // Gets the latest cell from the "meta" column
-		)
-
-		for sessionID, _ := range topSessions {
-			// Get the session meta from bigtable
-			metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", sessionID), bigtable.RowFilter(chainFilter))
-			if err != nil {
-				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-				err = fmt.Errorf("SessionDetails() failed to fetch top sessions meta information from bigtable: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return sessions, err
-			}
-			if len(metaRows) == 0 {
-				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-				err = fmt.Errorf("SessionDetails() failed to fetch top sessions meta information, no rows: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return sessions, err
-			}
-			s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
-
-			for _, row := range metaRows {
-				var meta transport.SessionMeta
-				meta.UnmarshalBinary(row[0].Value)
-
-				buyer, err := s.Storage.Buyer(meta.BuyerID)
-				if err != nil {
-					err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
-					level.Error(s.Logger).Log("err", err)
-					return sessions, err
-				}
-
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-					meta.Anonymise()
-				}
-
-				// Split the sessions metas into two slices so we can sort them separately.
-				// This is necessary because if we were to force sessions next, then sorting
-				// by improvement won't always put next sessions on top.
-				if meta.OnNetworkNext {
-					sessionMetasNext = append(sessionMetasNext, meta)
-				} else {
-					sessionMetasDirect = append(sessionMetasDirect, meta)
-				}
-			}
-		}
-	} else {
-		sessionMetaClient := s.RedisPoolSessionMeta.Get()
-		defer sessionMetaClient.Close()
-
-		sessionIDsRetreivedMap := make(map[string]bool)
-		for _, sessionID := range topSessionsA {
+	sessionIDsRetreivedMap := make(map[string]bool)
+	for _, sessionID := range topSessionsA {
+		sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
+		sessionIDsRetreivedMap[sessionID] = true
+	}
+	for _, sessionID := range topSessionsB {
+		if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
 			sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
 			sessionIDsRetreivedMap[sessionID] = true
 		}
-		for _, sessionID := range topSessionsB {
-			if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
-				sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-				sessionIDsRetreivedMap[sessionID] = true
-			}
+	}
+	sessionMetaClient.Flush()
+
+	var sessionMetasNext []transport.SessionMeta
+	var sessionMetasDirect []transport.SessionMeta
+	var meta transport.SessionMeta
+	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
+		metaString, err := redis.String(sessionMetaClient.Receive())
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta")
+			return sessions, err
 		}
-		sessionMetaClient.Flush()
 
-		var meta transport.SessionMeta
-		for i := 0; i < len(sessionIDsRetreivedMap); i++ {
-			metaString, err := redis.String(sessionMetaClient.Receive())
-			if err != nil && err != redis.ErrNil {
-				err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta")
-				return sessions, err
-			}
+		splitMetaStrings := strings.Split(metaString, "|")
+		if err := meta.ParseRedisString(splitMetaStrings); err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to parse redis string into meta: %v", err)
+			level.Error(s.Logger).Log("err", err, "redisString", metaString)
+			continue
+		}
 
-			splitMetaStrings := strings.Split(metaString, "|")
-			if err := meta.ParseRedisString(splitMetaStrings); err != nil {
-				err = fmt.Errorf("FetchCurrentTopSessions() failed to parse redis string into meta: %v", err)
-				level.Error(s.Logger).Log("err", err, "redisString", metaString)
-				continue
-			}
+		buyer, err := s.Storage.Buyer(meta.BuyerID)
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
 
-			buyer, err := s.Storage.Buyer(meta.BuyerID)
-			if err != nil {
-				err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return sessions, err
-			}
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+			meta.Anonymise()
+		}
 
-			if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-				meta.Anonymise()
-			}
-
-			// Split the sessions metas into two slices so we can sort them separately.
-			// This is necessary because if we were to force sessions next, then sorting
-			// by improvement won't always put next sessions on top.
-			if meta.OnNetworkNext {
-				sessionMetasNext = append(sessionMetasNext, meta)
-			} else {
-				sessionMetasDirect = append(sessionMetasDirect, meta)
-			}
+		// Split the sessions metas into two slices so we can sort them separately.
+		// This is necessary because if we were to force sessions next, then sorting
+		// by improvement won't always put next sessions on top.
+		if meta.OnNetworkNext {
+			sessionMetasNext = append(sessionMetasNext, meta)
+		} else {
+			sessionMetasDirect = append(sessionMetasDirect, meta)
 		}
 	}
 
