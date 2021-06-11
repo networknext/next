@@ -2,6 +2,7 @@ package jsonrpc
 
 import (
 	"bytes"
+	"context"
 	"encoding/csv"
 	"encoding/gob"
 	"encoding/json"
@@ -332,9 +333,14 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		reply.RelayForwarderStatus = []string{"relay_forwarder dne in dev/local"}
 	}
 
-	// TODO: reach out to db via storer for this info
-	reply.BinFileAuthor = "Arthur Dent"
-	reply.BinFileCreationTime = time.Now()
+	binFileMetaData, err := rfs.Storage.GetDatabaseBinFileMetaData()
+	if err != nil {
+		reply.BinFileAuthor = "Arthur Dent"
+		reply.BinFileCreationTime = time.Now()
+	} else {
+		reply.BinFileAuthor = binFileMetaData.DatabaseBinFileAuthor
+		reply.BinFileCreationTime = binFileMetaData.DatabaseBinFileCreationTime
+	}
 
 	return nil
 }
@@ -368,7 +374,6 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 		rfs.Logger.Log("err", fmt.Errorf("AdminBinFileHandler(): %v: Failed to parse user ID", err.Error()))
 		return &err
 	}
-	fmt.Printf("user: %s\n", requestEmail)
 
 	var buffer bytes.Buffer
 
@@ -384,7 +389,6 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	encoder.Encode(dbWrapper)
 
 	tempDir := os.TempDir()
-	fmt.Printf("tempDir: %s\n", tempDir)
 
 	tempFile, err := ioutil.TempFile("", "database.bin")
 	if err != nil {
@@ -394,7 +398,6 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 		return err
 	}
 	// defer os.Remove(tempFile.Name())
-	fmt.Println(tempFile.Name())
 	_, err = tempFile.Write(buffer.Bytes())
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error writing database.bin to filesystem: %v", err)
@@ -407,14 +410,11 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	bucketName := "gs://"
 	switch rfs.Env {
 	case "dev":
-		os.Exit(1)
-		// bucketName += "dev_database_bin_testing"
+		bucketName += "dev_database_bin"
 	case "prod":
-		os.Exit(1)
-		// bucketName += "prod_database_bin_testing"
+		bucketName += "prod_database_bin"
 	case "staging":
-		os.Exit(1)
-		// bucketName += "staging_database_bin_testing"
+		bucketName += "staging_database_bin"
 	case "local":
 		bucketName += "happy_path_testing"
 	}
@@ -422,19 +422,29 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	// enforce target file name, copy in /tmp has random numbers appended
 	bucketName += "/database.bin"
 
-	fmt.Printf("Env: %s\n", rfs.Env)
-	// gsutil cp database.bin gs://${bucketName}
+	// gsutil cp /tmp/database.bin84756774 gs://${bucketName}
 	gsutilCpCommand := exec.Command("gsutil", "cp", tempFile.Name(), bucketName)
 
 	err = gsutilCpCommand.Run()
 	if err != nil {
-		err := fmt.Errorf("AdminBinFileHandler() copying database.bin to %s: %v", bucketName, err)
+		err := fmt.Errorf("AdminBinFileHandler() error copying database.bin to %s: %v", bucketName, err)
 		rfs.Logger.Log("err", err)
-		fmt.Println(err)
 		reply.Message = err.Error()
 	} else {
 		reply.Message = "success!"
 	}
+
+	metaData := routing.DatabaseBinFileMetaData{
+		DatabaseBinFileAuthor:       requestEmail,
+		DatabaseBinFileCreationTime: time.Now(),
+	}
+
+	err = rfs.Storage.UpdateDatabaseBinFileMetaData(context.Background(), metaData)
+	if err != nil {
+		err := fmt.Errorf("AdminBinFileHandler() error writing bin file metadata to db: %v", err)
+		rfs.Logger.Log("err", err)
+		reply.Message = err.Error()
+	} else {
 
 	return nil
 }
