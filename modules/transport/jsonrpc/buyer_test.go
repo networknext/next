@@ -344,8 +344,16 @@ func TestUserSessions(t *testing.T) {
 
 			assert.Equal(t, len(reply.Sessions), 2)
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			// The order of reply is not consistent with Bigtable
+			// Check if the sessionIDs exist in the list rather than explicit slice elements
+			sessionCounter := 0
+			for _, session := range reply.Sessions {
+				if fmt.Sprintf("%016x", session.ID) == sessionID3 || fmt.Sprintf("%016x", session.ID) == sessionID2 {
+					sessionCounter++
+				}
+			}
+
+			assert.Equal(t, 2, sessionCounter)
 		})
 
 		t.Run("list live - hash", func(t *testing.T) {
@@ -355,8 +363,16 @@ func TestUserSessions(t *testing.T) {
 
 			assert.Equal(t, len(reply.Sessions), 2)
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			// The order of reply is not consistent with Bigtable
+			// Check if the sessionIDs exist in the list rather than explicit slice elements
+			sessionCounter := 0
+			for _, session := range reply.Sessions {
+				if fmt.Sprintf("%016x", session.ID) == sessionID3 || fmt.Sprintf("%016x", session.ID) == sessionID2 {
+					sessionCounter++
+				}
+			}
+
+			assert.Equal(t, 2, sessionCounter)
 		})
 
 		t.Run("list live - signed decimal hash", func(t *testing.T) {
@@ -431,8 +447,16 @@ func TestUserSessions(t *testing.T) {
 
 			assert.Equal(t, len(reply.Sessions), 3)
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			// The order of reply is not consistent with Bigtable
+			// Check if the sessionIDs exist in the list rather than explicit slice elements
+			sessionCounter := 0
+			for _, session := range reply.Sessions {
+				if fmt.Sprintf("%016x", session.ID) == sessionID3 || fmt.Sprintf("%016x", session.ID) == sessionID2 {
+					sessionCounter++
+				}
+			}
+
+			assert.Equal(t, 2, sessionCounter)
 		})
 
 		t.Run("list live and historic - hash", func(t *testing.T) {
@@ -442,8 +466,16 @@ func TestUserSessions(t *testing.T) {
 
 			assert.Equal(t, len(reply.Sessions), 3)
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			// The order of reply is not consistent with Bigtable
+			// Check if the sessionIDs exist in the list rather than explicit slice elements
+			sessionCounter := 0
+			for _, session := range reply.Sessions {
+				if fmt.Sprintf("%016x", session.ID) == sessionID3 || fmt.Sprintf("%016x", session.ID) == sessionID2 {
+					sessionCounter++
+				}
+			}
+
+			assert.Equal(t, 2, sessionCounter)
 		})
 
 		t.Run("list live and historic - signed decimal hash", func(t *testing.T) {
@@ -453,8 +485,16 @@ func TestUserSessions(t *testing.T) {
 
 			assert.Equal(t, len(reply.Sessions), 2)
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID4)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID8)
+			// The order of reply is not consistent with Bigtable
+			// Check if the sessionIDs exist in the list rather than explicit slice elements
+			sessionCounter := 0
+			for _, session := range reply.Sessions {
+				if fmt.Sprintf("%016x", session.ID) == sessionID4 || fmt.Sprintf("%016x", session.ID) == sessionID8 {
+					sessionCounter++
+				}
+			}
+
+			assert.Equal(t, 2, sessionCounter)
 		})
 
 	})
