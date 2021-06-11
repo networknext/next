@@ -1,17 +1,18 @@
 package analytics
 
 import (
-	"time"
+	"strconv"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/routing"
 )
 
 const (
-	PingStatsEntryVersion      = uint8(2)
+	PingStatsEntryVersion      = uint8(3)
 	RelayStatsEntryVersion     = uint8(2)
 	RelayNamesHashEntryVersion = uint8(1)
+
+	MaxInstanceIDLength = 64
 )
 
 type PingStatsEntry struct {
@@ -23,54 +24,13 @@ type PingStatsEntry struct {
 	Jitter     float32
 	PacketLoss float32
 	Routable   bool
-}
 
-func ExtractPingStats(statsdb *routing.StatsDatabase, maxJitter float32, maxPacketLoss float32) []PingStatsEntry {
-	length := routing.TriMatrixLength(len(statsdb.Entries))
-	entries := make([]PingStatsEntry, length)
-
-	if length > 0 { // prevent crash with only 1 relay
-		ids := make([]uint64, len(statsdb.Entries))
-
-		idx := 0
-		for k := range statsdb.Entries {
-			ids[idx] = k
-			idx++
-		}
-
-		for i := 1; i < len(ids); i++ {
-			for j := 0; j < i; j++ {
-				idA := ids[i]
-				idB := ids[j]
-
-				rtt, jitter, pl := statsdb.GetSample(idA, idB)
-				routable := rtt != routing.InvalidRouteValue && jitter != routing.InvalidRouteValue && pl != routing.InvalidRouteValue
-
-				if jitter > maxJitter {
-					routable = false
-				}
-
-				if pl > maxPacketLoss {
-					routable = false
-				}
-
-				entries[routing.TriMatrixIndex(i, j)] = PingStatsEntry{
-					RelayA:     idA,
-					RelayB:     idB,
-					RTT:        rtt,
-					Jitter:     jitter,
-					PacketLoss: pl,
-					Routable:   routable,
-				}
-			}
-		}
-	}
-
-	return entries
+	InstanceID string
+	Debug      bool
 }
 
 func WritePingStatsEntries(entries []PingStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*(8+8+4+4+4+1)
+	length := 1 + 8 + len(entries)*(8+8+4+4+4+1+MaxInstanceIDLength+1)
 	data := make([]byte, length)
 
 	index := 0
@@ -85,6 +45,8 @@ func WritePingStatsEntries(entries []PingStatsEntry) []byte {
 		encoding.WriteFloat32(data, &index, entry.Jitter)
 		encoding.WriteFloat32(data, &index, entry.PacketLoss)
 		encoding.WriteBool(data, &index, entry.Routable)
+		encoding.WriteString(data, &index, entry.InstanceID, uint32(MaxInstanceIDLength))
+		encoding.WriteBool(data, &index, entry.Debug)
 	}
 
 	return data
@@ -133,6 +95,15 @@ func ReadPingStatsEntries(data []byte) ([]*PingStatsEntry, bool) {
 				return nil, false
 			}
 		}
+		if version >= 3 {
+			if !encoding.ReadString(data, &index, &entry.InstanceID, uint32(MaxInstanceIDLength)) {
+				return nil, false
+			}
+			if !encoding.ReadBool(data, &index, &entry.Debug) {
+				return nil, false
+			}
+		}
+
 		entries[i] = entry
 	}
 
@@ -149,6 +120,8 @@ func (e *PingStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["jitter"] = e.Jitter
 	bqEntry["packet_loss"] = e.PacketLoss
 	bqEntry["routable"] = e.Routable
+	bqEntry["instanceID"] = e.InstanceID
+	bqEntry["debug"] = e.Debug
 
 	return bqEntry, "", nil
 }
@@ -158,8 +131,20 @@ type RelayStatsEntry struct {
 
 	ID uint64
 
-	CPUUsage float32
-	MemUsage float32
+	NumSessions uint32
+	MaxSessions uint32
+
+	NumRoutable   uint32
+	NumUnroutable uint32
+
+	// all of below are deprecated
+	Tx                        uint64
+	Rx                        uint64
+	PeakSessions              uint64
+	PeakSentBandwidthMbps     float32
+	PeakReceivedBandwidthMbps float32
+	CPUUsage                  float32
+	MemUsage                  float32
 
 	// percent = (sent||received) / nic speed
 
@@ -176,19 +161,6 @@ type RelayStatsEntry struct {
 
 	EnvelopeSentMbps     float32
 	EnvelopeReceivedMbps float32
-
-	NumSessions uint32
-	MaxSessions uint32
-
-	NumRoutable   uint32
-	NumUnroutable uint32
-
-	// all of below is deprecated
-	Tx                        uint64
-	Rx                        uint64
-	PeakSessions              uint64
-	PeakSentBandwidthMbps     float32
-	PeakReceivedBandwidthMbps float32
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
@@ -433,9 +405,14 @@ func ReadRouteMatrixStatsEntry(data []byte) (*RouteMatrixStatsEntry, bool) {
 func (e *RouteMatrixStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry := make(map[string]bigquery.Value)
 
-	bqEntry["timestamp"] = time.Unix(int64(e.Timestamp), 0)
+	bqEntry["timestamp"] = int(e.Timestamp)
 	bqEntry["down_relay_hash"] = int64(e.Hash)
-	bqEntry["down_relay_IDs"] = e.IDs
 
+	idStrings := make([]string, len(e.IDs))
+	for i, id := range e.IDs {
+		idStrings[i] = strconv.FormatUint(id, 10)
+	}
+
+	bqEntry["down_relay_IDs"] = idStrings
 	return bqEntry, "", nil
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"sort"
@@ -39,7 +41,7 @@ type SQL struct {
 	datacenters    map[uint64]routing.Datacenter
 	relays         map[uint64]routing.Relay
 	customers      map[string]routing.Customer
-	buyers         map[uint64]routing.Buyer
+	buyers         map[uint64]routing.Buyer // this index is in fact the database ID cast to uint64
 	sellers        map[string]routing.Seller
 	datacenterMaps map[uint64]routing.DatacenterMap
 
@@ -63,14 +65,15 @@ type SQL struct {
 	datacenterIDs map[int64]uint64
 	relayIDs      map[int64]uint64
 	customerIDs   map[int64]string
-	buyerIDs      map[int64]uint64
+	buyerIDs      map[uint64]int64 // buyerIDs map is inverted
 	sellerIDs     map[int64]string
 
-	datacenterIDsMutex sync.RWMutex
-	relayIDsMutex      sync.RWMutex
-	customerIDsMutex   sync.RWMutex
-	buyerIDsMutex      sync.RWMutex
-	sellerIDsMutex     sync.RWMutex
+	datacenterIDsMutex  sync.RWMutex
+	relayIDsMutex       sync.RWMutex
+	customerIDsMutex    sync.RWMutex
+	buyerIDsMutex       sync.RWMutex
+	sellerIDsMutex      sync.RWMutex
+	datacenterMapsMutex sync.RWMutex
 
 	SyncSequenceNumber int64
 }
@@ -250,7 +253,7 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 	}
 
 	sql.Write([]byte("update customers set (automatic_signin_domain, customer_name) ="))
-	sql.Write([]byte("($1, $2) where id = $5"))
+	sql.Write([]byte("($1, $2) where id = $3"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -282,13 +285,15 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 
 // Buyer gets a copy of a buyer with the specified buyer ID,
 // and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
-func (db *SQL) Buyer(id uint64) (routing.Buyer, error) {
+func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
+
+	dbBuyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 	db.buyerMutex.RLock()
-	b, found := db.buyers[id]
+	b, found := db.buyers[dbBuyerID]
 	db.buyerMutex.RUnlock()
 
 	if !found {
-		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", id)}
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", ephemeralBuyerID)}
 	}
 
 	return b, nil
@@ -327,15 +332,13 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	var sql bytes.Buffer
 
 	db.buyerMutex.RLock()
-	_, ok := db.buyers[b.ID]
+	_, ok := db.buyers[uint64(b.DatabaseID)]
 	db.buyerMutex.RUnlock()
 
 	if ok {
 		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
 	}
 
-	// This check only pertains to the next tool. Stateful clients would already
-	// have the customer id.
 	c, err := db.Customer(b.CompanyCode)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: b.CompanyCode}
@@ -387,19 +390,22 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return err
 	}
 
-	// get the DatabaseID loaded
 	db.syncBuyers(ctx)
 
+	// get the DatabaseID loaded
+	dbBuyerID := uint64(db.buyerIDs[buyer.ID])
+
 	db.buyerMutex.RLock()
-	newBuyer := db.buyers[buyer.ID]
+	newBuyer := db.buyers[dbBuyerID]
 	db.buyerMutex.RUnlock()
 
+	newBuyer.HexID = fmt.Sprintf("%016x", buyer.ID)
 	newBuyer.RouteShader = core.NewRouteShader()
 	newBuyer.InternalConfig = core.NewInternalConfig()
 
 	// update local fields
 	db.buyerMutex.Lock()
-	db.buyers[buyer.ID] = newBuyer
+	db.buyers[dbBuyerID] = newBuyer
 	db.buyerMutex.Unlock()
 
 	db.customerMutex.Lock()
@@ -416,15 +422,17 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 //  1. The buyer ID does not exist
 //  2. Removing the buyer would break the foreigh key relationship (datacenter_maps)
 //  3. Any other error returned from the database
-func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
+func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
 
+	buyerID := db.buyerIDs[ephemeralBuyerID]
+
 	db.buyerMutex.RLock()
-	buyer, ok := db.buyers[id]
+	buyer, ok := db.buyers[uint64(buyerID)]
 	db.buyerMutex.RUnlock()
 
 	if !ok {
-		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", id)}
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	}
 
 	sql.Write([]byte("delete from buyers where id = $1"))
@@ -452,7 +460,7 @@ func (db *SQL) RemoveBuyer(ctx context.Context, id uint64) error {
 	}
 
 	db.buyerMutex.Lock()
-	delete(db.buyers, buyer.ID)
+	delete(db.buyers, uint64(buyerID))
 	db.buyerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
@@ -469,8 +477,11 @@ func (db *SQL) SetBuyer(ctx context.Context, b routing.Buyer) error {
 
 	var sql bytes.Buffer
 
+	ephemeralBuyerID := b.ID
+	buyerID := db.buyerIDs[ephemeralBuyerID]
+
 	db.buyerMutex.RLock()
-	_, ok := db.buyers[b.ID]
+	_, ok := db.buyers[uint64(buyerID)]
 	db.buyerMutex.RUnlock()
 
 	if !ok {
@@ -501,7 +512,7 @@ func (db *SQL) SetBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	db.buyerMutex.Lock()
-	db.buyers[b.ID] = b
+	db.buyers[uint64(b.DatabaseID)] = b
 	db.buyerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
@@ -540,6 +551,7 @@ func (db *SQL) Sellers() []routing.Seller {
 type sqlSeller struct {
 	ID                        string
 	ShortName                 string
+	Secret                    bool
 	IngressPriceNibblinsPerGB int64
 	EgressPriceNibblinsPerGB  int64
 	CustomerID                int64
@@ -569,6 +581,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	newSellerData := sqlSeller{
 		ID:                        s.ID,
 		ShortName:                 s.ShortName,
+		Secret:                    s.Secret,
 		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
 		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
 		CustomerID:                c.DatabaseID,
@@ -576,8 +589,8 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 
 	// Add the seller in remote storage
 	sql.Write([]byte("insert into sellers ("))
-	sql.Write([]byte("short_name, public_egress_price, public_ingress_price, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4)"))
+	sql.Write([]byte("short_name, public_egress_price, public_ingress_price, secret, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -585,8 +598,11 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return err
 	}
 
-	result, err := stmt.Exec(newSellerData.ShortName, newSellerData.EgressPriceNibblinsPerGB,
+	result, err := stmt.Exec(
+		newSellerData.ShortName,
+		newSellerData.EgressPriceNibblinsPerGB,
 		newSellerData.IngressPriceNibblinsPerGB,
+		newSellerData.Secret,
 		newSellerData.CustomerID,
 	)
 
@@ -810,14 +826,24 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 
-		uriTuple := strings.Split(addrString, ":")
-		if uriTuple[0] == "" || uriTuple[1] == "" {
-			return fmt.Errorf("Unable to parse URI fo Add field: %v", value)
+		// "removing" a relay zeroes-out the public IP address
+		if addrString == "" {
+			updateSQL.Write([]byte("update relays set (public_ip, public_ip_port) = (null, null) "))
+			updateSQL.Write([]byte("where id=$1"))
+			args = append(args, relay.DatabaseID)
+		} else {
+			uriTuple := strings.Split(addrString, ":")
+			if len(uriTuple) < 2 {
+				return fmt.Errorf("unable to parse URI fo Add field: %v - you may be missing the port number?", value)
+			} else if uriTuple[0] == "" || uriTuple[1] == "" {
+				return fmt.Errorf("unable to parse URI fo Add field: %v", value)
+			}
+			updateSQL.Write([]byte("update relays set (public_ip, public_ip_port) = ($1, $2) "))
+			updateSQL.Write([]byte("where id=$3"))
+			args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
 		}
-		updateSQL.Write([]byte("update relays set (public_ip, public_ip_port) = ($1, $2) "))
-		updateSQL.Write([]byte("where id=$3"))
-		args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
 
+		// addr will be ':0' for "removed" relays
 		addr, err := net.ResolveUDPAddr("udp", addrString)
 		if err != nil {
 			return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
@@ -830,28 +856,44 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 
-		uriTuple := strings.Split(addrString, ":")
-		if uriTuple[0] == "" || uriTuple[1] == "" {
-			return fmt.Errorf("Unable to parse URI fo InternalAddr field: %v", value)
-		}
-		updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = ($1, $2) "))
-		updateSQL.Write([]byte("where id=$3"))
-		args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
+		if addrString == "" {
+			updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = (null, null) "))
+			updateSQL.Write([]byte("where id=$1"))
+			args = append(args, relay.DatabaseID)
+			relay.InternalAddr = net.UDPAddr{}
 
-		addr, err := net.ResolveUDPAddr("udp", addrString)
-		if err != nil {
-			return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
+		} else {
+			uriTuple := strings.Split(addrString, ":")
+			if len(uriTuple) < 2 {
+				return fmt.Errorf("unable to parse URI fo Add field: %v - you may be missing the port number?", value)
+			} else if uriTuple[0] == "" || uriTuple[1] == "" {
+				return fmt.Errorf("unable to parse URI fo Add field: %v", value)
+			}
+			updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = ($1, $2) "))
+			updateSQL.Write([]byte("where id=$3"))
+			args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
+
+			addr, err := net.ResolveUDPAddr("udp", addrString)
+			if err != nil {
+				return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
+			}
+			relay.InternalAddr = *addr
 		}
-		relay.InternalAddr = *addr
 
 	case "PublicKey":
-		publicKey, ok := value.([]byte)
+		publicKey, ok := value.(string)
 		if !ok {
-			return fmt.Errorf("%v is not a valid []byte type", value)
+			return fmt.Errorf("%v is not a valid string type", value)
 		}
+
+		newPublicKey, err := base64.StdEncoding.DecodeString(publicKey)
+		if err != nil {
+			return fmt.Errorf("PublicKey: failed to encode string public key: %v", err)
+		}
+
 		updateSQL.Write([]byte("update relays set public_key=$1 where id=$2"))
-		args = append(args, publicKey, relay.DatabaseID)
-		relay.PublicKey = publicKey
+		args = append(args, newPublicKey, relay.DatabaseID)
+		relay.PublicKey = newPublicKey
 
 	case "NICSpeedMbps":
 		portSpeed, ok := value.(float64)
@@ -973,14 +1015,20 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 
-		newStartDate, err := time.Parse("January 2, 2006", startDate)
-		if err != nil {
-			return fmt.Errorf("Could not parse `%s` - must be of the form 'January 2, 2006'", startDate)
-		}
+		if startDate == "" {
+			updateSQL.Write([]byte("update relays set start_date=null where id=$1"))
+			args = append(args, relay.DatabaseID)
+			relay.StartDate = time.Time{}
+		} else {
+			newStartDate, err := time.Parse("January 2, 2006", startDate)
+			if err != nil {
+				return fmt.Errorf("could not parse `%s` - must be of the form 'January 2, 2006'", startDate)
+			}
 
-		updateSQL.Write([]byte("update relays set start_date=$1 where id=$2"))
-		args = append(args, startDate, relay.DatabaseID)
-		relay.StartDate = newStartDate
+			updateSQL.Write([]byte("update relays set start_date=$1 where id=$2"))
+			args = append(args, startDate, relay.DatabaseID)
+			relay.StartDate = newStartDate
+		}
 
 	case "EndDate":
 		endDate, ok := value.(string)
@@ -988,14 +1036,20 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 
-		newEndDate, err := time.Parse("January 2, 2006", endDate)
-		if err != nil {
-			return fmt.Errorf("Could not parse `%s` - must be of the form 'January 2, 2006'", endDate)
-		}
+		if endDate == "" {
+			updateSQL.Write([]byte("update relays set end_date=null where id=$1"))
+			args = append(args, relay.DatabaseID)
+			relay.EndDate = time.Time{}
+		} else {
+			newEndDate, err := time.Parse("January 2, 2006", endDate)
+			if err != nil {
+				return fmt.Errorf("could not parse `%s` - must be of the form 'January 2, 2006'", endDate)
+			}
 
-		updateSQL.Write([]byte("update relays set end_date=$1 where id=$2"))
-		args = append(args, endDate, relay.DatabaseID)
-		relay.EndDate = newEndDate
+			updateSQL.Write([]byte("update relays set end_date=$1 where id=$2"))
+			args = append(args, endDate, relay.DatabaseID)
+			relay.EndDate = newEndDate
+		}
 
 	case "Type":
 		machineType, ok := value.(float64)
@@ -1010,8 +1064,66 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		// already checked int validity above
 		relay.Type, _ = routing.GetMachineTypeSQL(int64(machineType))
 
+	case "Notes":
+		notes, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if notes == "" {
+			updateSQL.Write([]byte("update relays set notes=null where id=$1"))
+			args = append(args, relay.DatabaseID)
+			relay.Notes = ""
+		} else {
+			updateSQL.Write([]byte("update relays set notes=$1 where id=$2"))
+			args = append(args, notes, relay.DatabaseID)
+			relay.Notes = notes
+		}
+
+	case "BillingSupplier":
+		billingSupplier, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if billingSupplier == "" {
+			updateSQL.Write([]byte("update relays set billing_supplier=null where id=$1"))
+			args = append(args, relay.DatabaseID)
+			relay.BillingSupplier = ""
+		} else {
+
+			sellerDatabaseID := 0
+			for _, seller := range db.Sellers() {
+				if seller.ID == billingSupplier {
+					sellerDatabaseID = int(seller.DatabaseID)
+				}
+			}
+
+			if sellerDatabaseID == 0 {
+				return fmt.Errorf("%s is not a valid seller ID", billingSupplier)
+			}
+
+			updateSQL.Write([]byte("update relays set billing_supplier=$1 where id=$2"))
+			args = append(args, sellerDatabaseID, relay.DatabaseID)
+			relay.BillingSupplier = billingSupplier
+		}
+
+	case "Version":
+		version, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if version == "" {
+			return fmt.Errorf("relay version must not be an empty string")
+		}
+
+		updateSQL.Write([]byte("update relays set relay_version=$1 where id=$2"))
+		args = append(args, version, relay.DatabaseID)
+		relay.Version = version
+
 	default:
-		return fmt.Errorf("Field '%v' does not exist on the routing.Relay type", field)
+		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
 
 	}
 
@@ -1046,11 +1158,13 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 
 type sqlRelay struct {
 	ID                 uint64
+	HexID              string
 	Name               string
-	PublicIP           string
-	PublicIPPort       int64
+	PublicIP           sql.NullString
+	PublicIPPort       sql.NullInt64
 	InternalIP         sql.NullString
 	InternalIPPort     sql.NullInt64
+	BillingSupplier    sql.NullInt64
 	PublicKey          []byte
 	NICSpeedMbps       int64
 	IncludedBandwithGB int64
@@ -1064,56 +1178,109 @@ type sqlRelay struct {
 	Overage            int64
 	BWRule             int64
 	ContractTerm       int64
-	// StartDate          time.Time
-	// EndDate            time.Time
-	StartDate   sql.NullTime
-	EndDate     sql.NullTime
-	MachineType int64
-	DatabaseID  int64
+	Notes              sql.NullString
+	StartDate          sql.NullTime
+	EndDate            sql.NullTime
+	MachineType        int64
+	Version            string
+	DatabaseID         int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
 func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	var sqlQuery bytes.Buffer
+	var err error
 
 	db.relayMutex.RLock()
 	_, ok := db.relays[r.ID]
 	db.relayMutex.RUnlock()
 
 	if ok {
-		return &AlreadyExistsError{resourceType: "relay", resourceRef: r.ID}
+		return &AlreadyExistsError{resourceType: "relay", resourceRef: r.Name}
 	}
 
+	// Routing.Addr is possibly null during syncRelays (due to removed/renamed
+	// relays) but *must* have a value when adding a relay
+	publicIP := strings.Split(r.Addr.String(), ":")[0]
 	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
 	if err != nil {
-		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+		return fmt.Errorf("unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
+	rid := crypto.HashID(r.Addr.String())
 
 	var internalIP sql.NullString
 	var internalIPPort sql.NullInt64
-	if r.InternalAddr.String() != "" {
+	if r.InternalAddr.String() != "" && r.InternalAddr.String() != ":0" {
 		internalIP.String = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIP.Valid = true
 		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		internalIPPort.Valid = true
 		if err != nil {
-			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
+			return fmt.Errorf("unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
 		}
+	} else {
+		internalIP = sql.NullString{}
+		internalIPPort = sql.NullInt64{}
 	}
 
 	var startDate sql.NullTime
 	if !r.StartDate.IsZero() {
 		startDate.Time = r.StartDate
+		startDate.Valid = true
+	} else {
+		startDate = sql.NullTime{}
 	}
 
 	var endDate sql.NullTime
 	if !r.EndDate.IsZero() {
 		endDate.Time = r.EndDate
+		endDate.Valid = true
+	} else {
+		endDate = sql.NullTime{}
+	}
+
+	var billingSupplier sql.NullInt64
+	if r.BillingSupplier != "" {
+		supplier, err := db.Seller(r.BillingSupplier)
+		if err != nil {
+			return fmt.Errorf("Seller %s does not exist %v", r.BillingSupplier, err)
+		}
+		billingSupplier.Valid = true
+		billingSupplier.Int64 = supplier.DatabaseID
+	} else {
+		billingSupplier.Valid = false
+	}
+
+	nullablePublicIP := sql.NullString{
+		Valid:  true,
+		String: publicIP,
+	}
+
+	nullablePublicIPPort := sql.NullInt64{
+		Valid: true,
+		Int64: publicIPPort,
+	}
+
+	nullableNotes := sql.NullString{
+		Valid: false,
+	}
+
+	if r.Notes != "" {
+		nullableNotes.Valid = true
+		nullableNotes.String = r.Notes
+	}
+
+	// field is not null but we also don't want an empty string
+	if r.Version == "" {
+		return fmt.Errorf("relay version can not be an empty string and must be a valid value (e.g. '2.0.6')")
 	}
 
 	relay := sqlRelay{
 		Name:               r.Name,
-		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
-		PublicIPPort:       publicIPPort,
+		HexID:              fmt.Sprintf("%016x", rid),
+		PublicIP:           nullablePublicIP,
+		PublicIPPort:       nullablePublicIPPort,
 		InternalIP:         internalIP,
 		InternalIPPort:     internalIPPort,
 		PublicKey:          r.PublicKey,
@@ -1121,6 +1288,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
 		DatacenterID:       r.Datacenter.DatabaseID,
 		ManagementIP:       r.ManagementAddr,
+		BillingSupplier:    billingSupplier,
 		SSHUser:            r.SSHUser,
 		SSHPort:            r.SSHPort,
 		State:              int64(r.State),
@@ -1132,15 +1300,18 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		StartDate:          startDate,
 		EndDate:            endDate,
 		MachineType:        int64(r.Type),
+		Notes:              nullableNotes,
+		Version:            r.Version,
 	}
 
 	sqlQuery.Write([]byte("insert into relays ("))
-	sqlQuery.Write([]byte("contract_term, display_name, end_date, included_bandwidth_gb, "))
+	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
+	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version "))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
@@ -1149,9 +1320,10 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	result, err := stmt.Exec(
+		relay.HexID,
 		relay.ContractTerm,
 		relay.Name,
-		relay.EndDate.Time,
+		relay.EndDate,
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
@@ -1163,13 +1335,16 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
-		relay.StartDate.Time,
+		relay.StartDate,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
 		relay.State,
 		relay.InternalIP,
 		relay.InternalIPPort,
+		relay.Notes,
+		relay.BillingSupplier,
+		relay.Version,
 	)
 
 	if err != nil {
@@ -1241,12 +1416,23 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 	return nil
 }
 
+func NewNullString(s string) sql.NullString {
+	if len(s) == 0 {
+		return sql.NullString{}
+	}
+	return sql.NullString{
+		String: s,
+		Valid:  true,
+	}
+}
+
 // SetRelay updates the relay in storage with the provided copy and returns an
 // error if the relay could not be updated.
 // TODO: chopping block
 func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 
 	var sqlQuery bytes.Buffer
+	var err error
 
 	db.relayMutex.RLock()
 	_, ok := db.relays[r.ID]
@@ -1256,34 +1442,56 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%016x", r.ID)}
 	}
 
-	publicIPPort, err := strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
-	if err != nil {
-		return fmt.Errorf("Unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+	var publicIP sql.NullString
+	var publicIPPort sql.NullInt64
+
+	if r.Addr.String() != ":0" && r.Addr.String() != "" {
+		publicIP.String = strings.Split(r.Addr.String(), ":")[0]
+		publicIP.Valid = true
+		publicIPPort.Int64, err = strconv.ParseInt(strings.Split(r.Addr.String(), ":")[1], 10, 64)
+		publicIPPort.Valid = true
+		if err != nil {
+			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
+		}
+	} else {
+		publicIP = sql.NullString{}
+		publicIPPort = sql.NullInt64{}
 	}
 
 	var internalIP sql.NullString
 	var internalIPPort sql.NullInt64
-	if r.InternalAddr.String() != "" {
+	if r.InternalAddr.String() != ":0" && r.InternalAddr.String() != "" {
 		internalIP.String = strings.Split(r.InternalAddr.String(), ":")[0]
+		internalIP.Valid = true
 		internalIPPort.Int64, err = strconv.ParseInt(strings.Split(r.InternalAddr.String(), ":")[1], 10, 64)
+		internalIPPort.Valid = true
 		if err != nil {
 			return fmt.Errorf("Unable to convert InternalIP Port %s to int: %v", strings.Split(r.InternalAddr.String(), ":")[1], err)
 		}
+	} else {
+		internalIP = sql.NullString{}
+		internalIPPort = sql.NullInt64{}
 	}
 
 	var startDate sql.NullTime
 	if !r.StartDate.IsZero() {
 		startDate.Time = r.StartDate
+		startDate.Valid = true
+	} else {
+		startDate = sql.NullTime{}
 	}
 
 	var endDate sql.NullTime
 	if !r.EndDate.IsZero() {
 		endDate.Time = r.EndDate
+		endDate.Valid = true
+	} else {
+		endDate = sql.NullTime{}
 	}
 
 	relay := sqlRelay{
 		Name:               r.Name,
-		PublicIP:           strings.Split(r.Addr.String(), ":")[0],
+		PublicIP:           publicIP,
 		PublicIPPort:       publicIPPort,
 		InternalIP:         internalIP,
 		InternalIPPort:     internalIPPort,
@@ -1322,7 +1530,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	result, err := stmt.Exec(
 		relay.ContractTerm,
 		relay.Name,
-		relay.EndDate.Time,
+		relay.EndDate,
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
@@ -1334,7 +1542,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.PublicKey,
 		relay.SSHPort,
 		relay.SSHUser,
-		relay.StartDate.Time,
+		relay.StartDate,
 		relay.BWRule,
 		relay.DatacenterID,
 		relay.MachineType,
@@ -1510,16 +1718,17 @@ func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 	return nil
 }
 
-// GetDatacenterMapsForBuyer returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
-// an empty []routing.DatacenterMap if there are no aliases for that buyerID.
-func (db *SQL) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap {
+// GetDatacenterMapsForBuyer returns a map of datacenter aliases in use for a given
+// (internally generated) buyerID. The map is indexed by the datacenter ID. Returns
+// an empty map if there are no aliases for that buyerID.
+func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]routing.DatacenterMap {
 	db.datacenterMapMutex.RLock()
 	defer db.datacenterMapMutex.RUnlock()
 
-	// buyer can have multiple dc aliases
+	// buyer can have multiple dc maps but only one alias per datacenter
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range db.datacenterMaps {
-		if dc.BuyerID == buyerID {
+		if dc.BuyerID == ephemeralBuyerID {
 			dcs[dc.DatacenterID] = dc
 		}
 	}
@@ -1532,12 +1741,14 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 	var sql bytes.Buffer
 
-	bID := dcMap.BuyerID
+	ephemeralBuyerID := dcMap.BuyerID
+	buyerID := db.buyerIDs[ephemeralBuyerID]
 
 	dcID := dcMap.DatacenterID
 
-	buyer, ok := db.buyers[bID]
+	buyer, ok := db.buyers[uint64(buyerID)]
 	if !ok {
+		fmt.Printf("buyer does not exist: %016x\n", dcMap.BuyerID)
 		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
 	}
 
@@ -1583,6 +1794,94 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	return nil
 }
 
+func (db *SQL) UpdateDatacenterMap(ctx context.Context, ephemeralBuyerID uint64, datacenterID uint64, field string, value interface{}) error {
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+	var err error
+
+	dcmID := crypto.HashID(fmt.Sprintf("%016x", ephemeralBuyerID) + fmt.Sprintf("%016x", datacenterID))
+	workingDatacenterMap, ok := db.datacenterMaps[dcmID]
+	if !ok {
+		return fmt.Errorf("Datacenter map for buyerID %016x, datacenterID %016x does not exist", ephemeralBuyerID, datacenterID)
+	}
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
+	// if the dcMap exists then the buyer and datacenter IDs are legit
+	originalDatacenter := db.datacenters[datacenterID]
+	originalBuyer := db.buyers[buyerID]
+
+	switch field {
+	case "HexDatacenterID":
+		hexDatacenterID, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		newDatacenterID, err := strconv.ParseUint(hexDatacenterID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("Could not parse hexDatacenterID: %v", value)
+		}
+
+		newDatacenter := db.datacenters[newDatacenterID]
+
+		updateSQL.Write([]byte("update datacenter_maps set datacenter_id=$1 where datacenter_id=$2 and buyer_id=$3"))
+		args = append(args, newDatacenter.DatabaseID, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
+		workingDatacenterMap.DatacenterID = newDatacenterID
+
+		// changing the datacenter ID in the alias changes the datacenter map ID so
+		// delete the old one and add the new one
+		db.datacenterMapsMutex.Lock()
+		delete(db.datacenterMaps, dcmID)
+		dcmID = crypto.HashID(fmt.Sprintf("%x", ephemeralBuyerID) + fmt.Sprintf("%x", newDatacenterID))
+		db.datacenterMaps[dcmID] = workingDatacenterMap
+		db.datacenterMapsMutex.Unlock()
+
+	case "Alias":
+		alias, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update datacenter_maps set alias=$1 where datacenter_id=$2 and buyer_id=$3"))
+		args = append(args, alias, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
+		workingDatacenterMap.Alias = alias
+
+		db.datacenterMapsMutex.Lock()
+		db.datacenterMaps[dcmID] = workingDatacenterMap
+		db.datacenterMapsMutex.Unlock()
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.DatacenterMap type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateDatacenterMap SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying datacenter map record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.IncrementSequenceNumber(ctx)
+
+	return nil
+}
+
 // ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 // empty dcID returns a list of all maps.
 func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
@@ -1604,7 +1903,7 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	var sql bytes.Buffer
 
-	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+	id := crypto.HashID(fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
 
 	db.datacenterMapMutex.RLock()
 	dcMap, ok := db.datacenterMaps[id]
@@ -1614,7 +1913,8 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		return &DoesNotExistError{resourceType: "datacenter map", resourceRef: fmt.Sprintf("%016x", id)}
 	}
 
-	buyer := db.buyers[dcMap.BuyerID]
+	buyerID := db.buyerIDs[dcMap.BuyerID]
+	buyer := db.buyers[uint64(buyerID)]
 	datacenter := db.datacenters[dcMap.DatacenterID]
 
 	sql.Write([]byte("delete from datacenter_maps where buyer_id = $1 and datacenter_id = $2"))
@@ -1754,25 +2054,12 @@ func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
 	}
 
-	// SQLite3 does not like this check but it is necessary...
-	// TODO: fix/research
-	// result, err := stmt.Exec(sequenceNumber)
-	// if err != nil {
-	// 	level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
-	// }
-	// rows, err := result.RowsAffected()
-	// if err != nil {
-	// 	level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-	// }
-	// if rows != 1 {
-	// 	level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-	// }
-
 	return nil
 }
 
 type sqlDatacenter struct {
 	ID        int64
+	HexID     string
 	Name      string
 	Latitude  float32
 	Longitude float32
@@ -1796,16 +2083,18 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 		return &AlreadyExistsError{resourceType: "datacenter", resourceRef: datacenter.ID}
 	}
 
+	did := fmt.Sprintf("%016x", crypto.HashID(datacenter.Name))
 	dc := sqlDatacenter{
 		Name:      datacenter.Name,
+		HexID:     did,
 		Latitude:  datacenter.Location.Latitude,
 		Longitude: datacenter.Location.Longitude,
 		SellerID:  datacenter.SellerID,
 	}
 
 	sql.Write([]byte("insert into datacenters ("))
-	sql.Write([]byte("display_name, latitude, longitude, "))
-	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4)"))
+	sql.Write([]byte("display_name, hex_id, latitude, longitude, "))
+	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4, $5)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1813,7 +2102,9 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 		return err
 	}
 
-	result, err := stmt.Exec(dc.Name,
+	result, err := stmt.Exec(
+		dc.Name,
+		dc.HexID,
 		dc.Latitude,
 		dc.Longitude,
 		dc.SellerID,
@@ -1841,9 +2132,11 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 }
 
 // RouteShaders returns a slice of route shaders for the given buyer ID
-func (db *SQL) RouteShader(buyerID uint64) (core.RouteShader, error) {
+func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
 	db.routeShaderMutex.RLock()
 	defer db.routeShaderMutex.RUnlock()
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
 	routeShader, found := db.routeShaders[buyerID]
 	if !found {
@@ -1854,9 +2147,11 @@ func (db *SQL) RouteShader(buyerID uint64) (core.RouteShader, error) {
 }
 
 // InternalConfig returns the InternalConfig entry for the specified buyer
-func (db *SQL) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
+func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, error) {
 	db.internalConfigMutex.RLock()
 	defer db.internalConfigMutex.RUnlock()
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
 	internalConfig, found := db.internalConfigs[buyerID]
 	if !found {
@@ -1868,9 +2163,11 @@ func (db *SQL) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
 }
 
 // AddInternalConfig adds an InternalConfig for the specified buyer
-func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, buyerID uint64) error {
+func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ephemeralBuyerID uint64) error {
 
 	var sql bytes.Buffer
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
 	db.internalConfigMutex.RLock()
 	_, ok := db.internalConfigs[buyerID]
@@ -1881,30 +2178,31 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	}
 
 	db.buyerMutex.RLock()
-	buyer, err := db.Buyer(buyerID)
+	buyer, ok := db.buyers[buyerID]
 	db.buyerMutex.RUnlock()
 
-	if err != nil {
+	if !ok {
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
 	internalConfig := sqlInternalConfig{
-		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
-		RTTVetoDefault:             int64(ic.RTTVeto_Default),
-		RTTVetoPacketLoss:          int64(ic.RTTVeto_PacketLoss),
-		RTTVetoMultipath:           int64(ic.RTTVeto_Multipath),
-		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-		ForceNext:                  ic.ForceNext,
-		LargeCustomer:              ic.LargeCustomer,
-		Uncommitted:                ic.Uncommitted,
-		MaxRTT:                     int64(ic.MaxRTT),
-		HighFrequencyPings:         ic.HighFrequencyPings,
-		RouteDiversity:             int64(ic.RouteDiversity),
-		MultipathThreshold:         int64(ic.MultipathThreshold),
-		EnableVanityMetrics:        ic.EnableVanityMetrics,
+		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
+		RTTVetoDefault:                 int64(ic.RTTVeto_Default),
+		RTTVetoPacketLoss:              int64(ic.RTTVeto_PacketLoss),
+		RTTVetoMultipath:               int64(ic.RTTVeto_Multipath),
+		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
+		ForceNext:                      ic.ForceNext,
+		LargeCustomer:                  ic.LargeCustomer,
+		Uncommitted:                    ic.Uncommitted,
+		MaxRTT:                         int64(ic.MaxRTT),
+		HighFrequencyPings:             ic.HighFrequencyPings,
+		RouteDiversity:                 int64(ic.RouteDiversity),
+		MultipathThreshold:             int64(ic.MultipathThreshold),
+		EnableVanityMetrics:            ic.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
@@ -1912,8 +2210,8 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
 	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, buyer_id) "))
-	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"))
+	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number, buyer_id) "))
+	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1938,6 +2236,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 		internalConfig.RouteDiversity,
 		internalConfig.MultipathThreshold,
 		internalConfig.EnableVanityMetrics,
+		internalConfig.ReducePacketLossMinSliceNumber,
 		buyer.DatabaseID,
 	)
 
@@ -1959,7 +2258,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 
 	buyer.InternalConfig = ic
 	db.buyerMutex.Lock()
-	db.buyers[buyer.ID] = buyer
+	db.buyers[buyerID] = buyer
 	db.buyerMutex.Unlock()
 
 	db.IncrementSequenceNumber(ctx)
@@ -1967,8 +2266,10 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, bu
 	return nil
 }
 
-func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
+func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
 	db.internalConfigMutex.RLock()
 	_, ok := db.internalConfigs[buyerID]
@@ -1978,8 +2279,8 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
 		return &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
-	buyer, err := db.Buyer(buyerID)
-	if err != nil {
+	buyer, ok := db.buyers[buyerID]
+	if !ok {
 		return &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2016,22 +2317,24 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
 	return nil
 }
 
-func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
 	var stmt *sql.Stmt
+	var err error
 
-	ic, err := db.InternalConfig(buyerID)
-	if err != nil {
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
+	ic, ok := db.internalConfigs[buyerID]
+	if !ok {
 		return &DoesNotExistError{resourceType: "internal config", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
 	db.buyerMutex.RLock()
-	buyer, err := db.Buyer(buyerID)
+	buyer, ok := db.buyers[buyerID]
 	db.buyerMutex.RUnlock()
 
-	if err != nil {
+	if !ok {
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2164,6 +2467,14 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 		updateSQL.Write([]byte("update rs_internal_configs set enable_vanity_metrics=$1 where buyer_id=$2"))
 		args = append(args, enableVanityMetrics, buyer.DatabaseID)
 		ic.EnableVanityMetrics = enableVanityMetrics
+	case "ReducePacketLossMinSliceNumber":
+		reducePacketLossMinSliceNumber, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("ReducePacketLossMinSliceNumber: %v is not a valid int32 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update rs_internal_configs set reduce_pl_min_slice_number=$1 where buyer_id=$2"))
+		args = append(args, reducePacketLossMinSliceNumber, buyer.DatabaseID)
+		ic.ReducePacketLossMinSliceNumber = reducePacketLossMinSliceNumber
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
@@ -2195,12 +2506,16 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, buyerID uint64, field s
 	db.internalConfigs[buyerID] = ic
 	db.internalConfigMutex.Unlock()
 
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
-func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID uint64) error {
+func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemeralBuyerID uint64) error {
 
 	var sql bytes.Buffer
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
 	db.routeShaderMutex.RLock()
 	_, ok := db.routeShaders[buyerID]
@@ -2211,10 +2526,10 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID 
 	}
 
 	db.buyerMutex.RLock()
-	buyer, err := db.Buyer(buyerID)
+	buyer, ok := db.buyers[buyerID]
 	db.buyerMutex.RUnlock()
 
-	if err != nil {
+	if !ok {
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2232,13 +2547,14 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID 
 		ReducePacketLoss:          rs.ReducePacketLoss,
 		ReduceJitter:              rs.ReduceJitter,
 		SelectionPercent:          int64(rs.SelectionPercent),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
 	sql.Write([]byte("insert into route_shaders ("))
 	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
-	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, buyer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"))
+	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, packet_loss_sustained, buyer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2260,6 +2576,7 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID 
 		routeShader.ReducePacketLoss,
 		routeShader.ReduceJitter,
 		routeShader.SelectionPercent,
+		routeShader.PacketLossSustained,
 		buyer.DatabaseID,
 	)
 
@@ -2292,22 +2609,24 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, buyerID 
 
 }
 
-func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
 	var stmt *sql.Stmt
+	var err error
 
-	rs, err := db.RouteShader(buyerID)
-	if err != nil {
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
+	rs, ok := db.routeShaders[buyerID]
+	if !ok {
 		return &DoesNotExistError{resourceType: "route shader", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
 	db.buyerMutex.RLock()
-	buyer, err := db.Buyer(buyerID)
+	buyer, ok := db.buyers[buyerID]
 	db.buyerMutex.RUnlock()
 
-	if err != nil {
+	if !ok {
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2416,6 +2735,14 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id=$2"))
 		args = append(args, selectionPercent, buyer.DatabaseID)
 		rs.SelectionPercent = selectionPercent
+	case "PacketLossSustained":
+		packetLossSustained, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("PacketLossSustained: %v is not a valid float type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update route_shaders set packet_loss_sustained=$1 where buyer_id=$2"))
+		args = append(args, packetLossSustained, buyer.DatabaseID)
+		rs.PacketLossSustained = packetLossSustained
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
 
@@ -2447,13 +2774,16 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, buyerID uint64, field stri
 	db.routeShaders[buyerID] = rs
 	db.routeShaderMutex.Unlock()
 
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 
 }
 
-func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
+func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
 
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 	db.routeShaderMutex.RLock()
 	_, ok := db.routeShaders[buyerID]
 	db.routeShaderMutex.RUnlock()
@@ -2462,8 +2792,8 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
-	buyer, err := db.Buyer(buyerID)
-	if err != nil {
+	buyer, ok := db.buyers[buyerID]
+	if !ok {
 		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2501,20 +2831,22 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
 }
 
 // AddBannedUser adds a user to the banned_user table
-func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userID uint64) error {
 
 	var sql bytes.Buffer
 
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
+
 	db.buyerMutex.RLock()
-	buyer, err := db.Buyer(buyerID)
+	buyer, ok := db.buyers[buyerID]
 	db.buyerMutex.RUnlock()
 
-	if err != nil {
+	if !ok {
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
 	db.bannedUserMutex.RLock()
-	_, ok := db.bannedUsers[buyerID][userID]
+	_, ok = db.bannedUsers[buyerID][userID]
 	db.bannedUserMutex.RUnlock()
 
 	if ok {
@@ -2579,15 +2911,16 @@ func (db *SQL) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64)
 }
 
 // RemoveBannedUser removes a user from the banned_user table
-func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
+func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, userID uint64) error {
 
 	var sql bytes.Buffer
 
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 	db.buyerMutex.RLock()
-	buyer, err := db.Buyer(buyerID)
+	buyer, ok := db.buyers[buyerID]
 	db.buyerMutex.RUnlock()
 
-	if err != nil {
+	if !ok {
 		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2640,7 +2973,9 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint
 }
 
 // BannedUsers returns the set of banned users for the specified buyer ID.
-func (db *SQL) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
+func (db *SQL) BannedUsers(ephemeralBuyerID uint64) (map[uint64]bool, error) {
+
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
 	db.bannedUserMutex.RLock()
 	bannedUsers, found := db.bannedUsers[buyerID]
@@ -2675,14 +3010,17 @@ func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) err
 	return fmt.Errorf("RemoveFeatureFlagByName not yet impemented in SQL storer")
 }
 
-func (db *SQL) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
+func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
 	var stmt *sql.Stmt
+	var err error
 
-	buyer, err := db.Buyer(buyerID)
-	if err != nil {
+	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
+
+	buyer, ok := db.buyers[buyerID]
+	if !ok {
 		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -2712,6 +3050,49 @@ func (db *SQL) UpdateBuyer(ctx context.Context, buyerID uint64, field string, va
 		args = append(args, shortName, buyer.DatabaseID)
 		buyer.ShortName = shortName
 
+	case "PublicKey":
+		pubKey, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("PublicKey: %v is not a valid string type (%T)", value, value)
+		}
+
+		// Changing the public key also requires changing the ID field and fixing any
+		// extant datacenter maps for this buyer
+		newPublicKey, err := base64.StdEncoding.DecodeString(pubKey)
+		if err != nil {
+			return fmt.Errorf("PublicKey: failed to encode string public key: %v", err)
+		}
+
+		if len(newPublicKey) != crypto.KeySize+8 {
+			return fmt.Errorf("PublicKey: public key is not the correct length: %d", len(newPublicKey))
+		}
+
+		newBuyerID := binary.LittleEndian.Uint64(newPublicKey[:8])
+		updateSQL.Write([]byte("update buyers set public_key=$1, sdk_generated_id=$2 where id=$3"))
+		args = append(args, newPublicKey[8:], int64(newBuyerID), buyer.DatabaseID)
+
+		buyer.ID = newBuyerID
+		buyer.PublicKey = newPublicKey[8:]
+
+		db.buyerIDsMutex.Lock()
+		delete(db.buyerIDs, ephemeralBuyerID)
+		db.buyerIDs[newBuyerID] = buyer.DatabaseID
+		db.buyerIDsMutex.Unlock()
+
+		// Fix existing datacenter maps
+		dcMaps := db.GetDatacenterMapsForBuyer(ephemeralBuyerID)
+		if len(dcMaps) > 0 {
+			for key, dcMap := range dcMaps {
+				dcMap.BuyerID = newBuyerID
+				dcmID := crypto.HashID(fmt.Sprintf("%x", newBuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+
+				db.datacenterMapsMutex.Lock()
+				delete(db.datacenterMaps, key)
+				db.datacenterMaps[dcmID] = dcMap
+				db.datacenterMapsMutex.Unlock()
+			}
+		}
+
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Buyer type", field)
 
@@ -2735,13 +3116,15 @@ func (db *SQL) UpdateBuyer(ctx context.Context, buyerID uint64, field string, va
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1")
 		return err
 	}
 
 	db.buyerMutex.Lock()
 	db.buyers[buyerID] = buyer
 	db.buyerMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
@@ -2806,6 +3189,8 @@ func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field stri
 	db.customers[customerID] = customer
 	db.customerMutex.Unlock()
 
+	db.IncrementSequenceNumber(ctx)
+
 	return nil
 }
 
@@ -2847,6 +3232,14 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 		updateSQL.Write([]byte("update sellers set public_ingress_price=$1 where id=$2"))
 		args = append(args, int64(ingress), seller.DatabaseID)
 		seller.IngressPriceNibblinsPerGB = ingress
+	case "Secret":
+		secret, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean type", value)
+		}
+		updateSQL.Write([]byte("update sellers set secret=$1 where id=$2"))
+		args = append(args, secret, seller.DatabaseID)
+		seller.Secret = secret
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Seller type", field)
@@ -2878,6 +3271,72 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 	db.sellerMutex.Lock()
 	db.sellers[sellerID] = seller
 	db.sellerMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
+
+	return nil
+}
+
+func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
+
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+
+	datacenter, err := db.Datacenter(datacenterID)
+	if err != nil {
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%016x", datacenterID)}
+	}
+
+	switch field {
+	case "Latitude":
+		latitude, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float32 value", value)
+		}
+		updateSQL.Write([]byte("update datacenters set latitude=$1 where id=$2"))
+		args = append(args, latitude, datacenter.DatabaseID)
+		datacenter.Location.Latitude = latitude
+	case "Longitude":
+		longitude, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float32 value", value)
+		}
+		updateSQL.Write([]byte("update datacenters set longitude=$1 where id=$2"))
+		args = append(args, longitude, datacenter.DatabaseID)
+		datacenter.Location.Longitude = longitude
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Datacenter type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateDatacenter SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying datacenter record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	db.datacenterMutex.Lock()
+	db.datacenters[datacenterID] = datacenter
+	db.datacenterMutex.Unlock()
+
+	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }

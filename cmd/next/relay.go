@@ -1,10 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/csv"
+	"errors"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"net/http"
 	"os"
@@ -13,11 +19,13 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/ybbus/jsonrpc"
 	"golang.org/x/crypto/nacl/box"
+	"google.golang.org/api/iterator"
 )
 
 const (
@@ -136,13 +144,13 @@ type relayInfo struct {
 	version     string
 }
 
-func getRelayInfo(rpcClient jsonrpc.RPCClient, env Environment, regex string) []relayInfo {
+func getRelayInfo(env Environment, regex string) []relayInfo {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return nil
 	}
@@ -151,17 +159,16 @@ func getRelayInfo(rpcClient jsonrpc.RPCClient, env Environment, regex string) []
 
 	for i, r := range reply.Relays {
 		relays[i] = relayInfo{
-			id:          r.ID,
-			name:        r.Name,
-			user:        r.SSHUser,
-			sshAddr:     r.ManagementAddr,
-			sshPort:     fmt.Sprintf("%d", r.SSHPort),
-			publicAddr:  r.Addr,
-			publicKey:   r.PublicKey,
-			nicSpeed:    fmt.Sprintf("%d", r.NICSpeedMbps),
-			firestoreID: r.FirestoreID,
-			state:       r.State,
-			version:     r.Version,
+			id:         r.ID,
+			name:       r.Name,
+			user:       r.SSHUser,
+			sshAddr:    r.ManagementAddr,
+			sshPort:    fmt.Sprintf("%d", r.SSHPort),
+			publicAddr: r.Addr,
+			publicKey:  r.PublicKey,
+			nicSpeed:   fmt.Sprintf("%d", r.NICSpeedMbps),
+			state:      r.State,
+			version:    r.Version,
 		}
 	}
 
@@ -172,7 +179,7 @@ func getInfoForAllRelays(rpcClient jsonrpc.RPCClient, env Environment) []relayIn
 	args := localjsonrpc.RelaysArgs{}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return nil
 	}
@@ -197,13 +204,13 @@ func getInfoForAllRelays(rpcClient jsonrpc.RPCClient, env Environment) []relayIn
 	return relays
 }
 
-func updateRelayState(rpcClient jsonrpc.RPCClient, info relayInfo, state routing.RelayState) bool {
+func updateRelayState(env Environment, info relayInfo, state routing.RelayState) bool {
 	args := localjsonrpc.RelayStateUpdateArgs{
 		RelayID:    info.id,
 		RelayState: state,
 	}
 	var reply localjsonrpc.RelayStateUpdateReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayStateUpdate", &args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RelayStateUpdate", &args); err != nil {
 		handleRunTimeError(fmt.Sprintf("could not update relay state: %v\n", err), 1)
 	}
 
@@ -216,7 +223,7 @@ type updateOptions struct {
 	hard      bool // hard update the relay, don't clean shutdown
 }
 
-func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, opts updateOptions) {
+func updateRelays(env Environment, regexes []string, opts updateOptions) {
 	// Fetch and save the latest binary
 	url, err := env.RelayArtifactURL()
 	if err != nil {
@@ -254,7 +261,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 
 	updatedRelays := 0
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
+		relays := getRelayInfo(env, regex)
 
 		if len(relays) == 0 {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
@@ -293,12 +300,12 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 				}
 			}
 
-			if !disableRelays(env, rpcClient, []string{relay.name}, opts.hard, false) {
+			if !disableRelays(env, []string{relay.name}, opts.hard, false) {
 				continue
 			}
 
 			// Update the relay's state to offline in storage
-			if !updateRelayState(rpcClient, relay, routing.RelayStateOffline) {
+			if !updateRelayState(env, relay, routing.RelayStateOffline) {
 				continue
 			}
 
@@ -372,7 +379,7 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 
 				var reply localjsonrpc.RelayStateUpdateReply
 
-				if err := rpcClient.CallFor(&reply, "OpsService.RelayPublicKeyUpdate", &args); err != nil {
+				if err := makeRPCCall(env, &reply, "OpsService.RelayPublicKeyUpdate", &args); err != nil {
 					fmt.Printf("could not update relay public key: %v\n", err)
 					continue
 				}
@@ -414,9 +421,9 @@ func updateRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	}
 }
 
-func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
+func revertRelays(env Environment, regexes []string) {
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
+		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
@@ -424,7 +431,7 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		for _, relay := range relays {
 			fmt.Printf("Reverting relay '%s' (id = %016x)\n", relay.name, relay.id)
 			testForSSHKey(env)
-			if !updateRelayState(rpcClient, relay, routing.RelayStateOffline) {
+			if !updateRelayState(env, relay, routing.RelayStateOffline) {
 				continue
 			}
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
@@ -433,10 +440,10 @@ func revertRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	}
 }
 
-func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string) {
+func enableRelays(env Environment, regexes []string) {
 	enabledRelays := 0
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
+		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
@@ -444,7 +451,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 		for _, relay := range relays {
 			fmt.Printf("Enabling relay '%s' (id = %016x)\n", relay.name, relay.id)
 			testForSSHKey(env)
-			if !updateRelayState(rpcClient, relay, routing.RelayStateOffline) {
+			if !updateRelayState(env, relay, routing.RelayStateOffline) {
 				continue
 			}
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
@@ -467,7 +474,7 @@ func enableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string
 	fmt.Printf("%s complete\n", str)
 }
 
-func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []string, hard bool, maintenance bool) bool {
+func disableRelays(env Environment, regexes []string, hard bool, maintenance bool) bool {
 	success := true
 	relaysDisabled := 0
 	testForSSHKey(env)
@@ -486,7 +493,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 	}
 
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
+		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
@@ -494,7 +501,7 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 		for _, relay := range relays {
 			fmt.Printf("%s relay '%s' (id = %016x)\n", infoText, relay.name, relay.id)
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
-			if !con.ConnectAndIssueCmd(script) || !updateRelayState(rpcClient, relay, relayState) {
+			if !con.ConnectAndIssueCmd(script) || !updateRelayState(env, relay, relayState) {
 				success = false
 				continue
 			}
@@ -519,11 +526,11 @@ func disableRelays(env Environment, rpcClient jsonrpc.RPCClient, regexes []strin
 }
 
 // TODO modify to use the OpsService.UpdateRelay endpoint
-func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName string, newName string) {
+func updateRelayName(env Environment, oldName string, newName string) {
 
 	var relayID uint64
 	var ok bool
-	if relayID, ok = checkForRelay(rpcClient, env, oldName); !ok {
+	if relayID, ok = checkForRelay(env, oldName); !ok {
 		// error msg printed by called function
 		return
 	}
@@ -534,7 +541,7 @@ func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName strin
 		RelayName: newName,
 	}
 
-	if err := rpcClient.CallFor(&reply, "OpsService.RelayNameUpdate", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RelayNameUpdate", args); err != nil {
 		fmt.Printf("error renaming relay: %v\n", (err))
 	} else {
 		fmt.Printf("Relay renamed successfully: %s -> %s\n", oldName, newName)
@@ -543,7 +550,6 @@ func updateRelayName(rpcClient jsonrpc.RPCClient, env Environment, oldName strin
 }
 
 func checkRelays(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	regex string,
 	relaysStateShowFlags [6]bool,
@@ -556,7 +562,7 @@ func checkRelays(
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -603,12 +609,6 @@ func checkRelays(
 
 		if relaysStateHideFlags[relayState] {
 			// Relay should be hidden, so don't include in final output
-			includeRelay = false
-		}
-
-		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
-		if relaysDownFlag && lastUpdateDuration < 30*time.Second {
-			// Relay is still up and shouldn't be included in the final output
 			includeRelay = false
 		}
 
@@ -764,9 +764,9 @@ func checkRelays(
 
 }
 
-func relayLogs(rpcClient jsonrpc.RPCClient, env Environment, lines uint, regexes []string) {
+func relayLogs(env Environment, lines uint, regexes []string) {
 	for _, regex := range regexes {
-		relays := getRelayInfo(rpcClient, env, regex)
+		relays := getRelayInfo(env, regex)
 		for i, relay := range relays {
 			con := NewSSHConn(relay.user, relay.sshAddr, relay.sshPort, env.SSHKeyFilePath)
 			if out, err := con.IssueCmdAndGetOutput("journalctl -u relay -n " + strconv.FormatUint(uint64(lines), 10) + " | cat"); err == nil {
@@ -781,40 +781,282 @@ func relayLogs(rpcClient jsonrpc.RPCClient, env Environment, lines uint, regexes
 	}
 }
 
-func relayTraffic(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
+type relayIDAndName struct {
+	ID   uint64
+	Name string
+}
+
+type pingDataCoordinate struct {
+	timestamp time.Time
+	id        uint64
+}
+
+type pingData struct {
+	rtt        float64
+	jitter     float64
+	packetLoss float64
+	routable   bool
+}
+
+func relayHeatmap(env Environment, relayName string) {
+	// Get all enabled relays
 	args := localjsonrpc.RelaysArgs{
-		Regex: regex,
+		Regex: "",
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
-		return
 	}
 
-	type trafficStats struct {
-		Name      string `table:"Name"`
-		PingsTx   string `table:"Pings Tx"`
-		PingsRx   string `table:"Pings Rx"`
-		GameTx    string `table:"Game Tx"`
-		GameRx    string `table:"Game Rx"`
-		UnknownRx string `table:"Unknown Rx"`
+	var relays []relayIDAndName
+
+	for i := 0; i < len(reply.Relays); i++ {
+		if reply.Relays[i].State == routing.RelayStateEnabled.String() {
+			relays = append(relays, relayIDAndName{
+				reply.Relays[i].ID,
+				reply.Relays[i].Name,
+			})
+		}
 	}
 
-	statsList := []trafficStats{}
+	// Sort relays in alphabetical order
+	sort.Slice(relays, func(i, j int) bool {
+		return relays[i].Name < relays[j].Name
+	})
 
-	for i := range reply.Relays {
-		relay := &reply.Relays[i]
-
-		statsList = append(statsList, trafficStats{
-			Name:      relay.Name,
-			PingsTx:   unitFormat(relay.TrafficStats.OtherStatsTx() * 8),
-			PingsRx:   unitFormat(relay.TrafficStats.OtherStatsRx() * 8),
-			GameTx:    unitFormat(relay.TrafficStats.GameStatsTx() * 8),
-			GameRx:    unitFormat(relay.TrafficStats.GameStatsRx() * 8),
-			UnknownRx: unitFormat(relay.TrafficStats.UnknownRx * 8),
-		})
+	// Get the relay that we want to generate the connectivity image for
+	var relay *relayIDAndName
+	for i := 0; i < len(relays); i++ {
+		if relayName == relays[i].Name {
+			relay = &relays[i]
+			break
+		}
 	}
 
-	table.Output(statsList)
+	if relay == nil {
+		handleRunTimeError(fmt.Sprintf("no relay found with name %q", relayName), 0)
+	}
+
+	// Query BigQuery for the ping data rows
+	relayPingDataRows, startTime, endTime, err := getRelayPingBigQueryRows(relay.ID, env)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("failed to get relay ping data from BigQuery for relay %q: %v", relay.Name, err), 1)
+	}
+
+	if len(relayPingDataRows) == 0 {
+		handleRunTimeError(fmt.Sprintf("no relay ping data for relay %q", relayName), 1)
+	}
+
+	// Set up the image axes and a mapping from coordinate to ping data
+	xAxis, yAxis := createAxes(startTime, endTime, relays)
+	relayPingData := createPingDataMap(relayPingDataRows)
+
+	// Generate the heatmap image
+	img := generateHeatmapImage(xAxis, yAxis, relayPingData)
+
+	fileName := relay.Name + ".png"
+
+	// Create and write the image to file
+	file, err := os.Create(fileName)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("could not open image file %q for writing: %v", fileName, err), 1)
+	}
+	defer file.Close()
+
+	if err := png.Encode(file, img); err != nil {
+		file.Close()
+		handleRunTimeError(fmt.Sprintf("could not write to image file %q: %v", fileName, err), 1)
+	}
+}
+
+func getRelayPingBigQueryRows(relayID uint64, env Environment) ([]BigQueryRelayPingsEntry, time.Time, time.Time, error) {
+
+	ctx := context.Background()
+
+	var rows []BigQueryRelayPingsEntry
+
+	var dbName string
+	var sql bytes.Buffer
+
+	sql.Write([]byte(`select * from `))
+
+	switch env.Name {
+	case "prod":
+		dbName = "network-next-v3-prod"
+		sql.Write([]byte(fmt.Sprintf("%s.prod.relay_pings", dbName)))
+
+	case "staging":
+		dbName = "network-next-v3-staging"
+		sql.Write([]byte(fmt.Sprintf("%s.staging.relay_pings", dbName)))
+
+	case "dev":
+		dbName = "network-next-v3-dev"
+		sql.Write([]byte(fmt.Sprintf("%s.dev.relay_pings", dbName)))
+
+	case "local":
+		return nil, time.Time{}, time.Time{}, errors.New("local env not implemented")
+
+	default:
+		return nil, time.Time{}, time.Time{}, errors.New("unknown or unimplemented env")
+	}
+
+	endTime := time.Now().Truncate(time.Minute).UTC()
+	startTime := endTime.Add(-24 * time.Hour)
+
+	sql.Write([]byte(fmt.Sprintf(" where relay_a = %d", int64(relayID))))
+	sql.Write([]byte(fmt.Sprintf(" and timestamp >= timestamp(%q)", startTime.Format("2006-01-02 15:04:05 UTC"))))
+	sql.Write([]byte(fmt.Sprintf(" and timestamp <= timestamp(%q)", endTime.Format("2006-01-02 15:04:05 UTC"))))
+	sql.Write([]byte(" order by timestamp"))
+
+	bqClient, err := bigquery.NewClient(ctx, dbName)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("getRelayPingData() failed to create BigQuery client: %v", err), 1)
+		return nil, time.Time{}, time.Time{}, err
+	}
+	defer bqClient.Close()
+
+	q := bqClient.Query(string(sql.String()))
+
+	job, err := q.Run(ctx)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("getRelayPingData() failed to query BigQuery: %v", err), 1)
+		return nil, time.Time{}, time.Time{}, err
+	}
+
+	status, err := job.Wait(ctx)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("getRelayPingData() error waiting for job to complete: %v", err), 1)
+		return nil, time.Time{}, time.Time{}, err
+	}
+	if err := status.Err(); err != nil {
+		handleRunTimeError(fmt.Sprintf("getRelayPingData() job returned an error: %v", err), 1)
+		return nil, time.Time{}, time.Time{}, err
+	}
+
+	it, err := job.Read(ctx)
+	if err != nil {
+		return nil, time.Time{}, time.Time{}, err
+	}
+
+	// process result set and load rows
+	for {
+		var rec BigQueryRelayPingsEntry
+		err := it.Next(&rec)
+
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, time.Time{}, time.Time{}, err
+		}
+
+		rows = append(rows, rec)
+	}
+
+	return rows, startTime, endTime, nil
+}
+
+func createAxes(startTime time.Time, endTime time.Time, sortedRelays []relayIDAndName) ([]time.Time, []uint64) {
+	// We need to create the time and relay axes separately so that we have a consistent image size
+	// and can graph each ping data point properly. Otherwise, we won't be able to see missing data.
+
+	numMinutes := int(endTime.Sub(startTime).Minutes())
+	timestamps := make([]time.Time, numMinutes)
+
+	relays := make([]uint64, len(sortedRelays))
+
+	for i := 0; i < numMinutes; i++ {
+		timestamps[i] = startTime.Add(time.Minute * time.Duration(i))
+	}
+
+	for i := 0; i < len(relays); i++ {
+		relays[i] = sortedRelays[i].ID
+	}
+
+	return timestamps, relays
+}
+
+func createPingDataMap(relayPingDataRows []BigQueryRelayPingsEntry) map[pingDataCoordinate]pingData {
+	// We need to convert the rows of ping data into a coordinate pair mapping
+	// for easy lookup into the data later
+
+	relayPingData := make(map[pingDataCoordinate]pingData)
+
+	for i := 0; i < len(relayPingDataRows); i++ {
+		pingDataCoordinate := pingDataCoordinate{
+			timestamp: relayPingDataRows[i].Timestamp.Round(time.Minute),
+			id:        uint64(relayPingDataRows[i].RelayB),
+		}
+
+		pingData := pingData{
+			rtt:        relayPingDataRows[i].RTT,
+			jitter:     relayPingDataRows[i].Jitter,
+			packetLoss: relayPingDataRows[i].PacketLoss,
+			routable:   relayPingDataRows[i].Routable,
+		}
+
+		relayPingData[pingDataCoordinate] = pingData
+	}
+
+	return relayPingData
+}
+
+func generateHeatmapImage(xAxis []time.Time, yAxis []uint64, relayPingData map[pingDataCoordinate]pingData) image.Image {
+	// Now that we have our axes and mapped coordinate points,
+	// we can start generating color information
+
+	img := image.NewNRGBA(image.Rect(0, 0, len(xAxis), len(yAxis)))
+
+	for y := 0; y < len(yAxis); y++ {
+		for x := 0; x < len(xAxis); x++ {
+			var c color.NRGBA
+
+			pingDataCoordinate := pingDataCoordinate{
+				timestamp: xAxis[x],
+				id:        yAxis[y],
+			}
+
+			pingData, ok := relayPingData[pingDataCoordinate]
+
+			// If this coordinate point isn't represented in our data,
+			// color the pixel black. This can happen if the relay wasn't
+			// connected to the relay backend, or if the relay backend didn't publish correctly
+			// at this point in time (maybe due to downtime)
+			if !ok {
+				c = color.NRGBA{0, 0, 0, 255}
+				img.SetNRGBA(x, y, c)
+				continue
+			}
+
+			// This entry was not routable - find out why
+			if !pingData.routable {
+				// We had high packet loss to this relay - color red
+				if pingData.packetLoss > 0.1 {
+					c = color.NRGBA{255, 0, 0, 255}
+					img.SetNRGBA(x, y, c)
+					continue
+				}
+
+				// We had high jitter to this relay - color blue
+				if pingData.jitter > 10.0 {
+					c = color.NRGBA{0, 0, 255, 255}
+					img.SetNRGBA(x, y, c)
+					continue
+				}
+
+				// The connection to this relay was unroutable for some other reason - color green
+				c = color.NRGBA{0, 255, 0, 255}
+				img.SetNRGBA(x, y, c)
+				continue
+			}
+
+			// We had an acceptable connection to this relay - color white
+			c = color.NRGBA{255, 255, 255, 255}
+			img.SetNRGBA(x, y, c)
+			continue
+		}
+	}
+
+	return img
 }

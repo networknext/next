@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/gob"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -31,10 +33,12 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/networknext/backend/modules/transport/middleware"
+	"github.com/networknext/backend/modules/transport/notifications"
 )
 
 var (
@@ -109,25 +113,39 @@ func main() {
 		os.Exit(1)
 	}
 
-	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"), 5, 64)
+	// Get redis connections
+	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.Get("REDIS_PASSWORD", "")
+	redisMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 5)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+
+	redisPoolTopSessions := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMap := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"), 5, 64)
+	redisPoolSessionMap := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionMap); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMeta := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_META"), 5, 64)
+	redisPoolSessionMeta := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionMeta); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionSlices := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"), 5, 64)
+	redisPoolSessionSlices := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionSlices); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 		os.Exit(1)
@@ -356,6 +374,73 @@ func main() {
 		Storage: db,
 	}
 
+	serveDatabaseBinFile := func(w http.ResponseWriter, r *http.Request) {
+
+		// TODO: pull the sub claim from the auth0 claims to get the "author"
+		//       when we start rolling database.bin files from the admin tool
+		// props, _ := r.Context().Value("props").(jwt.MapClaims)
+
+		var dbWrapper routing.DatabaseBinWrapper
+		var enabledRelays []routing.Relay
+		relayMap := make(map[uint64]routing.Relay)
+		buyerMap := make(map[uint64]routing.Buyer)
+		sellerMap := make(map[string]routing.Seller)
+		datacenterMap := make(map[uint64]routing.Datacenter)
+		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
+
+		buyers := db.Buyers()
+		for _, buyer := range buyers {
+			buyerMap[buyer.ID] = buyer
+			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
+			datacenterMaps[buyer.ID] = dcMapsForBuyer
+		}
+
+		for _, seller := range db.Sellers() {
+			sellerMap[seller.ShortName] = seller
+		}
+
+		for _, datacenter := range db.Datacenters() {
+			datacenterMap[datacenter.ID] = datacenter
+		}
+
+		for _, localRelay := range db.Relays() {
+			if localRelay.State == routing.RelayStateEnabled {
+				enabledRelays = append(enabledRelays, localRelay)
+				relayMap[localRelay.ID] = localRelay
+			}
+		}
+
+		dbWrapper.Relays = enabledRelays
+		dbWrapper.RelayMap = relayMap
+		dbWrapper.BuyerMap = buyerMap
+		dbWrapper.SellerMap = sellerMap
+		dbWrapper.DatacenterMap = datacenterMap
+		dbWrapper.DatacenterMaps = datacenterMaps
+
+		loc, _ := time.LoadLocation("UTC")
+		if err != nil {
+			level.Error(logger).Log("msg", "error generating database.bin timestamp", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		now := time.Now().In(loc)
+
+		timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+		dbWrapper.CreationTime = timeStamp
+		dbWrapper.Creator = "next" // TODO: pull user_id from sub claim when calling from admin tool
+
+		var buffer bytes.Buffer
+
+		encoder := gob.NewEncoder(&buffer)
+		encoder.Encode(dbWrapper)
+
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, err = buffer.WriteTo(w)
+		if err != nil {
+			level.Error(logger).Log("msg", "error writing database.bin gob to ResponseWriter", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	go func() {
 		genmapinterval := os.Getenv("SESSION_MAP_INTERVAL")
 		syncInterval, err := time.ParseDuration(genmapinterval)
@@ -381,51 +466,54 @@ func main() {
 
 	relayMap := jsonrpc.NewRelayStatsMap()
 
-	go func() {
-		relayStatsURL := os.Getenv("RELAY_STATS_URI")
+	// TODO: b0rked, needs to process a csv file from /relays and this GET
+	//       needs to be auth'd...
+	// go func() {
+	// 	relayStatsURL := os.Getenv("RELAY_STATS_URI")
+	// 	fmt.Printf("RELAY_STATS_URI: %s\n", relayStatsURL)
 
-		sleepInterval := time.Second
-		if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
-			if si, err := time.ParseDuration(siStr); err == nil {
-				sleepInterval = si
-			} else {
-				level.Error(logger).Log("msg", "could not parse stats sync sleep interval", "err", err)
-			}
-		}
+	// 	sleepInterval := time.Second
+	// 	if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
+	// 		if si, err := time.ParseDuration(siStr); err == nil {
+	// 			sleepInterval = si
+	// 		} else {
+	// 			level.Error(logger).Log("msg", "could not parse stats sync sleep interval", "err", err)
+	// 		}
+	// 	}
 
-		for {
-			time.Sleep(sleepInterval)
+	// 	for {
+	// 		time.Sleep(sleepInterval)
 
-			res, err := http.Get(relayStatsURL)
-			if err != nil {
-				level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
-				continue
-			}
+	// 		res, err := http.Get(relayStatsURL)
+	// 		if err != nil {
+	// 			level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
+	// 			continue
+	// 		}
 
-			if res.StatusCode != http.StatusOK {
-				level.Error(logger).Log("msg", "bad relay_stats request")
-				continue
-			}
+	// 		if res.StatusCode != http.StatusOK {
+	// 			level.Error(logger).Log("msg", "bad relay_stats request")
+	// 			continue
+	// 		}
 
-			if res.ContentLength == -1 {
-				level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
-				res.Body.Close()
-				continue
-			}
+	// 		if res.ContentLength == -1 {
+	// 			level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
+	// 			res.Body.Close()
+	// 			continue
+	// 		}
 
-			data, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				level.Error(logger).Log("msg", "unable to read response body", "err", err)
-				res.Body.Close()
-				continue
-			}
-			res.Body.Close()
+	// 		data, err := ioutil.ReadAll(res.Body)
+	// 		if err != nil {
+	// 			level.Error(logger).Log("msg", "unable to read response body", "err", err)
+	// 			res.Body.Close()
+	// 			continue
+	// 		}
+	// 		res.Body.Close()
 
-			if err := relayMap.ReadAndSwap(data); err != nil {
-				level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
-			}
-		}
-	}()
+	// 		if err := relayMap.ReadAndSwap(data); err != nil {
+	// 			level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
+	// 		}
+	// 	}
+	// }()
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")
@@ -438,7 +526,7 @@ func main() {
 
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
-			user := i.Request.Context().Value(jsonrpc.Keys.UserKey)
+			user := i.Request.Context().Value(middleware.Keys.UserKey)
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 
@@ -459,10 +547,10 @@ func main() {
 					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
 						newsletterConsent = consent.(bool)
 					}
-					return jsonrpc.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
+					return middleware.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
 				}
 			}
-			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
+			return middleware.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
 		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
@@ -475,30 +563,64 @@ func main() {
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&configService, "")
+
+		webHookUrl := envvar.Get("SLACK_WEBHOOK_URL", "")
+		if webHookUrl == "" {
+			level.Error(logger).Log("err", "env var SLACK_WEBHOOK_URL must be set")
+			os.Exit(1)
+		}
+
+		channel := envvar.Get("SLACK_CHANNEL", "")
+		if channel == "" {
+			level.Error(logger).Log("err", "env var SLACK_CHANNEL must be set")
+			os.Exit(1)
+		}
+
 		s.RegisterService(&jsonrpc.AuthService{
-			MailChimpManager: transport.MailChimpHandler{
+			MailChimpManager: notifications.MailChimpHandler{
 				HTTPHandler: *http.DefaultClient,
 				MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
 			},
 			Logger:      logger,
 			UserManager: userManager,
 			JobManager:  jobManager,
-			Storage:     db,
+			SlackClient: notifications.SlackClient{
+				WebHookUrl: webHookUrl,
+				UserName:   "PortalBot",
+				Channel:    channel,
+			},
+			Storage: db,
 		}, "")
 
-		allowCORSStr := os.Getenv("CORS")
-		allowCORS := true
-		if ok, err := strconv.ParseBool(allowCORSStr); err == nil {
-			allowCORS = ok
+		relayFrontEnd, ok := os.LookupEnv("RELAY_FRONTEND")
+		if !ok {
+			level.Error(logger).Log("err", "RELAY_FRONTEND environment variable not set")
+			os.Exit(1)
 		}
+
+		s.RegisterService(&jsonrpc.RelayFleetService{
+			RelayFrontendURI: relayFrontEnd,
+			Logger:           logger,
+		}, "")
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), allowCORS, strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
-		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, allowCORS, strings.Split(allowedOrigins, ",")))
+		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
+
+		databaseBinHandler := http.HandlerFunc(serveDatabaseBinFile)
+		r.Handle("/database.bin", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler, strings.Split(allowedOrigins, ","))).Methods("GET")
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+		}
+		if enablePProf {
+			r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
 
 		spa := spaHandler{staticPath: uiDir, indexPath: "index.html"}
 
@@ -528,7 +650,7 @@ func main() {
 		}
 
 		// Fall through to running on any other port defined with TLS disabled
-		err := http.ListenAndServe(":"+port, r)
+		err = http.ListenAndServe(":"+port, r)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)

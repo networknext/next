@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	"github.com/gomodule/redigo/redis"
 
 	"github.com/networknext/backend/modules/ghost_army"
 	"github.com/networknext/backend/modules/metrics"
@@ -59,10 +60,7 @@ type PortalCruncher struct {
 	redisDataMessageChan  chan *transport.SessionPortalData
 	btDataMessageChan     chan *transport.SessionPortalData
 
-	topSessions   storage.RedisClient
-	sessionMap    storage.RedisClient
-	sessionMeta   storage.RedisClient
-	sessionSlices storage.RedisClient
+	sessionPool *redis.Pool
 
 	useBigtable bool
 	btClient    *storage.BigTable
@@ -72,10 +70,10 @@ type PortalCruncher struct {
 func NewPortalCruncher(
 	ctx context.Context,
 	subscriber pubsub.Subscriber,
-	redisHostTopSessions string,
-	redisHostSessionMap string,
-	redisHostSessionMeta string,
-	redisHostSessionSlices string,
+	redisHostname string,
+	redisPassword string,
+	redisMaxIdleConns int,
+	redisMaxActiveConns int,
 	useBigtable bool,
 	gcpProjectID string,
 	btInstanceID string,
@@ -86,24 +84,11 @@ func NewPortalCruncher(
 	metrics *metrics.PortalCruncherMetrics,
 	btMetrics *metrics.BigTableMetrics,
 ) (*PortalCruncher, error) {
-	topSessions, err := storage.NewRawRedisClient(redisHostTopSessions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create redis client for %s: %v", redisHostTopSessions, err)
-	}
+	var err error
 
-	sessionMap, err := storage.NewRawRedisClient(redisHostSessionMap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create redis client for %s: %v", redisHostSessionMap, err)
-	}
-
-	sessionMeta, err := storage.NewRawRedisClient(redisHostSessionMeta)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create redis client for %s: %v", redisHostSessionMeta, err)
-	}
-
-	sessionSlices, err := storage.NewRawRedisClient(redisHostSessionSlices)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create redis client for %s: %v", redisHostSessionSlices, err)
+	redisPool := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
+	if err = storage.ValidateRedisPool(redisPool); err != nil {
+		return nil, fmt.Errorf("failed to validate redis pool for hostname %s: %v", redisHostname, err)
 	}
 
 	var btClient *storage.BigTable
@@ -123,10 +108,7 @@ func NewPortalCruncher(
 		redisCountMessageChan: make(chan *transport.SessionCountData, chanBufferSize),
 		redisDataMessageChan:  make(chan *transport.SessionPortalData, chanBufferSize),
 		btDataMessageChan:     make(chan *transport.SessionPortalData, chanBufferSize),
-		topSessions:           topSessions,
-		sessionMap:            sessionMap,
-		sessionMeta:           sessionMeta,
-		sessionSlices:         sessionSlices,
+		sessionPool:           redisPool,
 		useBigtable:           useBigtable,
 		btClient:              btClient,
 		btCfNames:             btCfNames,
@@ -260,6 +242,8 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 	case <-ctx.Done():
 		// Let the goroutines finish up
 		wg.Wait()
+		// Close the redis pool
+		cruncher.sessionPool.Close()
 		return ctx.Err()
 	}
 }
@@ -315,23 +299,45 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 }
 
 func (cruncher *PortalCruncher) insertCountDataIntoRedis(redisPortalCountBuffer []*transport.SessionCountData, minutes int64) {
+	sessionMapConn := cruncher.sessionPool.Get()
+	defer sessionMapConn.Close()
+
+	var cmd string
+
 	for i := range redisPortalCountBuffer {
 		customerID := fmt.Sprintf("%016x", redisPortalCountBuffer[i].BuyerID)
 		serverID := fmt.Sprintf("%016x", redisPortalCountBuffer[i].ServerID)
 		numSessions := redisPortalCountBuffer[i].NumSessions
 
 		// Remove the old count minute bucket from 2 minutes ago if it didn't expire
-		cruncher.sessionMap.Command("DEL", "c-%s-%d", customerID, minutes-2)
+		cmd = fmt.Sprintf("c-%s-%d", customerID, minutes-2)
+		sessionMapConn.Do("DEL", cmd)
 
 		// Add the new session count
-		cruncher.sessionMap.Command("HSET", "c-%s-%d %s %d", customerID, minutes, serverID, numSessions)
-		cruncher.sessionMap.Command("EXPIRE", "c-%s-%d %d", customerID, minutes, 30)
+		cmd = fmt.Sprintf("c-%s-%d %s %d", customerID, minutes, serverID, numSessions)
+		sessionMapConn.Do("HSET", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
+
+		cmd = fmt.Sprintf("c-%s-%d %d", customerID, minutes, 30)
+		sessionMapConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 	}
 }
 
 func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer []*transport.SessionPortalData, minutes int64) {
+	topSessionsConn := cruncher.sessionPool.Get()
+	sessionMapConn := cruncher.sessionPool.Get()
+	sessionMetaConn := cruncher.sessionPool.Get()
+	sessionSlicesConn := cruncher.sessionPool.Get()
+	defer func() {
+		topSessionsConn.Close()
+		sessionMapConn.Close()
+		sessionMetaConn.Close()
+		sessionSlicesConn.Close()
+	}()
+	var cmd string
+
 	// Remove the old global top sessions minute bucket from 2 minutes ago if it didn't expire
-	cruncher.topSessions.Command("DEL", "s-%d", minutes-2)
+	cmd = fmt.Sprintf("s-%d", minutes-2)
+	topSessionsConn.Do("DEL", cmd)
 
 	// Update the current global top sessions minute bucket
 	var format string
@@ -363,8 +369,11 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 		args = append(args, score, sessionID)
 	}
 
-	cruncher.topSessions.Command("ZADD", format, args...)
-	cruncher.topSessions.Command("EXPIRE", "s-%d %d", minutes, 30)
+	cmd = fmt.Sprintf(format, args...)
+	topSessionsConn.Do("ZADD", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
+
+	cmd = fmt.Sprintf("s-%d %d", minutes, 30)
+	topSessionsConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 	for i := range redisPortalDataBuffer {
 		meta := &redisPortalDataBuffer[i].Meta
@@ -394,53 +403,66 @@ func (cruncher *PortalCruncher) insertPortalDataIntoRedis(redisPortalDataBuffer 
 		// has switched from direct -> next or next -> direct
 		pointString := point.RedisString()
 		if next {
-			cruncher.sessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-1, sessionID)
-			cruncher.sessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes, sessionID)
-			cruncher.sessionMap.Command("HSET", "n-%s-%d %s %s", customerID, minutes, sessionID, pointString)
+			cmd = fmt.Sprintf("d-%s-%d %s", customerID, minutes-1, sessionID)
+			sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
+			cmd = fmt.Sprintf("d-%s-%d %s", customerID, minutes, sessionID)
+			sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
+
+			cmd = fmt.Sprintf("n-%s-%d %s %s", customerID, minutes, sessionID, pointString)
+			sessionMapConn.Do("HSET", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 		} else {
-			cruncher.sessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-1, sessionID)
-			cruncher.sessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes, sessionID)
-			cruncher.sessionMap.Command("HSET", "d-%s-%d %s %s", customerID, minutes, sessionID, pointString)
+			cmd = fmt.Sprintf("n-%s-%d %s", customerID, minutes-1, sessionID)
+			sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
+
+			cmd = fmt.Sprintf("n-%s-%d %s", customerID, minutes, sessionID)
+			sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
+
+			cmd = fmt.Sprintf("d-%s-%d %s %s", customerID, minutes, sessionID, pointString)
+			sessionMapConn.Do("HSET", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 		}
 
 		// Remove the old per-buyer top sessions minute bucket from 2 minutes ago if it didnt expire
 		// and update the current per-buyer top sessions list
-		cruncher.topSessions.Command("DEL", "sc-%s-%d", customerID, minutes-2)
-		cruncher.topSessions.Command("ZADD", "sc-%s-%d %.2f %s", customerID, minutes, score, sessionID)
-		cruncher.topSessions.Command("EXPIRE", "sc-%s-%d %d", customerID, minutes, 30)
+		cmd = fmt.Sprintf("sc-%s-%d", customerID, minutes-2)
+		topSessionsConn.Do("DEL", cmd)
+
+		cmd = fmt.Sprintf("sc-%s-%d %.2f %s", customerID, minutes, score, sessionID)
+		topSessionsConn.Do("ZADD", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
+
+		cmd = fmt.Sprintf("sc-%s-%d %d", customerID, minutes, 30)
+		topSessionsConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		// Remove the old map points minute buckets from 2 minutes ago if it didn't expire
-		cruncher.sessionMap.Command("HDEL", "d-%s-%d %s", customerID, minutes-2, sessionID)
-		cruncher.sessionMap.Command("HDEL", "n-%s-%d %s", customerID, minutes-2, sessionID)
+		cmd = fmt.Sprintf("d-%s-%d %s", customerID, minutes-2, sessionID)
+		sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
+
+		cmd = fmt.Sprintf("n-%s-%d %s", customerID, minutes-2, sessionID)
+		sessionMapConn.Do("HDEL", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		// Expire map points
-		cruncher.sessionMap.Command("EXPIRE", "n-%s-%d %d", customerID, minutes, 30)
-		cruncher.sessionMap.Command("EXPIRE", "d-%s-%d %d", customerID, minutes, 30)
+		cmd = fmt.Sprintf("n-%s-%d %d", customerID, minutes, 30)
+		sessionMapConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
+
+		cmd = fmt.Sprintf("d-%s-%d %d", customerID, minutes, 30)
+		sessionMapConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 
 		// Update session meta
-		cruncher.sessionMeta.Command("SET", "sm-%s \"%s\" EX %d", sessionID, meta.RedisString(), 120)
+		// There can be spaces in the ISP string, so manually create the string slice instead of splitting on white space
+		cmdSlice := []string{fmt.Sprintf("sm-%s", sessionID), meta.RedisString(), "EX", fmt.Sprintf("%d", 120)}
+		sessionMetaConn.Do("SET", redis.Args{}.AddFlat(cmdSlice)...)
 
 		// Update session slices
-		cruncher.sessionSlices.Command("RPUSH", "ss-%s %s", sessionID, slice.RedisString())
-		cruncher.sessionSlices.Command("EXPIRE", "ss-%s %d", sessionID, 120)
+		cmd = fmt.Sprintf("ss-%s %s", sessionID, slice.RedisString())
+		sessionSlicesConn.Do("RPUSH", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
+
+		cmd = fmt.Sprintf("ss-%s %d", sessionID, 120)
+		sessionSlicesConn.Do("EXPIRE", redis.Args{}.AddFlat(strings.Split(cmd, " "))...)
 	}
 }
 
 func (cruncher *PortalCruncher) PingRedis() error {
-	if err := cruncher.topSessions.Ping(); err != nil {
-		return err
-	}
-
-	if err := cruncher.sessionMap.Ping(); err != nil {
-		return err
-	}
-
-	if err := cruncher.sessionMeta.Ping(); err != nil {
-		return err
-	}
-
-	if err := cruncher.sessionSlices.Ping(); err != nil {
+	if err := storage.ValidateRedisPool(cruncher.sessionPool); err != nil {
 		return err
 	}
 

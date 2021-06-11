@@ -10,7 +10,10 @@ type ServerInitMetrics struct {
 
 	ReadPacketFailure            Counter
 	BuyerNotFound                Counter
+	BuyerNotActive               Counter
+	SignatureCheckFailed         Counter
 	SDKTooOld                    Counter
+	DatacenterMapNotFound        Counter
 	DatacenterNotFound           Counter
 	MisconfiguredDatacenterAlias Counter
 	DatacenterNotAllowed         Counter
@@ -22,7 +25,10 @@ var EmptyServerInitMetrics = ServerInitMetrics{
 	HandlerMetrics:               &EmptyPacketHandlerMetrics,
 	ReadPacketFailure:            &EmptyCounter{},
 	BuyerNotFound:                &EmptyCounter{},
+	BuyerNotActive:               &EmptyCounter{},
+	SignatureCheckFailed:         &EmptyCounter{},
 	SDKTooOld:                    &EmptyCounter{},
+	DatacenterMapNotFound:        &EmptyCounter{},
 	DatacenterNotFound:           &EmptyCounter{},
 	MisconfiguredDatacenterAlias: &EmptyCounter{},
 	DatacenterNotAllowed:         &EmptyCounter{},
@@ -35,10 +41,14 @@ type ServerUpdateMetrics struct {
 
 	ReadPacketFailure            Counter
 	BuyerNotFound                Counter
+	BuyerNotLive                 Counter
+	SignatureCheckFailed         Counter
 	SDKTooOld                    Counter
+	DatacenterMapNotFound        Counter
 	DatacenterNotFound           Counter
 	MisconfiguredDatacenterAlias Counter
 	DatacenterNotAllowed         Counter
+	ServerUpdatePacketSize       Gauge
 }
 
 // EmptyServerUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -46,10 +56,14 @@ var EmptyServerUpdateMetrics = ServerUpdateMetrics{
 	HandlerMetrics:               &EmptyPacketHandlerMetrics,
 	ReadPacketFailure:            &EmptyCounter{},
 	BuyerNotFound:                &EmptyCounter{},
+	BuyerNotLive:                 &EmptyCounter{},
+	SignatureCheckFailed:         &EmptyCounter{},
 	SDKTooOld:                    &EmptyCounter{},
+	DatacenterMapNotFound:        &EmptyCounter{},
 	DatacenterNotFound:           &EmptyCounter{},
 	MisconfiguredDatacenterAlias: &EmptyCounter{},
 	DatacenterNotAllowed:         &EmptyCounter{},
+	ServerUpdatePacketSize:       &EmptyGauge{},
 }
 
 // SessionUpdateMetrics defines the set of metrics for the session update handler in the server backend.
@@ -74,13 +88,16 @@ type SessionUpdateMetrics struct {
 	FallbackToDirectDirectPongTimedOut         Counter
 	FallbackToDirectNextPongTimedOut           Counter
 	BuyerNotFound                              Counter
+	SignatureCheckFailed                       Counter
 	ClientLocateFailure                        Counter
 	ReadSessionDataFailure                     Counter
 	BadSessionID                               Counter
 	BadSliceNumber                             Counter
 	BuyerNotLive                               Counter
 	ClientPingTimedOut                         Counter
+	DatacenterMapNotFound                      Counter
 	DatacenterNotFound                         Counter
+	DatacenterNotEnabled                       Counter
 	MisconfiguredDatacenterAlias               Counter
 	DatacenterNotAllowed                       Counter
 	NearRelaysLocateFailure                    Counter
@@ -88,12 +105,17 @@ type SessionUpdateMetrics struct {
 	NoRelaysInDatacenter                       Counter
 	RouteDoesNotExist                          Counter
 	RouteSwitched                              Counter
+	NextWithoutRouteRelays                     Counter
 	SDKAborted                                 Counter
 	NoRoute                                    Counter
 	MultipathOverload                          Counter
 	LatencyWorse                               Counter
 	MispredictVeto                             Counter
 	WriteResponseFailure                       Counter
+	StaleRouteMatrix                           Counter
+	SessionUpdatePacketSize                    Gauge
+	NextSessionResponsePacketSize              Gauge
+	DirectSessionResponsePacketSize            Gauge
 }
 
 // EmptySessionUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -116,13 +138,16 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	FallbackToDirectDirectPongTimedOut:         &EmptyCounter{},
 	FallbackToDirectNextPongTimedOut:           &EmptyCounter{},
 	BuyerNotFound:                              &EmptyCounter{},
+	SignatureCheckFailed:                       &EmptyCounter{},
 	ClientLocateFailure:                        &EmptyCounter{},
 	ReadSessionDataFailure:                     &EmptyCounter{},
 	BadSessionID:                               &EmptyCounter{},
 	BadSliceNumber:                             &EmptyCounter{},
 	BuyerNotLive:                               &EmptyCounter{},
 	ClientPingTimedOut:                         &EmptyCounter{},
+	DatacenterMapNotFound:                      &EmptyCounter{},
 	DatacenterNotFound:                         &EmptyCounter{},
+	DatacenterNotEnabled:                       &EmptyCounter{},
 	MisconfiguredDatacenterAlias:               &EmptyCounter{},
 	DatacenterNotAllowed:                       &EmptyCounter{},
 	NearRelaysLocateFailure:                    &EmptyCounter{},
@@ -130,12 +155,17 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	NoRelaysInDatacenter:                       &EmptyCounter{},
 	RouteDoesNotExist:                          &EmptyCounter{},
 	RouteSwitched:                              &EmptyCounter{},
+	NextWithoutRouteRelays:                     &EmptyCounter{},
 	SDKAborted:                                 &EmptyCounter{},
 	NoRoute:                                    &EmptyCounter{},
 	MultipathOverload:                          &EmptyCounter{},
 	LatencyWorse:                               &EmptyCounter{},
 	MispredictVeto:                             &EmptyCounter{},
 	WriteResponseFailure:                       &EmptyCounter{},
+	StaleRouteMatrix:                           &EmptyCounter{},
+	SessionUpdatePacketSize:                    &EmptyGauge{},
+	NextSessionResponsePacketSize:              &EmptyGauge{},
+	DirectSessionResponsePacketSize:            &EmptyGauge{},
 }
 
 // ServerBackendMetrics defines the set of metrics for the server backend.
@@ -154,6 +184,8 @@ type ServerBackendMetrics struct {
 	RouteMatrixUpdateLongDuration Counter
 	RouteMatrixNumRoutes          Gauge
 	RouteMatrixBytes              Gauge
+
+	ErrorMetrics *ServerBackendErrorMetrics
 }
 
 // EmptyServerBackendMetrics is used for testing when we want to pass in metrics but don't care about their value.
@@ -168,6 +200,27 @@ var EmptyServerBackendMetrics = ServerBackendMetrics{
 	RouteMatrixUpdateLongDuration: &EmptyCounter{},
 	RouteMatrixNumRoutes:          &EmptyGauge{},
 	RouteMatrixBytes:              &EmptyGauge{},
+	ErrorMetrics:                  &EmptyServerBackendErrorMetrics,
+}
+
+type ServerBackendErrorMetrics struct {
+	RouteMatrixReaderNil        Counter
+	RouteMatrixReadFailure      Counter
+	RouteMatrixBufferEmpty      Counter
+	RouteMatrixSerializeFailure Counter
+	BinWrapperEmpty             Counter
+	BinWrapperFailure           Counter
+	StaleRouteMatrix            Counter
+}
+
+var EmptyServerBackendErrorMetrics = ServerBackendErrorMetrics{
+	RouteMatrixReaderNil:        &EmptyCounter{},
+	RouteMatrixReadFailure:      &EmptyCounter{},
+	RouteMatrixBufferEmpty:      &EmptyCounter{},
+	RouteMatrixSerializeFailure: &EmptyCounter{},
+	BinWrapperEmpty:             &EmptyCounter{},
+	BinWrapperFailure:           &EmptyCounter{},
+	StaleRouteMatrix:            &EmptyCounter{},
 }
 
 // NewServerBackendMetrics creates the metrics that the server backend will use.
@@ -238,6 +291,41 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 		return nil, err
 	}
 
+	m.BillingMetrics.Entries2Received = &EmptyCounter{}
+
+	m.BillingMetrics.Entries2Submitted, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Billing Entries 2 Submitted",
+		ServiceName: serviceName,
+		ID:          "billing.entries_submitted_2",
+		Unit:        "entries",
+		Description: "The number of billing entries 2 the server_backend has submitted to be published",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BillingMetrics.Entries2Queued, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Server Backend Billing Entries 2 Queued",
+		ServiceName: serviceName,
+		ID:          "billing.entries_queued_2",
+		Unit:        "entries",
+		Description: "The number of billing entries 2 the server_backend has queued waiting to be published",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BillingMetrics.Entries2Flushed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Billing Entries 2 Flushed",
+		ServiceName: serviceName,
+		ID:          "billing.entries_flushed_2",
+		Unit:        "entries",
+		Description: "The number of billing entries 2 the server_backend has flushed after publishing",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.BillingMetrics.ErrorMetrics.BillingPublishFailure, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Server Backend Billing Publish Failure",
 		ServiceName: serviceName,
@@ -252,6 +340,65 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 	m.BillingMetrics.ErrorMetrics.BillingBatchedReadFailure = &EmptyCounter{}
 	m.BillingMetrics.ErrorMetrics.BillingReadFailure = &EmptyCounter{}
 	m.BillingMetrics.ErrorMetrics.BillingWriteFailure = &EmptyCounter{}
+
+	m.BillingMetrics.ErrorMetrics.Billing2PublishFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Billing 2 Publish Failure",
+		ServiceName: serviceName,
+		ID:          "billing.publish_failure_2",
+		Unit:        "entries",
+		Description: "The number of billing entries 2 the server_backend has failed to publish",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BillingMetrics.ErrorMetrics.Billing2BatchedReadFailure = &EmptyCounter{}
+	m.BillingMetrics.ErrorMetrics.Billing2ReadFailure = &EmptyCounter{}
+	m.BillingMetrics.ErrorMetrics.Billing2WriteFailure = &EmptyCounter{}
+
+	m.BillingMetrics.BillingEntrySize, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Billing Entry Size",
+		ServiceName: "billing",
+		ID:          "billing.entry.size",
+		Unit:        "bytes",
+		Description: "The size of a billing entry",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BillingMetrics.PubsubBillingEntrySize, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Pubsub Billing Entry Size",
+		ServiceName: "billing",
+		ID:          "pubsub.billing.entry.size",
+		Unit:        "bytes",
+		Description: "The size of a pubsub billing entry",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BillingMetrics.BillingEntry2Size, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Billing Entry Size",
+		ServiceName: "billing",
+		ID:          "billing.entry.2.size",
+		Unit:        "bytes",
+		Description: "The size of a billing entry 2",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BillingMetrics.PubsubBillingEntry2Size, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Pubsub Billing Entry 2 Size",
+		ServiceName: "billing",
+		ID:          "pubsub.billing.entry.2.size",
+		Unit:        "bytes",
+		Description: "The size of a pubsub billing entry 2",
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	m.RouteMatrixUpdateDuration, err = handler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Route Matrix Update Duration",
@@ -297,6 +444,95 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 		return nil, err
 	}
 
+	m.ErrorMetrics, err = newServerBackendErrorMetrics(ctx, handler, serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+func newServerBackendErrorMetrics(ctx context.Context, handler Handler, serviceName string) (*ServerBackendErrorMetrics, error) {
+	var err error
+	m := &ServerBackendErrorMetrics{}
+
+	m.RouteMatrixReaderNil, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Route Matrix Reader Nil",
+		ServiceName: serviceName,
+		ID:          "server_backend.route_matrix_reader_nil",
+		Unit:        "errors",
+		Description: "The number of times the " + serviceName + "'s route matrix reader was nil.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.RouteMatrixReadFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Route Matrix Read Failure",
+		ServiceName: serviceName,
+		ID:          "server_backend.route_matrix_read_failure",
+		Unit:        "errors",
+		Description: "The number of times the " + serviceName + " failed to read the route matrix data.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.RouteMatrixBufferEmpty, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Route Matrix Buffer Empty",
+		ServiceName: serviceName,
+		ID:          "server_backend.route_matrix_buffer_empty",
+		Unit:        "errors",
+		Description: "The number of times the " + serviceName + "'s route matrix buffer was empty.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.RouteMatrixSerializeFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Route Matrix Serialize Failure",
+		ServiceName: serviceName,
+		ID:          "server_backend.route_matrix_serialize_failure",
+		Unit:        "errors",
+		Description: "The number of times the " + serviceName + " failed to serialize the route matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BinWrapperEmpty, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Bin Wrapper Empty",
+		ServiceName: serviceName,
+		ID:          "server_backend.bin_wrapper_empty",
+		Unit:        "errors",
+		Description: "The number of times the " + serviceName + " received an empty database bin wrapper from the route matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BinWrapperFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Bin Wrapper Failure",
+		ServiceName: serviceName,
+		ID:          "server_backend.bin_wrapper_failure",
+		Unit:        "errors",
+		Description: "The number of times the " + serviceName + " failed to decode the database bin wrapper from the route matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.StaleRouteMatrix, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Route Matrix Stale",
+		ServiceName: serviceName,
+		ID:          "server_backend.route_matrix_stale",
+		Unit:        "count",
+		Description: "The number of times the " + serviceName + " received a stale route matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return m, nil
 }
 
@@ -331,12 +567,45 @@ func newServerInitMetrics(ctx context.Context, handler Handler, serviceName stri
 		return nil, err
 	}
 
+	m.BuyerNotActive, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Buyer Not Active",
+		ServiceName: serviceName,
+		ID:          handlerID + ".buyer_not_active",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained an inactive customer account.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.SignatureCheckFailed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Signature Check Failed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".signature_check_failed",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " failed the signature check to verify the customer's identity.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.SDKTooOld, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " SDK Too Old",
 		ServiceName: serviceName,
 		ID:          handlerID + ".sdk_too_old",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained an out of date SDK version.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.DatacenterMapNotFound, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Map Not Found",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_map_not_found",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " could not find a datacenter map for a buyer.",
 	})
 	if err != nil {
 		return nil, err
@@ -420,12 +689,45 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 		return nil, err
 	}
 
+	m.BuyerNotLive, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Buyer Not Live",
+		ServiceName: serviceName,
+		ID:          handlerID + ".buyer_not_live",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a customer ID that was not live.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.SignatureCheckFailed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Signature Check Failed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".signature_check_failed",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " failed the signature check to verify the customer's identity.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.SDKTooOld, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " SDK Too Old",
 		ServiceName: serviceName,
 		ID:          handlerID + ".sdk_too_old",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained an out of date SDK version.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.DatacenterMapNotFound, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Map Not Found",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_map_not_found",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " could not find a datacenter map for a buyer.",
 	})
 	if err != nil {
 		return nil, err
@@ -459,6 +761,17 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 		ID:          handlerID + ".datacenter_not_allowed",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained a valid datacenter but the buyer was not configured to use it.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.ServerUpdatePacketSize, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: handlerName + " Server Update Packet Size",
+		ServiceName: serviceName,
+		ID:          handlerID + ".server_update_packet_size",
+		Unit:        "bytes",
+		Description: "The size of a server update packet",
 	})
 	if err != nil {
 		return nil, err
@@ -663,6 +976,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		return nil, err
 	}
 
+	m.SignatureCheckFailed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Signature Check Failed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".signature_check_failed",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " failed the signature check to verify the customer's identity.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.ClientLocateFailure, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Client Locate Failure",
 		ServiceName: serviceName,
@@ -729,12 +1053,34 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		return nil, err
 	}
 
+	m.DatacenterMapNotFound, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Map Not Found",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_map_not_found",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " could not find a datacenter map for a buyer.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.DatacenterNotFound, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Datacenter Not Found",
 		ServiceName: serviceName,
 		ID:          handlerID + ".datacenter_not_found",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained an unknown datacenter ID.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.DatacenterNotEnabled, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Datacenter Not Enabled",
+		ServiceName: serviceName,
+		ID:          handlerID + ".datacenter_not_enabled",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained a datacenter ID that was not enabled.",
 	})
 	if err != nil {
 		return nil, err
@@ -817,6 +1163,17 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		return nil, err
 	}
 
+	m.NextWithoutRouteRelays, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Next Without Route Relays",
+		ServiceName: serviceName,
+		ID:          handlerID + ".next_without_route_relays",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " was on next without any route relays.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	m.SDKAborted, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " SDK Aborted",
 		ServiceName: serviceName,
@@ -878,6 +1235,50 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".write_response_failure",
 		Unit:        "errors",
 		Description: "The number of times we failed to write a response to a " + packetDescription + ".",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.StaleRouteMatrix, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Stale Route Matrix",
+		ServiceName: serviceName,
+		ID:          handlerID + ".stale_route_matrix",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " was using a stale route matrix.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.SessionUpdatePacketSize, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: handlerName + " Session Update Packet Size",
+		ServiceName: serviceName,
+		ID:          handlerID + ".session_update_packet_size",
+		Unit:        "bytes",
+		Description: "The size of the incoming session update packet.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.DirectSessionResponsePacketSize, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: handlerName + " Direct Session Response Packet Size",
+		ServiceName: serviceName,
+		ID:          handlerID + ".direct_session_response_packet_size",
+		Unit:        "bytes",
+		Description: "The size of the incoming direct session response packet.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.NextSessionResponsePacketSize, err = handler.NewGauge(ctx, &Descriptor{
+		DisplayName: handlerName + " Next Session Response Packet Size",
+		ServiceName: serviceName,
+		ID:          handlerID + ".next_session_response_packet_size",
+		Unit:        "bytes",
+		Description: "The size of the incoming next session response packet.",
 	})
 	if err != nil {
 		return nil, err

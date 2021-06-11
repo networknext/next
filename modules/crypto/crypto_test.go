@@ -11,56 +11,40 @@ import (
 	"golang.org/x/crypto/nacl/box"
 )
 
-func TestHashCheck(t *testing.T) {
-	msg := []byte("just some data to hash")
-
-	expected := []byte{
-		// Hash
-		0x58, 0x95, 0x1d, 0x93, 0xd1, 0x31, 0x6e, 0x61,
-
-		// Message "just some data to hash"
-		0x6a, 0x75, 0x73, 0x74, 0x20, 0x73, 0x6f, 0x6d, 0x65, 0x20, 0x64, 0x61, 0x74, 0x61, 0x20, 0x74, 0x6f, 0x20, 0x68, 0x61, 0x73, 0x68,
-	}
-	packetHash := crypto.Hash(crypto.PacketHashKey, msg)
-	assert.Equal(t, crypto.PacketHashSize+len(msg), len(packetHash))
-	assert.Equal(t, expected, packetHash)
-
-	assert.True(t, crypto.Check(crypto.PacketHashKey, packetHash))
-	assert.False(t, crypto.Check(crypto.PacketHashKey, []byte("short")))
-
-	expected[0] = 0x13 // Change any part of the hash so it doesn't represet the data
-	assert.False(t, crypto.Check(crypto.PacketHashKey, expected))
-}
-
-func TestSignVerify(t *testing.T) {
+func TestSignVerifyPacket(t *testing.T) {
 	// Note: when using these we need to offset the keys by 8 bytes since the first 8 bytes is the CustomerID
-	publicKey, _ := base64.StdEncoding.DecodeString("leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
-	privateKey, _ := base64.StdEncoding.DecodeString("leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn")
+	publicKey, err := base64.StdEncoding.DecodeString("leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
+	assert.NoError(t, err)
 
-	msg := []byte("just some data to sign")
+	privateKey, err := base64.StdEncoding.DecodeString("leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn")
+	assert.NoError(t, err)
 
-	// Generate some valid, but wrong keys
-	wrongPublicKey, wrongPrivateKey, _ := crypto.GenerateCustomerKeyPair()
-	wrongSig := crypto.Sign(wrongPrivateKey, msg)
+	// Generate a valid, but wrong public key
+	wrongPublicKey, _, err := crypto.GenerateCustomerKeyPair()
+	assert.NoError(t, err)
 
-	// Verify Signing fails when key length is wrong
-	sig := crypto.Sign(privateKey[7:], msg)
-	assert.Nil(t, sig)
+	msg := []byte("just some signed data")
+
+	// Add in the packet type byte and hash bytes to the front of the message
+	msgHeader := append([]byte{0}, make([]byte, crypto.PacketHashSize)...)
+	msg = append(msgHeader, msg...)
 
 	// Verify Signing successful when a valid key provided
-	sig = crypto.Sign(privateKey[8:], msg)
-	assert.NotNil(t, sig)
-	assert.Len(t, sig, ed25519.SignatureSize)
+	signedMsg := crypto.SignPacket(privateKey[8:], msg)
+	assert.NotNil(t, signedMsg)
+	assert.Len(t, signedMsg, len(msg)+crypto.PacketSignatureSize)
+
+	// Now remove the message header from the signed message in order to properly verify it
+	signedMsg = signedMsg[1+crypto.PacketHashSize:]
 
 	// Verification should fail when wrong key provided
-	assert.False(t, crypto.Verify(wrongPublicKey, msg, sig))
+	assert.False(t, crypto.VerifyPacket(wrongPublicKey[8:], signedMsg))
 
-	// Verification should fail when wrong signature provided
-	assert.False(t, crypto.Verify(publicKey, msg, wrongSig))
+	// Verification should fail when the message isn't signed properly
+	assert.False(t, crypto.VerifyPacket(publicKey[8:], msg))
 
 	// If the right public key + signature are provided, should succeed
-	sig = crypto.Sign(privateKey[8:], msg)
-	assert.True(t, crypto.Verify(publicKey[8:], msg, sig))
+	assert.True(t, crypto.VerifyPacket(publicKey[8:], signedMsg))
 }
 
 func TestOpenSeal(t *testing.T) {

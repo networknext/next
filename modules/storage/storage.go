@@ -9,7 +9,6 @@ import (
 	"github.com/networknext/backend/modules/routing"
 )
 
-//go:generate moq -out storer_test_mocks.go . Storer
 type Storer interface {
 	Customer(code string) (routing.Customer, error)
 
@@ -115,6 +114,9 @@ type Storer interface {
 	// AddDatacenter adds the provided datacenter to storage and returns an error if the datacenter could not be added.
 	AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error
 
+	// UpdateDatacenter modifies the givien field for the specified datacenter
+	UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error
+
 	// RemoveDatacenter removes a datacenter with the provided datacenter ID from storage and returns an error if the datacenter could not be removed.
 	RemoveDatacenter(ctx context.Context, id uint64) error
 
@@ -128,6 +130,10 @@ type Storer interface {
 
 	// AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
 	AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
+
+	// UpdateDatacenterMap modifies the given map in storage. The full map is required as the
+	// primary key is the buyer ID and the datacenter ID, combined.
+	UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error
 
 	// ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 	// empty dcID returns a list of all maps.

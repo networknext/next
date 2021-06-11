@@ -21,7 +21,7 @@ func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func VersionHandlerFunc(buildtime string, sha string, tag string, commitMessage string, allowCORS bool, allowedOrigins []string) func(w http.ResponseWriter, r *http.Request) {
+func VersionHandlerFunc(buildtime string, sha string, tag string, commitMessage string, allowedOrigins []string) func(w http.ResponseWriter, r *http.Request) {
 	version := map[string]string{
 		"build_timestamp": buildtime,
 		"commit_message":  commitMessage,
@@ -30,7 +30,7 @@ func VersionHandlerFunc(buildtime string, sha string, tag string, commitMessage 
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		middleware.CORSControlHandlerFunc(allowCORS, allowedOrigins, w, r)
+		middleware.CORSControlHandlerFunc(allowedOrigins, w, r)
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(version); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

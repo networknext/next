@@ -7,15 +7,13 @@ package main
 
 import (
 	"context"
-
 	"fmt"
-
 	"net/http"
-	"runtime"
-	"time"
-
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
+	"time"
 
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
@@ -142,6 +140,9 @@ func mainReturnWithCode() int {
 	// Get the redis host for the user session map
 	redisUserSessions := envvar.Get("FEATURE_VANITY_METRIC_REDIS_HOST_USER_SESSIONS_MAP", "127.0.0.1:6379")
 
+	// Get the redis password for the user session map
+	redisPassword := envvar.Get("FEATURE_VANITY_METRIC_REDIS_PASSWORD_USER_SESSIONS_MAP", "")
+
 	// Get the max idle time for a sessionID in redis
 	vanityMaxUserIdleTime, err := envvar.GetDuration("FEATURE_VANITY_METRIC_MAX_USER_IDLE_TIME", time.Minute*5)
 	if err != nil {
@@ -200,7 +201,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get the vanity metric handler for writing to StackDriver
-	vanityMetricHandler, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, messageChanSize, vanitySubscriber, redisUserSessions, redisMaxIdleConnections, redisMaxActiveConnections, vanityMaxUserIdleTime, vanitySetName, env, logger)
+	vanityMetricHandler, err := vanity.NewVanityMetricHandler(tsMetricsHandler, vanityServiceMetrics, messageChanSize, vanitySubscriber, redisUserSessions, redisPassword, redisMaxIdleConnections, redisMaxActiveConnections, vanityMaxUserIdleTime, vanitySetName, env, logger)
 	if err != nil {
 		level.Error(logger).Log("msg", "error creating vanity metric handler", "err", err)
 		return 1
@@ -221,7 +222,15 @@ func mainReturnWithCode() int {
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", transport.HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+
+			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+			if enablePProf {
+				router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+			}
 
 			port, ok := os.LookupEnv("HTTP_PORT")
 			if !ok {
@@ -230,7 +239,7 @@ func mainReturnWithCode() int {
 				return
 			}
 
-			err := http.ListenAndServe(":"+port, router)
+			err = http.ListenAndServe(":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				errChan <- err

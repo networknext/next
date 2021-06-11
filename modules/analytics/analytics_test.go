@@ -2,8 +2,6 @@ package analytics_test
 
 import (
 	"context"
-	"fmt"
-	"math/rand"
 	"os"
 	"testing"
 
@@ -12,7 +10,6 @@ import (
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/routing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -75,61 +72,4 @@ func TestNoOp(t *testing.T) {
 		writer := analytics.NoOpPingStatsWriter{}
 		writer.Write(context.Background(), []*analytics.PingStatsEntry{})
 	})
-}
-
-func TestExtractPingStats(t *testing.T) {
-	numRelays := 10
-
-	statsdb := routing.NewStatsDatabase()
-
-	for i := 0; i < numRelays; i++ {
-		var update routing.RelayStatsUpdate
-		update.ID = uint64(i)
-		update.PingStats = make([]routing.RelayStatsPing, numRelays-1)
-
-		for j, idx := 0, 0; j < numRelays; j++ {
-			if i == j {
-				continue
-			}
-
-			update.PingStats[idx].RelayID = uint64(j)
-			update.PingStats[idx].RTT = rand.Float32()
-			update.PingStats[idx].Jitter = rand.Float32()
-			update.PingStats[idx].PacketLoss = rand.Float32()
-
-			idx++
-		}
-
-		statsdb.ProcessStats(&update)
-	}
-
-	maxJitter := float32(5.0)
-	maxPacketLoss := float32(0.1)
-
-	pairs := analytics.ExtractPingStats(statsdb, maxJitter, maxPacketLoss)
-	assert.Len(t, pairs, numRelays*(numRelays-1)/2)
-
-	for i := 0; i < numRelays; i++ {
-		for j := 0; j < numRelays; j++ {
-			var expectedTimesFound int
-			if i == j {
-				// this pair should not be in the list
-				expectedTimesFound = 0
-			} else {
-				// this pair should be in the list only once
-				expectedTimesFound = 1
-			}
-
-			timesFound := 0
-
-			for k := range pairs {
-				pair := &pairs[k]
-				if (pair.RelayA == uint64(i) && pair.RelayB == uint64(j)) || (pair.RelayA == uint64(j) && pair.RelayB == uint64(i)) {
-					timesFound++
-				}
-			}
-
-			assert.Equal(t, expectedTimesFound, timesFound, fmt.Sprintf("i = %d, j = %d, pairs = %v", i, j, pairs))
-		}
-	}
 }

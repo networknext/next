@@ -5,16 +5,15 @@ import (
 
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
-func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
+func getDetailedRelayInfo(
 	env Environment,
 	relayRegex string,
 ) {
 	var relayID uint64
 	var ok bool
-	if relayID, ok = checkForRelay(rpcClient, env, relayRegex); !ok {
+	if relayID, ok = checkForRelay(env, relayRegex); !ok {
 		// error msg printed by called function
 		return
 	}
@@ -24,7 +23,7 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 	}
 
 	var reply localjsonrpc.GetRelayReply
-	if err := rpcClient.CallFor(&reply, "OpsService.GetRelay", args); !ok {
+	if err := makeRPCCall(env, &reply, "OpsService.GetRelay", args); !ok {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -68,6 +67,7 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 	relay += "  InternalAddr       : " + reply.Relay.InternalAddr + "\n"
 	relay += "  PublicKey          : " + string(reply.Relay.PublicKey) + "\n"
 	relay += "  Datacenter         : " + fmt.Sprintf("%016x", reply.Relay.DatacenterID) + "\n"
+	relay += "  BillingSupplier    : " + fmt.Sprintf("%s", reply.Relay.BillingSupplier) + "\n"
 	relay += "  Seller             : " + reply.Relay.SellerName + "\n"
 	relay += "  NICSpeedMbps       : " + fmt.Sprintf("%d", reply.Relay.NICSpeedMbps) + "\n"
 	relay += "  IncludedBandwidthGB: " + fmt.Sprintf("%d", reply.Relay.IncludedBandwidthGB) + "\n"
@@ -83,6 +83,8 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 	relay += "  StartDate          : " + startDate + "\n"
 	relay += "  EndDate            : " + endDate + "\n"
 	relay += "  Type               : " + fmt.Sprintf("%s", machineType) + "\n"
+	relay += "  Version            : " + reply.Relay.Version + "\n"
+	relay += "  Notes:\n" + reply.Relay.Notes + "\n"
 
 	fmt.Printf("%s\n", relay)
 
@@ -90,13 +92,13 @@ func getDetailedRelayInfo(rpcClient jsonrpc.RPCClient,
 
 }
 
-func checkForRelay(rpcClient jsonrpc.RPCClient, env Environment, regex string) (uint64, bool) {
+func checkForRelay(env Environment, regex string) (uint64, bool) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
 
 	var reply localjsonrpc.RelaysReply
-	err := rpcClient.CallFor(&reply, "OpsService.Relays", args)
+	err := makeRPCCall(env, &reply, "OpsService.Relays", args)
 	if err != nil {
 		handleJSONRPCError(env, err)
 		return 0, false

@@ -13,6 +13,7 @@ type Buyer struct {
 	CompanyCode    string // TODO: chopping block - defined by the parent customer
 	ShortName      string // TBD: same as above
 	ID             uint64
+	HexID          string // needed by external (non-go) clients
 	Live           bool
 	Debug          bool
 	PublicKey      []byte

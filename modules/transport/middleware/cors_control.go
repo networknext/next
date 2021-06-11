@@ -6,25 +6,28 @@ import (
 	"github.com/rs/cors"
 )
 
-func CORSControlHandler(allowCORS bool, allowedOrigins []string, next http.Handler) http.Handler {
-	if !allowCORS {
-		return cors.New(cors.Options{
-			AllowedOrigins:   allowedOrigins,
-			AllowCredentials: true,
-			AllowedHeaders:   []string{"Authorization", "Content-Type"},
-			AllowedMethods:   []string{"POST", "GET", "OPTION"},
-		}).Handler(next)
-	}
-	return next
+func CORSControlHandler(allowedOrigins []string, next http.Handler) http.Handler {
+	return cors.New(cors.Options{
+		AllowedOrigins:   allowedOrigins,
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedMethods: []string{
+			http.MethodPost,
+			http.MethodGet,
+			http.MethodOptions,
+		},
+	}).Handler(next)
 }
 
-func CORSControlHandlerFunc(allowCORS bool, allowedOrigins []string, w http.ResponseWriter, r *http.Request) {
-	if !allowCORS {
-		cors.New(cors.Options{
-			AllowedOrigins:   allowedOrigins,
-			AllowCredentials: true,
-			AllowedHeaders:   []string{"Authorization", "Content-Type"},
-			AllowedMethods:   []string{"POST", "GET", "OPTION"},
-		}).HandlerFunc(w, r)
-	}
+func CORSControlHandlerFunc(allowedOrigins []string, w http.ResponseWriter, r *http.Request) {
+	cors.New(cors.Options{
+		AllowedOrigins:   allowedOrigins,
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedMethods: []string{
+			http.MethodPost,
+			http.MethodGet,
+			http.MethodOptions,
+		},
+	}).HandlerFunc(w, r)
 }

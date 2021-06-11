@@ -10,6 +10,7 @@ type Seller struct {
 	Name                      string // TODO: drop - defined by parent customer
 	CompanyCode               string // TODO: drop - defined by parent customer
 	ShortName                 string // WIP: independent but unqique within sellers - same as ID?
+	Secret                    bool
 	IngressPriceNibblinsPerGB Nibblin
 	EgressPriceNibblinsPerGB  Nibblin
 	DatabaseID                int64 // seller_id db PK
@@ -23,6 +24,7 @@ func (s *Seller) String() string {
 	seller += "\tName                     : '" + s.Name + "'\n"
 	seller += "\tCompanyCode              : '" + s.CompanyCode + "'\n"
 	seller += "\tShortName                : '" + s.ShortName + "'\n"
+	seller += "\tSecret                   : '" + fmt.Sprintf("%t", s.Secret) + "'\n"
 	seller += "\tIngressPriceNibblinsPerGB: " + fmt.Sprintf("%v", s.IngressPriceNibblinsPerGB) + "\n"
 	seller += "\tEgressPriceNibblinsPerGB : " + fmt.Sprintf("%v", s.EgressPriceNibblinsPerGB) + "\n"
 	seller += "\tDatabaseID               : " + fmt.Sprintf("%d", s.DatabaseID) + "\n"

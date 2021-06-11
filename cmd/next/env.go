@@ -12,25 +12,30 @@ import (
 const (
 	PortalHostnameLocal   = "localhost:20000"
 	PortalHostnameDev     = "portal-dev.networknext.com"
+	PortalHostnameNRB     = "104.197.11.70"
 	PortalHostnameStaging = "portal-staging.networknext.com"
 	PortalHostnameProd    = "portal.networknext.com"
 
 	RouterPublicKeyLocal   = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyDev     = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
+	RouterPublicKeyNRB     = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyStaging = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 	RouterPublicKeyProd    = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
 
 	RelayArtifactURLDev     = "https://storage.googleapis.com/development_artifacts/relay.dev.tar.gz"
+	RelayArtifactURLNRB     = "https://storage.googleapis.com/nrb_artifacts/relay.nrb.tar.gz"
 	RelayArtifactURLStaging = "https://storage.googleapis.com/staging_artifacts/relay.staging.tar.gz"
 	RelayArtifactURLProd    = "https://storage.googleapis.com/prod_artifacts/relay.prod.tar.gz"
 
 	RelayBackendHostnameLocal   = "localhost"
-	RelayBackendHostnameDev     = "relay_backend.dev.networknext.com"
-	RelayBackendHostnameStaging = "10.128.0.4"
-	RelayBackendHostnameProd    = "relay_backend.prod.networknext.com"
+	RelayBackendHostnameDev     = "34.117.47.154"
+	RelayBackendHostnameNRB     = "10.128.0.7"
+	RelayBackendHostnameStaging = "35.190.44.124"
+	RelayBackendHostnameProd    = "35.227.196.44"
 
-	RelayBackendURLLocal   = "http://" + RelayBackendHostnameLocal + ":30000"
+	RelayBackendURLLocal   = "http://" + RelayBackendHostnameLocal + ":30005"
 	RelayBackendURLDev     = "http://" + RelayBackendHostnameDev
+	RelayBackendURLNRB     = "http://" + RelayBackendHostnameNRB
 	RelayBackendURLStaging = "http://" + RelayBackendHostnameStaging
 	RelayBackendURLProd    = "http://" + RelayBackendHostnameProd
 )
@@ -45,7 +50,7 @@ type Environment struct {
 	Name           string `json:"name"`
 	Hostname       string `json:"hostname"`
 	AuthToken      string `json:"auth_token"`
-	SSHKeyFilePath string `json:"ssh_key_filepath`
+	SSHKeyFilePath string `json:"ssh_key_filepath"`
 }
 
 func (e *Environment) String() string {
@@ -130,34 +135,36 @@ func (e *Environment) Clean() {
 }
 
 func (e *Environment) PortalHostname() string {
-	if hostname, err := e.switchEnvLocal(PortalHostnameLocal, PortalHostnameDev, PortalHostnameStaging, PortalHostnameProd); err == nil {
+	if hostname, err := e.switchEnvLocal(PortalHostnameLocal, PortalHostnameDev, PortalHostnameNRB, PortalHostnameStaging, PortalHostnameProd); err == nil {
 		return hostname
 	}
 	return e.Hostname
 }
 
 func (e *Environment) RouterPublicKey() (string, error) {
-	return e.switchEnvLocal(RouterPublicKeyLocal, RouterPublicKeyDev, RouterPublicKeyStaging, RouterPublicKeyProd)
+	return e.switchEnvLocal(RouterPublicKeyLocal, RouterPublicKeyDev, RouterPublicKeyNRB, RouterPublicKeyStaging, RouterPublicKeyProd)
 }
 
 func (e *Environment) RelayBackendURL() (string, error) {
-	return e.switchEnvLocal(RelayBackendURLLocal, RelayBackendURLDev, RelayBackendURLStaging, RelayBackendURLProd)
+	return e.switchEnvLocal(RelayBackendURLLocal, RelayBackendURLDev, RelayBackendURLNRB, RelayBackendURLStaging, RelayBackendURLProd)
 }
 
 func (e *Environment) RelayArtifactURL() (string, error) {
-	return e.switchEnv(RelayArtifactURLDev, RelayArtifactURLStaging, RelayArtifactURLProd)
+	return e.switchEnv(RelayArtifactURLDev, RelayArtifactURLNRB, RelayArtifactURLStaging, RelayArtifactURLProd)
 }
 
 func (e *Environment) RelayBackendHostname() (string, error) {
-	return e.switchEnvLocal(RelayBackendHostnameLocal, RelayBackendHostnameDev, RelayBackendHostnameStaging, RelayBackendHostnameProd)
+	return e.switchEnvLocal(RelayBackendHostnameLocal, RelayBackendHostnameDev, RelayBackendHostnameNRB, RelayBackendHostnameStaging, RelayBackendHostnameProd)
 }
 
-func (e *Environment) switchEnvLocal(ifIsLocal, ifIsDev, ifIsStaging, ifIsProd string) (string, error) {
+func (e *Environment) switchEnvLocal(ifIsLocal, ifIsDev, ifIsNRB, ifIsStaging, ifIsProd string) (string, error) {
 	switch e.Name {
 	case "local":
 		return ifIsLocal, nil
 	case "dev":
 		return ifIsDev, nil
+	case "nrb":
+		return ifIsNRB, nil
 	case "staging":
 		return ifIsStaging, nil
 	case "prod":
@@ -167,10 +174,12 @@ func (e *Environment) switchEnvLocal(ifIsLocal, ifIsDev, ifIsStaging, ifIsProd s
 	}
 }
 
-func (e *Environment) switchEnv(ifIsDev, ifIsStaging, ifIsProd string) (string, error) {
+func (e *Environment) switchEnv(ifIsDev, ifIsNRB, ifIsStaging, ifIsProd string) (string, error) {
 	switch e.Name {
 	case "dev":
 		return ifIsDev, nil
+	case "nrb":
+		return ifIsNRB, nil
 	case "staging":
 		return ifIsStaging, nil
 	case "prod":

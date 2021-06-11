@@ -19,6 +19,7 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,7 +51,7 @@ func TestBuyersList(t *testing.T) {
 	t.Run("list - empty", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.BuyerListReply
 		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
@@ -62,7 +63,7 @@ func TestBuyersList(t *testing.T) {
 	t.Run("list - !admin", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.BuyerListReply
 		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
@@ -76,11 +77,11 @@ func TestBuyersList(t *testing.T) {
 	t.Run("list - admin", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
 		req = req.WithContext(reqContext)
-		assert.True(t, jsonrpc.VerifyAllRoles(req, jsonrpc.AdminRole))
+		assert.True(t, middleware.VerifyAllRoles(req, middleware.AdminRole))
 		var reply jsonrpc.BuyerListReply
 		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
 		assert.NoError(t, err)
@@ -147,7 +148,7 @@ func TestUserSessions(t *testing.T) {
 	storer.AddCustomer(ctx, customer9)
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	rawUserID1 := 111
@@ -187,10 +188,10 @@ func TestUserSessions(t *testing.T) {
 	redisServer.ZAdd(fmt.Sprintf("sc-%016x-%d", userHash1, minutes), 150, sessionID5)
 	redisServer.ZAdd(fmt.Sprintf("sc-%016x-%d", userHash3, minutes), 150, sessionID4)
 
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{ID: 111, UserHash: userHash2, DeltaRTT: 50}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{ID: 222, UserHash: userHash1, DeltaRTT: 100}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, UserHash: userHash1, DeltaRTT: 150}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID4), transport.SessionMeta{ID: 444, UserHash: userHash3, DeltaRTT: 150}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 111, UserHash: userHash2, DeltaRTT: 50}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 222, UserHash: userHash1, DeltaRTT: 100}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 333, UserHash: userHash1, DeltaRTT: 150}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID4), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 444, UserHash: userHash3, DeltaRTT: 150}.RedisString(), time.Hour)
 
 	logger := log.NewNopLogger()
 
@@ -238,9 +239,9 @@ func TestUserSessions(t *testing.T) {
 	}()
 
 	// Add user sessions to bigtable
-	metaBin1, err := transport.SessionMeta{ID: 111, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
+	metaBin1, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 111, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
 	assert.NoError(t, err)
-	slice1 := transport.SessionSlice{}
+	slice1 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin1, err := slice1.MarshalBinary()
 	assert.NoError(t, err)
 	sessionRowKey1 := sessionID1
@@ -249,9 +250,9 @@ func TestUserSessions(t *testing.T) {
 	metaRowKeys1 := []string{sessionRowKey1, userRowKey1}
 	sliceRowKeys1 := []string{sliceRowKey1}
 
-	metaBin2, err := transport.SessionMeta{ID: 222, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
+	metaBin2, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 222, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 	assert.NoError(t, err)
-	slice2 := transport.SessionSlice{}
+	slice2 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin2, err := slice2.MarshalBinary()
 	assert.NoError(t, err)
 	sessionRowKey2 := sessionID2
@@ -260,9 +261,9 @@ func TestUserSessions(t *testing.T) {
 	metaRowKeys2 := []string{sessionRowKey2, userRowKey2}
 	sliceRowKeys2 := []string{sliceRowKey2}
 
-	metaBin3, err := transport.SessionMeta{ID: 333, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
+	metaBin3, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 333, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 	assert.NoError(t, err)
-	slice3 := transport.SessionSlice{}
+	slice3 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin3, err := slice3.MarshalBinary()
 	assert.NoError(t, err)
 	sessionRowKey3 := sessionID3
@@ -271,9 +272,9 @@ func TestUserSessions(t *testing.T) {
 	metaRowKeys3 := []string{sessionRowKey3, userRowKey3}
 	sliceRowKeys3 := []string{sliceRowKey3}
 
-	metaBin4, err := transport.SessionMeta{ID: 444, UserHash: userHash3, BuyerID: 777}.MarshalBinary()
+	metaBin4, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 444, UserHash: userHash3, BuyerID: 777}.MarshalBinary()
 	assert.NoError(t, err)
-	slice4 := transport.SessionSlice{}
+	slice4 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 	sliceBin4, err := slice4.MarshalBinary()
 	assert.NoError(t, err)
 	sessionRowKey4 := sessionID4
@@ -375,9 +376,9 @@ func TestUserSessions(t *testing.T) {
 		sessionID7 := fmt.Sprintf("%016x", 777)
 		sessionID8 := fmt.Sprintf("%016x", 888)
 
-		metaBin6, err := transport.SessionMeta{ID: 666, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
+		metaBin6, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 666, UserHash: userHash2, BuyerID: 999}.MarshalBinary()
 		assert.NoError(t, err)
-		slice6 := transport.SessionSlice{}
+		slice6 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 		sliceBin6, err := slice6.MarshalBinary()
 		assert.NoError(t, err)
 		sessionRowKey6 := sessionID6
@@ -386,9 +387,9 @@ func TestUserSessions(t *testing.T) {
 		metaRowKeys6 := []string{sessionRowKey6, userRowKey6}
 		sliceRowKeys6 := []string{sliceRowKey6}
 
-		metaBin7, err := transport.SessionMeta{ID: 777, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
+		metaBin7, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 777, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 		assert.NoError(t, err)
-		slice7 := transport.SessionSlice{}
+		slice7 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 		sliceBin7, err := slice7.MarshalBinary()
 		assert.NoError(t, err)
 		sessionRowKey7 := sessionID7
@@ -397,9 +398,9 @@ func TestUserSessions(t *testing.T) {
 		metaRowKeys7 := []string{sessionRowKey7, userRowKey7}
 		sliceRowKeys7 := []string{sliceRowKey7}
 
-		metaBin8, err := transport.SessionMeta{ID: 888, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
+		metaBin8, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 888, UserHash: userHash1, BuyerID: 888}.MarshalBinary()
 		assert.NoError(t, err)
-		slice8 := transport.SessionSlice{}
+		slice8 := transport.SessionSlice{Version: transport.SessionSliceVersion}
 		sliceBin8, err := slice8.MarshalBinary()
 		assert.NoError(t, err)
 		sessionRowKey8 := sessionID8
@@ -553,7 +554,7 @@ func TestTotalSessions(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 
 	minutes := time.Now().Unix() / 60
 
@@ -592,7 +593,7 @@ func TestTotalSessions(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("all", func(t *testing.T) {
@@ -623,7 +624,7 @@ func TestTotalSessions(t *testing.T) {
 
 	t.Run("filtered - admin", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
 		req = req.WithContext(reqContext)
@@ -642,7 +643,7 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 
 	minutes := time.Now().Unix() / 60
 
@@ -680,7 +681,7 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("all", func(t *testing.T) {
@@ -698,8 +699,8 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 		err := svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{CompanyCode: "local"}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 1, reply.Next)
-		assert.Equal(t, 50, reply.Direct)
+		assert.Equal(t, 6, reply.Next)
+		assert.Equal(t, 300, reply.Direct)
 	})
 }
 
@@ -708,7 +709,7 @@ func TestTopSessions(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	buyerID1 := fmt.Sprintf("%016x", 111)
@@ -733,9 +734,9 @@ func TestTopSessions(t *testing.T) {
 	redisServer.ZAdd(fmt.Sprintf("sc-%s-%d", buyerID1, minutes), 150, sessionID3)
 	redisServer.ZAdd(fmt.Sprintf("sc-%s-%d", buyerID1, minutes), 150, sessionID4)
 
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{ID: 111, DeltaRTT: 50, BuyerID: 222}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{ID: 222, DeltaRTT: 100, BuyerID: 111}.RedisString(), time.Hour)
-	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{ID: 333, DeltaRTT: 150, BuyerID: 111}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID1), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 111, DeltaRTT: 50, BuyerID: 222}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID2), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 222, DeltaRTT: 100, BuyerID: 111}.RedisString(), time.Hour)
+	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 333, DeltaRTT: 150, BuyerID: 111}.RedisString(), time.Hour)
 
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
@@ -756,7 +757,7 @@ func TestTopSessions(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("all", func(t *testing.T) {
@@ -784,7 +785,7 @@ func TestTopSessions(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
@@ -802,63 +803,69 @@ func TestTopSessions(t *testing.T) {
 func TestSessionDetails(t *testing.T) {
 	checkBigtableEmulation(t)
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	sessionID := fmt.Sprintf("%016x", 999)
 
 	meta := transport.SessionMeta{
+		Version:    transport.SessionMetaVersion,
 		BuyerID:    111,
 		Location:   routing.Location{Latitude: 10, Longitude: 20},
 		ClientAddr: "127.0.0.1:1313",
 		ServerAddr: "10.0.0.1:50000",
 		Hops: []transport.RelayHop{
-			{ID: 1234},
-			{ID: 1234},
-			{ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
 		},
 		SDK: "3.4.4",
 		NearbyRelays: []transport.NearRelayPortalData{
-			{ID: 1, Name: "local", ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
+			{Version: transport.NearRelayPortalDataVersion, ID: 1, Name: "local", ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
 		},
 	}
 
 	anonMeta := transport.SessionMeta{
+		Version:    transport.SessionMetaVersion,
 		BuyerID:    111,
 		Location:   routing.Location{Latitude: 10, Longitude: 20},
 		ClientAddr: "127.0.0.1:1313",
 		ServerAddr: "10.0.0.1:50000",
 		Hops: []transport.RelayHop{
-			{ID: 1234},
-			{ID: 1234},
-			{ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
+			{Version: transport.RelayHopVersion, ID: 1234},
 		},
 		SDK: "3.4.4",
 		NearbyRelays: []transport.NearRelayPortalData{
-			{ID: 1, Name: "local", ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
+			{Version: transport.NearRelayPortalDataVersion, ID: 1, Name: "local", ClientStats: routing.Stats{RTT: 1, Jitter: 2, PacketLoss: 3}},
 		},
 	}
 	anonMeta.Anonymise()
 
 	slice1 := transport.SessionSlice{
+		Version:   transport.SessionSliceVersion,
 		Timestamp: time.Now(),
 		Next:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
 		Direct:    routing.Stats{RTT: 15, Jitter: 20, PacketLoss: 25},
 		Envelope:  routing.Envelope{Up: 1500, Down: 1500},
 	}
 	slice2 := transport.SessionSlice{
+		Version:   transport.SessionSliceVersion,
 		Timestamp: time.Now().Add(10 * time.Second),
 		Next:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
 		Direct:    routing.Stats{RTT: 15, Jitter: 20, PacketLoss: 25},
 		Envelope:  routing.Envelope{Up: 1500, Down: 1500},
 	}
 	slice3 := transport.SessionSlice{
+		Version:   transport.SessionSliceVersion,
 		Timestamp: time.Now().Add(20 * time.Second),
 		Next:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
 		Direct:    routing.Stats{RTT: 15, Jitter: 20, PacketLoss: 25},
 		Envelope:  routing.Envelope{Up: 1500, Down: 1500},
 	}
 	slice4 := transport.SessionSlice{
+		Version:   transport.SessionSliceVersion,
 		Timestamp: time.Now().Add(30 * time.Second),
 		Next:      routing.Stats{RTT: 5, Jitter: 10, PacketLoss: 15},
 		Direct:    routing.Stats{RTT: 15, Jitter: 20, PacketLoss: 25},
@@ -962,8 +969,8 @@ func TestSessionDetails(t *testing.T) {
 	assert.NoError(t, err)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{})
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
 	t.Run("success - bigtable - !admin - !sameBuyer", func(t *testing.T) {
@@ -982,8 +989,8 @@ func TestSessionDetails(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{})
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
 	t.Run("success - bigtable - !admin - sameBuyer", func(t *testing.T) {
@@ -1002,8 +1009,8 @@ func TestSessionDetails(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
@@ -1027,8 +1034,8 @@ func TestSessionDetails(t *testing.T) {
 	redisClient.RPush(fmt.Sprintf("ss-%s", sessionID), slice1.RedisString(), slice2.RedisString())
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{})
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
 	t.Run("success - !admin - !sameBuyer", func(t *testing.T) {
@@ -1036,6 +1043,7 @@ func TestSessionDetails(t *testing.T) {
 		err := svc.SessionDetails(req, &jsonrpc.SessionDetailsArgs{SessionID: sessionID}, &reply)
 		assert.NoError(t, err)
 		assert.Equal(t, anonMeta, reply.Meta)
+		assert.Equal(t, 2, len(reply.Slices))
 		assert.Equal(t, slice1.Timestamp.Hour(), reply.Slices[0].Timestamp.Hour())
 		assert.Equal(t, slice1.Next, reply.Slices[0].Next)
 		assert.Equal(t, slice1.Direct, reply.Slices[0].Direct)
@@ -1047,8 +1055,8 @@ func TestSessionDetails(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{})
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
 	t.Run("success - !admin - sameBuyer", func(t *testing.T) {
@@ -1067,8 +1075,8 @@ func TestSessionDetails(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
@@ -1094,7 +1102,7 @@ func TestSessionMapPoints(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	buyerID1 := fmt.Sprintf("%016x", 111)
@@ -1105,9 +1113,9 @@ func TestSessionMapPoints(t *testing.T) {
 	sessionID3 := fmt.Sprintf("%016x", 333)
 
 	points := []transport.SessionMapPoint{
-		{Latitude: 10, Longitude: 40},
-		{Latitude: 20, Longitude: 50},
-		{Latitude: 30, Longitude: 60},
+		{Version: transport.SessionMapPointVersion, Latitude: 10, Longitude: 40},
+		{Version: transport.SessionMapPointVersion, Latitude: 20, Longitude: 50},
+		{Version: transport.SessionMapPointVersion, Latitude: 30, Longitude: 60},
 	}
 
 	now := time.Now()
@@ -1155,7 +1163,7 @@ func TestSessionMapPoints(t *testing.T) {
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("filtered - !admin - sameBuyer", func(t *testing.T) {
@@ -1179,7 +1187,7 @@ func TestSessionMapPoints(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
@@ -1203,7 +1211,7 @@ func TestSessionMap(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	buyerID1 := fmt.Sprintf("%016x", 111)
@@ -1214,9 +1222,9 @@ func TestSessionMap(t *testing.T) {
 	sessionID3 := fmt.Sprintf("%016x", 333)
 
 	points := []transport.SessionMapPoint{
-		{Latitude: 10, Longitude: 40},
-		{Latitude: 20, Longitude: 50},
-		{Latitude: 30, Longitude: 60},
+		{Version: transport.SessionMapPointVersion, Latitude: 10, Longitude: 40, SessionID: uint64(123456789)},
+		{Version: transport.SessionMapPointVersion, Latitude: 20, Longitude: 50, SessionID: uint64(123123123)},
+		{Version: transport.SessionMapPointVersion, Latitude: 30, Longitude: 60, SessionID: uint64(456456456)},
 	}
 
 	now := time.Now()
@@ -1258,13 +1266,13 @@ func TestSessionMap(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 3, len(mappoints))
-		assert.Equal(t, []interface{}{float64(60), float64(30), false}, mappoints[0])
-		assert.Equal(t, []interface{}{float64(40), float64(10), true}, mappoints[1])
-		assert.Equal(t, []interface{}{float64(50), float64(20), true}, mappoints[2])
+		assert.Equal(t, []interface{}{float64(60), float64(30), false, "000000001b34f908"}, mappoints[0])
+		assert.Equal(t, []interface{}{float64(40), float64(10), true, "00000000075bcd15"}, mappoints[1])
+		assert.Equal(t, []interface{}{float64(50), float64(20), true, "000000000756b5b3"}, mappoints[2])
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("filtered - !admin - sameBuyer", func(t *testing.T) {
@@ -1277,8 +1285,8 @@ func TestSessionMap(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 2, len(mappoints))
-		assert.Equal(t, []interface{}{float64(60), float64(30), false}, mappoints[0])
-		assert.Equal(t, []interface{}{float64(40), float64(10), true}, mappoints[1])
+		assert.Equal(t, []interface{}{float64(60), float64(30), false, "000000001b34f908"}, mappoints[0])
+		assert.Equal(t, []interface{}{float64(40), float64(10), true, "00000000075bcd15"}, mappoints[1])
 	})
 
 	t.Run("filtered - !admin - !sameBuyer", func(t *testing.T) {
@@ -1288,7 +1296,7 @@ func TestSessionMap(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)
@@ -1303,7 +1311,7 @@ func TestSessionMap(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(mappoints))
-		assert.Equal(t, []interface{}{float64(50), float64(20), true}, mappoints[0])
+		assert.Equal(t, []interface{}{float64(50), float64(20), true, "000000000756b5b3"}, mappoints[0])
 	})
 }
 
@@ -1312,7 +1320,7 @@ func TestGameConfiguration(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
@@ -1329,7 +1337,7 @@ func TestGameConfiguration(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	jsonrpc.SetIsAnonymous(req, true)
+	middleware.SetIsAnonymous(req, true)
 
 	t.Run("insufficient privileges", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
@@ -1337,7 +1345,7 @@ func TestGameConfiguration(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	jsonrpc.SetIsAnonymous(req, false)
+	middleware.SetIsAnonymous(req, false)
 
 	t.Run("no company", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
@@ -1346,7 +1354,7 @@ func TestGameConfiguration(t *testing.T) {
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("success", func(t *testing.T) {
@@ -1363,7 +1371,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
@@ -1381,7 +1389,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	jsonrpc.SetIsAnonymous(req, true)
+	middleware.SetIsAnonymous(req, true)
 
 	t.Run("insufficient privileges", func(t *testing.T) {
 		var reply jsonrpc.GameConfigurationReply
@@ -1389,10 +1397,10 @@ func TestUpdateGameConfiguration(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	jsonrpc.SetIsAnonymous(req, false)
+	middleware.SetIsAnonymous(req, false)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Owner",
 	})
 	req = req.WithContext(reqContext)
@@ -1404,7 +1412,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
 	req = req.WithContext(reqContext)
 
 	t.Run("no public key", func(t *testing.T) {
@@ -1428,7 +1436,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("success - existing buyer", func(t *testing.T) {
@@ -1448,7 +1456,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 
 func TestSameBuyerRoleFunction(t *testing.T) {
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	var storer = storage.InMemory{}
 
 	pubkey := make([]byte, 4)
@@ -1470,12 +1478,12 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	t.Run("fail - no company", func(t *testing.T) {
 		sameBuyerRoleFunc := svc.SameBuyerRole("local-local")
 		verified, err := sameBuyerRoleFunc(req)
-		assert.Error(t, err)
+		assert.NoError(t, err)
 		assert.False(t, verified)
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("fail - not same buyer", func(t *testing.T) {
@@ -1493,8 +1501,8 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.CompanyKey, "local-local")
-	reqContext = context.WithValue(reqContext, jsonrpc.Keys.RolesKey, []string{
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
 	req = req.WithContext(reqContext)

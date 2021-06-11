@@ -9,15 +9,14 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/poly1305"
-
-	"github.com/spaolacci/murmur3"
 )
 
 const (
-	MACSize        = poly1305.TagSize
-	NonceSize      = chacha20poly1305.NonceSizeX
-	KeySize        = chacha20poly1305.KeySize
-	PacketHashSize = 8
+	MACSize             = poly1305.TagSize
+	NonceSize           = chacha20poly1305.NonceSizeX
+	KeySize             = chacha20poly1305.KeySize
+	PacketHashSize      = 8
+	PacketSignatureSize = 64
 )
 
 var (
@@ -49,13 +48,6 @@ var (
 // HashID hashes a string to a uint64 so it can be used as IDs for Relays, Datacenters, etc.
 func HashID(s string) uint64 {
 	hash := fnv.New64a()
-	hash.Write([]byte(s))
-	return hash.Sum64()
-}
-
-// For hashing when speed is the only thing desired
-func FastHash(s string) uint64 {
-	hash := murmur3.New64()
 	hash.Write([]byte(s))
 	return hash.Sum64()
 }
@@ -117,13 +109,6 @@ func Seal(data []byte, nonce []byte, publicKey []byte, privateKey []byte) []byte
 	return box.Seal(nil, data, &n, &pub, &priv)
 }
 
-// Sign wraps sodiumSign with is a wrapper around libsodium
-// We wrap this to avoid including C in other libs breaking
-// code linting
-func Sign(privateKey []byte, data []byte) []byte {
-	return sodiumSign(data, privateKey)
-}
-
 // SignPacket wraps sodiumSignPacket with is a wrapper around libsodium
 // We wrap this to avoid including C in other libs breaking
 // code linting
@@ -131,18 +116,11 @@ func SignPacket(key []byte, data []byte) []byte {
 	return sodiumSignPacket(data, key)
 }
 
-// Verify wraps sodiumVerify with is a wrapper around libsodium
+// VerifyPacket wraps sodiumVerifyPacket with is a wrapper around libsodium
 // We wrap this to avoid including C in other libs breaking
 // code linting
-func Verify(publicKey []byte, data []byte, sig []byte) bool {
-	return sodiumVerify(data, sig, publicKey)
-}
-
-// Hash wraps sodiumHash with is a wrapper around libsodium
-// We wrap this to avoid including C in other libs breaking
-// code linting
-func Hash(key []byte, data []byte) []byte {
-	return sodiumHash(data, key)
+func VerifyPacket(publicKey []byte, data []byte) bool {
+	return sodiumVerifyPacket(data, publicKey)
 }
 
 // HashPacket wraps hashPacket with is a wrapper around libsodium
@@ -150,13 +128,6 @@ func Hash(key []byte, data []byte) []byte {
 // code linting
 func HashPacket(key []byte, data []byte) {
 	sodiumHashPacket(data, key)
-}
-
-// Check wraps sodiumCheck with is a wrapper around libsodium
-// We wrap this to avoid including C in other libs breaking
-// code linting
-func Check(key []byte, data []byte) bool {
-	return sodiumCheck(data, key)
 }
 
 // IsNetworkNextPacket wraps sodiumIsNetworkNextPacket with is a wrapper around libsodium

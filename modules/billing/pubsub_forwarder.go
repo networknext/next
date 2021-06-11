@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log"
@@ -22,7 +23,9 @@ type PubSubForwarder struct {
 	pubsubSubscription *pubsub.Subscription
 }
 
-func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics *metrics.BillingMetrics, gcpProjectID string, topicName string, subscriptionName string) (*PubSubForwarder, error) {
+// PubSubForwarder receives batches of billing entries from Google Pub/Sub, unbatches, and inserts them into an internal channel.
+// NOTE: use SEPARATE PubSubForwarders for receiving BillingEntry and BillingEntry2 from different Pub/Sub subscriptions.
+func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics *metrics.BillingMetrics, gcpProjectID string, topicName string, subscriptionName string, numRecvGoroutines int) (*PubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -37,16 +40,22 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 		}
 	}
 
+	// Set the number goroutines for pulling from Google Pub/Sub
+	subscriber := pubsubClient.Subscription(subscriptionName)
+	subscriber.ReceiveSettings.NumGoroutines = numRecvGoroutines
+
 	return &PubSubForwarder{
 		Biller:             biller,
 		Logger:             logger,
 		Metrics:            metrics,
-		pubsubSubscription: pubsubClient.Subscription(subscriptionName),
+		pubsubSubscription: subscriber,
 	}, nil
 }
 
 // Forward reads the billing entry from pubsub and writes it to BigQuery
-func (psf *PubSubForwarder) Forward(ctx context.Context) {
+func (psf *PubSubForwarder) Forward(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
 		entries, err := psf.unbatchMessages(m)
 		if err != nil {
@@ -66,8 +75,10 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 					billingEntries[i].Timestamp = uint64(m.PublishTime.Unix())
 				}
 
-				if err := psf.Biller.Bill(context.Background(), &billingEntries[i]); err != nil {
+				if err := psf.Biller.Bill(ctx, &billingEntries[i]); err != nil {
 					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
+					// Nack if we failed to submit the billing entry
+					m.Nack()
 					return
 				}
 
@@ -79,6 +90,8 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				if err != nil {
 					level.Error(psf.Logger).Log("msg", "failed to parse veto env var", "err", err)
 					psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
+					// Nack if we failed to read the billing entry
+					m.Nack()
 					return
 				}
 
@@ -88,13 +101,80 @@ func (psf *PubSubForwarder) Forward(ctx context.Context) {
 				}
 
 				psf.Metrics.ErrorMetrics.BillingReadFailure.Add(1)
+				// Nack if we failed to read the billing entry
+				m.Nack()
 			}
 		}
 	})
 
-	// If the Receive function returns for any reason, we want to immediately exit and restart the service
-	level.Error(psf.Logger).Log("msg", "stopped receive loop", "err", err)
-	os.Exit(1)
+	if err != nil && err != context.Canceled {
+		// If the Receive function returns for any reason besides shutdown, we want to immediately exit and restart the service
+		level.Error(psf.Logger).Log("msg", "stopped receive loop", "err", err)
+		os.Exit(1)
+	}
+
+	// Close entries channel to ensure messages are drained for the final write to BigQuery
+	psf.Biller.Close()
+	level.Debug(psf.Logger).Log("msg", "receive canceled, closed entries channel")
+}
+
+// Forward reads the billing entry 2 from pubsub and writes it to BigQuery
+func (psf *PubSubForwarder) Forward2(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	err := psf.pubsubSubscription.Receive(ctx, func(ctx context.Context, m *pubsub.Message) {
+		entries, err := psf.unbatchMessages(m)
+		if err != nil {
+			level.Error(psf.Logger).Log("err", err)
+			psf.Metrics.ErrorMetrics.Billing2BatchedReadFailure.Add(1)
+		}
+
+		psf.Metrics.Entries2Received.Add(float64(len(entries)))
+
+		billingEntries := make([]BillingEntry2, len(entries))
+		for i := range billingEntries {
+			if err = ReadBillingEntry2(&billingEntries[i], entries[i]); err == nil {
+				if err := psf.Biller.Bill2(ctx, &billingEntries[i]); err != nil {
+					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
+					// Nack if we failed to submit the billing entry
+					m.Nack()
+					return
+				}
+
+				m.Ack()
+			} else {
+				entryVetoStr := os.Getenv("BILLING_ENTRY_VETO")
+				entryVeto, err := strconv.ParseBool(entryVetoStr)
+
+				if err != nil {
+					level.Error(psf.Logger).Log("msg", "failed to parse veto env var", "err", err)
+					psf.Metrics.ErrorMetrics.Billing2ReadFailure.Add(1)
+					// Nack if we failed to read the billing entry
+					m.Nack()
+					return
+				}
+
+				if entryVeto {
+					m.Ack()
+					return
+				}
+
+				psf.Metrics.ErrorMetrics.Billing2ReadFailure.Add(1)
+				// Nack if we failed to read the billing entry
+				m.Nack()
+			}
+		}
+	})
+
+	if err != nil && err != context.Canceled {
+		// If the Receive function returns for any reason besides shutdown, we want to immediately exit and restart the service
+		level.Error(psf.Logger).Log("msg", "stopped receive loop", "err", err)
+		os.Exit(1)
+	}
+
+	// Close entries channel to ensure messages are drained for the final write to BigQuery
+	psf.Biller.Close()
+	level.Debug(psf.Logger).Log("msg", "receive canceled, closed entries channel")
 }
 
 func (psf *PubSubForwarder) unbatchMessages(m *pubsub.Message) ([][]byte, error) {

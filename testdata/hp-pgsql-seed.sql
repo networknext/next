@@ -33,7 +33,7 @@ INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb
 INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'local.locale.9','2020-12-02 14:17:21.0837497-05:00',10000,'127.0.0.2',10009,'1.2.3.49',1009,19700000000000,26000000000000,1000,'127.0.0.1',10009,'\xf522adc1ee046abe7d890c813a0831badcddb552cb735610daa9c0ae08a2cf5e',22,'root','2020-12-02 14:17:21.0837496-05:00',2,( select id from datacenters where display_name = 'local'),1,0);
 INSERT INTO relays (contract_term, display_name, end_date, included_bandwidth_gb, internal_ip, internal_ip_port, management_ip, max_sessions, mrc, overage, port_speed, public_ip, public_ip_port, public_key, ssh_port, ssh_user, start_date, bw_billing_rule, datacenter, machine_type, relay_state ) VALUES(12,'ghost-army.locale.19','2020-12-02 14:17:21.0967574-05:00',10000,'127.0.0.3',10009,'4.3.2.19',1009,19700000000000,26000000000000,1000,'127.0.0.2',10009,'\xcd13985636c60236f35907330c11f4e50651fc3db1f681f898da3365ab256bf8',22,'root','2020-12-02 14:17:21.0967573-05:00',2,( select id from datacenters where display_name = 'ghost-army.locale.name'),1,0);
 
-INSERT INTO datacenter_maps VALUES('local aliased',1,2);
+INSERT INTO datacenter_maps VALUES('local',1,2);
 INSERT INTO datacenter_maps VALUES('ghost-army.map',2,3);
 
 INSERT INTO metadata VALUES(31);

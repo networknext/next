@@ -41,17 +41,6 @@ func (r Route) String() string {
 	return sb.String()
 }
 
-func (r *Route) Decide(prevDecision Decision, lastNextStats *Stats, lastDirectStats *Stats, routeDecisions ...DecisionFunc) Decision {
-	nextDecision := prevDecision
-	if prevDecision.Reason == DecisionInitialSlice {
-		nextDecision = Decision{}
-	}
-	for _, routeDecision := range routeDecisions {
-		nextDecision = routeDecision(nextDecision, &r.Stats, lastNextStats, lastDirectStats)
-	}
-	return nextDecision
-}
-
 func (r *Route) Hash64() uint64 {
 	fnv64 := fnv.New64()
 	id := make([]byte, 8)

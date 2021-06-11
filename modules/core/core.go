@@ -11,6 +11,7 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"sync"
 	"unsafe"
@@ -19,7 +20,7 @@ import (
 const CostBias = 3
 const MaxNearRelays = 32
 const MaxRelaysPerRoute = 5
-const MaxRoutesPerEntry = 64
+const MaxRoutesPerEntry = 16
 const JitterThreshold = 15
 
 const NEXT_MAX_NODES = 7
@@ -29,6 +30,25 @@ const NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES = 116
 const NEXT_CONTINUE_TOKEN_BYTES = 17
 const NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES = 57
 const NEXT_PRIVATE_KEY_BYTES = 32
+
+var debugLogs bool
+
+func init() {
+	value, ok := os.LookupEnv("NEXT_DEBUG_LOGS")
+	if ok && value == "1" {
+		debugLogs = true
+	}
+}
+
+func Error(s string, params ...interface{}) {
+	fmt.Printf("error: "+s+"\n", params...)
+}
+
+func Debug(s string, params ...interface{}) {
+	if debugLogs {
+		fmt.Printf(s+"\n", params...)
+	}
+}
 
 func ProtocolVersionAtLeast(serverMajor uint32, serverMinor uint32, serverPatch uint32, targetMajor uint32, targetMinor uint32, targetPatch uint32) bool {
 	serverVersion := ((serverMajor & 0xFF) << 16) | ((serverMinor & 0xFF) << 8) | (serverPatch & 0xFF)
@@ -76,6 +96,14 @@ func GenerateRelayKeyPair() ([]byte, []byte, error) {
 	publicKey, privateKey, err := ed25519.GenerateKey(nil)
 	return publicKey, privateKey, err
 }
+
+// -----------------------------------------------------
+
+const (
+	IPAddressNone = 0
+	IPAddressIPv4 = 1
+	IPAddressIPv6 = 2
+)
 
 func ParseAddress(input string) *net.UDPAddr {
 	address := &net.UDPAddr{}
@@ -526,6 +554,243 @@ func Optimize(numRelays int, numSegments int, cost []int32, costThreshold int32,
 	return routes
 }
 
+func Optimize2(numRelays int, numSegments int, cost []int32, costThreshold int32, relayDatacenter []uint64, destinationRelay []bool) []RouteEntry {
+
+	// build a matrix of indirect routes from relays i -> j that have lower cost than direct, eg. i -> (x) -> j, where x is every other relay
+
+	type Indirect struct {
+		relay int32
+		cost  int32
+	}
+
+	indirect := make([][][]Indirect, numRelays)
+
+	var wg sync.WaitGroup
+
+	wg.Add(numSegments)
+
+	for segment := 0; segment < numSegments; segment++ {
+
+		startIndex := segment * numRelays / numSegments
+		endIndex := (segment+1)*numRelays/numSegments - 1
+		if segment == numSegments-1 {
+			endIndex = numRelays - 1
+		}
+
+		go func(startIndex int, endIndex int) {
+
+			defer wg.Done()
+
+			working := make([]Indirect, numRelays)
+
+			for i := startIndex; i <= endIndex; i++ {
+
+				indirect[i] = make([][]Indirect, numRelays)
+
+				for j := 0; j < numRelays; j++ {
+
+					// can't route to self
+					if i == j {
+						continue
+					}
+
+					ijIndex := TriMatrixIndex(i, j)
+
+					numRoutes := 0
+					costDirect := cost[ijIndex]
+
+					if costDirect < 0 {
+
+						// no direct route exists between i,j. subdivide valid routes so we don't miss indirect paths.
+
+						for k := 0; k < numRelays; k++ {
+							if k == i || k == j {
+								continue
+							}
+							ikIndex := TriMatrixIndex(i, k)
+							kjIndex := TriMatrixIndex(k, j)
+							ikCost := cost[ikIndex]
+							kjCost := cost[kjIndex]
+							if ikCost < 0 || kjCost < 0 {
+								continue
+							}
+							working[numRoutes].relay = int32(k)
+							working[numRoutes].cost = int32(ikCost + kjCost)
+							numRoutes++
+						}
+
+					} else {
+
+						// direct route exists between i,j. subdivide only when a significant cost reduction occurs.
+
+						for k := 0; k < numRelays; k++ {
+							if k == i || k == j {
+								continue
+							}
+							ikIndex := TriMatrixIndex(i, k)
+							ikCost := cost[ikIndex]
+							if ikCost < 0 {
+								continue
+							}
+							kjIndex := TriMatrixIndex(k, j)
+							kjCost := cost[kjIndex]
+							if kjCost < 0 {
+								continue
+							}
+							indirectCost := ikCost + kjCost
+							if indirectCost > costDirect-costThreshold {
+								continue
+							}
+							working[numRoutes].relay = int32(k)
+							working[numRoutes].cost = indirectCost
+							numRoutes++
+						}
+
+					}
+
+					if numRoutes > 0 {
+						indirect[i][j] = make([]Indirect, numRoutes)
+						copy(indirect[i][j], working)
+					}
+				}
+			}
+
+		}(startIndex, endIndex)
+	}
+
+	wg.Wait()
+
+	// use the indirect matrix to subdivide a route up to 5 hops
+
+	entryCount := TriMatrixLength(numRelays)
+
+	routes := make([]RouteEntry, entryCount)
+
+	wg.Add(numSegments)
+
+	for segment := 0; segment < numSegments; segment++ {
+
+		startIndex := segment * numRelays / numSegments
+		endIndex := (segment+1)*numRelays/numSegments - 1
+		if segment == numSegments-1 {
+			endIndex = numRelays - 1
+		}
+
+		go func(startIndex int, endIndex int) {
+
+			defer wg.Done()
+
+			for i := startIndex; i <= endIndex; i++ {
+
+				for j := 0; j < i; j++ {
+
+					if !destinationRelay[i] && !destinationRelay[j] {
+						continue
+					}
+
+					ijIndex := TriMatrixIndex(i, j)
+
+					if indirect[i][j] == nil {
+
+						if cost[ijIndex] >= 0 {
+
+							// only direct route from i -> j exists, and it is suitable
+
+							routes[ijIndex].DirectCost = cost[ijIndex]
+							routes[ijIndex].NumRoutes = 1
+							routes[ijIndex].RouteCost[0] = cost[ijIndex]
+							routes[ijIndex].RouteNumRelays[0] = 2
+							routes[ijIndex].RouteRelays[0][0] = int32(i)
+							routes[ijIndex].RouteRelays[0][1] = int32(j)
+							routes[ijIndex].RouteHash[0] = RouteHash(int32(i), int32(j))
+
+						} else {
+
+							// no route exists from i -> j
+
+						}
+
+					} else {
+
+						// subdivide routes from i -> j as follows: i -> (x) -> (y) -> (z) -> j, where the subdivision improves significantly on cost
+
+						var routeManager RouteManager
+
+						routeManager.RelayDatacenter = relayDatacenter
+
+						for k := range indirect[i][j] {
+
+							if cost[ijIndex] >= 0 {
+								routeManager.AddRoute(cost[ijIndex], int32(i), int32(j))
+							}
+
+							y := indirect[i][j][k]
+
+							routeManager.AddRoute(y.cost, int32(i), y.relay, int32(j))
+
+							var x *Indirect
+							if indirect[i][y.relay] != nil {
+								x = &indirect[i][y.relay][0]
+							}
+
+							var z *Indirect
+							if indirect[j][y.relay] != nil {
+								z = &indirect[j][y.relay][0]
+							}
+
+							if x != nil {
+								ixIndex := TriMatrixIndex(i, int(x.relay))
+								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
+								yjIndex := TriMatrixIndex(int(y.relay), j)
+
+								routeManager.AddRoute(cost[ixIndex]+cost[xyIndex]+cost[yjIndex], int32(i), x.relay, y.relay, int32(j))
+							}
+
+							if z != nil {
+								iyIndex := TriMatrixIndex(i, int(y.relay))
+								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
+								zjIndex := TriMatrixIndex(int(z.relay), j)
+
+								routeManager.AddRoute(cost[iyIndex]+cost[yzIndex]+cost[zjIndex], int32(i), y.relay, z.relay, int32(j))
+							}
+
+							if x != nil && z != nil {
+								ixIndex := TriMatrixIndex(i, int(x.relay))
+								xyIndex := TriMatrixIndex(int(x.relay), int(y.relay))
+								yzIndex := TriMatrixIndex(int(y.relay), int(z.relay))
+								zjIndex := TriMatrixIndex(int(z.relay), j)
+
+								routeManager.AddRoute(cost[ixIndex]+cost[xyIndex]+cost[yzIndex]+cost[zjIndex], int32(i), x.relay, y.relay, z.relay, int32(j))
+							}
+
+							numRoutes := routeManager.NumRoutes
+
+							routes[ijIndex].DirectCost = cost[ijIndex]
+
+							routes[ijIndex].NumRoutes = int32(numRoutes)
+
+							for u := 0; u < numRoutes; u++ {
+								routes[ijIndex].RouteCost[u] = routeManager.RouteCost[u]
+								routes[ijIndex].RouteNumRelays[u] = routeManager.RouteNumRelays[u]
+								numRelays := int(routes[ijIndex].RouteNumRelays[u])
+								for v := 0; v < numRelays; v++ {
+									routes[ijIndex].RouteRelays[u][v] = routeManager.RouteRelays[u][v]
+								}
+								routes[ijIndex].RouteHash[u] = routeManager.RouteHash[u]
+							}
+						}
+					}
+				}
+			}
+
+		}(startIndex, endIndex)
+	}
+
+	wg.Wait()
+
+	return routes
+}
+
 // ---------------------------------------------------
 
 type RouteToken struct {
@@ -757,6 +1022,14 @@ func RouteExists(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [Ma
 
 func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRelays [MaxRelaysPerRoute]int32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, debug *string) int32 {
 
+	// IMPORTANT: This shouldn't happen. Triaging...
+	if len(routeRelays) == 0 {
+		if debug != nil {
+			*debug += "no route relays?\n"
+		}
+		return -1
+	}
+
 	// IMPORTANT: This can happen. Make sure we handle it without exploding
 	if len(routeMatrix) == 0 {
 		if debug != nil {
@@ -884,22 +1157,10 @@ func ReframeRoute(routeState *RouteState, relayIDToIndex map[uint64]int32, route
 	return true
 }
 
-func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, nextPacketLoss int32, firstRouteRelayId uint64, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
+func ReframeRelays(routeShader *RouteShader, routeState *RouteState, relayIDToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss int32, nextPacketLoss int32, sliceNumber int32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []int32, destRelayIds []uint64, out_sourceRelayLatency []int32, out_sourceRelayJitter []int32, out_numDestRelays *int32, out_destRelays []int32) {
 
 	if routeState.NumNearRelays == 0 {
 		routeState.NumNearRelays = int32(len(sourceRelayId))
-	}
-
-	if int(routeState.NumNearRelays) != len(sourceRelayId) {
-		// IMPORTANT: This should never happen, but if it does, nuke all near relays as RTT 255 (unroutable) and bail :)
-		for i := 0; i < len(routeState.NearRelayRTT); i++ {
-			routeState.NearRelayRTT[i] = 255
-		}
-		for i := 0; i < len(out_sourceRelayLatency); i++ {
-			out_sourceRelayLatency[i] = 255
-		}
-		*out_numDestRelays = int32(0)
-		return
 	}
 
 	if directJitter > 255 {
@@ -1115,7 +1376,7 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes, &routeDiversity)
 	if numBestRoutes == 0 {
 		if debug != nil {
-			*debug += "could not find any next routes. this should never happen\n"
+			*debug += "could not find any next routes\n"
 		}
 		return
 	}
@@ -1206,6 +1467,7 @@ type RouteShader struct {
 	BandwidthEnvelopeUpKbps   int32
 	BandwidthEnvelopeDownKbps int32
 	BannedUsers               map[uint64]bool
+	PacketLossSustained       float32
 }
 
 func NewRouteShader() RouteShader {
@@ -1224,6 +1486,7 @@ func NewRouteShader() RouteShader {
 		BandwidthEnvelopeUpKbps:   1024,
 		BandwidthEnvelopeDownKbps: 1024,
 		BannedUsers:               make(map[uint64]bool),
+		PacketLossSustained:       100,
 	}
 }
 
@@ -1246,6 +1509,7 @@ type RouteState struct {
 	CommitVeto          bool
 	CommitCounter       int32
 	LatencyWorse        bool
+	LocationVeto        bool
 	MultipathOverload   bool
 	NoRoute             bool
 	NextLatencyTooHigh  bool
@@ -1266,51 +1530,54 @@ type RouteState struct {
 	MispredictCounter   uint32
 	LatencyWorseCounter uint32
 	MultipathRestricted bool
+	PLSustainedCounter  int32
 }
 
 type InternalConfig struct {
-	RouteSelectThreshold       int32
-	RouteSwitchThreshold       int32
-	MaxLatencyTradeOff         int32
-	RTTVeto_Default            int32
-	RTTVeto_Multipath          int32
-	RTTVeto_PacketLoss         int32
-	MultipathOverloadThreshold int32
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-	Uncommitted                bool
-	MaxRTT                     int32
-	HighFrequencyPings         bool
-	RouteDiversity             int32
-	MultipathThreshold         int32
-	EnableVanityMetrics        bool
+	RouteSelectThreshold           int32
+	RouteSwitchThreshold           int32
+	MaxLatencyTradeOff             int32
+	RTTVeto_Default                int32
+	RTTVeto_Multipath              int32
+	RTTVeto_PacketLoss             int32
+	MultipathOverloadThreshold     int32
+	TryBeforeYouBuy                bool
+	ForceNext                      bool
+	LargeCustomer                  bool
+	Uncommitted                    bool
+	MaxRTT                         int32
+	HighFrequencyPings             bool
+	RouteDiversity                 int32
+	MultipathThreshold             int32
+	EnableVanityMetrics            bool
+	ReducePacketLossMinSliceNumber int32
 }
 
 func NewInternalConfig() InternalConfig {
 	return InternalConfig{
-		RouteSelectThreshold:       2,
-		RouteSwitchThreshold:       5,
-		MaxLatencyTradeOff:         20,
-		RTTVeto_Default:            -10,
-		RTTVeto_Multipath:          -20,
-		RTTVeto_PacketLoss:         -30,
-		MultipathOverloadThreshold: 500,
-		TryBeforeYouBuy:            false,
-		ForceNext:                  false,
-		LargeCustomer:              false,
-		Uncommitted:                false,
-		MaxRTT:                     300,
-		HighFrequencyPings:         true,
-		RouteDiversity:             0,
-		MultipathThreshold:         25,
-		EnableVanityMetrics:        false,
+		RouteSelectThreshold:           2,
+		RouteSwitchThreshold:           5,
+		MaxLatencyTradeOff:             20,
+		RTTVeto_Default:                -10,
+		RTTVeto_Multipath:              -20,
+		RTTVeto_PacketLoss:             -30,
+		MultipathOverloadThreshold:     500,
+		TryBeforeYouBuy:                false,
+		ForceNext:                      false,
+		LargeCustomer:                  false,
+		Uncommitted:                    false,
+		MaxRTT:                         300,
+		HighFrequencyPings:             true,
+		RouteDiversity:                 0,
+		MultipathThreshold:             25,
+		EnableVanityMetrics:            false,
+		ReducePacketLossMinSliceNumber: 0,
 	}
 }
 
 func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 
-	if routeState.Veto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
+	if routeState.Veto || routeState.LocationVeto || routeState.Banned || routeState.Disabled || routeState.NotSelected || routeState.B {
 		return true
 	}
 
@@ -1383,7 +1650,7 @@ func TryBeforeYouBuy(routeState *RouteState, internal *InternalConfig, directLat
 	return true
 }
 
-func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string) bool {
+func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, multipathVetoUsers map[uint64]bool, internal *InternalConfig, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
 
 	if EarlyOutDirect(routeShader, routeState) {
 		return false
@@ -1419,8 +1686,20 @@ func MakeRouteDecision_TakeNetworkNext(routeMatrix []RouteEntry, routeShader *Ro
 
 	// should we try to reduce packet loss?
 
+	// Check if the session is seeing sustained packet loss and increment/reset the counter
+
+	if directPacketLoss >= routeShader.PacketLossSustained {
+		if routeState.PLSustainedCounter < 3 {
+			routeState.PLSustainedCounter = routeState.PLSustainedCounter + 1
+		}
+	}
+
+	if directPacketLoss < routeShader.PacketLossSustained {
+		routeState.PLSustainedCounter = 0
+	}
+
 	reducePacketLoss := false
-	if routeShader.ReducePacketLoss && directPacketLoss > routeShader.AcceptablePacketLoss {
+	if routeShader.ReducePacketLoss && ((directPacketLoss > routeShader.AcceptablePacketLoss && sliceNumber >= internal.ReducePacketLossMinSliceNumber) || routeState.PLSustainedCounter == 3) {
 		if debug != nil {
 			*debug += "try to reduce packet loss\n"
 		}

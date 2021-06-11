@@ -8,14 +8,13 @@ import (
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
-func customers(rpcClient jsonrpc.RPCClient, env Environment) {
+func customers(env Environment) {
 	args := localjsonrpc.BuyersArgs{}
 
 	var reply localjsonrpc.CustomersReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Customers", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Customers", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -27,14 +26,14 @@ func customers(rpcClient jsonrpc.RPCClient, env Environment) {
 	table.Output(reply.Customers)
 }
 
-func addCustomer(rpcClient jsonrpc.RPCClient, env Environment, c routing.Customer) {
+func addCustomer(env Environment, c routing.Customer) {
 
 	arg := localjsonrpc.AddCustomerArgs{
 		Customer: c,
 	}
 
 	var reply localjsonrpc.AddCustomerReply
-	if err := rpcClient.CallFor(&reply, "OpsService.AddCustomer", arg); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.AddCustomer", arg); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -43,14 +42,14 @@ func addCustomer(rpcClient jsonrpc.RPCClient, env Environment, c routing.Custome
 
 }
 
-func getCustomerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
+func getCustomerInfo(env Environment, id string) {
 
 	arg := localjsonrpc.CustomerArg{
 		CustomerID: id,
 	}
 
 	var reply localjsonrpc.CustomerReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Customer", arg); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Customer", arg); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
@@ -70,7 +69,6 @@ func getCustomerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 }
 
 func updateCustomer(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	customerCode string,
 	field string,
@@ -84,7 +82,26 @@ func updateCustomer(
 		Field:      field,
 		Value:      value,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "OpsService.UpdateCustomer", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "OpsService.UpdateCustomer", args); err != nil {
+		fmt.Printf("%v\n", err)
+		return nil
+	}
+
+	fmt.Printf("Customer %s updated successfully.\n", customerCode)
+	return nil
+}
+
+func removeCustomer(
+	env Environment,
+	customerCode string,
+) error {
+
+	emptyReply := localjsonrpc.RemoveCustomerReply{}
+
+	args := localjsonrpc.RemoveCustomerArgs{
+		CustomerCode: customerCode,
+	}
+	if err := makeRPCCall(env, &emptyReply, "OpsService.RemoveCustomer", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}

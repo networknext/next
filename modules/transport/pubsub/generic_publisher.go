@@ -17,13 +17,11 @@ type GenericPublisher struct {
 func NewMultiPublisher(hosts []string, sendBufferSize int) ([]Publisher, error) {
 	var publishers []Publisher
 	for _, host := range hosts {
-		var publisher Publisher
-		gPub, err := NewGenericPublisher(host, sendBufferSize)
+		publisher, err := NewGenericPublisher(host, sendBufferSize)
 		if err != nil {
 			return nil, err
 		}
 
-		publisher = gPub
 		publishers = append(publishers, publisher)
 	}
 	return publishers, nil
@@ -64,4 +62,10 @@ func (p *GenericPublisher) Publish(ctx context.Context, topic Topic, message []b
 	}
 
 	return bytes, err
+}
+
+func (p *GenericPublisher) Close() error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	return p.socket.Close()
 }

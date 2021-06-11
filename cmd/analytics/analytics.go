@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/networknext/backend/modules/envvar"
 
 	"cloud.google.com/go/bigquery"
 	gcplogging "cloud.google.com/go/logging"
@@ -258,56 +261,56 @@ func main() {
 		}
 	}
 
-	var relayNamesHashWriter analytics.RouteMatrixStatsWriter = &analytics.NoOpRouteMatrixStatsWriter{}
-	{
-		// BigQuery
-		if gcpOK {
-			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ROUTE_MATRIX_STATS"); ok {
-				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
-				b, err := analytics.NewGoogleBigQueryRouteMatrixStatsWriter(bqClient, logger, &analyticsMetrics.RouteMatrixStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ROUTE_MATRIX_STATS"))
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
+	/* 	var relayNamesHashWriter analytics.RouteMatrixStatsWriter = &analytics.NoOpRouteMatrixStatsWriter{}
+	   	{
+	   		// BigQuery
+	   		if gcpOK {
+	   			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ROUTE_MATRIX_STATS"); ok {
+	   				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+	   				if err != nil {
+	   					level.Error(logger).Log("err", err)
+	   					os.Exit(1)
+	   				}
+	   				b, err := analytics.NewGoogleBigQueryRouteMatrixStatsWriter(bqClient, logger, &analyticsMetrics.RouteMatrixStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ROUTE_MATRIX_STATS"))
+	   				if err != nil {
+	   					level.Error(logger).Log("err", err)
+	   					os.Exit(1)
+	   				}
 
-				relayNamesHashWriter = &b
+	   				relayNamesHashWriter = &b
 
-				go b.WriteLoop(ctx)
-			}
-		}
+	   				go b.WriteLoop(ctx)
+	   			}
+	   		}
 
-		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-		if emulatorOK {
-			gcpProjectID = "local"
+	   		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
+	   		if emulatorOK {
+	   			gcpProjectID = "local"
 
-			relayNamesHashWriter = &analytics.LocalRouteMatrixStatsWriter{
-				Logger: logger,
-			}
+	   			relayNamesHashWriter = &analytics.LocalRouteMatrixStatsWriter{
+	   				Logger: logger,
+	   			}
 
-			level.Info(logger).Log("msg", "detected pubsub emulator")
-		}
+	   			level.Info(logger).Log("msg", "detected pubsub emulator")
+	   		}
 
-		// google pubsub forwarder
-		if gcpOK || emulatorOK {
-			topicName := "route_matrix_stats"
-			subscriptionName := "route_matrix_stats"
+	   		// google pubsub forwarder
+	   		if gcpOK || emulatorOK {
+	   			topicName := "route_matrix_stats"
+	   			subscriptionName := "route_matrix_stats"
 
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-			defer cancelFunc()
+	   			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+	   			defer cancelFunc()
 
-			pubsubForwarder, err := analytics.NewRouteMatrixStatsPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, &analyticsMetrics.RouteMatrixStatsMetrics, gcpProjectID, topicName, subscriptionName)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
+	   			pubsubForwarder, err := analytics.NewRouteMatrixStatsPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, &analyticsMetrics.RouteMatrixStatsMetrics, gcpProjectID, topicName, subscriptionName)
+	   			if err != nil {
+	   				level.Error(logger).Log("err", err)
+	   				os.Exit(1)
+	   			}
 
-			go pubsubForwarder.Forward(ctx)
-		}
-	}
+	   			go pubsubForwarder.Forward(ctx)
+	   		}
+	   	} */
 
 	// Setup the stats print routine
 	{
@@ -349,7 +352,15 @@ func main() {
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, false, []string{}))
+			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+
+			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+			if err != nil {
+				level.Error(logger).Log("err", err)
+			}
+			if enablePProf {
+				router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+			}
 
 			port, ok := os.LookupEnv("PORT")
 			if !ok {
@@ -359,7 +370,7 @@ func main() {
 
 			level.Info(logger).Log("addr", ":"+port)
 
-			err := http.ListenAndServe(":"+port, router)
+			err = http.ListenAndServe(":"+port, router)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)

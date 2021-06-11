@@ -85,11 +85,15 @@ type VanityMetrics struct {
 }
 
 func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int,
-	vanitySubscriber pubsub.Subscriber, redisSessions string, redisMaxIdleConnections int, redisMaxActiveConnections int,
+	vanitySubscriber pubsub.Subscriber, redisSessions string, redisPassword string, redisMaxIdleConnections int, redisMaxActiveConnections int,
 	vanityMaxUserIdleTime time.Duration, vanitySetName string, env string, logger log.Logger) (*VanityMetricHandler, error) {
 
 	// Create Redis client for userHash -> sessionID, timestamp map
-	vanitySessionsMap := storage.NewRedisPool(redisSessions, redisMaxIdleConnections, redisMaxActiveConnections)
+	vanitySessionsMap := storage.NewRedisPool(redisSessions, redisPassword, redisMaxIdleConnections, redisMaxActiveConnections)
+	if err := storage.ValidateRedisPool(vanitySessionsMap); err != nil {
+		level.Error(logger).Log("msg", "could not validate redis pool", "err", err)
+		return nil, err
+	}
 
 	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
 	vanityHourMetricsMap := map[string]bool{
@@ -340,6 +344,7 @@ func (vm *VanityMetricHandler) AddNewBuyerID(ctx context.Context, buyerID string
 		vm.mapMutex.Lock()
 		vm.buyerMetricMap[buyerID] = vanityMetricPerBuyer
 		vm.mapMutex.Unlock()
+
 		level.Debug(vm.logger).Log("msg", "Found new buyer ID, inserted into map for quick lookup", "buyerID", buyerID)
 		return true, nil
 	}
@@ -457,6 +462,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 // Checks if a userHash has moved onto a new sessionID at a later point in time
 func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
 	sessionIDStr := fmt.Sprintf("%016x", sessionID)
+
 	exists, err := vm.SessionIDExists(sessionIDStr)
 	if err != nil {
 		return exists, nil
@@ -656,6 +662,7 @@ func (vm *VanityMetricHandler) GetTimeSeriesName(gcpProjectID string, metricType
 func (vm *VanityMetricHandler) SessionIDExists(sessionID string) (exists bool, err error) {
 	conn := vm.redisSessionsMap.Get()
 	defer conn.Close()
+
 	member := fmt.Sprintf("sid-%s", sessionID)
 	score, err := conn.Do("ZSCORE", redis.Args{}.Add(vm.redisSetName).Add(member)...)
 	if err != nil {
@@ -694,7 +701,6 @@ func (vm *VanityMetricHandler) AddSessionID(sessionID string) error {
 
 func (vm *VanityMetricHandler) ExpireOldSessions(conn redis.Conn) error {
 	currentTime := time.Now().UnixNano()
-
 	numRemoved, err := redis.Int(conn.Do("ZREMRANGEBYSCORE", redis.Args{}.Add(vm.redisSetName).Add("-inf").Add(fmt.Sprintf("(%d", currentTime))...))
 
 	if numRemoved != 0 {

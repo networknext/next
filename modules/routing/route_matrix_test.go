@@ -2,6 +2,7 @@ package routing_test
 
 import (
 	"net"
+	"os"
 	"testing"
 
 	"github.com/networknext/backend/modules/core"
@@ -49,7 +50,9 @@ func getRouteMatrix(t *testing.T) routing.RouteMatrix {
 func TestRouteMatrixSerialize(t *testing.T) {
 	expected := getRouteMatrix(t)
 
-	ws, err := encoding.CreateWriteStream(10000)
+	buffer := make([]byte, 10000)
+
+	ws, err := encoding.CreateWriteStream(buffer)
 	assert.NoError(t, err)
 	err = expected.Serialize(ws)
 	assert.NoError(t, err)
@@ -65,11 +68,50 @@ func TestRouteMatrixSerialize(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
+	original := getRouteMatrix(t)
+	expected := original
+	original.CreatedAt = 19803
+
+	buffer := make([]byte, 10000)
+
+	ws, err := encoding.CreateWriteStream(buffer)
+	assert.NoError(t, err)
+	err = original.Serialize(ws)
+	assert.NoError(t, err)
+
+	ws.Flush()
+	data := ws.GetData()[:ws.GetBytesProcessed()]
+
+	var actual routing.RouteMatrix
+	rs := encoding.CreateReadStream(data)
+	err = actual.Serialize(rs)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected.BinFileBytes, actual.BinFileBytes)
+	assert.Equal(t, expected.BinFileData, actual.BinFileData)
+	assert.Equal(t, expected.RelayAddresses, actual.RelayAddresses)
+	assert.Equal(t, expected.RelayDatacenterIDs, actual.RelayDatacenterIDs)
+	assert.Equal(t, expected.RelayIDs, actual.RelayIDs)
+	assert.Equal(t, expected.RelayIDsToIndices, actual.RelayIDsToIndices)
+	assert.Equal(t, expected.RelayLatitudes, actual.RelayLatitudes)
+	assert.Equal(t, expected.RelayLongitudes, actual.RelayLongitudes)
+	assert.Equal(t, expected.RelayNames, actual.RelayNames)
+	assert.Equal(t, expected.RouteEntries, actual.RouteEntries)
+	assert.NotEqual(t, expected.CreatedAt, actual.CreatedAt)
+	assert.Equal(t, actual.CreatedAt, uint64(19803))
+	assert.Equal(t, expected.CreatedAt, uint64(0))
+}
+
+// todo: GetNearRelays tests should be extended to also check the second value returned, array of relay addresses is correct
+
 func TestRouteMatrixNoNearRelays(t *testing.T) {
 	routeMatrix := routing.RouteMatrix{}
 
-	nearRelays := routeMatrix.GetNearRelays(0, 0, 0, 0, 0, core.MaxNearRelays)
-	assert.Empty(t, nearRelays)
+	nearRelayIDs, nearRelayAddresses := routeMatrix.GetNearRelays(0, 0, 0, 0, 0, core.MaxNearRelays)
+
+	assert.Empty(t, nearRelayIDs)
+	assert.Empty(t, nearRelayAddresses)
 }
 
 func TestRouteMatrixGetNearRelays(t *testing.T) {
@@ -77,7 +119,7 @@ func TestRouteMatrixGetNearRelays(t *testing.T) {
 
 	expected := []uint64{1, 4, 3}
 
-	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
 
 	assert.Equal(t, expected, actual)
 }
@@ -87,7 +129,7 @@ func TestRouteMatrixGetNearRelaysWithMax(t *testing.T) {
 
 	expected := routeMatrix.RelayIDs[:1]
 
-	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, 1)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, 1)
 
 	assert.Equal(t, expected, actual)
 }
@@ -102,7 +144,7 @@ func TestRouteMatrixGetNearRelaysNoNearRelaysAroundSource(t *testing.T) {
 
 	expected := []uint64{4, 3}
 
-	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
 
 	assert.Equal(t, expected, actual)
 }
@@ -117,7 +159,7 @@ func TestRouteMatrixGetNearRelaysNoNearRelaysAroundDest(t *testing.T) {
 
 	expected := []uint64{1, 3}
 
-	actual := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
 
 	assert.Equal(t, expected, actual)
 }
@@ -136,4 +178,68 @@ func TestRouteMatrixGetDatacenterIDsSuccess(t *testing.T) {
 	expected := routeMatrix.RelayIDs
 	actual := routeMatrix.GetDatacenterRelayIDs(10)
 	assert.Equal(t, expected, actual)
+}
+
+func TestRouteMatrixGetJsonAnalysis(t *testing.T) {
+
+	fileName := "../../testdata/optimize.bin.prod-5_may"
+	file, err := os.Open(fileName)
+	assert.NoError(t, err)
+	defer file.Close()
+
+	var routeMatrix routing.RouteMatrix
+	_, err = routeMatrix.ReadFrom(file)
+	assert.NoError(t, err)
+
+	// routeMatrix.WriteAnalysisTo(os.Stdout)
+	// the line above prints:
+	// 	RTT Improvement:
+	//     None: 9706 (56.81%)
+	//     0-5ms: 2605 (15.25%)
+	//     5-10ms: 1898 (11.11%)
+	//     10-15ms: 1110 (6.50%)
+	//     15-20ms: 647 (3.79%)
+	//     20-25ms: 369 (2.16%)
+	//     25-30ms: 230 (1.35%)
+	//     30-35ms: 108 (0.63%)
+	//     35-40ms: 58 (0.34%)
+	//     40-45ms: 39 (0.23%)
+	//     45-50ms: 48 (0.28%)
+	//     50ms+: 267 (1.56%)
+	// Route Summary:
+	//     289 relays
+	//     171333 total routes
+	//     17085 relay pairs
+	//     67 destination relays
+	//     10.0 routes per relay pair on average (16 max)
+	//     3.6 relays per route on average (5 max)
+	//     14.9% of relay pairs have only one route
+	//     9.1% of relay pairs have no route
+
+	jsonMatrixAnalysis := routeMatrix.GetJsonAnalysis()
+
+	assert.Equal(t, 9706, jsonMatrixAnalysis.RttImprovementNone)
+	assert.Equal(t, 2605, jsonMatrixAnalysis.RttImprovement0_5ms)
+	assert.Equal(t, 1898, jsonMatrixAnalysis.RttImprovement5_10ms)
+	assert.Equal(t, 1110, jsonMatrixAnalysis.RttImprovement10_15ms)
+	assert.Equal(t, 647, jsonMatrixAnalysis.RttImprovement15_20ms)
+	assert.Equal(t, 369, jsonMatrixAnalysis.RttImprovement20_25ms)
+	assert.Equal(t, 230, jsonMatrixAnalysis.RttImprovement25_30ms)
+	assert.Equal(t, 108, jsonMatrixAnalysis.RttImprovement30_35ms)
+	assert.Equal(t, 58, jsonMatrixAnalysis.RttImprovement35_40ms)
+	assert.Equal(t, 39, jsonMatrixAnalysis.RttImprovement40_45ms)
+	assert.Equal(t, 48, jsonMatrixAnalysis.RttImprovement45_50ms)
+	assert.Equal(t, 267, jsonMatrixAnalysis.RttImprovement50plusms)
+
+	assert.Equal(t, 289, jsonMatrixAnalysis.RelayCount)
+	assert.Equal(t, 171333, jsonMatrixAnalysis.TotalRoutes)
+	assert.Equal(t, 17085, jsonMatrixAnalysis.RelayPairs)
+	assert.Equal(t, 67, jsonMatrixAnalysis.DestinationRelays)
+	assert.Equal(t, 10.02827041264267, jsonMatrixAnalysis.AvgRoutesPerRelayPair)
+	assert.Equal(t, 16, jsonMatrixAnalysis.MaxRoutesPerRelayPair)
+	assert.Equal(t, 3.619034278276806, jsonMatrixAnalysis.AvgRelaysPerRoute)
+	assert.Equal(t, 5, jsonMatrixAnalysis.MaxRelaysPerRoute)
+	assert.Equal(t, 14.937079309335674, jsonMatrixAnalysis.RelayPairsWithOneRoutePercent)
+	assert.Equal(t, 9.089844893181153, jsonMatrixAnalysis.RelayPairsWIthNoRoutesPercent)
+
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/middleware"
 
 	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )
@@ -36,6 +38,10 @@ const (
 	TopSessionsSize          = 1000
 	MapPointByteCacheVersion = uint8(1)
 	MaxHistoricalSessions    = 100
+)
+
+var (
+	ErrInsufficientPrivileges = errors.New("insufficient privileges")
 )
 
 type BuyersService struct {
@@ -74,7 +80,7 @@ type FlushSessionsArgs struct{}
 type FlushSessionsReply struct{}
 
 func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, reply *FlushSessionsReply) error {
-	if !VerifyAllRoles(r, OpsRole) {
+	if !middleware.VerifyAllRoles(r, middleware.OpsRole) {
 		return fmt.Errorf("FlushSessions(): %v", ErrInsufficientPrivileges)
 	}
 
@@ -175,6 +181,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				if err != nil && err != redis.ErrNil {
 					err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
 					level.Error(s.Logger).Log("err", err)
+					err = fmt.Errorf("UserSessions() failed getting session slices")
 					return err
 				}
 
@@ -196,8 +203,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 						return err
 					}
 
-					if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 						session.Anonymise()
+					} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+						// Don't show sessions where the company code does not match the request's
+						continue
 					}
 
 					reply.Sessions = append(reply.Sessions, session)
@@ -361,8 +371,11 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					return err
 				}
 
-				if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					sessionMeta.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
 				}
 
 				sessionTimestamps = append(sessionTimestamps, SessionTimestamp{Meta: sessionMeta, Timestamp: sessionSlice.Timestamp.UTC()})
@@ -438,6 +451,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
 			firstNextCount += firstCount
@@ -446,6 +460,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
 			secondNextCount += secondCount
@@ -480,6 +495,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive first session count: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed to receive first session count")
 				return err
 			}
 
@@ -498,6 +514,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive second session count: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed to receive second session count")
 				return err
 			}
 
@@ -528,6 +545,8 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		reply.Direct = totalCount - reply.Next
 
 	default:
+		var ghostArmyNextCount int
+
 		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting company with code: %v", err)
@@ -535,7 +554,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 		buyerID := fmt.Sprintf("%016x", buyer.ID)
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -551,6 +570,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts")
 			return err
 		}
 
@@ -558,7 +578,18 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts")
 			return err
+		}
+
+		if buyer.ID == ghostArmyBuyerID {
+			if firstNextCount > secondNextCount {
+				ghostArmyNextCount = firstNextCount * int(ghostArmyNextScaler)
+			} else {
+				ghostArmyNextCount = secondNextCount * int(ghostArmyNextScaler)
+			}
+			firstNextCount += ghostArmyNextCount
+			secondNextCount += ghostArmyNextCount
 		}
 
 		reply.Next = firstNextCount
@@ -573,6 +604,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts")
 			return err
 		}
 
@@ -591,6 +623,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts")
 			return err
 		}
 
@@ -707,7 +740,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
-	if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+	if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 		reply.Meta.Anonymise()
 	}
 
@@ -722,6 +755,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("SessionDetails() failed getting session slices")
 			return err
 		}
 
@@ -810,10 +844,12 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
 	for _, buyer := range buyers {
+		isLargeCustomer := buyer.InternalConfig.LargeCustomer
 		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", buyer.CompanyCode, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer")
 			return err
 		}
 
@@ -826,12 +862,14 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
+			sessionID := fmt.Sprintf("%016x", point.SessionID)
+
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, false})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, false})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
 			}
 		}
 
@@ -843,12 +881,14 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
+			sessionID := fmt.Sprintf("%016x", point.SessionID)
+
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true, sessionID})
 			}
 		}
 
@@ -966,12 +1006,14 @@ func (s *BuyersService) getDirectAndNextMapPointStrings(buyer *routing.Buyer) ([
 
 	directMap, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	directMapB, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	for k, v := range directMapB {
@@ -980,12 +1022,14 @@ func (s *BuyersService) getDirectAndNextMapPointStrings(buyer *routing.Buyer) ([
 
 	nextMap, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	nextMapB, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	for k, v := range nextMapB {
@@ -1109,7 +1153,7 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCompactCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1129,7 +1173,7 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1150,7 +1194,7 @@ func (s *BuyersService) SessionMapPointsByte(r *http.Request, args *MapPointsArg
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1170,7 +1214,7 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsByteCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1197,7 +1241,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var err error
 	var buyer routing.Buyer
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("GameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1210,7 +1254,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 		return err
 	}
 
-	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
 		err = fmt.Errorf("GameConfiguration(): %v", ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1229,12 +1273,99 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	return nil
 }
 
+type BuyerInformationArgs struct {
+	NewPublicKey string `json:"new_public_key"`
+}
+
+type BuyerInformationReply struct {
+	PublicKey string `json:"public_key"`
+}
+
+func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInformationArgs, reply *BuyerInformationReply) error {
+	var err error
+	var buyerID uint64
+	var buyer routing.Buyer
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
+		err = fmt.Errorf("UpdateBuyerInformation(): %v", ErrInsufficientPrivileges)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	ctx := context.Background()
+
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	if !ok {
+		err := fmt.Errorf("UpdateBuyerInformation(): user is not assigned to a company")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+	if companyCode == "" {
+		err = fmt.Errorf("UpdateBuyerInformation(): failed to parse company code")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	if args.NewPublicKey == "" {
+		err = fmt.Errorf("UpdateBuyerInformation() new public key is required")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
+
+	// Buyer found
+	if buyer.ID != 0 {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "PublicKey", args.NewPublicKey); err != nil {
+			err = fmt.Errorf("UpdateBuyerInformation() buyer update failed: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	} else {
+		// New Buyer
+		byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyerInformation() could not decode public key string")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		buyerID = binary.LittleEndian.Uint64(byteKey[0:8])
+
+		// Create new buyer
+		err = s.Storage.AddBuyer(ctx, routing.Buyer{
+			CompanyCode: companyCode,
+			ID:          buyerID,
+			Live:        false,
+			PublicKey:   byteKey[8:],
+		})
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyerInformation() failed to add buyer")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		// Check if buyer is associated with the ID and everything worked
+		buyer, err = s.Storage.Buyer(buyerID)
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyerInformation() buyer creation failed: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	}
+
+	// Set reply
+	reply.PublicKey = buyer.EncodedPublicKey()
+
+	return nil
+}
+
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
 	var buyerID uint64
 	var buyer routing.Buyer
 
-	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err = fmt.Errorf("UpdateGameConfiguration(): %v", ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1242,7 +1373,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := context.Background()
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1302,8 +1433,19 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	live := buyer.Live
+	oldBuyerID := buyer.ID
 
-	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
+	// Remove all dc Maps
+	dcMaps := s.Storage.GetDatacenterMapsForBuyer(oldBuyerID)
+	for _, dcMap := range dcMaps {
+		if err := s.Storage.RemoveDatacenterMap(ctx, dcMap); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to remove old datacenter map: %v, datacenter ID: %016x", err, dcMap.DatacenterID)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	}
+
+	if err = s.Storage.RemoveBuyer(ctx, oldBuyerID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1315,11 +1457,20 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		Live:        live,
 		PublicKey:   byteKey[8:],
 	})
-
 	if err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() buyer update failed: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
+	}
+
+	// Add back dc maps with new buyer ID
+	for _, dcMap := range dcMaps {
+		dcMap.BuyerID = buyerID
+		if err := s.Storage.AddDatacenterMap(ctx, dcMap); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add new datacenter map: %v, datacenter ID: %016x, buyer ID: %016x", err, dcMap.DatacenterID, buyerID)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 	}
 
 	// Check if buyer is associated with the ID and everything worked
@@ -1350,7 +1501,7 @@ type buyerAccount struct {
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1368,7 +1519,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			ID:          id,
 			IsLive:      b.Live,
 		}
-		if VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
+		if middleware.VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
 		}
 	}
@@ -1381,7 +1532,8 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 }
 
 type DatacenterMapsArgs struct {
-	ID uint64 `json:"buyer_id"`
+	ID    uint64 `json:"buyer_id"`
+	HexID string `json:"hexBuyerID"`
 }
 
 type DatacenterMapsFull struct {
@@ -1398,13 +1550,27 @@ type DatacenterMapsReply struct {
 }
 
 func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
+	}
+
+	var buyerID uint64
+	var err error
+
+	if args.HexID != "" {
+		buyerID, err = strconv.ParseUint(args.HexID, 16, 64)
+		if err != nil {
+			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse hex buyer ID: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	} else {
+		buyerID = args.ID
 	}
 
 	var dcm map[uint64]routing.DatacenterMap
 
-	dcm = s.Storage.GetDatacenterMapsForBuyer(args.ID)
+	dcm = s.Storage.GetDatacenterMapsForBuyer(buyerID)
 
 	var replySlice []DatacenterMapsFull
 	for _, dcMap := range dcm {
@@ -1444,6 +1610,40 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 
 }
 
+type JSRemoveDatacenterMapArgs struct {
+	DatacenterHexID string `json:"hexDatacenterID"`
+	BuyerHexID      string `json:"hexBuyerID"`
+	Alias           string `json:"alias"`
+}
+
+type JSRemoveDatacenterMapReply struct {
+	DatacenterMap routing.DatacenterMap
+}
+
+func (s *BuyersService) JSRemoveDatacenterMap(r *http.Request, args *JSRemoveDatacenterMapArgs, reply *JSRemoveDatacenterMapReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	buyerID, err := strconv.ParseUint(args.BuyerHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse BuyerID: %s", args.BuyerHexID)
+	}
+
+	datacenterID, err := strconv.ParseUint(args.DatacenterHexID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Unable to parse DatacenterID: %s", args.BuyerHexID)
+	}
+
+	dcMap := routing.DatacenterMap{
+		Alias:        args.Alias,
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+	}
+
+	return s.Storage.RemoveDatacenterMap(ctx, dcMap)
+
+}
+
 type RemoveDatacenterMapArgs struct {
 	DatacenterMap routing.DatacenterMap
 }
@@ -1455,6 +1655,83 @@ func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacen
 	defer cancelFunc()
 
 	return s.Storage.RemoveDatacenterMap(ctx, args.DatacenterMap)
+
+}
+
+// UpdateDatacenterMapArgs: HexBuyerID and HexDatacenterID are the combined primary
+// key needed to look up the existing datacenter map
+type UpdateDatacenterMapArgs struct {
+	HexBuyerID      string `json:"hexBuyerID"`
+	HexDatacenterID string `json:"hexDatacenterID"`
+	Field           string `json:"field"`
+	Value           string `json:"value"`
+}
+
+type UpdateDatacenterMapReply struct{}
+
+func (s *BuyersService) UpdateDatacenterMap(r *http.Request, args *UpdateDatacenterMapArgs, reply *UpdateDatacenterMapReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+		return nil
+	}
+
+	datacenterID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Value: %v is not a valid hex ID", args.Value)
+	}
+
+	buyerID, err := strconv.ParseUint(args.HexBuyerID, 16, 64)
+	if err != nil {
+		return fmt.Errorf("Value: %v is not a valid hex ID", args.Value)
+	}
+
+	switch args.Field {
+	case "HexDatacenterID", "Alias":
+		err = s.Storage.UpdateDatacenterMap(context.Background(), buyerID, datacenterID, args.Field, args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateDatacenterMap() error updating datacenter map: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist or is not editable on the DatacenterMap type", args.Field)
+	}
+
+	return nil
+}
+
+type JSAddDatacenterMapArgs struct {
+	HexBuyerID      string `json:"hexBuyerID"`
+	HexDatacenterID string `json:"hexDatacenterID"`
+	Alias           string `json:"alias"`
+}
+
+type JSAddDatacenterMapReply struct{}
+
+func (s *BuyersService) JSAddDatacenterMap(r *http.Request, args *JSAddDatacenterMapArgs, reply *JSAddDatacenterMapReply) error {
+
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	buyerID, err := strconv.ParseUint(args.HexBuyerID, 16, 64)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	datacenterID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	dcMap := routing.DatacenterMap{
+		BuyerID:      buyerID,
+		DatacenterID: datacenterID,
+		Alias:        args.Alias,
+	}
+
+	return s.Storage.AddDatacenterMap(ctx, dcMap)
 
 }
 
@@ -1474,27 +1751,22 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 }
 
 // SameBuyerRole checks the JWT for the correct passed in buyerID
-func (s *BuyersService) SameBuyerRole(companyCode string) RoleFunc {
+func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
 	return func(req *http.Request) (bool, error) {
-		if VerifyAnyRole(req, AdminRole, OpsRole) {
+		if middleware.VerifyAnyRole(req, middleware.AdminRole, middleware.OpsRole) {
 			return true, nil
 		}
-		if VerifyAllRoles(req, AnonymousRole) {
+		if middleware.VerifyAllRoles(req, middleware.AnonymousRole) {
 			return false, nil
 		}
 		if companyCode == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
-		requestCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
-		if !ok {
-			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
-		}
-		if requestCompanyCode == "" {
-			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
+
+		// Grab the user's assigned company if it exists
+		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CompanyKey).(string)
+		if !ok || requestCompanyCode == "" {
+			return false, nil
 		}
 
 		return companyCode == requestCompanyCode, nil
@@ -1521,16 +1793,18 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A")
 			return sessions, err
 		}
 		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B")
 			return sessions, err
 		}
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(companyCodeFilter)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(companyCodeFilter)) {
 			err := fmt.Errorf("FetchCurrentTopSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return sessions, err
@@ -1548,12 +1822,14 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x", buyerID)
 			return sessions, err
 		}
 		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x", buyerID)
 			return sessions, err
 		}
 	}
@@ -1582,6 +1858,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta")
 			return sessions, err
 		}
 
@@ -1599,7 +1876,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			return sessions, err
 		}
 
-		if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 			meta.Anonymise()
 		}
 
@@ -1633,46 +1910,117 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 	return sessions, err
 }
 
-// InternalConfig CRUD endpoints
-type GetInternalConfigArg struct {
-	BuyerID uint64
+type JSInternalConfig struct {
+	RouteSelectThreshold           int64 `json:"routeSelectThreshold"`
+	RouteSwitchThreshold           int64 `json:"routeSwitchThreshold"`
+	MaxLatencyTradeOff             int64 `json:"maxLatencyTradeOff"`
+	RTTVeto_Default                int64 `json:"rttVeto_Default"`
+	RTTVeto_Multipath              int64 `json:"rttVeto_Multipath"`
+	RTTVeto_PacketLoss             int64 `json:"rttVeto_PacketLoss"`
+	MultipathOverloadThreshold     int64 `json:"multipathOverloadThreshold"`
+	TryBeforeYouBuy                bool  `json:"tryBeforeYouBuy"`
+	ForceNext                      bool  `json:"forceNext"`
+	LargeCustomer                  bool  `json:"largeCustomer"`
+	Uncommitted                    bool  `json:"uncommitted"`
+	MaxRTT                         int64 `json:"maxRTT"`
+	HighFrequencyPings             bool  `json:"highFrequencyPings"`
+	RouteDiversity                 int64 `json:"routeDiversity"`
+	MultipathThreshold             int64 `json:"multipathThreshold"`
+	EnableVanityMetrics            bool  `json:"enableVanityMetrics"`
+	ReducePacketLossMinSliceNumber int64 `json:"reducePacketLossMinSliceNumber"`
 }
 
-type GetInternalConfigReply struct {
-	InternalConfig core.InternalConfig
+type InternalConfigArg struct {
+	BuyerID string `json:"buyerID"`
 }
 
-func (s *BuyersService) GetInternalConfig(r *http.Request, arg *GetInternalConfigArg, reply *GetInternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+type InternalConfigReply struct {
+	InternalConfig JSInternalConfig
+}
+
+func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, reply *InternalConfigReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
-	ic, err := s.Storage.InternalConfig(arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("GetInternalConfig() error retrieving internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	reply.InternalConfig = ic
+	ic, err := s.Storage.InternalConfig(buyerID)
+	if err != nil {
+		err = fmt.Errorf("InternalConfig() no InternalConfig stored for buyer %s", arg.BuyerID)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	jsonIC := JSInternalConfig{
+		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
+		RTTVeto_Default:                int64(ic.RTTVeto_Default),
+		RTTVeto_Multipath:              int64(ic.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:             int64(ic.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
+		ForceNext:                      ic.ForceNext,
+		LargeCustomer:                  ic.LargeCustomer,
+		Uncommitted:                    ic.Uncommitted,
+		MaxRTT:                         int64(ic.MaxRTT),
+		HighFrequencyPings:             ic.HighFrequencyPings,
+		RouteDiversity:                 int64(ic.RouteDiversity),
+		MultipathThreshold:             int64(ic.MultipathThreshold),
+		EnableVanityMetrics:            ic.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
+	}
+
+	reply.InternalConfig = jsonIC
 	return nil
 }
 
-type AddInternalConfigArgs struct {
-	BuyerID        uint64
-	InternalConfig core.InternalConfig
+type JSAddInternalConfigArgs struct {
+	BuyerID        string           `json:"buyerID"`
+	InternalConfig JSInternalConfig `json:"internalConfig"`
 }
 
-type AddInternalConfigReply struct{}
+type JSAddInternalConfigReply struct{}
 
-func (s *BuyersService) AddInternalConfig(r *http.Request, arg *AddInternalConfigArgs, reply *AddInternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalConfigArgs, reply *JSAddInternalConfigReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
-	err := s.Storage.AddInternalConfig(context.Background(), arg.InternalConfig, arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("AddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	ic := core.InternalConfig{
+		RouteSelectThreshold:           int32(arg.InternalConfig.RouteSelectThreshold),
+		RouteSwitchThreshold:           int32(arg.InternalConfig.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int32(arg.InternalConfig.MaxLatencyTradeOff),
+		RTTVeto_Default:                int32(arg.InternalConfig.RTTVeto_Default),
+		RTTVeto_Multipath:              int32(arg.InternalConfig.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:             int32(arg.InternalConfig.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold:     int32(arg.InternalConfig.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                arg.InternalConfig.TryBeforeYouBuy,
+		ForceNext:                      arg.InternalConfig.ForceNext,
+		LargeCustomer:                  arg.InternalConfig.LargeCustomer,
+		Uncommitted:                    arg.InternalConfig.Uncommitted,
+		MaxRTT:                         int32(arg.InternalConfig.MaxRTT),
+		HighFrequencyPings:             arg.InternalConfig.HighFrequencyPings,
+		RouteDiversity:                 int32(arg.InternalConfig.RouteDiversity),
+		MultipathThreshold:             int32(arg.InternalConfig.MultipathThreshold),
+		EnableVanityMetrics:            arg.InternalConfig.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int32(arg.InternalConfig.ReducePacketLossMinSliceNumber),
+	}
+
+	err = s.Storage.AddInternalConfig(context.Background(), ic, buyerID)
+	if err != nil {
+		err = fmt.Errorf("JSAddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
@@ -1681,31 +2029,45 @@ func (s *BuyersService) AddInternalConfig(r *http.Request, arg *AddInternalConfi
 }
 
 type UpdateInternalConfigArgs struct {
-	BuyerID uint64
-	Field   string
-	Value   string
+	BuyerID    uint64 `json:"buyerID"`
+	HexBuyerID string `json:"hexBuyerID"`
+	Field      string `json:"field"`
+	Value      string `json:"value"`
 }
 
 type UpdateInternalConfigReply struct{}
 
 func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateInternalConfigArgs, reply *UpdateInternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
+	}
+
+	var err error
+	var buyerID uint64
+
+	if args.HexBuyerID == "" {
+		buyerID = args.BuyerID
+	} else {
+		buyerID, err = strconv.ParseUint(args.HexBuyerID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("Can not parse HexBuyerID: %s", args.HexBuyerID)
+		}
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
 	switch args.Field {
 	case "RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
 		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
-		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold":
+		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold",
+		"ReducePacketLossMinSliceNumber":
 		newInt, err := strconv.ParseInt(args.Value, 10, 32)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
 		}
 		newInt32 := int32(newInt)
-		err = s.Storage.UpdateInternalConfig(context.Background(), args.BuyerID, args.Field, newInt32)
+		err = s.Storage.UpdateInternalConfig(context.Background(), buyerID, args.Field, newInt32)
 		if err != nil {
-			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", args.BuyerID, err)
+			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -1717,9 +2079,9 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
 		}
 
-		err = s.Storage.UpdateInternalConfig(context.Background(), args.BuyerID, args.Field, newValue)
+		err = s.Storage.UpdateInternalConfig(context.Background(), buyerID, args.Field, newValue)
 		if err != nil {
-			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", args.BuyerID, err)
+			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -1732,17 +2094,23 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 }
 
 type RemoveInternalConfigArg struct {
-	BuyerID uint64
+	BuyerID string `json:"buyerID"`
 }
 
 type RemoveInternalConfigReply struct{}
 
 func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInternalConfigArg, reply *RemoveInternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
-	err := s.Storage.RemoveInternalConfig(context.Background(), arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	err = s.Storage.RemoveInternalConfig(context.Background(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveInternalConfig() error removing internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -1752,44 +2120,106 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 	return nil
 }
 
-// RouteShader CRUD endpoints
-type GetRouteShaderArg struct {
-	BuyerID uint64
+type JSRouteShader struct {
+	DisableNetworkNext        bool            `json:"disableNetworkNext"`
+	SelectionPercent          int64           `json:"selectionPercent"`
+	ABTest                    bool            `json:"abTest"`
+	ProMode                   bool            `json:"proMode"`
+	ReduceLatency             bool            `json:"reduceLatency"`
+	ReduceJitter              bool            `json:"reduceJitter"`
+	ReducePacketLoss          bool            `json:"reducePacketLoss"`
+	Multipath                 bool            `json:"multipath"`
+	AcceptableLatency         int64           `json:"acceptableLatency"`
+	LatencyThreshold          int64           `json:"latencyThreshold"`
+	AcceptablePacketLoss      float64         `json:"acceptablePacketLoss"`
+	BandwidthEnvelopeUpKbps   int64           `json:"bandwidthEnvelopeUpKbps"`
+	BandwidthEnvelopeDownKbps int64           `json:"bandwidthEnvelopeDownKbps"`
+	BannedUsers               map[string]bool `json:"bannedUsers"`
+	PacketLossSustained       float64         `json:"packetLossSustained"`
+}
+type RouteShaderArg struct {
+	BuyerID string `json:"buyerID"`
 }
 
-type GetRouteShaderReply struct {
-	RouteShader core.RouteShader
+type RouteShaderReply struct {
+	RouteShader JSRouteShader
 }
 
-func (s *BuyersService) GetRouteShader(r *http.Request, arg *GetRouteShaderArg, reply *GetRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply *RouteShaderReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
-	rs, err := s.Storage.RouteShader(arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
 	if err != nil {
-		err = fmt.Errorf("GetRouteShader() error retrieving route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	reply.RouteShader = rs
+	rs, err := s.Storage.RouteShader(buyerID)
+	if err != nil {
+		err = fmt.Errorf("RouteShader() error retrieving route shader for buyer %s: %v", arg.BuyerID, err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	jsonRS := JSRouteShader{
+		DisableNetworkNext:        rs.DisableNetworkNext,
+		SelectionPercent:          int64(rs.SelectionPercent),
+		ABTest:                    rs.ABTest,
+		ProMode:                   rs.ProMode,
+		ReduceLatency:             rs.ReduceLatency,
+		ReduceJitter:              rs.ReduceJitter,
+		ReducePacketLoss:          rs.ReducePacketLoss,
+		Multipath:                 rs.Multipath,
+		AcceptableLatency:         int64(rs.AcceptableLatency),
+		LatencyThreshold:          int64(rs.LatencyThreshold),
+		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
+	}
+
+	reply.RouteShader = jsonRS
 	return nil
 }
 
-type AddRouteShaderArgs struct {
-	BuyerID     uint64
-	RouteShader core.RouteShader
+type JSAddRouteShaderArgs struct {
+	BuyerID     string        `json:"buyerID"`
+	RouteShader JSRouteShader `json:"routeShader"`
 }
 
-type AddRouteShaderReply struct{}
+type JSAddRouteShaderReply struct{}
 
-func (s *BuyersService) AddRouteShader(r *http.Request, arg *AddRouteShaderArgs, reply *AddRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderArgs, reply *JSAddRouteShaderReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
-	err := s.Storage.AddRouteShader(context.Background(), arg.RouteShader, arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	rs := core.RouteShader{
+		DisableNetworkNext:        arg.RouteShader.DisableNetworkNext,
+		SelectionPercent:          int(arg.RouteShader.SelectionPercent),
+		ABTest:                    arg.RouteShader.ABTest,
+		ProMode:                   arg.RouteShader.ProMode,
+		ReduceLatency:             arg.RouteShader.ReduceLatency,
+		ReduceJitter:              arg.RouteShader.ReduceJitter,
+		ReducePacketLoss:          arg.RouteShader.ReducePacketLoss,
+		Multipath:                 arg.RouteShader.Multipath,
+		AcceptableLatency:         int32(arg.RouteShader.AcceptableLatency),
+		LatencyThreshold:          int32(arg.RouteShader.LatencyThreshold),
+		AcceptablePacketLoss:      float32(arg.RouteShader.AcceptablePacketLoss),
+		BandwidthEnvelopeUpKbps:   int32(arg.RouteShader.BandwidthEnvelopeUpKbps),
+		BandwidthEnvelopeDownKbps: int32(arg.RouteShader.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float32(arg.RouteShader.PacketLossSustained),
+	}
+
+	err = s.Storage.AddRouteShader(context.Background(), rs, buyerID)
 	if err != nil {
 		err = fmt.Errorf("AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -1800,17 +2230,23 @@ func (s *BuyersService) AddRouteShader(r *http.Request, arg *AddRouteShaderArgs,
 }
 
 type RemoveRouteShaderArg struct {
-	BuyerID uint64
+	BuyerID string `json:"buyerID"`
 }
 
 type RemoveRouteShaderReply struct{}
 
 func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShaderArg, reply *RemoveRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
-	err := s.Storage.RemoveRouteShader(context.Background(), arg.BuyerID)
+	buyerID, err := strconv.ParseUint(arg.BuyerID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	err = s.Storage.RemoveRouteShader(context.Background(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveRouteShader() error removing route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -1821,16 +2257,29 @@ func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShade
 }
 
 type UpdateRouteShaderArgs struct {
-	BuyerID uint64
-	Field   string
-	Value   string
+	BuyerID    uint64 `json:"buyerID"`
+	HexBuyerID string `json:"hexBuyerID"`
+	Field      string `json:"field"`
+	Value      string `json:"value"`
 }
 
 type UpdateRouteShaderReply struct{}
 
 func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShaderArgs, reply *UpdateRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
+	}
+
+	var err error
+	var buyerID uint64
+
+	if args.HexBuyerID == "" {
+		buyerID = args.BuyerID
+	} else {
+		buyerID, err = strconv.ParseUint(args.HexBuyerID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("Can not parse HexBuyerID: %s", args.HexBuyerID)
+		}
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -1842,9 +2291,9 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid integer type", args.Value)
 		}
 		newInt32 := int32(newInt)
-		err = s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, newInt32)
+		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newInt32)
 		if err != nil {
-			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
+			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -1855,22 +2304,22 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid integer type", args.Value)
 		}
 		newInteger := int(newInt)
-		err = s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, newInteger)
+		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newInteger)
 		if err != nil {
-			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
+			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-	case "AcceptablePacketLoss":
+	case "AcceptablePacketLoss", "PacketLossSustained":
 		newFloat, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid float type", args.Value)
 		}
 		newFloat32 := float32(newFloat)
-		err = s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, newFloat32)
+		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newFloat32)
 		if err != nil {
-			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
+			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -1883,9 +2332,9 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 		}
 
 		fmt.Printf("newValue: %T\n", newValue)
-		err = s.Storage.UpdateRouteShader(context.Background(), args.BuyerID, args.Field, newValue)
+		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newValue)
 		if err != nil {
-			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", args.BuyerID, err)
+			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -1907,7 +2356,7 @@ type GetBannedUserReply struct {
 }
 
 func (s *BuyersService) GetBannedUsers(r *http.Request, arg *GetBannedUserArg, reply *GetBannedUserReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1936,7 +2385,7 @@ type BannedUserArgs struct {
 type BannedUserReply struct{}
 
 func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1951,7 +2400,7 @@ func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, repl
 }
 
 func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1991,16 +2440,28 @@ func (s *BuyersService) Buyer(r *http.Request, arg *BuyerArg, reply *BuyerReply)
 }
 
 type UpdateBuyerArgs struct {
-	BuyerID uint64
-	Field   string
-	Value   string
+	BuyerID    uint64 `json:"buyerID"`
+	HexBuyerID string `json:"hexBuyerID"` // needed for external (non-go) clients
+	Field      string `json:"field"`
+	Value      string `json:"value"`
 }
 
 type UpdateBuyerReply struct{}
 
 func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, reply *UpdateBuyerReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
+	}
+
+	var buyerID uint64
+	var err error
+	if args.BuyerID != 0 {
+		buyerID = args.BuyerID
+	} else {
+		buyerID, err = strconv.ParseUint(args.HexBuyerID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateBuyer could not parse hexBuyerID: %s", args.HexBuyerID)
+		}
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -2011,14 +2472,14 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", args.Value)
 		}
 
-		err = s.Storage.UpdateBuyer(context.Background(), args.BuyerID, args.Field, newValue)
+		err = s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-	case "ShortName":
-		err := s.Storage.UpdateBuyer(context.Background(), args.BuyerID, args.Field, args.Value)
+	case "ShortName", "PublicKey":
+		err := s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)

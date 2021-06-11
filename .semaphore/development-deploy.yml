@@ -32,6 +32,14 @@ blocks:
           commands:
             - make build-analytics-artifacts-dev
             - make publish-analytics-artifacts-dev
+        - name: Beacon
+          commands:
+            - make build-beacon-artifacts-dev
+            - make publish-beacon-artifacts-dev
+        - name: Beacon Inserter
+          commands:
+            - make build-beacon-inserter-artifacts-dev
+            - make publish-beacon-inserter-artifacts-dev
         - name: API
           commands:
             - make build-api-artifacts-dev
@@ -48,14 +56,34 @@ blocks:
           commands:
             - make build-portal-cruncher-artifacts-dev
             - make publish-portal-cruncher-artifacts-dev
+        - name: Relay Gateway
+          commands:
+            - make build-relay-gateway-artifacts-dev
+            - make publish-relay-gateway-artifacts-dev
         - name: Relay Backend
           commands:
             - make build-relay-backend-artifacts-dev
             - make publish-relay-backend-artifacts-dev
+        - name: Relay Frontend
+          commands:
+            - make build-relay-frontend-artifacts-dev
+            - make publish-relay-frontend-artifacts-dev
+        - name: Relay Forwarder
+          commands:
+            - make build-relay-forwarder-artifacts-dev
+            - make publish-relay-forwarder-artifacts-dev
         - name: Server Backend
           commands:
             - make build-server-backend-artifacts-dev
             - make publish-server-backend-artifacts-dev
+        - name: Debug Server Backend
+          commands:
+            - make build-debug-server-backend-artifacts-dev
+            - make publish-debug-server-backend-artifacts-dev
+        - name: Debug Relay Backend
+          commands:
+            - make build-debug-relay-backend-artifacts-dev
+            - make publish-debug-relay-backend-artifacts-dev
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-dev
@@ -64,18 +92,10 @@ blocks:
             - make build-ghost-army-artifacts-dev
             - make publish-ghost-army-artifacts-dev
             - make publish-ghost-army-bootstrap-script-dev
-        - name: Relay Gateway
+        - name: Relay Pusher
           commands:
-            - make build-relay-gateway-artifacts-dev
-            - make publish-relay-gateway-artifacts-dev
-        - name: Optimizer
-          commands:
-            - make build-optimizer-artifacts-dev
-            - make publish-optimizer-artifacts-dev
-        - name: Route Matrix Selector
-          commands:
-            - make build-route-matrix-selector-artifacts-dev
-            - make publish-route-matrix-selector-artifacts-dev
+            - make build-relay-pusher-artifacts-dev
+            - make publish-relay-pusher-artifacts-dev
 
       secrets:
         - name: google-cloud-platform

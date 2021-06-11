@@ -3,6 +3,7 @@ package jsonrpc
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"net"
@@ -20,6 +21,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/middleware"
 )
 
 type RelayVersion struct {
@@ -68,9 +70,11 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 		return errors.New("unable to read relay stats version")
 	}
 
-	if version != routing.VersionNumberRelayMap {
-		return fmt.Errorf("incorrect relay map version number: %d", version)
-	}
+	/*
+		if version != routing.VersionNumberRelayMap {
+			return fmt.Errorf("incorrect relay map version number: %d", version)
+		}
+	*/
 
 	var count uint64
 	if !encoding.ReadUint64(data, &index, &count) {
@@ -162,6 +166,7 @@ type OpsService struct {
 
 	Logger log.Logger
 
+	// TODO: remove RelayMay
 	RelayMap *RelayStatsMap
 }
 
@@ -190,22 +195,26 @@ type buyer struct {
 	ShortName   string `json:"short_name"`
 	ID          uint64 `json:"id"`
 	HexID       string `json:"hexID"`
+	Live        bool   `json:"live"`
+	Debug       bool   `json:"debug"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
 	for _, b := range s.Storage.Buyers() {
 		c, err := s.Storage.Customer(b.CompanyCode)
 		if err != nil {
-			err = fmt.Errorf("Buyers() could not find Customer %s fo %s: %v", b.CompanyCode, b.String(), err)
+			err = fmt.Errorf("Buyers() could not find Customer %s for %s: %v", b.CompanyCode, b.String(), err)
 			s.Logger.Log("err", err)
 			return err
 		}
 		reply.Buyers = append(reply.Buyers, buyer{
 			ID:          b.ID,
-			HexID:       fmt.Sprintf("%016x", b.ID),
+			HexID:       b.HexID,
 			CompanyName: c.Name,
 			CompanyCode: b.CompanyCode,
 			ShortName:   b.ShortName,
+			Live:        b.Live,
+			Debug:       b.Debug,
 		})
 	}
 
@@ -216,17 +225,41 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 	return nil
 }
 
-type AddBuyerArgs struct {
-	Buyer routing.Buyer
+type JSAddBuyerArgs struct {
+	ShortName string `json:"shortName"`
+	Live      bool   `json:"live"`
+	Debug     bool   `json:"debug"`
+	PublicKey string `json:"publicKey"`
 }
 
-type AddBuyerReply struct{}
+type JSAddBuyerReply struct{}
 
-func (s *OpsService) AddBuyer(r *http.Request, args *AddBuyerArgs, reply *AddBuyerReply) error {
+func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JSAddBuyerReply) error {
 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	return s.Storage.AddBuyer(ctx, args.Buyer)
+	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	if len(publicKey) != crypto.KeySize+8 {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	// slice the public key here instead of in the clients
+	buyer := routing.Buyer{
+		CompanyCode: args.ShortName,
+		ShortName:   args.ShortName,
+		ID:          binary.LittleEndian.Uint64(publicKey[:8]),
+		Live:        args.Live,
+		Debug:       args.Debug,
+		PublicKey:   publicKey[8:],
+	}
+
+	return s.Storage.AddBuyer(ctx, buyer)
 }
 
 type RemoveBuyerArgs struct {
@@ -288,6 +321,7 @@ type seller struct {
 	Name                 string          `json:"name"`
 	IngressPriceNibblins routing.Nibblin `json:"ingressPriceNibblins"`
 	EgressPriceNibblins  routing.Nibblin `json:"egressPriceNibblins"`
+	Secret               bool            `json:"secret"`
 }
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
@@ -304,6 +338,7 @@ func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersR
 			Name:                 localSeller.Name,
 			IngressPriceNibblins: localSeller.IngressPriceNibblinsPerGB,
 			EgressPriceNibblins:  localSeller.EgressPriceNibblinsPerGB,
+			Secret:               localSeller.Secret,
 		})
 	}
 
@@ -321,10 +356,11 @@ type CustomersReply struct {
 }
 
 type customer struct {
-	Name     string `json:"name"`
-	Code     string `json:"code"`
-	BuyerID  string `json:"buyer_id"`
-	SellerID string `json:"seller_id"`
+	Name                   string `json:"name"`
+	Code                   string `json:"code"`
+	AutomaticSignInDomains string `json:"automaticSigninDomains"`
+	BuyerID                string `json:"buyer_id"`
+	SellerID               string `json:"seller_id"`
 }
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
@@ -345,16 +381,43 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 		}
 
 		reply.Customers = append(reply.Customers, customer{
-			Name:     c.Name,
-			Code:     c.Code,
-			BuyerID:  buyerID,
-			SellerID: seller.ID,
+			Name:                   c.Name,
+			Code:                   c.Code,
+			AutomaticSignInDomains: c.AutomaticSignInDomains,
+			BuyerID:                buyerID,
+			SellerID:               seller.ID,
 		})
 	}
 
 	sort.Slice(reply.Customers, func(i int, j int) bool {
 		return reply.Customers[i].Name < reply.Customers[j].Name
 	})
+	return nil
+}
+
+type JSAddCustomerArgs struct {
+	Code                   string `json:"code"`
+	Name                   string `json:"name"`
+	AutomaticSignInDomains string `json:"automaticSignInDomains"`
+}
+
+type JSAddCustomerReply struct{}
+
+func (s *OpsService) JSAddCustomer(r *http.Request, args *JSAddCustomerArgs, reply *JSAddCustomerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	customer := routing.Customer{
+		Name:                   args.Name,
+		Code:                   args.Code,
+		AutomaticSignInDomains: args.AutomaticSignInDomains,
+	}
+
+	if err := s.Storage.AddCustomer(ctx, customer); err != nil {
+		err = fmt.Errorf("AddCustomer() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
 	return nil
 }
 
@@ -420,6 +483,37 @@ func (s *OpsService) Seller(r *http.Request, arg *SellerArg, reply *SellerReply)
 	reply.Seller = seller
 	return nil
 
+}
+
+type JSAddSellerArgs struct {
+	ShortName    string `json:"shortName"`
+	Secret       bool   `json:"secret"`
+	IngressPrice int64  `json:"ingressPrice"` // nibblins
+	EgressPrice  int64  `json:"egressPrice"`  // nibblins
+}
+
+type JSAddSellerReply struct{}
+
+func (s *OpsService) JSAddSeller(r *http.Request, args *JSAddSellerArgs, reply *JSAddSellerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	seller := routing.Seller{
+		ID:                        args.ShortName,
+		ShortName:                 args.ShortName,
+		CompanyCode:               args.ShortName,
+		Secret:                    args.Secret,
+		IngressPriceNibblinsPerGB: routing.Nibblin(args.IngressPrice),
+		EgressPriceNibblinsPerGB:  routing.Nibblin(args.EgressPrice),
+	}
+
+	if err := s.Storage.AddSeller(ctx, seller); err != nil {
+		err = fmt.Errorf("AddSeller() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
 }
 
 type AddSellerArgs struct {
@@ -535,6 +629,8 @@ type RelaysReply struct {
 type relay struct {
 	ID                  uint64                `json:"id"`
 	HexID               string                `json:"hexID"`
+	DatacenterHexID     string                `json:"datacenterHexID"`
+	BillingSupplier     string                `json:"billingSupplier"`
 	SignedID            int64                 `json:"signed_id"`
 	Name                string                `json:"name"`
 	Addr                string                `json:"addr"`
@@ -544,13 +640,11 @@ type relay struct {
 	NICSpeedMbps        int32                 `json:"nicSpeedMbps"`
 	IncludedBandwidthGB int32                 `json:"includedBandwidthGB"`
 	State               string                `json:"state"`
-	LastUpdateTime      time.Time             `json:"lastUpdateTime"`
 	ManagementAddr      string                `json:"management_addr"`
 	SSHUser             string                `json:"ssh_user"`
 	SSHPort             int64                 `json:"ssh_port"`
 	MaxSessionCount     uint32                `json:"maxSessionCount"`
 	PublicKey           string                `json:"public_key"`
-	FirestoreID         string                `json:"firestore_id"`
 	Version             string                `json:"relay_version"`
 	SellerName          string                `json:"seller_name"`
 	MRC                 routing.Nibblin       `json:"monthlyRecurringChargeNibblins"`
@@ -560,18 +654,19 @@ type relay struct {
 	StartDate           time.Time             `json:"startDate"`
 	EndDate             time.Time             `json:"endDate"`
 	Type                routing.MachineType   `json:"machineType"`
-	CPUUsage            float32               `json:"cpu_usage"`
-	MemUsage            float32               `json:"mem_usage"`
-	TrafficStats        routing.TrafficStats  `json:"traffic_stats"`
+	Notes               string                `json:"notes"`
 	DatabaseID          int64
 	DatacenterID        uint64
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
+
 	for _, r := range s.Storage.Relays() {
 		relay := relay{
 			ID:                  r.ID,
 			HexID:               fmt.Sprintf("%016x", r.ID),
+			DatacenterHexID:     fmt.Sprintf("%016x", r.Datacenter.ID),
+			BillingSupplier:     r.BillingSupplier,
 			SignedID:            r.SignedID,
 			Name:                r.Name,
 			Addr:                r.Addr.String(),
@@ -583,9 +678,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
 			State:               r.State.String(),
-			LastUpdateTime:      r.LastUpdateTime,
 			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
-			FirestoreID:         r.FirestoreID,
 			MaxSessionCount:     r.MaxSessions,
 			SellerName:          r.Seller.Name,
 			MRC:                 r.MRC,
@@ -595,15 +688,13 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			StartDate:           r.StartDate,
 			EndDate:             r.EndDate,
 			Type:                r.Type,
+			Notes:               r.Notes,
+			Version:             r.Version,
 			DatabaseID:          r.DatabaseID,
 		}
 
-		if relayData, ok := s.RelayMap.Get(r.ID); ok {
-			relay.TrafficStats = relayData.TrafficStats
-			relay.CPUUsage = relayData.CPU
-			relay.MemUsage = relayData.Mem
-			relay.Version = relayData.Version.String()
-			relay.LastUpdateTime = relayData.LastUpdateTime
+		if addrStr := r.InternalAddr.String(); addrStr != ":0" {
+			relay.InternalAddr = addrStr
 		}
 
 		reply.Relays = append(reply.Relays, relay)
@@ -655,7 +746,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 }
 
 type AddRelayArgs struct {
-	Relay routing.Relay
+	Relay routing.Relay `json:"Relay"`
 }
 
 type AddRelayReply struct{}
@@ -665,6 +756,124 @@ func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRel
 	defer cancelFunc()
 
 	if err := s.Storage.AddRelay(ctx, args.Relay); err != nil {
+		err = fmt.Errorf("AddRelay() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
+type JSAddRelayArgs struct {
+	Name                string `json:"name"`
+	Addr                string `json:"addr"`
+	InternalAddr        string `json:"internal_addr"`
+	PublicKey           string `json:"public_key"`
+	SellerID            string `json:"seller"`
+	DatacenterID        string `json:"datacenter"`
+	NICSpeedMbps        int64  `json:"nicSpeedMbps"`
+	IncludedBandwidthGB int64  `json:"includedBandwidthGB"`
+	ManagementAddr      string `json:"management_addr"`
+	SSHUser             string `json:"ssh_user"`
+	SSHPort             int64  `json:"ssh_port"`
+	MaxSessions         int64  `json:"max_sessions"`
+	MRC                 int64  `json:"monthlyRecurringChargeNibblins"`
+	Overage             int64  `json:"overage"`
+	BWRule              int64  `json:"bandwidthRule"`
+	ContractTerm        int64  `json:"contractTerm"`
+	StartDate           string `json:"startDate"`
+	EndDate             string `json:"endDate"`
+	Type                int64  `json:"machineType"`
+	Notes               string `json:"notes"`
+	BillingSupplier     string `json:"billingSupplier"`
+	Version             string `json:"relay_version"`
+}
+
+type JSAddRelayReply struct{}
+
+func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JSAddRelayReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	addr, err := net.ResolveUDPAddr("udp", args.Addr)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	dcID, err := strconv.ParseUint(args.DatacenterID, 16, 64)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	// seller is not required for SQL Storer AddRelay() method
+	var datacenter routing.Datacenter
+	if datacenter, err = s.Storage.Datacenter(dcID); err != nil {
+		err = fmt.Errorf("Datacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
+	if err != nil {
+		err = fmt.Errorf("could not decode base64 public key %s: %v", args.PublicKey, err)
+		s.Logger.Log("err", err)
+	}
+
+	rid := crypto.HashID(args.Addr)
+	relay := routing.Relay{
+		ID:                  rid,
+		Name:                args.Name,
+		Addr:                *addr,
+		PublicKey:           publicKey,
+		Datacenter:          datacenter,
+		NICSpeedMbps:        int32(args.NICSpeedMbps),
+		IncludedBandwidthGB: int32(args.IncludedBandwidthGB),
+		State:               routing.RelayStateMaintenance,
+		ManagementAddr:      args.ManagementAddr,
+		SSHUser:             args.SSHUser,
+		SSHPort:             args.SSHPort,
+		MaxSessions:         uint32(args.MaxSessions),
+		MRC:                 routing.Nibblin(args.MRC),
+		Overage:             routing.Nibblin(args.Overage),
+		BWRule:              routing.BandWidthRule(args.BWRule),
+		ContractTerm:        int32(args.ContractTerm),
+		Type:                routing.MachineType(args.Type),
+		Notes:               args.Notes,
+		BillingSupplier:     args.BillingSupplier,
+		Version:             args.Version,
+	}
+
+	var internalAddr *net.UDPAddr
+	if args.InternalAddr != "" {
+		internalAddr, err = net.ResolveUDPAddr("udp", args.InternalAddr)
+		if err != nil {
+			s.Logger.Log("err", err)
+			return err
+		}
+		relay.InternalAddr = *internalAddr
+	}
+
+	if args.StartDate != "" {
+		startDate, err := time.Parse("2006-01-02", args.StartDate)
+		if err != nil {
+			s.Logger.Log("err", err)
+			return err
+		}
+		relay.StartDate = startDate
+	}
+
+	if args.EndDate != "" {
+		endDate, err := time.Parse("2006-01-02", args.EndDate)
+		if err != nil {
+			s.Logger.Log("err", err)
+			return err
+		}
+		relay.EndDate = endDate
+	}
+
+	if err := s.Storage.AddRelay(ctx, relay); err != nil {
 		err = fmt.Errorf("AddRelay() error: %w", err)
 		s.Logger.Log("err", err)
 		return err
@@ -909,6 +1118,46 @@ func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, rep
 	return nil
 }
 
+type JSAddDatacenterArgs struct {
+	Name      string  `json:"name"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	SellerID  string  `json:"sellerID"`
+}
+
+type JSAddDatacenterReply struct{}
+
+func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs, reply *JSAddDatacenterReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	dcID := crypto.HashID(args.Name)
+
+	seller, err := s.Storage.Seller(args.SellerID)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	datacenter := routing.Datacenter{
+		Name: args.Name,
+		ID:   dcID,
+		Location: routing.Location{
+			Latitude:  float32(args.Latitude),
+			Longitude: float32(args.Longitude),
+		},
+		SellerID: seller.DatabaseID,
+	}
+
+	if err := s.Storage.AddDatacenter(ctx, datacenter); err != nil {
+		err = fmt.Errorf("AddDatacenter() error: %w", err)
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+}
+
 type RemoveDatacenterArgs struct {
 	Name string
 }
@@ -1012,6 +1261,41 @@ type RouteSelectionReply struct {
 	Routes []routing.Route `json:"routes"`
 }
 
+type CheckRelayIPAddressArgs struct {
+	IpAddress string `json:"ipAddress"`
+	HexID     string `json:"hexID"`
+}
+
+type CheckRelayIPAddressReply struct {
+	Valid bool `json:"valid"`
+}
+
+// CheckRelayIPAddress is used by the Admin tool when recommissioning a relay to ensure the
+// selected IP address "matches" the HexID (which was derived from its original IP address).
+func (s *OpsService) CheckRelayIPAddress(r *http.Request, args *CheckRelayIPAddressArgs, reply *CheckRelayIPAddressReply) error {
+
+	internalIDFromHexID, err := strconv.ParseUint(args.HexID, 16, 64)
+	if err != nil {
+		reply.Valid = false
+		return err
+	}
+
+	addr, err := net.ResolveUDPAddr("udp", args.IpAddress)
+	if err != nil {
+		reply.Valid = false
+		return err
+	}
+
+	internalIdFromIpAddress := crypto.HashID(addr.String())
+	if internalIDFromHexID != internalIdFromIpAddress {
+		reply.Valid = false
+		return err
+	}
+
+	reply.Valid = true
+	return nil
+}
+
 type UpdateRelayArgs struct {
 	RelayID    uint64      `json:"relayID"`    // used by next tool
 	HexRelayID string      `json:"hexRelayID"` // used by javascript clients
@@ -1072,7 +1356,6 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		SSHUser:             routingRelay.SSHUser,
 		SSHPort:             routingRelay.SSHPort,
 		State:               routingRelay.State.String(),
-		LastUpdateTime:      routingRelay.LastUpdateTime,
 		PublicKey:           base64.StdEncoding.EncodeToString(routingRelay.PublicKey),
 		MaxSessionCount:     routingRelay.MaxSessions,
 		SellerName:          routingRelay.Seller.Name,
@@ -1083,8 +1366,11 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		StartDate:           routingRelay.StartDate,
 		EndDate:             routingRelay.EndDate,
 		Type:                routingRelay.Type,
+		Notes:               routingRelay.Notes,
 		DatabaseID:          routingRelay.DatabaseID,
 		DatacenterID:        routingRelay.Datacenter.ID,
+		BillingSupplier:     routingRelay.BillingSupplier,
+		Version:             routingRelay.Version,
 	}
 
 	reply.Relay = relay
@@ -1102,7 +1388,7 @@ type ModifyRelayFieldReply struct{}
 
 func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArgs, reply *ModifyRelayFieldReply) error {
 
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1122,8 +1408,18 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		}
 
 	// net.UDPAddr, time.Time - all sent to storer as strings
-	case "Addr", "InternalAddr", "ManagementAddr", "SSHUser", "StartDate", "EndDate":
+	case "Addr", "InternalAddr", "ManagementAddr", "SSHUser", "StartDate", "EndDate", "BillingSupplier", "Version":
 		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	// relay.PublicKey
+	case "PublicKey":
+		newPublicKey := string(args.Value)
+		err := s.Storage.UpdateRelay(context.Background(), args.RelayID, args.Field, newPublicKey)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -1201,15 +1497,15 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 }
 
 type UpdateCustomerArgs struct {
-	CustomerID string
-	Field      string
-	Value      string
+	CustomerID string `json:"customerCode"`
+	Field      string `json:"field"`
+	Value      string `json:"value"`
 }
 
 type UpdateCustomerReply struct{}
 
 func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, reply *UpdateCustomerReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1230,16 +1526,29 @@ func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, r
 	return nil
 }
 
+type RemoveCustomerArgs struct {
+	CustomerCode string `json:"customerCode"`
+}
+
+type RemoveCustomerReply struct{}
+
+func (s *OpsService) RemoveCustomer(r *http.Request, args *RemoveCustomerArgs, reply *RemoveCustomerReply) error {
+	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	defer cancelFunc()
+
+	return s.Storage.RemoveCustomer(ctx, args.CustomerCode)
+}
+
 type UpdateSellerArgs struct {
-	SellerID string
-	Field    string
-	Value    string
+	SellerID string `json:"shortName"`
+	Field    string `json:"field"`
+	Value    string `json:"value"`
 }
 
 type UpdateSellerReply struct{}
 
 func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply *UpdateSellerReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1252,10 +1561,23 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
+	case "Secret":
+		secret, err := strconv.ParseBool(args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateSeller() value '%s' is not a valid Secret/boolean: %v", args.Value, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		err = s.Storage.UpdateSeller(context.Background(), args.SellerID, args.Field, secret)
+		if err != nil {
+			err = fmt.Errorf("UpdateSeller() error updating record for seller %s: %v", args.SellerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 	case "EgressPrice", "IngressPrice":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
-			err = fmt.Errorf("value '%s' is not a valid float64 port number: %v", args.Value, err)
+			err = fmt.Errorf("value '%s' is not a valid price: %v", args.Value, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -1267,13 +1589,49 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 		}
 		err = s.Storage.UpdateSeller(context.Background(), args.SellerID, args.Field, newValue)
 		if err != nil {
-			err = fmt.Errorf("UpdateRelay() error updating field for seller %s: %v", args.SellerID, err)
+			err = fmt.Errorf("UpdateSeller() error updating field for seller %s: %v", args.SellerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Seller type", args.Field)
+	}
+
+	return nil
+}
+
+type UpdateDatacenterArgs struct {
+	HexDatacenterID string      `json:"hexDatacenterID"`
+	Field           string      `json:"field"`
+	Value           interface{} `json:"value"`
+}
+
+type UpdateDatacenterReply struct{}
+
+func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArgs, reply *UpdateDatacenterReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+		return nil
+	}
+
+	dcID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
+	if err != nil {
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	switch args.Field {
+	case "Latitude", "Longitude":
+		newValue := float32(args.Value.(float64))
+		err := s.Storage.UpdateDatacenter(context.Background(), dcID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateDatacenter() error updating record for customer %s: %v", args.HexDatacenterID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Datacenter type", args.Field)
 	}
 
 	return nil

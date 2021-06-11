@@ -1,5 +1,6 @@
 package transport_test
 
+/*
 import (
 	"bytes"
 	"context"
@@ -649,6 +650,7 @@ type sessionUpdateBackendConfig struct {
 	buyer                *routing.Buyer
 	datacenters          []routing.Datacenter
 	datacenterMaps       []routing.DatacenterMap
+	failSignatureCheck   bool
 }
 
 func NewSessionUpdateBackendConfig(t *testing.T) *sessionUpdateBackendConfig {
@@ -659,6 +661,7 @@ func NewSessionUpdateBackendConfig(t *testing.T) *sessionUpdateBackendConfig {
 		buyer:                nil,
 		datacenters:          nil,
 		datacenterMaps:       nil,
+		failSignatureCheck:   false,
 	}
 }
 
@@ -687,25 +690,13 @@ func NewSessionUpdateResponseConfig(t *testing.T) *sessionUpdateResponseConfig {
 }
 
 func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, backend *sessionUpdateBackendConfig, response *sessionUpdateResponseConfig, expectedMetrics *metrics.SessionUpdateMetrics) {
+	customerPublicKey, customerPrivateKey, err := crypto.GenerateCustomerKeyPair()
+	assert.NoError(t, err)
 
-	// Set up request packet
+	customerPublicKey = customerPublicKey[8:]
+	customerPrivateKey = customerPrivateKey[8:]
 
-	var nearRelays relayGroup
-	if request.desyncedNearRelays {
-		nearRelays = getRelays(t, 0, noRTT)
-	} else {
-		nearRelays = getRelays(t, request.numNearRelays, request.nearRelayRTTType)
-		if request.badNearRelay {
-			if nearRelays.Count > 1 {
-				nearRelays.RTTs[1] = 255
-			}
-		}
-	}
-
-	sessionVersion := uint32(1)
-	if request.prevRouteType == routing.RouteTypeDirect {
-		sessionVersion = 0
-	}
+	// Set up route matrix
 
 	relays := getRelays(t, backend.numRouteMatrixRelays, goodRTT)
 
@@ -759,6 +750,25 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 
 	routeMatrixFunc := func() *routing.RouteMatrix {
 		return &routeMatrix
+	}
+
+	// Set up request packet
+
+	var nearRelays relayGroup
+	if request.desyncedNearRelays {
+		nearRelays = getRelays(t, 0, noRTT)
+	} else {
+		nearRelays = getRelays(t, request.numNearRelays, request.nearRelayRTTType)
+		if request.badNearRelay {
+			if nearRelays.Count > 1 {
+				nearRelays.RTTs[1] = 255
+			}
+		}
+	}
+
+	sessionVersion := uint32(1)
+	if request.prevRouteType == routing.RouteTypeDirect {
+		sessionVersion = 0
 	}
 
 	var destRelay uint64
@@ -816,7 +826,6 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 	initialSessionData := getInitialSessionData(t, request, prevRouteInfo, response, initialCommitted, commitCounter, routeShader.Multipath, mispredictCounter)
 
 	var sessionDataSlice []byte
-	var err error
 	if initialSessionData != nil {
 		sessionDataSlice, err = transport.MarshalSessionData(initialSessionData)
 		assert.NoError(t, err)
@@ -887,12 +896,26 @@ func runSessionUpdateTest(t *testing.T, request *sessionUpdateRequestConfig, bac
 		initialSessionData = &transport.SessionData{}
 	}
 
+	// Add the packet type byte and hash bytes to the request data so we can sign it properly
+	requestDataHeader := append([]byte{transport.PacketTypeSessionUpdate}, make([]byte, crypto.PacketHashSize)...)
+	requestData = append(requestDataHeader, requestData...)
+
+	// Sign the packet
+	requestData = crypto.SignPacket(customerPrivateKey, requestData)
+
+	// Once the packet is signed, we need to remove the header before passing to the session update handler
+	requestData = requestData[1+crypto.PacketHashSize:]
+
 	// Set up backend
 
 	ctx := context.Background()
 	storer := &storage.InMemory{}
 
 	if backend.buyer != nil {
+		backend.buyer.PublicKey = nil
+		if !backend.failSignatureCheck {
+			backend.buyer.PublicKey = customerPublicKey
+		}
 		err := storer.AddBuyer(ctx, *backend.buyer)
 		assert.NoError(t, err)
 	}
@@ -1228,6 +1251,23 @@ func TestSessionUpdateHandlerBuyerNotFound(t *testing.T) {
 	expectedMetrics := getBlankSessionUpdateMetrics(t)
 	expectedMetrics.DirectSlices.Add(1)
 	expectedMetrics.BuyerNotFound.Add(1)
+
+	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
+}
+
+func TestSessionUpdateHandlerSignatureCheckFailed(t *testing.T) {
+	request := NewSessionUpdateRequestConfig(t)
+
+	backend := NewSessionUpdateBackendConfig(t)
+	backend.buyer = &routing.Buyer{ID: request.buyerID, Live: true}
+	backend.failSignatureCheck = true
+
+	response := NewSessionUpdateResponseConfig(t)
+	response.unchangedSessionData = true
+
+	expectedMetrics := getBlankSessionUpdateMetrics(t)
+	expectedMetrics.DirectSlices.Add(1)
+	expectedMetrics.SignatureCheckFailed.Add(1)
 
 	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
 }
@@ -2007,3 +2047,4 @@ func TestSessionUpdateESLProMode(t *testing.T) {
 
 	runSessionUpdateTest(t, request, backend, response, expectedMetrics)
 }
+*/

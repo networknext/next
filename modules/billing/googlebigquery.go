@@ -3,6 +3,8 @@ package billing
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"sync"
 
 	"cloud.google.com/go/bigquery"
@@ -14,7 +16,7 @@ import (
 
 const (
 	DefaultBigQueryBatchSize   = 1000
-	DefaultBigQueryChannelSize = 10000
+	DefaultBigQueryChannelSize = 20000
 )
 
 type GoogleBigQueryClient struct {
@@ -26,10 +28,15 @@ type GoogleBigQueryClient struct {
 	buffer      []*BillingEntry
 	bufferMutex sync.RWMutex
 
+	buffer2      []*BillingEntry2
+	bufferMutex2 sync.RWMutex
+
 	entries chan *BillingEntry
+
+	entries2 chan *BillingEntry2
 }
 
-// Bill pushes an Entry to the channel
+// Bill pushes a BillingEntry to the entries channel
 func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) error {
 	bq.Metrics.EntriesSubmitted.Add(1)
 	if bq.entries == nil {
@@ -44,6 +51,20 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 		return errors.New("entries buffer full")
 	}
 
+	hasNanOrInf, nanOrInfFields := entry.CheckNaNOrInf()
+	if hasNanOrInf {
+		bq.Metrics.ErrorMetrics.BillingEntriesWithNaN.Add(1)
+		fieldStr := strings.Join(nanOrInfFields, " ")
+		fmt.Printf("Warn: billing entry had NaN or Inf values for %v.\n%+v\n", nanOrInfFields, entry)
+		level.Warn(bq.Logger).Log("msg", "Billing entry had NaN or Inf values", "fields", fieldStr)
+	}
+
+	if !entry.Validate() {
+		bq.Metrics.ErrorMetrics.BillingInvalidEntries.Add(1)
+		fmt.Printf("Error: billing entry not valid.\n%+v\n", entry)
+		return errors.New("invalid billing entry")
+	}
+
 	select {
 	case bq.entries <- entry:
 		return nil
@@ -52,221 +73,187 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 	}
 }
 
-// WriteLoop ranges over the incoming channel of Entry types and fills an internal buffer.
+// Bill2 pushes a BillingEntry2 to the entries2 channel
+func (bq *GoogleBigQueryClient) Bill2(ctx context.Context, entry *BillingEntry2) error {
+	bq.Metrics.Entries2Submitted.Add(1)
+	if bq.entries2 == nil {
+		bq.entries2 = make(chan *BillingEntry2, DefaultBigQueryChannelSize)
+	}
+
+	bq.bufferMutex2.RLock()
+	bufferLength := len(bq.buffer2)
+	bq.bufferMutex2.RUnlock()
+
+	if bufferLength >= bq.BatchSize {
+		return errors.New("entries2 buffer full")
+	}
+
+	hasNanOrInf, nanOrInfFields := entry.CheckNaNOrInf()
+	if hasNanOrInf {
+		bq.Metrics.ErrorMetrics.Billing2EntriesWithNaN.Add(1)
+		fieldStr := strings.Join(nanOrInfFields, " ")
+		fmt.Printf("Warn: billing entry 2 had NaN or Inf values for %v.\n%+v\n", nanOrInfFields, entry)
+		level.Warn(bq.Logger).Log("msg", "Billing entry 2 had NaN or Inf values", "fields", fieldStr)
+	}
+
+	if !entry.Validate() {
+		bq.Metrics.ErrorMetrics.Billing2InvalidEntries.Add(1)
+		fmt.Printf("Error: billing entry 2 not valid.\n%+v\n", entry)
+		return errors.New("invalid billing entry 2")
+	}
+
+	select {
+	case bq.entries2 <- entry:
+		return nil
+	default:
+		return errors.New("entries2 channel full")
+	}
+}
+
+// WriteLoop ranges over the incoming channel of BillingEntry types and fills an internal buffer.
 // Once the buffer fills to the BatchSize it will write all entries to BigQuery. This should
 // only be called from 1 goroutine to avoid using a mutex around the internal buffer slice
-func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context) error {
+func (bq *GoogleBigQueryClient) WriteLoop(ctx context.Context, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	if bq.entries == nil {
 		bq.entries = make(chan *BillingEntry, DefaultBigQueryChannelSize)
 	}
-	for entry := range bq.entries {
-		bq.Metrics.EntriesQueued.Set(float64(len(bq.entries)))
+	for {
+		select {
+		case entry := <-bq.entries:
+			bq.Metrics.EntriesQueued.Set(float64(len(bq.entries)))
+			bq.bufferMutex.Lock()
+			bq.buffer = append(bq.buffer, entry)
+			bufferLength := len(bq.buffer)
 
-		bq.bufferMutex.Lock()
-		bq.buffer = append(bq.buffer, entry)
-		bufferLength := len(bq.buffer)
-		if bufferLength >= bq.BatchSize {
-			if err := bq.TableInserter.Put(ctx, bq.buffer); err != nil {
-				bq.bufferMutex.Unlock()
+			if bufferLength >= bq.BatchSize {
+				if err := bq.TableInserter.Put(context.Background(), bq.buffer); err != nil {
+					bq.bufferMutex.Unlock()
 
-				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
-				continue
+					level.Error(bq.Logger).Log("msg", "failed to write buffer to BigQuery", "err", err)
+					fmt.Printf("Failed to write buffer to BigQuery: %v\n", err)
+
+					bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
+					continue
+				}
+
+				bq.buffer = bq.buffer[:0]
+				level.Info(bq.Logger).Log("msg", "flushed billing entries to BigQuery", "size", bq.BatchSize, "total", bufferLength)
+				bq.Metrics.BillingEntrySize.Set(float64(bufferLength * MaxBillingEntryBytes))
+				bq.Metrics.EntriesFlushed.Add(float64(bufferLength))
 			}
 
+			bq.bufferMutex.Unlock()
+		case <-ctx.Done():
+			var bufferLength int
+
+			// Received shutdown signal, write remaining entries to BigQuery
+			bq.bufferMutex.Lock()
+			for entry := range bq.entries {
+				// Add the remaining entries to the buffer
+				bq.buffer = append(bq.buffer, entry)
+				bufferLength = len(bq.buffer)
+				bq.Metrics.EntriesQueued.Set(float64(bufferLength))
+			}
+
+			// Emptied out the entries channel, flush to BigQuery
+			if err := bq.TableInserter.Put(context.Background(), bq.buffer); err != nil {
+				bq.bufferMutex.Unlock()
+
+				level.Error(bq.Logger).Log("msg", "failed to write buffer to BigQuery", "err", err)
+				fmt.Printf("Failed to write buffer to BigQuery: %v\n", err)
+
+				bq.Metrics.ErrorMetrics.BillingWriteFailure.Add(float64(bufferLength))
+				return err
+			}
 			bq.buffer = bq.buffer[:0]
+			bq.bufferMutex.Unlock()
 
-			level.Info(bq.Logger).Log("msg", "flushed entries to BigQuery", "size", bq.BatchSize, "total", bufferLength)
+			level.Info(bq.Logger).Log("msg", "flushed billing entries to BigQuery", "size", bufferLength, "total", bufferLength)
+			fmt.Printf("Final flush of %d billing entries to BigQuery.\n", bufferLength)
+
 			bq.Metrics.EntriesFlushed.Add(float64(bufferLength))
-		}
 
-		bq.bufferMutex.Unlock()
+			return nil
+		}
 	}
 	return nil
 }
 
-// Save implements the bigquery.ValueSaver interface for an Entry
-// so it can be used in Put()
-func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
+// WriteLoop2 ranges over the incoming channel of BillingEntry2 types and fills an internal buffer.
+// Once the buffer fills to the BatchSize it will write all entries to BigQuery. This should
+// only be called from 1 goroutine to avoid using a mutex around the internal buffer slice
+func (bq *GoogleBigQueryClient) WriteLoop2(ctx context.Context, wg *sync.WaitGroup) error {
+	defer wg.Done()
 
-	e := make(map[string]bigquery.Value)
-
-	e["timestamp"] = int(entry.Timestamp)
-	e["buyerId"] = int(entry.BuyerID)
-	e["sessionId"] = int(entry.SessionID)
-	e["sliceNumber"] = int(entry.SliceNumber)
-	e["directRTT"] = entry.DirectRTT
-	e["directJitter"] = entry.DirectJitter
-	e["directPacketLoss"] = entry.DirectPacketLoss
-	e["userHash"] = int(entry.UserHash)
-
-	if entry.Next {
-		e["next"] = entry.Next
-		e["nextRTT"] = entry.NextRTT
-		e["nextJitter"] = entry.NextJitter
-		e["nextPacketLoss"] = entry.NextPacketLoss
+	if bq.entries2 == nil {
+		bq.entries2 = make(chan *BillingEntry2, DefaultBigQueryChannelSize)
 	}
+	for {
+		select {
+		case entry := <-bq.entries2:
+			bq.Metrics.Entries2Queued.Set(float64(len(bq.entries2)))
+			bq.bufferMutex2.Lock()
+			bq.buffer2 = append(bq.buffer2, entry)
+			bufferLength := len(bq.buffer2)
 
-	nextRelays := make([]bigquery.Value, entry.NumNextRelays)
-	for i := 0; i < int(entry.NumNextRelays); i++ {
-		nextRelays[i] = int(entry.NextRelays[i])
-	}
-	e["nextRelays"] = nextRelays
+			if bufferLength >= bq.BatchSize {
+				if err := bq.TableInserter.Put(context.Background(), bq.buffer2); err != nil {
+					bq.bufferMutex2.Unlock()
 
-	e["totalPrice"] = int(entry.TotalPrice)
+					level.Error(bq.Logger).Log("msg", "failed to write buffer2 to BigQuery", "err", err)
+					fmt.Printf("Failed to write buffer2 to BigQuery: %v\n", err)
 
-	if entry.ClientToServerPacketsLost > 0 {
-		e["clientToServerPacketsLost"] = int(entry.ClientToServerPacketsLost)
-	}
+					bq.Metrics.ErrorMetrics.Billing2WriteFailure.Add(float64(bufferLength))
+					continue
+				}
 
-	if entry.ServerToClientPacketsLost > 0 {
-		e["serverToClientPacketsLost"] = int(entry.ServerToClientPacketsLost)
-	}
-
-	e["committed"] = entry.Committed
-	e["flagged"] = entry.Flagged
-	e["multipath"] = entry.Multipath
-
-	if entry.Next {
-		e["initial"] = entry.Initial
-		e["nextBytesUp"] = int(entry.NextBytesUp)
-		e["nextBytesDown"] = int(entry.NextBytesDown)
-		e["envelopeBytesUp"] = int(entry.EnvelopeBytesUp)
-		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
-	}
-
-	e["datacenterID"] = int(entry.DatacenterID)
-
-	if entry.Next {
-		e["rttReduction"] = entry.RTTReduction
-		e["packetLossReduction"] = entry.PacketLossReduction
-	}
-
-	nextRelaysPrice := make([]bigquery.Value, entry.NumNextRelays)
-	for i := 0; i < int(entry.NumNextRelays); i++ {
-		nextRelaysPrice[i] = int(entry.NextRelaysPrice[i])
-	}
-	e["nextRelaysPrice"] = nextRelaysPrice
-
-	e["latitude"] = entry.Latitude
-	e["longitude"] = entry.Longitude
-	e["isp"] = entry.ISP
-	e["abTest"] = entry.ABTest
-	e["routeDecision"] = int(entry.RouteDecision)
-
-	e["connectionType"] = int(entry.ConnectionType)
-	e["platformType"] = int(entry.PlatformType)
-	e["sdkVersion"] = entry.SDKVersion
-
-	if entry.PacketLoss > 0.0 {
-		e["packetLoss"] = entry.PacketLoss
-	}
-
-	if entry.PredictedNextRTT > 0.0 {
-		e["predictedNextRTT"] = entry.PredictedNextRTT
-	}
-
-	e["multipathVetoed"] = entry.MultipathVetoed
-
-	if entry.UseDebug && entry.Debug != "" {
-		e["debug"] = entry.Debug
-	}
-
-	e["fallbackToDirect"] = entry.FallbackToDirect
-
-	if entry.ClientFlags != 0 {
-		e["clientFlags"] = int(entry.ClientFlags)
-	}
-
-	if entry.UserFlags != 0 {
-		e["userFlags"] = int(entry.UserFlags)
-	}
-
-	if entry.NearRelayRTT != 0 {
-		e["nearRelayRTT"] = entry.NearRelayRTT
-	}
-
-	if entry.PacketsOutOfOrderClientToServer != 0 {
-		e["packetsOutOfOrderClientToServer"] = int(entry.PacketsOutOfOrderClientToServer)
-	}
-
-	if entry.PacketsOutOfOrderServerToClient != 0 {
-		e["packetsOutOfOrderServerToClient"] = int(entry.PacketsOutOfOrderServerToClient)
-	}
-
-	if entry.JitterClientToServer != 0 {
-		e["jitterClientToServer"] = entry.JitterClientToServer
-	}
-
-	if entry.JitterServerToClient != 0 {
-		e["jitterServerToClient"] = entry.JitterServerToClient
-	}
-
-	if entry.UseDebug {
-		if entry.NumNearRelays != 0 {
-			e["numNearRelays"] = int(entry.NumNearRelays)
-
-			nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
-			for i := 0; i < int(entry.NumNearRelays); i++ {
-				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
+				bq.buffer2 = bq.buffer2[:0]
+				level.Info(bq.Logger).Log("msg", "flushed billing entries 2 to BigQuery", "size", bq.BatchSize, "total", bufferLength)
+				bq.Metrics.BillingEntry2Size.Set(float64(bufferLength * MaxBillingEntry2Bytes))
+				bq.Metrics.Entries2Flushed.Add(float64(bufferLength))
 			}
-			e["nearRelayIDs"] = nearRelayIDs
 
-			nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
-			for i := 0; i < int(entry.NumNearRelays); i++ {
-				nearRelayRTTs[i] = entry.NearRelayRTTs[i]
-			}
-			e["nearRelayRTTs"] = nearRelayRTTs
+			bq.bufferMutex2.Unlock()
+		case <-ctx.Done():
+			var bufferLength int
 
-			nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
-			for i := 0; i < int(entry.NumNearRelays); i++ {
-				nearRelayJitters[i] = entry.NearRelayJitters[i]
+			// Received shutdown signal, write remaining entries to BigQuery
+			bq.bufferMutex.Lock()
+			for entry := range bq.entries2 {
+				// Add the remaining entries to the buffer
+				bq.buffer2 = append(bq.buffer2, entry)
+				bufferLength = len(bq.buffer2)
+				bq.Metrics.Entries2Queued.Set(float64(bufferLength))
 			}
-			e["nearRelayJitters"] = nearRelayJitters
 
-			nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
-			for i := 0; i < int(entry.NumNearRelays); i++ {
-				nearRelayPacketLosses[i] = entry.NearRelayPacketLosses[i]
+			// Emptied out the entries channel, flush to BigQuery
+			if err := bq.TableInserter.Put(context.Background(), bq.buffer2); err != nil {
+				bq.bufferMutex.Unlock()
+
+				level.Error(bq.Logger).Log("msg", "failed to write buffer2 to BigQuery", "err", err)
+				fmt.Printf("Failed to write buffer2 to BigQuery: %v\n", err)
+
+				bq.Metrics.ErrorMetrics.Billing2WriteFailure.Add(float64(bufferLength))
+				return err
 			}
-			e["nearRelayPacketLosses"] = nearRelayPacketLosses
+			bq.buffer2 = bq.buffer2[:0]
+			bq.bufferMutex2.Unlock()
+
+			level.Info(bq.Logger).Log("msg", "flushed billing entries 2 to BigQuery", "size", bufferLength, "total", bufferLength)
+			fmt.Printf("Final flush of %d billing entries 2 to BigQuery.\n", bufferLength)
+
+			bq.Metrics.Entries2Flushed.Add(float64(bufferLength))
+
+			return nil
 		}
 	}
+	return nil
+}
 
-	e["relayWentAway"] = entry.RelayWentAway
-	e["routeLost"] = entry.RouteLost
-
-	if entry.NumTags > 0 {
-		tags := make([]bigquery.Value, entry.NumTags)
-		for i := 0; i < int(entry.NumTags); i++ {
-			tags[i] = int(entry.Tags[i])
-		}
-		e["tags"] = tags
-	}
-
-	e["mispredicted"] = entry.Mispredicted
-	e["vetoed"] = entry.Vetoed
-
-	e["latencyWorse"] = entry.LatencyWorse
-	e["noRoute"] = entry.NoRoute
-	e["nextLatencyTooHigh"] = entry.NextLatencyTooHigh
-	e["routeChanged"] = entry.RouteChanged
-	e["commitVeto"] = entry.CommitVeto
-
-	if entry.RouteDiversity > 0 {
-		e["routeDiversity"] = entry.RouteDiversity
-	}
-
-	if entry.LackOfDiversity {
-		e["lackOfDiversity"] = entry.LackOfDiversity
-	}
-
-	if entry.Pro {
-		e["pro"] = entry.Pro
-	}
-
-	if entry.MultipathRestricted {
-		e["multipathRestricted"] = entry.MultipathRestricted
-	}
-
-	return e, "", nil
+// Closes the entries channel. Should only be done by the entry sender.
+func (bq *GoogleBigQueryClient) Close() {
+	close(bq.entries)
+	close(bq.entries2)
 }

@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,7 +27,6 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 
 	var sqlite3 *sql.DB
 
-	fmt.Println("Creating SQLite3 Storer.")
 	// pwd, _ := os.Getwd()
 	// fmt.Printf("NewSQLite3() pwd: %s\n", pwd)
 
@@ -123,6 +123,80 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 	return db, nil
 }
 
+func NewSQLite3Staging(ctx context.Context, logger log.Logger) (*SQL, error) {
+	var sqlite3 *sql.DB
+
+	if _, err := os.Stat("/app/sqlite3-empty.sql"); err == nil || os.IsExist(err) {
+
+		err = os.Remove("/app/network_next.db")
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3() error removing old db file: %v", err)
+		}
+
+		// Boiler plate SQL file exists, load it in
+		sqlite3, err = sql.Open("sqlite3", "file:/app/network_next.db?_foreign_keys=on&_locking_mode=NORMAL")
+		if err != nil {
+			return nil, fmt.Errorf("NewSQLite3Staging() error creating db connection: %v", err)
+		}
+	} else {
+		return nil, fmt.Errorf("NewSQLite3Staging() could not find /app/sqlite3-empty.sql")
+	}
+
+	// db.Ping actually establishes the connection and validates the parameters
+	err := sqlite3.Ping()
+	if err != nil {
+		err = fmt.Errorf("NewSQLite3Staging() error pinging db: %v", err)
+		return nil, err
+	}
+
+	db := &SQL{
+		Client:             sqlite3,
+		Logger:             logger,
+		datacenters:        make(map[uint64]routing.Datacenter),
+		datacenterMaps:     make(map[uint64]routing.DatacenterMap),
+		relays:             make(map[uint64]routing.Relay),
+		customers:          make(map[string]routing.Customer),
+		buyers:             make(map[uint64]routing.Buyer),
+		sellers:            make(map[string]routing.Seller),
+		routeShaders:       make(map[uint64]core.RouteShader),
+		internalConfigs:    make(map[uint64]core.InternalConfig),
+		bannedUsers:        make(map[uint64]map[uint64]bool),
+		SyncSequenceNumber: -1,
+	}
+
+	// populate the db with basic tables
+	file, err := ioutil.ReadFile("/app/sqlite3-empty.sql") // happy path
+	if err != nil {
+		return nil, fmt.Errorf("NewSQLite3Staging() error reading from ")
+	}
+
+	requests := strings.Split(string(file), ";")
+
+	for _, request := range requests {
+		_, err := db.Client.Exec(request)
+		if err != nil {
+			err = fmt.Errorf("NewSQLite3Staging() error executing seed file sql line: %v", err)
+			return nil, err
+		}
+	}
+
+	syncIntervalStr := os.Getenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL")
+	syncInterval, err := time.ParseDuration(syncIntervalStr)
+	if err != nil {
+		level.Error(logger).Log("envvar", "GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "value", syncIntervalStr, "err", err)
+		return nil, err
+	}
+
+	// Start a goroutine to sync from the database
+	go func() {
+		ticker := time.NewTicker(syncInterval)
+		db.SyncLoop(ctx, ticker.C)
+	}()
+
+	return db, nil
+
+}
+
 // NewPostgreSQL returns an PostgreSQL backed database pointer
 func NewPostgreSQL(
 	ctx context.Context,
@@ -165,7 +239,7 @@ func NewPostgreSQL(
 		datacenterIDs:      make(map[int64]uint64),
 		relayIDs:           make(map[int64]uint64),
 		customerIDs:        make(map[int64]string),
-		buyerIDs:           make(map[int64]uint64),
+		buyerIDs:           make(map[uint64]int64),
 		sellerIDs:          make(map[int64]string),
 		routeShaders:       make(map[uint64]core.RouteShader),
 		internalConfigs:    make(map[uint64]core.InternalConfig),
@@ -344,14 +418,15 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 	relays := make(map[uint64]routing.Relay)
 	relayIDs := make(map[int64]uint64)
 
-	sqlQuery.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
+	sqlQuery.Write([]byte("select relays.id, relays.hex_id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
 	sqlQuery.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
 	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
-	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port from relays "))
+	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays "))
 	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
 	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
 	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
@@ -365,6 +440,7 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 
 	for rows.Next() {
 		err = rows.Scan(&relay.DatabaseID,
+			&relay.HexID,
 			&relay.Name,
 			&relay.ContractTerm,
 			&relay.EndDate,
@@ -388,18 +464,13 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			&relay.State,
 			&relay.InternalIP,
 			&relay.InternalIPPort,
+			&relay.Notes,
+			&relay.BillingSupplier,
+			&relay.Version,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays(): error parsing returned row", "err", err)
 			return err
-		}
-
-		fullPublicAddress := relay.PublicIP + ":" + fmt.Sprintf("%d", relay.PublicIPPort)
-		rid := crypto.HashID(fullPublicAddress)
-
-		publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
-		if err != nil {
-			level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
 		}
 
 		relayState, err := routing.GetRelayStateSQL(relay.State)
@@ -427,12 +498,16 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
 		}
 
-		relayIDs[relay.DatabaseID] = rid
+		internalID, err := strconv.ParseUint(relay.HexID, 16, 64)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error parsing hex_id", "err", err)
+		}
+
+		relayIDs[relay.DatabaseID] = internalID
 
 		r := routing.Relay{
-			ID:                  rid,
+			ID:                  internalID,
 			Name:                relay.Name,
-			Addr:                *publicAddr,
 			PublicKey:           relay.PublicKey,
 			Datacenter:          datacenter,
 			NICSpeedMbps:        int32(relay.NICSpeedMbps),
@@ -449,16 +524,43 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			Type:                machineType,
 			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
+			Version:             relay.Version,
 		}
 
 		// nullable values follow
-		if relay.InternalIP.String != "" {
+		if relay.InternalIP.Valid {
 			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
 			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
 			if err != nil {
 				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
 			}
 			r.InternalAddr = *internalAddr
+		}
+
+		if relay.PublicIP.Valid {
+			fullPublicAddress := relay.PublicIP.String + ":" + fmt.Sprintf("%d", relay.PublicIPPort.Int64)
+			publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
+			if err != nil {
+				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
+			}
+			r.Addr = *publicAddr
+		}
+
+		if relay.BillingSupplier.Valid {
+			found := false
+			for _, seller := range db.Sellers() {
+				if seller.DatabaseID == relay.BillingSupplier.Int64 {
+					found = true
+					r.BillingSupplier = seller.ID
+					break
+				}
+			}
+
+			if !found {
+				errString := fmt.Sprintf("syncRelays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
+				level.Error(db.Logger).Log("during", errString, "err", err)
+			}
+
 		}
 
 		if relay.StartDate.Valid {
@@ -469,7 +571,11 @@ func (db *SQL) syncRelays(ctx context.Context) error {
 			r.EndDate = relay.EndDate.Time
 		}
 
-		relays[rid] = r
+		if relay.Notes.Valid {
+			r.Notes = relay.Notes.String
+		}
+
+		relays[internalID] = r
 
 	}
 
@@ -503,7 +609,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 	var buyer sqlBuyer
 
 	buyers := make(map[uint64]routing.Buyer)
-	buyerIDs := make(map[int64]uint64)
+	buyerIDs := make(map[uint64]int64)
 
 	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
@@ -532,7 +638,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		buyer.ID = uint64(buyer.SdkID)
 
-		buyerIDs[buyer.DatabaseID] = buyer.ID
+		buyerIDs[buyer.ID] = buyer.DatabaseID
 
 		// apply default values - custom values will be attached in
 		// syncInternalConfigs() and syncRouteShaders() if they exist
@@ -541,6 +647,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 
 		b := routing.Buyer{
 			ID:             buyer.ID,
+			HexID:          fmt.Sprintf("%016x", buyer.ID),
 			ShortName:      buyer.ShortName,
 			CompanyCode:    buyer.ShortName,
 			Live:           buyer.IsLiveCustomer,
@@ -552,7 +659,7 @@ func (db *SQL) syncBuyers(ctx context.Context) error {
 			DatabaseID:     buyer.DatabaseID,
 		}
 
-		buyers[buyer.ID] = b
+		buyers[uint64(buyer.DatabaseID)] = b
 
 	}
 
@@ -574,7 +681,7 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 	sellers := make(map[string]routing.Seller)
 	sellerIDs := make(map[int64]string)
 
-	sql.Write([]byte("select id, short_name, public_egress_price, public_ingress_price, "))
+	sql.Write([]byte("select id, short_name, public_egress_price, public_ingress_price, secret, "))
 	sql.Write([]byte("customer_id from sellers"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
@@ -589,6 +696,7 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 			&seller.ShortName,
 			&seller.EgressPriceNibblinsPerGB,
 			&seller.IngressPriceNibblinsPerGB,
+			&seller.Secret,
 			&seller.CustomerID,
 		)
 		if err != nil {
@@ -602,6 +710,7 @@ func (db *SQL) syncSellers(ctx context.Context) error {
 		sellers[db.customerIDs[seller.CustomerID]] = routing.Seller{
 			ID:                        db.customerIDs[seller.CustomerID],
 			ShortName:                 seller.ShortName,
+			Secret:                    seller.Secret,
 			CompanyCode:               db.customers[db.customerIDs[seller.CustomerID]].Code,
 			Name:                      db.customers[db.customerIDs[seller.CustomerID]].Name,
 			IngressPriceNibblinsPerGB: routing.Nibblin(seller.IngressPriceNibblinsPerGB),
@@ -652,13 +761,19 @@ func (db *SQL) syncDatacenterMaps(ctx context.Context) error {
 			return err
 		}
 
+		db.buyerMutex.RLock()
+		buyer := db.buyers[uint64(sqlMap.BuyerID)]
+		db.buyerMutex.RUnlock()
+
+		ephemeralBuyerID := buyer.ID
+
 		dcMap := routing.DatacenterMap{
 			Alias:        sqlMap.Alias,
-			BuyerID:      db.buyerIDs[sqlMap.BuyerID],
+			BuyerID:      ephemeralBuyerID,
 			DatacenterID: db.datacenterIDs[sqlMap.DatacenterID],
 		}
 
-		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+		id := crypto.HashID(fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
 		dcMaps[id] = dcMap
 	}
 
@@ -727,22 +842,23 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 }
 
 type sqlInternalConfig struct {
-	RouteSelectThreshold       int64
-	RouteSwitchThreshold       int64
-	MaxLatencyTradeOff         int64
-	RTTVetoDefault             int64
-	RTTVetoPacketLoss          int64
-	RTTVetoMultipath           int64
-	MultipathOverloadThreshold int64
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-	Uncommitted                bool
-	MaxRTT                     int64
-	HighFrequencyPings         bool
-	RouteDiversity             int64
-	MultipathThreshold         int64
-	EnableVanityMetrics        bool
+	RouteSelectThreshold           int64
+	RouteSwitchThreshold           int64
+	MaxLatencyTradeOff             int64
+	RTTVetoDefault                 int64
+	RTTVetoPacketLoss              int64
+	RTTVetoMultipath               int64
+	MultipathOverloadThreshold     int64
+	TryBeforeYouBuy                bool
+	ForceNext                      bool
+	LargeCustomer                  bool
+	Uncommitted                    bool
+	MaxRTT                         int64
+	HighFrequencyPings             bool
+	RouteDiversity                 int64
+	MultipathThreshold             int64
+	EnableVanityMetrics            bool
+	ReducePacketLossMinSliceNumber int64
 }
 
 func (db *SQL) syncInternalConfigs(ctx context.Context) error {
@@ -756,7 +872,7 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 	sql.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
 	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, buyer_id from rs_internal_configs"))
+	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number, buyer_id from rs_internal_configs"))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
@@ -784,6 +900,7 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 			&sqlIC.RouteDiversity,
 			&sqlIC.MultipathThreshold,
 			&sqlIC.EnableVanityMetrics,
+			&sqlIC.ReducePacketLossMinSliceNumber,
 			&buyerID,
 		)
 		if err != nil {
@@ -792,34 +909,36 @@ func (db *SQL) syncInternalConfigs(ctx context.Context) error {
 		}
 
 		internalConfig := core.InternalConfig{
-			RouteSelectThreshold:       int32(sqlIC.RouteSelectThreshold),
-			RouteSwitchThreshold:       int32(sqlIC.RouteSwitchThreshold),
-			MaxLatencyTradeOff:         int32(sqlIC.MaxLatencyTradeOff),
-			RTTVeto_Default:            int32(sqlIC.RTTVetoDefault),
-			RTTVeto_PacketLoss:         int32(sqlIC.RTTVetoPacketLoss),
-			RTTVeto_Multipath:          int32(sqlIC.RTTVetoMultipath),
-			MultipathOverloadThreshold: int32(sqlIC.MultipathOverloadThreshold),
-			TryBeforeYouBuy:            sqlIC.TryBeforeYouBuy,
-			ForceNext:                  sqlIC.ForceNext,
-			LargeCustomer:              sqlIC.LargeCustomer,
-			Uncommitted:                sqlIC.Uncommitted,
-			MaxRTT:                     int32(sqlIC.MaxRTT),
-			HighFrequencyPings:         sqlIC.HighFrequencyPings,
-			RouteDiversity:             int32(sqlIC.RouteDiversity),
-			MultipathThreshold:         int32(sqlIC.MultipathThreshold),
-			EnableVanityMetrics:        sqlIC.EnableVanityMetrics,
+			RouteSelectThreshold:           int32(sqlIC.RouteSelectThreshold),
+			RouteSwitchThreshold:           int32(sqlIC.RouteSwitchThreshold),
+			MaxLatencyTradeOff:             int32(sqlIC.MaxLatencyTradeOff),
+			RTTVeto_Default:                int32(sqlIC.RTTVetoDefault),
+			RTTVeto_PacketLoss:             int32(sqlIC.RTTVetoPacketLoss),
+			RTTVeto_Multipath:              int32(sqlIC.RTTVetoMultipath),
+			MultipathOverloadThreshold:     int32(sqlIC.MultipathOverloadThreshold),
+			TryBeforeYouBuy:                sqlIC.TryBeforeYouBuy,
+			ForceNext:                      sqlIC.ForceNext,
+			LargeCustomer:                  sqlIC.LargeCustomer,
+			Uncommitted:                    sqlIC.Uncommitted,
+			MaxRTT:                         int32(sqlIC.MaxRTT),
+			HighFrequencyPings:             sqlIC.HighFrequencyPings,
+			RouteDiversity:                 int32(sqlIC.RouteDiversity),
+			MultipathThreshold:             int32(sqlIC.MultipathThreshold),
+			EnableVanityMetrics:            sqlIC.EnableVanityMetrics,
+			ReducePacketLossMinSliceNumber: int32(sqlIC.ReducePacketLossMinSliceNumber),
 		}
 
-		id := db.buyerIDs[buyerID]
+		db.buyerMutex.RLock()
+		buyer := db.buyers[uint64(buyerID)]
+		db.buyerMutex.RUnlock()
 
-		buyer := db.buyers[id]
 		buyer.InternalConfig = internalConfig
 
 		db.buyerMutex.Lock()
-		db.buyers[id] = buyer
+		db.buyers[uint64(buyerID)] = buyer
 		db.buyerMutex.Unlock()
 
-		internalConfigs[id] = internalConfig
+		internalConfigs[uint64(buyerID)] = internalConfig
 	}
 
 	db.internalConfigMutex.Lock()
@@ -842,6 +961,7 @@ type sqlRouteShader struct {
 	ReducePacketLoss          bool
 	ReduceJitter              bool
 	SelectionPercent          int64
+	PacketLossSustained       float64
 }
 
 func (db *SQL) syncRouteShaders(ctx context.Context) error {
@@ -853,7 +973,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 
 	sql.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
-	sql.Write([]byte("reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, buyer_id from route_shaders "))
+	sql.Write([]byte("reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, packet_loss_sustained, buyer_id from route_shaders "))
 
 	rows, err := db.Client.QueryContext(ctx, sql.String())
 	if err != nil {
@@ -878,6 +998,7 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			&sqlRS.ReducePacketLoss,
 			&sqlRS.ReduceJitter,
 			&sqlRS.SelectionPercent,
+			&sqlRS.PacketLossSustained,
 			&buyerID,
 		)
 		if err != nil {
@@ -899,20 +1020,23 @@ func (db *SQL) syncRouteShaders(ctx context.Context) error {
 			AcceptablePacketLoss:      float32(sqlRS.AcceptablePacketLoss),
 			BandwidthEnvelopeUpKbps:   int32(sqlRS.BandwidthEnvelopeUpKbps),
 			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
+			PacketLossSustained:       float32(sqlRS.PacketLossSustained),
 		}
 
-		id := db.buyerIDs[buyerID]
-		buyer := db.buyers[id]
+		db.buyerMutex.RLock()
+		buyer := db.buyers[uint64(buyerID)]
+		db.buyerMutex.RUnlock()
+
 		buyer.RouteShader = routeShader
 
 		db.buyerMutex.Lock()
-		db.buyers[id] = buyer
+		db.buyers[uint64(buyerID)] = buyer
 		db.buyerMutex.Unlock()
 
-		if bannedUsers, ok := db.bannedUsers[id]; ok {
+		if bannedUsers, ok := db.bannedUsers[uint64(buyerID)]; ok {
 			routeShader.BannedUsers = bannedUsers
 		}
-		routeShaders[id] = routeShader
+		routeShaders[uint64(buyerID)] = routeShader
 	}
 
 	for buyerID, rs := range routeShaders {
@@ -950,7 +1074,7 @@ func (db *SQL) syncBannedUsers(ctx context.Context) error {
 			return err
 		}
 
-		buyerID := db.buyerIDs[dbBuyerID]
+		buyerID := db.buyerIDs[uint64(dbBuyerID)]
 
 		bannedUser := make(map[uint64]bool)
 		bannedUser[uint64(userID)] = true

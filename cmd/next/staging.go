@@ -1,18 +1,28 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/modules/storage"
 )
 
 const (
-	MaxVMsPerMIG = 1000
+	// Params for the bigtable instance and table
+	// These are based on staging.env files for the portal cruncher and portal
+	InstanceID = "network-next-portal-big-table-0"
+	TableName  = "portal-session-history"
+	CFName     = "portal-session-history"
+)
 
-	ClientsPerVM     = 2000
-	ServersPerVM     = 50
-	ClientsPerServer = 200
+var (
+	// List of redis instances to resize
+	ResizableRedisInstances = []string{"staging-all-redis"}
 )
 
 type StagingServiceConfig struct {
@@ -21,31 +31,62 @@ type StagingServiceConfig struct {
 }
 
 type StagingConfig struct {
-	RelayBackend   StagingServiceConfig `json:"relay-backend"`
-	Relays         StagingServiceConfig `json:"relays"`
-	PortalCruncher StagingServiceConfig `json:"portal-cruncher"`
+	RelayGateway   StagingServiceConfig `json:"relayGateway"`
+	RelayBackend   StagingServiceConfig `json:"relayBackend"`
+	FakeRelays     StagingServiceConfig `json:"fakeRelays"`
+	RelayFrontend  StagingServiceConfig `json:"relayGateway"`
+	RelayPusher    StagingServiceConfig `json:"relayPusher"`
+	PortalCruncher StagingServiceConfig `json:"portalCruncher"`
+	Vanity         StagingServiceConfig `json:"vanity"`
+	Api            StagingServiceConfig `json:"api"`
 	Analytics      StagingServiceConfig `json:"analytics"`
 	Billing        StagingServiceConfig `json:"billing"`
+	Beacon         StagingServiceConfig `json:"beacon"`
+	BeaconInserter StagingServiceConfig `json:"beaconInserter"`
 	Portal         StagingServiceConfig `json:"portal"`
-	ServerBackend  StagingServiceConfig `json:"server-backend"`
-	Server         StagingServiceConfig `json:"server"`
-	Client         StagingServiceConfig `json:"client"`
+	ServerBackend  StagingServiceConfig `json:"serverBackend"`
+	FakeServer     StagingServiceConfig `json:"fakeServer"`
 }
 
 var DefaultStagingConfig = StagingConfig{
+	RelayGateway: StagingServiceConfig{
+		Cores: 4,
+		Count: -1,
+	},
+
 	RelayBackend: StagingServiceConfig{
-		Cores: 96,
+		Cores: 8,
+		Count: 2,
+	},
+
+	FakeRelays: StagingServiceConfig{
+		Cores: 16,
 		Count: 1,
 	},
 
-	Relays: StagingServiceConfig{
-		Cores: 4,
-		Count: 80,
+	RelayFrontend: StagingServiceConfig{
+		Cores: 1,
+		Count: -1,
+	},
+
+	RelayPusher: StagingServiceConfig{
+		Cores: 1,
+		Count: 1,
 	},
 
 	PortalCruncher: StagingServiceConfig{
 		Cores: 8,
 		Count: 4,
+	},
+
+	Vanity: StagingServiceConfig{
+		Cores: 4,
+		Count: 4,
+	},
+
+	Api: StagingServiceConfig{
+		Cores: 1,
+		Count: -1,
 	},
 
 	Analytics: StagingServiceConfig{
@@ -58,6 +99,16 @@ var DefaultStagingConfig = StagingConfig{
 		Count: -1,
 	},
 
+	Beacon: StagingServiceConfig{
+		Cores: 8,
+		Count: -1,
+	},
+
+	BeaconInserter: StagingServiceConfig{
+		Cores: 1,
+		Count: -1,
+	},
+
 	Portal: StagingServiceConfig{
 		Cores: 16,
 		Count: -1,
@@ -65,17 +116,12 @@ var DefaultStagingConfig = StagingConfig{
 
 	ServerBackend: StagingServiceConfig{
 		Cores: 16,
-		Count: 4,
+		Count: 2,
 	},
 
-	Server: StagingServiceConfig{
-		Cores: 50,
-		Count: 500,
-	},
-
-	Client: StagingServiceConfig{
-		Cores: 8,
-		Count: 100000,
+	FakeServer: StagingServiceConfig{
+		Cores: 16,
+		Count: 1,
 	},
 }
 
@@ -324,18 +370,33 @@ func waitForMIGStable(mig string) error {
 }
 
 func StartStaging(config StagingConfig) error {
-	if config.Client.Count < ClientsPerVM {
-		return fmt.Errorf("must run at least %d clients", ClientsPerVM)
-	}
-
-	if config.Client.Count > MaxVMsPerMIG*ClientsPerVM {
-		return fmt.Errorf("cannot run more than %d clients", config.Client.Count)
-	}
-
-	config.Server.Count = config.Client.Count / ClientsPerServer / ServersPerVM
-	config.Client.Count /= ClientsPerVM
-
 	instanceGroups := createInstanceGroups(config)
+
+	// Create the Bigtable instance and table if needed
+	fmt.Printf("Setting up Bigtable...")
+	err := createBigTable()
+	if err != nil {
+		return err
+	}
+	fmt.Println("done")
+
+	var wg sync.WaitGroup
+	// Resize Redis instances to 100 GB
+	fmt.Printf("Resizing redis instances...\n")
+	for _, instanceName := range ResizableRedisInstances {
+		wg.Add(1)
+		go func(redisInstanceName string) {
+			defer wg.Done()
+			err := resizeRedisInstance(redisInstanceName, 100)
+			if err != nil {
+				fmt.Printf("failed to resize redis instance %s to 100 GB: %v\n", redisInstanceName, err)
+			} else {
+				fmt.Printf("resized redis instance %s to 100 GB\n", redisInstanceName)
+			}
+		}(instanceName)
+	}
+	wg.Wait()
+	fmt.Println("done")
 
 	for _, instanceGroup := range instanceGroups {
 		serviceConfig := instanceGroup.ServiceConfig()
@@ -372,7 +433,7 @@ func StartStaging(config StagingConfig) error {
 		fmt.Println()
 	}
 
-	fmt.Println("staging started")
+	fmt.Println("\nstaging started")
 	return nil
 }
 
@@ -380,7 +441,7 @@ func StopStaging() []error {
 	instanceGroups := createInstanceGroups(DefaultStagingConfig)
 
 	var wg sync.WaitGroup
-	errChan := make(chan error, len(instanceGroups))
+	errChan := make(chan error, len(instanceGroups)+len(ResizableRedisInstances)+1)
 
 	fmt.Println("stopping staging...")
 
@@ -396,6 +457,30 @@ func StopStaging() []error {
 			wg.Done()
 		}(i)
 
+	}
+
+	// Delete bigtable
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := deleteBigTable(); err != nil {
+			errChan <- err
+		}
+
+		fmt.Println("deleted Bigtable")
+	}()
+
+	// Resize Redis instances to 1 GB
+	for _, instanceName := range ResizableRedisInstances {
+		wg.Add(1)
+		go func(redisInstanceName string) {
+			defer wg.Done()
+			err := resizeRedisInstance(redisInstanceName, 1)
+			if err != nil {
+				errChan <- err
+			}
+			fmt.Printf("resized redis instance %s to 1 GB\n", redisInstanceName)
+		}(instanceName)
 	}
 
 	wg.Wait()
@@ -417,18 +502,130 @@ func StopStaging() []error {
 	return nil
 }
 
+// Creates a Bigtable instance and table, if needed
+// Bigtable is required for the portal crunchers and portal to function
+func createBigTable() error {
+	ctx := context.Background()
+	gcpProjectID := "network-next-v3-staging"
+	logger := log.NewNopLogger()
+
+	// Create a bigtable instance admin
+	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID, logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = btInstanceAdmin.Close()
+	}()
+
+	// Verify if the instance already exists
+	instanceExists, err := btInstanceAdmin.VerifyInstanceExists(ctx, InstanceID)
+	if err != nil {
+		return err
+	}
+	if !instanceExists {
+		// Create the instance with 2 clusters and 5 zones per cluster
+		displayName := "bigtable-staging"
+		zones := []string{"us-central1-a", "us-central1-b"}
+		numClusters := 2
+		numNodesPerCluster := 5
+
+		err = btInstanceAdmin.CreateInstance(ctx, InstanceID, displayName, zones, numClusters, numNodesPerCluster)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Create a bigtable admin
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, InstanceID, logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = btAdmin.Close()
+	}()
+
+	// Verify if the table already exists
+	tableExists, err := btAdmin.VerifyTableExists(ctx, TableName)
+	if err != nil {
+		return err
+	}
+	if !tableExists {
+		// Create the table with a max age policy of 90 days
+		err = btAdmin.CreateTable(ctx, TableName, []string{CFName})
+		if err != nil {
+			return err
+		}
+
+		maxAge := time.Hour * time.Duration(1) * 24 * 90
+		err = btAdmin.SetMaxAgePolicy(ctx, TableName, []string{CFName}, maxAge)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Deletes a Bigtable instance, if needed
+// Deleting an instance automatically deletes any tables for that instance
+func deleteBigTable() error {
+	ctx := context.Background()
+	gcpProjectID := "network-next-v3-staging"
+	logger := log.NewNopLogger()
+
+	// Create a bigtable instance admin
+	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID, logger)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = btInstanceAdmin.Close()
+	}()
+
+	// Verify if the instance already exists
+	instanceExists, err := btInstanceAdmin.VerifyInstanceExists(ctx, InstanceID)
+	if err != nil {
+		return err
+	}
+	if instanceExists {
+		// Delete the instance
+		err = btInstanceAdmin.DeleteInstance(ctx, InstanceID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func resizeRedisInstance(instanceName string, size int) error {
+	success, output := bashQuiet(fmt.Sprintf("gcloud redis instances update %s --project=network-next-v3-staging --size=%d --region=us-central1", instanceName, size))
+	if !success {
+		return fmt.Errorf("could not resize redis instance %s to %d GB: %s", instanceName, size, output)
+	}
+
+	return nil
+}
+
 func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups := make([]InstanceGroup, 0)
 
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-backend", config.RelayBackend))
-	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-staging", config.Relays))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("portal-cruncher", config.PortalCruncher))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("vanity", config.Vanity))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-pusher", config.RelayPusher))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("fake-relays", config.FakeRelays))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-gateway-mig", false, config.RelayGateway))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-frontend-mig", false, config.RelayFrontend))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("api-mig", false, config.Api))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("analytics-mig", false, config.Analytics))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
+	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-mig", false, config.Beacon))
+	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-inserter-mig", false, config.BeaconInserter))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-mig", false, config.Portal))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", true, config.ServerBackend))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-server-mig", true, config.Server))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("load-test-clients-1", false, config.Client))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("fake-server-mig", true, config.FakeServer))
 
 	return instanceGroups
 }

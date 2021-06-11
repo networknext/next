@@ -119,7 +119,8 @@ const (
 	NEXT_PLATFORM_XBOX_ONE      = 7
 	NEXT_PLATFORM_XBOX_SERIES_X = 8
 	NEXT_PLATFORM_PS5           = 9
-	NEXT_PLATFORM_MAX           = 9
+	NEXT_PLATFORM_GDK           = 10
+	NEXT_PLATFORM_MAX           = 10
 )
 
 const NEXT_MAX_SESSION_DEBUG = 1024
@@ -184,6 +185,7 @@ type NextBackendServerUpdatePacket struct {
 }
 
 func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
+	// IMPORTANT: read only
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
@@ -271,6 +273,7 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	}
 
 	stream.SerializeAddress(&packet.ClientAddress)
+
 	stream.SerializeAddress(&packet.ServerAddress)
 
 	if stream.IsReading() {
@@ -791,78 +794,6 @@ func CryptoCheck(data []byte, nonce []byte, publicKey []byte, privateKey []byte)
 	return C.crypto_box_open((*C.uchar)(&data[0]), (*C.uchar)(&data[0]), C.ulonglong(len(data)), (*C.uchar)(&nonce[0]), (*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0])) != 0
 }
 
-func RelayInitHandler(writer http.ResponseWriter, request *http.Request) {
-	body, err := ioutil.ReadAll(request.Body)
-	if err != nil {
-		return
-	}
-	defer request.Body.Close()
-
-	index := 0
-
-	var magic uint32
-	if !ReadUint32(body, &index, &magic) || magic != NEXT_RELAY_INIT_REQUEST_MAGIC {
-		return
-	}
-
-	var version uint32
-	if !ReadUint32(body, &index, &version) || version != NEXT_RELAY_INIT_REQUEST_VERSION {
-		return
-	}
-
-	var nonce []byte
-	if !ReadBytes(body, &index, &nonce, C.crypto_box_NONCEBYTES) {
-		return
-	}
-
-	var relay_address string
-	if !ReadString(body, &index, &relay_address, NEXT_MAX_RELAY_ADDRESS_LENGTH) {
-		return
-	}
-
-	var encrypted_token []byte
-	if !ReadBytes(body, &index, &encrypted_token, NEXT_RELAY_TOKEN_BYTES+C.crypto_box_MACBYTES) {
-		return
-	}
-
-	if !CryptoCheck(encrypted_token, nonce, relayPublicKey[:], routerPrivateKey[:]) {
-		return
-	}
-
-	key := relay_address
-
-	backend.mutex.RLock()
-	_, relayAlreadyExists := backend.relayDatabase[key]
-	backend.mutex.RUnlock()
-
-	if relayAlreadyExists {
-		writer.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	relayEntry := RelayEntry{}
-	relayEntry.name = relay_address
-	relayEntry.id = GetRelayId(relay_address)
-	relayEntry.address = ParseAddress(relay_address)
-	relayEntry.lastUpdate = time.Now().Unix()
-	relayEntry.token = RandomBytes(NEXT_RELAY_TOKEN_BYTES)
-
-	backend.mutex.Lock()
-	backend.relayDatabase[key] = relayEntry
-	backend.dirty = true
-	backend.mutex.Unlock()
-
-	writer.Header().Set("Content-Type", "application/octet-stream")
-
-	responseData := make([]byte, 64)
-	index = 0
-	WriteUint32(responseData, &index, NEXT_RELAY_INIT_RESPONSE_VERSION)
-	WriteUint64(responseData, &index, uint64(time.Now().Unix()))
-	WriteBytes(responseData, &index, relayEntry.token, NEXT_RELAY_TOKEN_BYTES)
-	responseData = responseData[:index]
-	writer.Write(responseData)
-}
-
 func CompareTokens(a []byte, b []byte) bool {
 	if len(a) != len(b) {
 		fmt.Printf("token length is wrong\n")
@@ -878,6 +809,7 @@ func CompareTokens(a []byte, b []byte) bool {
 }
 
 func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
+
 	body, err := ioutil.ReadAll(request.Body)
 	if err != nil {
 		return
@@ -903,18 +835,14 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	key := relay_address
 
+	// todo: crypto check here
+
 	backend.mutex.RLock()
-	relayEntry, ok := backend.relayDatabase[key]
-	found := false
-	if ok && CompareTokens(token, relayEntry.token) {
-		found = true
+	_, ok := backend.relayDatabase[key]
+	if !ok {
+		backend.dirty = true
 	}
 	backend.mutex.RUnlock()
-
-	if !found {
-		writer.WriteHeader(http.StatusNotFound)
-		return
-	}
 
 	var num_relays uint32
 	if !ReadUint32(body, &index, &num_relays) {
@@ -942,7 +870,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 
-	relayEntry = RelayEntry{}
+	relayEntry := RelayEntry{}
 	relayEntry.name = relay_address
 	relayEntry.id = GetRelayId(relay_address)
 	relayEntry.address = ParseAddress(relay_address)
@@ -993,7 +921,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 func WebServer() {
 	router := mux.NewRouter()
-	router.HandleFunc("/relay_init", RelayInitHandler).Methods("POST")
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
 	http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
 }
@@ -2519,7 +2446,7 @@ func main() {
 			}
 
 			serverEntry := ServerEntry{}
-			serverEntry.address = from
+			serverEntry.address = &serverUpdate.ServerAddress
 			serverEntry.lastUpdate = time.Now().Unix()
 
 			key := string(from.String())
