@@ -1781,13 +1781,13 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 				err = fmt.Errorf("SessionDetails() failed to fetch top sessions meta information from bigtable: %v", err)
 				level.Error(s.Logger).Log("err", err)
-				continue
+				return sessions, err
 			}
 			if len(metaRows) == 0 {
 				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 				err = fmt.Errorf("SessionDetails() failed to fetch top sessions meta information, no rows: %v", err)
 				level.Error(s.Logger).Log("err", err)
-				continue
+				return sessions, err
 			}
 			s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
