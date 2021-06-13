@@ -10118,6 +10118,7 @@ struct next_server_internal_t
     void (*wake_up_callback)( void * context );
     void * context;
     int state;
+    bool resolving_hostname;
     uint64_t customer_id;
     uint64_t datacenter_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
@@ -10133,8 +10134,6 @@ struct next_server_internal_t
 
     bool valid_customer_private_key;
     bool no_datacenter_specified;
-    bool failed_to_resolve_hostname;
-    bool resolve_hostname_finished;
     bool first_server_update;
     uint64_t upgrade_sequence;
     uint64_t server_update_sequence;
@@ -10143,7 +10142,6 @@ struct next_server_internal_t
     double first_backend_server_init;
     double last_backend_server_update;
     double next_resolve_hostname_time;
-    next_address_t resolve_hostname_result;
     next_address_t backend_address;
     next_address_t server_address;
     next_address_t bind_address;
@@ -10153,19 +10151,25 @@ struct next_server_internal_t
     next_platform_mutex_t command_mutex;
     next_platform_mutex_t notify_mutex;
     next_platform_socket_t * socket;
-    next_platform_mutex_t state_and_resolve_hostname_mutex;
-    next_platform_thread_t * resolve_hostname_thread;
     next_pending_session_manager_t * pending_session_manager;
     next_session_manager_t * session_manager;
 
     NEXT_DECLARE_SENTINEL(3)
+
+    bool resolve_hostname_failed;
+    bool resolve_hostname_finished;
+    next_address_t resolve_hostname_result;
+    next_platform_mutex_t resolve_hostname_mutex;
+    next_platform_thread_t * resolve_hostname_thread;
+
+    NEXT_DECLARE_SENTINEL(4)
 
     uint8_t server_kx_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
     uint8_t server_kx_private_key[NEXT_CRYPTO_KX_SECRETKEYBYTES];
     uint8_t server_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint8_t server_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
-    NEXT_DECLARE_SENTINEL(4)
+    NEXT_DECLARE_SENTINEL(5)
 };
 
 void next_server_internal_initialize_sentinels( next_server_internal_t * server )
@@ -10177,6 +10181,7 @@ void next_server_internal_initialize_sentinels( next_server_internal_t * server 
     NEXT_INITIALIZE_SENTINEL( server, 2 )
     NEXT_INITIALIZE_SENTINEL( server, 3 )
     NEXT_INITIALIZE_SENTINEL( server, 4 )
+    NEXT_INITIALIZE_SENTINEL( server, 5 )
 }
 
 void next_server_internal_verify_sentinels( next_server_internal_t * server )
@@ -10188,6 +10193,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
     NEXT_VERIFY_SENTINEL( server, 2 )
     NEXT_VERIFY_SENTINEL( server, 3 )
     NEXT_VERIFY_SENTINEL( server, 4 )
+    NEXT_VERIFY_SENTINEL( server, 5 )
     if ( server->session_manager )
         next_session_manager_verify_sentinels( server->session_manager );
     if ( server->pending_session_manager )
@@ -10710,7 +10716,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
 void next_server_internal_resolve_hostname( next_server_internal_t * server )
 {
-    if ( server->state == NEXT_SERVER_STATE_RESOLVING_HOSTNAME )
+    if ( server->resolving_hostname )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server is already resolving hostname" );
         return;
@@ -10726,9 +10732,12 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
         return;
     }
 
-    next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-    server->state = NEXT_SERVER_STATE_RESOLVING_HOSTNAME;
-    server->next_resolve_hostname_time = next_time() + 5.0*60.0 + ( next_random_float() * 5.0*60.0 );
+    server->state = NEXT_SERVER_STATE_INITIALIZING;
+    server->resolving_hostname = true;
+    server->resolve_hostname_finished = false;
+    server->resolve_hostname_failed = false;
+    server->next_resolve_hostname_time = next_time() + 25.0; // todo -- 5.0*60.0 + ( next_random_float() * 5.0*60.0 );
+    server->first_backend_server_init = 0.0;
 }
 
 void next_server_internal_destroy( next_server_internal_t * server );
@@ -10892,11 +10901,11 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    result = next_platform_mutex_create( &server->state_and_resolve_hostname_mutex );
+    result = next_platform_mutex_create( &server->resolve_hostname_mutex );
     
     if ( result != NEXT_OK )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create state and resolve hostname mutex" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create resolve hostname mutex" );
         next_server_internal_destroy( server );
         return NULL;
     }
@@ -10971,7 +10980,7 @@ void next_server_internal_destroy( next_server_internal_t * server )
     next_platform_mutex_destroy( &server->session_mutex );
     next_platform_mutex_destroy( &server->command_mutex );
     next_platform_mutex_destroy( &server->notify_mutex );
-    next_platform_mutex_destroy( &server->state_and_resolve_hostname_mutex );
+    next_platform_mutex_destroy( &server->resolve_hostname_mutex );
 
     next_server_internal_verify_sentinels( server );
 
@@ -11143,13 +11152,6 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
     const double current_time = next_time();
     
-    if ( server->next_resolve_hostname_time <= current_time )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server resolving backend hostname" );
-        next_server_internal_resolve_hostname( server );
-        server->next_resolve_hostname_time = current_time + 5.0*60.0 + next_random_float() * 5.0*60.0;
-    }
-
     const int max_index = server->session_manager->max_entry_index;
 
     for ( int i = 0; i <= max_index; ++i )
@@ -11215,13 +11217,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
     if ( next_global_config.disable_network_next )
         return;
 
-    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    {
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        state = server->state;
-    }
-
-    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
+    if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
 
     const double current_time = next_time();
@@ -11281,13 +11277,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
     if ( next_global_config.disable_network_next )
         return;
 
-    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    {
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        state = server->state;
-    }
-
-    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
+    if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
 
     const double current_time = next_time();
@@ -11435,13 +11425,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( packet_id == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET )
         {
-            int state = NEXT_SERVER_STATE_DIRECT_ONLY;
-            {
-                next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-                state = server->state;
-            }
-
-            if ( state != NEXT_SERVER_STATE_INITIALIZING )
+            if ( server->state != NEXT_SERVER_STATE_INITIALIZING )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored init response packet from backend. server is not initializing" );
                 return;
@@ -11499,8 +11483,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             next_printf( NEXT_LOG_LEVEL_INFO, "welcome to network next :)" );
 
-            next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
             server->state = NEXT_SERVER_STATE_INITIALIZED;
+            server->first_backend_server_init = 0.0;
 
             return;
         }
@@ -11509,13 +11493,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( packet_id == NEXT_BACKEND_SESSION_RESPONSE_PACKET )
         {
-            int state = NEXT_SERVER_STATE_DIRECT_ONLY;
-            {
-                next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-                state = server->state;
-            }
-
-            if ( state != NEXT_SERVER_STATE_INITIALIZED )
+            if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server is not initialized" );
                 return;
@@ -12275,13 +12253,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
 
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
 
-    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    {
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        state = server->state;
-    }
-
-    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
+    if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server cannot upgrade client. direct only mode" );
         return;
@@ -12350,7 +12322,7 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     }
 
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not find any session to tag for address %s. please call next_upgrade_session before you tag a session", next_address_to_string( address, buffer ) );    
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not find any session to tag for address %s", next_address_to_string( address, buffer ) );    
 }
 
 bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
@@ -12422,24 +12394,14 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_address_t address;
 
-    if ( next_address_parse( &address, hostname ) == NEXT_OK )
-    {
-        address.port = atoi( port );
-        next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        server->resolve_hostname_finished = true;
-        server->resolve_hostname_result = address;
-        NEXT_PLATFORM_THREAD_RETURN();
-    }
+    bool success = false;
 
     for ( int i = 0; i < 10; ++i )
     {
         if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
         {
             next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-            next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-            server->resolve_hostname_finished = true;
-            server->resolve_hostname_result = address;
+            success = true;
             break;
         }
         else
@@ -12448,13 +12410,21 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         }
     }
 
-    if ( !server->resolve_hostname_finished )
+    if ( success )
+    {
+        next_platform_mutex_guard( &server->resolve_hostname_mutex );
+        server->resolve_hostname_finished = true;
+        server->resolve_hostname_failed = false;
+        server->resolve_hostname_result = address;
+    }
+    else 
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+        next_platform_mutex_guard( &server->resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
+        server->resolve_hostname_failed = true;
         memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
-        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+        NEXT_PLATFORM_THREAD_RETURN();
     }
 
     // only run the autodetect datacenter code once. once we know our datacenter name, it does not change
@@ -12522,17 +12492,33 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
 static bool next_server_internal_update_resolve_hostname( next_server_internal_t * server )
 {
+    next_assert( server );
+
     next_server_internal_verify_sentinels( server );
 
-    if ( !server->resolve_hostname_thread )
+    if ( next_global_config.disable_network_next )
+        return true;
+
+    const double current_time = next_time();
+    
+    if ( server->next_resolve_hostname_time <= current_time )
+    {
+        next_server_internal_resolve_hostname( server );
+        server->next_resolve_hostname_time = current_time + 25.0; // todo -- 5.0*60.0 + next_random_float() * 5.0*60.0;
+        server->first_backend_server_init = 0.0;
+    }
+
+    if ( !server->resolving_hostname )
         return true;
 
     bool finished = false;
+    bool failed = false;
     next_address_t result;
     memset( &result, 0, sizeof(next_address_t) );
     {
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+        next_platform_mutex_guard( &server->resolve_hostname_mutex );
         finished = server->resolve_hostname_finished;
+        failed = server->resolve_hostname_failed;
         result = server->resolve_hostname_result;
     }
 
@@ -12543,6 +12529,8 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     next_platform_thread_destroy( server->resolve_hostname_thread );
 
+    server->resolve_hostname_thread = NULL;
+
     if ( server->autodetected_datacenter )
     {
         strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
@@ -12551,11 +12539,12 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
     }
 
-    server->resolve_hostname_thread = NULL;
-
     if ( result.type == NEXT_ADDRESS_NONE )
     {
-        server->failed_to_resolve_hostname = true;
+        next_printf( NEXT_LOG_LEVEL_INFO, "server in direct only mode" );
+        server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+        server->resolving_hostname = false;
+        server->resolve_hostname_failed = true;
         next_server_notify_failed_to_resolve_hostname_t * notify = (next_server_notify_failed_to_resolve_hostname_t*) next_malloc( server->context, sizeof( next_server_notify_failed_to_resolve_hostname_t ) );
         notify->type = NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME;
         {
@@ -12569,8 +12558,8 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server resolved backend hostname to %s", next_address_to_string( &result, address_buffer ) );
 
+    server->resolving_hostname = false;
     server->backend_address = result;
-    server->state = NEXT_SERVER_STATE_INITIALIZING;
 
     return true;
 }
@@ -12585,22 +12574,19 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     // server init
 
-    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    {
-        next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
-        state = server->state;
-    }
-
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     
     next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
-    if ( state == NEXT_SERVER_STATE_INITIALIZING )
+    if ( server->state == NEXT_SERVER_STATE_INITIALIZING && !server->resolving_hostname )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
+        // printf( "first_backend_server_init = %f\n", server->first_backend_server_init );
+
         if ( server->first_backend_server_init == 0.0 )
         {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server initializing with backend" );
             server->first_backend_server_init = current_time;
         }
 
@@ -12631,10 +12617,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         if ( server->first_backend_server_init + 10.0 <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server did not get an init response from backend. falling back to direct only" );
-            next_platform_mutex_guard( &server->state_and_resolve_hostname_mutex );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. direct only mode" );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-            server->next_resolve_hostname_time = current_time + 5.0*60.0 + next_random_float() * 5.0*60.0;
+            server->next_resolve_hostname_time = current_time + 25.0; // todo -- 5.0*60.0 + next_random_float() * 5.0*60.0;
+            server->first_backend_server_init = 0.0;
         }
     }
 
@@ -12664,7 +12650,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     // server update
 
-    if ( state != NEXT_SERVER_STATE_INITIALIZED )
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
     bool first_server_update = server->first_server_update;
@@ -13124,20 +13110,6 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
 
     next_assert( server->internal );
     
-    // don't upgrade sessions in direct only mode
-
-    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    {
-        next_platform_mutex_guard( &server->internal->state_and_resolve_hostname_mutex );
-        state = server->internal->state;
-    }
-
-    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server can't upgrade session. direct only mode" );
-        return 0;
-    }
-
     // send upgrade session command to internal server
 
     next_server_command_upgrade_session_t * command = (next_server_command_upgrade_session_t*) next_malloc( server->context, sizeof( next_server_command_upgrade_session_t ) );
@@ -13201,20 +13173,6 @@ void next_server_tag_session_multiple( next_server_t * server, const next_addres
     next_assert( server->internal );
     next_assert( num_tags >= 0 );
     next_assert( num_tags <= NEXT_MAX_TAGS );
-
-    // don't tag sessions in direct only mode
-
-    int state = NEXT_SERVER_STATE_DIRECT_ONLY;
-    {
-        next_platform_mutex_guard( &server->internal->state_and_resolve_hostname_mutex );
-        state = server->internal->state;
-    }
-
-    if ( state == NEXT_SERVER_STATE_DIRECT_ONLY )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server can't tag session. direct only mode" );
-        return;
-    }
 
     // send tag session command to internal server
 

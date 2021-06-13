@@ -305,9 +305,8 @@ struct next_server_stats_t
 };
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
-#define NEXT_SERVER_STATE_RESOLVING_HOSTNAME        1
-#define NEXT_SERVER_STATE_INITIALIZING              2
-#define NEXT_SERVER_STATE_INITIALIZED               3
+#define NEXT_SERVER_STATE_INITIALIZING              1
+#define NEXT_SERVER_STATE_INITIALIZED               2
 
 struct next_server_t;
 
