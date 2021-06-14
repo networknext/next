@@ -142,7 +142,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 	response, err := client.Do(req)
 	if err != nil {
-		err = fmt.Errorf("RelayDashboardJson() error getting relays.csv: %w", err)
+		err = fmt.Errorf("RelayDashboardJson() error getting fleet relay json: %w", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
@@ -157,7 +157,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 	json.Unmarshal(byteValue, &fullDashboard)
 	if len(fullDashboard.Relays) == 0 {
-		err := fmt.Errorf("relay backend returned an empty dashboard file")
+		err := fmt.Errorf("RelayDashboardJson() relay backend returned an empty dashboard file")
 		rfs.Logger.Log("err", err)
 		return err
 	}
