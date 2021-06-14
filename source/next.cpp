@@ -4442,6 +4442,7 @@ struct next_relay_manager_t
 
     void * context;
     int num_relays;
+    bool disable_pings;
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -4530,6 +4531,7 @@ void next_relay_manager_reset( next_relay_manager_t * manager )
 {
     next_relay_manager_verify_sentinels( manager );
 
+    manager->disable_pings = false;
     manager->num_relays = 0;
     
     memset( manager->relay_ids, 0, sizeof(manager->relay_ids) );
@@ -4584,6 +4586,22 @@ void next_relay_manager_update( next_relay_manager_t * manager, int num_relays, 
     next_relay_manager_verify_sentinels( manager );
 }
 
+void next_relay_manager_disable_pings( next_relay_manager_t * manager, bool disabled )
+{
+    next_assert( manager );
+
+    // IMPORTANT: So we don't see phantom packet loss when we enable near relay pings again
+    if ( !disabled && manager->disable_pings )
+    {
+        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        {
+            next_ping_history_clear( &manager->relay_ping_history[i] );
+        }    
+    }
+
+    manager->disable_pings = disabled;
+}
+
 void next_relay_manager_exclude( next_relay_manager_t * manager, bool * near_relay_excluded )
 {
     next_relay_manager_verify_sentinels( manager );
@@ -4596,6 +4614,9 @@ void next_relay_manager_exclude( next_relay_manager_t * manager, bool * near_rel
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id )
 {
     next_relay_manager_verify_sentinels( manager );
+
+    if ( manager->disable_pings )
+        return;
     
     next_assert( socket );
 
@@ -4635,9 +4656,12 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
     }
 }
 
-bool next_relay_manager_process_pong( next_relay_manager_t * manager, const next_address_t * from, uint64_t sequence )
+void next_relay_manager_process_pong( next_relay_manager_t * manager, const next_address_t * from, uint64_t sequence )
 {
     next_relay_manager_verify_sentinels( manager );
+
+    if ( manager->disable_pings )
+        return;
 
     next_assert( from );
 
@@ -4649,11 +4673,9 @@ bool next_relay_manager_process_pong( next_relay_manager_t * manager, const next
         if ( next_address_equal( from, &manager->relay_addresses[i] ) )
         {
             next_ping_history_pong_received( &manager->relay_ping_history[i], sequence, next_time() );
-            return true;
+            return;
         }
     }
-
-    return false;
 }
 
 void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_stats_t * stats )
@@ -6758,6 +6780,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             {
                 next_printf( NEXT_LOG_LEVEL_INFO, "client session debug: %s", packet.debug );
             }
+
+            next_relay_manager_disable_pings( client->near_relay_manager, packet.dont_ping_near_relays );
 
             if ( packet.near_relays_changed )
             {
