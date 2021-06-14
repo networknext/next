@@ -178,32 +178,8 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
         gridHash = cpuAggregation.gridHash
       }
       const lookUpKey = this.getHashKeyForIndex(index)
-      let lookUpObject = gridHash[lookUpKey]
+      const lookUpObject = gridHash[lookUpKey]
 
-      if (!lookUpObject) {
-        // Very rarely there are rounding errors that make one or both key indices off by 1 so we should check for that
-        // Even more rarely, the hashmap drops some entries. We should leave the object as undefined and have an error check on the session map side.
-        // This generally happens when an aggregated point is over water. Zooming in will fix the issue
-        const lookUpPieces = lookUpKey.split('-')
-        Object.keys(gridHash).every((key) => {
-          const keyPieces = key.split('-')
-          // If latIdx is correct and lonIdx is off by one use that
-          if ((Math.abs(parseInt(keyPieces[0]) - parseInt(lookUpPieces[0])) === 0) && (Math.abs(parseInt(keyPieces[1]) - parseInt(lookUpPieces[1])) === 1)) {
-            lookUpObject = gridHash[key]
-            return lookUpObject
-          }
-          // If latIdx is off by one and lonIdx is off by one use that
-          if ((Math.abs(parseInt(keyPieces[0]) - parseInt(lookUpPieces[0])) === 1) && (Math.abs(parseInt(keyPieces[1]) - parseInt(lookUpPieces[1])) === 1)) {
-            lookUpObject = gridHash[key]
-            return lookUpObject
-          }
-          // If both are off by one use that
-          if ((Math.abs(parseInt(keyPieces[0]) - parseInt(lookUpPieces[0])) === 1) && (Math.abs(parseInt(keyPieces[1]) - parseInt(lookUpPieces[1])) === 0)) {
-            lookUpObject = gridHash[key]
-            return lookUpObject
-          }
-        })
-      }
       Object.assign(info.object, lookUpObject)
     }
 
@@ -222,10 +198,10 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
 
     // This will match the index to the hash-key to access aggregation data from CPU aggregation results.
     const latIdx = Math.floor(
-      (yIndex * cellSize[1] + gridOrigin[1] + 90 + Math.abs(boundingBox.yMin) + cellSize[1] / 2) / cellSize[1]
+      (yIndex * cellSize[1] + 90 + cellSize[1] / 2) / cellSize[1]
     )
     const lonIdx = Math.floor(
-      (xIndex * cellSize[0] + gridOrigin[0] + 180 + Math.abs(boundingBox.xMin) + cellSize[0] / 2) / cellSize[0]
+      (xIndex * cellSize[0] + 180 + cellSize[0] / 2) / cellSize[0]
     )
     return `${latIdx}-${lonIdx}`
   }
