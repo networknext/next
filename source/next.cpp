@@ -3179,6 +3179,7 @@ struct NextRouteUpdatePacket
     float jitter_client_to_server;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
+    bool dont_ping_near_relays;
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
@@ -3233,16 +3234,21 @@ struct NextRouteUpdatePacket
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
 
-        serialize_bool( stream, exclude_near_relays );
-        if ( exclude_near_relays )
-        {
-            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-            {
-                serialize_bool( stream, near_relay_excluded[i] );
-            }
-        }
+        serialize_bool( stream, dont_ping_near_relays );
 
-        serialize_bool( stream, high_frequency_pings );
+        if ( !dont_ping_near_relays )
+        {
+            serialize_bool( stream, exclude_near_relays );
+            if ( exclude_near_relays )
+            {
+                for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+                {
+                    serialize_bool( stream, near_relay_excluded[i] );
+                }
+            }
+
+            serialize_bool( stream, high_frequency_pings );
+        }
 
         return true;
     }
@@ -9838,9 +9844,9 @@ struct NextBackendSessionResponsePacket
                     serialize_bool( stream, near_relay_excluded[i] );
                 }
             }
-        }
 
-        serialize_bool( stream, high_frequency_pings );
+            serialize_bool( stream, high_frequency_pings );
+        }
 
         return true;
     }
@@ -15055,6 +15061,110 @@ static void test_packets()
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
+    // route update packet (direct, don't ping near relays)
+    {
+        static NextRouteUpdatePacket in, out;
+
+        in.sequence = 100000;
+        in.dont_ping_near_relays = true;
+        in.update_type = NEXT_UPDATE_TYPE_DIRECT;
+        in.packets_sent_server_to_client = 11000;
+        in.packets_lost_client_to_server = 10000;
+        in.packets_out_of_order_client_to_server = 9000;
+        in.jitter_client_to_server = 0.1f;
+        in.has_debug = true;
+        strcpy( in.debug, "debug time" );
+
+        uint64_t in_sequence = 1000;
+        uint64_t out_sequence = 0;
+        int packet_bytes = 0;
+        static next_replay_protection_t replay_protection;
+        next_replay_protection_reset( &replay_protection );
+        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
+        next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+
+        next_check( in_sequence == out_sequence + 1 );
+        next_check( in.sequence == out.sequence );
+        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
+        next_check( in.update_type == out.update_type );
+        next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
+        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
+        next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
+        next_check( in.jitter_client_to_server == out.jitter_client_to_server );
+        next_check( in.has_debug == out.has_debug );
+        next_check( strcmp( in.debug, out.debug ) == 0 );
+    }
+
+    // route update packet (route, don't ping near relays)
+    {
+        static NextRouteUpdatePacket in, out;
+        in.sequence = 100000;
+        in.dont_ping_near_relays = true;
+        in.update_type = NEXT_UPDATE_TYPE_ROUTE;
+        in.multipath = true;
+        in.committed = true;
+        in.num_tokens = NEXT_MAX_TOKENS;
+        next_random_bytes( in.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS );
+        in.packets_sent_server_to_client = 11000;
+        in.packets_lost_client_to_server = 10000;
+        in.packets_out_of_order_client_to_server = 9000;
+        in.jitter_client_to_server = 0.25f;
+
+        uint64_t in_sequence = 1000;
+        uint64_t out_sequence = 0;
+        int packet_bytes = 0;
+        static next_replay_protection_t replay_protection;
+        next_replay_protection_reset( &replay_protection );
+        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
+        next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+
+        next_check( in_sequence == out_sequence + 1 );
+        next_check( in.sequence == out.sequence );
+        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
+        next_check( in.update_type == out.update_type );
+        next_check( in.multipath == out.multipath );
+        next_check( in.committed == out.committed );
+        next_check( in.num_tokens == out.num_tokens );
+        next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
+        next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
+        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
+        next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
+        next_check( in.jitter_client_to_server == out.jitter_client_to_server );
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
+    }
+
+    // route update packet (continue, dont ping near relays)
+    {
+        static NextRouteUpdatePacket in, out;
+        in.sequence = 100000;
+        in.dont_ping_near_relays = true;
+        in.update_type = NEXT_UPDATE_TYPE_CONTINUE;
+        in.multipath = true;
+        in.committed = true;
+        in.num_tokens = NEXT_MAX_TOKENS;
+        next_random_bytes( in.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS );
+        in.packets_lost_client_to_server = 10000;
+
+        uint64_t in_sequence = 1000;
+        uint64_t out_sequence = 0;
+        int packet_bytes = 0;
+        static next_replay_protection_t replay_protection;
+        next_replay_protection_reset( &replay_protection );
+        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
+        next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+
+        next_check( in_sequence == out_sequence + 1 );
+        next_check( in.sequence == out.sequence );
+        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
+        next_check( in.update_type == out.update_type );
+        next_check( in.multipath == out.multipath );
+        next_check( in.committed == out.committed );
+        next_check( in.num_tokens == out.num_tokens );
+        next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
+        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
+        next_check( in.high_frequency_pings == out.high_frequency_pings );
+    }
+
     // route update ack packet
     {
         static NextRouteUpdateAckPacket in, out;
@@ -15964,7 +16074,6 @@ static void test_backend_packets()
         next_check( in.committed == out.committed );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
     // session response packet (continue, near relays not changed)
@@ -16003,7 +16112,6 @@ static void test_backend_packets()
         next_check( in.response_type == out.response_type );
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 }
 
