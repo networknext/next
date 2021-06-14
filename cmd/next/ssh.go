@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/ybbus/jsonrpc"
 )
 
 func testForSSHKey(env Environment) {
@@ -18,14 +16,14 @@ func testForSSHKey(env Environment) {
 	}
 }
 
-func SSHInto(env Environment, rpcClient jsonrpc.RPCClient, relayName string) {
+func SSHInto(env Environment, relayName string) {
 
 	riot := false
 	if strings.Split(relayName, ".")[0] == "riot" {
 		riot = true
 	}
 
-	relays := getRelayInfo(rpcClient, env, relayName)
+	relays := getRelayInfo(env, relayName)
 	if len(relays) == 0 {
 		handleRunTimeError(fmt.Sprintf("no relays matches the regex '%s'\n", relayName), 0)
 	}
