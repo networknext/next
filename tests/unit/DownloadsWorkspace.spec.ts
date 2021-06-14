@@ -43,7 +43,7 @@ describe('DownloadsWorkspace.vue', () => {
     const wrapper = shallowMount(DownloadsWorkspace, { localVue, store })
     expect(wrapper.find('.card-title').text()).toBe('Network Next SDK')
 
-    expect(wrapper.findAll('.btn').length).toBe(3)
+    expect(wrapper.findAll('.btn').length).toBe(2)
     expect(wrapper.findAll('.btn').at(0).text()).toBe('SDK v4.0.10')
     // expect(wrapper.findAll('.btn').at(1).text()).toBe('UE4 Plugin')
     expect(wrapper.findAll('.btn').at(1).text()).toBe('Documentation')
