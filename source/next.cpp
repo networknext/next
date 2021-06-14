@@ -9076,6 +9076,7 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, client_bandwidth_over_limit );
         serialize_bool( stream, server_bandwidth_over_limit );
         serialize_bool( stream, client_ping_timed_out );
+        serialize_bool( stream, has_near_relay_pings );
 
         bool has_tags = Stream::IsWriting && slice_number == 0 && num_tags > 0;
         bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
@@ -9110,9 +9111,12 @@ struct NextBackendSessionUpdatePacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
-            serialize_int( stream, near_relay_rtt[i], 0, 255 );
-            serialize_int( stream, near_relay_jitter[i], 0, 255 );
-            serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
+            if ( has_near_relay_pings )
+            {
+                serialize_int( stream, near_relay_rtt[i], 0, 255 );
+                serialize_int( stream, near_relay_jitter[i], 0, 255 );
+                serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
+            }
         }
 
         if ( next )
