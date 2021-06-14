@@ -9767,6 +9767,7 @@ struct NextBackendSessionResponsePacket
     bool committed;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
+    bool dont_ping_near_relays;
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
@@ -9825,12 +9826,17 @@ struct NextBackendSessionResponsePacket
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
 
-        serialize_bool( stream, exclude_near_relays );
-        if ( exclude_near_relays )
+        serialize_bool( stream, dont_ping_near_relays );
+
+        if ( !dont_ping_near_relays )
         {
-            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+            serialize_bool( stream, exclude_near_relays );
+            if ( exclude_near_relays )
             {
-                serialize_bool( stream, near_relay_excluded[i] );
+                for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+                {
+                    serialize_bool( stream, near_relay_excluded[i] );
+                }
             }
         }
 
