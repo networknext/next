@@ -1,23 +1,36 @@
 package jsonrpc
 
 import (
+	"bytes"
+	"context"
 	"encoding/csv"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/middleware"
 )
 
 // RelayFleetService provides access to real-time data provided by the endpoints
 // mounted on the relay_frontend (/relays, /cost_matrix (tbd), etc.).
 type RelayFleetService struct {
-	RelayFrontendURI string
-	Logger           log.Logger
+	RelayFrontendURI  string
+	RelayGatewayURI   string
+	RelayForwarderURI string
+	Logger            log.Logger
+	Storage           storage.Storer
+	Env               string
 }
 
 // RelayFleetEntry represents a line in the CSV file provided
@@ -129,7 +142,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 	response, err := client.Do(req)
 	if err != nil {
-		err = fmt.Errorf("RelayDashboardJson() error getting relays.csv: %w", err)
+		err = fmt.Errorf("RelayDashboardJson() error getting fleet relay json: %w", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
@@ -144,7 +157,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 	json.Unmarshal(byteValue, &fullDashboard)
 	if len(fullDashboard.Relays) == 0 {
-		err := fmt.Errorf("relay backend returned an empty dashboard file")
+		err := fmt.Errorf("RelayDashboardJson() relay backend returned an empty dashboard file")
 		rfs.Logger.Log("err", err)
 		return err
 	}
@@ -198,4 +211,316 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	reply.Dashboard = filteredDashboard
 
 	return nil
+}
+
+type AdminFrontPageArgs struct{}
+
+type AdminFrontPageReply struct {
+	BinFileCreationTime  time.Time `json:"binFileCreationTime"`
+	BinFileAuthor        string    `json:"binFileAuthor"`
+	RelayGatewayStatus   []string  `json:"relayGatewayStatus"`
+	RelayFrontEndStatus  []string  `json:"relayFrontEndStatus"`
+	RelayBackEndStatus   []string  `json:"relayBackEndStatus"`
+	RelayForwarderStatus []string  `json:"relayForwarderStatus"`
+}
+
+// RelayDashboardJson retrieves the JSON representation of the current relay dashboard
+// provided by relay_backend/relay_dashboard_data
+func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPageArgs, reply *AdminFrontPageReply) error {
+
+	authHeader := r.Header.Get("Authorization")
+
+	// relay_frontend/status
+	frontEndURI := rfs.RelayFrontendURI + "/status"
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", frontEndURI, nil)
+	req.Header.Set("Authorization", authHeader)
+
+	response, err := client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("AdminFrontPage() error getting relay_frontend/status: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	b, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println(err)
+		err := fmt.Errorf("AdminFrontPage() error parsing relay_frontend/status: %v", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	frontEndText := strings.Split(string(b), "\n")
+	reply.RelayFrontEndStatus = append(reply.RelayFrontEndStatus, frontEndText...)
+
+	// relay_frontend/master_status
+	backEndMasterURI := rfs.RelayFrontendURI + "/master_status"
+	client = &http.Client{}
+	req, _ = http.NewRequest("GET", backEndMasterURI, nil)
+	req.Header.Set("Authorization", authHeader)
+
+	response, err = client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("AdminFrontPage() error getting relay_frontend/master_status: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	b, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println(err)
+		err := fmt.Errorf("AdminFrontPage() error parsing relay_frontend/master_status: %v", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	backEndText := strings.Split(string(b), "\n")
+	reply.RelayBackEndStatus = append(reply.RelayBackEndStatus, backEndText...)
+
+	// relay_gateway/status
+	gatewayURI := rfs.RelayGatewayURI + "/status"
+	client = &http.Client{}
+	req, _ = http.NewRequest("GET", gatewayURI, nil)
+	req.Header.Set("Authorization", authHeader)
+
+	response, err = client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("AdminFrontPage() error getting relay_gateway/status: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	b, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		fmt.Println(err)
+		err := fmt.Errorf("AdminFrontPage() error parsing relay_gateway/status: %v", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	gatewayText := strings.Split(string(b), "\n")
+	reply.RelayGatewayStatus = append(reply.RelayGatewayStatus, gatewayText...)
+
+	// relay_forwarder/status
+	if rfs.RelayForwarderURI != "" {
+		gatewayURI := rfs.RelayForwarderURI + "/status"
+		client = &http.Client{}
+		req, _ = http.NewRequest("GET", gatewayURI, nil)
+		req.Header.Set("Authorization", authHeader)
+
+		response, err = client.Do(req)
+		if err != nil {
+			err = fmt.Errorf("AdminFrontPage() error getting relay_forwarder/status: %w", err)
+			rfs.Logger.Log("err", err)
+			return err
+		}
+		defer response.Body.Close()
+
+		b, err = ioutil.ReadAll(response.Body)
+		if err != nil {
+			err := fmt.Errorf("AdminFrontPage() error parsing relay_forwarder/status: %v", err)
+			rfs.Logger.Log("err", err)
+			return err
+		}
+
+		forwaderText := strings.Split(string(b), "\n")
+		reply.RelayForwarderStatus = append(reply.RelayForwarderStatus, forwaderText...)
+	} else {
+		reply.RelayForwarderStatus = []string{"relay_forwarder dne in dev/local"}
+	}
+
+	binFileMetaData, err := rfs.Storage.GetDatabaseBinFileMetaData()
+	if err != nil {
+		reply.BinFileAuthor = "Arthur Dent"
+		reply.BinFileCreationTime = time.Now()
+	} else {
+		reply.BinFileAuthor = binFileMetaData.DatabaseBinFileAuthor
+		reply.BinFileCreationTime = binFileMetaData.DatabaseBinFileCreationTime
+	}
+
+	return nil
+}
+
+type AdminBinFileHandlerArgs struct{}
+
+type AdminBinFileHandlerReply struct {
+	Message string `json:"message"`
+}
+
+// AdminBinFileHandler generates and commits a database.bin file
+// for the Admin UI tool. The Admin UI (js) can not commit or
+// otherwise work with the bin file.
+func (rfs *RelayFleetService) AdminBinFileHandler(
+	r *http.Request,
+	args *AdminBinFileHandlerArgs,
+	reply *AdminBinFileHandlerReply,
+) error {
+
+	requestUser := r.Context().Value(middleware.Keys.UserKey)
+	if requestUser == nil {
+		errCode := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		err := fmt.Errorf("AdminBinFileHandler() error getting userid: %v", errCode)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		rfs.Logger.Log("err", fmt.Errorf("AdminBinFileHandler(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
+	var buffer bytes.Buffer
+
+	dbWrapper, err := rfs.BinFileGenerator(requestEmail)
+	if err != nil {
+		err := fmt.Errorf("AdminBinFileHandler() error generating database.bin file: %v", err)
+		rfs.Logger.Log("err", err)
+		reply.Message = err.Error()
+		return err
+	}
+
+	encoder := gob.NewEncoder(&buffer)
+	encoder.Encode(dbWrapper)
+
+	tempFile, err := ioutil.TempFile("", "database.bin")
+	if err != nil {
+		err := fmt.Errorf("AdminBinFileHandler() error writing database.bin to temporary file: %v", err)
+		rfs.Logger.Log("err", err)
+		reply.Message = err.Error()
+		return err
+	}
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.Write(buffer.Bytes())
+	if err != nil {
+		err := fmt.Errorf("AdminBinFileHandler() error writing database.bin to filesystem: %v", err)
+		rfs.Logger.Log("err", err)
+		reply.Message = err.Error()
+		return err
+	}
+
+	// should come from env var?
+	bucketName := "gs://"
+	switch rfs.Env {
+	case "dev":
+		bucketName += "dev_database_bin"
+	case "prod":
+		bucketName += "prod_database_bin"
+	case "staging":
+		bucketName += "staging_database_bin"
+	case "local":
+		bucketName += "happy_path_testing"
+	}
+
+	// enforce target file name, copy in /tmp has random numbers appended
+	bucketName += "/database.bin"
+
+	// gsutil cp /tmp/database.bin84756774 gs://${bucketName}
+	gsutilCpCommand := exec.Command("gsutil", "cp", tempFile.Name(), bucketName)
+
+	err = gsutilCpCommand.Run()
+	if err != nil {
+		err := fmt.Errorf("AdminBinFileHandler() error copying database.bin to %s: %v", bucketName, err)
+		rfs.Logger.Log("err", err)
+		reply.Message = err.Error()
+	} else {
+		reply.Message = "success!"
+	}
+
+	metaData := routing.DatabaseBinFileMetaData{
+		DatabaseBinFileAuthor:       requestEmail,
+		DatabaseBinFileCreationTime: time.Now(),
+	}
+
+	err = rfs.Storage.UpdateDatabaseBinFileMetaData(context.Background(), metaData)
+	if err != nil {
+		err := fmt.Errorf("AdminBinFileHandler() error writing bin file metadata to db: %v", err)
+		rfs.Logger.Log("err", err)
+		reply.Message = err.Error()
+	}
+
+	return nil
+}
+
+type NextBinFileHandlerArgs struct{}
+
+type NextBinFileHandlerReply struct {
+	DBWrapper routing.DatabaseBinWrapper `json:"dbWrapper"`
+}
+
+// NextBinFileHandler generates and returns a DatabaseBinWrapper struct
+// for the next CLI tool. The next tool handles the commit.
+func (rfs *RelayFleetService) NextBinFileHandler(
+	r *http.Request,
+	args *NextBinFileHandlerArgs,
+	reply *NextBinFileHandlerReply,
+) error {
+
+	dbWrapper, err := rfs.BinFileGenerator("next")
+	if err != nil {
+		err := fmt.Errorf("BinFileHandler() error generating database.bin file: %v", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	reply.DBWrapper = dbWrapper
+	return nil
+}
+
+func (rfs *RelayFleetService) BinFileGenerator(userEmail string) (routing.DatabaseBinWrapper, error) {
+
+	var dbWrapper routing.DatabaseBinWrapper
+	var enabledRelays []routing.Relay
+	relayMap := make(map[uint64]routing.Relay)
+	buyerMap := make(map[uint64]routing.Buyer)
+	sellerMap := make(map[string]routing.Seller)
+	datacenterMap := make(map[uint64]routing.Datacenter)
+	datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
+
+	buyers := rfs.Storage.Buyers()
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+		dcMapsForBuyer := rfs.Storage.GetDatacenterMapsForBuyer(buyer.ID)
+		datacenterMaps[buyer.ID] = dcMapsForBuyer
+	}
+
+	for _, seller := range rfs.Storage.Sellers() {
+		sellerMap[seller.ShortName] = seller
+	}
+
+	for _, datacenter := range rfs.Storage.Datacenters() {
+		datacenterMap[datacenter.ID] = datacenter
+	}
+
+	for _, localRelay := range rfs.Storage.Relays() {
+		if localRelay.State == routing.RelayStateEnabled {
+			enabledRelays = append(enabledRelays, localRelay)
+			relayMap[localRelay.ID] = localRelay
+		}
+	}
+
+	dbWrapper.Relays = enabledRelays
+	dbWrapper.RelayMap = relayMap
+	dbWrapper.BuyerMap = buyerMap
+	dbWrapper.SellerMap = sellerMap
+	dbWrapper.DatacenterMap = datacenterMap
+	dbWrapper.DatacenterMaps = datacenterMaps
+
+	loc, err := time.LoadLocation("UTC")
+	if err != nil {
+		return routing.DatabaseBinWrapper{}, err
+	}
+	now := time.Now().In(loc)
+
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	dbWrapper.CreationTime = timeStamp
+	dbWrapper.Creator = userEmail
+
+	return dbWrapper, nil
 }
