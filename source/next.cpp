@@ -9240,6 +9240,7 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(8)
 
+    bool update_dont_ping_near_relays;
     bool update_near_relays_changed;
     int update_num_near_relays;
 
@@ -11182,6 +11183,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
         {
             NextRouteUpdatePacket packet;
             packet.sequence = entry->update_sequence;
+            packet.dont_ping_near_relays = entry->update_dont_ping_near_relays;
             packet.near_relays_changed = entry->update_near_relays_changed;
             if ( packet.near_relays_changed )
             {
@@ -11585,6 +11587,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(packet.num_tokens) );
             }
 
+            entry->update_dont_ping_near_relays = packet.dont_ping_near_relays;
             entry->update_near_relays_changed = packet.near_relays_changed;
             if ( packet.near_relays_changed )
             {
