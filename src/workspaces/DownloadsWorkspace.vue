@@ -40,6 +40,7 @@
               id="docs-button"
               v-on:click="downloadUE4()"
               class="btn btn-primary m-1 btn-width"
+              v-if="false"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
