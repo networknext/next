@@ -6,6 +6,7 @@
           v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"
         />
         <router-view />
+        <MapPointsModal v-show="showModal" :points="modalPoints"/>
       </main>
       <v-tour v-show="$store.getters.currentPage === 'map'" name="mapTour" :steps="mapTourSteps" :options="mapTourOptions" :callbacks="mapTourCallbacks"></v-tour>
     </div>
@@ -20,6 +21,7 @@ import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
+import MapPointsModal from '@/components/MapPointsModal.vue'
 
 /**
  * This component is the base component for all other workspace components
@@ -29,6 +31,7 @@ import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 @Component({
   components: {
+    MapPointsModal,
     MapWorkspace,
     SessionCounts,
     SessionsWorkspace,
@@ -40,6 +43,12 @@ export default class Workspace extends Vue {
   private mapTourSteps: Array<any>
   private mapTourOptions: any
   private mapTourCallbacks: any
+  private showModal: boolean
+  private modalPoints: Array<any>
+
+  $refs!: {
+    drillDownSessions: MapPointsModal;
+  }
 
   constructor () {
     super()
@@ -97,11 +106,30 @@ export default class Workspace extends Vue {
         }
       }
     }
+
+    this.showModal = false
+    this.modalPoints = []
   }
 
   private mounted () {
     if (this.$store.getters.isTour && this.$route.name === 'map' && this.$tours.mapTour && !this.$tours.mapTour.isRunning) {
       this.$tours.mapTour.start()
+    }
+
+    this.$root.$on('showModal', this.showModalCallback)
+    this.$root.$on('hideModal', this.hideModalCallback)
+  }
+
+  private showModalCallback (points: Array<any>) {
+    if (!this.showModal) {
+      this.modalPoints = points
+      this.showModal = true
+    }
+  }
+
+  private hideModalCallback () {
+    if (this.showModal) {
+      this.showModal = false
     }
   }
 }

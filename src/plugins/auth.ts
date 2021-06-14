@@ -108,7 +108,6 @@ export class AuthService {
       userProfile.verified = authResult.email_verified
       userProfile.companyCode = companyCode
       userProfile.newsletterConsent = newsletterConsent
-      // TODO: There should be a better way to access the Vue instance rather than through the router object
       if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
         (window as any).Intercom('boot', {
           api_base: process.env.VUE_APP_INTERCOM_BASE_API,
@@ -132,7 +131,6 @@ export class AuthService {
         })
       return this.processAuthentication()
     }
-    // TODO: There should be a better way to access the Vue instance rather than through the router object
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('boot', {
         api_base: process.env.VUE_APP_INTERCOM_BASE_API,

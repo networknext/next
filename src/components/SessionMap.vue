@@ -7,12 +7,20 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-// import data1 from '../../map_sessions.json'
-// import data2 from '../../map_sessions_2.json'
-// import data3 from '../../map_sessions_3.json'
-// import data4 from '../../map_sessions_4.json'
-// import data5 from '../../map_sessions_5.json'
-// import data6 from '../../map_sessions_6.json'
+import CustomScreenGridLayer from './CustomScreenGridLayer'
+
+/* import data1 from '../../test_data/ghost-army-map-points-1.json'
+import data2 from '../../test_data/ghost-army-map-points-2.json'
+import data3 from '../../test_data/ghost-army-map-points-3.json'
+import data4 from '../../test_data/ghost-army-map-points-4.json'
+import data5 from '../../test_data/ghost-army-map-points-5.json'
+import data6 from '../../test_data/ghost-army-map-points-6.json'
+import data7 from '../../test_data/ghost-army-map-points-7.json'
+import data8 from '../../test_data/ghost-army-map-points-8.json'
+import data9 from '../../test_data/ghost-army-map-points-9.json'
+import data10 from '../../test_data/ghost-army-map-points-10.json'
+import data11 from '../../test_data/ghost-army-map-points-11.json'
+import data12 from '../../test_data/ghost-army-map-points-12.json' */
 
 /**
  * This component displays the map that is visible in the map workspace
@@ -37,6 +45,8 @@ export default class SessionMap extends Vue {
   private viewState: any
   private unwatchFilter: any
 
+  // private sessions: Array<any>
+
   constructor () {
     super()
     this.viewState = {
@@ -50,12 +60,18 @@ export default class SessionMap extends Vue {
     }
 
     // Use this to test using the canned json files
-  /*     this.sessions = (data1 as any).map_points
-    this.sessions = this.sessions.concat((data2 as any).map_points)
-    this.sessions = this.sessions.concat((data3 as any).map_points)
-    this.sessions = this.sessions.concat((data4 as any).map_points)
-    this.sessions = this.sessions.concat((data5 as any).map_points)
-    this.sessions = this.sessions.concat((data6 as any).map_points) */
+    /* this.sessions = (data1 as any).result.map_points
+    this.sessions = this.sessions.concat((data2 as any).result.map_points)
+    this.sessions = this.sessions.concat((data3 as any).result.map_points)
+    this.sessions = this.sessions.concat((data4 as any).result.map_points)
+    this.sessions = this.sessions.concat((data5 as any).result.map_points)
+    this.sessions = this.sessions.concat((data6 as any).result.map_points)
+    this.sessions = this.sessions.concat((data7 as any).result.map_points)
+    this.sessions = this.sessions.concat((data8 as any).result.map_points)
+    this.sessions = this.sessions.concat((data9 as any).result.map_points)
+    this.sessions = this.sessions.concat((data10 as any).result.map_points)
+    this.sessions = this.sessions.concat((data11 as any).result.map_points)
+    this.sessions = this.sessions.concat((data12 as any).result.map_points) */
   }
 
   private mounted () {
@@ -124,19 +140,46 @@ export default class SessionMap extends Vue {
         const layers: Array<any> = []
 
         if (direct.length > 0) {
-          const directLayer = new (window as any).deck.ScreenGridLayer({
-            id: 'direct-layer',
-            data: direct,
-            opacity: 0.8,
-            getPosition: (d: Array<number>) => [d[0], d[1]],
-            getWeight: () => 1,
-            cellSizePixels: cellSize,
-            colorRange: [[49, 130, 189]],
-            gpuAggregation,
-            aggregation,
-            coordinateSystem: 1
-          })
-          layers.push(directLayer)
+          if (this.$store.getters.isAdmin) {
+            const directLayer = new CustomScreenGridLayer({
+              id: 'direct-layer',
+              data: direct,
+              opacity: 0.8,
+              getPosition: (d: Array<number>) => [d[0], d[1]],
+              pickable: true,
+              getWeight: () => 1,
+              cellSizePixels: cellSize,
+              colorRange: [[49, 130, 189]],
+              gpuAggregation,
+              aggregation,
+              onClick: (info: any) => {
+                const points: any = info.object.points || []
+                if (points.length === 0) {
+                  this.$root.$emit('failedMapPointLookup')
+                  return
+                }
+                if (points.length === 1 && points[0].source[3]) {
+                  this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
+                  return
+                }
+                this.$root.$emit('showModal', points)
+              }
+            })
+            layers.push(directLayer)
+          } else {
+            const directLayer = new (window as any).deck.ScreenGridLayer({
+              id: 'direct-layer',
+              data: direct,
+              opacity: 0.8,
+              getPosition: (d: Array<number>) => [d[0], d[1]],
+              getWeight: () => 1,
+              cellSizePixels: cellSize,
+              colorRange: [[49, 130, 189]],
+              gpuAggregation,
+              aggregation
+            })
+            layers.push(directLayer)
+          }
         }
 
         // const MAX_SESSIONS = this.sessions.length
@@ -161,18 +204,43 @@ export default class SessionMap extends Vue {
               slice = []
             }
           } */
-          const nnLayer = new (window as any).deck.ScreenGridLayer({
-            id: 'nn-layer',
-            data: onNN,
-            opacity: 0.8,
-            getPosition: (d: Array<number>) => [d[0], d[1]],
-            getWeight: () => 1,
-            cellSizePixels: cellSize,
-            colorRange: [[40, 167, 69]],
-            gpuAggregation,
-            aggregation
-          })
-          layers.push(nnLayer)
+          if (this.$store.getters.isAdmin) {
+            const nnLayer = new CustomScreenGridLayer({
+              id: 'nn-layer',
+              data: onNN,
+              getPosition: (d: Array<number>) => [d[0], d[1]],
+              pickable: true,
+              cellSizePixels: cellSize,
+              colorRange: [[40, 167, 69]],
+              aggregation,
+              gpuAggregation,
+              onClick: (info: any) => {
+                const points: any = info.object.points || []
+                if (points.length === 0) {
+                  this.$root.$emit('failedMapPointLookup')
+                  return
+                }
+                if (points.length === 1 && points[0].source[3]) {
+                  this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
+                  return
+                }
+                this.$root.$emit('showModal', points)
+              }
+            })
+            layers.push(nnLayer)
+          } else {
+            const nnLayer = new (window as any).deck.ScreenGridLayer({
+              id: 'nn-layer',
+              data: onNN,
+              getPosition: (d: Array<number>) => [d[0], d[1]],
+              pickable: false,
+              cellSizePixels: cellSize,
+              colorRange: [[40, 167, 69]],
+              aggregation,
+              gpuAggregation
+            })
+            layers.push(nnLayer)
+          }
         }
 
         if (!this.deckGlInstance) {

@@ -15,7 +15,8 @@ export default {
     currentPage: 'map',
     filter: {
       companyCode: ''
-    }
+    },
+    sessionCountAlertRef: null
   },
   getters: {
     currentPage: (state: any) => state.currentPage,
@@ -23,7 +24,8 @@ export default {
     isTour: (state: any) => state.isTour,
     isSignUpTour: (state: any) => state.isSignUpTour,
     finishedTours: (state: any) => state.finishedTours,
-    finishedSignUpTours: (state: any) => state.finishedSignUpTours
+    finishedSignUpTours: (state: any) => state.finishedSignUpTours,
+    sessionCountAlert: (state: any) => state.sessionCountAlertRef
   },
   actions: {
     updateCurrentPage ({ commit }: any, currentPage: string) {
@@ -43,6 +45,9 @@ export default {
     },
     updateFinishedSignUpTours ({ commit }: any, finishedSignUpTour: string) {
       commit('UPDATE_FINISHED_SIGN_UP_TOURS', finishedSignUpTour)
+    },
+    setSessionCountAlertMessage ({ commit }: any, sessionCountAlertMessage: any) {
+      commit('SET_SESSION_COUNT_ALERT_MESSAGE', sessionCountAlertMessage)
     }
   },
   mutations: {
@@ -67,6 +72,9 @@ export default {
       if (!state.finishedSignUpTours.includes(finishedSignUpTours)) {
         state.finishedSignUpTours.push(finishedSignUpTours)
       }
+    },
+    SET_SESSION_COUNT_ALERT_MESSAGE (state: any, sessionCountAlertMessage: string) {
+      state.sessionCountAlertMessage = sessionCountAlertMessage
     }
   }
 }

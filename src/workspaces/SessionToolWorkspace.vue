@@ -96,6 +96,9 @@ export default class SessionToolWorkspace extends Vue {
 
   private created () {
     this.searchID = this.$route.params.pathMatch || ''
+    if (this.searchID !== '') {
+      this.fetchSessionDetails()
+    }
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {

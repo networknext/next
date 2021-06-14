@@ -14,8 +14,8 @@
       >{{ totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
     </h1>
     <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
-      <Alert ref="verifyAlert">
-        <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
+      <Alert ref="sessionCountAlert">
+        <a href="#" @click="$refs.sessionCountAlert.resendVerificationEmail()">
           Resend email
         </a>
       </Alert>
@@ -66,13 +66,14 @@ export default class SessionCounts extends Vue {
 
   // Register the alert component to access its set methods
   $refs!: {
-    verifyAlert: Alert;
+    sessionCountAlert: Alert;
   }
 
   private totalSessionsReply: TotalSessionsReply
   private showCount: boolean
   private countLoop: any
   private filterOptions: Array<any>
+  private alertToggle: boolean
 
   constructor () {
     super()
@@ -82,6 +83,7 @@ export default class SessionCounts extends Vue {
     }
     this.showCount = false
     this.filterOptions = []
+    this.alertToggle = false
   }
 
   private mounted () {
@@ -100,14 +102,17 @@ export default class SessionCounts extends Vue {
     })
 
     if (this.$store.getters.isAnonymousPlus) {
-      this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
-      this.$refs.verifyAlert.setAlertType(AlertType.INFO)
+      this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+      this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
     }
     this.restartLoop()
+
+    this.$root.$on('failedMapPointLookup', this.failedMapPointLookupCallback)
   }
 
   private beforeDestroy () {
     clearInterval(this.countLoop)
+    this.$root.$off('failedMapPointLookup')
   }
 
   private fetchSessionCounts () {
@@ -153,6 +158,25 @@ export default class SessionCounts extends Vue {
     this.countLoop = setInterval(() => {
       this.fetchSessionCounts()
     }, 1000)
+  }
+
+  private failedMapPointLookupCallback () {
+    if (!this.alertToggle) {
+      this.alertToggle = true
+      this.$refs.sessionCountAlert.toggleSlots(false)
+      this.$refs.sessionCountAlert.setMessage('Map point lookup was unsuccessful. Please zoom in closer and try again')
+      this.$refs.sessionCountAlert.setAlertType(AlertType.WARNING)
+      setTimeout(() => {
+        if (this.$store.getters.isAnonymousPlus) {
+          this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+          this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
+        } else {
+          this.$refs.sessionCountAlert.resetAlert()
+        }
+        this.$refs.sessionCountAlert.toggleSlots(true)
+        this.alertToggle = false
+      }, 10000)
+    }
   }
 }
 </script>
