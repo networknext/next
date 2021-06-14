@@ -121,8 +121,6 @@ export default class SessionMap extends Vue {
         let onNN: Array<any> = []
         const direct: Array<any> = []
 
-        console.log(sessions)
-
         if (this.$store.getters.isAnonymous || this.$store.getters.isAnonymousPlus || this.$store.getters.currentFilter.companyCode === '') {
           onNN = sessions
         } else {
@@ -207,7 +205,6 @@ export default class SessionMap extends Vue {
             }
           } */
           if (this.$store.getters.isAdmin) {
-            console.log('Custom')
             const nnLayer = new CustomScreenGridLayer({
               id: 'nn-layer',
               data: onNN,
@@ -232,7 +229,6 @@ export default class SessionMap extends Vue {
             })
             layers.push(nnLayer)
           } else {
-            console.log('Not Custom')
             const nnLayer = new (window as any).deck.ScreenGridLayer({
               id: 'nn-layer',
               data: onNN,
