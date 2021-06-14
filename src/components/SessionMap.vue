@@ -121,6 +121,8 @@ export default class SessionMap extends Vue {
         let onNN: Array<any> = []
         const direct: Array<any> = []
 
+        console.log(sessions)
+
         if (this.$store.getters.isAnonymous || this.$store.getters.isAnonymousPlus || this.$store.getters.currentFilter.companyCode === '') {
           onNN = sessions
         } else {
@@ -140,11 +142,46 @@ export default class SessionMap extends Vue {
         const layers: Array<any> = []
 
         if (direct.length > 0) {
-          const directLayer = new CustomScreenGridLayer({
-            id: 'direct-layer',
-            data: direct
-          })
-          layers.push(directLayer)
+          if (this.$store.getters.isAdmin) {
+            const directLayer = new CustomScreenGridLayer({
+              id: 'direct-layer',
+              data: direct,
+              opacity: 0.8,
+              getPosition: (d: Array<number>) => [d[0], d[1]],
+              pickable: true,
+              getWeight: () => 1,
+              cellSizePixels: cellSize,
+              colorRange: [[49, 130, 189]],
+              gpuAggregation,
+              aggregation,
+              onClick: (info: any) => {
+                const points: any = info.object.points || []
+                if (points.length === 0) {
+                  this.$root.$emit('failedMapPointLookup')
+                  return
+                }
+                if (points.length === 1 && points[0].source[3]) {
+                  this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
+                  return
+                }
+                this.$root.$emit('showModal', points)
+              }
+            })
+            layers.push(directLayer)
+          } else {
+            const directLayer = new (window as any).deck.ScreenGridLayer({
+              id: 'direct-layer',
+              data: direct,
+              opacity: 0.8,
+              getPosition: (d: Array<number>) => [d[0], d[1]],
+              getWeight: () => 1,
+              cellSizePixels: cellSize,
+              colorRange: [[49, 130, 189]],
+              gpuAggregation,
+              aggregation
+            })
+            layers.push(directLayer)
+          }
         }
 
         // const MAX_SESSIONS = this.sessions.length
@@ -169,29 +206,45 @@ export default class SessionMap extends Vue {
               slice = []
             }
           } */
-          const nnLayer = new CustomScreenGridLayer({
-            id: 'nn-layer',
-            data: onNN,
-            getPosition: (d: Array<number>) => [d[0], d[1]],
-            pickable: true,
-            cellSizePixels: cellSize,
-            colorRange: [[40, 167, 69]],
-            aggregation,
-            gpuAggregation,
-            onClick: (info: any) => {
-              const points: any = info.object.points || []
-              if (points.length === 0) {
-                this.$root.$emit('failedMapPointLookup')
-                return
+          if (this.$store.getters.isAdmin) {
+            console.log('Custom')
+            const nnLayer = new CustomScreenGridLayer({
+              id: 'nn-layer',
+              data: onNN,
+              getPosition: (d: Array<number>) => [d[0], d[1]],
+              pickable: true,
+              cellSizePixels: cellSize,
+              colorRange: [[40, 167, 69]],
+              aggregation,
+              gpuAggregation,
+              onClick: (info: any) => {
+                const points: any = info.object.points || []
+                if (points.length === 0) {
+                  this.$root.$emit('failedMapPointLookup')
+                  return
+                }
+                if (points.length === 1 && points[0].source[3]) {
+                  this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
+                  return
+                }
+                this.$root.$emit('showModal', points)
               }
-              if (points.length === 1 && points[0].source[3]) {
-                this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
-                return
-              }
-              this.$root.$emit('showModal', points)
-            }
-          })
-          layers.push(nnLayer)
+            })
+            layers.push(nnLayer)
+          } else {
+            console.log('Not Custom')
+            const nnLayer = new (window as any).deck.ScreenGridLayer({
+              id: 'nn-layer',
+              data: onNN,
+              getPosition: (d: Array<number>) => [d[0], d[1]],
+              pickable: false,
+              cellSizePixels: cellSize,
+              colorRange: [[40, 167, 69]],
+              aggregation,
+              gpuAggregation
+            })
+            layers.push(nnLayer)
+          }
         }
 
         if (!this.deckGlInstance) {
