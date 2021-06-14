@@ -1478,7 +1478,7 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	t.Run("fail - no company", func(t *testing.T) {
 		sameBuyerRoleFunc := svc.SameBuyerRole("local-local")
 		verified, err := sameBuyerRoleFunc(req)
-		assert.Error(t, err)
+		assert.NoError(t, err)
 		assert.False(t, verified)
 	})
 

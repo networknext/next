@@ -2740,7 +2740,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		if !ok {
 			return fmt.Errorf("PacketLossSustained: %v is not a valid float type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id=$2"))
+		updateSQL.Write([]byte("update route_shaders set packet_loss_sustained=$1 where buyer_id=$2"))
 		args = append(args, packetLossSustained, buyer.DatabaseID)
 		rs.PacketLossSustained = packetLossSustained
 	default:
