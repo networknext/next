@@ -40,6 +40,7 @@
               id="docs-button"
               v-on:click="downloadUE4()"
               class="btn btn-primary m-1 btn-width"
+              v-if="false"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
@@ -154,7 +155,7 @@ export default class DownloadsWorkspace extends Vue {
         event_category: 'Important Clicks'
       })
     }
-    window.open('https://storage.googleapis.com/portal_sdk_download_storage/ue4-plugin.zip')
+    window.open('https://storage.googleapis.com/network-next-ue4/ue4-plugin.zip')
     this.$apiService.sendUE4DownloadNotifications({ email: this.$store.getters.userProfile.email, customer_name: this.$store.getters.userProfile.companyName, customer_code: this.$store.getters.userProfile.companyCode })
   }
 }
