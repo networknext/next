@@ -15511,7 +15511,7 @@ static void test_backend_packets()
         next_crypto_sign_keypair( public_key, private_key );
 
         static NextBackendSessionUpdatePacket in, out;
-        in.slice_number = 10000;
+        in.slice_number = 0;
         in.customer_id = 1231234127431LL;
         in.datacenter_id = 111222454443LL;
         in.session_id = 1234342431431LL;
@@ -15527,6 +15527,7 @@ static void test_backend_packets()
         in.direct_packet_loss = 0.1f;
         in.next = true;
         in.committed = true;
+        in.has_near_relay_pings = true;
         in.next_rtt = 5.0f;
         in.next_jitter = 1.5f;
         in.next_packet_loss = 0.0f;
