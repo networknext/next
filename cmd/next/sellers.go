@@ -8,14 +8,13 @@ import (
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
-func sellers(rpcClient jsonrpc.RPCClient, env Environment) {
+func sellers(env Environment) {
 	args := localjsonrpc.SellersArgs{}
 
 	var reply localjsonrpc.SellersReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Sellers", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Sellers", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -48,13 +47,13 @@ func sellers(rpcClient jsonrpc.RPCClient, env Environment) {
 	table.Output(sellers)
 }
 
-func addSeller(rpcClient jsonrpc.RPCClient, env Environment, seller routing.Seller) {
+func addSeller(env Environment, seller routing.Seller) {
 	args := localjsonrpc.AddSellerArgs{
 		Seller: seller,
 	}
 
 	var reply localjsonrpc.AddSellerReply
-	if err := rpcClient.CallFor(&reply, "OpsService.AddSeller", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.AddSeller", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -62,13 +61,13 @@ func addSeller(rpcClient jsonrpc.RPCClient, env Environment, seller routing.Sell
 	fmt.Printf("Seller \"%s\" added to storage.\n", seller.Name)
 }
 
-func removeSeller(rpcClient jsonrpc.RPCClient, env Environment, id string) {
+func removeSeller(env Environment, id string) {
 	args := localjsonrpc.RemoveSellerArgs{
 		ID: id,
 	}
 
 	var reply localjsonrpc.RemoveSellerReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RemoveSeller", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RemoveSeller", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -76,14 +75,14 @@ func removeSeller(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 	fmt.Printf("Seller with ID \"%s\" removed from storage.\n", id)
 }
 
-func getSellerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
+func getSellerInfo(env Environment, id string) {
 
 	arg := localjsonrpc.SellerArg{
 		ID: id,
 	}
 
 	var reply localjsonrpc.SellerReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Seller", arg); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Seller", arg); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
@@ -100,7 +99,6 @@ func getSellerInfo(rpcClient jsonrpc.RPCClient, env Environment, id string) {
 }
 
 func updateSeller(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	sellerID string,
 	field string,
@@ -114,7 +112,7 @@ func updateSeller(
 		Field:    field,
 		Value:    value,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "OpsService.UpdateSeller", args); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "OpsService.UpdateSeller", args); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}

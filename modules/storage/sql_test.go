@@ -1733,3 +1733,59 @@ func TestRouteShaders(t *testing.T) {
 	})
 
 }
+
+func TestDatabaseBinMetaData(t *testing.T) {
+
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	// db, err := storage.NewSQLStorage(ctx, logger)
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	assert.NoError(t, err)
+
+	t.Run("AddDatabaseBinMetaData", func(t *testing.T) {
+
+		_, err := db.GetDatabaseBinFileMetaData()
+		assert.Error(t, err)
+
+		testTime := time.Now()
+		ctx := context.Background()
+
+		metaData := routing.DatabaseBinFileMetaData{
+			DatabaseBinFileAuthor:       "Arthur Dent",
+			DatabaseBinFileCreationTime: testTime,
+		}
+
+		err = db.UpdateDatabaseBinFileMetaData(ctx, metaData)
+		assert.NoError(t, err)
+
+		checkMetaData, err := db.GetDatabaseBinFileMetaData()
+		assert.NoError(t, err)
+		assert.Equal(t, "Arthur Dent", checkMetaData.DatabaseBinFileAuthor)
+		assert.Equal(t, testTime.Format("01/02/06"), checkMetaData.DatabaseBinFileCreationTime.Format("01/02/06"))
+
+		// should only return the most recent record
+		testTime2 := time.Now()
+		metaData2 := routing.DatabaseBinFileMetaData{
+			DatabaseBinFileAuthor:       "Brian Cohen",
+			DatabaseBinFileCreationTime: testTime2,
+		}
+
+		err = db.UpdateDatabaseBinFileMetaData(ctx, metaData2)
+		assert.NoError(t, err)
+
+		checkMetaData2, err := db.GetDatabaseBinFileMetaData()
+		assert.NoError(t, err)
+		assert.Equal(t, "Brian Cohen", checkMetaData2.DatabaseBinFileAuthor)
+		assert.Equal(t, testTime2.Format("01/02/06"), checkMetaData2.DatabaseBinFileCreationTime.Format("01/02/06"))
+
+	})
+
+}

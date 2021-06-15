@@ -735,8 +735,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 		reply.Relays = filtered
 	}
 
-	fmt.Printf("OpsService.Relays() returning slice of length %d\n", len(reply.Relays))
-
 	sort.Slice(reply.Relays, func(i int, j int) bool {
 		return reply.Relays[i].Name < reply.Relays[j].Name
 	})

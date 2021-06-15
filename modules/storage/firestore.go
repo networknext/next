@@ -2377,3 +2377,11 @@ func (fs *Firestore) UpdateDatacenter(ctx context.Context, datacenterID uint64, 
 func (fs *Firestore) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateDatacenterMap not implemented in Firestore storer")
 }
+
+func (fs *Firestore) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error) {
+	return routing.DatabaseBinFileMetaData{}, fmt.Errorf("GetDatabaseBinFileMetaData not implemented in Firestore storer")
+}
+
+func (fs *Firestore) UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error {
+	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in Firestore storer")
+}

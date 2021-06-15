@@ -9,10 +9,8 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"sort"
@@ -25,6 +23,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
 )
 
 func getLocalDatabaseBin() {
@@ -84,44 +83,28 @@ func getLocalDatabaseBin() {
 	}
 }
 
-func getDatabaseBin(env Environment) {
-	var err error
+func getDatabaseBin(
+	env Environment,
+) {
 
-	uri := fmt.Sprintf("https://%s/database.bin", env.PortalHostname())
+	args := localjsonrpc.NextBinFileHandlerArgs{}
+	var reply localjsonrpc.NextBinFileHandlerReply
 
-	// GET doesn't seem to like env.PortalHostname() for local
-	if env.Name == "local" {
-		uri = "http://127.0.0.1:20000/database.bin"
+	if err := makeRPCCall(env, &reply, "RelayFleetService.NextBinFileHandler", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
 	}
 
-	client := &http.Client{}
-	req, _ := http.NewRequest("GET", uri, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", env.AuthToken))
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	encoder.Encode(reply.DBWrapper)
 
-	r, err := client.Do(req)
+	err := ioutil.WriteFile("database.bin", buffer.Bytes(), 0777)
 	if err != nil {
-		handleRunTimeError(fmt.Sprintf("could not get database.bin from the portal: %v\n", err), 1)
-	}
-	defer r.Body.Close()
-
-	if r.StatusCode != http.StatusOK {
-		handleRunTimeError(fmt.Sprintf("the portal returned an error response code: %d\n", r.StatusCode), 1)
+		err := fmt.Errorf("BinFileHandler() error writing database.bin to filesystem: %v", err)
+		handleRunTimeError(fmt.Sprintf("could not write database.bin to the filesystem: %v\n", err), 0)
 	}
 
-	file, err := os.Create("database.bin")
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("could not open database.bin file for writing: %v\n", err), 1)
-	}
-	defer file.Close()
-
-	if _, err := io.Copy(file, r.Body); err != nil {
-		handleRunTimeError(fmt.Sprintf("error writing data to database.bin: %v\n", err), 1)
-	}
-
-	_, err = os.Stat("./database.bin")
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("could not find database.bin? %v\n", err), 1)
-	}
 }
 
 func createStagingDatabaseBin(numRelays int) {
@@ -144,6 +127,7 @@ func createStagingDatabaseBin(numRelays int) {
 	defaultRouteShader := core.RouteShader{
 		DisableNetworkNext:        false,
 		SelectionPercent:          100,
+		PacketLossSustained:       100,
 		ABTest:                    false,
 		ProMode:                   false,
 		ReduceLatency:             true,
@@ -158,22 +142,23 @@ func createStagingDatabaseBin(numRelays int) {
 		BannedUsers:               make(map[uint64]bool),
 	}
 	defaultInternalConfig := core.InternalConfig{
-		RouteSelectThreshold:       2,
-		RouteSwitchThreshold:       5,
-		MaxLatencyTradeOff:         20,
-		RTTVeto_Default:            -10,
-		RTTVeto_Multipath:          -20,
-		RTTVeto_PacketLoss:         -30,
-		MultipathOverloadThreshold: 500,
-		TryBeforeYouBuy:            false,
-		ForceNext:                  false,
-		LargeCustomer:              false,
-		Uncommitted:                false,
-		MaxRTT:                     300,
-		HighFrequencyPings:         true,
-		RouteDiversity:             0,
-		MultipathThreshold:         25,
-		EnableVanityMetrics:        false,
+		ReducePacketLossMinSliceNumber: 0,
+		RouteSelectThreshold:           2,
+		RouteSwitchThreshold:           5,
+		MaxLatencyTradeOff:             20,
+		RTTVeto_Default:                -10,
+		RTTVeto_Multipath:              -20,
+		RTTVeto_PacketLoss:             -30,
+		MultipathOverloadThreshold:     500,
+		TryBeforeYouBuy:                false,
+		ForceNext:                      false,
+		LargeCustomer:                  false,
+		Uncommitted:                    false,
+		MaxRTT:                         300,
+		HighFrequencyPings:             true,
+		RouteDiversity:                 0,
+		MultipathThreshold:             25,
+		EnableVanityMetrics:            false,
 	}
 	nextInternalConfig := core.InternalConfig{
 		RouteSelectThreshold:       0,

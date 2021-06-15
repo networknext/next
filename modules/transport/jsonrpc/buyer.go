@@ -193,8 +193,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 					return err
 				}
 
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					session.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
 				}
 
 				reply.Sessions = append(reply.Sessions, session)
@@ -293,8 +296,11 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					return err
 				}
 
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					sessionMeta.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
 				}
 
 				reply.Sessions = append(reply.Sessions, sessionMeta)
@@ -1669,16 +1675,11 @@ func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
 		if companyCode == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
+
+		// Grab the user's assigned company if it exists
 		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CompanyKey).(string)
-		if !ok {
-			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
-		}
-		if requestCompanyCode == "" {
-			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
+		if !ok || requestCompanyCode == "" {
+			return false, nil
 		}
 
 		return companyCode == requestCompanyCode, nil

@@ -148,7 +148,7 @@ func TestUserSessions(t *testing.T) {
 	storer.AddCustomer(ctx, customer9)
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	rawUserID1 := 111
@@ -552,7 +552,7 @@ func TestTotalSessions(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 
 	minutes := time.Now().Unix() / 60
 
@@ -641,7 +641,7 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 
 	minutes := time.Now().Unix() / 60
 
@@ -707,7 +707,7 @@ func TestTopSessions(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	buyerID1 := fmt.Sprintf("%016x", 111)
@@ -801,7 +801,7 @@ func TestTopSessions(t *testing.T) {
 func TestSessionDetails(t *testing.T) {
 	checkBigtableEmulation(t)
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	sessionID := fmt.Sprintf("%016x", 999)
@@ -1100,7 +1100,7 @@ func TestSessionMapPoints(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	buyerID1 := fmt.Sprintf("%016x", 111)
@@ -1209,7 +1209,7 @@ func TestSessionMap(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	buyerID1 := fmt.Sprintf("%016x", 111)
@@ -1318,7 +1318,7 @@ func TestGameConfiguration(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
@@ -1369,7 +1369,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
@@ -1454,7 +1454,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 
 func TestSameBuyerRoleFunction(t *testing.T) {
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	var storer = storage.InMemory{}
 
 	pubkey := make([]byte, 4)
@@ -1476,7 +1476,7 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	t.Run("fail - no company", func(t *testing.T) {
 		sameBuyerRoleFunc := svc.SameBuyerRole("local-local")
 		verified, err := sameBuyerRoleFunc(req)
-		assert.Error(t, err)
+		assert.NoError(t, err)
 		assert.False(t, verified)
 	})
 
