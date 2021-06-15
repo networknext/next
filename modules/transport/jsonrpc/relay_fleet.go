@@ -339,7 +339,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		reply.BinFileCreationTime = time.Now()
 	} else {
 		reply.BinFileAuthor = binFileMetaData.DatabaseBinFileAuthor
-		reply.BinFileCreationTime = binFileMetaData.DatabaseBinFileCreationTime
+		reply.BinFileCreationTime = binFileMetaData.DatabaseBinFileCreationTime.UTC()
 	}
 
 	return nil
