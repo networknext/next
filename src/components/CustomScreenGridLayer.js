@@ -141,7 +141,7 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
 
   getPickingInfo ({ info, mode }) {
     if (mode === 'hover') {
-      return
+      return info
     }
     const { index } = info
     if (index >= 0) {

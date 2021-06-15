@@ -1,7 +1,7 @@
 <template>
   <div class="map-container-no-offset">
     <div class="map" id="map"></div>
-    <canvas id="deck-canvas" data-intercom="map"></canvas>
+    <canvas style="cursor: grab;" id="deck-canvas" data-intercom="map"></canvas>
   </div>
 </template>
 
@@ -44,6 +44,7 @@ export default class SessionMap extends Vue {
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
+  private hovering: boolean
 
   // private sessions: Array<any>
 
@@ -58,6 +59,8 @@ export default class SessionMap extends Vue {
       minZoom: 2,
       maxZoom: 16
     }
+
+    this.hovering = false
 
     // Use this to test using the canned json files
     /* this.sessions = (data1 as any).result.map_points
@@ -140,46 +143,31 @@ export default class SessionMap extends Vue {
         const layers: Array<any> = []
 
         if (direct.length > 0) {
-          if (this.$store.getters.isAdmin) {
-            const directLayer = new CustomScreenGridLayer({
-              id: 'direct-layer',
-              data: direct,
-              opacity: 0.8,
-              getPosition: (d: Array<number>) => [d[0], d[1]],
-              pickable: true,
-              getWeight: () => 1,
-              cellSizePixels: cellSize,
-              colorRange: [[49, 130, 189]],
-              gpuAggregation,
-              aggregation,
-              onClick: (info: any) => {
-                const points: any = info.object.points || []
-                if (points.length === 0) {
-                  this.$root.$emit('failedMapPointLookup')
-                  return
-                }
-                if (points.length === 1 && points[0].source[3]) {
-                  this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
-                  return
-                }
-                this.$root.$emit('showModal', points)
+          const directLayer = new CustomScreenGridLayer({
+            id: 'direct-layer',
+            data: direct,
+            opacity: 0.8,
+            getPosition: (d: Array<number>) => [d[0], d[1]],
+            pickable: true,
+            getWeight: () => 1,
+            cellSizePixels: cellSize,
+            colorRange: [[49, 130, 189]],
+            gpuAggregation,
+            aggregation,
+            onClick: (info: any) => {
+              const points: any = info.object.points || []
+              if (points.length === 0) {
+                this.$root.$emit('failedMapPointLookup')
+                return
               }
-            })
-            layers.push(directLayer)
-          } else {
-            const directLayer = new (window as any).deck.ScreenGridLayer({
-              id: 'direct-layer',
-              data: direct,
-              opacity: 0.8,
-              getPosition: (d: Array<number>) => [d[0], d[1]],
-              getWeight: () => 1,
-              cellSizePixels: cellSize,
-              colorRange: [[49, 130, 189]],
-              gpuAggregation,
-              aggregation
-            })
-            layers.push(directLayer)
-          }
+              if (points.length === 1 && points[0].source[3]) {
+                this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
+                return
+              }
+              this.$root.$emit('showModal', points)
+            }
+          })
+          layers.push(directLayer)
         }
 
         // const MAX_SESSIONS = this.sessions.length
@@ -204,43 +192,29 @@ export default class SessionMap extends Vue {
               slice = []
             }
           } */
-          if (this.$store.getters.isAdmin) {
-            const nnLayer = new CustomScreenGridLayer({
-              id: 'nn-layer',
-              data: onNN,
-              getPosition: (d: Array<number>) => [d[0], d[1]],
-              pickable: true,
-              cellSizePixels: cellSize,
-              colorRange: [[40, 167, 69]],
-              aggregation,
-              gpuAggregation,
-              onClick: (info: any) => {
-                const points: any = info.object.points || []
-                if (points.length === 0) {
-                  this.$root.$emit('failedMapPointLookup')
-                  return
-                }
-                if (points.length === 1 && points[0].source[3]) {
-                  this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
-                  return
-                }
-                this.$root.$emit('showModal', points)
+          const nnLayer = new CustomScreenGridLayer({
+            id: 'nn-layer',
+            data: onNN,
+            getPosition: (d: Array<number>) => [d[0], d[1]],
+            pickable: true,
+            cellSizePixels: cellSize,
+            colorRange: [[40, 167, 69]],
+            aggregation,
+            gpuAggregation,
+            onClick: (info: any) => {
+              const points: any = info.object.points || []
+              if (points.length === 0) {
+                this.$root.$emit('failedMapPointLookup')
+                return
               }
-            })
-            layers.push(nnLayer)
-          } else {
-            const nnLayer = new (window as any).deck.ScreenGridLayer({
-              id: 'nn-layer',
-              data: onNN,
-              getPosition: (d: Array<number>) => [d[0], d[1]],
-              pickable: false,
-              cellSizePixels: cellSize,
-              colorRange: [[40, 167, 69]],
-              aggregation,
-              gpuAggregation
-            })
-            layers.push(nnLayer)
-          }
+              if (points.length === 1 && points[0].source[3]) {
+                this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
+                return
+              }
+              this.$root.$emit('showModal', points)
+            }
+          })
+          layers.push(nnLayer)
         }
 
         if (!this.deckGlInstance) {
@@ -265,7 +239,16 @@ export default class SessionMap extends Vue {
                 maxZoom: 16
               })
             },
-            layers: layers
+            layers: layers,
+            getCursor: ({ isHovering, isDragging }: any) => {
+              if (isHovering) {
+                return 'pointer'
+              }
+              if (isDragging) {
+                return 'grabbing'
+              }
+              return 'grab'
+            }
           })
         } else {
           this.deckGlInstance.setProps({ layers: [] })
