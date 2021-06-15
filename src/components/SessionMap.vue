@@ -44,7 +44,6 @@ export default class SessionMap extends Vue {
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
-  private hovering: boolean
 
   // private sessions: Array<any>
 
@@ -59,8 +58,6 @@ export default class SessionMap extends Vue {
       minZoom: 2,
       maxZoom: 16
     }
-
-    this.hovering = false
 
     // Use this to test using the canned json files
     /* this.sessions = (data1 as any).result.map_points
