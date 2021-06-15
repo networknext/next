@@ -43,25 +43,25 @@
       <tbody v-if="sessions.length > 0">
         <tr id="data-row" v-for="(session, index) in sessions" v-bind:key="index">
           <td>
-            {{ convertUTCDateToLocalDate(new Date(timeStamps[index])) }}
+            {{ convertUTCDateToLocalDate(new Date(session.time_stamp)) }}
           </td>
           <td>
-              <router-link v-bind:to="`/session-tool/${session.id}`" class="text-dark fixed-width">{{ session.id }}</router-link>
+              <router-link v-bind:to="`/session-tool/${session.meta.id}`" class="text-dark fixed-width">{{ session.meta.id }}</router-link>
           </td>
           <td>
-            {{ session.platform }}
+            {{ session.meta.platform }}
           </td>
           <td>
-            {{ session.connection === "wifi" ? "Wi-Fi" : session.connection.charAt(0).toUpperCase() + session.connection.slice(1) }}
+            {{ session.meta.connection === "wifi" ? "Wi-Fi" : session.meta.connection.charAt(0).toUpperCase() + session.meta.connection.slice(1) }}
           </td>
           <td>
-            {{ session.location.isp || "Unknown"}}
+            {{ session.meta.location.isp || "Unknown"}}
           </td>
           <td>
-            {{ session.datacenter_alias !== "" ? session.datacenter_alias : session.datacenter_name }}
+            {{ session.meta.datacenter_alias !== "" ? session.meta.datacenter_alias : session.meta.datacenter_name }}
           </td>
           <td>
-            {{ session.server_addr }}
+            {{ session.meta.server_addr }}
           </td>
         </tr>
       </tbody>
@@ -156,7 +156,6 @@ export default class UserSessions extends Vue {
     this.$apiService.fetchUserSessions({ user_id: this.searchID, end_date: this.savedEndDate })
       .then((response: any) => {
         this.sessions = response.sessions || []
-        this.timeStamps = response.time_stamps
         this.showSessions = true
         this.moreSessions = response.more_sessions
         this.currentEndDate = response.end_date
