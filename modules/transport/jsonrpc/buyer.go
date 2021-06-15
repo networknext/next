@@ -119,7 +119,7 @@ type UserSessionsArgs struct {
 type UserSessionsReply struct {
 	Sessions     []transport.SessionMeta `json:"sessions"`
 	TimeStamps   []time.Time             `json:"time_stamps"`
-	EndDate      time.Time               `json:"end_date"`
+	EndDate      string                  `json:"end_date"`
 	MoreSessions bool                    `json:"more_sessions"`
 }
 
@@ -231,7 +231,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			endDate = time.Date(year, month, day, 0, 0, 0, 0, location)
 		} else {
 			// Parse the given date in short form layout using the local timezone
-			parsedTime, err := time.ParseInLocation(args.EndDate, "2006-01-09", location)
+			parsedTime, err := time.ParseInLocation("2006-01-02", args.EndDate, location)
 			if err != nil {
 				err = fmt.Errorf("UserSessions() Could not parse %v using YYYY-MM-DD layout: %v", args.EndDate, err)
 				level.Error(s.Logger).Log("err", err)
@@ -316,13 +316,13 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 
 			if endDate != origEndDate {
 				// Set the reply endDate for next request to start from this date
-				reply.EndDate = endDate
+				reply.EndDate = endDate.Local().Format("2006-01-02")
 				break
 			} else {
 				// Went over the max historical sessions for the initial request, include as many as can
 				btRows = append(btRows, rows[0:MaxHistoricalSessions]...)
 				// Set the reply endDate to be the current start date for the next request
-				reply.EndDate = startDate
+				reply.EndDate = startDate.Local().Format("2006-01-02")
 				break
 			}
 		}
