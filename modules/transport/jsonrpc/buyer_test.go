@@ -431,8 +431,7 @@ func TestUserSessions(t *testing.T) {
 
 			for _, session := range reply.Sessions {
 				idString := fmt.Sprintf("%016x", session.Meta.ID)
-				if idString != sessionID3 && idString != sessionID2 {
-					fmt.Println(idString)
+				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
 					t.Fail()
 				}
 			}
@@ -446,8 +445,7 @@ func TestUserSessions(t *testing.T) {
 			assert.Equal(t, len(reply.Sessions), 3)
 			for _, session := range reply.Sessions {
 				idString := fmt.Sprintf("%016x", session.Meta.ID)
-				if idString != sessionID3 && idString != sessionID2 {
-					fmt.Println(idString)
+				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
 					t.Fail()
 				}
 			}
