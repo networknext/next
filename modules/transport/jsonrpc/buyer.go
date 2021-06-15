@@ -117,15 +117,14 @@ type UserSessionsArgs struct {
 }
 
 type UserSessionsReply struct {
-	Sessions     []transport.SessionMeta `json:"sessions"`
-	TimeStamps   []time.Time             `json:"time_stamps"`
-	EndDate      string                  `json:"end_date"`
-	MoreSessions bool                    `json:"more_sessions"`
+	Sessions     []UserSession `json:"sessions"`
+	EndDate      string        `json:"end_date"`
+	MoreSessions bool          `json:"more_sessions"`
 }
 
-type SessionTimestamp struct {
-	Meta      transport.SessionMeta
-	Timestamp time.Time
+type UserSession struct {
+	Meta      transport.SessionMeta `json:"meta"`
+	Timestamp time.Time             `json:"time_stamp"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
@@ -134,7 +133,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
-	reply.Sessions = make([]transport.SessionMeta, 0)
+	reply.Sessions = make([]UserSession, 0)
 	sessionIDs := make([]string, 0)
 
 	var sessionSlice transport.SessionSlice
@@ -210,8 +209,10 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 						continue
 					}
 
-					reply.Sessions = append(reply.Sessions, session)
-					reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
+					reply.Sessions = append(reply.Sessions, UserSession{
+						Meta:      session,
+						Timestamp: sessionSlice.Timestamp.UTC(),
+					})
 				} else {
 					// Increment counter
 					s.Metrics.NoSlicesFailure.Add(1)
@@ -286,6 +287,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 	}
 
+	// Sort the sessions by timestamp
+	sort.Slice(reply.Sessions, func(i, j int) bool {
+		return reply.Sessions[i].Timestamp.After(reply.Sessions[j].Timestamp)
+	})
+
 	return nil
 }
 
@@ -344,7 +350,6 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 
 func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, rows []bigtable.Row, liveIDString string, sessionSlice transport.SessionSlice) error {
 	// Slice of SessionTimestamp structs to sort the sessions by timestamps at the end
-	var sessionTimestamps []SessionTimestamp
 	var sessionMeta transport.SessionMeta
 
 	for _, row := range rows {
@@ -378,21 +383,12 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					continue
 				}
 
-				sessionTimestamps = append(sessionTimestamps, SessionTimestamp{Meta: sessionMeta, Timestamp: sessionSlice.Timestamp.UTC()})
+				reply.Sessions = append(reply.Sessions, UserSession{Meta: sessionMeta, Timestamp: sessionSlice.Timestamp.UTC()})
 			} else {
 				// Increment counter
 				s.Metrics.NoSlicesFailure.Add(1)
 			}
 		}
-	}
-
-	// Sort the sessions by timestamp
-	sort.Slice(sessionTimestamps, func(i, j int) bool {
-		return sessionTimestamps[i].Timestamp.After(sessionTimestamps[j].Timestamp)
-	})
-	for i, _ := range sessionTimestamps {
-		reply.Sessions = append(reply.Sessions, sessionTimestamps[i].Meta)
-		reply.TimeStamps = append(reply.TimeStamps, sessionTimestamps[i].Timestamp)
 	}
 
 	return nil
