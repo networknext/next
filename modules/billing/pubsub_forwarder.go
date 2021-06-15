@@ -143,6 +143,8 @@ func (psf *PubSubForwarder) Forward2(ctx context.Context, wg *sync.WaitGroup) {
 
 				m.Ack()
 			} else {
+				level.Error(psf.Logger).Log("msg", "could not read billing entry 2", "err", err)
+
 				entryVetoStr := os.Getenv("BILLING_ENTRY_VETO")
 				entryVeto, err := strconv.ParseBool(entryVetoStr)
 
