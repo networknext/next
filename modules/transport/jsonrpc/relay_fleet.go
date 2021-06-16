@@ -100,6 +100,48 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 	return nil
 }
 
+type RelayDashboardAnalysisJsonReply struct {
+	Analysis jsonAnalysisResponse `json:"fleetAnalysis"`
+}
+
+type RelayDashboardAnalysisJsonArgs struct{}
+
+type jsonAnalysisResponse struct {
+	Analysis routing.JsonMatrixAnalysis
+}
+
+func (rfs *RelayFleetService) RelayDashboardAnalysisJson(r *http.Request, args *RelayDashboardAnalysisJsonArgs, reply *RelayDashboardAnalysisJsonReply) error {
+
+	var analysis jsonAnalysisResponse
+	authHeader := r.Header.Get("Authorization")
+
+	uri := rfs.RelayFrontendURI + "/relay_dashboard_analysis"
+
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", uri, nil)
+	req.Header.Set("Authorization", authHeader)
+
+	response, err := client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("RelayDashboardAnalysisJson() error getting fleet relay json: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	byteValue, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	json.Unmarshal(byteValue, &analysis)
+	reply.Analysis = analysis
+
+	return nil
+}
+
 type RelayDashboardJsonReply struct {
 	// Dashboard string `json:"relay_dashboard"`
 	Dashboard jsonResponse `json:"relay_dashboard"`
@@ -215,13 +257,24 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 type AdminFrontPageArgs struct{}
 
+type ServiceStatusList struct {
+	RelayGatewayStatus   []string `json:"relayGatewayStatus"`
+	RelayFrontEndStatus  []string `json:"relayFrontEndStatus"`
+	RelayBackEndStatus   []string `json:"relayBackEndStatus"`
+	RelayForwarderStatus []string `json:"relayForwarderStatus"`
+	RelayPusherStatus    []string `json:"relayPusherStatus"`
+	ServerBackendStatus  []string `json:"serverBackendStatus"`
+	BillingStatus        []string `json:"billingStatus"`
+	AnalyticsStatus      []string `json:"analyticsStatus"`
+	ApiStatus            []string `json:"apiStatus"`
+	PortalCruncherStatus []string `json:"portalCruncherStatus"`
+	PortalStatus         []string `json:"portalStatus"`
+	VanityStatus         []string `json:"vanityStatus"`
+}
 type AdminFrontPageReply struct {
-	BinFileCreationTime  time.Time `json:"binFileCreationTime"`
-	BinFileAuthor        string    `json:"binFileAuthor"`
-	RelayGatewayStatus   []string  `json:"relayGatewayStatus"`
-	RelayFrontEndStatus  []string  `json:"relayFrontEndStatus"`
-	RelayBackEndStatus   []string  `json:"relayBackEndStatus"`
-	RelayForwarderStatus []string  `json:"relayForwarderStatus"`
+	BinFileCreationTime time.Time         `json:"binFileCreationTime"`
+	BinFileAuthor       string            `json:"binFileAuthor"`
+	ServiceStatus       ServiceStatusList `json:"serviceStatusList"`
 }
 
 // RelayDashboardJson retrieves the JSON representation of the current relay dashboard
@@ -253,7 +306,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	}
 
 	frontEndText := strings.Split(string(b), "\n")
-	reply.RelayFrontEndStatus = append(reply.RelayFrontEndStatus, frontEndText...)
+	reply.ServiceStatus.RelayFrontEndStatus = append(reply.ServiceStatus.RelayFrontEndStatus, frontEndText...)
 
 	// relay_frontend/master_status
 	backEndMasterURI := rfs.RelayFrontendURI + "/master_status"
@@ -278,7 +331,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	}
 
 	backEndText := strings.Split(string(b), "\n")
-	reply.RelayBackEndStatus = append(reply.RelayBackEndStatus, backEndText...)
+	reply.ServiceStatus.RelayBackEndStatus = append(reply.ServiceStatus.RelayBackEndStatus, backEndText...)
 
 	// relay_gateway/status
 	gatewayURI := rfs.RelayGatewayURI + "/status"
@@ -303,7 +356,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	}
 
 	gatewayText := strings.Split(string(b), "\n")
-	reply.RelayGatewayStatus = append(reply.RelayGatewayStatus, gatewayText...)
+	reply.ServiceStatus.RelayGatewayStatus = append(reply.ServiceStatus.RelayGatewayStatus, gatewayText...)
 
 	// relay_forwarder/status
 	if rfs.RelayForwarderURI != "" {
@@ -328,10 +381,19 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		}
 
 		forwaderText := strings.Split(string(b), "\n")
-		reply.RelayForwarderStatus = append(reply.RelayForwarderStatus, forwaderText...)
+		reply.ServiceStatus.RelayForwarderStatus = append(reply.ServiceStatus.RelayForwarderStatus, forwaderText...)
 	} else {
-		reply.RelayForwarderStatus = []string{"relay_forwarder dne in dev/local"}
+		reply.ServiceStatus.RelayForwarderStatus = []string{"relay_forwarder dne in dev/local"}
 	}
+
+	reply.ServiceStatus.RelayPusherStatus = []string{"relay pusher status not implemented yet"}
+	reply.ServiceStatus.ServerBackendStatus = []string{"server backend status not implemented yet"}
+	reply.ServiceStatus.BillingStatus = []string{"billing status not implemented yet"}
+	reply.ServiceStatus.AnalyticsStatus = []string{"analytics status not implemented yet"}
+	reply.ServiceStatus.ApiStatus = []string{"api status not implemented yet"}
+	reply.ServiceStatus.PortalCruncherStatus = []string{"portal cruncher status not implemented yet"}
+	reply.ServiceStatus.PortalStatus = []string{"portal status not implemented yet"}
+	reply.ServiceStatus.VanityStatus = []string{"vanity status not implemented yet"}
 
 	binFileMetaData, err := rfs.Storage.GetDatabaseBinFileMetaData()
 	if err != nil {
