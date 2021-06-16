@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,38 +27,6 @@ func checkBigtableEmulation(t *testing.T) {
 	bigtableEmulatorHost := os.Getenv("BIGTABLE_EMULATOR_HOST")
 	if bigtableEmulatorHost == "" {
 		t.Skip("Bigtable emulator not set up, skipping bigtable test")
-	}
-}
-
-func flushBigtableTable(t *testing.T, btAdmin *storage.BigTableAdmin) {
-	err := btAdmin.Client.DropAllRows(context.Background(), "portal-session-history")
-	assert.NoError(t, err)
-}
-
-func fillBigTable(t *testing.T, btClient *storage.BigTable, numDays int, numSessions int) {
-	ctx := context.Background()
-
-	for i := 0; i < numDays; i++ {
-		for j := 0; j < numSessions; j++ {
-			sessionID := rand.Uint64()
-			metaBin, err := transport.SessionMeta{Version: transport.SessionMetaVersion, ID: sessionID, UserHash: 111, BuyerID: 0}.MarshalBinary()
-			assert.NoError(t, err)
-			timeMultiplier := (i * (24 * int(time.Hour))) + (j * 10 * int(time.Minute))
-			slice := transport.SessionSlice{Version: transport.SessionSliceVersion, Timestamp: time.Now().Add(time.Duration(timeMultiplier))}
-			sliceBin, err := slice.MarshalBinary()
-			assert.NoError(t, err)
-			sessionRowKey := fmt.Sprintf("%016x", sessionID)
-			sliceRowKey := fmt.Sprintf("%016x#%v", sessionID, slice.Timestamp)
-			userRowKey := fmt.Sprintf("%016x#%016x", 111, sessionID)
-			metaRowKeys := []string{sessionRowKey, userRowKey}
-			sliceRowKeys := []string{sliceRowKey}
-
-			err = btClient.InsertSessionMetaData(ctx, []string{"portal-session-history"}, metaBin, metaRowKeys)
-			assert.NoError(t, err)
-
-			err = btClient.InsertSessionSliceData(ctx, []string{"portal-session-history"}, sliceBin, sliceRowKeys)
-			assert.NoError(t, err)
-		}
 	}
 }
 
@@ -497,56 +464,6 @@ func TestUserSessions(t *testing.T) {
 					t.Fail()
 				}
 			}
-		})
-	})
-
-	t.Run("Historic Pagination", func(t *testing.T) {
-		flushBigtableTable(t, btAdmin)
-		fillBigTable(t, btClient, 1, 50)
-		t.Run("same day - less than 100 sessions", func(t *testing.T) {
-			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", 111)}, &reply)
-			assert.NoError(t, err)
-		})
-
-		flushBigtableTable(t, btAdmin)
-		fillBigTable(t, btClient, 1, 100)
-		t.Run("same day - 100 sessions", func(t *testing.T) {
-			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", 111)}, &reply)
-			assert.NoError(t, err)
-		})
-
-		flushBigtableTable(t, btAdmin)
-		fillBigTable(t, btClient, 1, 200)
-		t.Run("same day - more than 100 sessions", func(t *testing.T) {
-			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", 111)}, &reply)
-			assert.NoError(t, err)
-		})
-
-		flushBigtableTable(t, btAdmin)
-		fillBigTable(t, btClient, 10, 50)
-		t.Run("multi day - less than 100 sessions", func(t *testing.T) {
-			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", 111)}, &reply)
-			assert.NoError(t, err)
-		})
-
-		flushBigtableTable(t, btAdmin)
-		fillBigTable(t, btClient, 10, 100)
-		t.Run("multi day - 100 sessions", func(t *testing.T) {
-			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", 111)}, &reply)
-			assert.NoError(t, err)
-		})
-
-		flushBigtableTable(t, btAdmin)
-		fillBigTable(t, btClient, 10, 200)
-		t.Run("multi day - more than 100 sessions", func(t *testing.T) {
-			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", 111)}, &reply)
-			assert.NoError(t, err)
 		})
 	})
 }
