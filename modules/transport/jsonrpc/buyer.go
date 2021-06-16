@@ -233,8 +233,8 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		year, month, day := timeNow.Date()
 		today := time.Date(year, month, day, 0, 0, 0, 0, location)
 
-		// current page date is today - page number * 1 day
-		currentPageDate := today.Add(-time.Duration(reply.Page * 24 * int(time.Hour)))
+		// current page date is today - page number * 1 day. Add 1 day to compensate for filter excluding end date
+		currentPageDate := today.Add(-time.Duration((reply.Page - 1) * 24 * int(time.Hour)))
 
 		// we want the next page so increase the page count
 		reply.Page = reply.Page + 1
@@ -249,13 +249,13 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			return err
 		}
 
-		rowsByID, err := s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
+		rowsByID, err := s.GetHistoricalSessions(reply, userID, currentPageDate, nextPageDate)
 		if err != nil {
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		rowsByHexID, err := s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
+		rowsByHexID, err := s.GetHistoricalSessions(reply, hexUserID, currentPageDate, nextPageDate)
 		if err != nil {
 			level.Error(s.Logger).Log("err", err)
 			return err

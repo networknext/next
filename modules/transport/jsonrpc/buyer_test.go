@@ -427,7 +427,7 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 3)
+			assert.Equal(t, 3, len(reply.Sessions))
 
 			for _, session := range reply.Sessions {
 				idString := fmt.Sprintf("%016x", session.Meta.ID)
@@ -442,7 +442,7 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 3)
+			assert.Equal(t, 3, len(reply.Sessions))
 			for _, session := range reply.Sessions {
 				idString := fmt.Sprintf("%016x", session.Meta.ID)
 				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
@@ -456,11 +456,10 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
+			assert.Equal(t, 2, len(reply.Sessions))
 			for _, session := range reply.Sessions {
 				idString := fmt.Sprintf("%016x", session.Meta.ID)
 				if idString != sessionID4 && idString != sessionID8 {
-					fmt.Println(idString)
 					t.Fail()
 				}
 			}
