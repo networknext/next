@@ -1778,9 +1778,6 @@ func TestDatabaseBinMetaData(t *testing.T) {
 
 	t.Run("AddDatabaseBinMetaData", func(t *testing.T) {
 
-		_, err := db.GetDatabaseBinFileMetaData()
-		assert.Error(t, err)
-
 		testTime := time.Now()
 		ctx := context.Background()
 
