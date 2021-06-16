@@ -344,8 +344,8 @@ func TestUserSessions(t *testing.T) {
 
 			assert.Equal(t, len(reply.Sessions), 2)
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].Meta.ID), sessionID3)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].Meta.ID), sessionID2)
 		})
 
 		t.Run("list live - hash", func(t *testing.T) {
@@ -355,8 +355,8 @@ func TestUserSessions(t *testing.T) {
 
 			assert.Equal(t, len(reply.Sessions), 2)
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].Meta.ID), sessionID3)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].Meta.ID), sessionID2)
 		})
 
 		t.Run("list live - signed decimal hash", func(t *testing.T) {
@@ -366,7 +366,7 @@ func TestUserSessions(t *testing.T) {
 
 			assert.Equal(t, len(reply.Sessions), 1)
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID4)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].Meta.ID), sessionID4)
 		})
 	})
 
@@ -427,10 +427,14 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 3)
+			assert.Equal(t, 3, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live and historic - hash", func(t *testing.T) {
@@ -438,10 +442,13 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 3)
-
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			assert.Equal(t, 3, len(reply.Sessions))
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live and historic - signed decimal hash", func(t *testing.T) {
@@ -449,12 +456,14 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
-
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID4)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID8)
+			assert.Equal(t, 2, len(reply.Sessions))
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID4 && idString != sessionID8 {
+					t.Fail()
+				}
+			}
 		})
-
 	})
 }
 
