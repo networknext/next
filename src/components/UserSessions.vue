@@ -74,7 +74,7 @@
       </tbody>
     </table>
     <div class="float-right">
-      <button id="more-sessions-button" class="btn btn-primary" v-if="moreSessions" @click="fetchMoreSessions()">
+      <button id="more-sessions-button" class="btn btn-primary" v-if="currentPage < MAX_PAGES" @click="fetchMoreSessions()">
         More Sessions
       </button>
     </div>
@@ -84,6 +84,8 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { NavigationGuardNext, Route } from 'vue-router'
+
+const MAX_PAGES = 10
 
 /**
  * This component displays all of the information related to the user
@@ -97,9 +99,8 @@ export default class UserSessions extends Vue {
   private sessionLoop: any
   private showSessions: boolean
   private searchID: string
-  private currentEndDate: string
-  private savedEndDate: string
-  private moreSessions: boolean
+  private currentPage: number
+  private savedPage: number
 
   constructor () {
     super()
@@ -108,14 +109,12 @@ export default class UserSessions extends Vue {
     this.timeStamps = []
     this.showSessions = false
     this.sessionLoop = null
-    this.savedEndDate = ''
-    this.currentEndDate = ''
-    this.moreSessions = false
+    this.currentPage = 0
+    this.savedPage = 0
   }
 
   private mounted () {
-    this.currentEndDate = ''
-    this.moreSessions = false
+    this.currentPage = 0
     this.searchID = this.$route.params.pathMatch || ''
     if (this.searchID !== '') {
       this.restartLoop()
@@ -128,8 +127,7 @@ export default class UserSessions extends Vue {
     }
     this.showSessions = false
     this.searchID = to.params.pathMatch || ''
-    this.currentEndDate = ''
-    this.moreSessions = false
+    this.currentPage = 0
     if (this.searchID !== '') {
       this.fetchUserSessions()
       this.sessionLoop = setInterval(() => {
@@ -144,7 +142,14 @@ export default class UserSessions extends Vue {
   }
 
   private fetchMoreSessions () {
-    this.savedEndDate = this.currentEndDate
+    const nextPage = this.currentPage + 1
+
+    if (nextPage >= MAX_PAGES) {
+      // This shouldn't happen
+      return
+    }
+    this.currentPage = nextPage
+    this.savedPage = this.currentPage
     this.restartLoop()
   }
 
@@ -153,12 +158,11 @@ export default class UserSessions extends Vue {
       return
     }
 
-    this.$apiService.fetchUserSessions({ user_id: this.searchID, end_date: this.savedEndDate })
+    this.$apiService.fetchUserSessions({ user_id: this.searchID, page: this.savedPage })
       .then((response: any) => {
         this.sessions = response.sessions || []
         this.showSessions = true
-        this.moreSessions = response.more_sessions
-        this.currentEndDate = response.end_date
+        this.currentPage = response.page
       })
       .catch((error: Error) => {
         if (this.sessionLoop) {
