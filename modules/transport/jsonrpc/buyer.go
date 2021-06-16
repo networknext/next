@@ -37,7 +37,7 @@ import (
 const (
 	TopSessionsSize          = 1000
 	MapPointByteCacheVersion = uint8(1)
-	MaxHistoricalSessions    = 30
+	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
 )
 
@@ -188,6 +188,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 		currentPage := reply.Page
 
+		fmt.Println("Searching by hash")
 		// Fetch historic sessions by each identifier if there are any
 		rowsByHash, err = s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
 		if err != nil {
@@ -202,6 +203,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 
 		if searchType == -1 {
+			fmt.Println("Searching by ID")
 			rowsByID, err = s.GetHistoricalSessions(reply, userID, currentPageDate, nextPageDate)
 			if err != nil {
 				level.Error(s.Logger).Log("err", err)
@@ -216,6 +218,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 
 		if searchType == -1 {
+			fmt.Println("Searching by hex")
 			rowsByHexID, err = s.GetHistoricalSessions(reply, hexUserID, currentPageDate, nextPageDate)
 			if err != nil {
 				level.Error(s.Logger).Log("err", err)
@@ -268,6 +271,9 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 		}
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
+		fmt.Printf("Found %d sessions in bigtable\n", len(rows))
+		fmt.Printf("Found %d sessions so far\n", len(btRows))
+
 		if reply.Page >= MaxBigTableDays {
 			// We are out of pages
 			break
@@ -293,6 +299,7 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 
 		// if we found the full amount of sessions in one page, return that page number for next time
 		if len(btRows) == MaxHistoricalSessions {
+			fmt.Println("Hit max sessions for the day, returning last page")
 			reply.Page = reply.Page - 1
 			break
 		}
