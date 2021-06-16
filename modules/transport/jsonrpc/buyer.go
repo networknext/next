@@ -38,6 +38,7 @@ const (
 	TopSessionsSize          = 1000
 	MapPointByteCacheVersion = uint8(1)
 	MaxHistoricalSessions    = 100
+	MaxBigTableDays          = 10
 )
 
 var (
@@ -112,14 +113,13 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 }
 
 type UserSessionsArgs struct {
-	UserID  string `json:"user_id"`
-	EndDate string `json:"end_date"`
+	UserID string `json:"user_id"`
+	Page   int    `json:"page"`
 }
 
 type UserSessionsReply struct {
-	Sessions     []UserSession `json:"sessions"`
-	EndDate      string        `json:"end_date"`
-	MoreSessions bool          `json:"more_sessions"`
+	Sessions []UserSession `json:"sessions"`
+	Page     int           `json:"end_date"`
 }
 
 type UserSession struct {
@@ -162,7 +162,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	userHash := fmt.Sprintf("%016x", hash.Sum64())
 
 	// Fetch live sessions if this is the first search and if there are any
-	if args.EndDate == "" {
+	if args.Page == 0 {
 		liveSessions, err := s.FetchCurrentTopSessions(r, "")
 		if err != nil {
 			err = fmt.Errorf("UserSessions() failed to fetch live sessions")
@@ -222,46 +222,40 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 
 	if s.UseBigtable {
+		// A page is equivalent to 1 full day (24 hours). We store 10 days worth of data so the maximum number of pages is 10
+		reply.Page = args.Page
+
 		// Calculate the start and end time
-		var endDate time.Time
 		timeNow := time.Now()
 		location := timeNow.Location()
-		if args.EndDate == "" {
-			// First search, assume end date is today's date
-			year, month, day := timeNow.Date()
-			endDate = time.Date(year, month, day, 0, 0, 0, 0, location)
-		} else {
-			// Parse the given date in short form layout using the local timezone
-			parsedTime, err := time.ParseInLocation("2006-01-02", args.EndDate, location)
-			if err != nil {
-				err = fmt.Errorf("UserSessions() Could not parse %v using YYYY-MM-DD layout: %v", args.EndDate, err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-			year, month, day := parsedTime.Date()
-			endDate = time.Date(year, month, day, 0, 0, 0, 0, location)
-		}
-		// Add an extra day because the filter is exclusive for the end date
-		endDate = endDate.Add(time.Hour * 24)
-		// Record the original end date
-		origEndDate := endDate
-		// The start date is one day before the end date
-		startDate := endDate.Add(time.Hour * -24)
+
+		// Get todays date
+		year, month, day := timeNow.Date()
+		today := time.Date(year, month, day, 0, 0, 0, 0, location)
+
+		// current page date is today - page number * 1 day
+		currentPageDate := today.Add(-time.Duration(reply.Page * 24 * int(time.Hour)))
+
+		// we want the next page so increase the page count
+		reply.Page = reply.Page + 1
+
+		// get next page date using new page number
+		nextPageDate := today.Add(-time.Duration(reply.Page * 24 * int(time.Hour)))
 
 		// Fetch historic sessions by each identifier if there are any
-		rowsByHash, err := s.GetHistoricalSessions(reply, userHash, origEndDate, endDate, startDate)
+		rowsByHash, err := s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
 		if err != nil {
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		rowsByID, err := s.GetHistoricalSessions(reply, userID, origEndDate, endDate, startDate)
+		rowsByID, err := s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
 		if err != nil {
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		rowsByHexID, err := s.GetHistoricalSessions(reply, hexUserID, origEndDate, endDate, startDate)
+		rowsByHexID, err := s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
 		if err != nil {
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -295,11 +289,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	return nil
 }
 
-func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifier string, origEndDate time.Time, endDate time.Time, startDate time.Time) ([]bigtable.Row, error) {
+func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifier string, currentPageDate time.Time, nextPageDate time.Time) ([]bigtable.Row, error) {
 	// Create the filters to use for reading rows
 	chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
-		bigtable.LatestNFilter(1),                         // Gets the latest cell from the "meta" column
-		bigtable.TimestampRangeFilter(startDate, endDate), // Gets the rows within [startDate, endDate)
+		bigtable.LatestNFilter(1),                                    // Gets the latest cell from the "meta" column
+		bigtable.TimestampRangeFilter(nextPageDate, currentPageDate), // Gets the rows within [startDate, endDate)
 	)
 
 	var btRows []bigtable.Row
@@ -317,31 +311,24 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 		if len(rows) == 0 {
 			break
 		} else if len(rows)+len(btRows) > MaxHistoricalSessions {
-			// There are more session to show
-			reply.MoreSessions = true
-
-			if endDate != origEndDate {
-				// Set the reply endDate for next request to start from this date
-				reply.EndDate = endDate.Local().Format("2006-01-02")
-				break
-			} else {
-				// Went over the max historical sessions for the initial request, include as many as can
-				btRows = append(btRows, rows[0:MaxHistoricalSessions]...)
-				// Set the reply endDate to be the current start date for the next request
-				reply.EndDate = startDate.Local().Format("2006-01-02")
-				break
-			}
+			break
 		}
 		btRows = append(btRows, rows...)
 
-		// Decrement the end and start date
-		endDate = endDate.Add(time.Hour * -24)
-		startDate = startDate.Add(time.Hour * -24)
+		// If there are more sessions to find, go to the next page
+		reply.Page = reply.Page + 1
+		nextPageDate = nextPageDate.Add(-24 * time.Hour)
+		currentPageDate = currentPageDate.Add(-24 * time.Hour)
+
+		if reply.Page >= MaxBigTableDays {
+			// We are out of pages
+			break
+		}
 
 		// Update the chain filter with the latest dates
 		chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
-			bigtable.LatestNFilter(1),                         // Gets the latest cell from the "meta" column
-			bigtable.TimestampRangeFilter(startDate, endDate), // Gets the rows within the start and end date, inclusive
+			bigtable.LatestNFilter(1),                                    // Gets the latest cell from the "meta" column
+			bigtable.TimestampRangeFilter(nextPageDate, currentPageDate), // Gets the rows within the start and end date, inclusive
 		)
 	}
 
