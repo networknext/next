@@ -188,7 +188,6 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 		currentPage := reply.Page
 
-		fmt.Println("Searching by hash")
 		// Fetch historic sessions by each identifier if there are any
 		rowsByHash, err = s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
 		if err != nil {
@@ -203,7 +202,6 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 
 		if searchType == -1 {
-			fmt.Println("Searching by ID")
 			rowsByID, err = s.GetHistoricalSessions(reply, userID, currentPageDate, nextPageDate)
 			if err != nil {
 				level.Error(s.Logger).Log("err", err)
@@ -218,7 +216,6 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 
 		if searchType == -1 {
-			fmt.Println("Searching by hex")
 			rowsByHexID, err = s.GetHistoricalSessions(reply, hexUserID, currentPageDate, nextPageDate)
 			if err != nil {
 				level.Error(s.Logger).Log("err", err)
