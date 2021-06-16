@@ -342,10 +342,14 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
+			assert.Equal(t, 2, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].Meta.ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].Meta.ID), sessionID2)
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live - hash", func(t *testing.T) {
@@ -353,18 +357,22 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
+			assert.Equal(t, 2, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].Meta.ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].Meta.ID), sessionID2)
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live - signed decimal hash", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash3)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 1)
+			assert.Equal(t, 1, len(reply.Sessions))
 
 			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].Meta.ID), sessionID4)
 		})
@@ -453,7 +461,7 @@ func TestUserSessions(t *testing.T) {
 
 		t.Run("list live and historic - signed decimal hash", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash3)}, &reply)
 			assert.NoError(t, err)
 
 			assert.Equal(t, 2, len(reply.Sessions))
