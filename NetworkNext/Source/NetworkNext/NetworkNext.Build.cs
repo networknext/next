@@ -55,7 +55,7 @@ public class NetworkNext : ModuleRules
         {
             PublicFrameworks.Add("SystemConfiguration");
         } 
-		else if (Target.Platform.ToString() == "PS4")
+        else if (Target.Platform.ToString() == "PS4")
         {
             string SDKDir = Environment.GetEnvironmentVariable("SCE_ORBIS_SDK_DIR");
             string LibDir = Path.Combine(SDKDir, "target", "lib");
