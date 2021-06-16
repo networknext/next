@@ -54,6 +54,12 @@ public class NetworkNext : ModuleRules
         if (Target.Platform == UnrealTargetPlatform.Mac)
         {
             PublicFrameworks.Add("SystemConfiguration");
+        } 
+        else if (Target.Platform.ToString() == "PS4")
+        {
+            string SDKDir = Environment.GetEnvironmentVariable("SCE_ORBIS_SDK_DIR");
+            string LibDir = Path.Combine(SDKDir, "target", "lib");
+            PublicAdditionalLibraries.Add(Path.Combine(LibDir, "libSceSecure.a"));
         }
     }
 }
