@@ -100,6 +100,48 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 	return nil
 }
 
+type RelayDashboardAnalysisJsonReply struct {
+	Analysis jsonAnalysisResponse `json:"fleetAnalysis"`
+}
+
+type RelayDashboardAnalysisJsonArgs struct{}
+
+type jsonAnalysisResponse struct {
+	Analysis routing.JsonMatrixAnalysis
+}
+
+func (rfs *RelayFleetService) RelayDashboardAnalysisJson(r *http.Request, args *RelayDashboardAnalysisJsonArgs, reply *RelayDashboardAnalysisJsonReply) error {
+
+	var analysis jsonAnalysisResponse
+	authHeader := r.Header.Get("Authorization")
+
+	uri := rfs.RelayFrontendURI + "/relay_dashboard_analysis"
+
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", uri, nil)
+	req.Header.Set("Authorization", authHeader)
+
+	response, err := client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("RelayDashboardAnalysisJson() error getting fleet relay json: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	byteValue, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	json.Unmarshal(byteValue, &analysis)
+	reply.Analysis = analysis
+
+	return nil
+}
+
 type RelayDashboardJsonReply struct {
 	// Dashboard string `json:"relay_dashboard"`
 	Dashboard jsonResponse `json:"relay_dashboard"`
