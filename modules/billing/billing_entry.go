@@ -1184,6 +1184,7 @@ const (
 		1 + // Summary
 		1 + // UseDebug
 		4 + BillingEntryMaxDebugLength + // Debug
+		4 + // RouteDiversity
 		8 + // DatacenterID
 		8 + // BuyerID
 		8 + // UserHash
@@ -1219,7 +1220,6 @@ const (
 		BillingEntryMaxRelays*8 + // NextRelays
 		BillingEntryMaxRelays*8 + // NextRelayPrice
 		8 + // TotalPrice
-		4 + // RouteDiversity
 		1 + // Uncommitted
 		1 + // Multipath
 		1 + // RTTReduction
