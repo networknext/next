@@ -1259,6 +1259,7 @@ type BillingEntry2 struct {
 	Summary             bool
 	UseDebug            bool
 	Debug               string
+	RouteDiversity      int32
 
 	// first slice only
 
@@ -1303,7 +1304,6 @@ type BillingEntry2 struct {
 	NextRelays          [BillingEntryMaxRelays]uint64
 	NextRelayPrice      [BillingEntryMaxRelays]uint64
 	TotalPrice          uint64
-	RouteDiversity      int32
 	Uncommitted         bool
 	Multipath           bool
 	RTTReduction        bool
@@ -1363,6 +1363,8 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBool(&entry.UseDebug)
 	stream.SerializeString(&entry.Debug, BillingEntryMaxDebugLength)
+
+	stream.SerializeInteger(&entry.RouteDiversity, 0, 31)
 
 	/*
 		2. First slice only
@@ -1570,6 +1572,11 @@ func (entry *BillingEntry2) Validate() bool {
 		}
 	}
 
+	if entry.RouteDiversity < 0 || entry.RouteDiversity > 31 {
+		fmt.Printf("invalid route diversity\n")
+		return false
+	}
+
 	// first slice only
 
 	if entry.SliceNumber == 0 {
@@ -1678,11 +1685,6 @@ func (entry *BillingEntry2) Validate() bool {
 			fmt.Printf("invalid num next relays\n")
 			return false
 		}
-
-		if entry.RouteDiversity < 0 || entry.RouteDiversity > 31 {
-			fmt.Printf("invalid route diversity\n")
-			return false
-		}
 	}
 
 	return true
@@ -1741,6 +1743,10 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 	if entry.UseDebug {
 		e["debug"] = entry.Debug
+	}
+
+	if entry.RouteDiversity > 0 {
+		e["routeDiversity"] = int(entry.RouteDiversity)
 	}
 
 	/*
@@ -1844,11 +1850,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 			e["nextRelays"] = nextRelays
 			e["nextRelayPrice"] = nextRelayPrice
-
 		}
 
 		e["totalPrice"] = int(entry.TotalPrice)
-		e["routeDiversity"] = int(entry.RouteDiversity)
 
 		if entry.Uncommitted {
 			e["uncommitted"] = true
