@@ -37,6 +37,8 @@ import (
 const (
 	TopSessionsSize          = 1000
 	MapPointByteCacheVersion = uint8(1)
+	MaxHistoricalSessions    = 30
+	MaxBigTableDays          = 10
 )
 
 var (
@@ -112,11 +114,17 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 
 type UserSessionsArgs struct {
 	UserID string `json:"user_id"`
+	Page   int    `json:"page"`
 }
 
 type UserSessionsReply struct {
-	Sessions   []transport.SessionMeta `json:"sessions"`
-	TimeStamps []time.Time             `json:"time_stamps"`
+	Sessions []UserSession `json:"sessions"`
+	Page     int           `json:"page"`
+}
+
+type UserSession struct {
+	Meta      transport.SessionMeta `json:"meta"`
+	Timestamp time.Time             `json:"time_stamp"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
@@ -125,8 +133,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
-	reply.Sessions = make([]transport.SessionMeta, 0)
-	sessionIDs := make([]string, 0)
+	reply.Sessions = make([]UserSession, 0)
 
 	var sessionSlice transport.SessionSlice
 
@@ -153,162 +160,185 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 	userHash := fmt.Sprintf("%016x", hash.Sum64())
 
-	// Fetch live sessions if there are any
-	liveSessions, err := s.FetchCurrentTopSessions(r, "")
-	if err != nil {
-		err = fmt.Errorf("UserSessions() failed to fetch live sessions")
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	for _, session := range liveSessions {
-		// Check both the ID, hex of ID, and the hash just in case the ID is actually a hash from the top sessions table or decimal hash
-		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) || hexUserID == fmt.Sprintf("%016x", session.UserHash) {
-			sessionSlicesClient := s.RedisPoolSessionSlices.Get()
-			defer sessionSlicesClient.Close()
-
-			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
-			if err != nil && err != redis.ErrNil {
-				err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				err = fmt.Errorf("UserSessions() failed getting session slices")
-				return err
-			}
-
-			// If a slice exists, add the session and the timestamp
-			if len(slices) > 0 {
-				sliceString := strings.Split(slices[0], "|")
-				if err := sessionSlice.ParseRedisString(sliceString); err != nil {
-					err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
-					level.Error(s.Logger).Log("err", err)
-					return err
-				}
-
-				sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
-
-				buyer, err := s.Storage.Buyer(session.BuyerID)
-				if err != nil {
-					err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
-					level.Error(s.Logger).Log("err", err)
-					return err
-				}
-
-				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
-					session.Anonymise()
-				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-					// Don't show sessions where the company code does not match the request's
-					continue
-				}
-
-				reply.Sessions = append(reply.Sessions, session)
-				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
-			} else {
-				// Increment counter
-				s.Metrics.NoSlicesFailure.Add(1)
-			}
-		}
-	}
-
 	if s.UseBigtable {
-		// Create the filters to use for reading rows
-		chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"),
-			bigtable.LatestNFilter(1),
-		)
+		var rowsByHash []bigtable.Row
+		var rowsByID []bigtable.Row
+		var rowsByHexID []bigtable.Row
+		searchType := -1
 
-		// Fetch historic sessions by user hash if there are any
-		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
+		// A page is equivalent to 1 full day (24 hours). We store 10 days worth of data so the maximum number of pages is 10
+		reply.Page = args.Page
+
+		// Calculate the start and end time
+		timeNow := time.Now()
+		location := timeNow.Location()
+
+		// Get todays date
+		year, month, day := timeNow.Date()
+		today := time.Date(year, month, day, 0, 0, 0, 0, location)
+
+		// current page date is today - page number * 1 day. Add 1 day to compensate for filter excluding end date
+		currentPageDate := today.Add(-time.Duration((reply.Page - 1) * 24 * int(time.Hour)))
+
+		// we want the next page so increase the page count
+		reply.Page = reply.Page + 1
+
+		// get next page date using new page number
+		nextPageDate := today.Add(-time.Duration(reply.Page * 24 * int(time.Hour)))
+
+		currentPage := reply.Page
+
+		// Fetch historic sessions by each identifier if there are any
+		rowsByHash, err = s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
 		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
-		// Fetch historic sessions by user ID if there are any
-		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
-		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
-
-		// Fetch historic sessions by hex user ID if there are any
-		rowsByHexID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", hexUserID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
-		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
+		if len(rowsByHash) == 0 {
+			reply.Page = currentPage
+		} else {
+			searchType = 0
 		}
 
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
-
-		liveIDString := strings.Join(sessionIDs, ",")
-
-		if len(rowsByHash) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByHash, liveIDString, sessionSlice); err != nil {
+		if searchType == -1 {
+			rowsByID, err = s.GetHistoricalSessions(reply, userID, currentPageDate, nextPageDate)
+			if err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-		} else if len(rowsByID) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByID, liveIDString, sessionSlice); err != nil {
+
+			if len(rowsByID) == 0 {
+				reply.Page = currentPage
+			} else {
+				searchType = 1
+			}
+		}
+
+		if searchType == -1 {
+			rowsByHexID, err = s.GetHistoricalSessions(reply, hexUserID, currentPageDate, nextPageDate)
+			if err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-		} else if len(rowsByHexID) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByHexID, liveIDString, sessionSlice); err != nil {
+		}
+
+		switch searchType {
+		case 0:
+			if err = s.GetHistoricalSlices(r, reply, rowsByHash, sessionSlice); err != nil {
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+		case 1:
+			if err = s.GetHistoricalSlices(r, reply, rowsByID, sessionSlice); err != nil {
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+		case 2:
+			if err = s.GetHistoricalSlices(r, reply, rowsByHexID, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 		}
 	}
+
+	// Sort the sessions by timestamp
+	sort.Slice(reply.Sessions, func(i, j int) bool {
+		return reply.Sessions[i].Timestamp.After(reply.Sessions[j].Timestamp)
+	})
 
 	return nil
 }
 
-func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, rows []bigtable.Row, liveIDString string, sessionSlice transport.SessionSlice) error {
+func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifier string, currentPageDate time.Time, nextPageDate time.Time) ([]bigtable.Row, error) {
+	// Gets the rows within [nextPageDate, currentPageDate)
+	chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
+		bigtable.LatestNFilter(1),                                    // Gets the latest cell from the "meta" column
+		bigtable.TimestampRangeFilter(nextPageDate, currentPageDate), // Gets the rows within [startDate, endDate)
+	)
+
+	var btRows []bigtable.Row
+	for {
+		// Fetch historic sessions by the identifier if there are any
+		rows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", identifier), bigtable.RowFilter(chainFilter), bigtable.LimitRows(MaxHistoricalSessions))
+		if err != nil {
+			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			err = fmt.Errorf("GetHistoricalSessions() failed to fetch historic user sessions: %v", err)
+			return btRows, err
+		}
+		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+
+		if reply.Page >= MaxBigTableDays {
+			// We are out of pages
+			break
+		}
+
+		reply.Page = reply.Page + 1
+
+		nextPageDate = nextPageDate.Add(-24 * time.Hour)
+		currentPageDate = currentPageDate.Add(-24 * time.Hour)
+
+		// Gets the rows within [nextPageDate, currentPageDate)
+		chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
+			bigtable.LatestNFilter(1),                                    // Gets the latest cell from the "meta" column
+			bigtable.TimestampRangeFilter(nextPageDate, currentPageDate), // Gets the rows within the start and end date, inclusive
+		)
+
+		// If we don't find anything for a day, go to the next day and try again
+		if len(rows) == 0 && reply.Page < MaxBigTableDays {
+			continue
+		}
+
+		btRows = append(btRows, rows...)
+
+		// if we found the full amount of sessions in one page, return that page number for next time
+		if len(btRows) == MaxHistoricalSessions {
+			reply.Page = reply.Page - 1
+			break
+		}
+	}
+
+	return btRows, nil
+}
+
+func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, rows []bigtable.Row, sessionSlice transport.SessionSlice) error {
+	// Slice of SessionTimestamp structs to sort the sessions by timestamps at the end
 	var sessionMeta transport.SessionMeta
 
 	for _, row := range rows {
 		if err := sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
 			return err
 		}
-		if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
-			sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+		sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+		if err != nil {
+			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+			err = fmt.Errorf("GetHistoricalSlices() failed to fetch historic slice information: %v", err)
+			return err
+		}
+		s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
+
+		// If a slice exists, add the session and the timestamp
+		if len(sliceRows) > 0 {
+			sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
+
+			buyer, err := s.Storage.Buyer(sessionMeta.BuyerID)
 			if err != nil {
-				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
-				err = fmt.Errorf("GetHistoricalSlices() failed to fetch historic slice information: %v", err)
+				err = fmt.Errorf("GetHistoricalSlices() failed to fetch buyer: %v", err)
+				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-			s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
-			// If a slice exists, add the session and the timestamp
-			if len(sliceRows) > 0 {
-				sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
-
-				buyer, err := s.Storage.Buyer(sessionMeta.BuyerID)
-				if err != nil {
-					err = fmt.Errorf("GetHistoricalSlices() failed to fetch buyer: %v", err)
-					level.Error(s.Logger).Log("err", err)
-					return err
-				}
-
-				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
-					sessionMeta.Anonymise()
-				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-					// Don't show sessions where the company code does not match the request's
-					continue
-				}
-
-				reply.Sessions = append(reply.Sessions, sessionMeta)
-				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
-			} else {
-				// Increment counter
-				s.Metrics.NoSlicesFailure.Add(1)
+			if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
+				sessionMeta.Anonymise()
+			} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				// Don't show sessions where the company code does not match the request's
+				continue
 			}
+
+			reply.Sessions = append(reply.Sessions, UserSession{Meta: sessionMeta, Timestamp: sessionSlice.Timestamp.UTC()})
+		} else {
+			// Increment counter
+			s.Metrics.NoSlicesFailure.Add(1)
 		}
 	}
 
