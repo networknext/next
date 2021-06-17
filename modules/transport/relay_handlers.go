@@ -435,6 +435,28 @@ func RelayDashboardDataHandlerFunc(
 
 }
 
+func RelayDashboardAnalysisHandlerFunc(
+	GetRouteMatrix func() *routing.RouteMatrix,
+) func(writer http.ResponseWriter, request *http.Request) {
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		defer request.Body.Close()
+
+		routeMatrix := GetRouteMatrix()
+
+		type jsonResponse struct {
+			Analysis routing.JsonMatrixAnalysis
+		}
+
+		var jResponse jsonResponse
+
+		jResponse.Analysis = routeMatrix.GetJsonAnalysis()
+
+		writer.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(writer).Encode(jResponse)
+	}
+}
+
 func DatabaseBinVersionFunc(creator *string, creationTime *string, env *string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		binInfo := map[string]string{
