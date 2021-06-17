@@ -151,18 +151,7 @@ export default class SessionMap extends Vue {
             colorRange: [[49, 130, 189]],
             gpuAggregation,
             aggregation,
-            onClick: (info: any) => {
-              const points: any = info.object.points || []
-              if (points.length === 0) {
-                this.$root.$emit('failedMapPointLookup')
-                return
-              }
-              if (points.length === 1 && points[0].source[3]) {
-                this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
-                return
-              }
-              this.$root.$emit('showModal', points)
-            }
+            onClick: this.mapPointClickHandler
           })
           layers.push(directLayer)
         }
@@ -198,18 +187,7 @@ export default class SessionMap extends Vue {
             colorRange: [[40, 167, 69]],
             aggregation,
             gpuAggregation,
-            onClick: (info: any) => {
-              const points: any = info.object.points || []
-              if (points.length === 0) {
-                this.$root.$emit('failedMapPointLookup')
-                return
-              }
-              if (points.length === 1 && points[0].source[3]) {
-                this.$router.push({ name: 'session-tool', params: { pathMatch: points[0].source[3] } })
-                return
-              }
-              this.$root.$emit('showModal', points)
-            }
+            onClick: this.mapPointClickHandler
           })
           layers.push(nnLayer)
         }
@@ -262,6 +240,19 @@ export default class SessionMap extends Vue {
     this.mapLoop = setInterval(() => {
       this.fetchMapSessions()
     }, 10000)
+  }
+
+  private mapPointClickHandler (info: any) {
+    const points: any = info.object.points || []
+    if (points.length === 0) {
+      this.$root.$emit('failedMapPointLookup')
+      return
+    }
+    if (points.length === 1 && points[0].source[3]) {
+      this.$router.push(`/session-tool/${points[0].source[3]}`)
+      return
+    }
+    this.$root.$emit('showModal', points)
   }
 }
 </script>
