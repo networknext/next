@@ -309,14 +309,16 @@ type ServiceStatusList struct {
 	Vanity         string `json:"vanity"`
 }
 type AdminFrontPageReply struct {
-	BinFileCreationTime time.Time `json:"binFileCreationTime"`
-	BinFileAuthor       string    `json:"binFileAuthor"`
-	ServiceStatusText   []string  `json:"serviceStatusText"`
+	BinFileCreationTime time.Time         `json:"binFileCreationTime"`
+	BinFileAuthor       string            `json:"binFileAuthor"`
+	ServiceStatusText   []string          `json:"serviceStatusText"`
+	ServiceNameList     ServiceStatusList `json:"serviceNameList"`
 }
 
 // AdminFrontPage returns the current database.bin file metadata status
 // as well as the status text provided by the provided service. It returns
-// the Analysis section of the RouteMatrix by default.
+// the Analysis section of the RouteMatrix by default as well as the
+// list of service names.
 func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPageArgs, reply *AdminFrontPageReply) error {
 
 	authHeader := r.Header.Get("Authorization")
@@ -393,6 +395,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		reply.BinFileCreationTime = binFileMetaData.DatabaseBinFileCreationTime.UTC()
 	}
 
+	reply.ServiceNameList = ServiceStatusList{}
 	return nil
 }
 
