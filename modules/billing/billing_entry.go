@@ -750,13 +750,13 @@ func (entry *BillingEntry) Validate() bool {
 	}
 
 	// IMPORTANT: You must update this check if you ever add a new connection type in the SDK
-	if entry.ConnectionType < 0 || entry.ConnectionType > transport.ConnectionTypeMax {
+	if entry.ConnectionType < 0 || entry.ConnectionType > 3 {
 		fmt.Printf("invalid connection type\n")
 		return false
 	}
 
 	// IMPORTANT: You must update this check when you add new platforms to the SDK
-	if entry.PlatformType < 0 || entry.PlatformType > transport.PlatformTypeMax {
+	if entry.PlatformType < 0 || entry.PlatformType > 10 {
 		fmt.Printf("invalid platform type\n")
 		return false
 	}
@@ -1598,13 +1598,13 @@ func (entry *BillingEntry2) Validate() bool {
 		}
 
 		// IMPORTANT: You must update this check if you ever add a new connection type in the SDK
-		if entry.ConnectionType < 0 || entry.ConnectionType > transport.ConnectionTypeMax {
+		if entry.ConnectionType < 0 || entry.ConnectionType > 3 {
 			fmt.Printf("invalid connection type\n")
 			return false
 		}
 
 		// IMPORTANT: You must update this check when you add new platforms to the SDK
-		if entry.PlatformType < 0 || entry.PlatformType > transport.PlatformTypeMax {
+		if entry.PlatformType < 0 || entry.PlatformType > 10 {
 			fmt.Printf("invalid platform type\n")
 			return false
 		}
