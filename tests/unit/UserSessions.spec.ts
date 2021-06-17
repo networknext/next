@@ -111,17 +111,19 @@ describe('UserSessions.vue no sessions', () => {
       return Promise.resolve(
         {
           sessions: [{
-            id: '123456789',
-            platform: 'PS5',
-            connection: 'star link',
-            location: {
-              isp: 'local'
+            meta: {
+              id: '123456789',
+              platform: 'PS5',
+              connection: 'star link',
+              location: {
+                isp: 'local'
+              },
+              datacenter_name: 'local',
+              datacenter_alias: 'local',
+              server_addr: '127.0.0.1'
             },
-            datacenter_name: 'local',
-            datacenter_alias: 'local',
-            server_addr: '127.0.0.1'
-          }],
-          time_stamps: ['']
+            time_stamp: ''
+          }]
         })
     })
 
