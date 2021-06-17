@@ -31,7 +31,7 @@
           <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/game-config" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'config'}">Game Settings</router-link>
           </li>
-          <li class="nav-item" v-if="$flagService.isEnabled(featureEnums.ROUTE_SHADER) && ($store.getters.isAdmin || $store.getters.isOwner)">
+          <li class="nav-item" v-if="$flagService.isEnabled(FeatureEnum.FEATURE_ROUTE_SHADER) && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/route-shader" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'shader'}">Route Shader</router-link>
           </li>
           <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
@@ -64,17 +64,14 @@ import { FeatureEnum } from '../components/types/FeatureTypes'
   }
 })
 export default class SettingsWorkspace extends Vue {
+  private FeatureEnum: any
   // Register the alert component to access its set methods
   $refs!: {
     verifyAlert: Alert;
   }
 
-  private featureEnums: any
-
-  constructor () {
-    super()
-    // TODO: This probably shouldn't be necessary?
-    this.featureEnums = FeatureEnum
+  private created () {
+    this.FeatureEnum = FeatureEnum
   }
 
   private mounted () {

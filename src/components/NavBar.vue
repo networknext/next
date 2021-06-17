@@ -68,7 +68,7 @@
             v-bind:class="{
               active: $store.getters.currentPage == 'explore'
             }"
-            v-if="$flagService.isEnabled(featureEnums.EXPLORE) && (!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus)"
+            v-if="$flagService.isEnabled(FeatureEnum.FEATURE_EXPLORE) && (!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus)"
           >Explore</router-link>
         </li>
         <li class="nav-item text-nowrap">
@@ -99,7 +99,7 @@
           <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">Log in</a>
         </li>
       </ul>
-      <ul class="navbar-nav px-3" v-if="$flagService.isEnabled(featureEnums.IMPERSONATION) && $store.getters.isAdmin">
+      <ul class="navbar-nav px-3" v-if="$flagService.isEnabled(FeatureEnum.FEATURE_IMPERSONATION) && $store.getters.isAdmin">
         <li class="nav-item text-nowrap">
           <select v-on:change="impersonate($event.target.value)">
             <option :value="''">Impersonate</option>
@@ -156,7 +156,6 @@ export default class NavBar extends Vue {
 
   private companyCode: string
   private portalVersion: string
-  private featureEnums: any
 
   private unwatch: any
   private getAccessTourSteps: Array<any>
@@ -167,12 +166,12 @@ export default class NavBar extends Vue {
   private downloadLinkTourOptions: any
   private downloadLinkTourCallbacks: any
 
+  private FeatureEnum: any
+
   constructor () {
     super()
     this.portalVersion = ''
     this.companyCode = ''
-    // TODO: This probably shouldn't be necessary?
-    this.featureEnums = FeatureEnum
 
     this.getAccessTourSteps = [
       {
@@ -234,6 +233,7 @@ export default class NavBar extends Vue {
 
   private created () {
     this.fetchPortalVersion()
+    this.FeatureEnum = FeatureEnum
   }
 
   private mounted () {

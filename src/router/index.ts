@@ -3,7 +3,7 @@ import VueRouter, { RouteConfig, Route, NavigationGuardNext } from 'vue-router'
 import store from '@/store'
 
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
-import Explore from '@/components/Explore.vue'
+import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
@@ -94,7 +94,7 @@ const routes: Array<RouteConfig> = [
   {
     path: '/explore',
     name: 'explore',
-    component: Explore
+    component: ExplorationWorkspace
   },
   {
     path: '*',

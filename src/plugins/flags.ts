@@ -1,4 +1,4 @@
-import { FeatureEnum } from '@/components/types/FeatureTypes'
+import { FeatureEnum, Flag } from '@/components/types/FeatureTypes'
 import { JSONRPCService } from './jsonrpc'
 
 export class FeatureFlagService {
@@ -27,9 +27,9 @@ export class FeatureFlagService {
   }
 
   private fetchEnvVarFeatureFlags () {
-    this.flags.forEach((flag: any) => {
+    this.flags.forEach((flag: Flag) => {
       const envVarString = `VUE_APP_${flag.name}`
-      flag.value = process.env[envVarString] || false
+      flag.value = process.env[envVarString] ? process.env[envVarString].toLowerCase() === 'true' : false
     })
   }
 
@@ -38,9 +38,6 @@ export class FeatureFlagService {
     this.flags.forEach((flag: any) => {
       if (flag.name === name) {
         switch (typeof flag.value) {
-          case 'string':
-            value = flag.value.toLowerCase() === 'true' || false
-            break
           case 'boolean':
             value = flag.value
             break
@@ -50,6 +47,14 @@ export class FeatureFlagService {
       }
     })
     return value
+  }
+
+  private printEnabledFlags (): void {
+    this.flags.forEach((flag: Flag) => {
+      if (flag.value) {
+        console.log(flag)
+      }
+    })
   }
 }
 
