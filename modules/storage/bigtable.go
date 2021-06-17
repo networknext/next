@@ -468,12 +468,12 @@ func (bt *BigTable) InsertSessionSliceData(ctx context.Context,
 // }
 func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, prefix string, opts ...bigtable.ReadOption) ([]bigtable.Row, error) {
 	// Get a range of all rows starting with a prefix
-	rowRange := bigtable.PrefixRange(prefix)
-
+	prefixRange := bigtable.PrefixRange(prefix)
+	
 	// Create a slice of all the rows to return
 	values := make([]bigtable.Row, 0)
 
-	err := bt.SessionTable.ReadRows(ctx, rowRange, func(r bigtable.Row) bool {
+	err := bt.SessionTable.ReadRows(ctx, prefixRange, func(r bigtable.Row) bool {
 		// Get the data and put it into a slice to return
 		values = append(values, r)
 
