@@ -269,7 +269,7 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 		serviceURI = rfs.RelayGatewayURI + "/status"
 	case "RelayFrontEnd":
 		serviceURI = rfs.RelayFrontendURI + "/status"
-	case "RelayBackEndMaster":
+	case "RelayBackEnd":
 		serviceURI = rfs.RelayFrontendURI + "/master_status"
 	case "RelayForwarder":
 		if rfs.RelayForwarderURI != "" {
@@ -294,25 +294,28 @@ type AdminFrontPageArgs struct {
 	ServiceName string `json:"serviceName"`
 }
 
-type ServiceStatusList struct {
-	RelayGateway   string `json:"relayGateway"`
-	RelayFrontEnd  string `json:"relayFrontEnd"`
-	RelayBackEnd   string `json:"relayBackEnd"`
-	RelayForwarder string `json:"relayForwarder"`
-	RelayPusher    string `json:"relayPusher"`
-	ServerBackend  string `json:"serverBackend"`
-	Billing        string `json:"billing"`
-	Analytics      string `json:"analytics"`
-	Api            string `json:"api"`
-	PortalCruncher string `json:"portalCruncher"`
-	Portal         string `json:"portal"`
-	Vanity         string `json:"vanity"`
+var ServiceStatusList = []string{
+	"RelayGateway",
+	"RelayFrontEnd",
+	"RelayBackEnd",
+	"RelayForwarder",
+	"RelayPusher",
+	"ServerBackend",
+	"Billing",
+	"Analytics",
+	"Api",
+	"PortalCruncher",
+	"Portal",
+	"Vanity",
+	"RelayDashboardAnalysis",
 }
+
 type AdminFrontPageReply struct {
-	BinFileCreationTime time.Time         `json:"binFileCreationTime"`
-	BinFileAuthor       string            `json:"binFileAuthor"`
-	ServiceStatusText   []string          `json:"serviceStatusText"`
-	ServiceNameList     ServiceStatusList `json:"serviceNameList"`
+	BinFileCreationTime time.Time `json:"binFileCreationTime"`
+	BinFileAuthor       string    `json:"binFileAuthor"`
+	ServiceStatusText   []string  `json:"serviceStatusText"`
+	ServiceNameList     []string  `json:"serviceNameList"`
+	SelectedService     string    `json:"selectedService"`
 }
 
 // AdminFrontPage returns the current database.bin file metadata status
@@ -322,7 +325,7 @@ type AdminFrontPageReply struct {
 func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPageArgs, reply *AdminFrontPageReply) error {
 
 	authHeader := r.Header.Get("Authorization")
-	if args.ServiceName == "" {
+	if args.ServiceName == "" || args.ServiceName == "RelayDashboardAnalysis" {
 		var analysis routing.JsonMatrixAnalysis
 
 		uri := rfs.RelayFrontendURI + "/relay_dashboard_analysis"
@@ -349,6 +352,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		json.Unmarshal(byteValue, &analysis)
 
 		reply.ServiceStatusText = strings.Split(analysis.String(), "\n")
+		reply.SelectedService = "RelayDashboardAnalysis"
 
 	} else {
 		serviceURI, err := rfs.GetServiceURI(args.ServiceName)
@@ -358,6 +362,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 			return err
 		} else if serviceURI == "" {
 			reply.ServiceStatusText = []string{fmt.Sprintf("%s has no status endpoint defined", args.ServiceName)}
+			reply.SelectedService = args.ServiceName
 		} else {
 			client := &http.Client{}
 			req, _ := http.NewRequest("GET", serviceURI, nil)
@@ -380,7 +385,9 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 			}
 
 			serviceStatusText := strings.Split(string(b), "\n")
-			reply.ServiceStatusText = append(reply.ServiceStatusText, serviceStatusText...)
+			// remove the first line, it contains the service name
+			reply.ServiceStatusText = append(reply.ServiceStatusText, serviceStatusText[1:len(serviceStatusText)-1]...)
+			reply.SelectedService = args.ServiceName
 
 		}
 
@@ -395,7 +402,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		reply.BinFileCreationTime = binFileMetaData.DatabaseBinFileCreationTime.UTC()
 	}
 
-	reply.ServiceNameList = ServiceStatusList{}
+	reply.ServiceNameList = ServiceStatusList
 	return nil
 }
 
