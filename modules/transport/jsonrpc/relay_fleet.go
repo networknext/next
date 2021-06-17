@@ -100,47 +100,47 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 	return nil
 }
 
-type RelayDashboardAnalysisJsonReply struct {
-	Analysis jsonAnalysisResponse `json:"fleetAnalysis"`
-}
+// type RelayDashboardAnalysisJsonReply struct {
+// 	Analysis jsonAnalysisResponse `json:"fleetAnalysis"`
+// }
 
-type RelayDashboardAnalysisJsonArgs struct{}
+// type RelayDashboardAnalysisJsonArgs struct{}
 
 type jsonAnalysisResponse struct {
 	Analysis routing.JsonMatrixAnalysis
 }
 
-func (rfs *RelayFleetService) RelayDashboardAnalysisJson(r *http.Request, args *RelayDashboardAnalysisJsonArgs, reply *RelayDashboardAnalysisJsonReply) error {
+// func (rfs *RelayFleetService) RelayDashboardAnalysisJson(r *http.Request, args *RelayDashboardAnalysisJsonArgs, reply *RelayDashboardAnalysisJsonReply) error {
 
-	var analysis jsonAnalysisResponse
-	authHeader := r.Header.Get("Authorization")
+// 	var analysis jsonAnalysisResponse
+// 	authHeader := r.Header.Get("Authorization")
 
-	uri := rfs.RelayFrontendURI + "/relay_dashboard_analysis"
+// 	uri := rfs.RelayFrontendURI + "/relay_dashboard_analysis"
 
-	client := &http.Client{}
-	req, _ := http.NewRequest("GET", uri, nil)
-	req.Header.Set("Authorization", authHeader)
+// 	client := &http.Client{}
+// 	req, _ := http.NewRequest("GET", uri, nil)
+// 	req.Header.Set("Authorization", authHeader)
 
-	response, err := client.Do(req)
-	if err != nil {
-		err = fmt.Errorf("RelayDashboardAnalysisJson() error getting fleet relay json: %w", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
-	defer response.Body.Close()
+// 	response, err := client.Do(req)
+// 	if err != nil {
+// 		err = fmt.Errorf("RelayDashboardAnalysisJson() error getting fleet relay json: %w", err)
+// 		rfs.Logger.Log("err", err)
+// 		return err
+// 	}
+// 	defer response.Body.Close()
 
-	byteValue, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
+// 	byteValue, err := ioutil.ReadAll(response.Body)
+// 	if err != nil {
+// 		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
+// 		rfs.Logger.Log("err", err)
+// 		return err
+// 	}
 
-	json.Unmarshal(byteValue, &analysis)
-	reply.Analysis = analysis
+// 	json.Unmarshal(byteValue, &analysis)
+// 	reply.Analysis = analysis
 
-	return nil
-}
+// 	return nil
+// }
 
 type RelayDashboardJsonReply struct {
 	// Dashboard string `json:"relay_dashboard"`
@@ -255,145 +255,134 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	return nil
 }
 
-type AdminFrontPageArgs struct{}
+// GetServiceURI provides a lookup table for service status URIs,
+// each of which are defined by environment variables at run time.
+//
+// Note that as new status endpoints are added they must be attached at the
+// service mount point in portal.go.
+func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) {
+
+	var serviceURI string
+	var err error
+	switch serviceName {
+	case "RelayGateway":
+		serviceURI = rfs.RelayGatewayURI + "/status"
+	case "RelayFrontEnd":
+		serviceURI = rfs.RelayFrontendURI + "/status"
+	case "RelayBackEndMaster":
+		serviceURI = rfs.RelayFrontendURI + "/master_status"
+	case "RelayForwarder":
+		if rfs.RelayForwarderURI != "" {
+			serviceURI = rfs.RelayForwarderURI + "/status"
+		}
+	case "RelayPusher":
+	case "ServerBackend":
+	case "Billing":
+	case "Analytics":
+	case "Api":
+	case "PortalCruncher":
+	case "Portal":
+	case "Vanity":
+	default:
+		err = fmt.Errorf("service %s does not exist", serviceName)
+	}
+
+	return serviceURI, err
+}
+
+type AdminFrontPageArgs struct {
+	ServiceName string `json:"serviceName"`
+}
 
 type ServiceStatusList struct {
-	RelayGatewayStatus   []string `json:"relayGatewayStatus"`
-	RelayFrontEndStatus  []string `json:"relayFrontEndStatus"`
-	RelayBackEndStatus   []string `json:"relayBackEndStatus"`
-	RelayForwarderStatus []string `json:"relayForwarderStatus"`
-	RelayPusherStatus    []string `json:"relayPusherStatus"`
-	ServerBackendStatus  []string `json:"serverBackendStatus"`
-	BillingStatus        []string `json:"billingStatus"`
-	AnalyticsStatus      []string `json:"analyticsStatus"`
-	ApiStatus            []string `json:"apiStatus"`
-	PortalCruncherStatus []string `json:"portalCruncherStatus"`
-	PortalStatus         []string `json:"portalStatus"`
-	VanityStatus         []string `json:"vanityStatus"`
+	RelayGateway   string `json:"relayGateway"`
+	RelayFrontEnd  string `json:"relayFrontEnd"`
+	RelayBackEnd   string `json:"relayBackEnd"`
+	RelayForwarder string `json:"relayForwarder"`
+	RelayPusher    string `json:"relayPusher"`
+	ServerBackend  string `json:"serverBackend"`
+	Billing        string `json:"billing"`
+	Analytics      string `json:"analytics"`
+	Api            string `json:"api"`
+	PortalCruncher string `json:"portalCruncher"`
+	Portal         string `json:"portal"`
+	Vanity         string `json:"vanity"`
 }
 type AdminFrontPageReply struct {
-	BinFileCreationTime time.Time         `json:"binFileCreationTime"`
-	BinFileAuthor       string            `json:"binFileAuthor"`
-	ServiceStatus       ServiceStatusList `json:"serviceStatusList"`
+	BinFileCreationTime time.Time `json:"binFileCreationTime"`
+	BinFileAuthor       string    `json:"binFileAuthor"`
+	ServiceStatusText   []string  `json:"serviceStatusText"`
 }
 
-// RelayDashboardJson retrieves the JSON representation of the current relay dashboard
-// provided by relay_backend/relay_dashboard_data
+// AdminFrontPage returns the current database.bin file metadata status
+// as well as the status text provided by the provided service. It returns
+// the Analysis section of the RouteMatrix by default.
 func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPageArgs, reply *AdminFrontPageReply) error {
 
 	authHeader := r.Header.Get("Authorization")
+	if args.ServiceName == "" {
+		var analysis routing.JsonMatrixAnalysis
 
-	// relay_frontend/status
-	frontEndURI := rfs.RelayFrontendURI + "/status"
-	client := &http.Client{}
-	req, _ := http.NewRequest("GET", frontEndURI, nil)
-	req.Header.Set("Authorization", authHeader)
+		uri := rfs.RelayFrontendURI + "/relay_dashboard_analysis"
 
-	response, err := client.Do(req)
-	if err != nil {
-		err = fmt.Errorf("AdminFrontPage() error getting relay_frontend/status: %w", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
-	defer response.Body.Close()
-
-	b, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		fmt.Println(err)
-		err := fmt.Errorf("AdminFrontPage() error parsing relay_frontend/status: %v", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
-
-	frontEndText := strings.Split(string(b), "\n")
-	reply.ServiceStatus.RelayFrontEndStatus = append(reply.ServiceStatus.RelayFrontEndStatus, frontEndText...)
-
-	// relay_frontend/master_status
-	backEndMasterURI := rfs.RelayFrontendURI + "/master_status"
-	client = &http.Client{}
-	req, _ = http.NewRequest("GET", backEndMasterURI, nil)
-	req.Header.Set("Authorization", authHeader)
-
-	response, err = client.Do(req)
-	if err != nil {
-		err = fmt.Errorf("AdminFrontPage() error getting relay_frontend/master_status: %w", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
-	defer response.Body.Close()
-
-	b, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		fmt.Println(err)
-		err := fmt.Errorf("AdminFrontPage() error parsing relay_frontend/master_status: %v", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
-
-	backEndText := strings.Split(string(b), "\n")
-	reply.ServiceStatus.RelayBackEndStatus = append(reply.ServiceStatus.RelayBackEndStatus, backEndText...)
-
-	// relay_gateway/status
-	gatewayURI := rfs.RelayGatewayURI + "/status"
-	client = &http.Client{}
-	req, _ = http.NewRequest("GET", gatewayURI, nil)
-	req.Header.Set("Authorization", authHeader)
-
-	response, err = client.Do(req)
-	if err != nil {
-		err = fmt.Errorf("AdminFrontPage() error getting relay_gateway/status: %w", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
-	defer response.Body.Close()
-
-	b, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		fmt.Println(err)
-		err := fmt.Errorf("AdminFrontPage() error parsing relay_gateway/status: %v", err)
-		rfs.Logger.Log("err", err)
-		return err
-	}
-
-	gatewayText := strings.Split(string(b), "\n")
-	reply.ServiceStatus.RelayGatewayStatus = append(reply.ServiceStatus.RelayGatewayStatus, gatewayText...)
-
-	// relay_forwarder/status
-	if rfs.RelayForwarderURI != "" {
-		gatewayURI := rfs.RelayForwarderURI + "/status"
-		client = &http.Client{}
-		req, _ = http.NewRequest("GET", gatewayURI, nil)
+		client := &http.Client{}
+		req, _ := http.NewRequest("GET", uri, nil)
 		req.Header.Set("Authorization", authHeader)
 
-		response, err = client.Do(req)
+		response, err := client.Do(req)
 		if err != nil {
-			err = fmt.Errorf("AdminFrontPage() error getting relay_forwarder/status: %w", err)
+			err = fmt.Errorf("AdminFrontPage() error getting fleet relay dashboard analysis: %w", err)
 			rfs.Logger.Log("err", err)
 			return err
 		}
 		defer response.Body.Close()
 
-		b, err = ioutil.ReadAll(response.Body)
+		byteValue, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			err := fmt.Errorf("AdminFrontPage() error parsing relay_forwarder/status: %v", err)
+			err = fmt.Errorf("AdminFrontPage() error reading /relay_dashboard_analysis HTTP response body: %w", err)
 			rfs.Logger.Log("err", err)
 			return err
 		}
 
-		forwaderText := strings.Split(string(b), "\n")
-		reply.ServiceStatus.RelayForwarderStatus = append(reply.ServiceStatus.RelayForwarderStatus, forwaderText...)
-	} else {
-		reply.ServiceStatus.RelayForwarderStatus = []string{"relay_forwarder dne in dev/local"}
-	}
+		json.Unmarshal(byteValue, &analysis)
 
-	reply.ServiceStatus.RelayPusherStatus = []string{"relay pusher status not implemented yet"}
-	reply.ServiceStatus.ServerBackendStatus = []string{"server backend status not implemented yet"}
-	reply.ServiceStatus.BillingStatus = []string{"billing status not implemented yet"}
-	reply.ServiceStatus.AnalyticsStatus = []string{"analytics status not implemented yet"}
-	reply.ServiceStatus.ApiStatus = []string{"api status not implemented yet"}
-	reply.ServiceStatus.PortalCruncherStatus = []string{"portal cruncher status not implemented yet"}
-	reply.ServiceStatus.PortalStatus = []string{"portal status not implemented yet"}
-	reply.ServiceStatus.VanityStatus = []string{"vanity status not implemented yet"}
+		reply.ServiceStatusText = strings.Split(analysis.String(), "\n")
+
+	} else {
+		serviceURI, err := rfs.GetServiceURI(args.ServiceName)
+		if err != nil {
+			err = fmt.Errorf("AdminFrontPage() error getting service status URI: %w", err)
+			rfs.Logger.Log("err", err)
+			return err
+		} else if serviceURI == "" {
+			reply.ServiceStatusText = []string{fmt.Sprintf("%s has no status endpoint defined", args.ServiceName)}
+		} else {
+			client := &http.Client{}
+			req, _ := http.NewRequest("GET", serviceURI, nil)
+			req.Header.Set("Authorization", authHeader)
+
+			response, err := client.Do(req)
+			if err != nil {
+				err = fmt.Errorf("AdminFrontPage() error getting relay_frontend/status: %w", err)
+				rfs.Logger.Log("err", err)
+				return err
+			}
+			defer response.Body.Close()
+
+			b, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				fmt.Println(err)
+				err := fmt.Errorf("AdminFrontPage() error parsing relay_frontend/status: %v", err)
+				rfs.Logger.Log("err", err)
+				return err
+			}
+
+			serviceStatusText := strings.Split(string(b), "\n")
+			reply.ServiceStatusText = append(reply.ServiceStatusText, serviceStatusText...)
+
+		}
+
+	}
 
 	binFileMetaData, err := rfs.Storage.GetDatabaseBinFileMetaData()
 	if err != nil {
