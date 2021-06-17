@@ -1364,7 +1364,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&entry.UseDebug)
 	stream.SerializeString(&entry.Debug, BillingEntryMaxDebugLength)
 
-	stream.SerializeInteger(&entry.RouteDiversity, 0, 31)
+	stream.SerializeInteger(&entry.RouteDiversity, 0, 32)
 
 	/*
 		2. First slice only
@@ -1572,7 +1572,7 @@ func (entry *BillingEntry2) Validate() bool {
 		}
 	}
 
-	if entry.RouteDiversity < 0 || entry.RouteDiversity > 31 {
+	if entry.RouteDiversity < 0 || entry.RouteDiversity > 32 {
 		fmt.Printf("invalid route diversity\n")
 		return false
 	}
