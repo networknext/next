@@ -1726,6 +1726,9 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		StaleRouteMatrix:                state.StaleRouteMatrix,
 	}
 
+	// Clamp any values to ensure the entry is serialized properly
+	billingEntry2.ClampEntry()
+
 	return &billingEntry2
 }
 
