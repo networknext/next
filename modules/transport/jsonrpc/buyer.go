@@ -303,8 +303,7 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 
 		// if we found the full amount of sessions in one page, return that page number for next time
 		if len(btRows) == MaxHistoricalSessions {
-			fmt.Println("Hit max sessions for the day, returning last page")
-			reply.Page = reply.Page - 1
+			fmt.Println("Hit max sessions for the day")
 			break
 		}
 	}
