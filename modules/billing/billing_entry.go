@@ -756,8 +756,8 @@ func (entry *BillingEntry) Validate() bool {
 	}
 
 	// IMPORTANT: You must update this check when you add new platforms to the SDK
-	if entry.PlatformType < 0 || entry.ConnectionType > 10 {
-		fmt.Printf("invalid connection type\n")
+	if entry.PlatformType < 0 || entry.PlatformType > 10 {
+		fmt.Printf("invalid platform type\n")
 		return false
 	}
 
@@ -1167,12 +1167,12 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 // ------------------------------------------------------------------------
 
 const (
-	BillingEntryVersion2 = uint8(0)
+	BillingEntryVersion2 = uint32(0)
 
 	MaxBillingEntry2Bytes = 4 + // Version
 		4 + // Timestamp
 		8 + // SessionID
-		4 + // SliceNumber
+		1 + 4 + // SliceNumber
 		4 + // DirectRTT
 		4 + // DirectJitter
 		4 + // DirectPacketLoss
@@ -1184,6 +1184,7 @@ const (
 		1 + // Summary
 		1 + // UseDebug
 		4 + BillingEntryMaxDebugLength + // Debug
+		4 + // RouteDiversity
 		8 + // DatacenterID
 		8 + // BuyerID
 		8 + // UserHash
@@ -1219,7 +1220,6 @@ const (
 		BillingEntryMaxRelays*8 + // NextRelays
 		BillingEntryMaxRelays*8 + // NextRelayPrice
 		8 + // TotalPrice
-		4 + // RouteDiversity
 		1 + // Uncommitted
 		1 + // Multipath
 		1 + // RTTReduction
@@ -1237,7 +1237,7 @@ const (
 		1 + // DatacenterNotEnabled
 		1 + // BuyerNotLive
 		1 + // StaleRouteMatrix
-		2 // 2 extra bytes to let size be divisible by 4
+		1 // extra byte to let size be divisible by 4
 )
 
 type BillingEntry2 struct {
@@ -1259,6 +1259,7 @@ type BillingEntry2 struct {
 	Summary             bool
 	UseDebug            bool
 	Debug               string
+	RouteDiversity      int32
 
 	// first slice only
 
@@ -1303,7 +1304,6 @@ type BillingEntry2 struct {
 	NextRelays          [BillingEntryMaxRelays]uint64
 	NextRelayPrice      [BillingEntryMaxRelays]uint64
 	TotalPrice          uint64
-	RouteDiversity      int32
 	Uncommitted         bool
 	Multipath           bool
 	RTTReduction        bool
@@ -1334,7 +1334,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		These values are serialized in every slice
 	*/
 
-	stream.SerializeBits(&entry.Version, 8)
+	stream.SerializeBits(&entry.Version, 32)
 	stream.SerializeBits(&entry.Timestamp, 32)
 	stream.SerializeUint64(&entry.SessionID)
 
@@ -1355,7 +1355,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeInteger(&entry.RealPacketLoss, 0, 100)
 	stream.SerializeBits(&entry.RealPacketLoss_Frac, 8)
-	stream.SerializeBits(&entry.RealJitter, 8)
+	stream.SerializeUint32(&entry.RealJitter)
 
 	stream.SerializeBool(&entry.Next)
 	stream.SerializeBool(&entry.Flagged)
@@ -1363,6 +1363,8 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBool(&entry.UseDebug)
 	stream.SerializeString(&entry.Debug, BillingEntryMaxDebugLength)
+
+	stream.SerializeInteger(&entry.RouteDiversity, 0, 32)
 
 	/*
 		2. First slice only
@@ -1437,7 +1439,6 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		}
 
 		stream.SerializeUint64(&entry.TotalPrice)
-		stream.SerializeInteger(&entry.RouteDiversity, 0, 31)
 		stream.SerializeBool(&entry.Uncommitted)
 		stream.SerializeBool(&entry.Multipath)
 		stream.SerializeBool(&entry.RTTReduction)
@@ -1570,6 +1571,21 @@ func (entry *BillingEntry2) Validate() bool {
 		}
 	}
 
+	if entry.RealJitter < 0 || entry.RealJitter > 1000 {
+		if entry.RealJitter > 1000 {
+			fmt.Printf("RealJitter %v > 1000. Clamping to 1000\n%+v\n", entry.RealJitter, entry)
+			entry.RealJitter = 100
+		} else {
+			fmt.Printf("invalid real jitter\n")
+			return false
+		}
+	}
+
+	if entry.RouteDiversity < 0 || entry.RouteDiversity > 32 {
+		fmt.Printf("invalid route diversity\n")
+		return false
+	}
+
 	// first slice only
 
 	if entry.SliceNumber == 0 {
@@ -1597,8 +1613,8 @@ func (entry *BillingEntry2) Validate() bool {
 		}
 
 		// IMPORTANT: You must update this check when you add new platforms to the SDK
-		if entry.PlatformType < 0 || entry.ConnectionType > 10 {
-			fmt.Printf("invalid connection type\n")
+		if entry.PlatformType < 0 || entry.PlatformType > 10 {
+			fmt.Printf("invalid platform type\n")
 			return false
 		}
 
@@ -1678,11 +1694,6 @@ func (entry *BillingEntry2) Validate() bool {
 			fmt.Printf("invalid num next relays\n")
 			return false
 		}
-
-		if entry.RouteDiversity < 0 || entry.RouteDiversity > 31 {
-			fmt.Printf("invalid route diversity\n")
-			return false
-		}
 	}
 
 	return true
@@ -1741,6 +1752,10 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 	if entry.UseDebug {
 		e["debug"] = entry.Debug
+	}
+
+	if entry.RouteDiversity > 0 {
+		e["routeDiversity"] = int(entry.RouteDiversity)
 	}
 
 	/*
@@ -1844,11 +1859,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 			e["nextRelays"] = nextRelays
 			e["nextRelayPrice"] = nextRelayPrice
-
 		}
 
 		e["totalPrice"] = int(entry.TotalPrice)
-		e["routeDiversity"] = int(entry.RouteDiversity)
 
 		if entry.Uncommitted {
 			e["uncommitted"] = true
