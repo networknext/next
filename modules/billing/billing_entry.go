@@ -1167,12 +1167,12 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 // ------------------------------------------------------------------------
 
 const (
-	BillingEntryVersion2 = uint8(0)
+	BillingEntryVersion2 = uint32(0)
 
 	MaxBillingEntry2Bytes = 4 + // Version
 		4 + // Timestamp
 		8 + // SessionID
-		4 + // SliceNumber
+		1 + 4 + // SliceNumber
 		4 + // DirectRTT
 		4 + // DirectJitter
 		4 + // DirectPacketLoss
@@ -1237,7 +1237,7 @@ const (
 		1 + // DatacenterNotEnabled
 		1 + // BuyerNotLive
 		1 + // StaleRouteMatrix
-		2 // 2 extra bytes to let size be divisible by 4
+		1 // extra byte to let size be divisible by 4
 )
 
 type BillingEntry2 struct {
@@ -1334,7 +1334,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		These values are serialized in every slice
 	*/
 
-	stream.SerializeBits(&entry.Version, 8)
+	stream.SerializeBits(&entry.Version, 32)
 	stream.SerializeBits(&entry.Timestamp, 32)
 	stream.SerializeUint64(&entry.SessionID)
 
@@ -1355,7 +1355,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeInteger(&entry.RealPacketLoss, 0, 100)
 	stream.SerializeBits(&entry.RealPacketLoss_Frac, 8)
-	stream.SerializeBits(&entry.RealJitter, 8)
+	stream.SerializeUint32(&entry.RealJitter)
 
 	stream.SerializeBool(&entry.Next)
 	stream.SerializeBool(&entry.Flagged)
@@ -1439,7 +1439,6 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		}
 
 		stream.SerializeUint64(&entry.TotalPrice)
-		stream.SerializeInteger(&entry.RouteDiversity, 0, 31)
 		stream.SerializeBool(&entry.Uncommitted)
 		stream.SerializeBool(&entry.Multipath)
 		stream.SerializeBool(&entry.RTTReduction)
@@ -1568,6 +1567,16 @@ func (entry *BillingEntry2) Validate() bool {
 			entry.RealPacketLoss = 100
 		} else {
 			fmt.Printf("invalid real packet loss\n")
+			return false
+		}
+	}
+
+	if entry.RealJitter < 0 || entry.RealJitter > 1000 {
+		if entry.RealJitter > 1000 {
+			fmt.Printf("RealJitter %v > 1000. Clamping to 1000\n%+v\n", entry.RealJitter, entry)
+			entry.RealJitter = 100
+		} else {
+			fmt.Printf("invalid real jitter\n")
 			return false
 		}
 	}
