@@ -6,6 +6,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 )
 
@@ -14,7 +15,7 @@ const (
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
-	BillingEntryMaxSDKVersionLength = 11
+	BillingEntryMaxSDKVersionLength = 12
 	BillingEntryMaxDebugLength      = 2048
 	BillingEntryMaxNearRelays       = 32
 	BillingEntryMaxTags             = 8
@@ -756,8 +757,8 @@ func (entry *BillingEntry) Validate() bool {
 	}
 
 	// IMPORTANT: You must update this check when you add new platforms to the SDK
-	if entry.PlatformType < 0 || entry.ConnectionType > 10 {
-		fmt.Printf("invalid connection type\n")
+	if entry.PlatformType < 0 || entry.PlatformType > 10 {
+		fmt.Printf("invalid platform type\n")
 		return false
 	}
 
@@ -1167,12 +1168,12 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 // ------------------------------------------------------------------------
 
 const (
-	BillingEntryVersion2 = uint8(0)
+	BillingEntryVersion2 = uint32(0)
 
 	MaxBillingEntry2Bytes = 4 + // Version
 		4 + // Timestamp
 		8 + // SessionID
-		4 + // SliceNumber
+		1 + 4 + // SliceNumber
 		4 + // DirectRTT
 		4 + // DirectJitter
 		4 + // DirectPacketLoss
@@ -1184,6 +1185,7 @@ const (
 		1 + // Summary
 		1 + // UseDebug
 		4 + BillingEntryMaxDebugLength + // Debug
+		4 + // RouteDiversity
 		8 + // DatacenterID
 		8 + // BuyerID
 		8 + // UserHash
@@ -1219,7 +1221,6 @@ const (
 		BillingEntryMaxRelays*8 + // NextRelays
 		BillingEntryMaxRelays*8 + // NextRelayPrice
 		8 + // TotalPrice
-		4 + // RouteDiversity
 		1 + // Uncommitted
 		1 + // Multipath
 		1 + // RTTReduction
@@ -1237,7 +1238,7 @@ const (
 		1 + // DatacenterNotEnabled
 		1 + // BuyerNotLive
 		1 + // StaleRouteMatrix
-		2 // 2 extra bytes to let size be divisible by 4
+		1 // extra byte to let size be divisible by 4
 )
 
 type BillingEntry2 struct {
@@ -1259,6 +1260,7 @@ type BillingEntry2 struct {
 	Summary             bool
 	UseDebug            bool
 	Debug               string
+	RouteDiversity      int32
 
 	// first slice only
 
@@ -1303,7 +1305,6 @@ type BillingEntry2 struct {
 	NextRelays          [BillingEntryMaxRelays]uint64
 	NextRelayPrice      [BillingEntryMaxRelays]uint64
 	TotalPrice          uint64
-	RouteDiversity      int32
 	Uncommitted         bool
 	Multipath           bool
 	RTTReduction        bool
@@ -1334,7 +1335,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		These values are serialized in every slice
 	*/
 
-	stream.SerializeBits(&entry.Version, 8)
+	stream.SerializeBits(&entry.Version, 32)
 	stream.SerializeBits(&entry.Timestamp, 32)
 	stream.SerializeUint64(&entry.SessionID)
 
@@ -1355,7 +1356,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeInteger(&entry.RealPacketLoss, 0, 100)
 	stream.SerializeBits(&entry.RealPacketLoss_Frac, 8)
-	stream.SerializeBits(&entry.RealJitter, 8)
+	stream.SerializeUint32(&entry.RealJitter)
 
 	stream.SerializeBool(&entry.Next)
 	stream.SerializeBool(&entry.Flagged)
@@ -1363,6 +1364,8 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeBool(&entry.UseDebug)
 	stream.SerializeString(&entry.Debug, BillingEntryMaxDebugLength)
+
+	stream.SerializeInteger(&entry.RouteDiversity, 0, 32)
 
 	/*
 		2. First slice only
@@ -1382,7 +1385,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
 		stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
 		stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
-		stream.SerializeString(&entry.SDKVersion, 12)        // todo: constant
+		stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
 		stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
 		for i := 0; i < int(entry.NumTags); i++ {
 			stream.SerializeUint64(&entry.Tags[i])
@@ -1437,7 +1440,6 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		}
 
 		stream.SerializeUint64(&entry.TotalPrice)
-		stream.SerializeInteger(&entry.RouteDiversity, 0, 31)
 		stream.SerializeBool(&entry.Uncommitted)
 		stream.SerializeBool(&entry.Multipath)
 		stream.SerializeBool(&entry.RTTReduction)
@@ -1570,6 +1572,21 @@ func (entry *BillingEntry2) Validate() bool {
 		}
 	}
 
+	if entry.RealJitter < 0 || entry.RealJitter > 1000 {
+		if entry.RealJitter > 1000 {
+			fmt.Printf("RealJitter %v > 1000. Clamping to 1000\n%+v\n", entry.RealJitter, entry)
+			entry.RealJitter = 100
+		} else {
+			fmt.Printf("invalid real jitter\n")
+			return false
+		}
+	}
+
+	if entry.RouteDiversity < 0 || entry.RouteDiversity > 32 {
+		fmt.Printf("invalid route diversity\n")
+		return false
+	}
+
 	// first slice only
 
 	if entry.SliceNumber == 0 {
@@ -1597,8 +1614,8 @@ func (entry *BillingEntry2) Validate() bool {
 		}
 
 		// IMPORTANT: You must update this check when you add new platforms to the SDK
-		if entry.PlatformType < 0 || entry.ConnectionType > 10 {
-			fmt.Printf("invalid connection type\n")
+		if entry.PlatformType < 0 || entry.PlatformType > 10 {
+			fmt.Printf("invalid platform type\n")
 			return false
 		}
 
@@ -1678,11 +1695,6 @@ func (entry *BillingEntry2) Validate() bool {
 			fmt.Printf("invalid num next relays\n")
 			return false
 		}
-
-		if entry.RouteDiversity < 0 || entry.RouteDiversity > 31 {
-			fmt.Printf("invalid route diversity\n")
-			return false
-		}
 	}
 
 	return true
@@ -1706,6 +1718,227 @@ func (entry *BillingEntry2) CheckNaNOrInf() (bool, []string) {
 	}
 
 	return nanOrInfExists, nanOrInfFields
+}
+
+// To save bits during serialization, clamp integer and string fields if they go beyond the min
+// or max values as defined in BillingEntry2.Serialize()
+func (entry *BillingEntry2) ClampEntry() {
+
+	// always
+
+	if entry.DirectRTT < 0 {
+		core.Error("BillingEntry2 DirectRTT (%d) < 0. Clamping to 0.", entry.DirectRTT)
+		entry.DirectRTT = 0
+	}
+
+	if entry.DirectRTT > 1023 {
+		core.Debug("BillingEntry2 DirectRTT (%d) > 1023. Clamping to 1023.", entry.DirectRTT)
+		entry.DirectRTT = 1023
+	}
+
+	if entry.DirectJitter < 0 {
+		core.Error("BillingEntry2 DirectJitter (%d) < 0. Clamping to 0.", entry.DirectJitter)
+		entry.DirectJitter = 0
+	}
+
+	if entry.DirectJitter > 255 {
+		core.Debug("BillingEntry2 DirectJitter (%d) > 255. Clamping to 255.", entry.DirectJitter)
+		entry.DirectJitter = 255
+	}
+
+	if entry.DirectPacketLoss < 0 {
+		core.Error("BillingEntry2 DirectPacketLoss (%d) < 0. Clamping to 0.", entry.DirectPacketLoss)
+		entry.DirectPacketLoss = 0
+	}
+
+	if entry.DirectPacketLoss > 100 {
+		core.Debug("BillingEntry2 DirectPacketLoss (%d) > 100. Clamping to 100.", entry.DirectPacketLoss)
+		entry.DirectPacketLoss = 100
+	}
+
+	if entry.RealPacketLoss < 0 {
+		core.Error("BillingEntry2 RealPacketLoss (%d) < 0. Clamping to 0.", entry.RealPacketLoss)
+		entry.RealPacketLoss = 0
+	}
+
+	if entry.RealPacketLoss > 100 {
+		core.Debug("BillingEntry2 RealPacketLoss (%d) > 100. Clamping to 100.", entry.RealPacketLoss)
+		entry.RealPacketLoss = 100
+	}
+
+	if len(entry.Debug) > BillingEntryMaxDebugLength {
+		core.Debug("BillingEntry2 Debug length (%d) > BillingEntryMaxDebugLength (%d). Clamping to BillingEntryMaxDebugLength (%d)", len(entry.Debug), BillingEntryMaxDebugLength, BillingEntryMaxDebugLength)
+		entry.Debug = entry.Debug[:BillingEntryMaxDebugLength]
+	}
+
+	if entry.RouteDiversity < 0 {
+		core.Error("BillingEntry2 RouteDiversity (%d) < 0. Clamping to 0.", entry.RouteDiversity)
+		entry.RouteDiversity = 0
+	}
+
+	if entry.RouteDiversity > 32 {
+		core.Debug("BillingEntry2 RouteDiversity (%d) > 32. Clamping to 32.", entry.RouteDiversity)
+		entry.RouteDiversity = 32
+	}
+
+	// first slice only
+
+	if entry.SliceNumber == 0 {
+
+		if len(entry.ISP) > BillingEntryMaxISPLength {
+			core.Debug("BillingEntry2 ISP length (%d) > BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength (%d)", len(entry.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength)
+			entry.ISP = entry.ISP[:BillingEntryMaxISPLength]
+		}
+
+		if entry.ConnectionType < 0 {
+			core.Error("BillingEntry2 ConnectionType (%d) < 0. Clamping to 0.", entry.ConnectionType)
+			entry.ConnectionType = 0
+		}
+
+		// IMPORTANT: You must update this check if you ever add a new connection type in the SDK
+		if entry.ConnectionType > 3 {
+			core.Debug("BillingEntry2 ConnectionType (%d) > 3. Clamping to 3.", entry.ConnectionType)
+			entry.ConnectionType = 3
+		}
+
+		if entry.PlatformType < 0 {
+			core.Error("BillingEntry2 PlatformType (%d) < 0. Clamping to 0.", entry.PlatformType)
+			entry.PlatformType = 0
+		}
+
+		// IMPORTANT: You must update this check when you add new platforms to the SDK
+		if entry.PlatformType > 10 {
+			core.Debug("BillingEntry2 PlatformType (%d) > 10. Clamping to 10.", entry.PlatformType)
+			entry.PlatformType = 10
+		}
+
+		if len(entry.SDKVersion) > BillingEntryMaxSDKVersionLength {
+			core.Debug("BillingEntry2 SDKVersion length (%d) > BillingEntryMaxSDKVersionLength (%d). Clamping to BillingEntryMaxSDKVersionLength (%d)", len(entry.SDKVersion), BillingEntryMaxSDKVersionLength, BillingEntryMaxSDKVersionLength)
+			entry.SDKVersion = entry.SDKVersion[:BillingEntryMaxSDKVersionLength]
+		}
+
+		if entry.NumTags < 0 {
+			core.Error("BillingEntry2 NumTags (%d) < 0. Clamping to 0.", entry.NumTags)
+			entry.NumTags = 0
+		}
+
+		if entry.NumTags > BillingEntryMaxTags {
+			core.Debug("BillingEntry2 NumTags (%d) > BillingEntryMaxTags (%d). Clamping to BillingEntryMaxTags (%d).", entry.NumTags, BillingEntryMaxTags, BillingEntryMaxTags)
+			entry.NumTags = BillingEntryMaxTags
+		}
+	}
+
+	// summary slice only
+
+	if entry.Summary {
+
+		if entry.NumNearRelays < 0 {
+			core.Error("BillingEntry2 NumNearRelays (%d) < 0. Clamping to 0.", entry.NumNearRelays)
+			entry.NumNearRelays = 0
+		}
+
+		if entry.NumNearRelays > BillingEntryMaxNearRelays {
+			core.Debug("BillingEntry2 NumNearRelays (%d) > BillingEntryMaxNearRelays (%d). Clamping to BillingEntryMaxNearRelays (%d).", entry.NumNearRelays, BillingEntryMaxNearRelays, BillingEntryMaxNearRelays)
+			entry.NumNearRelays = BillingEntryMaxNearRelays
+		}
+
+		for i := 0; i < int(entry.NumNearRelays); i++ {
+			if entry.NearRelayRTTs[i] < 0 {
+				core.Error("BillingEntry2 NearRelayRTT[%d] (%d) < 0. Clamping to 0.", i, entry.NearRelayRTTs[i])
+				entry.NearRelayRTTs[i] = 0
+			}
+
+			if entry.NearRelayRTTs[i] > 255 {
+				core.Debug("BillingEntry2 NearRelayRTTs[%d] (%d) > 255. Clamping to 255.", i, entry.NearRelayRTTs[i])
+				entry.NearRelayRTTs[i] = 255
+			}
+
+			if entry.NearRelayJitters[i] < 0 {
+				core.Error("BillingEntry2 NearRelayRTT[%d] (%d) < 0. Clamping to 0.", i, entry.NearRelayJitters[i])
+				entry.NearRelayJitters[i] = 0
+			}
+
+			if entry.NearRelayJitters[i] > 255 {
+				core.Debug("BillingEntry2 NearRelayJitters[%d] (%d) > 255. Clamping to 255.", i, entry.NearRelayJitters[i])
+				entry.NearRelayJitters[i] = 255
+			}
+
+			if entry.NearRelayPacketLosses[i] < 0 {
+				core.Error("BillingEntry2 NearRelayRTT[%d] (%d) < 0. Clamping to 0.", i, entry.NearRelayPacketLosses[i])
+				entry.NearRelayPacketLosses[i] = 0
+			}
+
+			if entry.NearRelayPacketLosses[i] > 100 {
+				core.Debug("BillingEntry2 NearRelayPacketLosses[%d] (%d) > 100. Clamping to 100.", i, entry.NearRelayPacketLosses[i])
+				entry.NearRelayPacketLosses[i] = 100
+			}
+		}
+	}
+
+	// network next only
+
+	if entry.Next {
+
+		if entry.NextRTT < 0 {
+			core.Error("BillingEntry2 NextRTT (%d) < 0. Clamping to 0.", entry.NextRTT)
+			entry.NextRTT = 0
+		}
+
+		if entry.NextRTT > 255 {
+			core.Debug("BillingEntry2 NextRTT (%d) > 255. Clamping to 255.", entry.NextRTT)
+			entry.NextRTT = 255
+		}
+
+		if entry.NextJitter < 0 {
+			core.Error("BillingEntry2 NextJitter (%d) < 0. Clamping to 0.", entry.NextJitter)
+			entry.NextJitter = 0
+		}
+
+		if entry.NextJitter > 255 {
+			core.Debug("BillingEntry2 NextJitter (%d) > 255. Clamping to 255.", entry.NextJitter)
+			entry.NextJitter = 255
+		}
+
+		if entry.NextPacketLoss < 0 {
+			core.Error("BillingEntry2 NextPacketLoss (%d) < 0. Clamping to 0.", entry.NextPacketLoss)
+			entry.NextPacketLoss = 0
+		}
+
+		if entry.NextPacketLoss > 100 {
+			core.Debug("BillingEntry2 NextPacketLoss (%d) > 100. Clamping to 100.", entry.NextPacketLoss)
+			entry.NextPacketLoss = 100
+		}
+
+		if entry.PredictedNextRTT < 0 {
+			core.Error("BillingEntry2 PredictedNextRTT (%d) < 0. Clamping to 0.", entry.PredictedNextRTT)
+			entry.PredictedNextRTT = 0
+		}
+
+		if entry.PredictedNextRTT > 255 {
+			core.Debug("BillingEntry2 PredictedNextRTT (%d) > 255. Clamping to 255.", entry.PredictedNextRTT)
+			entry.PredictedNextRTT = 255
+		}
+
+		if entry.NearRelayRTT < 0 {
+			core.Error("BillingEntry2 NearRelayRTT (%d) < 0. Clamping to 0.", entry.NearRelayRTT)
+			entry.NearRelayRTT = 0
+		}
+
+		if entry.NearRelayRTT > 255 {
+			core.Debug("BillingEntry2 NearRelayRTT (%d) > 255. Clamping to 255.", entry.NearRelayRTT)
+			entry.NearRelayRTT = 255
+		}
+
+		if entry.NumNextRelays < 0 {
+			core.Error("BillingEntry2 NumNextRelays (%d) < 0. Clamping to 0.", entry.NumNextRelays)
+			entry.NumNextRelays = 0
+		}
+
+		if entry.NumNextRelays > BillingEntryMaxRelays {
+			core.Debug("BillingEntry2 NumNextRelays (%d) > BillingEntryMaxRelays (%d). Clamping to BillingEntryMaxRelays (%d).", entry.NumNextRelays, BillingEntryMaxRelays, BillingEntryMaxRelays)
+			entry.NumNextRelays = BillingEntryMaxRelays
+		}
+	}
 }
 
 func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
@@ -1741,6 +1974,10 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 	if entry.UseDebug {
 		e["debug"] = entry.Debug
+	}
+
+	if entry.RouteDiversity > 0 {
+		e["routeDiversity"] = int(entry.RouteDiversity)
 	}
 
 	/*
@@ -1844,11 +2081,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 			e["nextRelays"] = nextRelays
 			e["nextRelayPrice"] = nextRelayPrice
-
 		}
 
 		e["totalPrice"] = int(entry.TotalPrice)
-		e["routeDiversity"] = int(entry.RouteDiversity)
 
 		if entry.Uncommitted {
 			e["uncommitted"] = true
