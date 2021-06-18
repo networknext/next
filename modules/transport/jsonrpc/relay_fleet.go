@@ -31,6 +31,7 @@ type RelayFleetService struct {
 	Logger            log.Logger
 	Storage           storage.Storer
 	Env               string
+	MondayApiKey      string
 }
 
 // RelayFleetEntry represents a line in the CSV file provided
@@ -274,6 +275,7 @@ type AdminFrontPageReply struct {
 	ServiceStatusText   []string  `json:"serviceStatusText"`
 	ServiceNameList     []string  `json:"serviceNameList"`
 	SelectedService     string    `json:"selectedService"`
+	MondayApiKey        string    `json:"mondayApiKey"`
 }
 
 // AdminFrontPage returns the current database.bin file metadata status
@@ -361,6 +363,8 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	}
 
 	reply.ServiceNameList = ServiceStatusList
+	reply.MondayApiKey = rfs.MondayApiKey
+
 	return nil
 }
 
