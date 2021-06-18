@@ -67,10 +67,6 @@ func opsRelays(
 		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed", "State", "IP Address", "Notes"})
 
 	for _, relay := range reply.Relays {
-		// TODO: remove once routing.Relay.State is updated
-		if relay.State == "decommissioned" {
-			relay.State = "removed"
-		}
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
 			handleRunTimeError(fmt.Sprintf("could not parse invalid relay state %s\n", relay.State), 1)
@@ -289,13 +285,14 @@ func relays(
 	}
 
 	for _, relay := range reply.Relays {
-		// TODO: remove once routing.Relay.State is updated
-		if relay.State == "decommissioned" {
-			relay.State = "removed"
-		}
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
 			handleRunTimeError(fmt.Sprintf("could not parse invalid relay state %s\n", relay.State), 0)
+		}
+
+		// TODO: fix once routing.Relay.State is updated
+		if relay.State == "decommissioned" {
+			relay.State = "removed"
 		}
 
 		includeRelay := true
