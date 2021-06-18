@@ -15,7 +15,7 @@ const (
 
 	BillingEntryMaxRelays           = 5
 	BillingEntryMaxISPLength        = 64
-	BillingEntryMaxSDKVersionLength = 12
+	BillingEntryMaxSDKVersionLength = 11
 	BillingEntryMaxDebugLength      = 2048
 	BillingEntryMaxNearRelays       = 32
 	BillingEntryMaxTags             = 8
