@@ -239,15 +239,14 @@ func createStagingDatabaseBin(numRelays int) {
 
 	// Fill in sellers
 	seller := routing.Seller{
-		ID:                        "stagingseller",
-		Name:                      "staging seller",
-		CompanyCode:               "stagingseller",
-		ShortName:                 "stagingseller",
-		Secret:                    false,
-		IngressPriceNibblinsPerGB: routing.Nibblin(2000000000),
-		EgressPriceNibblinsPerGB:  routing.Nibblin(2000000000),
-		DatabaseID:                1,
-		CustomerID:                2,
+		ID:                       "stagingseller",
+		Name:                     "staging seller",
+		CompanyCode:              "stagingseller",
+		ShortName:                "stagingseller",
+		Secret:                   false,
+		EgressPriceNibblinsPerGB: routing.Nibblin(2000000000),
+		DatabaseID:               1,
+		CustomerID:               2,
 	}
 	dbWrapper.SellerMap[seller.ID] = seller
 
@@ -338,16 +337,14 @@ func createStagingDatabaseBin(numRelays int) {
 	// Create datacenter maps for next and stagingseller
 	dcMapsNext := make(map[uint64]routing.DatacenterMap)
 	dcMapsStagingSeller := make(map[uint64]routing.DatacenterMap)
-	for dcID, datacenter := range dbWrapper.DatacenterMap {
+	for dcID, _ := range dbWrapper.DatacenterMap {
 		dcMapNext := routing.DatacenterMap{
 			BuyerID:      buyerNext.ID,
 			DatacenterID: dcID,
-			Alias:        datacenter.Name,
 		}
 		dcMapStagingSeller := routing.DatacenterMap{
 			BuyerID:      buyerStagingSeller.ID,
 			DatacenterID: dcID,
-			Alias:        datacenter.Name,
 		}
 		// Add the datacenter map to the mapping
 		dcMapsNext[dcID] = dcMapNext
@@ -592,7 +589,7 @@ func checkDCMapsInBinFile() {
 				if datacenter, ok := incomingDB.DatacenterMap[dcMap.DatacenterID]; ok {
 					dcName = datacenter.Name
 				}
-				fmt.Printf("\t\t%-25s %-16s\n", dcName, dcMap.Alias)
+				fmt.Printf("\t\t%-25s\n", dcName)
 			}
 			fmt.Println()
 		}

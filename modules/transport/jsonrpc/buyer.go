@@ -180,11 +180,14 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		// current page date is today - page number * 1 day. Add 1 day to compensate for filter excluding end date
 		currentPageDate := today.Add(-time.Duration((reply.Page - 1) * 24 * int(time.Hour)))
 
-		// we want the next page so increase the page count
-		reply.Page = reply.Page + 1
+		fmt.Println()
 
-		// get next page date using new page number
+		fmt.Printf("Current page date: %s\n", currentPageDate.String())
+
+		// get next page date
 		nextPageDate := today.Add(-time.Duration(reply.Page * 24 * int(time.Hour)))
+
+		fmt.Printf("Next page date: %s\n", nextPageDate.String())
 
 		currentPage := reply.Page
 
@@ -246,6 +249,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	sort.Slice(reply.Sessions, func(i, j int) bool {
 		return reply.Sessions[i].Timestamp.After(reply.Sessions[j].Timestamp)
 	})
+	fmt.Println()
 
 	return nil
 }
@@ -280,6 +284,9 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 
 		nextPageDate = nextPageDate.Add(-24 * time.Hour)
 		currentPageDate = currentPageDate.Add(-24 * time.Hour)
+
+		fmt.Printf("Current page date: %s\n", currentPageDate.String())
+		fmt.Printf("Next page date: %s\n", nextPageDate.String())
 
 		// Gets the rows within [nextPageDate, currentPageDate)
 		chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
@@ -1488,7 +1495,6 @@ type DatacenterMapsArgs struct {
 }
 
 type DatacenterMapsFull struct {
-	Alias          string
 	DatacenterName string
 	DatacenterID   string
 	BuyerName      string
@@ -1546,7 +1552,6 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		}
 
 		dcmFull := DatacenterMapsFull{
-			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      customer.Name,
@@ -1586,7 +1591,6 @@ func (s *BuyersService) JSRemoveDatacenterMap(r *http.Request, args *JSRemoveDat
 	}
 
 	dcMap := routing.DatacenterMap{
-		Alias:        args.Alias,
 		BuyerID:      buyerID,
 		DatacenterID: datacenterID,
 	}
@@ -1679,7 +1683,6 @@ func (s *BuyersService) JSAddDatacenterMap(r *http.Request, args *JSAddDatacente
 	dcMap := routing.DatacenterMap{
 		BuyerID:      buyerID,
 		DatacenterID: datacenterID,
-		Alias:        args.Alias,
 	}
 
 	return s.Storage.AddDatacenterMap(ctx, dcMap)
