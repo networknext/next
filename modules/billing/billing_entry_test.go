@@ -1,7 +1,6 @@
 package billing_test
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -14,7 +13,7 @@ import (
 )
 
 // Returns a BillingEntry2 struct with all the data filled out and each condition flag disabled
-func getTestBillingEntry2() (*billing.BillingEntry2) {
+func getTestBillingEntry2() *billing.BillingEntry2 {
 	numTags := rand.Intn(billing.BillingEntryMaxTags)
 	var tags [billing.BillingEntryMaxTags]uint64
 	for i := 0; i < numTags; i++ {
@@ -138,17 +137,14 @@ func writeReadClampBillingEntry2(entry *billing.BillingEntry2) ([]byte, *billing
 		return data, &billing.BillingEntry2{}, err
 	}
 
-	fmt.Printf("entry: %+v\n", entry)
+	readEntry := &billing.BillingEntry2{}
+	err = billing.ReadBillingEntry2(readEntry, data)
 
-	entryRead := &billing.BillingEntry2{}
-
-	err = billing.ReadBillingEntry2(entryRead, data)
-
-	return data, entryRead, err
+	return data, readEntry, err
 }
 
 func TestSerializeBillingEntry2_Empty(t *testing.T) {
-	
+
 	t.Parallel()
 
 	const BufferSize = 256
@@ -173,25 +169,25 @@ func TestSerializeBillingEntry2_Empty(t *testing.T) {
 }
 
 func TestWriteBillingEntry2_Empty(t *testing.T) {
-	
+
 	t.Parallel()
 
 	entry := &billing.BillingEntry2{}
 	data, err := billing.WriteBillingEntry2(entry)
-	
+
 	assert.NotEmpty(t, data)
-	assert.NoError(t, err) 
+	assert.NoError(t, err)
 }
 
 func TestReadBillingEntry2_Empty(t *testing.T) {
-	
+
 	t.Parallel()
 
 	entry := &billing.BillingEntry2{}
 	data, err := billing.WriteBillingEntry2(entry)
-	
+
 	assert.NotEmpty(t, data)
-	assert.NoError(t, err) 
+	assert.NoError(t, err)
 
 	entryRead := &billing.BillingEntry2{}
 
@@ -201,19 +197,19 @@ func TestReadBillingEntry2_Empty(t *testing.T) {
 }
 
 func TestSerializeBillingEntry2_EveryCondition(t *testing.T) {
-	
+
 	t.Parallel()
 
 	// We would never actually run into the case where
 	// the slice is 0, on next, summary is true, and has an error state,
 	// but it should still serialize properly
-	
+
 	entry := getTestBillingEntry2()
 	entry.SliceNumber = 0
 	entry.Next = true
 	entry.Summary = true
 	entry.Uncommitted = false
-	entry.FallbackToDirect = true	
+	entry.FallbackToDirect = true
 
 	data, err := writeReadEqualBillingEntry2(entry)
 	assert.NotEmpty(t, data)
@@ -221,7 +217,7 @@ func TestSerializeBillingEntry2_EveryCondition(t *testing.T) {
 }
 
 func TestSerializeBillingEntry2_InitialSlice(t *testing.T) {
-	
+
 	t.Parallel()
 
 	entry := getTestBillingEntry2()
@@ -233,7 +229,7 @@ func TestSerializeBillingEntry2_InitialSlice(t *testing.T) {
 }
 
 func TestSerializeBillingEntry2_DecidingToTakeNext(t *testing.T) {
-	
+
 	t.Parallel()
 
 	entry := getTestBillingEntry2()
@@ -249,7 +245,7 @@ func TestSerializeBillingEntry2_DecidingToTakeNext(t *testing.T) {
 }
 
 func TestSerializeBillingEntry2_OnNext(t *testing.T) {
-	
+
 	t.Parallel()
 
 	entry := getTestBillingEntry2()
@@ -264,7 +260,7 @@ func TestSerializeBillingEntry2_OnNext(t *testing.T) {
 }
 
 func TestSerializeBillingEntry2_OnNext_RouteChanged(t *testing.T) {
-	
+
 	t.Parallel()
 
 	entry := getTestBillingEntry2()
@@ -280,12 +276,12 @@ func TestSerializeBillingEntry2_OnNext_RouteChanged(t *testing.T) {
 }
 
 func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
-	
+
 	t.Parallel()
 
 	t.Run("error state - fallback to direct", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. fallback to direct."
 		entry.Uncommitted = true
@@ -298,7 +294,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 
 	t.Run("error state - multipath veto", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. multipath veto."
 		entry.Uncommitted = true
@@ -311,7 +307,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 
 	t.Run("error state - Mispredicted", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. Mispredicted."
 		entry.Uncommitted = true
@@ -324,7 +320,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 
 	t.Run("error state - vetoed", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. vetoed."
 		entry.Uncommitted = true
@@ -337,7 +333,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 
 	t.Run("error state - latency worse", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. latency worse."
 		entry.Uncommitted = true
@@ -350,20 +346,20 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 
 	t.Run("error state - no route", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. no route."
 		entry.Uncommitted = true
-		entry.NoRoute= true
+		entry.NoRoute = true
 
 		data, err := writeReadEqualBillingEntry2(entry)
 		assert.NotEmpty(t, data)
 		assert.NoError(t, err)
 	})
-	
+
 	t.Run("error state - next latency too high", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. next latency too high."
 		entry.Uncommitted = true
@@ -376,7 +372,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 
 	t.Run("error state - commit veto", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. commit veto."
 		entry.Uncommitted = true
@@ -391,7 +387,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 		// We wouldn't be on next for this case, but still need to test
 
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. unknown datacenter."
 		entry.Uncommitted = true
@@ -406,7 +402,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 		// We wouldn't be on next for this case, but still need to test
 
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. datacenter not enabled."
 		entry.Uncommitted = true
@@ -421,7 +417,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 		// We wouldn't be on next for this case, but still need to test
 
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. buyer not live."
 		entry.Uncommitted = true
@@ -434,7 +430,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 
 	t.Run("error state - stale route matrix", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		entry.Next = true 
+		entry.Next = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. stale route matrix."
 		entry.Uncommitted = true
@@ -451,21 +447,21 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 	t.Parallel()
 
 	t.Run("error state - fallback to direct", func(t *testing.T) {
-			entry := getTestBillingEntry2()
-			 
-			entry.UseDebug = true
-			entry.Debug = "on direct. fallback to direct."
-			entry.Uncommitted = true
-			entry.FallbackToDirect = true
+		entry := getTestBillingEntry2()
 
-			data, err := writeReadEqualBillingEntry2(entry)
-			assert.NotEmpty(t, data)
-			assert.NoError(t, err)
-		})
+		entry.UseDebug = true
+		entry.Debug = "on direct. fallback to direct."
+		entry.Uncommitted = true
+		entry.FallbackToDirect = true
+
+		data, err := writeReadEqualBillingEntry2(entry)
+		assert.NotEmpty(t, data)
+		assert.NoError(t, err)
+	})
 
 	t.Run("error state - multipath veto", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. multipath veto."
 		entry.Uncommitted = true
@@ -478,7 +474,7 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 
 	t.Run("error state - Mispredicted", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. Mispredicted."
 		entry.Uncommitted = true
@@ -491,7 +487,7 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 
 	t.Run("error state - vetoed", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. vetoed."
 		entry.Uncommitted = true
@@ -504,7 +500,7 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 
 	t.Run("error state - latency worse", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. latency worse."
 		entry.Uncommitted = true
@@ -517,20 +513,20 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 
 	t.Run("error state - no route", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. no route."
 		entry.Uncommitted = true
-		entry.NoRoute= true
+		entry.NoRoute = true
 
 		data, err := writeReadEqualBillingEntry2(entry)
 		assert.NotEmpty(t, data)
 		assert.NoError(t, err)
 	})
-	
+
 	t.Run("error state - next latency too high", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. next latency too high."
 		entry.Uncommitted = true
@@ -543,7 +539,7 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 
 	t.Run("error state - commit veto", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. commit veto."
 		entry.Uncommitted = true
@@ -556,7 +552,7 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 
 	t.Run("error state - unknown datacenter", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. unknown datacenter."
 		entry.Uncommitted = true
@@ -569,7 +565,7 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 
 	t.Run("error state - datacenter not enabled", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. datacenter not enabled."
 		entry.Uncommitted = true
@@ -582,7 +578,7 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 
 	t.Run("error state - buyer not live", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. buyer not live."
 		entry.Uncommitted = true
@@ -595,7 +591,7 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 
 	t.Run("error state - stale route matrix", func(t *testing.T) {
 		entry := getTestBillingEntry2()
-		 
+
 		entry.UseDebug = true
 		entry.Debug = "on direct. stale route matrix."
 		entry.Uncommitted = true
@@ -608,7 +604,7 @@ func TestSerializeBillingEntry2_ErrorState_Direct(t *testing.T) {
 }
 
 func TestSerializeBillingEntry2_Summary_Direct(t *testing.T) {
-	
+
 	t.Parallel()
 
 	entry := getTestBillingEntry2()
@@ -620,7 +616,7 @@ func TestSerializeBillingEntry2_Summary_Direct(t *testing.T) {
 }
 
 func TestSerializeBillingEntry2_Summary_Next(t *testing.T) {
-	
+
 	t.Parallel()
 
 	entry := getTestBillingEntry2()
@@ -642,27 +638,24 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		var data []byte
 		var entry *billing.BillingEntry2
 		var readEntry *billing.BillingEntry2
-		var err error 
+		var err error
 
 		entry = getTestBillingEntry2()
-		entry.DirectJitter = int32(-1)
+		entry.DirectRTT = -1
 
 		data, readEntry, err = writeReadClampBillingEntry2(entry)
 		assert.NotEmpty(t, data)
 		assert.NoError(t, err)
 		assert.NotEqual(t, entry, readEntry)
-		assert.Equal(t, readEntry.DirectJitter, int32(0))
-		
+		assert.Equal(t, int32(0), readEntry.DirectRTT)
 
 		entry = getTestBillingEntry2()
-		entry.DirectJitter = int32(1024)
-		assert.Equal(t, int32(1024), entry.DirectJitter)
-
+		entry.DirectRTT = 1024
 		data, readEntry, err = writeReadClampBillingEntry2(entry)
 		assert.NotEmpty(t, data)
 		assert.NoError(t, err)
 		assert.NotEqual(t, entry, readEntry)
-		assert.Equal(t, readEntry.DirectJitter, int32(1023))
+		assert.Equal(t, int32(1023), readEntry.DirectRTT)
 
 	})
 }
