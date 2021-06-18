@@ -51,11 +51,11 @@ static void next_randombytes_stir()
 {
 }
 
-static void next_randombytes_buf( void * const buf, const size_t size )
+static void next_randombytes_buf( void * const buf, const size_t size_const )
 {
     // IMPORTANT: sceRandomGetRandomNumber can only do max of SCE_RANDOM_MAX_SIZE bytes at a time. why god why.
     uint8_t * start = (uint8_t*) buf;
-    uint8_t * finish = start + size;
+    uint8_t * finish = start + size_const;
     uint8_t * p = start;
     while ( p < finish )
     {
