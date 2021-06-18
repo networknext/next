@@ -10207,7 +10207,6 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(3)
 
-    bool resolve_hostname_failed;
     bool resolve_hostname_finished;
     next_address_t resolve_hostname_result;
     next_platform_mutex_t resolve_hostname_mutex;
@@ -10272,12 +10271,9 @@ bool next_autodetect_google( char * output )
     bool in_gcp = false;
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
-        if ( strstr( buffer, "google_authorized_keys" ) != NULL )
-        {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: running in google cloud" );
-            in_gcp = true;
-            break;
-        }
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: running in google cloud" );
+        in_gcp = true;
+        break;
     }
     pclose( file );
 
@@ -10786,7 +10782,6 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
     server->state = NEXT_SERVER_STATE_INITIALIZING;
     server->resolving_hostname = true;
     server->resolve_hostname_finished = false;
-    server->resolve_hostname_failed = false;
     server->next_resolve_hostname_time = next_time() + 25.0; // todo -- 5.0*60.0 + ( next_random_float() * 5.0*60.0 );
     server->first_backend_server_init = 0.0;
 }
@@ -12477,7 +12472,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
     {
         next_platform_mutex_guard( &server->resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
-        server->resolve_hostname_failed = false;
         server->resolve_hostname_result = address;
     }
     else 
@@ -12485,7 +12479,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to resolve backend hostname: %s", hostname );
         next_platform_mutex_guard( &server->resolve_hostname_mutex );
         server->resolve_hostname_finished = true;
-        server->resolve_hostname_failed = true;
         memset( &server->resolve_hostname_result, 0, sizeof(next_address_t) );
         NEXT_PLATFORM_THREAD_RETURN();
     }
@@ -12575,13 +12568,11 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         return true;
 
     bool finished = false;
-    bool failed = false;
     next_address_t result;
     memset( &result, 0, sizeof(next_address_t) );
     {
         next_platform_mutex_guard( &server->resolve_hostname_mutex );
         finished = server->resolve_hostname_finished;
-        failed = server->resolve_hostname_failed;
         result = server->resolve_hostname_result;
     }
 
@@ -12607,13 +12598,15 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         next_printf( NEXT_LOG_LEVEL_INFO, "server in direct only mode" );
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
         server->resolving_hostname = false;
-        server->resolve_hostname_failed = true;
         next_server_notify_failed_to_resolve_hostname_t * notify = (next_server_notify_failed_to_resolve_hostname_t*) next_malloc( server->context, sizeof( next_server_notify_failed_to_resolve_hostname_t ) );
         notify->type = NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME;
         {
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );
         }
+
+        // todo: gotta make sure the server keeps trying to initialize
+
         return true;
     }
 
