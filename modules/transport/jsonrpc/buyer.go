@@ -134,6 +134,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		return err
 	}
 	reply.Sessions = make([]UserSession, 0)
+	sessionIDs := make([]string, 0)
 
 	var sessionSlice transport.SessionSlice
 
@@ -159,6 +160,64 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		return err
 	}
 	userHash := fmt.Sprintf("%016x", hash.Sum64())
+
+	// Fetch live sessions if there are any
+	liveSessions, err := s.FetchCurrentTopSessions(r, "")
+	if err != nil {
+		err = fmt.Errorf("UserSessions() failed to fetch live sessions")
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	for _, session := range liveSessions {
+		// Check both the ID, hex of ID, and the hash just in case the ID is actually a hash from the top sessions table or decimal hash
+		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) || hexUserID == fmt.Sprintf("%016x", session.UserHash) {
+			sessionSlicesClient := s.RedisPoolSessionSlices.Get()
+			defer sessionSlicesClient.Close()
+
+			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
+			if err != nil && err != redis.ErrNil {
+				err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("UserSessions() failed getting session slices")
+				return err
+			}
+
+			// If a slice exists, add the session and the timestamp
+			if len(slices) > 0 {
+				sliceString := strings.Split(slices[0], "|")
+				if err := sessionSlice.ParseRedisString(sliceString); err != nil {
+					err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+
+				buyer, err := s.Storage.Buyer(session.BuyerID)
+				if err != nil {
+					err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
+					session.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
+				}
+
+				reply.Sessions = append(reply.Sessions, UserSession{
+					Meta:      session,
+					Timestamp: sessionSlice.Timestamp.UTC(),
+				})
+			} else {
+				// Increment counter
+				s.Metrics.NoSlicesFailure.Add(1)
+			}
+		}
+	}
 
 	if s.UseBigtable {
 		var rowsByHash []bigtable.Row
@@ -226,19 +285,21 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			}
 		}
 
+		liveIDString := strings.Join(sessionIDs, ",")
+
 		switch searchType {
 		case 0:
-			if err = s.GetHistoricalSlices(r, reply, rowsByHash, sessionSlice); err != nil {
+			if err = s.GetHistoricalSlices(r, reply, liveIDString, rowsByHash, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 		case 1:
-			if err = s.GetHistoricalSlices(r, reply, rowsByID, sessionSlice); err != nil {
+			if err = s.GetHistoricalSlices(r, reply, liveIDString, rowsByID, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 		case 2:
-			if err = s.GetHistoricalSlices(r, reply, rowsByHexID, sessionSlice); err != nil {
+			if err = s.GetHistoricalSlices(r, reply, liveIDString, rowsByHexID, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
@@ -311,7 +372,7 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 	return btRows, nil
 }
 
-func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, rows []bigtable.Row, sessionSlice transport.SessionSlice) error {
+func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, liveSessionIDString string, rows []bigtable.Row, sessionSlice transport.SessionSlice) error {
 	// Slice of SessionTimestamp structs to sort the sessions by timestamps at the end
 	var sessionMeta transport.SessionMeta
 
@@ -319,36 +380,39 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 		if err := sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
 			return err
 		}
-		sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
-		if err != nil {
-			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
-			err = fmt.Errorf("GetHistoricalSlices() failed to fetch historic slice information: %v", err)
-			return err
-		}
-		s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
-
-		// If a slice exists, add the session and the timestamp
-		if len(sliceRows) > 0 {
-			sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
-
-			buyer, err := s.Storage.Buyer(sessionMeta.BuyerID)
+		// Make sure we aren't duplicating live sessions
+		if !strings.Contains(liveSessionIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
+			sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 			if err != nil {
-				err = fmt.Errorf("GetHistoricalSlices() failed to fetch buyer: %v", err)
-				level.Error(s.Logger).Log("err", err)
+				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
+				err = fmt.Errorf("GetHistoricalSlices() failed to fetch historic slice information: %v", err)
 				return err
 			}
+			s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
-			if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
-				sessionMeta.Anonymise()
-			} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-				// Don't show sessions where the company code does not match the request's
-				continue
+			// If a slice exists, add the session and the timestamp
+			if len(sliceRows) > 0 {
+				sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
+
+				buyer, err := s.Storage.Buyer(sessionMeta.BuyerID)
+				if err != nil {
+					err = fmt.Errorf("GetHistoricalSlices() failed to fetch buyer: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
+					sessionMeta.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
+				}
+
+				reply.Sessions = append(reply.Sessions, UserSession{Meta: sessionMeta, Timestamp: sessionSlice.Timestamp.UTC()})
+			} else {
+				// Increment counter
+				s.Metrics.NoSlicesFailure.Add(1)
 			}
-
-			reply.Sessions = append(reply.Sessions, UserSession{Meta: sessionMeta, Timestamp: sessionSlice.Timestamp.UTC()})
-		} else {
-			// Increment counter
-			s.Metrics.NoSlicesFailure.Add(1)
 		}
 	}
 
