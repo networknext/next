@@ -1170,75 +1170,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 const (
 	BillingEntryVersion2 = uint32(0)
 
-	MaxBillingEntry2Bytes = 4 + // Version
-		4 + // Timestamp
-		8 + // SessionID
-		1 + 4 + // SliceNumber
-		4 + // DirectRTT
-		4 + // DirectJitter
-		4 + // DirectPacketLoss
-		4 + // RealPacketLoss
-		4 + // RealPacketLoss_Frac
-		4 + // RealJitter
-		1 + // Next
-		1 + // Flagged
-		1 + // Summary
-		1 + // UseDebug
-		4 + BillingEntryMaxDebugLength + // Debug
-		4 + // RouteDiversity
-		8 + // DatacenterID
-		8 + // BuyerID
-		8 + // UserHash
-		8 + // EnvelopeBytesUp
-		8 + // EnvelopeBytesDown
-		4 + // Latitude
-		4 + // Longitude
-		4 + BillingEntryMaxISPLength + // ISP
-		4 + // ConnectionType
-		4 + // PlatformType
-		4 + BillingEntryMaxSDKVersionLength + // SDKVersion
-		4 + // NumTags
-		BillingEntryMaxTags*8 + // Tags
-		1 + // ABTest
-		1 + // Pro
-		8 + // ClientToServerPacketsSent
-		8 + // ServerToClientPacketsSent
-		8 + // ClientToServerPacketsLost
-		8 + // ServerToClientPacketsLost
-		8 + // ClientToServerPacketsOutOfOrder
-		8 + // ServerToClientPacketsOutOfOrder
-		4 + // NumNearRelays
-		BillingEntryMaxNearRelays*8 + // NearRelayIDs
-		BillingEntryMaxNearRelays*4 + // NearRelayRTTs
-		BillingEntryMaxNearRelays*4 + // NearRelayJitters
-		BillingEntryMaxNearRelays*4 + // NearRelayPacketLosses
-		4 + // NextRTT
-		4 + // NextJitter
-		4 + // NextPacketLoss
-		4 + // PredictedNextRTT
-		4 + // NearRelayRTT
-		4 + // NumNextRelays
-		BillingEntryMaxRelays*8 + // NextRelays
-		BillingEntryMaxRelays*8 + // NextRelayPrice
-		8 + // TotalPrice
-		1 + // Uncommitted
-		1 + // Multipath
-		1 + // RTTReduction
-		1 + // PacketLossReduction
-		1 + // RouteChanged
-		1 + // FallbackToDirect
-		1 + // MultipathVetoed
-		1 + // Mispredicted
-		1 + // Vetoed
-		1 + // LatencyWorse
-		1 + // NoRoute
-		1 + // NextLatencyTooHigh
-		1 + // CommitVeto
-		1 + // UnknownDatacenter
-		1 + // DatacenterNotEnabled
-		1 + // BuyerNotLive
-		1 + // StaleRouteMatrix
-		1 // extra byte to let size be divisible by 4
+	MaxBillingEntry2Bytes = 4096
 )
 
 type BillingEntry2 struct {
