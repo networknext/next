@@ -12,6 +12,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Helper function to create a random string of a specified length
+// Useful for testing constant string lengths
+// Adapted from: https://stackoverflow.com/a/22892986
+func generateRandomStringSequence(length int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	// Seed randomness
+	rand.Seed(time.Now().UnixNano())
+
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+
+	return string(b)
+}
+
 // Returns a BillingEntry2 struct with all the data filled out and each condition flag disabled
 func getTestBillingEntry2() *billing.BillingEntry2 {
 
@@ -59,7 +76,7 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		Flagged:                         false,
 		Summary:                         false,
 		UseDebug:                        false,
-		Debug:                           "",
+		Debug:                           generateRandomStringSequence(billing.BillingEntryMaxDebugLength - 1),
 		RouteDiversity:                  int32(rand.Intn(32)),
 		DatacenterID:                    rand.Uint64(),
 		BuyerID:                         rand.Uint64(),
@@ -68,10 +85,10 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		EnvelopeBytesUp:                 rand.Uint64(),
 		Latitude:                        rand.Float32(),
 		Longitude:                       rand.Float32(),
-		ISP:                             "Test ISP",
+		ISP:                             generateRandomStringSequence(billing.BillingEntryMaxISPLength - 1),
 		ConnectionType:                  int32(rand.Intn(3)),
 		PlatformType:                    int32(rand.Intn(10)),
-		SDKVersion:                      "4.0.12",
+		SDKVersion:                      generateRandomStringSequence(billing.BillingEntryMaxSDKVersionLength - 1),
 		NumTags:                         int32(numTags),
 		Tags:                            tags,
 		ABTest:                          false,
@@ -145,23 +162,6 @@ func writeReadClampBillingEntry2(entry *billing.BillingEntry2) ([]byte, *billing
 	err = billing.ReadBillingEntry2(readEntry, data)
 
 	return data, readEntry, err
-}
-
-// Helper function to create a random string of a specified length
-// Useful for testing constant string lengths
-// Adapted from: https://stackoverflow.com/a/22892986
-func generateRandomStringSequence(length int) string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-	// Seed randomness
-	rand.Seed(time.Now().UnixNano())
-
-	b := make([]rune, length)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-
-	return string(b)
 }
 
 func TestSerializeBillingEntry2_Empty(t *testing.T) {
