@@ -14,6 +14,10 @@ import (
 
 // Returns a BillingEntry2 struct with all the data filled out and each condition flag disabled
 func getTestBillingEntry2() *billing.BillingEntry2 {
+
+	// Seed randomness
+	rand.Seed(time.Now().UnixNano())
+
 	numTags := rand.Intn(billing.BillingEntryMaxTags)
 	var tags [billing.BillingEntryMaxTags]uint64
 	for i := 0; i < numTags; i++ {
@@ -141,6 +145,23 @@ func writeReadClampBillingEntry2(entry *billing.BillingEntry2) ([]byte, *billing
 	err = billing.ReadBillingEntry2(readEntry, data)
 
 	return data, readEntry, err
+}
+
+// Helper function to create a random string of a specified length
+// Useful for testing constant string lengths
+// Adapted from: https://stackoverflow.com/a/22892986
+func generateRandomStringSequence(length int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	// Seed randomness
+	rand.Seed(time.Now().UnixNano())
+
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+
+	return string(b)
 }
 
 func TestSerializeBillingEntry2_Empty(t *testing.T) {
@@ -640,22 +661,114 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		var readEntry *billing.BillingEntry2
 		var err error
 
-		entry = getTestBillingEntry2()
-		entry.DirectRTT = -1
+		t.Run("direct RTT", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.DirectRTT = -1
 
-		data, readEntry, err = writeReadClampBillingEntry2(entry)
-		assert.NotEmpty(t, data)
-		assert.NoError(t, err)
-		assert.NotEqual(t, entry, readEntry)
-		assert.Equal(t, int32(0), readEntry.DirectRTT)
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.DirectRTT)
 
-		entry = getTestBillingEntry2()
-		entry.DirectRTT = 1024
-		data, readEntry, err = writeReadClampBillingEntry2(entry)
-		assert.NotEmpty(t, data)
-		assert.NoError(t, err)
-		assert.NotEqual(t, entry, readEntry)
-		assert.Equal(t, int32(1023), readEntry.DirectRTT)
+			entry = getTestBillingEntry2()
+			entry.DirectRTT = 1024
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(1023), readEntry.DirectRTT)
+		})
+
+		t.Run("direct jitter", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.DirectJitter = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.DirectJitter)
+
+			entry = getTestBillingEntry2()
+			entry.DirectJitter = 256
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(255), readEntry.DirectJitter)
+		})
+
+		t.Run("direct packet loss", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.DirectPacketLoss = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.DirectPacketLoss)
+
+			entry = getTestBillingEntry2()
+			entry.DirectPacketLoss = 101
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(100), readEntry.DirectPacketLoss)
+		})
+
+		t.Run("real packet loss", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.RealPacketLoss = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.RealPacketLoss)
+
+			entry = getTestBillingEntry2()
+			entry.RealPacketLoss = 101
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(100), readEntry.RealPacketLoss)
+		})
+
+		t.Run("debug length", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.UseDebug = true
+			debugStr := generateRandomStringSequence(billing.BillingEntryMaxDebugLength + 1)
+			assert.Equal(t, billing.BillingEntryMaxDebugLength+1, len(debugStr))
+			entry.Debug = debugStr
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, debugStr[:billing.BillingEntryMaxDebugLength-1], readEntry.Debug)
+		})
+
+		t.Run("route diversity", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.RouteDiversity = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.RouteDiversity)
+
+			entry = getTestBillingEntry2()
+			entry.RouteDiversity = 33
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(32), readEntry.RouteDiversity)
+		})
 
 	})
 }

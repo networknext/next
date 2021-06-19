@@ -1698,9 +1698,9 @@ func (entry *BillingEntry2) ClampEntry() {
 		entry.RealPacketLoss = 100
 	}
 
-	if len(entry.Debug) > BillingEntryMaxDebugLength {
-		core.Debug("BillingEntry2 Debug length (%d) > BillingEntryMaxDebugLength (%d). Clamping to BillingEntryMaxDebugLength (%d)", len(entry.Debug), BillingEntryMaxDebugLength, BillingEntryMaxDebugLength)
-		entry.Debug = entry.Debug[:BillingEntryMaxDebugLength]
+	if len(entry.Debug) >= BillingEntryMaxDebugLength {
+		core.Debug("BillingEntry2 Debug length (%d) >= BillingEntryMaxDebugLength (%d). Clamping to BillingEntryMaxDebugLength - 1 (%d)", len(entry.Debug), BillingEntryMaxDebugLength, BillingEntryMaxDebugLength-1)
+		entry.Debug = entry.Debug[:BillingEntryMaxDebugLength-1]
 	}
 
 	if entry.RouteDiversity < 0 {
@@ -1717,9 +1717,9 @@ func (entry *BillingEntry2) ClampEntry() {
 
 	if entry.SliceNumber == 0 {
 
-		if len(entry.ISP) > BillingEntryMaxISPLength {
-			core.Debug("BillingEntry2 ISP length (%d) > BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength (%d)", len(entry.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength)
-			entry.ISP = entry.ISP[:BillingEntryMaxISPLength]
+		if len(entry.ISP) >= BillingEntryMaxISPLength {
+			core.Debug("BillingEntry2 ISP length (%d) >= BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength - 1(%d)", len(entry.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength-1)
+			entry.ISP = entry.ISP[:BillingEntryMaxISPLength-1]
 		}
 
 		if entry.ConnectionType < 0 {
@@ -1744,9 +1744,9 @@ func (entry *BillingEntry2) ClampEntry() {
 			entry.PlatformType = 10
 		}
 
-		if len(entry.SDKVersion) > BillingEntryMaxSDKVersionLength {
-			core.Debug("BillingEntry2 SDKVersion length (%d) > BillingEntryMaxSDKVersionLength (%d). Clamping to BillingEntryMaxSDKVersionLength (%d)", len(entry.SDKVersion), BillingEntryMaxSDKVersionLength, BillingEntryMaxSDKVersionLength)
-			entry.SDKVersion = entry.SDKVersion[:BillingEntryMaxSDKVersionLength]
+		if len(entry.SDKVersion) >= BillingEntryMaxSDKVersionLength {
+			core.Debug("BillingEntry2 SDKVersion length (%d) >= BillingEntryMaxSDKVersionLength (%d). Clamping to BillingEntryMaxSDKVersionLength - 1 (%d)", len(entry.SDKVersion), BillingEntryMaxSDKVersionLength, BillingEntryMaxSDKVersionLength-1)
+			entry.SDKVersion = entry.SDKVersion[:BillingEntryMaxSDKVersionLength-1]
 		}
 
 		if entry.NumTags < 0 {
