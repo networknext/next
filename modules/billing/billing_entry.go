@@ -1698,6 +1698,11 @@ func (entry *BillingEntry2) ClampEntry() {
 		entry.RealPacketLoss = 100
 	}
 
+	if entry.RealJitter > 1000 {
+		core.Debug("BillingEntry2 RealJitter (%d) > 1000. Clamping to 1000.", entry.RealJitter)
+		entry.RealJitter = uint32(1000)
+	}
+
 	if len(entry.Debug) >= BillingEntryMaxDebugLength {
 		core.Debug("BillingEntry2 Debug length (%d) >= BillingEntryMaxDebugLength (%d). Clamping to BillingEntryMaxDebugLength - 1 (%d)", len(entry.Debug), BillingEntryMaxDebugLength, BillingEntryMaxDebugLength-1)
 		entry.Debug = entry.Debug[:BillingEntryMaxDebugLength-1]

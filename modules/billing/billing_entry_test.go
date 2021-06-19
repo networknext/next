@@ -737,6 +737,16 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 			assert.Equal(t, int32(100), readEntry.RealPacketLoss)
 		})
 
+		t.Run("real jitter", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.RealJitter = 1001
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, uint32(1000), readEntry.RealJitter)
+		})
+
 		t.Run("debug length", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.UseDebug = true
