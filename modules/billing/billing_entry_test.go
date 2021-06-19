@@ -654,12 +654,12 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 
 	t.Parallel()
 
-	t.Run("test always clamp", func(t *testing.T) {
+	var data []byte
+	var entry *billing.BillingEntry2
+	var readEntry *billing.BillingEntry2
+	var err error
 
-		var data []byte
-		var entry *billing.BillingEntry2
-		var readEntry *billing.BillingEntry2
-		var err error
+	t.Run("test always clamp", func(t *testing.T) {
 
 		t.Run("direct RTT", func(t *testing.T) {
 			entry = getTestBillingEntry2()
@@ -770,5 +770,340 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 			assert.Equal(t, int32(32), readEntry.RouteDiversity)
 		})
 
+	})
+
+	t.Run("test first slice", func(t *testing.T) {
+
+		t.Run("isp length", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.SliceNumber = 0
+			ispStr := generateRandomStringSequence(billing.BillingEntryMaxISPLength + 1)
+			assert.Equal(t, billing.BillingEntryMaxISPLength+1, len(ispStr))
+			entry.ISP = ispStr
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, ispStr[:billing.BillingEntryMaxISPLength-1], readEntry.ISP)
+		})
+
+		t.Run("connection type", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.SliceNumber = 0
+			entry.ConnectionType = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.ConnectionType)
+
+			entry = getTestBillingEntry2()
+			entry.SliceNumber = 0
+			entry.ConnectionType = 4
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.ConnectionType)
+		})
+
+		t.Run("platform type", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.SliceNumber = 0
+			entry.PlatformType = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.PlatformType)
+
+			entry = getTestBillingEntry2()
+			entry.SliceNumber = 0
+			entry.PlatformType = 11
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.PlatformType)
+		})
+
+		t.Run("sdk version", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.SliceNumber = 0
+			sdkStr := generateRandomStringSequence(billing.BillingEntryMaxSDKVersionLength + 1)
+			assert.Equal(t, billing.BillingEntryMaxSDKVersionLength+1, len(sdkStr))
+			entry.SDKVersion = sdkStr
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, sdkStr[:billing.BillingEntryMaxSDKVersionLength-1], readEntry.SDKVersion)
+		})
+
+		t.Run("num tags", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.SliceNumber = 0
+			entry.NumTags = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.NumTags)
+
+			entry = getTestBillingEntry2()
+			entry.SliceNumber = 0
+			entry.NumTags = billing.BillingEntryMaxTags + 1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(billing.BillingEntryMaxTags), readEntry.NumTags)
+		})
+	})
+
+	t.Run("test summary slice", func(t *testing.T) {
+
+		t.Run("num near relays", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.Summary = true
+			entry.NumNearRelays = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.NumNearRelays)
+
+			entry = getTestBillingEntry2()
+			entry.Summary = true
+			entry.NumNearRelays = billing.BillingEntryMaxNearRelays + 1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(billing.BillingEntryMaxNearRelays), readEntry.NumNearRelays)
+		})
+
+		t.Run("near relay RTTs", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.Summary = true
+			entry.NumNearRelays = 1
+			entry.NearRelayRTTs = [billing.BillingEntryMaxNearRelays]int32{}
+			entry.NearRelayRTTs[0] = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.NearRelayRTTs[0])
+
+			entry = getTestBillingEntry2()
+			entry.Summary = true
+			entry.NumNearRelays = 1
+			entry.NearRelayRTTs = [billing.BillingEntryMaxNearRelays]int32{}
+			entry.NearRelayRTTs[0] = 256
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(255), readEntry.NearRelayRTTs[0])
+		})
+
+		t.Run("near relay jitters", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.Summary = true
+			entry.NumNearRelays = 1
+			entry.NearRelayJitters = [billing.BillingEntryMaxNearRelays]int32{}
+			entry.NearRelayJitters[0] = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.NearRelayJitters[0])
+
+			entry = getTestBillingEntry2()
+			entry.Summary = true
+			entry.NumNearRelays = 1
+			entry.NearRelayJitters = [billing.BillingEntryMaxNearRelays]int32{}
+			entry.NearRelayJitters[0] = 256
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(255), readEntry.NearRelayJitters[0])
+		})
+
+		t.Run("near relay packet losses", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.Summary = true
+			entry.NumNearRelays = 1
+			entry.NearRelayPacketLosses = [billing.BillingEntryMaxNearRelays]int32{}
+			entry.NearRelayPacketLosses[0] = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.NearRelayPacketLosses[0])
+
+			entry = getTestBillingEntry2()
+			entry.Summary = true
+			entry.NumNearRelays = 1
+			entry.NearRelayPacketLosses = [billing.BillingEntryMaxNearRelays]int32{}
+			entry.NearRelayPacketLosses[0] = 101
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(100), readEntry.NearRelayPacketLosses[0])
+		})
+	})
+
+	t.Run("test on network next", func(t *testing.T) {
+
+		t.Run("next rtt", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.NextRTT = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.NextRTT)
+
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.NextRTT = 256
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(255), readEntry.NextRTT)
+		})
+
+		t.Run("next jitter", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.NextJitter = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.NextJitter)
+
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.NextJitter = 256
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(255), readEntry.NextJitter)
+		})
+
+		t.Run("next packet loss", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.NextPacketLoss = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.NextPacketLoss)
+
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.NextPacketLoss = 101
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(100), readEntry.NextPacketLoss)
+		})
+
+		t.Run("predicted next rtt", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.PredictedNextRTT = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.PredictedNextRTT)
+
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.PredictedNextRTT = 256
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(255), readEntry.PredictedNextRTT)
+		})
+
+		t.Run("near relay rtt", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.NearRelayRTT = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.NearRelayRTT)
+
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.NearRelayRTT = 256
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(255), readEntry.NearRelayRTT)
+		})
+
+		t.Run("num next relays", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.NumNextRelays = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.NumNextRelays)
+
+			entry = getTestBillingEntry2()
+			entry.Next = true
+			entry.NumNextRelays = billing.BillingEntryMaxRelays + 1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(billing.BillingEntryMaxRelays), readEntry.NumNextRelays)
+		})
 	})
 }

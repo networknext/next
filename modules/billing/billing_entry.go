@@ -1729,8 +1729,8 @@ func (entry *BillingEntry2) ClampEntry() {
 
 		// IMPORTANT: You must update this check if you ever add a new connection type in the SDK
 		if entry.ConnectionType > 3 {
-			core.Debug("BillingEntry2 ConnectionType (%d) > 3. Clamping to 3.", entry.ConnectionType)
-			entry.ConnectionType = 3
+			core.Debug("BillingEntry2 ConnectionType (%d) > 3. Clamping to 0 (unknown).", entry.ConnectionType)
+			entry.ConnectionType = 0
 		}
 
 		if entry.PlatformType < 0 {
@@ -1740,8 +1740,8 @@ func (entry *BillingEntry2) ClampEntry() {
 
 		// IMPORTANT: You must update this check when you add new platforms to the SDK
 		if entry.PlatformType > 10 {
-			core.Debug("BillingEntry2 PlatformType (%d) > 10. Clamping to 10.", entry.PlatformType)
-			entry.PlatformType = 10
+			core.Debug("BillingEntry2 PlatformType (%d) > 10. Clamping to 0 (unknown).", entry.PlatformType)
+			entry.PlatformType = 0
 		}
 
 		if len(entry.SDKVersion) >= BillingEntryMaxSDKVersionLength {
