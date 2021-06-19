@@ -1671,6 +1671,7 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		Summary:                         state.Output.WroteSummary,
 		UseDebug:                        state.Buyer.Debug,
 		Debug:                           debugString,
+		RouteDiversity:                  int32(state.RouteDiversity),
 		DatacenterID:                    state.Datacenter.ID,
 		BuyerID:                         state.Packet.BuyerID,
 		UserHash:                        state.Packet.UserHash,
@@ -1706,7 +1707,6 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		NextRelays:                      state.Input.RouteRelayIDs,
 		NextRelayPrice:                  nextRelayPrice,
 		TotalPrice:                      uint64(totalPrice),
-		RouteDiversity:                  int32(state.RouteDiversity),
 		Uncommitted:                     !state.Packet.Committed,
 		Multipath:                       state.Input.RouteState.Multipath,
 		RTTReduction:                    state.Input.RouteState.ReduceLatency,
@@ -1725,6 +1725,9 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		BuyerNotLive:                    state.BuyerNotLive,
 		StaleRouteMatrix:                state.StaleRouteMatrix,
 	}
+
+	// Clamp any values to ensure the entry is serialized properly
+	billingEntry2.ClampEntry()
 
 	return &billingEntry2
 }
