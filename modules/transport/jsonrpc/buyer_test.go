@@ -342,10 +342,14 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
+			assert.Equal(t, 2, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live - hash", func(t *testing.T) {
@@ -353,20 +357,24 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
+			assert.Equal(t, 2, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live - signed decimal hash", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash3)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 1)
+			assert.Equal(t, 1, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID4)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].Meta.ID), sessionID4)
 		})
 	})
 
@@ -427,10 +435,14 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 3)
+			assert.Equal(t, 3, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live and historic - hash", func(t *testing.T) {
@@ -438,30 +450,34 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 3)
-
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			assert.Equal(t, 3, len(reply.Sessions))
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live and historic - signed decimal hash", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash3)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
-
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID4)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID8)
+			assert.Equal(t, 2, len(reply.Sessions))
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID4 && idString != sessionID8 {
+					t.Fail()
+				}
+			}
 		})
-
 	})
 }
 
 func TestDatacenterMaps(t *testing.T) {
 	var storer = storage.InMemory{}
 	dcMap := routing.DatacenterMap{
-		Alias:        "some.server.alias",
 		BuyerID:      0xbdbebdbf0f7be395,
 		DatacenterID: 0x7edb88d7b6fc0713,
 	}
@@ -513,7 +529,6 @@ func TestDatacenterMaps(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[0].DatacenterID)
-		assert.Equal(t, "some.server.alias", reply.DatacenterMaps[0].Alias)
 		assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[0].BuyerID)
 	})
 

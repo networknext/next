@@ -269,14 +269,10 @@ func relays(
 	}
 
 	relays := []struct {
-		Name        string
-		ID          string
-		Address     string
-		State       string
-		Sessions    string
-		Tx          string
-		Rx          string
-		LastUpdated string
+		Name    string
+		ID      string
+		Address string
+		State   string
 	}{}
 
 	relaysCSV := [][]string{{}}
@@ -285,13 +281,18 @@ func relays(
 		relaysCSV = append(relaysCSV, []string{"Name"})
 	} else {
 		relaysCSV = append(relaysCSV, []string{
-			"Name", "ID", "Address", "State", "Sessions", "Tx", "Rx", "Version", "LastUpdated"})
+			"Name", "ID", "Address", "State"})
 	}
 
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
 			handleRunTimeError(fmt.Sprintf("could not parse invalid relay state %s\n", relay.State), 0)
+		}
+
+		// TODO: fix once routing.Relay.State is updated
+		if relay.State == "decommissioned" {
+			relay.State = "removed"
 		}
 
 		includeRelay := true
@@ -338,11 +339,6 @@ func relays(
 					relayID,
 					address,
 					relay.State,
-					"n/a",
-					"n/a",
-					"n/a",
-					relay.Version,
-					"n/a",
 				})
 			}
 
@@ -354,14 +350,10 @@ func relays(
 				relayID = fmt.Sprintf("%016x", relay.ID)
 			}
 			relays = append(relays, struct {
-				Name        string
-				ID          string
-				Address     string
-				State       string
-				Sessions    string
-				Tx          string
-				Rx          string
-				LastUpdated string
+				Name    string
+				ID      string
+				Address string
+				State   string
 			}{
 				Name:    relay.Name,
 				ID:      relayID,
@@ -575,6 +567,15 @@ func modifyRelayField(
 	}
 
 	emptyReply := localjsonrpc.ModifyRelayFieldReply{}
+
+	// TODO: remove once routing.Relay.State is updated
+	if field == "State" {
+		if value == "removed" {
+			value = "decommissioned"
+		} else if value == "offline" || value == "maintenance" {
+			handleRunTimeError(fmt.Sprintf("'%s' is no longer a valid relay state\n", value), 0)
+		}
+	}
 
 	modifyArgs := localjsonrpc.ModifyRelayFieldArgs{
 		RelayID: reply.Relays[0].ID,

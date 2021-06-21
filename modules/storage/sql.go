@@ -549,13 +549,12 @@ func (db *SQL) Sellers() []routing.Seller {
 }
 
 type sqlSeller struct {
-	ID                        string
-	ShortName                 string
-	Secret                    bool
-	IngressPriceNibblinsPerGB int64
-	EgressPriceNibblinsPerGB  int64
-	CustomerID                int64
-	DatabaseID                int64
+	ID                       string
+	ShortName                string
+	Secret                   bool
+	EgressPriceNibblinsPerGB int64
+	CustomerID               int64
+	DatabaseID               int64
 }
 
 // The seller_id is required by the schema. The client interface must already have a
@@ -579,18 +578,17 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	}
 
 	newSellerData := sqlSeller{
-		ID:                        s.ID,
-		ShortName:                 s.ShortName,
-		Secret:                    s.Secret,
-		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
-		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
-		CustomerID:                c.DatabaseID,
+		ID:                       s.ID,
+		ShortName:                s.ShortName,
+		Secret:                   s.Secret,
+		EgressPriceNibblinsPerGB: int64(s.EgressPriceNibblinsPerGB),
+		CustomerID:               c.DatabaseID,
 	}
 
 	// Add the seller in remote storage
 	sql.Write([]byte("insert into sellers ("))
-	sql.Write([]byte("short_name, public_egress_price, public_ingress_price, secret, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5)"))
+	sql.Write([]byte("short_name, public_egress_price, secret, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -601,7 +599,6 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	result, err := stmt.Exec(
 		newSellerData.ShortName,
 		newSellerData.EgressPriceNibblinsPerGB,
-		newSellerData.IngressPriceNibblinsPerGB,
 		newSellerData.Secret,
 		newSellerData.CustomerID,
 	)
@@ -696,7 +693,7 @@ func (db *SQL) SetSeller(ctx context.Context, seller routing.Seller) error {
 		return &DoesNotExistError{resourceType: "seller", resourceRef: fmt.Sprintf("%s", seller.ID)}
 	}
 
-	sql.Write([]byte("update sellers set (public_egress_price, public_ingress_price) = ($1, $2) where id = $3 "))
+	sql.Write([]byte("update sellers set public_egress_price = $1 where id = $2 "))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -704,7 +701,7 @@ func (db *SQL) SetSeller(ctx context.Context, seller routing.Seller) error {
 		return err
 	}
 
-	result, err := stmt.Exec(seller.EgressPriceNibblinsPerGB, seller.IngressPriceNibblinsPerGB, seller.DatabaseID)
+	result, err := stmt.Exec(seller.EgressPriceNibblinsPerGB, seller.DatabaseID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying seller record", "err", err)
 		return err
@@ -1736,7 +1733,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]rou
 	return dcs
 }
 
-// AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
+// AddDatacenterMap adds a new datacenter map for the given buyer and datacenter IDs
 func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 
 	var sql bytes.Buffer
@@ -1754,11 +1751,12 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 	datacenter, ok := db.datacenters[dcID]
 	if !ok {
+		fmt.Printf("datacenter does not exist: %016x\n", dcMap.DatacenterID)
 		return &DoesNotExistError{resourceType: "DatacenterID", resourceRef: dcMap.DatacenterID}
 	}
 
-	sql.Write([]byte("insert into datacenter_maps (alias, buyer_id, datacenter_id) "))
-	sql.Write([]byte("values ($1, $2, $3)"))
+	sql.Write([]byte("insert into datacenter_maps (buyer_id, datacenter_id) "))
+	sql.Write([]byte("values ($1, $2)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1766,7 +1764,7 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 		return err
 	}
 
-	result, err := stmt.Exec(dcMap.Alias,
+	result, err := stmt.Exec(
 		buyer.DatabaseID,
 		datacenter.DatabaseID,
 	)
@@ -1837,19 +1835,6 @@ func (db *SQL) UpdateDatacenterMap(ctx context.Context, ephemeralBuyerID uint64,
 		db.datacenterMaps[dcmID] = workingDatacenterMap
 		db.datacenterMapsMutex.Unlock()
 
-	case "Alias":
-		alias, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("%v is not a valid string value", value)
-		}
-		updateSQL.Write([]byte("update datacenter_maps set alias=$1 where datacenter_id=$2 and buyer_id=$3"))
-		args = append(args, alias, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
-		workingDatacenterMap.Alias = alias
-
-		db.datacenterMapsMutex.Lock()
-		db.datacenterMaps[dcmID] = workingDatacenterMap
-		db.datacenterMapsMutex.Unlock()
-
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.DatacenterMap type", field)
 
@@ -1891,7 +1876,7 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range db.datacenterMaps {
 		if dc.DatacenterID == dcID || dcID == 0 {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -3223,15 +3208,7 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 		updateSQL.Write([]byte("update sellers set public_egress_price=$1 where id=$2"))
 		args = append(args, int64(egress), seller.DatabaseID)
 		seller.EgressPriceNibblinsPerGB = egress
-	case "IngressPriceNibblinsPerGB":
-		ingressPrice, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("%v is not a valid float64 type", value)
-		}
-		ingress := routing.DollarsToNibblins(ingressPrice)
-		updateSQL.Write([]byte("update sellers set public_ingress_price=$1 where id=$2"))
-		args = append(args, int64(ingress), seller.DatabaseID)
-		seller.IngressPriceNibblinsPerGB = ingress
+
 	case "Secret":
 		secret, ok := value.(bool)
 		if !ok {
