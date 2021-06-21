@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/gob"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
@@ -33,7 +31,6 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
@@ -113,25 +110,39 @@ func main() {
 		os.Exit(1)
 	}
 
-	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"), 5, 64)
+	// Get redis connections
+	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.Get("REDIS_PASSWORD", "")
+	redisMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 5)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+
+	redisPoolTopSessions := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMap := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"), 5, 64)
+	redisPoolSessionMap := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionMap); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMeta := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_META"), 5, 64)
+	redisPoolSessionMeta := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionMeta); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionSlices := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"), 5, 64)
+	redisPoolSessionSlices := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionSlices); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 		os.Exit(1)
@@ -360,73 +371,6 @@ func main() {
 		Storage: db,
 	}
 
-	serveDatabaseBinFile := func(w http.ResponseWriter, r *http.Request) {
-
-		// TODO: pull the sub claim from the auth0 claims to get the "author"
-		//       when we start rolling database.bin files from the admin tool
-		// props, _ := r.Context().Value("props").(jwt.MapClaims)
-
-		var dbWrapper routing.DatabaseBinWrapper
-		var enabledRelays []routing.Relay
-		relayMap := make(map[uint64]routing.Relay)
-		buyerMap := make(map[uint64]routing.Buyer)
-		sellerMap := make(map[string]routing.Seller)
-		datacenterMap := make(map[uint64]routing.Datacenter)
-		datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
-
-		buyers := db.Buyers()
-		for _, buyer := range buyers {
-			buyerMap[buyer.ID] = buyer
-			dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
-			datacenterMaps[buyer.ID] = dcMapsForBuyer
-		}
-
-		for _, seller := range db.Sellers() {
-			sellerMap[seller.ShortName] = seller
-		}
-
-		for _, datacenter := range db.Datacenters() {
-			datacenterMap[datacenter.ID] = datacenter
-		}
-
-		for _, localRelay := range db.Relays() {
-			if localRelay.State == routing.RelayStateEnabled {
-				enabledRelays = append(enabledRelays, localRelay)
-				relayMap[localRelay.ID] = localRelay
-			}
-		}
-
-		dbWrapper.Relays = enabledRelays
-		dbWrapper.RelayMap = relayMap
-		dbWrapper.BuyerMap = buyerMap
-		dbWrapper.SellerMap = sellerMap
-		dbWrapper.DatacenterMap = datacenterMap
-		dbWrapper.DatacenterMaps = datacenterMaps
-
-		loc, _ := time.LoadLocation("UTC")
-		if err != nil {
-			level.Error(logger).Log("msg", "error generating database.bin timestamp", "err", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		now := time.Now().In(loc)
-
-		timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
-		dbWrapper.CreationTime = timeStamp
-		dbWrapper.Creator = "next" // TODO: pull user_id from sub claim when calling from admin tool
-
-		var buffer bytes.Buffer
-
-		encoder := gob.NewEncoder(&buffer)
-		encoder.Encode(dbWrapper)
-
-		w.Header().Set("Content-Type", "application/octet-stream")
-		_, err = buffer.WriteTo(w)
-		if err != nil {
-			level.Error(logger).Log("msg", "error writing database.bin gob to ResponseWriter", "err", err)
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-
 	go func() {
 		genmapinterval := os.Getenv("SESSION_MAP_INTERVAL")
 		syncInterval, err := time.ParseDuration(genmapinterval)
@@ -584,9 +528,31 @@ func main() {
 			os.Exit(1)
 		}
 
+		relayGateway, ok := os.LookupEnv("RELAY_GATEWAY")
+		if !ok {
+			level.Error(logger).Log("err", "RELAY_GATEWAY environment variable not set")
+			os.Exit(1)
+		}
+
+		relayForwarder, ok := os.LookupEnv("RELAY_FORWARDER")
+		if !ok {
+			level.Error(logger).Log("err", "RELAY_FORWARDER environment variable not set")
+			os.Exit(1)
+		}
+
+		env, ok := os.LookupEnv("ENV")
+		if !ok {
+			level.Error(logger).Log("err", "ENV environment variable not set")
+			os.Exit(1)
+		}
+
 		s.RegisterService(&jsonrpc.RelayFleetService{
-			RelayFrontendURI: relayFrontEnd,
-			Logger:           logger,
+			RelayFrontendURI:  relayFrontEnd,
+			RelayGatewayURI:   relayGateway,
+			RelayForwarderURI: relayForwarder,
+			Logger:            logger,
+			Storage:           db,
+			Env:               env,
 		}, "")
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
@@ -596,9 +562,6 @@ func main() {
 		r.Handle("/rpc", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
-
-		databaseBinHandler := http.HandlerFunc(serveDatabaseBinFile)
-		r.Handle("/database.bin", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), databaseBinHandler, strings.Split(allowedOrigins, ","))).Methods("GET")
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {

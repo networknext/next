@@ -97,13 +97,12 @@ func TestInsertSQL(t *testing.T) {
 
 	t.Run("AddSeller", func(t *testing.T) {
 		seller := routing.Seller{
-			ID:                        customerShortname,
-			ShortName:                 customerShortname,
-			CompanyCode:               customerShortname,
-			Secret:                    true,
-			IngressPriceNibblinsPerGB: 10,
-			EgressPriceNibblinsPerGB:  20,
-			CustomerID:                outerCustomer.DatabaseID,
+			ID:                       customerShortname,
+			ShortName:                customerShortname,
+			CompanyCode:              customerShortname,
+			Secret:                   true,
+			EgressPriceNibblinsPerGB: 20,
+			CustomerID:               outerCustomer.DatabaseID,
 		}
 
 		err = db.AddSeller(ctx, seller)
@@ -114,7 +113,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, seller.ID, outerSeller.ID)
 		assert.Equal(t, true, outerSeller.Secret)
 		assert.Equal(t, seller.ShortName, outerSeller.ShortName)
-		assert.Equal(t, seller.IngressPriceNibblinsPerGB, outerSeller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, seller.EgressPriceNibblinsPerGB, outerSeller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, seller.CustomerID, outerSeller.CustomerID)
 	})
@@ -213,7 +211,6 @@ func TestInsertSQL(t *testing.T) {
 			StartDate:           time.Now(),
 			EndDate:             time.Now(),
 			Type:                routing.BareMetal,
-			State:               routing.RelayStateMaintenance,
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
 			Notes:               "the original notes",
@@ -250,14 +247,13 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.StartDate.Format("01/02/06"), checkRelay.StartDate.Format("01/02/06"))
 		assert.Equal(t, relay.EndDate.Format("01/02/06"), checkRelay.EndDate.Format("01/02/06"))
 		assert.Equal(t, relay.Type, checkRelay.Type)
-		assert.Equal(t, relay.State, checkRelay.State)
+		assert.Equal(t, routing.RelayStateEnabled, checkRelay.State)
 		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
 		assert.Equal(t, int32(1000), checkRelay.NICSpeedMbps)
 
 		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
 		assert.Equal(t, customerShortname, checkRelay.Seller.CompanyCode)
-		assert.Equal(t, routing.Nibblin(10), checkRelay.Seller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
 		assert.Equal(t, relay.Notes, checkRelay.Notes)
@@ -324,7 +320,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, customerShortname, checkRelayMod.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelayMod.Seller.ShortName)
 		assert.Equal(t, customerShortname, checkRelayMod.Seller.CompanyCode)
-		assert.Equal(t, routing.Nibblin(10), checkRelayMod.Seller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(20), checkRelayMod.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelayMod.Seller.CustomerID)
 		assert.Equal(t, relayMod.Notes, checkRelayMod.Notes)
@@ -453,14 +448,12 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
 		assert.Equal(t, customerShortname, checkRelay.Seller.CompanyCode)
-		assert.Equal(t, routing.Nibblin(10), checkRelay.Seller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, routing.Nibblin(20), checkRelay.Seller.EgressPriceNibblinsPerGB)
 		assert.Equal(t, outerCustomer.DatabaseID, checkRelay.Seller.CustomerID)
 	})
 
 	t.Run("AddDatacenterMap", func(t *testing.T) {
 		dcMap := routing.DatacenterMap{
-			Alias:        "test.map",
 			BuyerID:      outerBuyer.ID,
 			DatacenterID: outerDatacenter.ID,
 		}
@@ -470,7 +463,6 @@ func TestInsertSQL(t *testing.T) {
 
 		checkDCMaps := db.GetDatacenterMapsForBuyer(outerBuyer.ID)
 		assert.Equal(t, 1, len(checkDCMaps))
-		assert.Equal(t, dcMap.Alias, checkDCMaps[outerDatacenter.ID].Alias)
 		assert.Equal(t, dcMap.BuyerID, checkDCMaps[outerDatacenter.ID].BuyerID)
 		assert.Equal(t, dcMap.DatacenterID, checkDCMaps[outerDatacenter.ID].DatacenterID)
 	})
@@ -536,12 +528,11 @@ func TestDeleteSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		seller := routing.Seller{
-			ID:                        "Compcode",
-			IngressPriceNibblinsPerGB: 10,
-			EgressPriceNibblinsPerGB:  20,
-			Secret:                    true,
-			CustomerID:                outerCustomer.DatabaseID,
-			CompanyCode:               outerCustomer.Code,
+			ID:                       "Compcode",
+			EgressPriceNibblinsPerGB: 20,
+			Secret:                   true,
+			CustomerID:               outerCustomer.DatabaseID,
+			CompanyCode:              outerCustomer.Code,
 		}
 
 		err = db.AddSeller(ctx, seller)
@@ -567,7 +558,6 @@ func TestDeleteSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		dcMap := routing.DatacenterMap{
-			Alias:        "test.map",
 			BuyerID:      outerBuyer.ID,
 			DatacenterID: outerDatacenter.ID,
 		}
@@ -780,12 +770,11 @@ func TestUpdateSQL(t *testing.T) {
 
 	t.Run("SetSeller", func(t *testing.T) {
 		seller := routing.Seller{
-			ID:                        "Compcode",
-			IngressPriceNibblinsPerGB: 10,
-			EgressPriceNibblinsPerGB:  20,
-			Secret:                    true,
-			CustomerID:                customerWithID.DatabaseID,
-			CompanyCode:               customerWithID.Code,
+			ID:                       "Compcode",
+			EgressPriceNibblinsPerGB: 20,
+			Secret:                   true,
+			CustomerID:               customerWithID.DatabaseID,
+			CompanyCode:              customerWithID.Code,
 		}
 
 		err = db.AddSeller(ctx, seller)
@@ -794,7 +783,6 @@ func TestUpdateSQL(t *testing.T) {
 		sellerWithID, err = db.Seller("Compcode")
 		assert.NoError(t, err)
 
-		sellerWithID.IngressPriceNibblinsPerGB = 100
 		sellerWithID.EgressPriceNibblinsPerGB = 200
 
 		err = db.SetSeller(ctx, sellerWithID)
@@ -803,18 +791,16 @@ func TestUpdateSQL(t *testing.T) {
 		checkSeller, err := db.Seller("Compcode")
 		assert.NoError(t, err)
 		assert.Equal(t, true, sellerWithID.Secret)
-		assert.Equal(t, checkSeller.IngressPriceNibblinsPerGB, sellerWithID.IngressPriceNibblinsPerGB)
 		assert.Equal(t, checkSeller.EgressPriceNibblinsPerGB, sellerWithID.EgressPriceNibblinsPerGB)
 
 		// we need a second seller to test Relay.BillingSupplier
 		seller2 := routing.Seller{
-			ID:                        "DifferentSupplier",
-			ShortName:                 "DifferentSeller",
-			IngressPriceNibblinsPerGB: 10,
-			EgressPriceNibblinsPerGB:  20,
-			Secret:                    true,
-			CustomerID:                customerWithID2.DatabaseID,
-			CompanyCode:               customerWithID2.Code,
+			ID:                       "DifferentSupplier",
+			ShortName:                "DifferentSeller",
+			EgressPriceNibblinsPerGB: 20,
+			Secret:                   true,
+			CustomerID:               customerWithID2.DatabaseID,
+			CompanyCode:              customerWithID2.Code,
 		}
 
 		err = db.AddSeller(ctx, seller2)
@@ -910,7 +896,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		dcMap := routing.DatacenterMap{
-			Alias:        "test.map",
 			BuyerID:      buyerWithID.ID,
 			DatacenterID: datacenter1.ID,
 		}
@@ -922,16 +907,9 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter1.ID, "HexDatacenterID", hexDcID)
 		assert.NoError(t, err)
 
-		// changing the datacenter ID in the alias changes the datacenter map ID which is a
-		// combination of the buyer ID and the datacenter ID, so we have to use the new
-		// datacenter ID now to update.
-		err = db.UpdateDatacenterMap(ctx, buyerWithID.ID, datacenter2.ID, "Alias", "not.test.map")
-		assert.NoError(t, err)
-
 		checkDcMaps := db.GetDatacenterMapsForBuyer(buyerWithID.ID)
 		assert.Equal(t, 1, len(checkDcMaps))
 
-		assert.Equal(t, "not.test.map", checkDcMaps[did2].Alias)
 		assert.Equal(t, did2, checkDcMaps[did2].DatacenterID)
 		assert.Equal(t, buyerWithID.ID, checkDcMaps[did2].BuyerID)
 
@@ -990,9 +968,6 @@ func TestUpdateSQL(t *testing.T) {
 		err := db.UpdateSeller(ctx, sellerWithID.ID, "EgressPriceNibblinsPerGB", 133.44)
 		assert.NoError(t, err)
 
-		err = db.UpdateSeller(ctx, sellerWithID.ID, "IngressPriceNibblinsPerGB", 144.33)
-		assert.NoError(t, err)
-
 		err = db.UpdateSeller(ctx, sellerWithID.ID, "ShortName", "newname")
 		assert.NoError(t, err)
 
@@ -1003,7 +978,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, routing.Nibblin(13344000000000), checkSeller.EgressPriceNibblinsPerGB)
-		assert.Equal(t, routing.Nibblin(14433000000000), checkSeller.IngressPriceNibblinsPerGB)
 		assert.Equal(t, "newname", checkSeller.ShortName)
 		assert.Equal(t, false, checkSeller.Secret)
 	})
@@ -1755,6 +1729,62 @@ func TestRouteShaders(t *testing.T) {
 
 		_, err = db.RouteShader(outerBuyer.ID)
 		assert.Error(t, err)
+
+	})
+
+}
+
+func TestDatabaseBinMetaData(t *testing.T) {
+
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	// db, err := storage.NewSQLStorage(ctx, logger)
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	assert.NoError(t, err)
+
+	t.Run("AddDatabaseBinMetaData", func(t *testing.T) {
+
+		_, err := db.GetDatabaseBinFileMetaData()
+		assert.Error(t, err)
+
+		testTime := time.Now()
+		ctx := context.Background()
+
+		metaData := routing.DatabaseBinFileMetaData{
+			DatabaseBinFileAuthor:       "Arthur Dent",
+			DatabaseBinFileCreationTime: testTime,
+		}
+
+		err = db.UpdateDatabaseBinFileMetaData(ctx, metaData)
+		assert.NoError(t, err)
+
+		checkMetaData, err := db.GetDatabaseBinFileMetaData()
+		assert.NoError(t, err)
+		assert.Equal(t, "Arthur Dent", checkMetaData.DatabaseBinFileAuthor)
+		assert.Equal(t, testTime.Format("01/02/06"), checkMetaData.DatabaseBinFileCreationTime.Format("01/02/06"))
+
+		// should only return the most recent record
+		testTime2 := time.Now()
+		metaData2 := routing.DatabaseBinFileMetaData{
+			DatabaseBinFileAuthor:       "Brian Cohen",
+			DatabaseBinFileCreationTime: testTime2,
+		}
+
+		err = db.UpdateDatabaseBinFileMetaData(ctx, metaData2)
+		assert.NoError(t, err)
+
+		checkMetaData2, err := db.GetDatabaseBinFileMetaData()
+		assert.NoError(t, err)
+		assert.Equal(t, "Brian Cohen", checkMetaData2.DatabaseBinFileAuthor)
+		assert.Equal(t, testTime2.Format("01/02/06"), checkMetaData2.DatabaseBinFileCreationTime.Format("01/02/06"))
 
 	})
 

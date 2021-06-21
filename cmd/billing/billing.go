@@ -386,6 +386,7 @@ func main() {
 				fmt.Printf("%d billing entry 2s flushed\n", int(billingServiceMetrics.BillingMetrics.Entries2Flushed.Value()))
 				fmt.Printf("%d billing entry 2s with NaN\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2EntriesWithNaN.Value()))
 				fmt.Printf("%d invalid billing entry 2s\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2InvalidEntries.Value()))
+				fmt.Printf("%d billing entry 2 read failures\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2ReadFailure.Value()))
 				fmt.Printf("%d billing entry 2 write failures\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2WriteFailure.Value()))
 				fmt.Printf("-----------------------------\n")
 
