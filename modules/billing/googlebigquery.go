@@ -20,10 +20,12 @@ const (
 )
 
 type GoogleBigQueryClient struct {
-	Metrics       *metrics.BillingMetrics
-	Logger        log.Logger
-	TableInserter *bigquery.Inserter
-	BatchSize     int
+	Metrics         *metrics.BillingMetrics
+	Logger          log.Logger
+	TableInserter   *bigquery.Inserter
+	BatchSize       int
+	FeatureBilling  bool
+	FeatureBilling2 bool
 
 	buffer      []*BillingEntry
 	bufferMutex sync.RWMutex
@@ -254,6 +256,10 @@ func (bq *GoogleBigQueryClient) WriteLoop2(ctx context.Context, wg *sync.WaitGro
 
 // Closes the entries channel. Should only be done by the entry sender.
 func (bq *GoogleBigQueryClient) Close() {
-	close(bq.entries)
-	close(bq.entries2)
+	if bq.FeatureBilling {
+		close(bq.entries)
+	}
+	if bq.FeatureBilling2 {
+		close(bq.entries2)
+	}
 }
