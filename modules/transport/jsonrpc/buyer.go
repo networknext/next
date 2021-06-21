@@ -472,7 +472,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 		for _, buyer := range buyers {
 
-			fmt.Printf("\n\nBuyer: %016x - Code: %s", buyer.ID, buyer.CompanyCode)
+			fmt.Printf("\n\nBuyer: %016x - Code: %s\n", buyer.ID, buyer.CompanyCode)
 			firstCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
@@ -482,7 +482,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			}
 			firstNextCount += firstCount
 
-			fmt.Printf("First Next count: %d", firstCount)
+			fmt.Printf("First Next count: %d\n", firstCount)
 
 			secondCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
@@ -493,7 +493,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			}
 			secondNextCount += secondCount
 
-			fmt.Printf("Second Next count: %d", secondCount)
+			fmt.Printf("Second Next count: %d\n", secondCount)
 
 			if buyer.ID == ghostArmyBuyerID {
 				if firstCount > secondCount {
@@ -502,7 +502,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 					ghostArmyNextCount = secondCount * int(ghostArmyNextScaler)
 				}
 
-				fmt.Printf("Ghost Army Next count: %d", ghostArmyNextCount)
+				fmt.Printf("Ghost Army Next count: %d\n", ghostArmyNextCount)
 				firstNextCount += ghostArmyNextCount
 				secondNextCount += ghostArmyNextCount
 			}
@@ -512,7 +512,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			reply.Next = secondNextCount
 		}
 
-		fmt.Printf("Final Next count: %d", reply.Next)
+		fmt.Printf("Final Next count: %d\n", reply.Next)
 
 		var firstTotalCount int
 		var secondTotalCount int
@@ -544,7 +544,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				firstTotalCount += int(firstCount)
 			}
 
-			fmt.Printf("First Total count: %d", firstTotalCount)
+			fmt.Printf("First Total count: %d\n", firstTotalCount)
 
 			secondCounts, err := redis.Strings(redisClient.Receive())
 			if err != nil {
@@ -565,14 +565,14 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				secondTotalCount += int(secondCount)
 			}
 
-			fmt.Printf("Second Total count: %d", secondTotalCount)
+			fmt.Printf("Second Total count: %d\n", secondTotalCount)
 
 			if buyer.ID == ghostArmyBuyerID {
 				// scale by next values because ghost army data contains 0 direct
 				// if ghost army is turned off then this number will be 0 and have no effect
 				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
 				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-				fmt.Printf("Ghost Army Total count: %d", firstTotalCount)
+				fmt.Printf("Ghost Army Total count: %d\n", firstTotalCount)
 			}
 		}
 
@@ -581,11 +581,11 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			totalCount = secondTotalCount
 		}
 
-		fmt.Printf("Final Total count: %d", totalCount)
+		fmt.Printf("Final Total count: %d\n", totalCount)
 
 		reply.Direct = totalCount - reply.Next
 
-		fmt.Printf("Final Direct count: %d", reply.Direct)
+		fmt.Printf("Final Direct count: %d\n", reply.Direct)
 
 	default:
 		var ghostArmyNextCount int
