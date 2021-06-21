@@ -491,11 +491,10 @@ type datacenter struct {
 type dcMapStrings struct {
 	BuyerID    string `json:"buyer_id"`
 	Datacenter string `json:"datacenter"`
-	Alias      string `json:"alias"`
 }
 
 func (dcm dcMapStrings) String() string {
-	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
+	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n}", dcm.BuyerID, dcm.Datacenter)
 }
 
 func main() {
@@ -586,7 +585,7 @@ func main() {
 	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
 	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
 	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
-	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "decommissioned", false, "only show decommissioned relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "removed", false, "only show removed relays")
 	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateOffline], "offline", false, "only show offline relays")
 
 	// Flags to hide relays in certain states
@@ -595,7 +594,7 @@ func main() {
 	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
 	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
 	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
-	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "noremoved", false, "hide removed relays")
 	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
 
 	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
@@ -1193,6 +1192,8 @@ func main() {
 					var regexes []string
 					if len(args) > 0 {
 						regexes = args
+					} else {
+						handleRunTimeError(fmt.Sprintln("please provide at least one relay name or substring"), 1)
 					}
 
 					updateRelays(env, regexes, updateOpts)
@@ -1639,7 +1640,6 @@ the contents of the specified json file. The json file layout
 is as follows:
 
 {
-	"alias": "some.server.alias",
 	"datacenter": "2fe32c22450fb4c9",
 	"buyer_id": "bdbebdbf0f7be395"
 }
@@ -1680,18 +1680,17 @@ The buyer and datacenter must exist. Hex IDs are required for now.
 					{
 						Name:       "remove",
 						ShortUsage: "next buyer datacenter remove <json file>",
-						ShortHelp:  "Removes the datacenter alias described in the json file from the system (see -h for an example)",
+						ShortHelp:  "Removes the datacenter map described in the json file from the system (see -h for an example)",
 						LongHelp: `Reads the specifics for the datacenter alias to be removed from
 the contents of the specified json file. The json file layout
 is as follows:
 
 {
-	"alias": "some.server.alias",
 	"datacenter": "2fe32c22450fb4c9",
 	"buyer_id": "bdbebdbf0f7be395"
 }
 
-The alias is uniquely defined by all three entries, so they must be provided. Hex IDs and names are supported."
+The alias is uniquely defined by both entries, so they must be provided. Hex IDs and names are supported."
 						`,
 						Exec: func(_ context.Context, args []string) error {
 							var err error
@@ -1990,23 +1989,17 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 					// Unmarshal the JSON and create the Seller struct
 					var sellerUSD struct {
-						Name            string
-						ShortName       string
-						CustomerCode    string
-						IngressPriceUSD string
-						EgressPriceUSD  string
-						Secret          bool
+						Name           string
+						ShortName      string
+						CustomerCode   string
+						EgressPriceUSD string
+						Secret         bool
 					}
 
 					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
 						handleRunTimeError(fmt.Sprintf("Could not unmarshal seller: %v\n", err), 1)
 					}
 
-					ingressUSD, err := strconv.ParseFloat(sellerUSD.IngressPriceUSD, 64)
-					if err != nil {
-						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.IngressPriceUSD)
-						os.Exit(0)
-					}
 					egressUSD, err := strconv.ParseFloat(sellerUSD.EgressPriceUSD, 64)
 					if err != nil {
 						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.EgressPriceUSD)
@@ -2014,22 +2007,20 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					}
 
 					s := seller{
-						Name:                 sellerUSD.Name,
-						ShortName:            sellerUSD.CustomerCode,
-						CustomerCode:         sellerUSD.CustomerCode,
-						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
-						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
-						Secret:               sellerUSD.Secret,
+						Name:                sellerUSD.Name,
+						ShortName:           sellerUSD.CustomerCode,
+						CustomerCode:        sellerUSD.CustomerCode,
+						EgressPriceNibblins: routing.DollarsToNibblins(egressUSD),
+						Secret:              sellerUSD.Secret,
 					}
 
 					// Add the Seller to storage
 					addSeller(env, routing.Seller{
-						ID:                        s.Name,
-						Name:                      s.Name,
-						ShortName:                 s.ShortName,
-						CompanyCode:               s.CustomerCode,
-						IngressPriceNibblinsPerGB: s.IngressPriceNibblins,
-						EgressPriceNibblinsPerGB:  s.EgressPriceNibblins,
+						ID:                       s.Name,
+						Name:                     s.Name,
+						ShortName:                s.ShortName,
+						CompanyCode:              s.CustomerCode,
+						EgressPriceNibblinsPerGB: s.EgressPriceNibblins,
 					})
 					return nil
 				},
@@ -2495,7 +2486,6 @@ provided by a JSON file of the form:
 {
   "Name": "Amazon.com, Inc.",
   "CustomerCode": "microzon",
-  "IngressPriceUSD": "0.01",
   "EgressPriceUSD": "0.1",
   "Secret": false
 }
@@ -2654,11 +2644,9 @@ must be one of the following and is case-sensitive:
 
 Valid relay states:
    enabled
-   maintenance
    disabled
-   quarantined (not currently in use)
-   decommissioned
-   offline
+   quarantined
+   removed
 
 Valid bandwidth rules:
    flat
@@ -2755,7 +2743,6 @@ Update one field for the specified seller. The field
 must be one of the following and is case-sensitive:
 
   EgressPrice  US Dollars
-  IngressPrice US Dollars
   ShortName    string
   Secret       boolean
 
