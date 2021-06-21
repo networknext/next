@@ -58,6 +58,18 @@ ifndef RELAY_BACKEND_HOSTNAME
 export RELAY_BACKEND_HOSTNAME = http://127.0.0.1:30002
 endif
 
+ifndef RELAY_GATEWAY
+export RELAY_GATEWAY = http://127.0.0.1:30000
+endif
+
+ifndef RELAY_FRONTEND
+export RELAY_FRONTEND = http://127.0.0.1:30005
+endif
+
+ifndef RELAY_FORWARDER
+export RELAY_FORWARDER =
+endif
+
 ifndef RELAY_ADDRESS
 #export RELAY_ADDRESS = 127.0.0.1
 export RELAY_ADDRESS = 127.0.0.1:35000

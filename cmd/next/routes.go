@@ -8,10 +8,9 @@ import (
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
-func routes(rpcClient jsonrpc.RPCClient, env Environment, srcrelays []string, destrelays []string, rtt float64, routehash uint64) {
+func routes(env Environment, srcrelays []string, destrelays []string, rtt float64, routehash uint64) {
 	args := localjsonrpc.RouteSelectionArgs{
 		SourceRelays:      srcrelays,
 		DestinationRelays: destrelays,
@@ -20,7 +19,7 @@ func routes(rpcClient jsonrpc.RPCClient, env Environment, srcrelays []string, de
 	}
 
 	var reply localjsonrpc.RouteSelectionReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RouteSelection", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RouteSelection", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}

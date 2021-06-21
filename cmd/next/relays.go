@@ -11,11 +11,9 @@ import (
 	"github.com/modood/table"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
 func opsRelays(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	regex string,
 	relaysStateShowFlags [6]bool,
@@ -35,7 +33,7 @@ func opsRelays(
 	// os.Exit(0)
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -246,7 +244,6 @@ func opsRelays(
 }
 
 func relays(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	regex string,
 	relaysStateShowFlags [6]bool,
@@ -266,20 +263,16 @@ func relays(
 	// os.Exit(0)
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
 
 	relays := []struct {
-		Name        string
-		ID          string
-		Address     string
-		State       string
-		Sessions    string
-		Tx          string
-		Rx          string
-		LastUpdated string
+		Name    string
+		ID      string
+		Address string
+		State   string
 	}{}
 
 	relaysCSV := [][]string{{}}
@@ -288,13 +281,18 @@ func relays(
 		relaysCSV = append(relaysCSV, []string{"Name"})
 	} else {
 		relaysCSV = append(relaysCSV, []string{
-			"Name", "ID", "Address", "State", "Sessions", "Tx", "Rx", "Version", "LastUpdated"})
+			"Name", "ID", "Address", "State"})
 	}
 
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
 			handleRunTimeError(fmt.Sprintf("could not parse invalid relay state %s\n", relay.State), 0)
+		}
+
+		// TODO: fix once routing.Relay.State is updated
+		if relay.State == "decommissioned" {
+			relay.State = "removed"
 		}
 
 		includeRelay := true
@@ -341,11 +339,6 @@ func relays(
 					relayID,
 					address,
 					relay.State,
-					"n/a",
-					"n/a",
-					"n/a",
-					relay.Version,
-					"n/a",
 				})
 			}
 
@@ -357,14 +350,10 @@ func relays(
 				relayID = fmt.Sprintf("%016x", relay.ID)
 			}
 			relays = append(relays, struct {
-				Name        string
-				ID          string
-				Address     string
-				State       string
-				Sessions    string
-				Tx          string
-				Rx          string
-				LastUpdated string
+				Name    string
+				ID      string
+				Address string
+				State   string
 			}{
 				Name:    relay.Name,
 				ID:      relayID,
@@ -415,7 +404,7 @@ func relays(
 
 }
 
-func addRelayJS(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
+func addRelayJS(env Environment, r relay) {
 
 	bwRule, err := routing.ParseBandwidthRule(r.BWRule)
 	if err != nil {
@@ -454,7 +443,7 @@ func addRelayJS(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 	}
 
 	var reply localjsonrpc.JSAddRelayReply
-	if err := rpcClient.CallFor(&reply, "OpsService.JSAddRelay", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.JSAddRelay", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -463,8 +452,8 @@ func addRelayJS(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
 
 }
 
-func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
-	relays := getRelayInfo(rpcClient, env, name)
+func removeRelay(env Environment, name string) {
+	relays := getRelayInfo(env, name)
 
 	if len(relays) == 0 {
 		handleRunTimeError(fmt.Sprintf("no relays matched the name '%s'\n", name), 0)
@@ -487,7 +476,7 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 	}
 
 	var reply localjsonrpc.RemoveRelayReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RemoveRelay", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RemoveRelay", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -495,13 +484,13 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 	fmt.Printf("Relay \"%s\" removed.\n", info.name)
 }
 
-func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
+func countRelays(env Environment, regex string) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -549,7 +538,6 @@ func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 }
 
 func modifyRelayField(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	relayRegex string,
 	field string,
@@ -561,7 +549,7 @@ func modifyRelayField(
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return nil
 	}
@@ -580,12 +568,21 @@ func modifyRelayField(
 
 	emptyReply := localjsonrpc.ModifyRelayFieldReply{}
 
+	// TODO: remove once routing.Relay.State is updated
+	if field == "State" {
+		if value == "removed" {
+			value = "decommissioned"
+		} else if value == "offline" || value == "maintenance" {
+			handleRunTimeError(fmt.Sprintf("'%s' is no longer a valid relay state\n", value), 0)
+		}
+	}
+
 	modifyArgs := localjsonrpc.ModifyRelayFieldArgs{
 		RelayID: reply.Relays[0].ID,
 		Field:   field,
 		Value:   value,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "OpsService.ModifyRelayField", modifyArgs); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "OpsService.ModifyRelayField", modifyArgs); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}

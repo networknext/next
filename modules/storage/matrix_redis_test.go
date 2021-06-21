@@ -11,7 +11,7 @@ import (
 func matrixRedisTestHelperRedisStore(t *testing.T) *RedisMatrixStore {
 	rSvr, err := miniredis.Run()
 	assert.Nil(t, err)
-	store, err := NewRedisMatrixStore(rSvr.Addr(), 5, 5, 500*time.Millisecond, 500*time.Millisecond, 5*time.Second)
+	store, err := NewRedisMatrixStore(rSvr.Addr(), "", 5, 5, 500*time.Millisecond, 500*time.Millisecond, 5*time.Second)
 	assert.Nil(t, err)
 	return store
 }

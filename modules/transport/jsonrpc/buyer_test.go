@@ -148,7 +148,7 @@ func TestUserSessions(t *testing.T) {
 	storer.AddCustomer(ctx, customer9)
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	rawUserID1 := 111
@@ -342,10 +342,14 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
+			assert.Equal(t, 2, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live - hash", func(t *testing.T) {
@@ -353,20 +357,24 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
+			assert.Equal(t, 2, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live - signed decimal hash", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash3)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 1)
+			assert.Equal(t, 1, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID4)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].Meta.ID), sessionID4)
 		})
 	})
 
@@ -427,10 +435,14 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 3)
+			assert.Equal(t, 3, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live and historic - hash", func(t *testing.T) {
@@ -438,30 +450,34 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 3)
-
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID3)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID2)
+			assert.Equal(t, 3, len(reply.Sessions))
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
+					t.Fail()
+				}
+			}
 		})
 
 		t.Run("list live and historic - signed decimal hash", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash3)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
-
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID4)
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[1].ID), sessionID8)
+			assert.Equal(t, 2, len(reply.Sessions))
+			for _, session := range reply.Sessions {
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID4 && idString != sessionID8 {
+					t.Fail()
+				}
+			}
 		})
-
 	})
 }
 
 func TestDatacenterMaps(t *testing.T) {
 	var storer = storage.InMemory{}
 	dcMap := routing.DatacenterMap{
-		Alias:        "some.server.alias",
 		BuyerID:      0xbdbebdbf0f7be395,
 		DatacenterID: 0x7edb88d7b6fc0713,
 	}
@@ -513,7 +529,6 @@ func TestDatacenterMaps(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[0].DatacenterID)
-		assert.Equal(t, "some.server.alias", reply.DatacenterMaps[0].Alias)
 		assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[0].BuyerID)
 	})
 
@@ -554,7 +569,7 @@ func TestTotalSessions(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 
 	minutes := time.Now().Unix() / 60
 
@@ -643,7 +658,7 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 
 	minutes := time.Now().Unix() / 60
 
@@ -709,7 +724,7 @@ func TestTopSessions(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	buyerID1 := fmt.Sprintf("%016x", 111)
@@ -803,7 +818,7 @@ func TestTopSessions(t *testing.T) {
 func TestSessionDetails(t *testing.T) {
 	checkBigtableEmulation(t)
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	sessionID := fmt.Sprintf("%016x", 999)
@@ -1102,7 +1117,7 @@ func TestSessionMapPoints(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	buyerID1 := fmt.Sprintf("%016x", 111)
@@ -1211,7 +1226,7 @@ func TestSessionMap(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 5, 5)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
 	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
 
 	buyerID1 := fmt.Sprintf("%016x", 111)
@@ -1320,7 +1335,7 @@ func TestGameConfiguration(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
@@ -1371,7 +1386,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
@@ -1456,7 +1471,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 
 func TestSameBuyerRoleFunction(t *testing.T) {
 	redisServer, _ := miniredis.Run()
-	redisPool := storage.NewRedisPool(redisServer.Addr(), 1, 1)
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	var storer = storage.InMemory{}
 
 	pubkey := make([]byte, 4)
@@ -1478,7 +1493,7 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	t.Run("fail - no company", func(t *testing.T) {
 		sameBuyerRoleFunc := svc.SameBuyerRole("local-local")
 		verified, err := sameBuyerRoleFunc(req)
-		assert.Error(t, err)
+		assert.NoError(t, err)
 		assert.False(t, verified)
 	})
 
