@@ -161,60 +161,63 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 	userHash := fmt.Sprintf("%016x", hash.Sum64())
 
-	// Fetch live sessions if there are any
-	liveSessions, err := s.FetchCurrentTopSessions(r, "")
-	if err != nil {
-		err = fmt.Errorf("UserSessions() failed to fetch live sessions")
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
+	// Only grab the live session on the first request
+	if args.Page == 0 {
+		// Fetch live sessions if there are any
+		liveSessions, err := s.FetchCurrentTopSessions(r, "")
+		if err != nil {
+			err = fmt.Errorf("UserSessions() failed to fetch live sessions")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 
-	for _, session := range liveSessions {
-		// Check both the ID, hex of ID, and the hash just in case the ID is actually a hash from the top sessions table or decimal hash
-		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) || hexUserID == fmt.Sprintf("%016x", session.UserHash) {
-			sessionSlicesClient := s.RedisPoolSessionSlices.Get()
-			defer sessionSlicesClient.Close()
+		for _, session := range liveSessions {
+			// Check both the ID, hex of ID, and the hash just in case the ID is actually a hash from the top sessions table or decimal hash
+			if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) || hexUserID == fmt.Sprintf("%016x", session.UserHash) {
+				sessionSlicesClient := s.RedisPoolSessionSlices.Get()
+				defer sessionSlicesClient.Close()
 
-			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
-			if err != nil && err != redis.ErrNil {
-				err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				err = fmt.Errorf("UserSessions() failed getting session slices")
-				return err
-			}
-
-			// If a slice exists, add the session and the timestamp
-			if len(slices) > 0 {
-				sliceString := strings.Split(slices[0], "|")
-				if err := sessionSlice.ParseRedisString(sliceString); err != nil {
-					err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
+				slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
+				if err != nil && err != redis.ErrNil {
+					err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
 					level.Error(s.Logger).Log("err", err)
+					err = fmt.Errorf("UserSessions() failed getting session slices")
 					return err
 				}
 
-				sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+				// If a slice exists, add the session and the timestamp
+				if len(slices) > 0 {
+					sliceString := strings.Split(slices[0], "|")
+					if err := sessionSlice.ParseRedisString(sliceString); err != nil {
+						err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
 
-				buyer, err := s.Storage.Buyer(session.BuyerID)
-				if err != nil {
-					err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
-					level.Error(s.Logger).Log("err", err)
-					return err
+					sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+
+					buyer, err := s.Storage.Buyer(session.BuyerID)
+					if err != nil {
+						err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+
+					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
+						session.Anonymise()
+					} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+						// Don't show sessions where the company code does not match the request's
+						continue
+					}
+
+					reply.Sessions = append(reply.Sessions, UserSession{
+						Meta:      session,
+						Timestamp: sessionSlice.Timestamp.UTC(),
+					})
+				} else {
+					// Increment counter
+					s.Metrics.NoSlicesFailure.Add(1)
 				}
-
-				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
-					session.Anonymise()
-				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-					// Don't show sessions where the company code does not match the request's
-					continue
-				}
-
-				reply.Sessions = append(reply.Sessions, UserSession{
-					Meta:      session,
-					Timestamp: sessionSlice.Timestamp.UTC(),
-				})
-			} else {
-				// Increment counter
-				s.Metrics.NoSlicesFailure.Add(1)
 			}
 		}
 	}
@@ -1558,7 +1561,6 @@ type DatacenterMapsArgs struct {
 }
 
 type DatacenterMapsFull struct {
-	Alias          string
 	DatacenterName string
 	DatacenterID   string
 	BuyerName      string
@@ -1616,7 +1618,6 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		}
 
 		dcmFull := DatacenterMapsFull{
-			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      customer.Name,
@@ -1656,7 +1657,6 @@ func (s *BuyersService) JSRemoveDatacenterMap(r *http.Request, args *JSRemoveDat
 	}
 
 	dcMap := routing.DatacenterMap{
-		Alias:        args.Alias,
 		BuyerID:      buyerID,
 		DatacenterID: datacenterID,
 	}
@@ -1749,7 +1749,6 @@ func (s *BuyersService) JSAddDatacenterMap(r *http.Request, args *JSAddDatacente
 	dcMap := routing.DatacenterMap{
 		BuyerID:      buyerID,
 		DatacenterID: datacenterID,
-		Alias:        args.Alias,
 	}
 
 	return s.Storage.AddDatacenterMap(ctx, dcMap)
