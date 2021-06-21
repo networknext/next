@@ -101,7 +101,6 @@ type datacenter struct {
 }
 
 type datacenterMap struct {
-	Alias      string `firestore:"Alias"`
 	Datacenter string `firestore:"Datacenter"`
 	Buyer      string `firestore:"Buyer"`
 }
@@ -763,12 +762,11 @@ func (fs *Firestore) AddSeller(ctx context.Context, s routing.Seller) error {
 	}
 
 	newSellerData := seller{
-		CompanyCode:               s.CompanyCode,
-		ID:                        s.ID,
-		Name:                      s.Name,
-		Secret:                    s.Secret,
-		IngressPriceNibblinsPerGB: int64(s.IngressPriceNibblinsPerGB),
-		EgressPriceNibblinsPerGB:  int64(s.EgressPriceNibblinsPerGB),
+		CompanyCode:              s.CompanyCode,
+		ID:                       s.ID,
+		Name:                     s.Name,
+		Secret:                   s.Secret,
+		EgressPriceNibblinsPerGB: int64(s.EgressPriceNibblinsPerGB),
 	}
 
 	// Add the seller in remote storage
@@ -871,9 +869,8 @@ func (fs *Firestore) SetSeller(ctx context.Context, seller routing.Seller) error
 
 	// Update the seller in firestore
 	newSellerData := map[string]interface{}{
-		"name":                       seller.Name,
-		"pricePublicIngressNibblins": int64(seller.IngressPriceNibblinsPerGB),
-		"pricePublicEgressNibblins":  int64(seller.EgressPriceNibblinsPerGB),
+		"name":                      seller.Name,
+		"pricePublicEgressNibblins": int64(seller.EgressPriceNibblinsPerGB),
 	}
 
 	if _, err := fs.Client.Collection("Seller").Doc(seller.ID).Set(ctx, newSellerData, firestore.MergeAll); err != nil {
@@ -1320,7 +1317,7 @@ func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routin
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
 		if dc.BuyerID == buyerID {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -1346,14 +1343,13 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 	dcMaps := fs.GetDatacenterMapsForBuyer(dcMap.BuyerID)
 	if len(dcMaps) != 0 {
 		for _, dc := range dcMaps {
-			if dc.Alias == dcMap.Alias && dc.DatacenterID == dcMap.DatacenterID {
-				return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
+			if dc.DatacenterID == dcMap.DatacenterID {
+				return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.DatacenterID}
 			}
 		}
 	}
 
 	var dcMapInt64 datacenterMap
-	dcMapInt64.Alias = dcMap.Alias
 	dcMapInt64.Buyer = fmt.Sprintf("%016x", dcMap.BuyerID)
 	dcMapInt64.Datacenter = fmt.Sprintf("%016x", dcMap.DatacenterID)
 
@@ -1364,7 +1360,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 
 	// update local store
 	fs.datacenterMapMutex.Lock()
-	id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+	id := crypto.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 	fs.datacenterMaps[id] = dcMap
 	fs.datacenterMapMutex.Unlock()
 
@@ -1381,7 +1377,7 @@ func (fs *Firestore) ListDatacenterMaps(dcID uint64) map[uint64]routing.Datacent
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range fs.datacenterMaps {
 		if dc.DatacenterID == dcID || dcID == 0 {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -1422,7 +1418,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 			return &HexStringConversionError{hexString: dcm.Datacenter}
 		}
 
-		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == buyerID && dcMap.DatacenterID == datacenter {
+		if dcMap.BuyerID == buyerID && dcMap.DatacenterID == datacenter {
 			_, err := ref.Delete(ctx)
 			if err != nil {
 				return &FirestoreError{err: err}
@@ -1430,7 +1426,7 @@ func (fs *Firestore) RemoveDatacenterMap(ctx context.Context, dcMap routing.Data
 
 			// delete local copy as well
 			fs.datacenterMapMutex.Lock()
-			id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+			id := crypto.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 			delete(fs.datacenterMaps, id)
 			fs.datacenterMapMutex.Unlock()
 
@@ -1927,11 +1923,10 @@ func (fs *Firestore) syncRelays(ctx context.Context) error {
 		}
 
 		seller := routing.Seller{
-			ID:                        sdoc.Ref.ID,
-			Name:                      s.Name,
-			CompanyCode:               s.CompanyCode,
-			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
-			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
+			ID:                       sdoc.Ref.ID,
+			Name:                     s.Name,
+			CompanyCode:              s.CompanyCode,
+			EgressPriceNibblinsPerGB: routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}
 
 		relay.Seller = seller
@@ -2027,12 +2022,11 @@ func (fs *Firestore) syncSellers(ctx context.Context) error {
 		}
 
 		seller := routing.Seller{
-			ID:                        sellerDoc.Ref.ID,
-			CompanyCode:               s.CompanyCode,
-			Name:                      s.Name,
-			Secret:                    s.Secret,
-			IngressPriceNibblinsPerGB: routing.Nibblin(s.IngressPriceNibblinsPerGB),
-			EgressPriceNibblinsPerGB:  routing.Nibblin(s.EgressPriceNibblinsPerGB),
+			ID:                       sellerDoc.Ref.ID,
+			CompanyCode:              s.CompanyCode,
+			Name:                     s.Name,
+			Secret:                   s.Secret,
+			EgressPriceNibblinsPerGB: routing.Nibblin(s.EgressPriceNibblinsPerGB),
 		}
 
 		sellers[sellerDoc.Ref.ID] = seller
@@ -2082,11 +2076,10 @@ func (fs *Firestore) syncDatacenterMaps(ctx context.Context) error {
 			continue
 		}
 
-		dcMap.Alias = dcMapInt64.Alias
 		dcMap.BuyerID = buyerID
 		dcMap.DatacenterID = datacenterID
 
-		id := crypto.HashID(dcMap.Alias + fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
+		id := crypto.HashID(fmt.Sprintf("%x", dcMap.BuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
 		dcMaps[id] = dcMap
 	}
 
