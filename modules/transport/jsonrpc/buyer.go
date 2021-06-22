@@ -242,14 +242,8 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		// current page date is today - page number * 1 day. Add 1 day to compensate for filter excluding end date
 		currentPageDate := today.Add(-time.Duration((reply.Page - 1) * 24 * int(time.Hour)))
 
-		fmt.Println()
-
-		fmt.Printf("Current page date: %s\n", currentPageDate.String())
-
 		// get next page date
 		nextPageDate := today.Add(-time.Duration(reply.Page * 24 * int(time.Hour)))
-
-		fmt.Printf("Next page date: %s\n", nextPageDate.String())
 
 		currentPage := reply.Page
 
@@ -336,9 +330,6 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 		}
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
-		fmt.Printf("Found %d sessions in bigtable\n", len(rows))
-		fmt.Printf("Found %d sessions so far\n", len(btRows))
-
 		if reply.Page >= MaxBigTableDays {
 			// We are out of pages
 			break
@@ -348,9 +339,6 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 
 		nextPageDate = nextPageDate.Add(-24 * time.Hour)
 		currentPageDate = currentPageDate.Add(-24 * time.Hour)
-
-		fmt.Printf("Current page date: %s\n", currentPageDate.String())
-		fmt.Printf("Next page date: %s\n", nextPageDate.String())
 
 		// Gets the rows within [nextPageDate, currentPageDate)
 		chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
