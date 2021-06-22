@@ -10791,7 +10791,11 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
         return;
     }
 
-    server->state = NEXT_SERVER_STATE_INITIALIZING;
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    {
+        server->state = NEXT_SERVER_STATE_INITIALIZING;
+    }
+    
     server->resolving_hostname = true;
     server->resolve_hostname_finished = false;
     server->next_resolve_hostname_time = next_time() + 25.0; // todo -- 5.0*60.0 + ( next_random_float() * 5.0*60.0 );
