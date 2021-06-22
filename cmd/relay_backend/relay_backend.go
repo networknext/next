@@ -953,6 +953,7 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
 	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relay_dashboard_data", transport.RelayDashboardDataHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, maxJitter))
+	router.HandleFunc("/relay_dashboard_analysis", transport.RelayDashboardAnalysisHandlerFunc(getRouteMatrixFunc))
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 	router.HandleFunc("/dest_relays", destRelayFunc).Methods("GET")
 	router.Handle("/debug/vars", expvar.Handler())
