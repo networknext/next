@@ -547,3 +547,56 @@ func (rfs *RelayFleetService) BinFileGenerator(userEmail string) (routing.Databa
 
 	return dbWrapper, nil
 }
+
+type NextCostMatrixHandlerArgs struct{}
+
+type NextCostMatrixHandlerReply struct {
+	CostMatrix []byte `json:"costMatrix"`
+}
+
+// NextCostMatrixHandler gets the []byte cost matrix from
+// relay_frontend/cost_matrix and returns it
+func (rfs *RelayFleetService) NextCostMatrixHandler(
+	r *http.Request,
+	args *NextCostMatrixHandlerArgs,
+	reply *NextCostMatrixHandlerReply,
+) error {
+
+	authHeader := r.Header.Get("Authorization")
+	fmt.Printf("\n%s\n", authHeader)
+
+	uri := rfs.RelayFrontendURI + "/cost_matrix"
+	fmt.Printf("relay frontend: %s\n", uri)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", uri, nil)
+	if err != nil {
+		err = fmt.Errorf("NextCostMatrixHandler() error creating new request: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authHeader))
+
+	response, err := client.Do(req)
+	if err != nil {
+		err = fmt.Errorf("NextCostMatrixHandler() error getting cost matrix: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+	defer response.Body.Close()
+
+	fmt.Printf("%v\n", response.Body)
+
+	byteValue, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		err = fmt.Errorf("NextCostMatrixHandler() error reading /cost_matrix HTTP response body: %w", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	fmt.Printf("%s\n", string(byteValue))
+
+	reply.CostMatrix = byteValue
+
+	return nil
+}
