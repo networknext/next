@@ -2205,7 +2205,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 			if len(args) > 0 {
 				output = args[0]
 			}
-			saveCostMatrix(env, output)
+			getCostMatrix(env, output)
 			fmt.Printf("Cost matrix from %s saved to %s\n", env.Name, output)
 			return nil
 		},

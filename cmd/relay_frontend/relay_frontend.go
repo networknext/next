@@ -376,14 +376,20 @@ func mainReturnWithCode() int {
 
 	// Wrap the following endpoints in auth and CORS middleware
 	// NOTE: the next tool is unaware of CORS and its requests simply pass through
-	costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
-	router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
+
+	// this call will not work via auth, fails within the auth0 stack
+	router.HandleFunc("/cost_matrix", frontendClient.GetCostMatrixHandlerFunc()).Methods("GET")
+	// costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
+	// router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
 
 	relaysCsvHandler := http.HandlerFunc(frontendClient.GetRelayBackendHandlerFunc("/relays"))
 	router.Handle("/relays", middleware.PlainHttpAuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
 
 	jsonDashboardHandler := http.HandlerFunc(frontendClient.GetRelayDashboardDataHandlerFunc())
 	router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(audience, jsonDashboardHandler, strings.Split(allowedOrigins, ",")))
+
+	jsonDashboardAnalysisHandler := http.HandlerFunc(frontendClient.GetRelayDashboardAnalysisHandlerFunc())
+	router.Handle("/relay_dashboard_analysis", middleware.PlainHttpAuthMiddleware(audience, jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ",")))
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {

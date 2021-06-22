@@ -951,7 +951,6 @@ func mainReturnWithCode() int {
 	router.HandleFunc("/database_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
 	router.HandleFunc("/relay_update", transport.RelayUpdateHandlerFunc(&commonUpdateParams)).Methods("POST")
 	router.HandleFunc("/route_matrix", serveRouteMatrixFunc).Methods("GET")
-	router.HandleFunc("/relay_dashboard", transport.RelayDashboardHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, "local", "local", maxJitter))
 	router.HandleFunc("/relay_dashboard_data", transport.RelayDashboardDataHandlerFunc(relayMap, getRouteMatrixFunc, statsdb, maxJitter))
 	router.HandleFunc("/relay_dashboard_analysis", transport.RelayDashboardAnalysisHandlerFunc(getRouteMatrixFunc))
 	router.HandleFunc("/status", serveStatusFunc).Methods("GET")

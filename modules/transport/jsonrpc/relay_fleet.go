@@ -291,7 +291,12 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		uri := rfs.RelayFrontendURI + "/relay_dashboard_analysis"
 
 		client := &http.Client{}
-		req, _ := http.NewRequest("GET", uri, nil)
+		req, err := http.NewRequest("GET", uri, nil)
+		if err != nil {
+			err = fmt.Errorf("AdminFrontPage() error setting up NewRequest(): %w", err)
+			rfs.Logger.Log("err", err)
+			return err
+		}
 		req.Header.Set("Authorization", authHeader)
 
 		response, err := client.Do(req)
@@ -338,7 +343,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 			b, err := ioutil.ReadAll(response.Body)
 			if err != nil {
-				fmt.Println(err)
 				err := fmt.Errorf("AdminFrontPage() error parsing relay_frontend/status: %v", err)
 				rfs.Logger.Log("err", err)
 				return err
