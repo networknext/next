@@ -10820,7 +10820,7 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
     
     server->resolving_hostname = true;
     server->resolve_hostname_finished = false;
-    server->next_resolve_hostname_time = next_time() + 25.0; // todo -- 5.0*60.0 + ( next_random_float() * 5.0*60.0 );
+    server->next_resolve_hostname_time = next_time() + 5.0*60.0 + ( next_random_float() * 5.0*60.0 );
     server->first_backend_server_init = 0.0;
 }
 
@@ -12608,7 +12608,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     if ( server->next_resolve_hostname_time <= current_time )
     {
         next_server_internal_resolve_hostname( server );
-        server->next_resolve_hostname_time = current_time + 25.0; // todo -- 5.0*60.0 + next_random_float() * 5.0*60.0;
+        server->next_resolve_hostname_time = current_time + 5.0*60.0 + next_random_float() * 5.0*60.0;
         server->first_backend_server_init = 0.0;
     }
 
@@ -12716,8 +12716,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         if ( server->first_backend_server_init + 10.0 <= current_time )
         {
-            int retry_delay = 25; // todo -- 5.0*60.0 + next_random_float() * 5.0*60.0;
-            next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. trying again in %d seconds", retry_delay );
+            double retry_delay = 5.0*60.0 + next_random_float() * 5.0*60.0;
+            next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. trying again in %.1f seconds", retry_delay );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
             server->next_resolve_hostname_time = current_time + double(retry_delay);
             server->first_backend_server_init = 0.0;
