@@ -233,10 +233,11 @@ func main() {
 					os.Exit(1)
 				}
 				b := billing.GoogleBigQueryClient{
-					Metrics:       &billingServiceMetrics.BillingMetrics,
-					Logger:        logger,
-					TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-					BatchSize:     batchSize,
+					Metrics:        &billingServiceMetrics.BillingMetrics,
+					Logger:         logger,
+					TableInserter:  bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+					BatchSize:      batchSize,
+					FeatureBilling: featureBilling,
 				}
 
 				// Set the Biller to BigQuery
@@ -269,10 +270,11 @@ func main() {
 					os.Exit(1)
 				}
 				b := billing.GoogleBigQueryClient{
-					Metrics:       &billingServiceMetrics.BillingMetrics,
-					Logger:        logger,
-					TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-					BatchSize:     batchSize,
+					Metrics:         &billingServiceMetrics.BillingMetrics,
+					Logger:          logger,
+					TableInserter:   bqClient.Dataset(billingDataset).Table(os.Getenv("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+					BatchSize:       batchSize,
+					FeatureBilling2: featureBilling2,
 				}
 
 				// Set the Biller to BigQuery
