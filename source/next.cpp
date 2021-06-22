@@ -9128,6 +9128,12 @@ struct NextBackendSessionUpdatePacket
         bool has_out_of_order_packets = Stream::IsWriting && ( packets_out_of_order_client_to_server + packets_out_of_order_server_to_client ) > 0;
 
         serialize_bool( stream, has_tags );
+#if !NEXT_EXPERIMENTAL
+        bool has_flags = false;
+        bool has_user_flags = false;
+        serialize_bool( stream, has_flags );
+        serialize_bool( stream, has_user_flags );
+#endif // #if !NEXT_EXPERIMENTAL
         serialize_bool( stream, has_lost_packets );
         serialize_bool( stream, has_out_of_order_packets );
 
