@@ -37,12 +37,14 @@ const (
 	InitResponseBuyerNotActive       = 5
 	InitResponseDataCenterNotEnabled = 6
 
+	// IMPORTANT: Update Serialize(), Validate(), and ClampEntry() in modules/billing/billing_entry.go when a new connection type is added
 	ConnectionTypeUnknown  = 0
 	ConnectionTypeWired    = 1
 	ConnectionTypeWifi     = 2
 	ConnectionTypeCellular = 3
 	ConnectionTypeMax      = 3
 
+	// IMPORTANT: Update Serialize(), Validate(), and ClampEntry() in modules/billing/billing_entry.go when a new platform type is added
 	PlatformTypeUnknown     = 0
 	PlatformTypeWindows     = 1
 	PlatformTypeMac         = 2
