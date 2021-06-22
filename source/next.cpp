@@ -41,6 +41,8 @@
 #pragma warning(disable : 4996)
 #endif
 
+// #define NEXT_EXPERIMENTAL 1
+
 #if !NEXT_DEVELOPMENT
 #define NEXT_HOSTNAME                                "prod.spacecats.net"
 #else // #if !NEXT_DEVELOPMENT
@@ -3184,7 +3186,9 @@ struct NextRouteUpdatePacket
     float jitter_client_to_server;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
+#if NEXT_EXPERIMENTAL
     bool dont_ping_near_relays;
+#endif // #if NEXT_EXPERIMENTAL
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
@@ -3239,9 +3243,10 @@ struct NextRouteUpdatePacket
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
 
+#if NEXT_EXPERIMENTAL
         serialize_bool( stream, dont_ping_near_relays );
-
         if ( !dont_ping_near_relays )
+#endif // #if NEXT_EXPERIMENTAL
         {
             serialize_bool( stream, exclude_near_relays );
             if ( exclude_near_relays )
@@ -6788,7 +6793,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 next_printf( NEXT_LOG_LEVEL_INFO, "client session debug: %s", packet.debug );
             }
 
+#if NEXT_EXPERIMENTAL
             next_relay_manager_disable_pings( client->near_relay_manager, packet.dont_ping_near_relays );
+#endif // #if NEXT_EXPERIMENTAL
 
             if ( packet.near_relays_changed )
             {
@@ -9273,7 +9280,9 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(8)
 
+#if NEXT_EXPERIMENTAL
     bool update_dont_ping_near_relays;
+#endif // #if NEXT_EXPERIMENTAL
     bool update_near_relays_changed;
     int update_num_near_relays;
 
@@ -9807,7 +9816,9 @@ struct NextBackendSessionResponsePacket
     bool committed;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
+#if NEXT_EXPERIMENTAL
     bool dont_ping_near_relays;
+#endif // #if NEXT_EXPERIMENTAL
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
@@ -9866,9 +9877,10 @@ struct NextBackendSessionResponsePacket
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
 
+#if NEXT_EXPERIMENTAL
         serialize_bool( stream, dont_ping_near_relays );
-
         if ( !dont_ping_near_relays )
+#endif // #if NEXT_EXPERIMENTAL
         {
             serialize_bool( stream, exclude_near_relays );
             if ( exclude_near_relays )
@@ -11211,7 +11223,9 @@ void next_server_internal_update_route( next_server_internal_t * server )
         {
             NextRouteUpdatePacket packet;
             packet.sequence = entry->update_sequence;
+#if NEXT_EXPERIMENTAL
             packet.dont_ping_near_relays = entry->update_dont_ping_near_relays;
+#endif // #if NEXT_EXPERIMENTAL
             packet.near_relays_changed = entry->update_near_relays_changed;
             if ( packet.near_relays_changed )
             {
@@ -11615,7 +11629,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(packet.num_tokens) );
             }
 
+#if NEXT_EXPERIMENTAL
             entry->update_dont_ping_near_relays = packet.dont_ping_near_relays;
+#endif // #if NEXT_EXPERIMENTAL
             entry->update_near_relays_changed = packet.near_relays_changed;
             if ( packet.near_relays_changed )
             {
@@ -12605,9 +12621,6 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
             next_queue_push( server->notify_queue, notify );
         }
 
-        // todo: gotta make sure the server keeps trying to initialize
-
-        return true;
     }
 
     char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
@@ -12637,8 +12650,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     if ( server->state == NEXT_SERVER_STATE_INITIALIZING && !server->resolving_hostname )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
-
-        // printf( "first_backend_server_init = %f\n", server->first_backend_server_init );
 
         if ( server->first_backend_server_init == 0.0 )
         {
@@ -12673,9 +12684,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         if ( server->first_backend_server_init + 10.0 <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. direct only mode" );
+            int retry_delay = 25; // todo -- 5.0*60.0 + next_random_float() * 5.0*60.0;
+            next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. trying again in %d seconds", retry_delay );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-            server->next_resolve_hostname_time = current_time + 25.0; // todo -- 5.0*60.0 + next_random_float() * 5.0*60.0;
+            server->next_resolve_hostname_time = current_time + double(retry_delay);
             server->first_backend_server_init = 0.0;
         }
     }
@@ -15152,6 +15164,8 @@ static void test_packets()
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
+#if NEXT_EXPERIMENTAL
+
     // route update packet (direct, don't ping near relays)
     {
         static NextRouteUpdatePacket in, out;
@@ -15255,6 +15269,8 @@ static void test_packets()
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
+
+#endif // #if NEXT_EXPERIMENTAL
 
     // route update ack packet
     {
@@ -16124,6 +16140,8 @@ static void test_backend_packets()
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
 
+#if NEXT_EXPERIMENTAL
+
     // session response packet (route, don't ping near relays)
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
@@ -16167,7 +16185,7 @@ static void test_backend_packets()
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
     }
 
-    // session response packet (continue, near relays not changed)
+    // session response packet (continue, near relays not changed, don't ping near relays)
     {
         unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
         unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -16204,6 +16222,8 @@ static void test_backend_packets()
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
     }
+
+#endif // #if NEXT_EXPERIMENTAL
 }
 
 static void test_relay_manager()
