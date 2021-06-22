@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
@@ -41,6 +42,7 @@ type AccountArgs struct {
 type AccountReply struct {
 	UserAccount account  `json:"account"`
 	Domains     []string `json:"domains"`
+	LookerURL   string   `json:"looker_url"`
 }
 
 type account struct {
@@ -198,7 +200,102 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 
 	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code)
 
+	// If the user is requsting their own information
+	if requestID == args.UserID {
+		// build looker url
+		reply.LookerURL = s.BuildLookerURL(r)
+	}
+
 	return nil
+}
+
+type LookerURLOptions struct {
+	AccessFilters    interface{} `json:"access_filters"`
+	ExternalUserID   string      `json:"external_user_id"`
+	ForceLogoutLogin bool        `json:"force_logout_login"`
+	Models           []string    `json:"models"`
+	Nonce            string      `json:"nonce"`
+	Permissions      []string    `json:"permissions"`
+	Signature        string      `json:"signature"`
+	SessionLength    int32       `json:"session_length"`
+	Time             time.Time   `json:"time"`
+}
+
+func (s *AuthService) BuildLookerURL(r *http.Request) string {
+	urlOptions := LookerURLOptions{}
+	return CreateSignedEmbedURL(urlOptions)
+}
+
+func CreateSignedEmbedURL(urlOptions LookerURLOptions) string {
+	// looker options
+	// secret := "" // Get this from env var some how
+	host := "" // Get this from env var some how
+
+	// user options
+
+	// TODO: Convert these to golang
+	/* json_external_user_id := JSON.stringify(options.external_user_id)
+	json_permissions := JSON.stringify(options.permissions)
+	json_models := JSON.stringify(options.models)
+	json_group_ids := JSON.stringify(options.group_ids)
+	json_external_group_id := JSON.stringify(options.external_group_id || "")
+	json_access_filters := JSON.stringify(options.access_filters) */
+
+	// url/session specific options
+
+	// TODO: Convert these to golang
+	/* embed_path := "/login/embed/" + encodeURIComponent(options.embed_url)
+	json_session_length := JSON.stringify(options.session_length)
+	json_force_logout_login := JSON.stringify(options.force_logout_login) */
+
+	// computed options
+
+	// TODO: Convert these to golang
+	/* json_time := JSON.stringify(time.Now().String())
+	json_nonce := JSON.stringify(nonce(16)) */
+
+	// compute signature
+	/* 	string_to_sign := ""
+	   	string_to_sign += host + "\n"
+	   	string_to_sign += embed_path + "\n"
+	   	string_to_sign += json_nonce + "\n"
+	   	string_to_sign += json_time + "\n"
+	   	string_to_sign += json_session_length + "\n"
+	   	string_to_sign += json_external_user_id + "\n"
+	   	string_to_sign += json_permissions + "\n"
+	   	string_to_sign += json_models + "\n"
+	   	string_to_sign += json_group_ids + "\n"
+	   	string_to_sign += json_external_group_id + "\n"
+	   	string_to_sign += json_user_attributes + "\n"
+	   	string_to_sign += json_access_filters */
+
+	// TODO: convert this to golang
+	// signature := crypto.createHmac("sha1", secret).update(forceUnicodeEncoding(string_to_sign)).digest("base64").trim()
+
+	// construct query string
+
+	// TODO: Build the query params with an actual struct
+	/* 			query_params := {
+			nonce: json_nonce,
+			time: json_time,
+			session_length: json_session_length,
+			external_user_id: json_external_user_id,
+			permissions: json_permissions,
+			models: json_models,
+			access_filters: json_access_filters,
+			first_name: json_first_name,
+			last_name: json_last_name,
+			group_ids: json_group_ids,
+			external_group_id: json_external_group_id,
+			user_attributes: json_user_attributes,
+			force_logout_login: json_force_logout_login,
+			signature: signature
+	}; */
+
+	// TODO: Convert these to golang
+	// query_string := querystring.stringify(query_params)
+
+	return host // + embed_path + "?" + query_string
 }
 
 func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
