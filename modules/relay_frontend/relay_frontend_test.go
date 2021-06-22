@@ -362,6 +362,8 @@ func TestRelayFrontendSvc_ResetRouteMatrix(t *testing.T) {
 		DestRelays:         []bool{},
 		PingStats:          []analytics.PingStatsEntry{},
 		RelayStats:         []analytics.RelayStatsEntry{},
+		FullRelayIDs:       []uint64{},
+		FullRelayIDsSet:    make(map[uint64]bool),
 	}
 
 	receivedRouteMatrixBin := svc.routeMatrix.GetMatrix()

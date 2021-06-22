@@ -204,6 +204,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	relayFullThreshold, err := envvar.GetFloat("RELAY_FULL_THRESHOLD", 0.90)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	instanceID, err := getInstanceID(env)
 	if err != nil {
 		level.Error(logger).Log("msg", "error getting relay backend instance ID", "err", err)
@@ -718,6 +724,8 @@ func mainReturnWithCode() int {
 			allRelayData := relayMap.GetAllRelayData()
 			entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
+			var fullRelayIDs []uint64
+
 			count := 0
 			for i := range allRelayData {
 				relay := &allRelayData[i]
@@ -749,6 +757,12 @@ func mainReturnWithCode() int {
 					Timestamp:     uint64(time.Now().Unix()),
 				}
 
+				// Track the relays that are near max capacity
+				maxSessions := int(relay.MaxSessions)
+				if maxSessions != 0 && float64(numSessions/maxSessions) >= relayFullThreshold {
+					fullRelayIDs = append(fullRelayIDs, relay.ID)
+				}
+
 				count++
 			}
 
@@ -769,6 +783,7 @@ func mainReturnWithCode() int {
 				DestRelays:         destRelays,
 				PingStats:          pingStats,
 				RelayStats:         relayStats,
+				FullRelayIDs:       fullRelayIDs,
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {

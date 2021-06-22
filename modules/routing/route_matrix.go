@@ -15,7 +15,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const RouteMatrixSerializeVersion = 3
+const RouteMatrixSerializeVersion = 4
 
 type RouteMatrix struct {
 	RelayIDsToIndices  map[uint64]int32
@@ -33,6 +33,8 @@ type RouteMatrix struct {
 	DestRelays         []bool
 	PingStats          []analytics.PingStatsEntry
 	RelayStats         []analytics.RelayStatsEntry
+	FullRelayIDs       []uint64
+	FullRelayIDsSet    map[uint64]bool
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -153,6 +155,25 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 			stream.SerializeBool(&entry.Routable)
 			stream.SerializeString(&entry.InstanceID, 64)
 			stream.SerializeBool(&entry.Debug)
+		}
+	}
+
+	if m.Version >= 4 {
+
+		numFullRelayIDs := uint32(len(m.FullRelayIDs))
+		stream.SerializeUint32(&numFullRelayIDs)
+
+		if stream.IsReading() {
+			m.FullRelayIDs = make([]uint64, numFullRelayIDs)
+			m.FullRelayIDsSet = make(map[uint64]bool)
+		}
+
+		for i := uint32(0); i < numFullRelayIDs; i++ {
+			stream.SerializeUint64(&m.FullRelayIDs[i])
+
+			if stream.IsReading() {
+				m.FullRelayIDsSet[m.FullRelayIDs[i]] = true
+			}
 		}
 	}
 
