@@ -182,12 +182,6 @@ int main()
 
     next_random_bytes( client_id, 32 );
 
-    const char * client_user_flags_env = getenv( "CLIENT_USER_FLAGS" );
-    if ( client_user_flags_env )
-    {
-        next_client_set_user_flags( client, 0x123 );
-    }
-
     const char * client_packet_loss_env = getenv( "CLIENT_PACKET_LOSS" );
     if ( client_packet_loss_env )
     {
@@ -231,11 +225,6 @@ int main()
             next_client_open_session( client, connect_address );
             second_connect_completed = true;
             next_random_bytes( client_id, 32 );
-        }
-
-        if ( client_user_flags_env )
-        {
-            next_client_set_user_flags( client, 0x123 );
         }
 
         next_client_update( client );
