@@ -166,7 +166,7 @@ type RelayStatsEntry struct {
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*int(8+4+4+4+4+4+4+4+4+4+4+4+4+4+4)
+	length := 1 + 8 + len(entries)*int(8+4+4+4+4+4+4+4+4+4+4+4+4+4+4+1)
 	data := make([]byte, length)
 
 	index := 0
