@@ -748,6 +748,15 @@ func mainReturnWithCode() int {
 					}
 				}
 
+				// Track the relays that are near max capacity
+				var full bool
+
+				maxSessions := int(relay.MaxSessions)
+				if maxSessions != 0 && float64(numSessions/maxSessions) >= relayFullThreshold {
+					fullRelayIDs = append(fullRelayIDs, relay.ID)
+					full = true
+				}
+
 				entries[count] = analytics.RelayStatsEntry{
 					ID:            relay.ID,
 					MaxSessions:   relay.MaxSessions,
@@ -755,12 +764,7 @@ func mainReturnWithCode() int {
 					NumRoutable:   numRouteable,
 					NumUnroutable: uint32(len(allRelayData)) - 1 - numRouteable,
 					Timestamp:     uint64(time.Now().Unix()),
-				}
-
-				// Track the relays that are near max capacity
-				maxSessions := int(relay.MaxSessions)
-				if maxSessions != 0 && float64(numSessions/maxSessions) >= relayFullThreshold {
-					fullRelayIDs = append(fullRelayIDs, relay.ID)
+					Full:          full,
 				}
 
 				count++
