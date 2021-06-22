@@ -3101,7 +3101,9 @@ struct NextClientStatsPacket
     bool multipath;
     bool reported;
     bool bandwidth_over_limit;
+#if NEXT_EXPERIMENTAL
     bool has_near_relay_pings;
+#endif // #if NEXT_EXPERIMENTAL
     int platform_id;
     int connection_type;
     float next_kbps_up;
@@ -3135,7 +3137,9 @@ struct NextClientStatsPacket
         serialize_bool( stream, multipath );
         serialize_bool( stream, reported );
         serialize_bool( stream, bandwidth_over_limit );
+#if NEXT_EXPERIMENTAL
         serialize_bool( stream, has_near_relay_pings );
+#endif // #if NEXT_EXPERIMENTAL
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         serialize_float( stream, next_kbps_up );
@@ -3153,7 +3157,9 @@ struct NextClientStatsPacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
+#if NEXT_EXPERIMENTAL
             if ( has_near_relay_pings )
+#endif // #if NEXT_EXPERIMENTAL
             {
                 serialize_int( stream, near_relay_rtt[i], 0, 255 );
                 serialize_int( stream, near_relay_jitter[i], 0, 255 );
@@ -7218,7 +7224,9 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         if ( !client->fallback_to_direct )
         {
+#if NEXT_EXPERIMENTAL
             packet.has_near_relay_pings = client->near_relay_stats.has_pings;
+#endif // #if NEXT_EXPERIMENTAL
             packet.num_near_relays = client->near_relay_stats.num_relays;
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {
@@ -9038,7 +9046,9 @@ struct NextBackendSessionUpdatePacket
     bool client_bandwidth_over_limit;
     bool server_bandwidth_over_limit;
     bool client_ping_timed_out;
+#if NEXT_EXPERIMENTAL
     bool has_near_relay_pings;
+#endif // #if NEXT_EXPERIMENTAL
     int num_tags;
     uint64_t tags[NEXT_MAX_TAGS];
     float direct_rtt;
@@ -9121,7 +9131,9 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, client_bandwidth_over_limit );
         serialize_bool( stream, server_bandwidth_over_limit );
         serialize_bool( stream, client_ping_timed_out );
+#if NEXT_EXPERIMENTAL
         serialize_bool( stream, has_near_relay_pings );
+#endif // #if NEXT_EXPERIMENTAL
 
         bool has_tags = Stream::IsWriting && slice_number == 0 && num_tags > 0;
         bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
@@ -9162,7 +9174,9 @@ struct NextBackendSessionUpdatePacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
+#if NEXT_EXPERIMENTAL
             if ( has_near_relay_pings )
+#endif // #if NEXT_EXPERIMENTAL
             {
                 serialize_int( stream, near_relay_rtt[i], 0, 255 );
                 serialize_int( stream, near_relay_jitter[i], 0, 255 );
@@ -9223,7 +9237,9 @@ struct next_session_entry_t
     bool stats_fallback_to_direct;
     bool stats_client_bandwidth_over_limit;
     bool stats_server_bandwidth_over_limit;
+#if NEXT_EXPERIMENTAL
     bool stats_has_near_relay_pings;
+#endif // #if NEXT_EXPERIMENTAL
     int stats_platform_id;
     int stats_connection_type;
     float stats_next_kbps_up;
@@ -12212,23 +12228,29 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_next_rtt = packet.next_rtt;
             session->stats_next_jitter = packet.next_jitter;
             session->stats_next_packet_loss = packet.next_packet_loss;
+#if NEXT_EXPERIMENTAL
             session->stats_has_near_relay_pings = packet.has_near_relay_pings;
+#endif // #if NEXT_EXPERIMENTAL            
             session->stats_num_near_relays = packet.num_near_relays;
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {
                 session->stats_near_relay_ids[i] = packet.near_relay_ids[i];
+#if NEXT_EXPERIMENTAL
                 if ( packet.has_near_relay_pings )
+#endif // #if NEXT_EXPERIMENTAL
                 {
                     session->stats_near_relay_rtt[i] = packet.near_relay_rtt[i];
                     session->stats_near_relay_jitter[i] = packet.near_relay_jitter[i];
                     session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
                 }
+#if NEXT_EXPERIMENTAL
                 else
                 {
                     session->stats_near_relay_rtt[i] = 0;
                     session->stats_near_relay_jitter[i] = 0;
                     session->stats_near_relay_packet_loss[i] = 0;
                 }
+#endif // #if NEXT_EXPERIMENTAL
             }
             session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
@@ -12814,7 +12836,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.direct_rtt = session->stats_direct_rtt;
             packet.direct_jitter = session->stats_direct_jitter;
             packet.direct_packet_loss = session->stats_direct_packet_loss;
+#if NEXT_EXPERIMENTAL
             packet.has_near_relay_pings = session->stats_has_near_relay_pings;
+#endif // #if NEXT_EXPERIMENTAL
             packet.num_near_relays = session->stats_num_near_relays;
             for ( int j = 0; j < packet.num_near_relays; ++j )
             {
@@ -14926,7 +14950,9 @@ static void test_packets()
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
         in.next_packet_loss = 0.01f;
+#if NEXT_EXPERIMENTAL
         in.has_near_relay_pings = true;
+#endif // #if NEXT_EXPERIMENTAL
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -14967,6 +14993,8 @@ static void test_packets()
         next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
     }
+
+#if NEXT_EXPERIMENTAL
 
     // client stats packet (without near relay pings)
     {
@@ -15017,6 +15045,8 @@ static void test_packets()
         next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
     }
+
+#endif // #if NEXT_EXPERIMENTAL
 
     // route update packet (direct)
     {
@@ -15760,7 +15790,9 @@ static void test_backend_packets()
         in.direct_packet_loss = 0.1f;
         in.next = true;
         in.committed = true;
+#if NEXT_EXPERIMENTAL
         in.has_near_relay_pings = true;
+#endif // #if NEXT_EXPERIMENTAL
         in.next_rtt = 5.0f;
         in.next_jitter = 1.5f;
         in.next_packet_loss = 0.0f;
