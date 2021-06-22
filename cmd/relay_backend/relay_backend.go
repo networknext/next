@@ -23,14 +23,10 @@ import (
 	"sync"
 	"time"
 
-	// "strings"
-
 	"cloud.google.com/go/compute/metadata"
 	gcStorage "cloud.google.com/go/storage"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-
-	// "github.com/rjeczalik/notify"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
@@ -236,22 +232,6 @@ func mainReturnWithCode() int {
 		// Get the directory of the relays.bin
 		// Used to watch over file creation and modification
 		directoryPath := filepath.Dir(absPath)
-
-		// todo: disabled because it doesn't build on macos
-		/*
-			// Create channel to store notifications of file changing
-			// Use a size of 2 to ensure a change is detected even with io.EOF error
-			fileChan := make(chan notify.EventInfo, 2)
-
-			// Check for Create and InModify events because cloud scheduler will be deleting and replacing each file with updates
-			// Create covers the case where a file is explicitly deleted and then re-added
-			// InModify covers the case where a file is replaced with the same filename (i.e. using mv or cp)
-			if err := notify.Watch(directoryPath, fileChan, notify.Create, notify.InModify); err != nil {
-				level.Error(logger).Log("msg", fmt.Sprintf("could not create watchman on %s", directoryPath), "err", err)
-				return 1
-			}
-			defer notify.Stop(fileChan)
-		*/
 
 		binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
 		if err != nil {
