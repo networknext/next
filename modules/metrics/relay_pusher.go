@@ -45,6 +45,8 @@ type RelayPusherErrorMetrics struct {
 	MaxmindGZIPReadFailure            Counter
 	MaxmindTempFileWriteFailure       Counter
 	MaxmindSCPWriteFailure            Counter
+	MaxmindStorageUploadFailureISP    Counter
+	MaxmindStorageUploadFailureCity   Counter
 	DatabaseSCPWriteFailure           Counter
 	ServerBackendInstanceCountFailure Counter
 }
@@ -56,6 +58,8 @@ var EmptyRelayPusherErrorMetrics RelayPusherErrorMetrics = RelayPusherErrorMetri
 	MaxmindGZIPReadFailure:            &EmptyCounter{},
 	MaxmindTempFileWriteFailure:       &EmptyCounter{},
 	MaxmindSCPWriteFailure:            &EmptyCounter{},
+	MaxmindStorageUploadFailureISP:    &EmptyCounter{},
+	MaxmindStorageUploadFailureCity:   &EmptyCounter{},
 	DatabaseSCPWriteFailure:           &EmptyCounter{},
 	ServerBackendInstanceCountFailure: &EmptyCounter{},
 }
@@ -201,6 +205,28 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		ID:          "maxmind_scp_call_failure.count",
 		Unit:        "failures",
 		Description: "The total number of Maxmind SCP file copy failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Maxmind HTTP ISP Upload Failures",
+		ServiceName: "relay_pusher",
+		ID:          "maxmind_upload_isp_failure.count",
+		Unit:        "failures",
+		Description: "The total number of Maxmind ISP storage upload failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Maxmind HTTP City Upload Failures",
+		ServiceName: "relay_pusher",
+		ID:          "maxmind_upload_city_failure.count",
+		Unit:        "failures",
+		Description: "The total number of Maxmind City storage upload failures.",
 	})
 	if err != nil {
 		return nil, err
