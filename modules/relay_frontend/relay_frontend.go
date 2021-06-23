@@ -368,6 +368,7 @@ func (r *RelayFrontendSvc) GetRelayDashboardAnalysisHandlerFunc() func(w http.Re
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+
 		resp, err := client.Do(req)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -388,7 +389,6 @@ func (r *RelayFrontendSvc) GetRelayDashboardAnalysisHandlerFunc() func(w http.Re
 }
 
 func (r *RelayFrontendSvc) GetCostMatrixHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
-	fmt.Println("GetCostMatrixHandlerFunc()")
 
 	return func(w http.ResponseWriter, req *http.Request) {
 		defer req.Body.Close()
