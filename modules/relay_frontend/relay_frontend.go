@@ -200,23 +200,6 @@ func (r *RelayFrontendSvc) GetMatrixAddress(matrixType string) (string, error) {
 	return addr, nil
 }
 
-// Gets the cached cost matrix
-func (r *RelayFrontendSvc) GetCostMatrixHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
-	return func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Type", "application/octet-stream")
-		data := r.costMatrix.GetMatrix()
-		if len(data) == 0 {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		buffer := bytes.NewBuffer(data)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-	}
-}
-
 // Gets the cached route matrix
 func (r *RelayFrontendSvc) GetRouteMatrixHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
@@ -344,6 +327,82 @@ func (r *RelayFrontendSvc) GetRelayDashboardDataHandlerFunc() func(w http.Respon
 		}
 
 		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/relay_dashboard_data", r.currentMasterBackendAddress), nil)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		jsonData, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonData)
+	}
+}
+
+func (r *RelayFrontendSvc) GetRelayDashboardAnalysisHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+
+		if r.currentMasterBackendAddress == "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		client := &http.Client{
+			Timeout: time.Second * 10,
+		}
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/relay_dashboard_analysis", r.currentMasterBackendAddress), nil)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer resp.Body.Close()
+
+		jsonData, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonData)
+	}
+}
+
+func (r *RelayFrontendSvc) GetCostMatrixHandlerFunc() func(w http.ResponseWriter, req *http.Request) {
+	fmt.Println("GetCostMatrixHandlerFunc()")
+
+	return func(w http.ResponseWriter, req *http.Request) {
+		defer req.Body.Close()
+
+		if r.currentMasterBackendAddress == "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		client := &http.Client{
+			Timeout: time.Second * 10,
+		}
+
+		req, err := http.NewRequest("GET", fmt.Sprintf("http://%s/cost_matrix", r.currentMasterBackendAddress), nil)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
