@@ -567,10 +567,8 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 ) error {
 
 	authHeader := r.Header.Get("Authorization")
-	fmt.Printf("\n%s\n", authHeader)
 
 	uri := rfs.RelayFrontendURI + "/cost_matrix"
-	fmt.Printf("relay frontend: %s\n", uri)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", uri, nil)
@@ -589,16 +587,12 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 	}
 	defer response.Body.Close()
 
-	fmt.Printf("%v\n", response.Body)
-
 	byteValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		err = fmt.Errorf("NextCostMatrixHandler() error reading /cost_matrix HTTP response body: %w", err)
 		rfs.Logger.Log("err", err)
 		return err
 	}
-
-	fmt.Printf("%s\n", string(byteValue))
 
 	reply.CostMatrix = byteValue
 
