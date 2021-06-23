@@ -378,9 +378,9 @@ func mainReturnWithCode() int {
 	// NOTE: the next tool is unaware of CORS and its requests simply pass through
 
 	// this call will not work via auth, fails within the auth0 stack
-	router.HandleFunc("/cost_matrix", frontendClient.GetCostMatrixHandlerFunc()).Methods("GET")
-	// costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
-	// router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
+	// router.HandleFunc("/cost_matrix", frontendClient.GetCostMatrixHandlerFunc()).Methods("GET")
+	costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
+	router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
 
 	relaysCsvHandler := http.HandlerFunc(frontendClient.GetRelayBackendHandlerFunc("/relays"))
 	router.Handle("/relays", middleware.PlainHttpAuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))

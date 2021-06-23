@@ -579,7 +579,7 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 		rfs.Logger.Log("err", err)
 		return err
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", authHeader))
+	req.Header.Set("Authorization", authHeader)
 
 	response, err := client.Do(req)
 	if err != nil {
