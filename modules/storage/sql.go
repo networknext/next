@@ -79,38 +79,109 @@ type SQL struct {
 }
 
 // Customer retrieves a Customer record using the company code
-func (db *SQL) Customer(companyCode string) (routing.Customer, error) {
+func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 
-	db.customerMutex.RLock()
-	defer db.customerMutex.RUnlock()
+	var querySQL bytes.Buffer
+	var customer sqlCustomer
 
-	c, found := db.customers[companyCode]
-	if !found {
-		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", companyCode)}
+	querySQL.Write([]byte("select id, automatic_signin_domain,"))
+	querySQL.Write([]byte("customer_name, customer_code from customers where customer_code = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), customerCode)
+	err := row.Scan(&customer.ID,
+		&customer.AutomaticSignInDomains,
+		&customer.Name,
+		&customer.CustomerCode)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "Customer() no rows were returned!")
+		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: customerCode}
+	case nil:
+		c := routing.Customer{
+			Code:                   customer.CustomerCode,
+			Name:                   customer.Name,
+			AutomaticSignInDomains: customer.AutomaticSignInDomains,
+			DatabaseID:             customer.ID,
+		}
+		return c, nil
+	default:
+		level.Error(db.Logger).Log("during", "Customer() QueryRow returned an error: %v", err)
+		return routing.Customer{}, err
 	}
 
-	return c, nil
 }
 
 // CustomerWithName retrieves a record using the customer's name
-func (db *SQL) CustomerWithName(name string) (routing.Customer, error) {
-	db.customerMutex.RLock()
-	defer db.customerMutex.RUnlock()
+// func (db *SQL) CustomerWithName(name string) (routing.Customer, error) {
+// 	var querySQL bytes.Buffer
+// 	var customer sqlCustomer
 
-	for _, customer := range db.customers {
-		if customer.Name == name {
-			return customer, nil
-		}
-	}
+// 	querySQL.Write([]byte("select id, automatic_signin_domain,"))
+// 	querySQL.Write([]byte("customer_name, customer_code from customers where customer_name = $1"))
 
-	return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: name}
-}
+// 	row := db.Client.QueryRow(querySQL.String(), name)
+// 	err := row.Scan(&customer.ID,
+// 		&customer.AutomaticSignInDomains,
+// 		&customer.Name,
+// 		&customer.CustomerCode)
+// 	switch err {
+// 	case sql.ErrNoRows:
+// 		level.Error(db.Logger).Log("during", "CustomerWithName() no rows were returned!")
+// 		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", name)}
+// 	case nil:
+// 		c := routing.Customer{
+// 			Code:                   customer.CustomerCode,
+// 			Name:                   customer.Name,
+// 			AutomaticSignInDomains: customer.AutomaticSignInDomains,
+// 			DatabaseID:             customer.ID,
+// 		}
+// 		return c, nil
+// 	default:
+// 		level.Error(db.Logger).Log("during", "CustomerWithName() QueryRow returned an error: %v", err)
+// 		return routing.Customer{}, err
+// 	}
+// }
 
 // Customers retrieves the full list
+// TODO: not covered by sql_test.go
 func (db *SQL) Customers() []routing.Customer {
-	var customers []routing.Customer
-	for _, customer := range db.customers {
-		customers = append(customers, customer)
+	var sql bytes.Buffer
+	var customer sqlCustomer
+
+	customers := []routing.Customer{}
+	customerIDs := make(map[int64]string)
+
+	sql.Write([]byte("select id, automatic_signin_domain, "))
+	sql.Write([]byte("customer_name, customer_code from customers"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "Customers(): QueryContext returned an error", "err", err)
+		return []routing.Customer{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&customer.ID,
+			&customer.AutomaticSignInDomains,
+			&customer.Name,
+			&customer.CustomerCode,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Customers(): error parsing returned row", "err", err)
+			return []routing.Customer{}
+		}
+
+		customerIDs[customer.ID] = customer.CustomerCode
+
+		c := routing.Customer{
+			Code:                   customer.CustomerCode,
+			Name:                   customer.Name,
+			AutomaticSignInDomains: customer.AutomaticSignInDomains,
+			DatabaseID:             customer.ID,
+		}
+
+		customers = append(customers, c)
 	}
 
 	sort.Slice(customers, func(i int, j int) bool { return customers[i].Name < customers[j].Name })
@@ -131,21 +202,12 @@ type sqlCustomer struct {
 func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 	var sql bytes.Buffer
 
-	db.customerMutex.RLock()
-	_, ok := db.customers[c.Code]
-	db.customerMutex.RUnlock()
-
-	if ok {
-		return &AlreadyExistsError{resourceType: "customer", resourceRef: c.Code}
-	}
-
 	customer := sqlCustomer{
 		CustomerCode:           c.Code,
 		Name:                   c.Name,
 		AutomaticSignInDomains: c.AutomaticSignInDomains,
 	}
 
-	// Add the buyer in remote storage
 	sql.Write([]byte("insert into customers ("))
 	sql.Write([]byte("automatic_signin_domain, customer_name, customer_code"))
 	sql.Write([]byte(") values ($1, $2, $3)"))
@@ -175,10 +237,6 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.syncCustomers(ctx)
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }

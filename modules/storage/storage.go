@@ -13,7 +13,7 @@ type Storer interface {
 	Customer(code string) (routing.Customer, error)
 
 	// TODO: chopping block (unused)
-	CustomerWithName(name string) (routing.Customer, error)
+	// CustomerWithName(name string) (routing.Customer, error)
 
 	Customers() []routing.Customer
 
