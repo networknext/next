@@ -143,10 +143,45 @@ func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 // }
 
 // Customers retrieves the full list
+// TODO: not covered by sql_test.go
 func (db *SQL) Customers() []routing.Customer {
-	var customers []routing.Customer
-	for _, customer := range db.customers {
-		customers = append(customers, customer)
+	var sql bytes.Buffer
+	var customer sqlCustomer
+
+	customers := []routing.Customer{}
+	customerIDs := make(map[int64]string)
+
+	sql.Write([]byte("select id, automatic_signin_domain, "))
+	sql.Write([]byte("customer_name, customer_code from customers"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "Customers(): QueryContext returned an error", "err", err)
+		return []routing.Customer{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&customer.ID,
+			&customer.AutomaticSignInDomains,
+			&customer.Name,
+			&customer.CustomerCode,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Customers(): error parsing returned row", "err", err)
+			return []routing.Customer{}
+		}
+
+		customerIDs[customer.ID] = customer.CustomerCode
+
+		c := routing.Customer{
+			Code:                   customer.CustomerCode,
+			Name:                   customer.Name,
+			AutomaticSignInDomains: customer.AutomaticSignInDomains,
+			DatabaseID:             customer.ID,
+		}
+
+		customers = append(customers, c)
 	}
 
 	sort.Slice(customers, func(i int, j int) bool { return customers[i].Name < customers[j].Name })
