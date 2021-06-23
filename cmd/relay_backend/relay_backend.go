@@ -23,14 +23,10 @@ import (
 	"sync"
 	"time"
 
-	// "strings"
-
 	"cloud.google.com/go/compute/metadata"
 	gcStorage "cloud.google.com/go/storage"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
-
-	// "github.com/rjeczalik/notify"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
@@ -204,6 +200,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	relayFullThreshold, err := envvar.GetFloat("RELAY_FULL_THRESHOLD", 0.90)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		return 1
+	}
+
 	instanceID, err := getInstanceID(env)
 	if err != nil {
 		level.Error(logger).Log("msg", "error getting relay backend instance ID", "err", err)
@@ -230,22 +232,6 @@ func mainReturnWithCode() int {
 		// Get the directory of the relays.bin
 		// Used to watch over file creation and modification
 		directoryPath := filepath.Dir(absPath)
-
-		// todo: disabled because it doesn't build on macos
-		/*
-			// Create channel to store notifications of file changing
-			// Use a size of 2 to ensure a change is detected even with io.EOF error
-			fileChan := make(chan notify.EventInfo, 2)
-
-			// Check for Create and InModify events because cloud scheduler will be deleting and replacing each file with updates
-			// Create covers the case where a file is explicitly deleted and then re-added
-			// InModify covers the case where a file is replaced with the same filename (i.e. using mv or cp)
-			if err := notify.Watch(directoryPath, fileChan, notify.Create, notify.InModify); err != nil {
-				level.Error(logger).Log("msg", fmt.Sprintf("could not create watchman on %s", directoryPath), "err", err)
-				return 1
-			}
-			defer notify.Stop(fileChan)
-		*/
 
 		binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
 		if err != nil {
@@ -718,6 +704,8 @@ func mainReturnWithCode() int {
 			allRelayData := relayMap.GetAllRelayData()
 			entries := make([]analytics.RelayStatsEntry, len(allRelayData))
 
+			var fullRelayIDs []uint64
+
 			count := 0
 			for i := range allRelayData {
 				relay := &allRelayData[i]
@@ -740,6 +728,15 @@ func mainReturnWithCode() int {
 					}
 				}
 
+				// Track the relays that are near max capacity
+				var full bool
+
+				maxSessions := int(relay.MaxSessions)
+				if maxSessions != 0 && float64(numSessions/maxSessions) >= relayFullThreshold {
+					fullRelayIDs = append(fullRelayIDs, relay.ID)
+					full = true
+				}
+
 				entries[count] = analytics.RelayStatsEntry{
 					ID:            relay.ID,
 					MaxSessions:   relay.MaxSessions,
@@ -747,6 +744,7 @@ func mainReturnWithCode() int {
 					NumRoutable:   numRouteable,
 					NumUnroutable: uint32(len(allRelayData)) - 1 - numRouteable,
 					Timestamp:     uint64(time.Now().Unix()),
+					Full:          full,
 				}
 
 				count++
@@ -769,6 +767,7 @@ func mainReturnWithCode() int {
 				DestRelays:         destRelays,
 				PingStats:          pingStats,
 				RelayStats:         relayStats,
+				FullRelayIDs:       fullRelayIDs,
 			}
 
 			if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {
