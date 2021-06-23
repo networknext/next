@@ -286,7 +286,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 	authHeader := r.Header.Get("Authorization")
 	if args.ServiceName == "" || args.ServiceName == "RelayDashboardAnalysis" {
-		var analysis routing.JsonMatrixAnalysis
 
 		uri := rfs.RelayFrontendURI + "/relay_dashboard_analysis"
 
@@ -314,9 +313,15 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 			return err
 		}
 
-		json.Unmarshal(byteValue, &analysis)
+		type jsonIncoming struct {
+			Analysis routing.JsonMatrixAnalysis `json:"analysis"`
+		}
 
-		reply.ServiceStatusText = strings.Split(analysis.String(), "\n")
+		var incoming jsonIncoming
+
+		json.Unmarshal(byteValue, &incoming)
+
+		reply.ServiceStatusText = strings.Split(incoming.Analysis.String(), "\n")
 		reply.SelectedService = "RelayDashboardAnalysis"
 
 	} else {
