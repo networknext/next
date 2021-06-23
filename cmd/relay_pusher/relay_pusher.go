@@ -241,6 +241,8 @@ func mainReturnWithCode() int {
 					continue
 				}
 
+				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulHTTPCallsISP.Add(1)
+
 				gz, err := gzip.NewReader(ispRes.Body)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to open isp file with gzip", "err", err)
@@ -284,6 +286,8 @@ func mainReturnWithCode() int {
 					// Don't continue here, we need to try out the city file as well
 				}
 
+				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPStorageUploads.Add(1)
+
 				updateTime := time.Since(start)
 				duration := float64(updateTime.Milliseconds())
 
@@ -303,6 +307,8 @@ func mainReturnWithCode() int {
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindHTTPFailureCity.Add(1)
 					continue
 				}
+
+				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulHTTPCallsCity.Add(1)
 
 				gz, err = gzip.NewReader(cityRes.Body)
 				if err != nil {
@@ -369,6 +375,8 @@ func mainReturnWithCode() int {
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity.Add(1)
 					continue
 				}
+
+				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCityStorageUploads.Add(1)
 
 				updateTime = time.Since(start)
 				duration = float64(updateTime.Milliseconds())
