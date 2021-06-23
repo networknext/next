@@ -9,7 +9,7 @@ import (
 
 const (
 	PingStatsEntryVersion      = uint8(3)
-	RelayStatsEntryVersion     = uint8(2)
+	RelayStatsEntryVersion     = uint8(3)
 	RelayNamesHashEntryVersion = uint8(1)
 
 	MaxInstanceIDLength = 64
@@ -137,6 +137,8 @@ type RelayStatsEntry struct {
 	NumRoutable   uint32
 	NumUnroutable uint32
 
+	Full bool
+
 	// all of below are deprecated
 	Tx                        uint64
 	Rx                        uint64
@@ -164,7 +166,7 @@ type RelayStatsEntry struct {
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*int(8+4+4+4+4+4+4+4+4+4+4+4+4+4+4)
+	length := 1 + 8 + len(entries)*int(8+4+4+4+4+4+4+4+4+4+4+4+4+4+4+1)
 	data := make([]byte, length)
 
 	index := 0
@@ -188,6 +190,7 @@ func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
 		encoding.WriteUint32(data, &index, entry.MaxSessions)
 		encoding.WriteUint32(data, &index, entry.NumRoutable)
 		encoding.WriteUint32(data, &index, entry.NumUnroutable)
+		encoding.WriteBool(data, &index, entry.Full)
 	}
 
 	return data
@@ -311,6 +314,12 @@ func ReadRelayStatsEntries(data []byte) ([]*RelayStatsEntry, bool) {
 			}
 		}
 
+		if version >= 3 {
+			if !encoding.ReadBool(data, &index, &entry.Full) {
+				return nil, false
+			}
+		}
+
 		entries[i] = entry
 	}
 
@@ -338,6 +347,10 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 	bqEntry["max_sessions"] = int(e.MaxSessions)
 	bqEntry["num_routable"] = int(e.NumRoutable)
 	bqEntry["num_unroutable"] = int(e.NumUnroutable)
+
+	if e.Full {
+		bqEntry["full"] = e.Full
+	}
 
 	return bqEntry, "", nil
 }
