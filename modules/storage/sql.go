@@ -95,7 +95,7 @@ func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 	switch err {
 	case sql.ErrNoRows:
 		level.Error(db.Logger).Log("during", "Customer() no rows were returned!")
-		return routing.Customer{}, err
+		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", customerCode)}
 	case nil:
 		c := routing.Customer{
 			Code:                   customer.CustomerCode,
@@ -112,18 +112,35 @@ func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 }
 
 // CustomerWithName retrieves a record using the customer's name
-func (db *SQL) CustomerWithName(name string) (routing.Customer, error) {
-	db.customerMutex.RLock()
-	defer db.customerMutex.RUnlock()
+// func (db *SQL) CustomerWithName(name string) (routing.Customer, error) {
+// 	var querySQL bytes.Buffer
+// 	var customer sqlCustomer
 
-	for _, customer := range db.customers {
-		if customer.Name == name {
-			return customer, nil
-		}
-	}
+// 	querySQL.Write([]byte("select id, automatic_signin_domain,"))
+// 	querySQL.Write([]byte("customer_name, customer_code from customers where customer_name = $1"))
 
-	return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: name}
-}
+// 	row := db.Client.QueryRow(querySQL.String(), name)
+// 	err := row.Scan(&customer.ID,
+// 		&customer.AutomaticSignInDomains,
+// 		&customer.Name,
+// 		&customer.CustomerCode)
+// 	switch err {
+// 	case sql.ErrNoRows:
+// 		level.Error(db.Logger).Log("during", "CustomerWithName() no rows were returned!")
+// 		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", name)}
+// 	case nil:
+// 		c := routing.Customer{
+// 			Code:                   customer.CustomerCode,
+// 			Name:                   customer.Name,
+// 			AutomaticSignInDomains: customer.AutomaticSignInDomains,
+// 			DatabaseID:             customer.ID,
+// 		}
+// 		return c, nil
+// 	default:
+// 		level.Error(db.Logger).Log("during", "CustomerWithName() QueryRow returned an error: %v", err)
+// 		return routing.Customer{}, err
+// 	}
+// }
 
 // Customers retrieves the full list
 func (db *SQL) Customers() []routing.Customer {
