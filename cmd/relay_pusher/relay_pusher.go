@@ -187,6 +187,18 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	ispStorageName := envvar.Get("MAXMIND_ISP_STORAGE_FILE_NAME", "")
+	if ispFileName == "" {
+		level.Error(logger).Log("err", "MAXMIND_ISP_STORAGE_FILE_NAME not defined", "err")
+		return 1
+	}
+
+	cityStorageName := envvar.Get("MAXMIND_CITY_STORAGE_FILE_NAME", "")
+	if cityFileName == "" {
+		level.Error(logger).Log("err", "MAXMIND_CITY_STORAGE_FILE_NAME not defined", "err")
+		return 1
+	}
+
 	ispURI := envvar.Get("MAXMIND_ISP_DB_URI", "")
 	if ispURI == "" {
 		level.Error(logger).Log("err", "maxmind DB ISP location not defined")
@@ -263,6 +275,12 @@ func mainReturnWithCode() int {
 				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), serverBackendInstanceNames, ispFileName); err != nil {
 					level.Error(logger).Log("msg", "failed to copy maxmind ISP file to server backends", "err", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+					// Don't continue here, we need to try out the city file as well
+				}
+
+				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), ispStorageName); err != nil {
+					level.Error(logger).Log("msg", "failed to copy maxmind ISP file to gcp cloud storage", "err", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP.Add(1)
 					// Don't continue here, we need to try out the city file as well
 				}
 
@@ -343,6 +361,12 @@ func mainReturnWithCode() int {
 				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), maxmindInstanceNames, cityFileName); err != nil {
 					level.Error(logger).Log("msg", "failed to copy maxmind city file to server backends", "err", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+					continue
+				}
+
+				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), cityStorageName); err != nil {
+					level.Error(logger).Log("msg", "failed to copy maxmind City file to gcp cloud storage", "err", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity.Add(1)
 					continue
 				}
 
