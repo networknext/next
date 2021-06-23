@@ -16,26 +16,30 @@ var EmptyRelayPusherServiceMetrics RelayPusherServiceMetrics = RelayPusherServic
 
 // RelayPusherMetrics defines a set of metrics for monitoring the beacon insertion service.
 type RelayPusherMetrics struct {
-	SuccessfulMaxmindUpdates       Counter
-	MaxmindSuccessfulHTTPCallsISP  Counter
-	MaxmindSuccessfulHTTPCallsCity Counter
-	DBBinaryTotalUpdateDuration    Gauge
-	MaxmindDBTotalUpdateDuration   Gauge
-	MaxmindDBCityUpdateDuration    Gauge
-	MaxmindDBISPUpdateDuration     Gauge
-	ErrorMetrics                   RelayPusherErrorMetrics
+	SuccessfulMaxmindUpdates            Counter
+	MaxmindSuccessfulHTTPCallsISP       Counter
+	MaxmindSuccessfulHTTPCallsCity      Counter
+	MaxmindSuccessfulISPStorageUploads  Counter
+	MaxmindSuccessfulCityStorageUploads Counter
+	DBBinaryTotalUpdateDuration         Gauge
+	MaxmindDBTotalUpdateDuration        Gauge
+	MaxmindDBCityUpdateDuration         Gauge
+	MaxmindDBISPUpdateDuration          Gauge
+	ErrorMetrics                        RelayPusherErrorMetrics
 }
 
 // EmptyRelayPusherMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyRelayPusherMetrics RelayPusherMetrics = RelayPusherMetrics{
-	SuccessfulMaxmindUpdates:       &EmptyCounter{},
-	MaxmindSuccessfulHTTPCallsISP:  &EmptyCounter{},
-	MaxmindSuccessfulHTTPCallsCity: &EmptyCounter{},
-	DBBinaryTotalUpdateDuration:    &EmptyGauge{},
-	MaxmindDBTotalUpdateDuration:   &EmptyGauge{},
-	MaxmindDBCityUpdateDuration:    &EmptyGauge{},
-	MaxmindDBISPUpdateDuration:     &EmptyGauge{},
-	ErrorMetrics:                   EmptyRelayPusherErrorMetrics,
+	SuccessfulMaxmindUpdates:            &EmptyCounter{},
+	MaxmindSuccessfulHTTPCallsISP:       &EmptyCounter{},
+	MaxmindSuccessfulHTTPCallsCity:      &EmptyCounter{},
+	MaxmindSuccessfulISPStorageUploads:  &EmptyCounter{},
+	MaxmindSuccessfulCityStorageUploads: &EmptyCounter{},
+	DBBinaryTotalUpdateDuration:         &EmptyGauge{},
+	MaxmindDBTotalUpdateDuration:        &EmptyGauge{},
+	MaxmindDBCityUpdateDuration:         &EmptyGauge{},
+	MaxmindDBISPUpdateDuration:          &EmptyGauge{},
+	ErrorMetrics:                        EmptyRelayPusherErrorMetrics,
 }
 
 // RelayPusherErrorMetrics defines a set of metrics for recording errors for the beacon insertion service.
@@ -45,6 +49,8 @@ type RelayPusherErrorMetrics struct {
 	MaxmindGZIPReadFailure            Counter
 	MaxmindTempFileWriteFailure       Counter
 	MaxmindSCPWriteFailure            Counter
+	MaxmindStorageUploadFailureISP    Counter
+	MaxmindStorageUploadFailureCity   Counter
 	DatabaseSCPWriteFailure           Counter
 	ServerBackendInstanceCountFailure Counter
 }
@@ -56,6 +62,8 @@ var EmptyRelayPusherErrorMetrics RelayPusherErrorMetrics = RelayPusherErrorMetri
 	MaxmindGZIPReadFailure:            &EmptyCounter{},
 	MaxmindTempFileWriteFailure:       &EmptyCounter{},
 	MaxmindSCPWriteFailure:            &EmptyCounter{},
+	MaxmindStorageUploadFailureISP:    &EmptyCounter{},
+	MaxmindStorageUploadFailureCity:   &EmptyCounter{},
 	DatabaseSCPWriteFailure:           &EmptyCounter{},
 	ServerBackendInstanceCountFailure: &EmptyCounter{},
 }
@@ -100,6 +108,28 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		ID:          "successful_maxmind_http_get_isp.count",
 		Unit:        "calls",
 		Description: "The total number of successful Maxmind HTTP calls for IP to ISP in number of calls.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCityStorageUploads, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Successful Maxmind City Storage Uploads",
+		ServiceName: "relay_pusher",
+		ID:          "successful_maxmind_city_storage_uploads.count",
+		Unit:        "uploads",
+		Description: "The total number of successful Maxmind City uploads to cloud storage.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPStorageUploads, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Successful Maxmind ISP Storage Uploads",
+		ServiceName: "relay_pusher",
+		ID:          "successful_maxmind_isp_storage_uploads.count",
+		Unit:        "uploads",
+		Description: "The total number of successful Maxmind ISP uploads to cloud storage.",
 	})
 	if err != nil {
 		return nil, err
@@ -201,6 +231,28 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		ID:          "maxmind_scp_call_failure.count",
 		Unit:        "failures",
 		Description: "The total number of Maxmind SCP file copy failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Maxmind ISP Storage Upload Failures",
+		ServiceName: "relay_pusher",
+		ID:          "maxmind_upload_isp_failure.count",
+		Unit:        "failures",
+		Description: "The total number of Maxmind ISP storage upload failures.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Maxmind City Storage Upload Failures",
+		ServiceName: "relay_pusher",
+		ID:          "maxmind_upload_city_failure.count",
+		Unit:        "failures",
+		Description: "The total number of Maxmind City storage upload failures.",
 	})
 	if err != nil {
 		return nil, err
