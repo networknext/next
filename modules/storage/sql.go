@@ -79,17 +79,36 @@ type SQL struct {
 }
 
 // Customer retrieves a Customer record using the company code
-func (db *SQL) Customer(companyCode string) (routing.Customer, error) {
+func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 
-	db.customerMutex.RLock()
-	defer db.customerMutex.RUnlock()
+	var querySQL bytes.Buffer
+	var customer sqlCustomer
 
-	c, found := db.customers[companyCode]
-	if !found {
-		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", companyCode)}
+	querySQL.Write([]byte("select id, automatic_signin_domain,"))
+	querySQL.Write([]byte("customer_name, customer_code from customers where customer_code = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), customerCode)
+	err := row.Scan(&customer.ID,
+		&customer.AutomaticSignInDomains,
+		&customer.Name,
+		&customer.CustomerCode)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "Customer() no rows were returned!")
+		return routing.Customer{}, err
+	case nil:
+		c := routing.Customer{
+			Code:                   customer.CustomerCode,
+			Name:                   customer.Name,
+			AutomaticSignInDomains: customer.AutomaticSignInDomains,
+			DatabaseID:             customer.ID,
+		}
+		return c, nil
+	default:
+		level.Error(db.Logger).Log("during", "Customer() QueryRow returned an error: %v", err)
+		return routing.Customer{}, err
 	}
 
-	return c, nil
 }
 
 // CustomerWithName retrieves a record using the customer's name
