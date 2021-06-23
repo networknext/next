@@ -211,7 +211,7 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 	}
 
 	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Maxmind HTTP ISP Upload Failures",
+		DisplayName: "Maxmind ISP Storage Upload Failures",
 		ServiceName: "relay_pusher",
 		ID:          "maxmind_upload_isp_failure.count",
 		Unit:        "failures",
@@ -222,7 +222,7 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 	}
 
 	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Maxmind HTTP City Upload Failures",
+		DisplayName: "Maxmind City Storage Upload Failures",
 		ServiceName: "relay_pusher",
 		ID:          "maxmind_upload_city_failure.count",
 		Unit:        "failures",
