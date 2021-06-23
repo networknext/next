@@ -279,7 +279,7 @@ func mainReturnWithCode() int {
 				}
 
 				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), ispStorageName); err != nil {
-					level.Error(logger).Log("msg", "failed to copy maxmind ISP file to server backends", "err", err)
+					level.Error(logger).Log("msg", "failed to copy maxmind ISP file to gcp cloud storage", "err", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP.Add(1)
 					// Don't continue here, we need to try out the city file as well
 				}
@@ -365,9 +365,9 @@ func mainReturnWithCode() int {
 				}
 
 				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), cityStorageName); err != nil {
-					level.Error(logger).Log("msg", "failed to copy maxmind ISP file to server backends", "err", err)
+					level.Error(logger).Log("msg", "failed to copy maxmind City file to gcp cloud storage", "err", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity.Add(1)
-					// Don't continue here, we need to try out the city file as well
+					continue
 				}
 
 				updateTime = time.Since(start)
