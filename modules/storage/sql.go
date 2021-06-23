@@ -95,7 +95,7 @@ func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 	switch err {
 	case sql.ErrNoRows:
 		level.Error(db.Logger).Log("during", "Customer() no rows were returned!")
-		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", customerCode)}
+		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: customerCode}
 	case nil:
 		c := routing.Customer{
 			Code:                   customer.CustomerCode,
@@ -202,21 +202,12 @@ type sqlCustomer struct {
 func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 	var sql bytes.Buffer
 
-	db.customerMutex.RLock()
-	_, ok := db.customers[c.Code]
-	db.customerMutex.RUnlock()
-
-	if ok {
-		return &AlreadyExistsError{resourceType: "customer", resourceRef: c.Code}
-	}
-
 	customer := sqlCustomer{
 		CustomerCode:           c.Code,
 		Name:                   c.Name,
 		AutomaticSignInDomains: c.AutomaticSignInDomains,
 	}
 
-	// Add the buyer in remote storage
 	sql.Write([]byte("insert into customers ("))
 	sql.Write([]byte("automatic_signin_domain, customer_name, customer_code"))
 	sql.Write([]byte(") values ($1, $2, $3)"))
@@ -246,10 +237,6 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.syncCustomers(ctx)
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
