@@ -284,9 +284,9 @@ func mainReturnWithCode() int {
 					level.Error(logger).Log("msg", "failed to copy maxmind ISP file to gcp cloud storage", "err", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP.Add(1)
 					// Don't continue here, we need to try out the city file as well
+				} else {
+					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPStorageUploads.Add(1)
 				}
-
-				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPStorageUploads.Add(1)
 
 				updateTime := time.Since(start)
 				duration := float64(updateTime.Milliseconds())
