@@ -320,7 +320,7 @@ func RelayDashboardAnalysisHandlerFunc(
 		routeMatrix := GetRouteMatrix()
 
 		type jsonResponse struct {
-			Analysis routing.JsonMatrixAnalysis
+			Analysis routing.JsonMatrixAnalysis `json:"analysis"`
 		}
 
 		var jResponse jsonResponse
