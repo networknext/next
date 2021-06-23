@@ -350,6 +350,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	lookerSecret, ok := os.LookupEnv("LOOKER_SECRET")
+	if !ok {
+		level.Error(logger).Log("err", "env var LOOKER_SECRET must be set")
+		os.Exit(1)
+	}
+
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -364,6 +370,7 @@ func main() {
 		Storage:                db,
 		Env:                    env,
 		Metrics:                serviceMetrics,
+		LookerSecret:           lookerSecret,
 	}
 
 	configService := jsonrpc.ConfigService{
