@@ -18,23 +18,23 @@ import (
 const RouteMatrixSerializeVersion = 4
 
 type RouteMatrix struct {
-	RelayIDsToIndices  map[uint64]int32
-	RelayIDs           []uint64
-	RelayAddresses     []net.UDPAddr // external IPs only
-	RelayNames         []string
-	RelayLatitudes     []float32
-	RelayLongitudes    []float32
-	RelayDatacenterIDs []uint64
-	RouteEntries       []core.RouteEntry
-	BinFileBytes       int32
-	BinFileData        []byte
-	CreatedAt          uint64
-	Version            uint32
-	DestRelays         []bool
-	PingStats          []analytics.PingStatsEntry
-	RelayStats         []analytics.RelayStatsEntry
-	FullRelayIDs       []uint64
-	FullRelayIDsSet    map[uint64]bool
+	RelayIDsToIndices   map[uint64]int32
+	RelayIDs            []uint64
+	RelayAddresses      []net.UDPAddr // external IPs only
+	RelayNames          []string
+	RelayLatitudes      []float32
+	RelayLongitudes     []float32
+	RelayDatacenterIDs  []uint64
+	RouteEntries        []core.RouteEntry
+	BinFileBytes        int32
+	BinFileData         []byte
+	CreatedAt           uint64
+	Version             uint32
+	DestRelays          []bool
+	PingStats           []analytics.PingStatsEntry
+	RelayStats          []analytics.RelayStatsEntry
+	FullRelayIDs        []uint64
+	FullRelayIndicesSet map[int32]bool
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -165,14 +165,15 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 		if stream.IsReading() {
 			m.FullRelayIDs = make([]uint64, numFullRelayIDs)
-			m.FullRelayIDsSet = make(map[uint64]bool)
+			m.FullRelayIndicesSet = make(map[int32]bool)
 		}
 
 		for i := uint32(0); i < numFullRelayIDs; i++ {
 			stream.SerializeUint64(&m.FullRelayIDs[i])
 
 			if stream.IsReading() {
-				m.FullRelayIDsSet[m.FullRelayIDs[i]] = true
+				relayIndex, _ := m.RelayIDsToIndices[m.FullRelayIDs[i]]
+				m.FullRelayIndicesSet[relayIndex] = true
 			}
 		}
 	}

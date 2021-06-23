@@ -273,9 +273,13 @@ func TestRouteMatrixRelayFull(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, expected.FullRelayIDs, actual.FullRelayIDs)
-	assert.Equal(t, 1, len(actual.FullRelayIDsSet))
+	assert.Equal(t, 1, len(actual.FullRelayIndicesSet))
 
-	val, ok := actual.FullRelayIDsSet[uint64(1)]
+	relayIndex, exists := actual.RelayIDsToIndices[uint64(1)]
+	assert.True(t, exists)
+	assert.Equal(t, int32(0), relayIndex)
+
+	val, ok := actual.FullRelayIndicesSet[relayIndex]
 	assert.True(t, ok)
 	assert.NotEmpty(t, val)
 
