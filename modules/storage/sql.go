@@ -435,14 +435,69 @@ func (db *SQL) BuyerWithCompanyCode(code string) (routing.Buyer, error) {
 
 // Buyers returns a copy of all stored buyers.
 func (db *SQL) Buyers() []routing.Buyer {
-	db.buyerMutex.RLock()
+	var sql bytes.Buffer
+	var buyer sqlBuyer
 
-	var buyers []routing.Buyer
-	for _, buyer := range db.buyers {
-		buyers = append(buyers, buyer)
+	buyers := []routing.Buyer{}
+	buyerIDs := make(map[uint64]int64)
+
+	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, public_key, customer_id "))
+	sql.Write([]byte("from buyers"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "Buyers(): QueryContext returned an error", "err", err)
+		return []routing.Buyer{}
 	}
+	defer rows.Close()
 
-	db.buyerMutex.RUnlock()
+	for rows.Next() {
+		err = rows.Scan(
+			&buyer.SdkID,
+			&buyer.DatabaseID,
+			&buyer.ShortName,
+			&buyer.IsLiveCustomer,
+			&buyer.Debug,
+			&buyer.PublicKey,
+			&buyer.CustomerID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Buyers(): error parsing returned row", "err", err)
+			return []routing.Buyer{}
+		}
+
+		buyer.ID = uint64(buyer.SdkID)
+
+		buyerIDs[buyer.ID] = buyer.DatabaseID
+
+		ic, err := db.InternalConfig(buyer.ID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() InternalConfig query returned an error: %v", err)
+			return []routing.Buyer{}
+		}
+
+		rs, err := db.RouteShader(buyer.ID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() RouteShader query returned an error: %v", err)
+			return []routing.Buyer{}
+		}
+		b := routing.Buyer{
+			ID:             buyer.ID,
+			HexID:          fmt.Sprintf("%016x", buyer.ID),
+			ShortName:      buyer.ShortName,
+			CompanyCode:    buyer.ShortName,
+			Live:           buyer.IsLiveCustomer,
+			Debug:          buyer.Debug,
+			PublicKey:      buyer.PublicKey,
+			RouteShader:    rs,
+			InternalConfig: ic,
+			CustomerID:     buyer.CustomerID,
+			DatabaseID:     buyer.DatabaseID,
+		}
+
+		buyers = append(buyers, b)
+
+	}
 
 	sort.Slice(buyers, func(i int, j int) bool { return buyers[i].ID < buyers[j].ID })
 	return buyers
