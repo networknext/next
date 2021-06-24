@@ -13689,7 +13689,6 @@ do                                                                              
     }                                                                                                       \
 } while(0)
 
-
 static void test_time()
 {
     double start = next_time();
