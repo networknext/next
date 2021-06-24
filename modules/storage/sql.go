@@ -79,38 +79,109 @@ type SQL struct {
 }
 
 // Customer retrieves a Customer record using the company code
-func (db *SQL) Customer(companyCode string) (routing.Customer, error) {
+func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 
-	db.customerMutex.RLock()
-	defer db.customerMutex.RUnlock()
+	var querySQL bytes.Buffer
+	var customer sqlCustomer
 
-	c, found := db.customers[companyCode]
-	if !found {
-		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", companyCode)}
+	querySQL.Write([]byte("select id, automatic_signin_domain,"))
+	querySQL.Write([]byte("customer_name, customer_code from customers where customer_code = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), customerCode)
+	err := row.Scan(&customer.ID,
+		&customer.AutomaticSignInDomains,
+		&customer.Name,
+		&customer.CustomerCode)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "Customer() no rows were returned!")
+		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: customerCode}
+	case nil:
+		c := routing.Customer{
+			Code:                   customer.CustomerCode,
+			Name:                   customer.Name,
+			AutomaticSignInDomains: customer.AutomaticSignInDomains,
+			DatabaseID:             customer.ID,
+		}
+		return c, nil
+	default:
+		level.Error(db.Logger).Log("during", "Customer() QueryRow returned an error: %v", err)
+		return routing.Customer{}, err
 	}
 
-	return c, nil
 }
 
 // CustomerWithName retrieves a record using the customer's name
-func (db *SQL) CustomerWithName(name string) (routing.Customer, error) {
-	db.customerMutex.RLock()
-	defer db.customerMutex.RUnlock()
+// func (db *SQL) CustomerWithName(name string) (routing.Customer, error) {
+// 	var querySQL bytes.Buffer
+// 	var customer sqlCustomer
 
-	for _, customer := range db.customers {
-		if customer.Name == name {
-			return customer, nil
-		}
-	}
+// 	querySQL.Write([]byte("select id, automatic_signin_domain,"))
+// 	querySQL.Write([]byte("customer_name, customer_code from customers where customer_name = $1"))
 
-	return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: name}
-}
+// 	row := db.Client.QueryRow(querySQL.String(), name)
+// 	err := row.Scan(&customer.ID,
+// 		&customer.AutomaticSignInDomains,
+// 		&customer.Name,
+// 		&customer.CustomerCode)
+// 	switch err {
+// 	case sql.ErrNoRows:
+// 		level.Error(db.Logger).Log("during", "CustomerWithName() no rows were returned!")
+// 		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", name)}
+// 	case nil:
+// 		c := routing.Customer{
+// 			Code:                   customer.CustomerCode,
+// 			Name:                   customer.Name,
+// 			AutomaticSignInDomains: customer.AutomaticSignInDomains,
+// 			DatabaseID:             customer.ID,
+// 		}
+// 		return c, nil
+// 	default:
+// 		level.Error(db.Logger).Log("during", "CustomerWithName() QueryRow returned an error: %v", err)
+// 		return routing.Customer{}, err
+// 	}
+// }
 
 // Customers retrieves the full list
+// TODO: not covered by sql_test.go
 func (db *SQL) Customers() []routing.Customer {
-	var customers []routing.Customer
-	for _, customer := range db.customers {
-		customers = append(customers, customer)
+	var sql bytes.Buffer
+	var customer sqlCustomer
+
+	customers := []routing.Customer{}
+	customerIDs := make(map[int64]string)
+
+	sql.Write([]byte("select id, automatic_signin_domain, "))
+	sql.Write([]byte("customer_name, customer_code from customers"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "Customers(): QueryContext returned an error", "err", err)
+		return []routing.Customer{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&customer.ID,
+			&customer.AutomaticSignInDomains,
+			&customer.Name,
+			&customer.CustomerCode,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Customers(): error parsing returned row", "err", err)
+			return []routing.Customer{}
+		}
+
+		customerIDs[customer.ID] = customer.CustomerCode
+
+		c := routing.Customer{
+			Code:                   customer.CustomerCode,
+			Name:                   customer.Name,
+			AutomaticSignInDomains: customer.AutomaticSignInDomains,
+			DatabaseID:             customer.ID,
+		}
+
+		customers = append(customers, c)
 	}
 
 	sort.Slice(customers, func(i int, j int) bool { return customers[i].Name < customers[j].Name })
@@ -131,21 +202,12 @@ type sqlCustomer struct {
 func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 	var sql bytes.Buffer
 
-	db.customerMutex.RLock()
-	_, ok := db.customers[c.Code]
-	db.customerMutex.RUnlock()
-
-	if ok {
-		return &AlreadyExistsError{resourceType: "customer", resourceRef: c.Code}
-	}
-
 	customer := sqlCustomer{
 		CustomerCode:           c.Code,
 		Name:                   c.Name,
 		AutomaticSignInDomains: c.AutomaticSignInDomains,
 	}
 
-	// Add the buyer in remote storage
 	sql.Write([]byte("insert into customers ("))
 	sql.Write([]byte("automatic_signin_domain, customer_name, customer_code"))
 	sql.Write([]byte(") values ($1, $2, $3)"))
@@ -176,10 +238,6 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	db.syncCustomers(ctx)
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 }
 
@@ -193,15 +251,7 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 
 	var sql bytes.Buffer
 
-	db.customerMutex.RLock()
-	customer, ok := db.customers[customerCode]
-	db.customerMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", customerCode)}
-	}
-
-	sql.Write([]byte("delete from customers where id = $1"))
+	sql.Write([]byte("delete from customers where customer_code = $1"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -209,7 +259,7 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 		return err
 	}
 
-	result, err := stmt.Exec(customer.DatabaseID)
+	result, err := stmt.Exec(customerCode)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing customer", "err", err)
@@ -225,12 +275,6 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 		return err
 	}
 
-	db.customerMutex.Lock()
-	delete(db.customers, customerCode)
-	db.customerMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 }
 
@@ -240,20 +284,14 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 //		AutomaticSigninDomains
 //		Active
 //		Debug
+// TODO: remove - need to modify AuthService.UpdateAutoSignupDomains to
+//       use UpdateCustomer() and then drop this method
 func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 
 	var sql bytes.Buffer
 
-	db.customerMutex.RLock()
-	_, ok := db.customers[c.Code]
-	db.customerMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", c.Code)}
-	}
-
 	sql.Write([]byte("update customers set (automatic_signin_domain, customer_name) ="))
-	sql.Write([]byte("($1, $2) where id = $3"))
+	sql.Write([]byte("($1, $2) where customer_code = $3"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -261,7 +299,7 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	result, err := stmt.Exec(c.AutomaticSignInDomains, c.Name, c.DatabaseID)
+	result, err := stmt.Exec(c.AutomaticSignInDomains, c.Name, c.Code)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
 		return err
@@ -276,10 +314,6 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		return err
 	}
 
-	db.customerMutex.Lock()
-	db.customers[c.Code] = c
-	db.customerMutex.Unlock()
-
 	return nil
 }
 
@@ -287,41 +321,179 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 // and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
 func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
 
-	dbBuyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-	db.buyerMutex.RLock()
-	b, found := db.buyers[dbBuyerID]
-	db.buyerMutex.RUnlock()
+	sqlBuyerID := int64(ephemeralBuyerID)
 
-	if !found {
-		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", ephemeralBuyerID)}
+	var querySQL bytes.Buffer
+	var buyer sqlBuyer
+
+	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, public_key, customer_id "))
+	querySQL.Write([]byte("from buyers where sdk_generated_id = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), sqlBuyerID)
+	err := row.Scan(
+		&buyer.DatabaseID,
+		&buyer.ShortName,
+		&buyer.IsLiveCustomer,
+		&buyer.Debug,
+		&buyer.PublicKey,
+		&buyer.CustomerID,
+	)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "Customer() no rows were returned!")
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
+	case nil:
+
+		ic, err := db.InternalConfig(ephemeralBuyerID)
+		if err != nil {
+			ic = core.NewInternalConfig()
+		}
+
+		rs, err := db.RouteShader(ephemeralBuyerID)
+		if err != nil {
+			rs = core.NewRouteShader()
+		}
+
+		b := routing.Buyer{
+			ID:             ephemeralBuyerID,
+			HexID:          fmt.Sprintf("%016x", buyer.ID),
+			ShortName:      buyer.ShortName,
+			CompanyCode:    buyer.ShortName,
+			Live:           buyer.IsLiveCustomer,
+			Debug:          buyer.Debug,
+			PublicKey:      buyer.PublicKey,
+			RouteShader:    rs,
+			InternalConfig: ic,
+			CustomerID:     buyer.CustomerID,
+			DatabaseID:     buyer.DatabaseID,
+		}
+		return b, nil
+	default:
+		level.Error(db.Logger).Log("during", "Buyer() QueryRow returned an error: %v", err)
+		return routing.Buyer{}, err
 	}
 
-	return b, nil
 }
 
 // BuyerWithCompanyCode gets the Buyer with the matching company code
-func (db *SQL) BuyerWithCompanyCode(code string) (routing.Buyer, error) {
-	db.buyerMutex.RLock()
-	defer db.buyerMutex.RUnlock()
+func (db *SQL) BuyerWithCompanyCode(companCode string) (routing.Buyer, error) {
 
-	for _, buyer := range db.buyers {
-		if buyer.CompanyCode == code {
-			return buyer, nil
+	var querySQL bytes.Buffer
+	var buyer sqlBuyer
+
+	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, public_key, customer_id "))
+	querySQL.Write([]byte("from buyers where short_name = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), companCode)
+	err := row.Scan(
+		&buyer.DatabaseID,
+		&buyer.SdkID,
+		&buyer.IsLiveCustomer,
+		&buyer.Debug,
+		&buyer.PublicKey,
+		&buyer.CustomerID,
+	)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() no rows were returned!")
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: fmt.Sprintf("%016x", companCode)}
+	case nil:
+		buyer.ID = uint64(buyer.SdkID)
+		ic, err := db.InternalConfig(buyer.ID)
+		if err != nil {
+			ic = core.NewInternalConfig()
 		}
+
+		rs, err := db.RouteShader(buyer.ID)
+		if err != nil {
+			rs = core.NewRouteShader()
+		}
+
+		b := routing.Buyer{
+			ID:             buyer.ID,
+			HexID:          fmt.Sprintf("%016x", buyer.ID),
+			ShortName:      buyer.ShortName,
+			CompanyCode:    buyer.ShortName,
+			Live:           buyer.IsLiveCustomer,
+			Debug:          buyer.Debug,
+			PublicKey:      buyer.PublicKey,
+			RouteShader:    rs,
+			InternalConfig: ic,
+			CustomerID:     buyer.CustomerID,
+			DatabaseID:     buyer.DatabaseID,
+		}
+		return b, nil
+	default:
+		level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() QueryRow returned an error: %v", err)
+		return routing.Buyer{}, err
 	}
-	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: code}
 }
 
 // Buyers returns a copy of all stored buyers.
 func (db *SQL) Buyers() []routing.Buyer {
-	db.buyerMutex.RLock()
+	var sql bytes.Buffer
+	var buyer sqlBuyer
 
-	var buyers []routing.Buyer
-	for _, buyer := range db.buyers {
-		buyers = append(buyers, buyer)
+	buyers := []routing.Buyer{}
+	buyerIDs := make(map[uint64]int64)
+
+	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, public_key, customer_id "))
+	sql.Write([]byte("from buyers"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "Buyers(): QueryContext returned an error", "err", err)
+		return []routing.Buyer{}
 	}
+	defer rows.Close()
 
-	db.buyerMutex.RUnlock()
+	for rows.Next() {
+		err = rows.Scan(
+			&buyer.SdkID,
+			&buyer.DatabaseID,
+			&buyer.ShortName,
+			&buyer.IsLiveCustomer,
+			&buyer.Debug,
+			&buyer.PublicKey,
+			&buyer.CustomerID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Buyers(): error parsing returned row", "err", err)
+			return []routing.Buyer{}
+		}
+
+		buyer.ID = uint64(buyer.SdkID)
+
+		buyerIDs[buyer.ID] = buyer.DatabaseID
+
+		ic, err := db.InternalConfig(buyer.ID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() InternalConfig query returned an error: %v", err)
+			return []routing.Buyer{}
+		}
+
+		rs, err := db.RouteShader(buyer.ID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() RouteShader query returned an error: %v", err)
+			return []routing.Buyer{}
+		}
+		b := routing.Buyer{
+			ID:             buyer.ID,
+			HexID:          fmt.Sprintf("%016x", buyer.ID),
+			ShortName:      buyer.ShortName,
+			CompanyCode:    buyer.ShortName,
+			Live:           buyer.IsLiveCustomer,
+			Debug:          buyer.Debug,
+			PublicKey:      buyer.PublicKey,
+			RouteShader:    rs,
+			InternalConfig: ic,
+			CustomerID:     buyer.CustomerID,
+			DatabaseID:     buyer.DatabaseID,
+		}
+
+		buyers = append(buyers, b)
+
+	}
 
 	sort.Slice(buyers, func(i int, j int) bool { return buyers[i].ID < buyers[j].ID })
 	return buyers
@@ -330,14 +502,6 @@ func (db *SQL) Buyers() []routing.Buyer {
 // AddBuyer adds the provided buyer to storage and returns an error if the buyer could not be added.
 func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	var sql bytes.Buffer
-
-	db.buyerMutex.RLock()
-	_, ok := db.buyers[uint64(b.DatabaseID)]
-	db.buyerMutex.RUnlock()
-
-	if ok {
-		return &AlreadyExistsError{resourceType: "buyer", resourceRef: b.ID}
-	}
 
 	c, err := db.Customer(b.CompanyCode)
 	if err != nil {
@@ -390,30 +554,6 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		return err
 	}
 
-	db.syncBuyers(ctx)
-
-	// get the DatabaseID loaded
-	dbBuyerID := uint64(db.buyerIDs[buyer.ID])
-
-	db.buyerMutex.RLock()
-	newBuyer := db.buyers[dbBuyerID]
-	db.buyerMutex.RUnlock()
-
-	newBuyer.HexID = fmt.Sprintf("%016x", buyer.ID)
-	newBuyer.RouteShader = core.NewRouteShader()
-	newBuyer.InternalConfig = core.NewInternalConfig()
-
-	// update local fields
-	db.buyerMutex.Lock()
-	db.buyers[dbBuyerID] = newBuyer
-	db.buyerMutex.Unlock()
-
-	db.customerMutex.Lock()
-	db.customers[c.Code] = c
-	db.customerMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 }
 
@@ -425,13 +565,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
 
-	buyerID := db.buyerIDs[ephemeralBuyerID]
-
-	db.buyerMutex.RLock()
-	buyer, ok := db.buyers[uint64(buyerID)]
-	db.buyerMutex.RUnlock()
-
-	if !ok {
+	buyer, err := db.Buyer(ephemeralBuyerID)
+	if err != nil {
 		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	}
 
@@ -459,12 +594,6 @@ func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 		return err
 	}
 
-	db.buyerMutex.Lock()
-	delete(db.buyers, uint64(buyerID))
-	db.buyerMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 }
 
@@ -473,78 +602,145 @@ func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 //		Live
 //		Debug
 //		PublicKey
-func (db *SQL) SetBuyer(ctx context.Context, b routing.Buyer) error {
+// func (db *SQL) SetBuyer(ctx context.Context, b routing.Buyer) error {
 
-	var sql bytes.Buffer
+// 	var sql bytes.Buffer
 
-	ephemeralBuyerID := b.ID
-	buyerID := db.buyerIDs[ephemeralBuyerID]
+// 	ephemeralBuyerID := b.ID
+// 	buyerID := db.buyerIDs[ephemeralBuyerID]
 
-	db.buyerMutex.RLock()
-	_, ok := db.buyers[uint64(buyerID)]
-	db.buyerMutex.RUnlock()
+// 	db.buyerMutex.RLock()
+// 	_, ok := db.buyers[uint64(buyerID)]
+// 	db.buyerMutex.RUnlock()
 
-	if !ok {
-		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", b.ID)}
-	}
+// 	if !ok {
+// 		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", b.ID)}
+// 	}
 
-	sql.Write([]byte("update buyers set (is_live_customer, debug, public_key) = ($1, $2, $3) where id = $4 "))
+// 	sql.Write([]byte("update buyers set (is_live_customer, debug, public_key) = ($1, $2, $3) where id = $4 "))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing SetBuyer SQL", "err", err)
-		return err
-	}
+// 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "error preparing SetBuyer SQL", "err", err)
+// 		return err
+// 	}
 
-	result, err := stmt.Exec(b.Live, b.Debug, b.PublicKey, b.DatabaseID)
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying buyer record", "err", err)
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-		return err
-	}
-	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-		return err
-	}
+// 	result, err := stmt.Exec(b.Live, b.Debug, b.PublicKey, b.DatabaseID)
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "error modifying buyer record", "err", err)
+// 		return err
+// 	}
+// 	rows, err := result.RowsAffected()
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+// 		return err
+// 	}
+// 	if rows != 1 {
+// 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+// 		return err
+// 	}
 
-	db.buyerMutex.Lock()
-	db.buyers[uint64(b.DatabaseID)] = b
-	db.buyerMutex.Unlock()
+// 	db.buyerMutex.Lock()
+// 	db.buyers[uint64(b.DatabaseID)] = b
+// 	db.buyerMutex.Unlock()
 
-	db.IncrementSequenceNumber(ctx)
+// 	db.IncrementSequenceNumber(ctx)
 
-	return nil
-}
+// 	return nil
+// }
 
 // Seller gets a copy of a seller with the specified seller ID,
 // and returns an empty seller and an error if a seller with that ID doesn't exist in storage.
 func (db *SQL) Seller(id string) (routing.Seller, error) {
-	db.sellerMutex.RLock()
-	defer db.sellerMutex.RUnlock()
 
-	s, found := db.sellers[id]
-	if !found {
+	var querySQL bytes.Buffer
+	var seller sqlSeller
+
+	querySQL.Write([]byte("select short_name, public_egress_price, secret, "))
+	querySQL.Write([]byte("customer_id from sellers where id = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), id)
+	err := row.Scan(&seller.DatabaseID,
+		&seller.ShortName,
+		&seller.EgressPriceNibblinsPerGB,
+		&seller.Secret,
+		&seller.CustomerID)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "Seller() no rows were returned!")
 		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
+	case nil:
+		c, err := db.Customer(id)
+		if err != nil {
+			return routing.Seller{}, &DoesNotExistError{resourceType: "customer", resourceRef: id}
+		}
+		s := routing.Seller{
+			ID:                       id,
+			ShortName:                seller.ShortName,
+			Secret:                   seller.Secret,
+			CompanyCode:              c.Code,
+			Name:                     c.Name,
+			EgressPriceNibblinsPerGB: routing.Nibblin(seller.EgressPriceNibblinsPerGB),
+			DatabaseID:               seller.DatabaseID,
+			CustomerID:               seller.CustomerID,
+		}
+		return s, nil
+	default:
+		level.Error(db.Logger).Log("during", "Seller() QueryRow returned an error: %v", err)
+		return routing.Seller{}, err
 	}
-
-	return s, nil
 }
 
 // Sellers returns a copy of all stored sellers.
 func (db *SQL) Sellers() []routing.Seller {
-	db.sellerMutex.RLock()
-	defer db.sellerMutex.RUnlock()
 
-	var sellers []routing.Seller
-	for _, seller := range db.sellers {
-		sellers = append(sellers, seller)
+	var sql bytes.Buffer
+	var seller sqlSeller
+
+	sellers := []routing.Seller{}
+
+	sql.Write([]byte("select id, short_name, public_egress_price, secret, "))
+	sql.Write([]byte("customer_id from sellers"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "Sellers(): QueryContext returned an error", "err", err)
+		return []routing.Seller{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&seller.DatabaseID,
+			&seller.ShortName,
+			&seller.EgressPriceNibblinsPerGB,
+			&seller.Secret,
+			&seller.CustomerID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Sellers(): error parsing returned row", "err", err)
+			return []routing.Seller{}
+		}
+
+		c, err := db.Customer(seller.ShortName)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Sellers(): customer does not exist", "err", err)
+			return []routing.Seller{}
+		}
+		s := routing.Seller{
+			ID:                       c.Code,
+			ShortName:                seller.ShortName,
+			Secret:                   seller.Secret,
+			CompanyCode:              c.Code,
+			Name:                     c.Name,
+			EgressPriceNibblinsPerGB: routing.Nibblin(seller.EgressPriceNibblinsPerGB),
+			DatabaseID:               seller.DatabaseID,
+			CustomerID:               seller.CustomerID,
+		}
+
+		sellers = append(sellers, s)
 	}
 
-	sort.Slice(sellers, func(i int, j int) bool { return sellers[i].ID < sellers[j].ID })
+	sort.Slice(sellers, func(i int, j int) bool { return sellers[i].ShortName < sellers[j].ShortName })
 	return sellers
 }
 

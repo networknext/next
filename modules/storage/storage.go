@@ -13,7 +13,7 @@ type Storer interface {
 	Customer(code string) (routing.Customer, error)
 
 	// TODO: chopping block (unused)
-	CustomerWithName(name string) (routing.Customer, error)
+	// CustomerWithName(name string) (routing.Customer, error)
 
 	Customers() []routing.Customer
 
@@ -45,7 +45,7 @@ type Storer interface {
 
 	// SetBuyer updates the buyer in storage with the provided copy and returns an error if the buyer could not be updated.
 	// TODO: chopping block (this is dangerous)
-	SetBuyer(ctx context.Context, buyer routing.Buyer) error
+	// SetBuyer(ctx context.Context, buyer routing.Buyer) error
 
 	// UpdateBuyer modifies the givien field for the specified buyer
 	UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error
