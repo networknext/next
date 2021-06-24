@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -380,6 +383,13 @@ func StartStaging(config StagingConfig) error {
 	}
 	fmt.Println("done")
 
+	// Copy the latest SQLite template for the portal to use
+	fmt.Printf("Copying ./testdata/sqlite3-empty.sql to GCP cloud storage...")
+	if err = pushSQLiteTemplate(); err != nil {
+		return err
+	}
+	fmt.Println("done")
+
 	var wg sync.WaitGroup
 	// Resize Redis instances to 100 GB
 	fmt.Printf("Resizing redis instances...\n")
@@ -594,6 +604,25 @@ func deleteBigTable() error {
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// Copies ./testdata/sqlite3-empty.sql to the staging artifacts bucket to be used by the portal
+func pushSQLiteTemplate() error {
+
+	bucketName := "gs://staging_artifacts"
+
+	if _, err := os.Stat("./testdata/sqlite3-empty.sql"); errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("Local file ./testdata/sqlite3-empty.sql does not exist: %v", err)
+	}
+
+	gsutilCpCommand := exec.Command("gsutil", "cp", "./testdata/sqlite3-empty.sql", bucketName)
+
+	err := gsutilCpCommand.Run()
+	if err != nil {
+		return fmt.Errorf("Error copying ./testdata/sqlite3-empty.sql to %s: %v\n", bucketName, err)
 	}
 
 	return nil
