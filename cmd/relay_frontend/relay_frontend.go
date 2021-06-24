@@ -385,6 +385,9 @@ func mainReturnWithCode() int {
 	jsonDashboardHandler := http.HandlerFunc(frontendClient.GetRelayDashboardDataHandlerFunc())
 	router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(audience, jsonDashboardHandler, strings.Split(allowedOrigins, ",")))
 
+	jsonDashboardAnalysisHandler := http.HandlerFunc(frontendClient.GetRelayDashboardAnalysisHandlerFunc())
+	router.Handle("/relay_dashboard_analysis", middleware.PlainHttpAuthMiddleware(audience, jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ",")))
+
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
 		level.Error(logger).Log("err", err)

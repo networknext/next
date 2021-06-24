@@ -37,6 +37,8 @@ import (
 const (
 	TopSessionsSize          = 1000
 	MapPointByteCacheVersion = uint8(1)
+	MaxHistoricalSessions    = 100
+	MaxBigTableDays          = 10
 )
 
 var (
@@ -112,11 +114,17 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 
 type UserSessionsArgs struct {
 	UserID string `json:"user_id"`
+	Page   int    `json:"page"`
 }
 
 type UserSessionsReply struct {
-	Sessions   []transport.SessionMeta `json:"sessions"`
-	TimeStamps []time.Time             `json:"time_stamps"`
+	Sessions []UserSession `json:"sessions"`
+	Page     int           `json:"page"`
+}
+
+type UserSession struct {
+	Meta      transport.SessionMeta `json:"meta"`
+	Timestamp time.Time             `json:"time_stamp"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
@@ -125,7 +133,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
-	reply.Sessions = make([]transport.SessionMeta, 0)
+	reply.Sessions = make([]UserSession, 0)
 	sessionIDs := make([]string, 0)
 
 	var sessionSlice transport.SessionSlice
@@ -153,130 +161,218 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 	userHash := fmt.Sprintf("%016x", hash.Sum64())
 
-	// Fetch live sessions if there are any
-	liveSessions, err := s.FetchCurrentTopSessions(r, "")
-	if err != nil {
-		err = fmt.Errorf("UserSessions() failed to fetch live sessions")
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
+	// Only grab the live session on the first request
+	if args.Page == 0 {
+		// Fetch live sessions if there are any
+		liveSessions, err := s.FetchCurrentTopSessions(r, "")
+		if err != nil {
+			err = fmt.Errorf("UserSessions() failed to fetch live sessions")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 
-	for _, session := range liveSessions {
-		// Check both the ID, hex of ID, and the hash just in case the ID is actually a hash from the top sessions table or decimal hash
-		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) || hexUserID == fmt.Sprintf("%016x", session.UserHash) {
-			sessionSlicesClient := s.RedisPoolSessionSlices.Get()
-			defer sessionSlicesClient.Close()
+		for _, session := range liveSessions {
+			// Check both the ID, hex of ID, and the hash just in case the ID is actually a hash from the top sessions table or decimal hash
+			if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) || hexUserID == fmt.Sprintf("%016x", session.UserHash) {
+				sessionSlicesClient := s.RedisPoolSessionSlices.Get()
+				defer sessionSlicesClient.Close()
 
-			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
-			if err != nil && err != redis.ErrNil {
-				err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				err = fmt.Errorf("UserSessions() failed getting session slices")
-				return err
-			}
-
-			// If a slice exists, add the session and the timestamp
-			if len(slices) > 0 {
-				sliceString := strings.Split(slices[0], "|")
-				if err := sessionSlice.ParseRedisString(sliceString); err != nil {
-					err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
+				slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
+				if err != nil && err != redis.ErrNil {
+					err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
 					level.Error(s.Logger).Log("err", err)
+					err = fmt.Errorf("UserSessions() failed getting session slices")
 					return err
 				}
 
-				sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+				// If a slice exists, add the session and the timestamp
+				if len(slices) > 0 {
+					sliceString := strings.Split(slices[0], "|")
+					if err := sessionSlice.ParseRedisString(sliceString); err != nil {
+						err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
 
-				buyer, err := s.Storage.Buyer(session.BuyerID)
-				if err != nil {
-					err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
-					level.Error(s.Logger).Log("err", err)
-					return err
+					sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+
+					buyer, err := s.Storage.Buyer(session.BuyerID)
+					if err != nil {
+						err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+
+					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
+						session.Anonymise()
+					} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+						// Don't show sessions where the company code does not match the request's
+						continue
+					}
+
+					reply.Sessions = append(reply.Sessions, UserSession{
+						Meta:      session,
+						Timestamp: sessionSlice.Timestamp.UTC(),
+					})
+				} else {
+					// Increment counter
+					s.Metrics.NoSlicesFailure.Add(1)
 				}
-
-				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
-					session.Anonymise()
-				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-					// Don't show sessions where the company code does not match the request's
-					continue
-				}
-
-				reply.Sessions = append(reply.Sessions, session)
-				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
-			} else {
-				// Increment counter
-				s.Metrics.NoSlicesFailure.Add(1)
 			}
 		}
 	}
 
 	if s.UseBigtable {
-		// Create the filters to use for reading rows
-		chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"),
-			bigtable.LatestNFilter(1),
-		)
+		var rowsByHash []bigtable.Row
+		var rowsByID []bigtable.Row
+		var rowsByHexID []bigtable.Row
+		searchType := -1
 
-		// Fetch historic sessions by user hash if there are any
-		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
+		// A page is equivalent to 1 full day (24 hours). We store 10 days worth of data so the maximum number of pages is 10
+		reply.Page = args.Page
+
+		// Calculate the start and end time
+		timeNow := time.Now()
+		location := timeNow.Location()
+
+		// Get todays date
+		year, month, day := timeNow.Date()
+		today := time.Date(year, month, day, 0, 0, 0, 0, location)
+
+		// current page date is today - page number * 1 day. Add 1 day to compensate for filter excluding end date
+		currentPageDate := today.Add(-time.Duration((reply.Page - 1) * 24 * int(time.Hour)))
+
+		// get next page date
+		nextPageDate := today.Add(-time.Duration(reply.Page * 24 * int(time.Hour)))
+
+		currentPage := reply.Page
+
+		// Fetch historic sessions by each identifier if there are any
+		rowsByHash, err = s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
 		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
-		// Fetch historic sessions by user ID if there are any
-		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
-		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
-
-		// Fetch historic sessions by hex user ID if there are any
-		rowsByHexID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", hexUserID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
-		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
+		if len(rowsByHash) == 0 {
+			reply.Page = currentPage
+		} else {
+			searchType = 0
 		}
 
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+		if searchType == -1 {
+			rowsByID, err = s.GetHistoricalSessions(reply, userID, currentPageDate, nextPageDate)
+			if err != nil {
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+
+			if len(rowsByID) == 0 {
+				reply.Page = currentPage
+			} else {
+				searchType = 1
+			}
+		}
+
+		if searchType == -1 {
+			rowsByHexID, err = s.GetHistoricalSessions(reply, hexUserID, currentPageDate, nextPageDate)
+			if err != nil {
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+		}
 
 		liveIDString := strings.Join(sessionIDs, ",")
 
-		if len(rowsByHash) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByHash, liveIDString, sessionSlice); err != nil {
+		switch searchType {
+		case 0:
+			if err = s.GetHistoricalSlices(r, reply, liveIDString, rowsByHash, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-		} else if len(rowsByID) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByID, liveIDString, sessionSlice); err != nil {
+		case 1:
+			if err = s.GetHistoricalSlices(r, reply, liveIDString, rowsByID, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-		} else if len(rowsByHexID) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByHexID, liveIDString, sessionSlice); err != nil {
+		case 2:
+			if err = s.GetHistoricalSlices(r, reply, liveIDString, rowsByHexID, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 		}
 	}
 
+	// Sort the sessions by timestamp
+	sort.Slice(reply.Sessions, func(i, j int) bool {
+		return reply.Sessions[i].Timestamp.After(reply.Sessions[j].Timestamp)
+	})
+	fmt.Println()
+
 	return nil
 }
 
-func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, rows []bigtable.Row, liveIDString string, sessionSlice transport.SessionSlice) error {
+func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifier string, currentPageDate time.Time, nextPageDate time.Time) ([]bigtable.Row, error) {
+	// Gets the rows within [nextPageDate, currentPageDate)
+	chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
+		bigtable.LatestNFilter(1),                                    // Gets the latest cell from the "meta" column
+		bigtable.TimestampRangeFilter(nextPageDate, currentPageDate), // Gets the rows within [startDate, endDate)
+	)
+
+	var btRows []bigtable.Row
+	for {
+		// Fetch historic sessions by the identifier if there are any
+		rows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", identifier), bigtable.RowFilter(chainFilter), bigtable.LimitRows(MaxHistoricalSessions))
+		if err != nil {
+			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			err = fmt.Errorf("GetHistoricalSessions() failed to fetch historic user sessions: %v", err)
+			return btRows, err
+		}
+		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+
+		if reply.Page >= MaxBigTableDays {
+			// We are out of pages
+			break
+		}
+
+		reply.Page = reply.Page + 1
+
+		nextPageDate = nextPageDate.Add(-24 * time.Hour)
+		currentPageDate = currentPageDate.Add(-24 * time.Hour)
+
+		// Gets the rows within [nextPageDate, currentPageDate)
+		chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
+			bigtable.LatestNFilter(1),                                    // Gets the latest cell from the "meta" column
+			bigtable.TimestampRangeFilter(nextPageDate, currentPageDate), // Gets the rows within the start and end date, inclusive
+		)
+
+		// If we don't find anything for a day, go to the next day and try again
+		if len(rows) == 0 && reply.Page < MaxBigTableDays {
+			continue
+		}
+
+		btRows = append(btRows, rows...)
+
+		// if we found the full amount of sessions in one page, return that page number for next time
+		if len(btRows) == MaxHistoricalSessions {
+			fmt.Println("Hit max sessions for the day")
+			break
+		}
+	}
+
+	return btRows, nil
+}
+
+func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, liveSessionIDString string, rows []bigtable.Row, sessionSlice transport.SessionSlice) error {
+	// Slice of SessionTimestamp structs to sort the sessions by timestamps at the end
 	var sessionMeta transport.SessionMeta
 
 	for _, row := range rows {
 		if err := sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
 			return err
 		}
-		if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
+		// Make sure we aren't duplicating live sessions
+		if !strings.Contains(liveSessionIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 			sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 			if err != nil {
 				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
@@ -303,8 +399,7 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					continue
 				}
 
-				reply.Sessions = append(reply.Sessions, sessionMeta)
-				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
+				reply.Sessions = append(reply.Sessions, UserSession{Meta: sessionMeta, Timestamp: sessionSlice.Timestamp.UTC()})
 			} else {
 				// Increment counter
 				s.Metrics.NoSlicesFailure.Add(1)
@@ -364,6 +459,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		redisClient.Flush()
 
 		for _, buyer := range buyers {
+
 			firstCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
@@ -371,7 +467,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
-			firstNextCount += firstCount
 
 			secondCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
@@ -380,16 +475,20 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
-			secondNextCount += secondCount
 
+			// If ghost army, scale the redis number and add that to the total otherwise just add the redis number to the total
 			if buyer.ID == ghostArmyBuyerID {
 				if firstCount > secondCount {
 					ghostArmyNextCount = firstCount * int(ghostArmyNextScaler)
 				} else {
 					ghostArmyNextCount = secondCount * int(ghostArmyNextScaler)
 				}
+
 				firstNextCount += ghostArmyNextCount
 				secondNextCount += ghostArmyNextCount
+			} else {
+				firstNextCount += firstCount
+				secondNextCount += secondCount
 			}
 		}
 		reply.Next = firstNextCount
@@ -408,6 +507,13 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		redisClient.Flush()
 
 		for _, buyer := range buyers {
+			// If ghost army, use the next counts in place of the direct counts (ghost army doesn't have direct sessions)
+			if buyer.ID == ghostArmyBuyerID {
+				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+				continue
+			}
+
 			firstCounts, err := redis.Strings(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive first session count: %v", err)
@@ -444,13 +550,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				}
 
 				secondTotalCount += int(secondCount)
-			}
-
-			if buyer.ID == ghostArmyBuyerID {
-				// scale by next values because ghost army data contains 0 direct
-				// if ghost army is turned off then this number will be 0 and have no effect
-				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
 			}
 		}
 
@@ -499,14 +598,15 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 
+		// If ghost army, scale the number coming from redis and use that
 		if buyer.ID == ghostArmyBuyerID {
 			if firstNextCount > secondNextCount {
 				ghostArmyNextCount = firstNextCount * int(ghostArmyNextScaler)
 			} else {
 				ghostArmyNextCount = secondNextCount * int(ghostArmyNextScaler)
 			}
-			firstNextCount += ghostArmyNextCount
-			secondNextCount += ghostArmyNextCount
+			firstNextCount = ghostArmyNextCount
+			secondNextCount = ghostArmyNextCount
 		}
 
 		reply.Next = firstNextCount
@@ -517,49 +617,48 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		var firstTotalCount int
 		var secondTotalCount int
 
-		firstCounts, err := redis.Strings(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts")
-			return err
-		}
-
-		for i := 0; i < len(firstCounts); i++ {
-			firstCount, err := strconv.ParseUint(firstCounts[i], 10, 32)
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			firstTotalCount += int(firstCount)
-		}
-
-		secondCounts, err := redis.Strings(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts")
-			return err
-		}
-
-		for i := 0; i < len(secondCounts); i++ {
-			secondCount, err := strconv.ParseUint(secondCounts[i], 10, 32)
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			secondTotalCount += int(secondCount)
-		}
-
 		if buyer.ID == ghostArmyBuyerID {
-			// scale by next values because ghost army data contains 0 direct
-			// if ghost army is turned off then this number will be 0 and have no effect
-			firstTotalCount += firstNextCount*int(ghostArmyScalar) + firstNextCount
-			secondTotalCount += secondNextCount*int(ghostArmyScalar) + secondNextCount
+			// If ghost army, use the next counts in place of the direct counts (ghost army doesn't have direct sessions)
+			firstTotalCount = ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+			secondTotalCount = ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+		} else {
+			firstCounts, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts")
+				return err
+			}
+
+			for i := 0; i < len(firstCounts); i++ {
+				firstCount, err := strconv.ParseUint(firstCounts[i], 10, 32)
+				if err != nil {
+					err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				firstTotalCount += int(firstCount)
+			}
+
+			secondCounts, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts")
+				return err
+			}
+
+			for i := 0; i < len(secondCounts); i++ {
+				secondCount, err := strconv.ParseUint(secondCounts[i], 10, 32)
+				if err != nil {
+					err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				secondTotalCount += int(secondCount)
+			}
 		}
 
 		totalCount := firstTotalCount
@@ -1454,7 +1553,6 @@ type DatacenterMapsArgs struct {
 }
 
 type DatacenterMapsFull struct {
-	Alias          string
 	DatacenterName string
 	DatacenterID   string
 	BuyerName      string
@@ -1512,7 +1610,6 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		}
 
 		dcmFull := DatacenterMapsFull{
-			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      customer.Name,
@@ -1552,7 +1649,6 @@ func (s *BuyersService) JSRemoveDatacenterMap(r *http.Request, args *JSRemoveDat
 	}
 
 	dcMap := routing.DatacenterMap{
-		Alias:        args.Alias,
 		BuyerID:      buyerID,
 		DatacenterID: datacenterID,
 	}
@@ -1645,7 +1741,6 @@ func (s *BuyersService) JSAddDatacenterMap(r *http.Request, args *JSAddDatacente
 	dcMap := routing.DatacenterMap{
 		BuyerID:      buyerID,
 		DatacenterID: datacenterID,
-		Alias:        args.Alias,
 	}
 
 	return s.Storage.AddDatacenterMap(ctx, dcMap)
@@ -1751,124 +1846,59 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		}
 	}
 
-	var sessionMetasNext []transport.SessionMeta
-	var sessionMetasDirect []transport.SessionMeta
+	sessionMetaClient := s.RedisPoolSessionMeta.Get()
+	defer sessionMetaClient.Close()
 
-	if s.UseBigtable {
-
-		// Sometimes there are duplicate sessionIDs in both top session buckets
-		// Create a set of unique top sessionIDs
-		topSessions := make(map[string]bool)
-		for _, sessionID := range topSessionsA {
-			topSessions[sessionID] = true
-		}
-		for _, sessionID := range topSessionsB {
-			if _, ok := topSessions[sessionID]; !ok {
-				topSessions[sessionID] = true
-			}
-		}
-
-		// Create the filters to use for reading rows
-		chainFilter := bigtable.ChainFilters(
-			bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
-			bigtable.LatestNFilter(1),     // Gets the latest cell from the "meta" column
-		)
-
-		for sessionID, _ := range topSessions {
-			// Get the session meta from bigtable
-			metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", sessionID), bigtable.RowFilter(chainFilter))
-			if err != nil {
-				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-				err = fmt.Errorf("SessionDetails() failed to fetch top sessions meta information from bigtable: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				continue
-			}
-			if len(metaRows) == 0 {
-				s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-				err = fmt.Errorf("SessionDetails() failed to fetch top sessions meta information, no rows: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				continue
-			}
-			s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
-
-			for _, row := range metaRows {
-				var meta transport.SessionMeta
-				meta.UnmarshalBinary(row[0].Value)
-
-				buyer, err := s.Storage.Buyer(meta.BuyerID)
-				if err != nil {
-					err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
-					level.Error(s.Logger).Log("err", err)
-					return sessions, err
-				}
-
-				if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-					meta.Anonymise()
-				}
-
-				// Split the sessions metas into two slices so we can sort them separately.
-				// This is necessary because if we were to force sessions next, then sorting
-				// by improvement won't always put next sessions on top.
-				if meta.OnNetworkNext {
-					sessionMetasNext = append(sessionMetasNext, meta)
-				} else {
-					sessionMetasDirect = append(sessionMetasDirect, meta)
-				}
-			}
-		}
-	} else {
-		sessionMetaClient := s.RedisPoolSessionMeta.Get()
-		defer sessionMetaClient.Close()
-
-		sessionIDsRetreivedMap := make(map[string]bool)
-		for _, sessionID := range topSessionsA {
+	sessionIDsRetreivedMap := make(map[string]bool)
+	for _, sessionID := range topSessionsA {
+		sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
+		sessionIDsRetreivedMap[sessionID] = true
+	}
+	for _, sessionID := range topSessionsB {
+		if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
 			sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
 			sessionIDsRetreivedMap[sessionID] = true
 		}
-		for _, sessionID := range topSessionsB {
-			if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
-				sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-				sessionIDsRetreivedMap[sessionID] = true
-			}
+	}
+	sessionMetaClient.Flush()
+
+	var sessionMetasNext []transport.SessionMeta
+	var sessionMetasDirect []transport.SessionMeta
+	var meta transport.SessionMeta
+	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
+		metaString, err := redis.String(sessionMetaClient.Receive())
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta")
+			return sessions, err
 		}
-		sessionMetaClient.Flush()
 
-		var meta transport.SessionMeta
-		for i := 0; i < len(sessionIDsRetreivedMap); i++ {
-			metaString, err := redis.String(sessionMetaClient.Receive())
-			if err != nil && err != redis.ErrNil {
-				err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta")
-				return sessions, err
-			}
+		splitMetaStrings := strings.Split(metaString, "|")
+		if err := meta.ParseRedisString(splitMetaStrings); err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to parse redis string into meta: %v", err)
+			level.Error(s.Logger).Log("err", err, "redisString", metaString)
+			continue
+		}
 
-			splitMetaStrings := strings.Split(metaString, "|")
-			if err := meta.ParseRedisString(splitMetaStrings); err != nil {
-				err = fmt.Errorf("FetchCurrentTopSessions() failed to parse redis string into meta: %v", err)
-				level.Error(s.Logger).Log("err", err, "redisString", metaString)
-				continue
-			}
+		buyer, err := s.Storage.Buyer(meta.BuyerID)
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return sessions, err
+		}
 
-			buyer, err := s.Storage.Buyer(meta.BuyerID)
-			if err != nil {
-				err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return sessions, err
-			}
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+			meta.Anonymise()
+		}
 
-			if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-				meta.Anonymise()
-			}
-
-			// Split the sessions metas into two slices so we can sort them separately.
-			// This is necessary because if we were to force sessions next, then sorting
-			// by improvement won't always put next sessions on top.
-			if meta.OnNetworkNext {
-				sessionMetasNext = append(sessionMetasNext, meta)
-			} else {
-				sessionMetasDirect = append(sessionMetasDirect, meta)
-			}
+		// Split the sessions metas into two slices so we can sort them separately.
+		// This is necessary because if we were to force sessions next, then sorting
+		// by improvement won't always put next sessions on top.
+		if meta.OnNetworkNext {
+			sessionMetasNext = append(sessionMetasNext, meta)
+		} else {
+			sessionMetasDirect = append(sessionMetasDirect, meta)
 		}
 	}
 

@@ -20,10 +20,12 @@ const (
 )
 
 type GoogleBigQueryClient struct {
-	Metrics       *metrics.BillingMetrics
-	Logger        log.Logger
-	TableInserter *bigquery.Inserter
-	BatchSize     int
+	Metrics         *metrics.BillingMetrics
+	Logger          log.Logger
+	TableInserter   *bigquery.Inserter
+	BatchSize       int
+	FeatureBilling  bool
+	FeatureBilling2 bool
 
 	buffer      []*BillingEntry
 	bufferMutex sync.RWMutex
@@ -220,7 +222,7 @@ func (bq *GoogleBigQueryClient) WriteLoop2(ctx context.Context, wg *sync.WaitGro
 			var bufferLength int
 
 			// Received shutdown signal, write remaining entries to BigQuery
-			bq.bufferMutex.Lock()
+			bq.bufferMutex2.Lock()
 			for entry := range bq.entries2 {
 				// Add the remaining entries to the buffer
 				bq.buffer2 = append(bq.buffer2, entry)
@@ -230,7 +232,7 @@ func (bq *GoogleBigQueryClient) WriteLoop2(ctx context.Context, wg *sync.WaitGro
 
 			// Emptied out the entries channel, flush to BigQuery
 			if err := bq.TableInserter.Put(context.Background(), bq.buffer2); err != nil {
-				bq.bufferMutex.Unlock()
+				bq.bufferMutex2.Unlock()
 
 				level.Error(bq.Logger).Log("msg", "failed to write buffer2 to BigQuery", "err", err)
 				fmt.Printf("Failed to write buffer2 to BigQuery: %v\n", err)
@@ -254,6 +256,10 @@ func (bq *GoogleBigQueryClient) WriteLoop2(ctx context.Context, wg *sync.WaitGro
 
 // Closes the entries channel. Should only be done by the entry sender.
 func (bq *GoogleBigQueryClient) Close() {
-	close(bq.entries)
-	close(bq.entries2)
+	if bq.FeatureBilling {
+		close(bq.entries)
+	}
+	if bq.FeatureBilling2 {
+		close(bq.entries2)
+	}
 }
