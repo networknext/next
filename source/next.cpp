@@ -13589,7 +13589,7 @@ const uint8_t * next_customer_public_key()
     return next_global_config.customer_public_key;
 }
 
-NEXT_EXPORT_FUNC void next_generate_ping_token( uint64_t customer_id, const uint8_t * customer_private_key, const next_address_t * client_address, const char * datacenter_name, char * out_ping_token_data, int * out_ping_token_bytes )
+NEXT_EXPORT_FUNC void next_generate_ping_token( uint64_t customer_id, const uint8_t * customer_private_key, const next_address_t * client_address, const char * datacenter_name, uint8_t * out_ping_token_data, int * out_ping_token_bytes )
 {
     next_assert( customer_id );
     next_assert( customer_private_key );
@@ -13600,31 +13600,65 @@ NEXT_EXPORT_FUNC void next_generate_ping_token( uint64_t customer_id, const uint
 
     *out_ping_token_bytes = 0;
 
-    (void) customer_id;
-    (void) customer_private_key;
-    (void) client_address;
-    (void) datacenter_name;
-    (void) out_ping_token_data;
-    (void) out_ping_token_bytes;
+    uint8_t * p = out_ping_token_data;
 
-    // todo
+    const uint8_t version = 0;
 
-    // format
-    // version [byte]
-    // timestamp [uint64]
-    // datacenter id [uint64]
-    // buyer id [uint64]
-    // crypto signature (all data, including the client address sans port -- with customer private key)
+    uint64_t timestamp = (uint64_t) time( NULL );
+
+    uint64_t datacenter_id = next_datacenter_id( datacenter_name );
+
+    next_assert( client_address->type == NEXT_ADDRESS_IPV4 );
+    
+    next_write_uint8( &p, version );
+    next_write_uint64( &p, timestamp );
+    next_write_uint64( &p, customer_id );    
+    next_write_uint64( &p, datacenter_id );
+    next_write_uint8( &p, client_address->data.ipv4[0] );
+    next_write_uint8( &p, client_address->data.ipv4[1] );
+    next_write_uint8( &p, client_address->data.ipv4[2] );
+    next_write_uint8( &p, client_address->data.ipv4[3] );
+
+    *out_ping_token_bytes = int( p - out_ping_token_data );
+
+    next_crypto_sign_state_t state;
+    next_crypto_sign_init( &state );
+    next_crypto_sign_update( &state, out_ping_token_data, *out_ping_token_bytes );
+    next_crypto_sign_final_create( &state, out_ping_token_data + *out_ping_token_bytes, NULL, customer_private_key );
+    *out_ping_token_bytes += NEXT_CRYPTO_SIGN_BYTES;
+
+    next_assert( *out_ping_token_bytes < NEXT_MAX_PING_TOKEN_BYTES );
 }
 
-bool next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_public_key, const char * ping_token_data, int ping_token_bytes )
+bool next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_public_key, const uint8_t * ping_token_data, int ping_token_bytes )
 {
     (void) customer_id;
     (void) customer_public_key;
     (void) ping_token_data;
     (void) ping_token_bytes;
-    // todo
-    return false;
+
+    if ( ping_token_bytes < int( 1 + NEXT_CRYPTO_SIGN_BYTES ) )
+        return false;
+
+    const uint8_t * p = ping_token_data;
+
+    uint8_t version = next_read_uint8( &p );
+
+    if ( version != 0 )
+        return false;
+
+    const int size = 8 + 8 + 8 + 4;
+
+    if ( ping_token_bytes < int( 1 + size + NEXT_CRYPTO_SIGN_BYTES ) )
+        return false;
+
+    next_crypto_sign_state_t state;
+    next_crypto_sign_init( &state );
+    next_crypto_sign_update( &state, ping_token_data, size_t(ping_token_bytes) - NEXT_CRYPTO_SIGN_BYTES );
+    if ( next_crypto_sign_final_verify( &state, ping_token_data + ping_token_bytes - NEXT_CRYPTO_SIGN_BYTES, customer_public_key ) != 0 )
+        return false;
+    
+    return true;
 }
 
 // ---------------------------------------------------------------
@@ -17080,7 +17114,7 @@ void test_beacon()
 void test_ping_token()
 {
     int ping_token_bytes = 0;
-    char ping_token_data[NEXT_MAX_PING_TOKEN_BYTES];
+    uint8_t ping_token_data[NEXT_MAX_PING_TOKEN_BYTES];
 
     uint64_t customer_id = 0x123456;
     unsigned char customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
