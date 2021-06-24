@@ -321,21 +321,12 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 // and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
 func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
 
-	// dbBuyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-	// db.buyerMutex.RLock()
-	// b, found := db.buyers[dbBuyerID]
-	// db.buyerMutex.RUnlock()
-
-	// if !found {
-	// 	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", ephemeralBuyerID)}
-	// }
-
 	sqlBuyerID := int64(ephemeralBuyerID)
 
 	var querySQL bytes.Buffer
 	var buyer sqlBuyer
 
-	querySQL.Write([]byte("select short_name, is_live_customer, debug, public_key, customer_id "))
+	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where sdk_generated_id = $1"))
 
 	row := db.Client.QueryRow(querySQL.String(), sqlBuyerID)
@@ -366,7 +357,7 @@ func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
 		}
 
 		b := routing.Buyer{
-			ID:             buyer.ID,
+			ID:             ephemeralBuyerID,
 			HexID:          fmt.Sprintf("%016x", buyer.ID),
 			ShortName:      buyer.ShortName,
 			CompanyCode:    buyer.ShortName,
@@ -388,15 +379,58 @@ func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
 
 // BuyerWithCompanyCode gets the Buyer with the matching company code
 func (db *SQL) BuyerWithCompanyCode(code string) (routing.Buyer, error) {
-	db.buyerMutex.RLock()
-	defer db.buyerMutex.RUnlock()
 
-	for _, buyer := range db.buyers {
-		if buyer.CompanyCode == code {
-			return buyer, nil
+	var querySQL bytes.Buffer
+	var buyer sqlBuyer
+
+	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, public_key, customer_id "))
+	querySQL.Write([]byte("from buyers where short_name = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), code)
+	err := row.Scan(
+		&buyer.DatabaseID,
+		&buyer.SdkID,
+		&buyer.IsLiveCustomer,
+		&buyer.Debug,
+		&buyer.PublicKey,
+		&buyer.CustomerID,
+	)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() no rows were returned!")
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: fmt.Sprintf("%016x", code)}
+	case nil:
+		buyer.ID = uint64(buyer.SdkID)
+		ic, err := db.InternalConfig(buyer.ID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() InternalConfig query returned an error: %v", err)
+			return routing.Buyer{}, err
 		}
+
+		rs, err := db.RouteShader(buyer.ID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() RouteShader query returned an error: %v", err)
+			return routing.Buyer{}, err
+		}
+
+		b := routing.Buyer{
+			ID:             buyer.ID,
+			HexID:          fmt.Sprintf("%016x", buyer.ID),
+			ShortName:      buyer.ShortName,
+			CompanyCode:    buyer.ShortName,
+			Live:           buyer.IsLiveCustomer,
+			Debug:          buyer.Debug,
+			PublicKey:      buyer.PublicKey,
+			RouteShader:    rs,
+			InternalConfig: ic,
+			CustomerID:     buyer.CustomerID,
+			DatabaseID:     buyer.DatabaseID,
+		}
+		return b, nil
+	default:
+		level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() QueryRow returned an error: %v", err)
+		return routing.Buyer{}, err
 	}
-	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: code}
 }
 
 // Buyers returns a copy of all stored buyers.
