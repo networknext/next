@@ -652,15 +652,6 @@ func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 // Seller gets a copy of a seller with the specified seller ID,
 // and returns an empty seller and an error if a seller with that ID doesn't exist in storage.
 func (db *SQL) Seller(id string) (routing.Seller, error) {
-	// db.sellerMutex.RLock()
-	// defer db.sellerMutex.RUnlock()
-
-	// s, found := db.sellers[id]
-	// if !found {
-	// 	return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
-	// }
-
-	// return s, nil
 
 	var querySQL bytes.Buffer
 	var seller sqlSeller
@@ -702,15 +693,54 @@ func (db *SQL) Seller(id string) (routing.Seller, error) {
 
 // Sellers returns a copy of all stored sellers.
 func (db *SQL) Sellers() []routing.Seller {
-	db.sellerMutex.RLock()
-	defer db.sellerMutex.RUnlock()
 
-	var sellers []routing.Seller
-	for _, seller := range db.sellers {
-		sellers = append(sellers, seller)
+	var sql bytes.Buffer
+	var seller sqlSeller
+
+	sellers := []routing.Seller{}
+
+	sql.Write([]byte("select id, short_name, public_egress_price, secret, "))
+	sql.Write([]byte("customer_id from sellers"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "Sellers(): QueryContext returned an error", "err", err)
+		return []routing.Seller{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&seller.DatabaseID,
+			&seller.ShortName,
+			&seller.EgressPriceNibblinsPerGB,
+			&seller.Secret,
+			&seller.CustomerID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Sellers(): error parsing returned row", "err", err)
+			return []routing.Seller{}
+		}
+
+		c, err := db.Customer(seller.ShortName)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Sellers(): customer does not exist", "err", err)
+			return []routing.Seller{}
+		}
+		s := routing.Seller{
+			ID:                       c.Code,
+			ShortName:                seller.ShortName,
+			Secret:                   seller.Secret,
+			CompanyCode:              c.Code,
+			Name:                     c.Name,
+			EgressPriceNibblinsPerGB: routing.Nibblin(seller.EgressPriceNibblinsPerGB),
+			DatabaseID:               seller.DatabaseID,
+			CustomerID:               seller.CustomerID,
+		}
+
+		sellers = append(sellers, s)
 	}
 
-	sort.Slice(sellers, func(i int, j int) bool { return sellers[i].ID < sellers[j].ID })
+	sort.Slice(sellers, func(i int, j int) bool { return sellers[i].ShortName < sellers[j].ShortName })
 	return sellers
 }
 
