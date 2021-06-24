@@ -359,6 +359,20 @@ struct next_mutex_helper_t
 
 // -----------------------------------------
 
+#define NEXT_MAX_PING_TOKEN_BYTES 256
+
+NEXT_EXPORT_FUNC uint64_t next_customer_id();
+
+NEXT_EXPORT_FUNC const uint8_t * next_customer_private_key();
+
+NEXT_EXPORT_FUNC const uint8_t * next_customer_public_key();
+
+NEXT_EXPORT_FUNC void next_generate_ping_token( uint64_t customer_id, const uint8_t * customer_private_key, const next_address_t * client_address, const char * datacenter_name, char * out_ping_token_data, int * out_ping_token_bytes );
+
+NEXT_EXPORT_FUNC bool next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_public_key, const char * ping_token_data, int ping_token_bytes );
+
+// -----------------------------------------
+
 NEXT_EXPORT_FUNC void next_test();
 
 // -----------------------------------------

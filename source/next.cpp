@@ -3804,8 +3804,8 @@ struct next_config_internal_t
 {
     char hostname[256];
     uint64_t customer_id;
-    uint8_t customer_public_key[32];
-    uint8_t customer_private_key[64];
+    uint8_t customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+    uint8_t customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
     bool valid_customer_private_key;
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
@@ -13574,6 +13574,61 @@ void next_mutex_destroy( next_mutex_t * mutex )
 
 // ---------------------------------------------------------------
 
+uint64_t next_customer_id()
+{
+    return next_global_config.customer_id;
+}
+
+const uint8_t * next_customer_private_key()
+{
+    return next_global_config.customer_private_key;
+}
+
+const uint8_t * next_customer_public_key()
+{
+    return next_global_config.customer_public_key;
+}
+
+NEXT_EXPORT_FUNC void next_generate_ping_token( uint64_t customer_id, const uint8_t * customer_private_key, const next_address_t * client_address, const char * datacenter_name, char * out_ping_token_data, int * out_ping_token_bytes )
+{
+    next_assert( customer_id );
+    next_assert( customer_private_key );
+    next_assert( client_address );
+    next_assert( datacenter_name );
+    next_assert( out_ping_token_data );
+    next_assert( out_ping_token_bytes );
+
+    *out_ping_token_bytes = 0;
+
+    (void) customer_id;
+    (void) customer_private_key;
+    (void) client_address;
+    (void) datacenter_name;
+    (void) out_ping_token_data;
+    (void) out_ping_token_bytes;
+
+    // todo
+
+    // format
+    // version [byte]
+    // timestamp [uint64]
+    // datacenter id [uint64]
+    // buyer id [uint64]
+    // crypto signature (all data, including the client address sans port -- with customer private key)
+}
+
+bool next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_public_key, const char * ping_token_data, int ping_token_bytes )
+{
+    (void) customer_id;
+    (void) customer_public_key;
+    (void) ping_token_data;
+    (void) ping_token_bytes;
+    // todo
+    return false;
+}
+
+// ---------------------------------------------------------------
+
 static void next_check_handler( const char * condition, 
                                 const char * function,
                                 const char * file,
@@ -17022,6 +17077,28 @@ void test_beacon()
 
 #endif // #if NEXT_BEACON_ENABLED
 
+void test_ping_token()
+{
+    int ping_token_bytes = 0;
+    char ping_token_data[NEXT_MAX_PING_TOKEN_BYTES];
+
+    uint64_t customer_id = 0x123456;
+    unsigned char customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+    unsigned char customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+    next_crypto_sign_keypair( customer_public_key, customer_private_key );
+
+    const char * datacenter_name = "local";
+
+    next_address_t client_address;
+    next_address_parse( &client_address, "127.0.0.1:50000" );
+
+    next_generate_ping_token( customer_id, customer_private_key, &client_address, datacenter_name, ping_token_data, &ping_token_bytes );
+
+    bool result = next_validate_ping_token( customer_id, customer_public_key, ping_token_data, ping_token_bytes );
+
+    next_check( result );
+}
+
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
@@ -17087,6 +17164,7 @@ void next_test()
 #if NEXT_BEACON_ENABLED
     RUN_TEST( test_beacon );
 #endif // #if NEXT_BEACON_ENABLED
+    RUN_TEST( test_ping_token );
 }
 
 #ifdef _MSC_VER
