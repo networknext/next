@@ -20,23 +20,23 @@ func sellers(env Environment) {
 	}
 
 	sellers := []struct {
-		Name            string
-		ID              string
-		IngressPriceUSD string
-		EgressPriceUSD  string
+		Name           string
+		ID             string
+		EgressPriceUSD string
+		Seller         string
 	}{}
 
 	for _, seller := range reply.Sellers {
 		sellers = append(sellers, struct {
-			Name            string
-			ID              string
-			IngressPriceUSD string
-			EgressPriceUSD  string
+			Name           string
+			ID             string
+			EgressPriceUSD string
+			Seller         string
 		}{
-			Name:            seller.Name,
-			ID:              seller.ID,
-			IngressPriceUSD: fmt.Sprintf("$%02.2f", seller.IngressPriceNibblins.ToDollars()),
-			EgressPriceUSD:  fmt.Sprintf("$%02.2f", seller.EgressPriceNibblins.ToDollars()),
+			Name:           seller.Name,
+			ID:             seller.ID,
+			EgressPriceUSD: fmt.Sprintf("$%02.2f", seller.EgressPriceNibblins.ToDollars()),
+			Seller:         fmt.Sprintf("%t", seller.Secret),
 		})
 	}
 
@@ -91,8 +91,7 @@ func getSellerInfo(env Environment, id string) {
 	sellerInfo += "  Name         : " + reply.Seller.Name + "\n"
 	sellerInfo += "  ShortName    : " + reply.Seller.ShortName + "\n"
 	sellerInfo += "  Egress Price : " + fmt.Sprintf("%4.2f", reply.Seller.EgressPriceNibblinsPerGB.ToDollars()) + "\n"
-	sellerInfo += "  Ingress Price: " + fmt.Sprintf("%4.2f", reply.Seller.IngressPriceNibblinsPerGB.ToDollars()) + "\n"
-	sellerInfo += "         Secret: " + fmt.Sprintf("%t", reply.Seller.Secret) + "\n"
+	sellerInfo += "  Secret       : " + fmt.Sprintf("%t", reply.Seller.Secret) + "\n"
 
 	fmt.Println(sellerInfo)
 	os.Exit(0)
