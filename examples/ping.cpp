@@ -24,8 +24,13 @@
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <inttypes.h>
+
+#if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
+#define strncpy_s strncpy
+#endif // #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
 
 const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
@@ -43,7 +48,12 @@ int main()
     
     // initialize network next. this reads in the base64 private/public customer keypair
 
-    if ( next_init( NULL, NULL ) != NEXT_OK )
+    next_config_t config;
+    next_default_config( &config );
+    strncpy_s( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+    strncpy_s( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+
+    if ( next_init( NULL, &config ) != NEXT_OK )
     {
         printf( "error: could not initialize network next\n" );
         return 1;
@@ -60,37 +70,32 @@ int main()
     const char * datacenter_name = "linode.fremont";
 
     next_address_t client_address;
-    next_address_parse( &client_address, "127.0.0.1" );   // this must be the public IP address pings are sent from
+    next_address_parse( &client_address, "127.0.0.1" );   // set to the public IP address pings are sent from
 
+    int ping_token_bytes = 0;
+    uint8_t ping_token_data[NEXT_MAX_PING_TOKEN_BYTES];
     next_generate_ping_token( customer_id, customer_private_key, &client_address, datacenter_name, ping_token_data, &ping_token_bytes );
 
     // make sure the ping token validates. this checks that the signature on the ping token can be verified with your public key
 
-    if ( !next_validate_ping_token( customer_id, customer_public_key, ping_token_data, ping_token_bytes ) )
+    if ( !next_validate_ping_token( customer_id, customer_public_key, /*&client_address,*/ ping_token_data, ping_token_bytes ) )
     {
-
-    }
-
-    // ...
-
-    next_client_t * client = next_client_create( NULL, bind_address, client_packet_received, NULL );
-    if ( client == NULL )
-    {
-        printf( "error: failed to create client\n" );
+        printf( "error: ping token did not validate\n" );
         return 1;
     }
 
-    next_client_open_session( client, server_address );
+    next_printf( NEXT_LOG_LEVEL_INFO, "ping token validated" );
 
-    uint8_t packet_data[32];
-    memset( packet_data, 0, sizeof( packet_data ) );
+    // ...
 
+    /*
     while ( !quit )
     {
         // todo
         
         next_sleep( 1.0 );
     }
+    */
 
     next_term();
     

@@ -13591,7 +13591,6 @@ const uint8_t * next_customer_public_key()
 
 NEXT_EXPORT_FUNC void next_generate_ping_token( uint64_t customer_id, const uint8_t * customer_private_key, const next_address_t * client_address, const char * datacenter_name, uint8_t * out_ping_token_data, int * out_ping_token_bytes )
 {
-    next_assert( customer_id );
     next_assert( customer_private_key );
     next_assert( client_address );
     next_assert( datacenter_name );
