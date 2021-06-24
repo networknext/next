@@ -130,36 +130,33 @@ func SeedSQLStorage(
 
 		// fmt.Println("Adding sellers")
 		localSeller := routing.Seller{
-			ID:                        localCust.Code,
-			ShortName:                 "local",
-			CompanyCode:               "local",
-			Secret:                    false,
-			Name:                      localCust.Name,
-			IngressPriceNibblinsPerGB: 0.1 * 1e11,
-			EgressPriceNibblinsPerGB:  0.2 * 1e11,
-			CustomerID:                localCust.DatabaseID,
+			ID:                       localCust.Code,
+			ShortName:                "local",
+			CompanyCode:              "local",
+			Secret:                   false,
+			Name:                     localCust.Name,
+			EgressPriceNibblinsPerGB: 0.2 * 1e11,
+			CustomerID:               localCust.DatabaseID,
 		}
 
 		ghostSeller := routing.Seller{
-			ID:                        ghostCust.Code,
-			ShortName:                 "ghost",
-			CompanyCode:               "ghost-army",
-			Secret:                    false,
-			Name:                      ghostCust.Name,
-			IngressPriceNibblinsPerGB: 0.3 * 1e11,
-			EgressPriceNibblinsPerGB:  0.4 * 1e11,
-			CustomerID:                ghostCust.DatabaseID,
+			ID:                       ghostCust.Code,
+			ShortName:                "ghost",
+			CompanyCode:              "ghost-army",
+			Secret:                   false,
+			Name:                     ghostCust.Name,
+			EgressPriceNibblinsPerGB: 0.4 * 1e11,
+			CustomerID:               ghostCust.DatabaseID,
 		}
 
 		hpSeller := routing.Seller{
-			ID:                        hpCust.Code,
-			ShortName:                 hpCust.Code,
-			CompanyCode:               hpCust.Code,
-			Secret:                    false,
-			Name:                      hpCust.Name,
-			IngressPriceNibblinsPerGB: 0.3 * 1e11,
-			EgressPriceNibblinsPerGB:  0.4 * 1e11,
-			CustomerID:                hpCust.DatabaseID,
+			ID:                       hpCust.Code,
+			ShortName:                hpCust.Code,
+			CompanyCode:              hpCust.Code,
+			Secret:                   false,
+			Name:                     hpCust.Name,
+			EgressPriceNibblinsPerGB: 0.4 * 1e11,
+			CustomerID:               hpCust.DatabaseID,
 		}
 
 		if err := db.AddSeller(ctx, localSeller); err != nil {
@@ -250,7 +247,6 @@ func SeedSQLStorage(
 		// add datacenter maps
 		// fmt.Println("Adding datacenter_maps")
 		localDcMap := routing.DatacenterMap{
-			Alias:        "local",
 			BuyerID:      localBuyer.ID,
 			DatacenterID: localDatacenter.ID,
 		}
@@ -261,7 +257,6 @@ func SeedSQLStorage(
 		}
 
 		ghostDcMap := routing.DatacenterMap{
-			Alias:        "ghost-army.map",
 			BuyerID:      ghostBuyer.ID,
 			DatacenterID: ghostDatacenter.ID,
 		}
@@ -486,6 +481,21 @@ func SeedSQLStorage(
 		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID3)
 		if err != nil {
 			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
+		}
+
+		// set creation time to 1.5 hours ago to avoid cooldown ticker in UI
+		now := time.Now()
+		duration, _ := time.ParseDuration("-1.5h")
+		then := now.Add(duration)
+
+		metaData := routing.DatabaseBinFileMetaData{
+			DatabaseBinFileAuthor:       "arthur@networknext.com",
+			DatabaseBinFileCreationTime: then,
+		}
+
+		err = db.UpdateDatabaseBinFileMetaData(context.Background(), metaData)
+		if err != nil {
+			return fmt.Errorf("AdminBinFileHandler() error writing bin file metadata to db: %v", err)
 		}
 
 	}

@@ -97,9 +97,9 @@ func TestBuyersList(t *testing.T) {
 }
 
 func TestUserSessions(t *testing.T) {
-	checkBigtableEmulation(t)
-
 	t.Parallel()
+
+	checkBigtableEmulation(t)
 
 	var storer = storage.InMemory{}
 
@@ -342,18 +342,14 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
+			assert.Equal(t, 2, len(reply.Sessions))
 
-			// The order of reply is not consistent with Bigtable
-			// Check if the sessionIDs exist in the list rather than explicit slice elements
-			sessionCounter := 0
 			for _, session := range reply.Sessions {
-				if fmt.Sprintf("%016x", session.ID) == sessionID3 || fmt.Sprintf("%016x", session.ID) == sessionID2 {
-					sessionCounter++
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 {
+					t.Fail()
 				}
 			}
-
-			assert.Equal(t, 2, sessionCounter)
 		})
 
 		t.Run("list live - hash", func(t *testing.T) {
@@ -361,28 +357,24 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
+			assert.Equal(t, 2, len(reply.Sessions))
 
-			// The order of reply is not consistent with Bigtable
-			// Check if the sessionIDs exist in the list rather than explicit slice elements
-			sessionCounter := 0
 			for _, session := range reply.Sessions {
-				if fmt.Sprintf("%016x", session.ID) == sessionID3 || fmt.Sprintf("%016x", session.ID) == sessionID2 {
-					sessionCounter++
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 {
+					t.Fail()
 				}
 			}
-
-			assert.Equal(t, 2, sessionCounter)
 		})
 
 		t.Run("list live - signed decimal hash", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash3)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 1)
+			assert.Equal(t, 1, len(reply.Sessions))
 
-			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].ID), sessionID4)
+			assert.Equal(t, fmt.Sprintf("%016x", reply.Sessions[0].Meta.ID), sessionID4)
 		})
 	})
 
@@ -443,18 +435,14 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: userID1}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 3)
+			assert.Equal(t, 3, len(reply.Sessions))
 
-			// The order of reply is not consistent with Bigtable
-			// Check if the sessionIDs exist in the list rather than explicit slice elements
-			sessionCounter := 0
 			for _, session := range reply.Sessions {
-				if fmt.Sprintf("%016x", session.ID) == sessionID3 || fmt.Sprintf("%016x", session.ID) == sessionID2 {
-					sessionCounter++
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
+					t.Fail()
 				}
 			}
-
-			assert.Equal(t, 2, sessionCounter)
 		})
 
 		t.Run("list live and historic - hash", func(t *testing.T) {
@@ -462,46 +450,34 @@ func TestUserSessions(t *testing.T) {
 			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash1)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 3)
-
-			// The order of reply is not consistent with Bigtable
-			// Check if the sessionIDs exist in the list rather than explicit slice elements
-			sessionCounter := 0
+			assert.Equal(t, 3, len(reply.Sessions))
 			for _, session := range reply.Sessions {
-				if fmt.Sprintf("%016x", session.ID) == sessionID3 || fmt.Sprintf("%016x", session.ID) == sessionID2 {
-					sessionCounter++
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID3 && idString != sessionID2 && idString != sessionID7 {
+					t.Fail()
 				}
 			}
-
-			assert.Equal(t, 2, sessionCounter)
 		})
 
 		t.Run("list live and historic - signed decimal hash", func(t *testing.T) {
 			var reply jsonrpc.UserSessionsReply
-			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%d", userHash3)}, &reply)
+			err := svc.UserSessions(req, &jsonrpc.UserSessionsArgs{UserID: fmt.Sprintf("%016x", userHash3)}, &reply)
 			assert.NoError(t, err)
 
-			assert.Equal(t, len(reply.Sessions), 2)
-
-			// The order of reply is not consistent with Bigtable
-			// Check if the sessionIDs exist in the list rather than explicit slice elements
-			sessionCounter := 0
+			assert.Equal(t, 2, len(reply.Sessions))
 			for _, session := range reply.Sessions {
-				if fmt.Sprintf("%016x", session.ID) == sessionID4 || fmt.Sprintf("%016x", session.ID) == sessionID8 {
-					sessionCounter++
+				idString := fmt.Sprintf("%016x", session.Meta.ID)
+				if idString != sessionID4 && idString != sessionID8 {
+					t.Fail()
 				}
 			}
-
-			assert.Equal(t, 2, sessionCounter)
 		})
-
 	})
 }
 
 func TestDatacenterMaps(t *testing.T) {
 	var storer = storage.InMemory{}
 	dcMap := routing.DatacenterMap{
-		Alias:        "some.server.alias",
 		BuyerID:      0xbdbebdbf0f7be395,
 		DatacenterID: 0x7edb88d7b6fc0713,
 	}
@@ -553,7 +529,6 @@ func TestDatacenterMaps(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, "7edb88d7b6fc0713", reply.DatacenterMaps[0].DatacenterID)
-		assert.Equal(t, "some.server.alias", reply.DatacenterMaps[0].Alias)
 		assert.Equal(t, "bdbebdbf0f7be395", reply.DatacenterMaps[0].BuyerID)
 	})
 
@@ -729,7 +704,7 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 		err := svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 8, reply.Next)
+		assert.Equal(t, 7, reply.Next)
 		assert.Equal(t, 250, reply.Direct)
 	})
 
@@ -739,8 +714,8 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 		err := svc.TotalSessions(req, &jsonrpc.TotalSessionsArgs{CompanyCode: "local"}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 6, reply.Next)
-		assert.Equal(t, 300, reply.Direct)
+		assert.Equal(t, 5, reply.Next)
+		assert.Equal(t, 250, reply.Direct)
 	})
 }
 

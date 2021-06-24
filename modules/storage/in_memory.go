@@ -376,8 +376,8 @@ func (m *InMemory) SetRelayMetadata(ctx context.Context, relay routing.Relay) er
 func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 
 	for _, dc := range m.localDatacenterMaps {
-		if dc.BuyerID == dcMap.BuyerID && dc.Alias == dcMap.Alias && dc.DatacenterID == dcMap.DatacenterID {
-			return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
+		if dc.BuyerID == dcMap.BuyerID && dc.DatacenterID == dcMap.DatacenterID {
+			return &AlreadyExistsError{resourceType: "datacenterMap", resourceRef: dcMap.DatacenterID}
 		}
 	}
 
@@ -391,7 +391,7 @@ func (m *InMemory) GetDatacenterMapsForBuyer(id uint64) map[uint64]routing.Datac
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -403,7 +403,7 @@ func (m *InMemory) ListDatacenterMaps(dcID uint64) map[uint64]routing.Datacenter
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.DatacenterID == dcID || dcID == 0 {
-			id := crypto.HashID(dc.Alias + fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
+			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
 			dcs[id] = dc
 		}
 	}
@@ -415,13 +415,13 @@ func (m *InMemory) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datace
 
 	idx := -1
 	for i, dcm := range m.localDatacenterMaps {
-		if dcMap.Alias == dcm.Alias && dcMap.BuyerID == dcm.BuyerID && dcMap.DatacenterID == dcm.DatacenterID {
+		if dcMap.BuyerID == dcm.BuyerID && dcMap.DatacenterID == dcm.DatacenterID {
 			idx = i
 		}
 	}
 
 	if idx < 0 {
-		return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: dcMap.Alias}
+		return &DoesNotExistError{resourceType: "datacenterMap", resourceRef: dcMap.DatacenterID}
 	}
 
 	if idx+1 == len(m.localDatacenterMaps) {
@@ -596,6 +596,14 @@ func (m *InMemory) UpdateDatacenter(ctx context.Context, datacenterID uint64, fi
 	return fmt.Errorf("UpdateDatacenter not impemented in InMemory storer")
 }
 
-func (fs *InMemory) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
+func (m *InMemory) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateDatacenterMap not implemented in InMemory storer")
+}
+
+func (m *InMemory) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error) {
+	return routing.DatabaseBinFileMetaData{}, fmt.Errorf("GetDatabaseBinFileMetaData not implemented in InMemory storer")
+}
+
+func (m *InMemory) UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error {
+	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in InMemory storer")
 }
