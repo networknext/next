@@ -787,13 +787,6 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	customers := make(map[string]routing.Customer)
 	customerIDs := make(map[int64]string)
 
-	// sql.Write([]byte("select customers.id, customers.debug, "))
-	// sql.Write([]byte("customers.automatic_signin_domain, customers.customer_name, "))
-	// sql.Write([]byte("customers.customer_code, buyers.id as buyer_id, "))
-	// sql.Write([]byte("sellers.id as seller_id from customers "))
-	// sql.Write([]byte("left join buyers on customers.id = buyers.customer_id "))
-	// sql.Write([]byte("left join sellers on customers.id = sellers.customer_id"))
-
 	sql.Write([]byte("select id, automatic_signin_domain, "))
 	sql.Write([]byte("customer_name, customer_code from customers"))
 
