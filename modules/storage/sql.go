@@ -2081,16 +2081,60 @@ func (db *SQL) Datacenter(datacenterID uint64) (routing.Datacenter, error) {
 
 // Datacenters returns a copy of all stored datacenters.
 func (db *SQL) Datacenters() []routing.Datacenter {
-	db.datacenterMutex.RLock()
-	defer db.datacenterMutex.RUnlock()
+	// db.datacenterMutex.RLock()
+	// defer db.datacenterMutex.RUnlock()
 
-	var datacenters []routing.Datacenter
-	for _, datacenter := range db.datacenters {
-		datacenters = append(datacenters, datacenter)
+	// var datacenters []routing.Datacenter
+	// for _, datacenter := range db.datacenters {
+	// 	datacenters = append(datacenters, datacenter)
+	// }
+
+	var sql bytes.Buffer
+	var dc sqlDatacenter
+
+	datacenters := []routing.Datacenter{}
+
+	sql.Write([]byte("select id, display_name, latitude, longitude,"))
+	sql.Write([]byte("seller_id from datacenters"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "syncDatacenters(): QueryContext returned an error", "err", err)
+		return []routing.Datacenter{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&dc.ID,
+			&dc.Name,
+			&dc.Latitude,
+			&dc.Longitude,
+			&dc.SellerID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncDatacenters(): error parsing returned row", "err", err)
+			return []routing.Datacenter{}
+		}
+
+		did := crypto.HashID(dc.Name)
+
+		d := routing.Datacenter{
+			ID:   did,
+			Name: dc.Name,
+			Location: routing.Location{
+				Latitude:  dc.Latitude,
+				Longitude: dc.Longitude,
+			},
+			SellerID:   dc.SellerID,
+			DatabaseID: dc.ID,
+		}
+
+		datacenters = append(datacenters, d)
 	}
 
 	sort.Slice(datacenters, func(i int, j int) bool { return datacenters[i].ID < datacenters[j].ID })
 	return datacenters
+
 }
 
 // RemoveDatacenter removes a datacenter with the provided datacenter ID from storage
