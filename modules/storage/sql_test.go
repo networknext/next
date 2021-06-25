@@ -729,44 +729,44 @@ func TestUpdateSQL(t *testing.T) {
 
 	})
 
-	t.Run("SetBuyer", func(t *testing.T) {
+	// t.Run("SetBuyer", func(t *testing.T) {
 
-		publicKey := make([]byte, crypto.KeySize)
-		_, err = rand.Read(publicKey)
-		assert.NoError(t, err)
+	// 	publicKey := make([]byte, crypto.KeySize)
+	// 	_, err = rand.Read(publicKey)
+	// 	assert.NoError(t, err)
 
-		internalID := uint64(3142537350691193170)
+	// 	internalID := uint64(3142537350691193170)
 
-		buyer := routing.Buyer{
-			ID:          internalID,
-			ShortName:   customerWithID.Code,
-			CompanyCode: customerWithID.Code,
-			Live:        true,
-			Debug:       true,
-			PublicKey:   publicKey,
-			// CustomerID:  customerWithID.DatabaseID,
-		}
+	// 	buyer := routing.Buyer{
+	// 		ID:          internalID,
+	// 		ShortName:   customerWithID.Code,
+	// 		CompanyCode: customerWithID.Code,
+	// 		Live:        true,
+	// 		Debug:       true,
+	// 		PublicKey:   publicKey,
+	// 		// CustomerID:  customerWithID.DatabaseID,
+	// 	}
 
-		err = db.AddBuyer(ctx, buyer)
-		assert.NoError(t, err)
+	// 	err = db.AddBuyer(ctx, buyer)
+	// 	assert.NoError(t, err)
 
-		buyerWithID, err = db.Buyer(internalID)
-		assert.NoError(t, err)
+	// 	buyerWithID, err = db.Buyer(internalID)
+	// 	assert.NoError(t, err)
 
-		buyerWithID.Live = false
-		buyerWithID.Debug = false
-		buyerWithID.PublicKey = []byte("")
+	// 	buyerWithID.Live = false
+	// 	buyerWithID.Debug = false
+	// 	buyerWithID.PublicKey = []byte("")
 
-		err = db.SetBuyer(ctx, buyerWithID)
-		assert.NoError(t, err)
+	// 	err = db.SetBuyer(ctx, buyerWithID)
+	// 	assert.NoError(t, err)
 
-		checkBuyer, err := db.Buyer(internalID)
-		assert.NoError(t, err)
-		assert.Equal(t, checkBuyer.Live, buyerWithID.Live)
-		assert.Equal(t, checkBuyer.Debug, buyerWithID.Debug)
-		assert.Equal(t, checkBuyer.PublicKey, buyerWithID.PublicKey)
+	// 	checkBuyer, err := db.Buyer(internalID)
+	// 	assert.NoError(t, err)
+	// 	assert.Equal(t, checkBuyer.Live, buyerWithID.Live)
+	// 	assert.Equal(t, checkBuyer.Debug, buyerWithID.Debug)
+	// 	assert.Equal(t, checkBuyer.PublicKey, buyerWithID.PublicKey)
 
-	})
+	// })
 
 	t.Run("SetSeller", func(t *testing.T) {
 		seller := routing.Seller{
