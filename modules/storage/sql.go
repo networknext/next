@@ -2281,14 +2281,14 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 	dcID := dcMap.DatacenterID
 
-	buyer, ok := db.buyers[uint64(buyerID)]
-	if !ok {
+	buyer, err := db.Buyer(uint64(buyerID))
+	if err != nil {
 		fmt.Printf("buyer does not exist: %016x\n", dcMap.BuyerID)
 		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
 	}
 
-	datacenter, ok := db.datacenters[dcID]
-	if !ok {
+	datacenter, err := db.Datacenter(dcID)
+	if err != nil {
 		fmt.Printf("datacenter does not exist: %016x\n", dcMap.DatacenterID)
 		return &DoesNotExistError{resourceType: "DatacenterID", resourceRef: dcMap.DatacenterID}
 	}
@@ -2322,10 +2322,6 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.syncDatacenterMaps(ctx)
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
