@@ -1862,15 +1862,8 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 	var sql bytes.Buffer
 
-	db.relayMutex.RLock()
-	relay, ok := db.relays[id]
-	db.relayMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%016x", id)}
-	}
-
-	sql.Write([]byte("delete from relays where id = $1"))
+	hexID := fmt.Sprintf("%016x", id)
+	sql.Write([]byte("delete from relays where hex_id = $1"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -1878,7 +1871,7 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	result, err := stmt.Exec(relay.DatabaseID)
+	result, err := stmt.Exec(hexID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing relay", "err", err)
@@ -1893,12 +1886,6 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.relayMutex.Lock()
-	delete(db.relays, relay.ID)
-	db.relayMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
