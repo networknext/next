@@ -3,7 +3,6 @@ package storage
 
 import (
 	"context"
-	"time"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
@@ -13,7 +12,7 @@ type Storer interface {
 	Customer(code string) (routing.Customer, error)
 
 	// TODO: chopping block (unused)
-	CustomerWithName(name string) (routing.Customer, error)
+	// CustomerWithName(name string) (routing.Customer, error)
 
 	Customers() []routing.Customer
 
@@ -45,7 +44,7 @@ type Storer interface {
 
 	// SetBuyer updates the buyer in storage with the provided copy and returns an error if the buyer could not be updated.
 	// TODO: chopping block (this is dangerous)
-	SetBuyer(ctx context.Context, buyer routing.Buyer) error
+	// SetBuyer(ctx context.Context, buyer routing.Buyer) error
 
 	// UpdateBuyer modifies the givien field for the specified buyer
 	UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error
@@ -65,7 +64,7 @@ type Storer interface {
 
 	// SetSeller updates the seller in storage with the provided copy and returns an error if the seller could not be updated.
 	// TODO: chopping block - this is dangerous
-	SetSeller(ctx context.Context, seller routing.Seller) error
+	// SetSeller(ctx context.Context, seller routing.Seller) error
 
 	// UpdateSeller modifies the givien field for the specified buyer
 	UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error
@@ -122,7 +121,7 @@ type Storer interface {
 
 	// SetDatacenter updates the datacenter in storage with the provided copy and returns an error if the datacenter could not be updated.
 	// TODO: replace with UpdateDatacenter
-	SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error
+	// SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error
 
 	// GetDatacenterMapsForBuyer returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
 	// an empty []routing.DatacenterMap if there are no aliases for that buyerID.
@@ -147,16 +146,16 @@ type Storer interface {
 	SetRelayMetadata(ctx context.Context, relay routing.Relay) error
 
 	// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
-	CheckSequenceNumber(ctx context.Context) (bool, int64, error)
+	// CheckSequenceNumber(ctx context.Context) (bool, int64, error)
 
-	// IncrementSequenceNumber is used by all methods that make changes to the db
-	IncrementSequenceNumber(ctx context.Context) error
+	// // IncrementSequenceNumber is used by all methods that make changes to the db
+	// IncrementSequenceNumber(ctx context.Context) error
 
-	// SetSequenceNumber is used to setup the db for unit testing
-	SetSequenceNumber(ctx context.Context, value int64) error
+	// // SetSequenceNumber is used to setup the db for unit testing
+	// SetSequenceNumber(ctx context.Context, value int64) error
 
-	// SyncLoop sets up the ticker for database syncs
-	SyncLoop(ctx context.Context, c <-chan time.Time)
+	// // SyncLoop sets up the ticker for database syncs
+	// SyncLoop(ctx context.Context, c <-chan time.Time)
 
 	// New for ConfigService
 
