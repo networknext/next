@@ -359,13 +359,17 @@ struct next_mutex_helper_t
 
 // -----------------------------------------
 
-#define NEXT_MAX_PING_TOKEN_BYTES 256
-
 NEXT_EXPORT_FUNC uint64_t next_customer_id();
 
 NEXT_EXPORT_FUNC const uint8_t * next_customer_private_key();
 
 NEXT_EXPORT_FUNC const uint8_t * next_customer_public_key();
+
+// -----------------------------------------
+
+#define NEXT_PING_DURATION 10.0
+#define NEXT_MAX_PING_TOKENS 256
+#define NEXT_MAX_PING_TOKEN_BYTES 256
 
 NEXT_EXPORT_FUNC void next_generate_ping_token( uint64_t customer_id, const uint8_t * customer_private_key, const next_address_t * client_address, const char * datacenter_name, const char * user_id, uint8_t * out_ping_token_data, int * out_ping_token_bytes );
 
@@ -375,7 +379,7 @@ NEXT_EXPORT_FUNC bool next_validate_ping_token( uint64_t customer_id, const uint
 
 struct next_ping_t;
 
-NEXT_EXPORT_FUNC next_ping_t * next_ping_create( const uint8_t * ping_tokens, int num_ping_tokens );
+NEXT_EXPORT_FUNC next_ping_t * next_ping_create( void * context, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens );
 
 NEXT_EXPORT_FUNC void next_ping_destroy( next_ping_t * ping );
 

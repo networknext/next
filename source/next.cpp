@@ -13684,6 +13684,76 @@ bool next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_pu
 
 // ---------------------------------------------------------------
 
+struct next_ping_t
+{
+    NEXT_DECLARE_SENTINEL(0)
+
+    void * context;
+
+    NEXT_DECLARE_SENTINEL(1)
+};
+
+void next_ping_initialize_sentinels( next_ping_t * ping )
+{
+    (void) ping;
+    next_assert( ping );
+    NEXT_INITIALIZE_SENTINEL( ping, 0 )
+    NEXT_INITIALIZE_SENTINEL( ping, 1 )
+}
+
+void next_ping_verify_sentinels( next_ping_t * ping )
+{
+    (void) ping;
+    next_assert( ping );
+    NEXT_VERIFY_SENTINEL( ping, 0 )
+    NEXT_VERIFY_SENTINEL( ping, 1 )
+}
+
+next_ping_t * next_ping_create( void * context, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens )
+{
+    next_assert( ping_token_data );
+    next_assert( ping_token_bytes );
+    next_assert( num_ping_tokens > 0 );
+    next_assert( num_ping_tokens <= NEXT_MAX_PING_TOKENS );
+
+    next_ping_t * ping = (next_ping_t*) next_malloc( context, sizeof(next_ping_t) );
+    if ( !ping ) 
+        return NULL;
+
+    memset( ping, 0, sizeof(next_ping_t) );
+
+    next_ping_initialize_sentinels( ping );
+
+    // todo: fill tokens
+
+    (void) ping_token_data;
+    (void) ping_token_bytes;
+    (void) num_ping_tokens;
+
+    return ping;
+}
+
+void next_ping_destroy( next_ping_t * ping )
+{
+    next_assert( ping );
+
+    next_ping_verify_sentinels( ping );
+
+    clear_and_free( ping->context, ping, sizeof(next_ping_t) );
+}
+
+void next_ping_update( next_ping_t * ping )
+{
+    next_assert( ping );
+
+    next_ping_verify_sentinels( ping );
+
+    // todo
+    (void) ping;
+}
+
+// ---------------------------------------------------------------
+
 static void next_check_handler( const char * condition, 
                                 const char * function,
                                 const char * file,

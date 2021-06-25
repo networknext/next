@@ -88,16 +88,32 @@ int main()
 
     next_printf( NEXT_LOG_LEVEL_INFO, "ping token validated" );
 
-    // ...
+    // run pings
 
-    /*
+    const int num_ping_tokens = 1;
+    const uint8_t * token_data_array[] = { ping_token_data };
+    const int token_bytes_array[] = { ping_token_bytes };
+
+    next_ping_t * ping = next_ping_create( NULL, token_data_array, token_bytes_array, num_ping_tokens );
+    if ( !ping )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "could not create ping" );
+        return 1;
+    }
+
+    double start_time = next_time();
+
     while ( !quit )
     {
-        // todo
+        if ( next_time() - start_time >= NEXT_PING_DURATION )
+            break;
+
+        next_ping_update( ping );
         
         next_sleep( 1.0 );
     }
-    */
+
+    next_ping_destroy( ping );
 
     next_term();
     
