@@ -105,13 +105,15 @@ int main()
 
     while ( !quit )
     {
-        if ( next_time() - start_time >= NEXT_PING_DURATION )
+        if ( next_time() - start_time > NEXT_PING_DURATION )
             break;
 
         next_ping_update( ping );
         
         next_sleep( 1.0 );
     }
+
+    // todo: print out ping summary
 
     next_ping_destroy( ping );
 
