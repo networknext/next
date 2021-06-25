@@ -1652,10 +1652,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		return err
 	}
 
-	db.relayMutex.Lock()
-	db.relays[relayID] = relay
-	db.relayMutex.Unlock()
-
 	return nil
 }
 
