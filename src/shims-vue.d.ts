@@ -22,15 +22,17 @@ declare module '*.vue' {
     deleteUserAccount (args: any): Promise<any>;
     addNewUserAccounts (args: any): Promise<any>;
     fetchUserAccount (args: any): Promise<any>;
+    fetchNotifications (): Promise<any>;
+    fetchLookerURL (): Promise<any>;
     fetchGameConfiguration (): Promise<any>;
     updateRouteShader (args: any): Promise<any>;
     updateGameConfiguration (args: any): Promise<any>;
     resendVerificationEmail (args: any): Promise<any>;
-    sendSignUpSlackNotification (args: any): Promise<any>
-    sendDocsViewSlackNotification (args: any): Promise<any>
-    sendSDKDownloadSlackNotification (args: any): Promise<any>
-    sendPublicKeyEnteredSlackNotification (args: any): Promise<any>
-    sendUE4DownloadNotifications (args: any): Promise<any>
+    sendSignUpSlackNotification (args: any): Promise<any>;
+    sendDocsViewSlackNotification (args: any): Promise<any>;
+    sendSDKDownloadSlackNotification (args: any): Promise<any>;
+    sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
+    sendUE4DownloadNotifications (args: any): Promise<any>;
   }
 
   export class VueJSONRPCServicePlugin {

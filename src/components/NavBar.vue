@@ -66,7 +66,10 @@
             to="/explore"
             class="nav-link"
             v-bind:class="{
-              active: $store.getters.currentPage == 'explore'
+              active:
+                $store.getters.currentPage == 'notifications' ||
+                $store.getters.currentPage == 'analytics' ||
+                $store.getters.currentPage == 'invoicing'
             }"
             v-if="$flagService.isEnabled(FeatureEnum.FEATURE_EXPLORE) && (!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus)"
           >Explore</router-link>
