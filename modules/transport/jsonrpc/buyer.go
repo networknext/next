@@ -38,12 +38,23 @@ import (
 	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )
 
+type NotificationPriorty int32
+type NotificationType int32
+
 const (
 	TopSessionsSize          = 1000
 	MapPointByteCacheVersion = uint8(1)
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
-	LOOKER_HOST              = "https://networknextexternal.cloud.looker.com/login/embed/"
+	LOOKER_HOST              = "networknextexternal.cloud.looker.com"
+	// TODO: Move these somewhere else like the jsonrpc error codes
+	DEFAULT_PRIORITY NotificationPriorty = 0
+	INFO_PRIORITY    NotificationPriorty = 1
+	WARNING_PRIORITY NotificationPriorty = 2
+	URGENT_PRIORITY  NotificationPriorty = 3
+	// TODO: Move these somewhere else like the jsonrpc error codes
+	NOTIFICATION_TABLE NotificationType = 0
+	NOTIFICATION_LOOK  NotificationType = 1
 )
 
 var (
@@ -2512,23 +2523,147 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 	return nil
 }
 
-type FetchLookerURLArgs struct {
-	Path string `json:"path"`
+type FetchNotificationsArgs struct{}
+
+type FetchNotificationsReply struct {
+	Notifications []Notification `json:"notifications"`
 }
+
+type Notification struct {
+	Title    string              `json:"title"`
+	Message  string              `json:"message"`
+	Graphic  string              `json:"graphic"`
+	Priority NotificationPriorty `json:"priority"`
+	Type     NotificationType    `json:"notification_type"`
+	Data     NotificationData    `json:"data"`
+}
+
+// TODO: Flesh this out more. This is temporary to get the idea down
+type NotificationData struct {
+	LookerURL    string   `json:"url"`
+	TableHeaders []string `json:"headers"`
+	TableRows    []int32  `json:"rows"` // TODO: Placeholder...
+}
+
+func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificationsArgs, reply *FetchNotificationsReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) { // TODO: Add in roles for looker feature if necessary
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+		return &err
+	}
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
+	// Fetch all the notifications for the specific buyer
+	/* 	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	   	if !ok {
+	   		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+	   		return &err
+	   	}
+
+	   	// TODO: Add in call for fetching the notifications related to the buyer. Need JohnnyB's help here with SQL tables
+	   	buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
+	   	if err != nil {
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+	   		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+	   		return &err
+	   	} */
+
+	// Seeding data for the time being for demos and such
+	notifications := []Notification{
+		{
+			Title:    "Super Important Looker Data",
+			Graphic:  "fire",
+			Priority: URGENT_PRIORITY,
+			Type:     NOTIFICATION_LOOK,
+		},
+		{
+			Title:    "Super Satisfying Table Data",
+			Graphic:  "smile",
+			Priority: INFO_PRIORITY,
+			Type:     NOTIFICATION_TABLE,
+		},
+	}
+
+	for _, notification := range notifications {
+		// TODO: Not sure if this will be necessary or not. We don't want to dump the whole SQL entry to the frontend, only data necessary for that type
+		returnNotification := Notification{
+			Title:    notification.Title,
+			Graphic:  notification.Graphic,
+			Priority: notification.Priority,
+			Type:     notification.Type,
+		}
+
+		switch notification.Type {
+		case NOTIFICATION_LOOK:
+			// TODO: Create actual notification class with subclassed types. We need to store data related to the notification type like looker url information or data table rows and column names
+
+			// Build the looker URL
+			nonce, err := GenerateRandomString(16)
+			if err != nil {
+				err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+				return &err
+			}
+
+			// TODO: This data should come from a specific "looker" notification
+			urlOptions := LookerURLOptions{
+				Host:            LOOKER_HOST,
+				Secret:          s.LookerSecret,
+				ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+				FirstName:       "",
+				LastName:        "",
+				GroupsIds:       make([]int, 0),
+				ExternalGroupId: "",
+				Permissions:     []string{"access_data", "see_looks"},
+				Models:          []string{},
+				AccessFilters:   make(map[string]map[string]interface{}),
+				UserAttributes:  make(map[string]interface{}),
+				SessionLength:   3600,
+				EmbedURL:        "/login/embed/" + url.QueryEscape( /* TODO: we want notification.data.path or something similar here */ "/embed/looks/1"),
+				ForceLogout:     true,
+				Nonce:           fmt.Sprintf("\"%s\"", nonce),
+				Time:            time.Now().Unix(),
+			}
+
+			returnNotification.Data.LookerURL = s.BuildLookerURL(urlOptions)
+
+			reply.Notifications = append(reply.Notifications, returnNotification)
+		case NOTIFICATION_TABLE:
+			returnNotification.Data.TableHeaders = []string{"Test", "Headers", "1", "2", "3"}
+			returnNotification.Data.TableRows = []int32{1223, 1442321, 123451234, 218971293, 1274129}
+			reply.Notifications = append(reply.Notifications, returnNotification)
+		default:
+			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN_NOTIFICATION_TYPE)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Unknown notification type", err.Error()))
+			// Do not return the error because there may be more notifications to send
+		}
+	}
+
+	return nil
+}
+
+type FetchLookerURLArgs struct{}
 
 type FetchLookerURLReply struct {
 	URL string `json:"url"`
 }
 
 func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs, reply *FetchLookerURLReply) error {
-	fmt.Println("Fetching looker url....")
-	if args.Path == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "Path"
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Path is required", err.Error()))
-		return &err
-	}
-
 	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) { // TODO: Add in roles for looker feature if necessary
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
@@ -2549,74 +2684,76 @@ func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs
 		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to parse user ID", err.Error()))
 		return &err
 	}
-	// get request user nonce
-	nonce, ok := claims["nonce"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to parse nonce", err.Error()))
+
+	nonce, err := GenerateRandomString(16)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to generate nonce", err.Error()))
 		return &err
 	}
 
-	urlOptions := LookerURLOptions{
-		AccessFilters:  make(map[string]map[string]interface{}),
-		Host:           LOOKER_HOST,
-		Nonce:          fmt.Sprintf("\"%s\"", nonce),
-		Secret:         s.LookerSecret,
-		Time:           time.Now().Unix(),
-		SessionLength:  3600,
-		ExternalUserId: fmt.Sprintf("\"%s\"", requestID),
-		ForceLogout:    false,
-		EmbedURL:       url.QueryEscape(args.Path),
-		Permissions:    []string{"access_data", "see_looks"}, // TODO: Gate these based on user roles
-		Models:         []string{""},                         // TODO: Not sure what this is yet
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
 	}
 
-	fmt.Printf("%+v\n\n", urlOptions)
+	// TODO: Figure out what params are needed from frontend
+	urlOptions := LookerURLOptions{
+		Host:            LOOKER_HOST,
+		Secret:          s.LookerSecret,
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		FirstName:       "",
+		LastName:        "",
+		GroupsIds:       make([]int, 0),
+		ExternalGroupId: "",
+		Permissions:     []string{"access_data", "see_looks"},
+		Models:          []string{"networknext_pbl"},
+		AccessFilters:   make(map[string]map[string]interface{}),
+		UserAttributes:  make(map[string]interface{}),
+		SessionLength:   3600,
+		EmbedURL:        "/login/embed/" + url.QueryEscape( /* TODO: we want notification.data.path or something similar here */ "/embed/looks/1"),
+		ForceLogout:     true,
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Time:            time.Now().Unix(),
+	}
 
-	// build looker url
+	urlOptions.UserAttributes["company_code"] = companyCode
+
 	reply.URL = s.BuildLookerURL(urlOptions)
 	return nil
 }
 
 type LookerURLOptions struct {
-	Secret         string   //required
-	Host           string   //required
-	EmbedURL       string   //required
-	Nonce          string   //required
-	Time           int64    //required
-	SessionLength  int      //required
-	ExternalUserId string   //required
-	Permissions    []string //required
-	Models         []string //required
-	ForceLogout    bool     //required
-	// GroupsIds       []int                             //optional
-	// ExternalGroupId string                            //optional
-	// UserAttributes  map[string]interface{}            //optional
-	AccessFilters map[string]map[string]interface{} //required
-	// FirstName       string                            //optional
-	// LastName        string                            //optional
+	Secret          string                            //required
+	Host            string                            //required
+	EmbedURL        string                            //required
+	Nonce           string                            //required
+	Time            int64                             //required
+	SessionLength   int                               //required
+	ExternalUserId  string                            //required
+	Permissions     []string                          //required
+	Models          []string                          //required
+	ForceLogout     bool                              //required
+	GroupsIds       []int                             //optional
+	ExternalGroupId string                            //optional
+	UserAttributes  map[string]interface{}            //optional
+	AccessFilters   map[string]map[string]interface{} //required
+	FirstName       string                            //optional
+	LastName        string                            //optional
 }
 
 func (s *BuyersService) BuildLookerURL(urlOptions LookerURLOptions) string {
+	// TODO: Verify logic below, this came from here: https://github.com/looker/looker_embed_sso_examples/pull/36 and is NOT an official implementation. That being said, be careful changing it because it works :P
 	jsonPerms, _ := json.Marshal(urlOptions.Permissions)
 	jsonModels, _ := json.Marshal(urlOptions.Models)
-	// jsonUserAttrs, _ := json.Marshal(urlOptions.UserAttributes)
+	jsonUserAttrs, _ := json.Marshal(urlOptions.UserAttributes)
 	jsonFilters, _ := json.Marshal(urlOptions.AccessFilters)
-	// jsonGroupIds, _ := json.Marshal(urlOptions.GroupsIds)
+	jsonGroupIds, _ := json.Marshal(urlOptions.GroupsIds)
 	strTime := strconv.Itoa(int(urlOptions.Time))
 	strSessionLen := strconv.Itoa(urlOptions.SessionLength)
 	strForceLogin := strconv.FormatBool(urlOptions.ForceLogout)
-
-	fmt.Println("String Params: ")
-	fmt.Println([]string{urlOptions.Host,
-		urlOptions.EmbedURL,
-		urlOptions.Nonce,
-		strTime,
-		strSessionLen,
-		urlOptions.ExternalUserId,
-		string(jsonPerms),
-		string(jsonModels),
-		string(jsonFilters)})
 
 	strToSign := strings.Join([]string{urlOptions.Host,
 		urlOptions.EmbedURL,
@@ -2625,24 +2762,23 @@ func (s *BuyersService) BuildLookerURL(urlOptions LookerURLOptions) string {
 		strSessionLen,
 		urlOptions.ExternalUserId,
 		string(jsonPerms),
-		string(jsonModels),
-		string(jsonFilters)}, "\n")
+		string(jsonModels)}, "\n")
 
-	/* 	if len(urlOptions.GroupsIds) > 0 {
-	   		strToSign = strToSign + string(jsonGroupIds) + "\n"
-	   	}
+	strToSign = strToSign + "\n"
 
-	   	if urlOptions.ExternalGroupId != "" {
-	   		strToSign = strToSign + urlOptions.ExternalGroupId + "\n"
-	   	}
+	if len(urlOptions.GroupsIds) > 0 {
+		strToSign = strToSign + string(jsonGroupIds) + "\n"
+	}
 
-	   	if len(urlOptions.UserAttributes) > 0 {
-	   		strToSign = strToSign + string(jsonUserAttrs) + "\n"
-	   	} */
+	if urlOptions.ExternalGroupId != "" {
+		strToSign = strToSign + urlOptions.ExternalGroupId + "\n"
+	}
 
-	fmt.Println("")
-	fmt.Printf("String to sign: %s", strToSign)
-	fmt.Println("")
+	if len(urlOptions.UserAttributes) > 0 {
+		strToSign = strToSign + string(jsonUserAttrs) + "\n"
+	}
+
+	strToSign = strToSign + string(jsonFilters)
 
 	h := hmac.New(sha1.New, []byte(urlOptions.Secret))
 	h.Write([]byte(strToSign))
@@ -2656,27 +2792,24 @@ func (s *BuyersService) BuildLookerURL(urlOptions LookerURLOptions) string {
 	query.Add("permissions", string(jsonPerms))
 	query.Add("models", string(jsonModels))
 	query.Add("access_filters", string(jsonFilters))
-	// query.Add("first_name", urlOptions.FirstName)
-	// query.Add("last_name", urlOptions.LastName)
+	query.Add("first_name", urlOptions.FirstName)
+	query.Add("last_name", urlOptions.LastName)
 	query.Add("force_logout_login", strForceLogin)
 	query.Add("signature", encoded)
 
-	/* 	if len(urlOptions.GroupsIds) > 0 {
-	   		query.Add("group_ids", string(jsonGroupIds))
-	   	}
+	if len(urlOptions.GroupsIds) > 0 {
+		query.Add("group_ids", string(jsonGroupIds))
+	}
 
-	   	if urlOptions.ExternalGroupId != "" {
-	   		query.Add("external_group_id", urlOptions.ExternalGroupId)
-	   	}
+	if urlOptions.ExternalGroupId != "" {
+		query.Add("external_group_id", urlOptions.ExternalGroupId)
+	}
 
-	   	if len(urlOptions.UserAttributes) > 0 {
-	   		query.Add("user_attributes", string(jsonUserAttrs))
-	   	} */
+	if len(urlOptions.UserAttributes) > 0 {
+		query.Add("user_attributes", string(jsonUserAttrs))
+	}
 
-	finalUrl := fmt.Sprintf("%s%s?%s", urlOptions.Host, urlOptions.EmbedURL, query.Encode())
-
-	fmt.Println("Final URL")
-	fmt.Println(finalUrl)
+	finalUrl := fmt.Sprintf("https://%s%s?%s", urlOptions.Host, urlOptions.EmbedURL, query.Encode())
 
 	return finalUrl
 }
