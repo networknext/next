@@ -402,6 +402,8 @@ func mainReturnWithCode() int {
 				database = &newDatabase
 				databaseMutex.Unlock()
 				routeMatrixMutex.Unlock()
+
+				core.Debug("Full Relays Set: %+v", routeMatrix.FullRelayIndicesSet)
 			}
 		}()
 	}
