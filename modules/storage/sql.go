@@ -2044,15 +2044,39 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 // Datacenter gets a copy of a datacenter with the specified datacenter ID
 // and returns an empty datacenter and an error if a datacenter with that ID doesn't exist in storage.
 func (db *SQL) Datacenter(datacenterID uint64) (routing.Datacenter, error) {
-	db.datacenterMutex.RLock()
-	defer db.datacenterMutex.RUnlock()
 
-	d, found := db.datacenters[datacenterID]
-	if !found {
-		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: datacenterID}
+	hexID := fmt.Sprintf("%016x", datacenterID)
+	var querySQL bytes.Buffer
+	var dc sqlDatacenter
+
+	querySQL.Write([]byte("select id, display_name, latitude, longitude,"))
+	querySQL.Write([]byte("seller_id from datacenters where hex_id = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), hexID)
+	err := row.Scan(&dc.ID,
+		&dc.Name,
+		&dc.Latitude,
+		&dc.Longitude,
+		&dc.SellerID)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "Datacenter() no rows were returned!")
+		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: hexID}
+	case nil:
+		d := routing.Datacenter{
+			ID:   datacenterID,
+			Name: dc.Name,
+			Location: routing.Location{
+				Latitude:  dc.Latitude,
+				Longitude: dc.Longitude,
+			},
+			SellerID:   dc.SellerID,
+			DatabaseID: dc.ID}
+		return d, nil
+	default:
+		level.Error(db.Logger).Log("during", "Datacenter() QueryRow returned an error: %v", err)
+		return routing.Datacenter{}, err
 	}
-
-	return d, nil
 }
 
 // Datacenters returns a copy of all stored datacenters.
