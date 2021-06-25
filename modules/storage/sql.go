@@ -2081,13 +2081,6 @@ func (db *SQL) Datacenter(datacenterID uint64) (routing.Datacenter, error) {
 
 // Datacenters returns a copy of all stored datacenters.
 func (db *SQL) Datacenters() []routing.Datacenter {
-	// db.datacenterMutex.RLock()
-	// defer db.datacenterMutex.RUnlock()
-
-	// var datacenters []routing.Datacenter
-	// for _, datacenter := range db.datacenters {
-	// 	datacenters = append(datacenters, datacenter)
-	// }
 
 	var sql bytes.Buffer
 	var dc sqlDatacenter
@@ -2143,17 +2136,11 @@ func (db *SQL) Datacenters() []routing.Datacenter {
 //  2. Removing the datacenter would break foreigh key relationships (datacenter_maps, relays)
 //  3. Any other error returned from the database
 func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
+
 	var sql bytes.Buffer
 
-	db.datacenterMutex.RLock()
-	datacenter, ok := db.datacenters[id]
-	db.datacenterMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%016x", id)}
-	}
-
-	sql.Write([]byte("delete from datacenters where id = $1"))
+	hexID := fmt.Sprintf("%016x", id)
+	sql.Write([]byte("delete from datacenters where hex_id = $1"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2161,7 +2148,7 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 		return err
 	}
 
-	result, err := stmt.Exec(datacenter.DatabaseID)
+	result, err := stmt.Exec(hexID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing datacenter", "err", err)
@@ -2176,12 +2163,6 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.datacenterMutex.Lock()
-	delete(db.datacenters, datacenter.ID)
-	db.datacenterMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
