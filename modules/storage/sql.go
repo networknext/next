@@ -2172,64 +2172,64 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 //		Enabled
 //		Latitude
 //		Longitude
-func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
+// func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
 
-	var sql bytes.Buffer
+// 	var sql bytes.Buffer
 
-	db.datacenterMutex.RLock()
-	_, ok := db.datacenters[d.ID]
-	db.datacenterMutex.RUnlock()
+// 	db.datacenterMutex.RLock()
+// 	_, ok := db.datacenters[d.ID]
+// 	db.datacenterMutex.RUnlock()
 
-	if !ok {
-		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%016x", d.ID)}
-	}
+// 	if !ok {
+// 		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%016x", d.ID)}
+// 	}
 
-	dc := sqlDatacenter{
-		Name:      d.Name,
-		Latitude:  d.Location.Latitude,
-		Longitude: d.Location.Longitude,
-		SellerID:  d.SellerID,
-	}
+// 	dc := sqlDatacenter{
+// 		Name:      d.Name,
+// 		Latitude:  d.Location.Latitude,
+// 		Longitude: d.Location.Longitude,
+// 		SellerID:  d.SellerID,
+// 	}
 
-	sql.Write([]byte("update datacenters set ("))
-	sql.Write([]byte("display_name, latitude, longitude, "))
-	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4) where id = $5"))
+// 	sql.Write([]byte("update datacenters set ("))
+// 	sql.Write([]byte("display_name, latitude, longitude, "))
+// 	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4) where id = $5"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing SetDatacenter SQL", "err", err)
-		return err
-	}
+// 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "error preparing SetDatacenter SQL", "err", err)
+// 		return err
+// 	}
 
-	result, err := stmt.Exec(dc.Name,
-		dc.Latitude,
-		dc.Longitude,
-		dc.SellerID,
-		d.DatabaseID,
-	)
+// 	result, err := stmt.Exec(dc.Name,
+// 		dc.Latitude,
+// 		dc.Longitude,
+// 		dc.SellerID,
+// 		d.DatabaseID,
+// 	)
 
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying datacenter", "err", err)
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-		return err
-	}
-	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-		return err
-	}
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "error modifying datacenter", "err", err)
+// 		return err
+// 	}
+// 	rows, err := result.RowsAffected()
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+// 		return err
+// 	}
+// 	if rows != 1 {
+// 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+// 		return err
+// 	}
 
-	db.datacenterMutex.Lock()
-	db.datacenters[d.ID] = d
-	db.datacenterMutex.Unlock()
+// 	db.datacenterMutex.Lock()
+// 	db.datacenters[d.ID] = d
+// 	db.datacenterMutex.Unlock()
 
-	db.IncrementSequenceNumber(ctx)
+// 	db.IncrementSequenceNumber(ctx)
 
-	return nil
-}
+// 	return nil
+// }
 
 // GetDatacenterMapsForBuyer returns a map of datacenter aliases in use for a given
 // (internally generated) buyerID. The map is indexed by the datacenter ID. Returns
@@ -2576,14 +2576,6 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 
 	var sql bytes.Buffer
 
-	db.datacenterMutex.RLock()
-	_, ok := db.datacenters[datacenter.ID]
-	db.datacenterMutex.RUnlock()
-
-	if ok {
-		return &AlreadyExistsError{resourceType: "datacenter", resourceRef: datacenter.ID}
-	}
-
 	did := fmt.Sprintf("%016x", crypto.HashID(datacenter.Name))
 	dc := sqlDatacenter{
 		Name:      datacenter.Name,
@@ -2624,10 +2616,6 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.syncDatacenters(ctx)
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
