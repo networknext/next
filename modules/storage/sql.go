@@ -3508,8 +3508,8 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 
 	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
-	buyer, ok := db.buyers[buyerID]
-	if !ok {
+	buyer, err := db.Buyer(buyerID)
+	if err != nil {
 		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
 	}
 
@@ -3609,12 +3609,6 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		return err
 	}
 
-	db.buyerMutex.Lock()
-	db.buyers[buyerID] = buyer
-	db.buyerMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 }
 
@@ -3673,12 +3667,6 @@ func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field stri
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.customerMutex.Lock()
-	db.customers[customerID] = customer
-	db.customerMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
@@ -3749,12 +3737,6 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 		return err
 	}
 
-	db.sellerMutex.Lock()
-	db.sellers[sellerID] = seller
-	db.sellerMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 }
 
@@ -3812,12 +3794,6 @@ func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field 
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.datacenterMutex.Lock()
-	db.datacenters[datacenterID] = datacenter
-	db.datacenterMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
