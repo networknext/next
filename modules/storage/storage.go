@@ -143,7 +143,7 @@ type Storer interface {
 
 	// SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
 	// TODO: chopping block (obsoleted by UpdateRelay)
-	SetRelayMetadata(ctx context.Context, relay routing.Relay) error
+	// SetRelayMetadata(ctx context.Context, relay routing.Relay) error
 
 	// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
 	// CheckSequenceNumber(ctx context.Context) (bool, int64, error)

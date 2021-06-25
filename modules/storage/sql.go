@@ -2235,18 +2235,40 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 // (internally generated) buyerID. The map is indexed by the datacenter ID. Returns
 // an empty map if there are no aliases for that buyerID.
 func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]routing.DatacenterMap {
-	db.datacenterMapMutex.RLock()
-	defer db.datacenterMapMutex.RUnlock()
 
-	// buyer can have multiple dc maps but only one alias per datacenter
-	var dcs = make(map[uint64]routing.DatacenterMap)
-	for _, dc := range db.datacenterMaps {
-		if dc.BuyerID == ephemeralBuyerID {
-			dcs[dc.DatacenterID] = dc
+	var querySQL bytes.Buffer
+	var dcMaps = make(map[uint64]routing.DatacenterMap)
+	var sqlMap sqlDatacenterMap
+
+	dbBuyerID := int64(ephemeralBuyerID)
+
+	querySQL.Write([]byte("select buyer_id, datacenter_id from datacenter_maps where buyer_id = "))
+	querySQL.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
+
+	rows, err := db.Client.QueryContext(context.Background(), querySQL.String(), dbBuyerID)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer(): QueryContext returned an error", "err", err)
+		return map[uint64]routing.DatacenterMap{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&sqlMap.BuyerID, &sqlMap.DatacenterID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer(): error parsing returned row", "err", err)
+			return map[uint64]routing.DatacenterMap{}
 		}
+
+		dcMap := routing.DatacenterMap{
+			BuyerID:      ephemeralBuyerID,
+			DatacenterID: db.datacenterIDs[sqlMap.DatacenterID],
+		}
+
+		id := crypto.HashID(fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
+		dcMaps[id] = dcMap
 	}
 
-	return dcs
+	return dcMaps
 }
 
 // AddDatacenterMap adds a new datacenter map for the given buyer and datacenter IDs
@@ -2452,10 +2474,10 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 }
 
 // SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
-func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
-	err := db.SetRelay(ctx, relay)
-	return err
-}
+// func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
+// 	err := db.SetRelay(ctx, relay)
+// 	return err
+// }
 
 // CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
 // Returns:
