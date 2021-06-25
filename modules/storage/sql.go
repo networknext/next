@@ -1691,14 +1691,6 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	var sqlQuery bytes.Buffer
 	var err error
 
-	db.relayMutex.RLock()
-	_, ok := db.relays[r.ID]
-	db.relayMutex.RUnlock()
-
-	if ok {
-		return &AlreadyExistsError{resourceType: "relay", resourceRef: r.Name}
-	}
-
 	// Routing.Addr is possibly null during syncRelays (due to removed/renamed
 	// relays) but *must* have a value when adding a relay
 	publicIP := strings.Split(r.Addr.String(), ":")[0]
@@ -1861,10 +1853,6 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.syncRelays(ctx)
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
