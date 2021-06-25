@@ -757,14 +757,6 @@ type sqlSeller struct {
 // seller defined.
 func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	var sql bytes.Buffer
-	// Check if the seller exists
-	db.sellerMutex.RLock()
-	_, found := db.sellers[s.ID]
-	db.sellerMutex.RUnlock()
-
-	if found {
-		return &AlreadyExistsError{resourceType: "seller", resourceRef: s.ID}
-	}
 
 	// This check only pertains to the next tool. Stateful clients would already
 	// have the customer id.
@@ -813,13 +805,6 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 		return err
 	}
 
-	// Must re-sync to get the relevant SQL IDs
-	db.syncSellers(ctx)
-
-	db.syncCustomers(ctx) // pick up new seller ID
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 }
 
@@ -831,15 +816,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 	var sql bytes.Buffer
 
-	db.sellerMutex.RLock()
-	seller, ok := db.sellers[id]
-	db.sellerMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "seller", resourceRef: fmt.Sprintf("%s", id)}
-	}
-
-	sql.Write([]byte("delete from sellers where id = $1"))
+	sql.Write([]byte("delete from sellers where short_name = $1"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -847,7 +824,7 @@ func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 		return err
 	}
 
-	result, err := stmt.Exec(seller.DatabaseID)
+	result, err := stmt.Exec(id)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing seller", "err", err)
@@ -863,12 +840,6 @@ func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 		return err
 	}
 
-	db.sellerMutex.Lock()
-	delete(db.sellers, seller.ID)
-	db.sellerMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 }
 
@@ -877,49 +848,49 @@ func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 //		CompanyCode (not yet implemented, awaiting business rule decision)
 //		IngressPriceNibblinsPerGB
 //  	EgressPriceNibblinsPerGB
-func (db *SQL) SetSeller(ctx context.Context, seller routing.Seller) error {
+// func (db *SQL) SetSeller(ctx context.Context, seller routing.Seller) error {
 
-	var sql bytes.Buffer
+// 	var sql bytes.Buffer
 
-	db.sellerMutex.RLock()
-	_, ok := db.sellers[seller.ID]
-	db.sellerMutex.RUnlock()
+// 	db.sellerMutex.RLock()
+// 	_, ok := db.sellers[seller.ID]
+// 	db.sellerMutex.RUnlock()
 
-	if !ok {
-		return &DoesNotExistError{resourceType: "seller", resourceRef: fmt.Sprintf("%s", seller.ID)}
-	}
+// 	if !ok {
+// 		return &DoesNotExistError{resourceType: "seller", resourceRef: fmt.Sprintf("%s", seller.ID)}
+// 	}
 
-	sql.Write([]byte("update sellers set public_egress_price = $1 where id = $2 "))
+// 	sql.Write([]byte("update sellers set public_egress_price = $1 where id = $2 "))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing SetBuyer SQL", "err", err)
-		return err
-	}
+// 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "error preparing SetBuyer SQL", "err", err)
+// 		return err
+// 	}
 
-	result, err := stmt.Exec(seller.EgressPriceNibblinsPerGB, seller.DatabaseID)
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying seller record", "err", err)
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-		return err
-	}
-	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-		return err
-	}
+// 	result, err := stmt.Exec(seller.EgressPriceNibblinsPerGB, seller.DatabaseID)
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "error modifying seller record", "err", err)
+// 		return err
+// 	}
+// 	rows, err := result.RowsAffected()
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+// 		return err
+// 	}
+// 	if rows != 1 {
+// 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+// 		return err
+// 	}
 
-	db.sellerMutex.Lock()
-	db.sellers[seller.ID] = seller
-	db.sellerMutex.Unlock()
+// 	db.sellerMutex.Lock()
+// 	db.sellers[seller.ID] = seller
+// 	db.sellerMutex.Unlock()
 
-	db.IncrementSequenceNumber(ctx)
+// 	db.IncrementSequenceNumber(ctx)
 
-	return nil
-}
+// 	return nil
+// }
 
 // BuyerIDFromCustomerName is called by the SetCustomerLink endpoint, which is deprecated.
 func (db *SQL) BuyerIDFromCustomerName(ctx context.Context, customerName string) (uint64, error) {
@@ -933,15 +904,42 @@ func (db *SQL) SellerIDFromCustomerName(ctx context.Context, customerName string
 }
 
 func (db *SQL) SellerWithCompanyCode(code string) (routing.Seller, error) {
-	db.sellerMutex.RLock()
-	defer db.sellerMutex.RUnlock()
+	var querySQL bytes.Buffer
+	var seller sqlSeller
 
-	for _, seller := range db.sellers {
-		if seller.CompanyCode == code {
-			return seller, nil
+	querySQL.Write([]byte("select short_name, public_egress_price, secret, "))
+	querySQL.Write([]byte("customer_id from sellers where id = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), code)
+	err := row.Scan(&seller.DatabaseID,
+		&seller.ShortName,
+		&seller.EgressPriceNibblinsPerGB,
+		&seller.Secret,
+		&seller.CustomerID)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "SellerWithCompanyCode() no rows were returned!")
+		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: code}
+	case nil:
+		c, err := db.Customer(code)
+		if err != nil {
+			return routing.Seller{}, &DoesNotExistError{resourceType: "customer", resourceRef: code}
 		}
+		s := routing.Seller{
+			ID:                       code,
+			ShortName:                seller.ShortName,
+			Secret:                   seller.Secret,
+			CompanyCode:              c.Code,
+			Name:                     c.Name,
+			EgressPriceNibblinsPerGB: routing.Nibblin(seller.EgressPriceNibblinsPerGB),
+			DatabaseID:               seller.DatabaseID,
+			CustomerID:               seller.CustomerID,
+		}
+		return s, nil
+	default:
+		level.Error(db.Logger).Log("during", "SellerWithCompanyCode() QueryRow returned an error: %v", err)
+		return routing.Seller{}, err
 	}
-	return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: code}
 }
 
 // SetCustomerLink update the customer's buyer and seller references.
@@ -955,15 +953,170 @@ func (db *SQL) SetCustomerLink(ctx context.Context, customerName string, buyerID
 // Relay gets a copy of a relay with the specified relay ID
 // and returns an empty relay and an error if a relay with that ID doesn't exist in storage.
 func (db *SQL) Relay(id uint64) (routing.Relay, error) {
-	db.relayMutex.RLock()
-	defer db.relayMutex.RUnlock()
+	// db.relayMutex.RLock()
+	// defer db.relayMutex.RUnlock()
 
-	relay, found := db.relays[id]
-	if !found {
-		return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", id)}
+	// relay, found := db.relays[id]
+	// if !found {
+	// 	return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", id)}
+	// }
+
+	hexID := fmt.Sprintf("%016x", id)
+
+	var sqlQuery bytes.Buffer
+	var relay sqlRelay
+
+	sqlQuery.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
+	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
+	sqlQuery.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
+	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
+	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
+	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
+	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
+	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays where hex_id = $1"))
+
+	rows := db.Client.QueryRow(sqlQuery.String(), hexID)
+	err := rows.Scan(&relay.DatabaseID,
+		&relay.Name,
+		&relay.ContractTerm,
+		&relay.EndDate,
+		&relay.IncludedBandwithGB,
+		&relay.ManagementIP,
+		&relay.MaxSessions,
+		&relay.MRC,
+		&relay.Overage,
+		&relay.NICSpeedMbps,
+		&relay.PublicIP,
+		&relay.PublicIPPort,
+		&relay.PublicKey,
+		&relay.SSHPort,
+		&relay.SSHUser,
+		&relay.StartDate,
+		&relay.InternalIP,
+		&relay.InternalIPPort,
+		&relay.BWRule,
+		&relay.DatacenterID,
+		&relay.MachineType,
+		&relay.State,
+		&relay.InternalIP,
+		&relay.InternalIPPort,
+		&relay.Notes,
+		&relay.BillingSupplier,
+		&relay.Version,
+	)
+
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "Relay() no rows were returned!")
+		return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: hexID}
+	case nil:
+		relayState, err := routing.GetRelayStateSQL(relay.State)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "invalid relay state", "err", err)
+		}
+
+		bwRule, err := routing.GetBandwidthRuleSQL(relay.BWRule)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "routing.ParseBandwidthRule returned an error", "err", err)
+		}
+
+		machineType, err := routing.GetMachineTypeSQL(relay.MachineType)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
+		}
+
+		datacenter, err := db.Datacenter(db.datacenterIDs[relay.DatacenterID])
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
+		}
+
+		seller, err := db.Seller(db.sellerIDs[datacenter.SellerID])
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
+		}
+
+		internalID, err := strconv.ParseUint(relay.HexID, 16, 64)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error parsing hex_id", "err", err)
+		}
+
+		r := routing.Relay{
+			ID:                  internalID,
+			Name:                relay.Name,
+			PublicKey:           relay.PublicKey,
+			Datacenter:          datacenter,
+			NICSpeedMbps:        int32(relay.NICSpeedMbps),
+			IncludedBandwidthGB: int32(relay.IncludedBandwithGB),
+			State:               relayState,
+			ManagementAddr:      relay.ManagementIP,
+			SSHUser:             relay.SSHUser,
+			SSHPort:             relay.SSHPort,
+			MaxSessions:         uint32(relay.MaxSessions),
+			MRC:                 routing.Nibblin(relay.MRC),
+			Overage:             routing.Nibblin(relay.Overage),
+			BWRule:              bwRule,
+			ContractTerm:        int32(relay.ContractTerm),
+			Type:                machineType,
+			Seller:              seller,
+			DatabaseID:          relay.DatabaseID,
+			Version:             relay.Version,
+		}
+
+		// nullable values follow
+		if relay.InternalIP.Valid {
+			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
+			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
+			if err != nil {
+				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+			}
+			r.InternalAddr = *internalAddr
+		}
+
+		if relay.PublicIP.Valid {
+			fullPublicAddress := relay.PublicIP.String + ":" + fmt.Sprintf("%d", relay.PublicIPPort.Int64)
+			publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
+			if err != nil {
+				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
+			}
+			r.Addr = *publicAddr
+		}
+
+		if relay.BillingSupplier.Valid {
+			found := false
+			for _, seller := range db.Sellers() {
+				if seller.DatabaseID == relay.BillingSupplier.Int64 {
+					found = true
+					r.BillingSupplier = seller.ID
+					break
+				}
+			}
+
+			if !found {
+				errString := fmt.Sprintf("syncRelays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
+				level.Error(db.Logger).Log("during", errString, "err", err)
+			}
+
+		}
+
+		if relay.StartDate.Valid {
+			r.StartDate = relay.StartDate.Time
+		}
+
+		if relay.EndDate.Valid {
+			r.EndDate = relay.EndDate.Time
+		}
+
+		if relay.Notes.Valid {
+			r.Notes = relay.Notes.String
+		}
+		return r, nil
+
+	default:
+		level.Error(db.Logger).Log("during", "Relay() QueryRow returned an error: %v", err)
+		return routing.Relay{}, err
 	}
 
-	return relay, nil
 }
 
 // Relays returns a copy of all stored relays.

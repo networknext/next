@@ -65,7 +65,7 @@ type Storer interface {
 
 	// SetSeller updates the seller in storage with the provided copy and returns an error if the seller could not be updated.
 	// TODO: chopping block - this is dangerous
-	SetSeller(ctx context.Context, seller routing.Seller) error
+	// SetSeller(ctx context.Context, seller routing.Seller) error
 
 	// UpdateSeller modifies the givien field for the specified buyer
 	UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error
