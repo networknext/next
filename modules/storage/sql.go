@@ -953,14 +953,6 @@ func (db *SQL) SetCustomerLink(ctx context.Context, customerName string, buyerID
 // Relay gets a copy of a relay with the specified relay ID
 // and returns an empty relay and an error if a relay with that ID doesn't exist in storage.
 func (db *SQL) Relay(id uint64) (routing.Relay, error) {
-	// db.relayMutex.RLock()
-	// defer db.relayMutex.RUnlock()
-
-	// relay, found := db.relays[id]
-	// if !found {
-	// 	return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", id)}
-	// }
-
 	hexID := fmt.Sprintf("%016x", id)
 
 	var sqlQuery bytes.Buffer
@@ -1121,15 +1113,180 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 
 // Relays returns a copy of all stored relays.
 func (db *SQL) Relays() []routing.Relay {
-	db.relayMutex.RLock()
-	defer db.relayMutex.RUnlock()
+	// db.relayMutex.RLock()
+	// defer db.relayMutex.RUnlock()
 
-	var relays []routing.Relay
-	for _, relay := range db.relays {
-		relays = append(relays, relay)
+	// var relays []routing.Relay
+	// for _, relay := range db.relays {
+	// 	relays = append(relays, relay)
+	// }
+
+	// sort.Slice(relays, func(i int, j int) bool { return relays[i].ID < relays[j].ID })
+	// return relays
+
+	var sqlQuery bytes.Buffer
+	var relay sqlRelay
+
+	relays := []routing.Relay{}
+
+	sqlQuery.Write([]byte("select relays.id, relays.hex_id, relays.display_name, relays.contract_term, relays.end_date, "))
+	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
+	sqlQuery.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
+	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
+	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
+	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
+	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
+	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays "))
+	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
+	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
+	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
+
+	rows, err := db.Client.QueryContext(context.Background(), sqlQuery.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "syncRelays(): QueryContext returned an error", "err", err)
+		return []routing.Relay{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&relay.DatabaseID,
+			&relay.HexID,
+			&relay.Name,
+			&relay.ContractTerm,
+			&relay.EndDate,
+			&relay.IncludedBandwithGB,
+			&relay.ManagementIP,
+			&relay.MaxSessions,
+			&relay.MRC,
+			&relay.Overage,
+			&relay.NICSpeedMbps,
+			&relay.PublicIP,
+			&relay.PublicIPPort,
+			&relay.PublicKey,
+			&relay.SSHPort,
+			&relay.SSHUser,
+			&relay.StartDate,
+			&relay.InternalIP,
+			&relay.InternalIPPort,
+			&relay.BWRule,
+			&relay.DatacenterID,
+			&relay.MachineType,
+			&relay.State,
+			&relay.InternalIP,
+			&relay.InternalIPPort,
+			&relay.Notes,
+			&relay.BillingSupplier,
+			&relay.Version,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays(): error parsing returned row", "err", err)
+			return []routing.Relay{}
+		}
+
+		relayState, err := routing.GetRelayStateSQL(relay.State)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "invalid relay state", "err", err)
+		}
+
+		bwRule, err := routing.GetBandwidthRuleSQL(relay.BWRule)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "routing.ParseBandwidthRule returned an error", "err", err)
+		}
+
+		machineType, err := routing.GetMachineTypeSQL(relay.MachineType)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
+		}
+
+		datacenter, err := db.Datacenter(db.datacenterIDs[relay.DatacenterID])
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
+		}
+
+		seller, err := db.Seller(db.sellerIDs[datacenter.SellerID])
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
+		}
+
+		internalID, err := strconv.ParseUint(relay.HexID, 16, 64)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "syncRelays error parsing hex_id", "err", err)
+		}
+
+		r := routing.Relay{
+			ID:                  internalID,
+			Name:                relay.Name,
+			PublicKey:           relay.PublicKey,
+			Datacenter:          datacenter,
+			NICSpeedMbps:        int32(relay.NICSpeedMbps),
+			IncludedBandwidthGB: int32(relay.IncludedBandwithGB),
+			State:               relayState,
+			ManagementAddr:      relay.ManagementIP,
+			SSHUser:             relay.SSHUser,
+			SSHPort:             relay.SSHPort,
+			MaxSessions:         uint32(relay.MaxSessions),
+			MRC:                 routing.Nibblin(relay.MRC),
+			Overage:             routing.Nibblin(relay.Overage),
+			BWRule:              bwRule,
+			ContractTerm:        int32(relay.ContractTerm),
+			Type:                machineType,
+			Seller:              seller,
+			DatabaseID:          relay.DatabaseID,
+			Version:             relay.Version,
+		}
+
+		// nullable values follow
+		if relay.InternalIP.Valid {
+			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
+			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
+			if err != nil {
+				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+			}
+			r.InternalAddr = *internalAddr
+		}
+
+		if relay.PublicIP.Valid {
+			fullPublicAddress := relay.PublicIP.String + ":" + fmt.Sprintf("%d", relay.PublicIPPort.Int64)
+			publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
+			if err != nil {
+				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
+			}
+			r.Addr = *publicAddr
+		}
+
+		if relay.BillingSupplier.Valid {
+			found := false
+			for _, seller := range db.Sellers() {
+				if seller.DatabaseID == relay.BillingSupplier.Int64 {
+					found = true
+					r.BillingSupplier = seller.ID
+					break
+				}
+			}
+
+			if !found {
+				errString := fmt.Sprintf("syncRelays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
+				level.Error(db.Logger).Log("during", errString, "err", err)
+			}
+
+		}
+
+		if relay.StartDate.Valid {
+			r.StartDate = relay.StartDate.Time
+		}
+
+		if relay.EndDate.Valid {
+			r.EndDate = relay.EndDate.Time
+		}
+
+		if relay.Notes.Valid {
+			r.Notes = relay.Notes.String
+		}
+
+		relays = append(relays, r)
 	}
 
-	sort.Slice(relays, func(i int, j int) bool { return relays[i].ID < relays[j].ID })
 	return relays
 }
 
