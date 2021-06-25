@@ -69,16 +69,18 @@ int main()
 
     const char * datacenter_name = "linode.fremont";
 
+    const char * user_id = "12345";
+
     next_address_t client_address;
     next_address_parse( &client_address, "127.0.0.1" );   // set to the public IP address pings are sent from
 
     int ping_token_bytes = 0;
     uint8_t ping_token_data[NEXT_MAX_PING_TOKEN_BYTES];
-    next_generate_ping_token( customer_id, customer_private_key, &client_address, datacenter_name, ping_token_data, &ping_token_bytes );
+    next_generate_ping_token( customer_id, customer_private_key, &client_address, datacenter_name, user_id, ping_token_data, &ping_token_bytes );
 
     // make sure the ping token validates. this checks that the signature on the ping token can be verified with your public key
 
-    if ( !next_validate_ping_token( customer_id, customer_public_key, /*&client_address,*/ ping_token_data, ping_token_bytes ) )
+    if ( !next_validate_ping_token( customer_id, customer_public_key, &client_address, ping_token_data, ping_token_bytes ) )
     {
         printf( "error: ping token did not validate\n" );
         return 1;
