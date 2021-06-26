@@ -101,19 +101,32 @@ int main()
         return 1;
     }
 
-    double start_time = next_time();
-
     while ( !quit )
     {
-        if ( next_time() - start_time > NEXT_PING_DURATION )
-            break;
-
         next_ping_update( ping );
+
+        const int ping_state = next_ping_state( ping );
+
+        if ( ping_state == NEXT_PING_STATE_ERROR || ping_state == NEXT_PING_STATE_FINISHED )
+            break;
         
         next_sleep( 1.0 );
     }
 
-    // todo: print out ping summary
+    // print out ping summary
+
+    const int ping_state = next_ping_state( ping );
+
+    if ( ping_state != NEXT_PING_STATE_ERROR )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "ping results" );
+
+        // todo
+    }
+    else
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "ping was not successful" );
+    }
 
     next_ping_destroy( ping );
 

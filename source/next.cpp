@@ -44,11 +44,19 @@
 // #define NEXT_EXPERIMENTAL 1
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_HOSTNAME                                "prod.spacecats.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME                  "prod.spacecats.net"
 #else // #if !NEXT_DEVELOPMENT
-#define NEXT_HOSTNAME                                 "dev.spacecats.net"
+#define NEXT_SERVER_BACKEND_HOSTNAME                   "dev.spacecats.net"
 #endif // #if !NEXT_DEVELOPMENT
-#define NEXT_BACKEND_PORT                                          "40000"
+#define NEXT_SERVER_BACKEND_PORT                                   "40000"
+
+#if !NEXT_DEVELOPMENT
+#define NEXT_PING_BACKEND_HOSTNAME    "prod.losangelesfreewaysatnight.com"
+#else // #if !NEXT_DEVELOPMENT
+#define NEXT_PING_BACKEND_HOSTNAME     "dev.losangelesfreewaysatnight.com"
+#endif // #if !NEXT_DEVELOPMENT
+#define NEXT_PING_BACKEND_PORT                                     "40000"
+
 #define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
@@ -3802,7 +3810,8 @@ void * next_global_context = NULL;
 
 struct next_config_internal_t
 {
-    char hostname[256];
+    char server_backend_hostname[256];
+    char ping_backend_hostname[256];
     uint64_t customer_id;
     uint8_t customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
     uint8_t customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -3818,8 +3827,10 @@ void next_default_config( next_config_t * config )
 {
     next_assert( config );
     memset( config, 0, sizeof(next_config_t) );
-    strncpy( config->hostname, NEXT_HOSTNAME, sizeof(config->hostname) );
-    config->hostname[sizeof(config->hostname)-1] = '\0';
+    strncpy( config->server_backend_hostname, NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config->server_backend_hostname) );
+    config->server_backend_hostname[sizeof(config->server_backend_hostname)-1] = '\0';
+    strncpy( config->ping_backend_hostname, NEXT_PING_BACKEND_HOSTNAME, sizeof(config->ping_backend_hostname) );
+    config->ping_backend_hostname[sizeof(config->ping_backend_hostname)-1] = '\0';
     config->socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config->socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
 }
@@ -3911,8 +3922,11 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    strncpy( config.hostname, config_in ? config_in->hostname : NEXT_HOSTNAME, sizeof(config.hostname) );
-    config.hostname[sizeof(config.hostname)-1] = '\0';
+    strncpy( config.server_backend_hostname, config_in ? config_in->server_backend_hostname : NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config.server_backend_hostname) );
+    config.server_backend_hostname[sizeof(config.server_backend_hostname)-1] = '\0';
+
+    strncpy( config.ping_backend_hostname, config_in ? config_in->ping_backend_hostname : NEXT_PING_BACKEND_HOSTNAME, sizeof(config.ping_backend_hostname) );
+    config.ping_backend_hostname[sizeof(config.ping_backend_hostname)-1] = '\0';
 
     if ( config_in )
     {
@@ -3961,28 +3975,28 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    const char * next_hostname_override = next_platform_getenv( "NEXT_HOSTNAME" );
-    if ( next_hostname_override )
+    const char * next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
+    if ( next_server_backend_hostname_override )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "override next hostname: '%s'", next_hostname_override );
-        strncpy( config.hostname, next_hostname_override, sizeof(config.hostname) );
-        config.hostname[sizeof(config.hostname)-1] = '\0';
+        next_printf( NEXT_LOG_LEVEL_INFO, "override server backend hostname: '%s'", next_server_backend_hostname_override );
+        strncpy( config.server_backend_hostname, next_server_backend_hostname_override, sizeof(config.server_backend_hostname) );
+        config.server_backend_hostname[sizeof(config.server_backend_hostname)-1] = '\0';
     }
 
-    const char * backend_public_key_env = next_platform_getenv( "NEXT_BACKEND_PUBLIC_KEY" );
-    if ( backend_public_key_env )
+    const char * server_backend_public_key_env = next_platform_getenv( "NEXT_BACKEND_PUBLIC_KEY" );
+    if ( server_backend_public_key_env )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "backend public key override" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server backend public key override" );
         
-        if ( next_base64_decode_data( backend_public_key_env, next_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
+        if ( next_base64_decode_data( server_backend_public_key_env, next_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "valid backend public key" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "valid server backend public key" );
         }
         else
         {
-            if ( backend_public_key_env[0] != '\0' )
+            if ( server_backend_public_key_env[0] != '\0' )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "backend public key is invalid: \"%s\"", backend_public_key_env );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server backend public key is invalid: \"%s\"", server_backend_public_key_env );
             }
         }
     }
@@ -12485,11 +12499,11 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
-    // run the network next hostname resolve first, and do it each time this thread is started...
+    // run the server backend hostname resolve first, and do it each time this thread is started...
 
-    const char * hostname = next_global_config.hostname;
-    const char * port = NEXT_BACKEND_PORT;
-    const char * override_port = next_platform_getenv( "NEXT_BACKEND_PORT" );
+    const char * hostname = next_global_config.server_backend_hostname;
+    const char * port = NEXT_SERVER_BACKEND_PORT;
+    const char * override_port = next_platform_getenv( "NEXT_SERVER_BACKEND_PORT" );
     if ( override_port )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
@@ -13684,13 +13698,38 @@ bool next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_pu
 
 // ---------------------------------------------------------------
 
+struct next_ping_token_data_t
+{
+    uint8_t token_data[NEXT_MAX_PING_TOKEN_BYTES];
+    int token_bytes;
+};
+
 struct next_ping_t
 {
     NEXT_DECLARE_SENTINEL(0)
 
     void * context;
+    int state;
+    double start_time;
 
     NEXT_DECLARE_SENTINEL(1)
+
+    bool resolve_hostname_finished;
+    next_address_t resolve_hostname_result;
+    next_platform_mutex_t resolve_hostname_mutex;
+    next_platform_thread_t * resolve_hostname_thread;
+
+    NEXT_DECLARE_SENTINEL(2)
+
+    next_platform_mutex_t ping_mutex;
+    next_platform_thread_t * ping_thread;
+
+    NEXT_DECLARE_SENTINEL(3)
+
+    int num_tokens;
+    next_ping_token_data_t token_data[NEXT_MAX_PING_TOKENS];
+
+    NEXT_DECLARE_SENTINEL(4)
 };
 
 void next_ping_initialize_sentinels( next_ping_t * ping )
@@ -13699,6 +13738,9 @@ void next_ping_initialize_sentinels( next_ping_t * ping )
     next_assert( ping );
     NEXT_INITIALIZE_SENTINEL( ping, 0 )
     NEXT_INITIALIZE_SENTINEL( ping, 1 )
+    NEXT_INITIALIZE_SENTINEL( ping, 2 )
+    NEXT_INITIALIZE_SENTINEL( ping, 3 )
+    NEXT_INITIALIZE_SENTINEL( ping, 4 )
 }
 
 void next_ping_verify_sentinels( next_ping_t * ping )
@@ -13707,7 +13749,12 @@ void next_ping_verify_sentinels( next_ping_t * ping )
     next_assert( ping );
     NEXT_VERIFY_SENTINEL( ping, 0 )
     NEXT_VERIFY_SENTINEL( ping, 1 )
+    NEXT_VERIFY_SENTINEL( ping, 2 )
+    NEXT_VERIFY_SENTINEL( ping, 3 )
+    NEXT_VERIFY_SENTINEL( ping, 4 )
 }
+
+static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_resolve_hostname_thread_function( void * context );
 
 next_ping_t * next_ping_create( void * context, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens )
 {
@@ -13724,11 +13771,34 @@ next_ping_t * next_ping_create( void * context, const uint8_t ** ping_token_data
 
     next_ping_initialize_sentinels( ping );
 
-    // todo: fill tokens
+    ping->start_time = next_time();
+    ping->state = NEXT_PING_STATE_RESOLVING_HOSTNAME;
+    ping->num_tokens = num_ping_tokens;
+    for ( int i = 0; i < num_ping_tokens; ++i )
+    {
+        next_assert( ping_token_bytes[i] > 0 );
+        next_assert( ping_token_bytes[i] < NEXT_MAX_PING_TOKEN_BYTES );
+        ping->token_data[i].token_bytes = ping_token_bytes[i];
+        memcpy( ping->token_data[i].token_data, ping_token_data, ping_token_bytes[i] );
+    }
 
-    (void) ping_token_data;
-    (void) ping_token_bytes;
-    (void) num_ping_tokens;
+    next_printf( NEXT_LOG_LEVEL_INFO, "ping loaded %d tokens", num_ping_tokens );
+
+    int result = next_platform_mutex_create( &ping->resolve_hostname_mutex );
+    
+    if ( result != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create resolve hostname mutex" );
+        next_ping_destroy( ping );
+        return NULL;
+    }
+
+    ping->resolve_hostname_thread = next_platform_thread_create( ping->context, next_ping_resolve_hostname_thread_function, ping );
+    if ( !ping->resolve_hostname_thread )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create resolve hostname thread" );
+        return NULL;
+    }
 
     return ping;
 }
@@ -13739,7 +13809,139 @@ void next_ping_destroy( next_ping_t * ping )
 
     next_ping_verify_sentinels( ping );
 
+    if ( ping->ping_thread )
+    {
+        next_platform_thread_destroy( ping->ping_thread );
+    }
+
     clear_and_free( ping->context, ping, sizeof(next_ping_t) );
+}
+
+static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_resolve_hostname_thread_function( void * context )
+{
+    next_assert( context );
+
+    next_ping_t * ping = (next_ping_t*) context;
+
+    const char * hostname = next_global_config.ping_backend_hostname;
+    const char * port = NEXT_PING_BACKEND_PORT;
+    const char * override_port = next_platform_getenv( "NEXT_PING_BACKEND_PORT" );
+    if ( override_port )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
+        port = override_port;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "ping resolving backend hostname '%s'", hostname );
+
+    next_address_t address;
+
+    bool success = false;
+
+    for ( int i = 0; i < 10; ++i )
+    {
+        if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
+        {
+            next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
+            success = true;
+            break;
+        }
+        else
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "ping failed to resolve hostname (%d)", i );
+        }
+    }
+
+    if ( success )
+    {
+        next_platform_mutex_guard( &ping->resolve_hostname_mutex );
+        ping->resolve_hostname_finished = true;
+        ping->resolve_hostname_result = address;
+    }
+    else 
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "ping failed to resolve backend hostname: %s", hostname );
+        next_platform_mutex_guard( &ping->resolve_hostname_mutex );
+        ping->resolve_hostname_finished = true;
+        memset( &ping->resolve_hostname_result, 0, sizeof(next_address_t) );
+        NEXT_PLATFORM_THREAD_RETURN();
+    }
+
+    NEXT_PLATFORM_THREAD_RETURN();
+}
+
+static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_thread_function( void * context );
+
+void next_ping_update_resolve_hostname( next_ping_t * ping )
+{
+    if ( ping->state != NEXT_PING_STATE_RESOLVING_HOSTNAME )
+        return;
+
+    bool finished = false;
+    next_address_t hostname_result;
+    memset( &hostname_result, 0, sizeof(next_address_t) );
+    {
+        next_platform_mutex_guard( &ping->resolve_hostname_mutex );
+        finished = ping->resolve_hostname_finished;
+        hostname_result = ping->resolve_hostname_result;
+    }
+
+    if ( !finished )
+        return;
+
+    next_platform_thread_join( ping->resolve_hostname_thread );
+
+    next_platform_thread_destroy( ping->resolve_hostname_thread );
+
+    ping->resolve_hostname_thread = NULL;
+
+    if ( hostname_result.type == NEXT_ADDRESS_NONE )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "ping could not resolve hostname" );
+        ping->state = NEXT_PING_STATE_ERROR;
+    }
+
+    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "ping hostname resolved to %s", next_address_to_string( &hostname_result, address_buffer ) );
+
+    ping->state = NEXT_PING_STATE_SENDING_PINGS;
+
+    int result = next_platform_mutex_create( &ping->ping_mutex );
+    
+    if ( result != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create ping mutex" );
+        ping->state = NEXT_PING_STATE_ERROR;
+        return;
+    }
+
+    ping->ping_thread = next_platform_thread_create( ping->context, next_ping_thread_function, ping );
+    if ( !ping->ping_thread )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create ping thread" );
+        ping->state = NEXT_PING_STATE_ERROR;
+        return;
+    }
+}
+
+static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_thread_function( void * context )
+{
+    next_printf( NEXT_LOG_LEVEL_INFO, "ping thread started" );
+
+    next_assert( context );
+
+    next_ping_t * ping = (next_ping_t*) context;
+
+    while ( true )
+    {
+        if ( next_time() >= ping->start_time + NEXT_PING_DURATION )
+            break;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "ping thread finished" );
+
+    NEXT_PLATFORM_THREAD_RETURN();
 }
 
 void next_ping_update( next_ping_t * ping )
@@ -13748,8 +13950,21 @@ void next_ping_update( next_ping_t * ping )
 
     next_ping_verify_sentinels( ping );
 
-    // todo
-    (void) ping;
+    if ( ping->state == NEXT_PING_STATE_ERROR )
+        return;
+
+    next_ping_update_resolve_hostname( ping );
+
+    if ( ping->start_time < next_time() - NEXT_PING_DURATION && ping->state != NEXT_PING_STATE_FINISHED && ping->state != NEXT_PING_STATE_ERROR )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "ping finished" );
+        ping->state = NEXT_PING_STATE_FINISHED;
+    }
+}
+
+int next_ping_state( next_ping_t * ping )
+{
+    return ping->state;
 }
 
 // ---------------------------------------------------------------

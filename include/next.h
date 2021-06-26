@@ -137,7 +137,8 @@
 
 struct next_config_t
 {
-    char hostname[256];
+    char server_backend_hostname[256];
+    char ping_backend_hostname[256];
     char customer_public_key[256];
     char customer_private_key[256];
     int socket_send_buffer_size;
@@ -379,11 +380,18 @@ NEXT_EXPORT_FUNC bool next_validate_ping_token( uint64_t customer_id, const uint
 
 struct next_ping_t;
 
+#define NEXT_PING_STATE_RESOLVING_HOSTNAME          0
+#define NEXT_PING_STATE_SENDING_PINGS               1
+#define NEXT_PING_STATE_FINISHED                    2
+#define NEXT_PING_STATE_ERROR                       3
+
 NEXT_EXPORT_FUNC next_ping_t * next_ping_create( void * context, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens );
 
 NEXT_EXPORT_FUNC void next_ping_destroy( next_ping_t * ping );
 
 NEXT_EXPORT_FUNC void next_ping_update( next_ping_t * ping );
+
+NEXT_EXPORT_FUNC int next_ping_state( next_ping_t * ping );
 
 // -----------------------------------------
 
