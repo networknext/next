@@ -13733,6 +13733,11 @@ uint64_t next_ping_token_datacenter_id( const uint8_t * ping_token_data, int pin
 
 // ---------------------------------------------------------------
 
+#define NEXT_PING_SYSTEM_PING_REQUEST_PACKET        0
+#define NEXT_PING_SYSTEM_PING_RESPONSE_PACKET       1
+#define NEXT_PING_SYSTEM_RESULTS_REQUEST_PACKET     2
+#define NEXT_PING_SYSTEM_RESULTS_RESPONSE_PACKET    3
+
 struct next_ping_token_data_t
 {
     uint8_t token_data[NEXT_MAX_PING_TOKEN_BYTES];
@@ -13762,6 +13767,7 @@ struct next_ping_t
     next_platform_mutex_t ping_mutex;
     next_platform_thread_t * ping_thread;
     next_platform_socket_t * socket;
+    next_address_t backend_address;
     bool quit;
 
     NEXT_DECLARE_SENTINEL(3)
@@ -13991,6 +13997,8 @@ void next_ping_update_resolve_hostname( next_ping_t * ping )
 
     next_printf( NEXT_LOG_LEVEL_INFO, "ping hostname resolved to %s", next_address_to_string( &hostname_result, address_buffer ) );
 
+    ping->backend_address = hostname_result;
+
     ping->state = NEXT_PING_STATE_SENDING_PINGS;
 
     const double current_time = next_time();
@@ -14091,6 +14099,13 @@ void next_ping_update_send_ping_requests( next_ping_t * ping )
         {
             // todo: this should become debug
             next_printf( NEXT_LOG_LEVEL_INFO, "ping sent ping request for datacenter %d [%" PRIx64 "]", i, ping->token_data[i].datacenter_id );
+
+            uint8_t packet_data[1+NEXT_MAX_PING_TOKEN_BYTES];
+
+            packet_data[0] = NEXT_PING_SYSTEM_PING_REQUEST_PACKET;
+            memcpy( packet_data + 1, ping->token_data[i].token_data, ping->token_data[i].token_bytes );
+
+            next_platform_socket_send_packet( ping->socket, &ping->backend_address, packet_data, 1 + ping->token_data[i].token_bytes );
 
             next_platform_mutex_acquire( &ping->ping_mutex );
             ping->token_data[i].next_ping_time += 1.0;

@@ -74,7 +74,7 @@ int main()
     const char * user_id = "12345";
 
     next_address_t client_address;
-    next_address_parse( &client_address, "127.0.0.1" );   // set to the public IP address of the client
+    next_address_parse( &client_address, "127.0.0.1" );   // IMPORTANT: change this to the public IP address of the client
 
     int ping_token_bytes[NumTokens];
     memset( ping_token_bytes, 0, sizeof(ping_token_bytes) );
@@ -86,7 +86,7 @@ int main()
         next_generate_ping_token( customer_id, customer_private_key, &client_address, datacenter_names[i], user_id, ping_token_data[i], &ping_token_bytes[i] );
     }
 
-    // make sure the ping token validates. this checks that the signature on the ping token can be verified with your public key
+    // make sure the ping tokens validate. this checks that the signature on the ping token can be verified with your public key
 
     for ( int i = 0; i < NumTokens; ++i )
     {
@@ -99,7 +99,7 @@ int main()
         next_printf( NEXT_LOG_LEVEL_INFO, "ping token %d validated", i );
     }
 
-    // run pings
+    // run pings. this should be done on your client
 
     const uint8_t * token_data_array[NumTokens];
 
