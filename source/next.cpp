@@ -13696,6 +13696,41 @@ bool next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_pu
     return true;
 }
 
+uint64_t next_ping_token_datacenter_id( const uint8_t * ping_token_data, int ping_token_bytes )
+{
+    next_assert( ping_token_data );
+
+    if ( ping_token_bytes < 0 )
+        return 0;
+
+    if ( ping_token_bytes > NEXT_MAX_PING_TOKEN_BYTES )
+        return 0;
+
+    if ( ping_token_bytes < int( 1 + NEXT_CRYPTO_SIGN_BYTES ) )
+        return 0;
+
+    const uint8_t * p = ping_token_data;
+
+    uint8_t version = next_read_uint8( &p );
+
+    if ( version != 0 )
+        return 0;
+
+    const int size = 8 + 8 + 8 + 8;
+
+    if ( ping_token_bytes < int( 1 + size + NEXT_CRYPTO_SIGN_BYTES ) )
+        return false;
+
+    uint64_t token_timestamp = next_read_uint64( &p );
+    uint64_t token_customer_id = next_read_uint64( &p );
+    uint64_t token_datacenter_id = next_read_uint64( &p );
+
+    (void) token_timestamp;
+    (void) token_customer_id;    
+
+    return token_datacenter_id;
+}
+
 // ---------------------------------------------------------------
 
 struct next_ping_token_data_t
@@ -13793,7 +13828,8 @@ next_ping_t * next_ping_create( void * context, const char * bind_address_string
         next_assert( ping_token_bytes[i] > 0 );
         next_assert( ping_token_bytes[i] < NEXT_MAX_PING_TOKEN_BYTES );
         ping->token_data[i].token_bytes = ping_token_bytes[i];
-        memcpy( ping->token_data[i].token_data, ping_token_data, ping_token_bytes[i] );
+        memcpy( ping->token_data[i].token_data, ping_token_data[i], ping_token_bytes[i] );
+        ping->token_data[i].datacenter_id = next_ping_token_datacenter_id( ping_token_data[i], ping_token_bytes[i] );
     }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "ping loaded %d tokens", num_ping_tokens );
@@ -13961,7 +13997,7 @@ void next_ping_update_resolve_hostname( next_ping_t * ping )
     next_platform_mutex_acquire( &ping->ping_mutex );
     for ( int i = 0; i < ping->num_tokens; ++i )
     {
-        ping->token_data[i].next_ping_time = current_time + double(i) / double(ping->num_tokens);
+        ping->token_data[i].next_ping_time = current_time + double(i+1) / double(ping->num_tokens);
     }
     next_platform_mutex_release( &ping->ping_mutex );
 
@@ -14053,8 +14089,8 @@ void next_ping_update_send_ping_requests( next_ping_t * ping )
 
         if ( !has_response && next_ping_time <= current_time )
         {
-            // todo
-            next_printf( NEXT_LOG_LEVEL_INFO, "send ping request for datacenter %d [%" PRIx64 "]", i, ping->token_data[i].datacenter_id );
+            // todo: this should become debug
+            next_printf( NEXT_LOG_LEVEL_INFO, "ping sent ping request for datacenter %d [%" PRIx64 "]", i, ping->token_data[i].datacenter_id );
 
             next_platform_mutex_acquire( &ping->ping_mutex );
             ping->token_data[i].next_ping_time += 1.0;
