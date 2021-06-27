@@ -17595,6 +17595,12 @@ void test_ping_token()
     bool result = next_validate_ping_token( customer_id, customer_public_key, &client_address, ping_token_data, ping_token_bytes );
 
     next_check( result );
+
+    uint64_t token_datacenter_id = next_ping_token_datacenter_id( ping_token_data, ping_token_bytes );
+
+    uint64_t expected_datacenter_id = next_datacenter_id( datacenter_name );
+
+    next_check( token_datacenter_id == expected_datacenter_id );
 }
 
 #define RUN_TEST( test_function )                                           \
