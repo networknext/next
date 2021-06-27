@@ -13702,6 +13702,9 @@ struct next_ping_token_data_t
 {
     uint8_t token_data[NEXT_MAX_PING_TOKEN_BYTES];
     int token_bytes;
+    uint64_t datacenter_id;
+    double next_ping_time;
+    bool has_response;
 };
 
 struct next_ping_t
@@ -13786,6 +13789,7 @@ next_ping_t * next_ping_create( void * context, const char * bind_address_string
     ping->num_tokens = num_ping_tokens;
     for ( int i = 0; i < num_ping_tokens; ++i )
     {
+        memset( &ping->token_data[i], 0, sizeof(next_ping_token_data_t) );
         next_assert( ping_token_bytes[i] > 0 );
         next_assert( ping_token_bytes[i] < NEXT_MAX_PING_TOKEN_BYTES );
         ping->token_data[i].token_bytes = ping_token_bytes[i];
@@ -13815,6 +13819,15 @@ next_ping_t * next_ping_create( void * context, const char * bind_address_string
     if ( !ping->resolve_hostname_thread )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create resolve hostname thread" );
+        return NULL;
+    }
+
+    result = next_platform_mutex_create( &ping->ping_mutex );
+    
+    if ( result != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create ping mutex" );
+        next_ping_destroy( ping );
         return NULL;
     }
 
@@ -13944,6 +13957,14 @@ void next_ping_update_resolve_hostname( next_ping_t * ping )
 
     ping->state = NEXT_PING_STATE_SENDING_PINGS;
 
+    const double current_time = next_time();
+    next_platform_mutex_acquire( &ping->ping_mutex );
+    for ( int i = 0; i < ping->num_tokens; ++i )
+    {
+        ping->token_data[i].next_ping_time = current_time + double(i) / double(ping->num_tokens);
+    }
+    next_platform_mutex_release( &ping->ping_mutex );
+
     int result = next_platform_mutex_create( &ping->ping_mutex );
     
     if ( result != NEXT_OK )
@@ -14016,6 +14037,32 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_thread_
     NEXT_PLATFORM_THREAD_RETURN();
 }
 
+void next_ping_update_send_ping_requests( next_ping_t * ping )
+{
+    if ( ping->state != NEXT_PING_STATE_SENDING_PINGS )
+        return;
+
+    const double current_time = next_time();
+
+    for ( int i = 0; i < ping->num_tokens; ++i )
+    {
+        next_platform_mutex_acquire( &ping->ping_mutex );
+        bool has_response = ping->token_data[i].has_response;
+        double next_ping_time = ping->token_data[i].next_ping_time;
+        next_platform_mutex_release( &ping->ping_mutex );
+
+        if ( !has_response && next_ping_time <= current_time )
+        {
+            // todo
+            next_printf( NEXT_LOG_LEVEL_INFO, "send ping request for datacenter %d [%" PRIx64 "]", i, ping->token_data[i].datacenter_id );
+
+            next_platform_mutex_acquire( &ping->ping_mutex );
+            ping->token_data[i].next_ping_time += 1.0;
+            next_platform_mutex_release( &ping->ping_mutex );
+        }
+    }
+}
+
 void next_ping_update( next_ping_t * ping )
 {
     next_assert( ping );
@@ -14025,13 +14072,15 @@ void next_ping_update( next_ping_t * ping )
     if ( ping->state == NEXT_PING_STATE_ERROR )
         return;
 
-    next_ping_update_resolve_hostname( ping );
-
     if ( ping->start_time < next_time() - NEXT_PING_DURATION && ping->state != NEXT_PING_STATE_FINISHED && ping->state != NEXT_PING_STATE_ERROR )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "ping finished" );
         ping->state = NEXT_PING_STATE_FINISHED;
     }
+
+    next_ping_update_resolve_hostname( ping );
+
+    next_ping_update_send_ping_requests( ping );
 }
 
 int next_ping_state( next_ping_t * ping )

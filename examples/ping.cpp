@@ -65,36 +65,50 @@ int main()
     const uint8_t * customer_public_key = next_customer_public_key();
     const uint8_t * customer_private_key = next_customer_private_key();
 
-    // generate the ping token. this should be done on the server because it uses your private key
+    // generate the ping tokens. this should be done on your backend because it uses your private key
 
-    const char * datacenter_name = "linode.fremont";
+    const int NumTokens = 3;
+
+    const char * datacenter_names[NumTokens] = { "linode.fremont", "vultr.chicago", "google.iowa.1" };
 
     const char * user_id = "12345";
 
     next_address_t client_address;
-    next_address_parse( &client_address, "127.0.0.1" );   // set to the public IP address pings are sent from
+    next_address_parse( &client_address, "127.0.0.1" );   // set to the public IP address of the client
 
-    int ping_token_bytes = 0;
-    uint8_t ping_token_data[NEXT_MAX_PING_TOKEN_BYTES];
-    next_generate_ping_token( customer_id, customer_private_key, &client_address, datacenter_name, user_id, ping_token_data, &ping_token_bytes );
+    int ping_token_bytes[NumTokens];
+    memset( ping_token_bytes, 0, sizeof(ping_token_bytes) );
+    
+    uint8_t ping_token_data[NumTokens][NEXT_MAX_PING_TOKEN_BYTES];
+
+    for ( int i = 0; i < NumTokens; i++ )
+    {
+        next_generate_ping_token( customer_id, customer_private_key, &client_address, datacenter_names[i], user_id, ping_token_data[i], &ping_token_bytes[i] );
+    }
 
     // make sure the ping token validates. this checks that the signature on the ping token can be verified with your public key
 
-    if ( !next_validate_ping_token( customer_id, customer_public_key, &client_address, ping_token_data, ping_token_bytes ) )
+    for ( int i = 0; i < NumTokens; ++i )
     {
-        printf( "error: ping token did not validate\n" );
-        return 1;
-    }
+        if ( !next_validate_ping_token( customer_id, customer_public_key, &client_address, ping_token_data[i], ping_token_bytes[i] ) )
+        {
+            printf( "error: ping token %d did not validate\n", i );
+            return 1;
+        }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "ping token validated" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "ping token %d validated", i );
+    }
 
     // run pings
 
-    const int num_ping_tokens = 1;
-    const uint8_t * token_data_array[] = { ping_token_data };
-    const int token_bytes_array[] = { ping_token_bytes };
+    const uint8_t * token_data_array[NumTokens];
 
-    next_ping_t * ping = next_ping_create( NULL, "0.0.0.0:0", token_data_array, token_bytes_array, num_ping_tokens );
+    for ( int i = 0; i < NumTokens; ++i )
+    {
+        token_data_array[i] = ping_token_data[i];
+    }
+
+    next_ping_t * ping = next_ping_create( NULL, "0.0.0.0:0", token_data_array, ping_token_bytes, NumTokens );
     if ( !ping )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "could not create ping" );
