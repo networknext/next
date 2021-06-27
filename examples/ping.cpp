@@ -94,7 +94,7 @@ int main()
     const uint8_t * token_data_array[] = { ping_token_data };
     const int token_bytes_array[] = { ping_token_bytes };
 
-    next_ping_t * ping = next_ping_create( NULL, token_data_array, token_bytes_array, num_ping_tokens );
+    next_ping_t * ping = next_ping_create( NULL, "0.0.0.0:0", token_data_array, token_bytes_array, num_ping_tokens );
     if ( !ping )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "could not create ping" );

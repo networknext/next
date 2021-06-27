@@ -13723,6 +13723,8 @@ struct next_ping_t
 
     next_platform_mutex_t ping_mutex;
     next_platform_thread_t * ping_thread;
+    next_platform_socket_t * socket;
+    bool quit;
 
     NEXT_DECLARE_SENTINEL(3)
 
@@ -13756,12 +13758,20 @@ void next_ping_verify_sentinels( next_ping_t * ping )
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_resolve_hostname_thread_function( void * context );
 
-next_ping_t * next_ping_create( void * context, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens )
+
+next_ping_t * next_ping_create( void * context, const char * bind_address_string, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens )
 {
     next_assert( ping_token_data );
     next_assert( ping_token_bytes );
     next_assert( num_ping_tokens > 0 );
     next_assert( num_ping_tokens <= NEXT_MAX_PING_TOKENS );
+
+    next_address_t bind_address;
+    if ( next_address_parse( &bind_address, bind_address_string ) != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "ping failed to parse bind address: %s", bind_address_string );
+        return NULL;
+    }
 
     next_ping_t * ping = (next_ping_t*) next_malloc( context, sizeof(next_ping_t) );
     if ( !ping ) 
@@ -13783,6 +13793,14 @@ next_ping_t * next_ping_create( void * context, const uint8_t ** ping_token_data
     }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "ping loaded %d tokens", num_ping_tokens );
+
+    ping->socket = next_platform_socket_create( ping->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, true );
+    if ( ping->socket == NULL )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create ping socket" );
+        next_ping_destroy( ping );
+        return NULL;
+    }
 
     int result = next_platform_mutex_create( &ping->resolve_hostname_mutex );
     
@@ -13809,10 +13827,29 @@ void next_ping_destroy( next_ping_t * ping )
 
     next_ping_verify_sentinels( ping );
 
+    next_platform_mutex_acquire( &ping->ping_mutex );
+    ping->quit = true;
+    next_platform_mutex_release( &ping->ping_mutex );
+
+    if ( ping->resolve_hostname_thread )
+    {
+        next_platform_thread_destroy( ping->resolve_hostname_thread );
+    }
+
     if ( ping->ping_thread )
     {
+        next_platform_thread_join( ping->ping_thread );
+
         next_platform_thread_destroy( ping->ping_thread );
     }
+
+    if ( ping->socket )
+    {
+        next_platform_socket_destroy( ping->socket );
+    }
+
+    next_platform_mutex_destroy( &ping->ping_mutex );
+    next_platform_mutex_destroy( &ping->resolve_hostname_mutex );
 
     clear_and_free( ping->context, ping, sizeof(next_ping_t) );
 }
@@ -13935,8 +13972,43 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_thread_
 
     while ( true )
     {
+        uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+        next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
+        next_address_t from;
+        
+        int packet_bytes = next_platform_socket_receive_packet( ping->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
+
+        // quick if asked to
+
+        next_platform_mutex_acquire( &ping->ping_mutex );
+        bool quit = ping->quit;
+        next_platform_mutex_release( &ping->ping_mutex );
+
+        if ( quit )
+            break;
+
+        // stop processing packets once the ping duration has elapsed
+
         if ( next_time() >= ping->start_time + NEXT_PING_DURATION )
             break;
+
+        // process the packet
+
+        double packet_receive_time = next_time();
+
+        next_assert( packet_bytes >= 0 );
+
+        if ( packet_bytes <= 1 )
+            continue;
+
+        printf( "ping received packet (%d bytes)\n", packet_bytes );
+
+        // todo: process packet
+        (void) from;
+        (void) packet_bytes;
+        (void) packet_receive_time;
     }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "ping thread finished" );

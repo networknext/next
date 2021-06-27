@@ -385,7 +385,7 @@ struct next_ping_t;
 #define NEXT_PING_STATE_FINISHED                    2
 #define NEXT_PING_STATE_ERROR                       3
 
-NEXT_EXPORT_FUNC next_ping_t * next_ping_create( void * context, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens );
+NEXT_EXPORT_FUNC next_ping_t * next_ping_create( void * context, const char * bind_address, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens );
 
 NEXT_EXPORT_FUNC void next_ping_destroy( next_ping_t * ping );
 
