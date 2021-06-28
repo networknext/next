@@ -77,6 +77,63 @@ type SQL struct {
 	// SyncSequenceNumber int64
 }
 
+type sqlBuyer struct {
+	SdkID          int64
+	ID             uint64
+	IsLiveCustomer bool
+	Debug          bool
+	Name           string
+	PublicKey      []byte
+	ShortName      string
+	CompanyCode    string // should not be needed
+	DatabaseID     int64  // sql PK
+	CustomerID     int64  // sql PK
+}
+
+type sqlDatacenterMap struct {
+	Alias        string
+	BuyerID      int64
+	DatacenterID int64
+}
+
+type sqlInternalConfig struct {
+	RouteSelectThreshold           int64
+	RouteSwitchThreshold           int64
+	MaxLatencyTradeOff             int64
+	RTTVetoDefault                 int64
+	RTTVetoPacketLoss              int64
+	RTTVetoMultipath               int64
+	MultipathOverloadThreshold     int64
+	TryBeforeYouBuy                bool
+	ForceNext                      bool
+	LargeCustomer                  bool
+	Uncommitted                    bool
+	MaxRTT                         int64
+	HighFrequencyPings             bool
+	RouteDiversity                 int64
+	MultipathThreshold             int64
+	EnableVanityMetrics            bool
+	ReducePacketLossMinSliceNumber int64
+	BuyerID                        int64
+}
+
+type sqlRouteShader struct {
+	ABTest                    bool
+	AcceptableLatency         int64
+	AcceptablePacketLoss      float64
+	BandwidthEnvelopeDownKbps int64
+	BandwidthEnvelopeUpKbps   int64
+	DisableNetworkNext        bool
+	LatencyThreshold          int64
+	Multipath                 bool
+	ProMode                   bool
+	ReduceLatency             bool
+	ReducePacketLoss          bool
+	ReduceJitter              bool
+	SelectionPercent          int64
+	PacketLossSustained       float64
+}
+
 // Customer retrieves a Customer record using the company code
 func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 
