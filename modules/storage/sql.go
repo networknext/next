@@ -2647,17 +2647,6 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 
 // RouteShaders returns a slice of route shaders for the given buyer ID
 func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
-	// db.routeShaderMutex.RLock()
-	// defer db.routeShaderMutex.RUnlock()
-
-	// buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-
-	// routeShader, found := db.routeShaders[buyerID]
-	// if !found {
-	// 	return core.RouteShader{}, &DoesNotExistError{resourceType: "route shader", resourceRef: fmt.Sprintf("%x", buyerID)}
-	// }
-
-	// return routeShader, nil
 
 	var querySQL bytes.Buffer
 	var sqlRS sqlRouteShader
@@ -2715,17 +2704,67 @@ func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
 
 // InternalConfig returns the InternalConfig entry for the specified buyer
 func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, error) {
-	db.internalConfigMutex.RLock()
-	defer db.internalConfigMutex.RUnlock()
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
+	var querySQL bytes.Buffer
+	var sqlIC sqlInternalConfig
 
-	internalConfig, found := db.internalConfigs[buyerID]
-	if !found {
-		return core.InternalConfig{}, &DoesNotExistError{resourceType: "internal config", resourceRef: fmt.Sprintf("%x", buyerID)}
+	querySQL.Write([]byte("select max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
+	querySQL.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
+	querySQL.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
+	querySQL.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
+	querySQL.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number, "))
+	querySQL.Write([]byte("buyer_id from rs_internal_configs where buyer_id = ( "))
+	querySQL.Write([]byte("select id from buyers where sdk_generated_id = $1))"))
+
+	row := db.Client.QueryRow(querySQL.String(), int64(ephemeralBuyerID))
+	err := row.Scan(
+		&sqlIC.MaxLatencyTradeOff,
+		&sqlIC.MaxRTT,
+		&sqlIC.MultipathOverloadThreshold,
+		&sqlIC.RouteSwitchThreshold,
+		&sqlIC.RouteSelectThreshold,
+		&sqlIC.RTTVetoDefault,
+		&sqlIC.RTTVetoMultipath,
+		&sqlIC.RTTVetoPacketLoss,
+		&sqlIC.TryBeforeYouBuy,
+		&sqlIC.ForceNext,
+		&sqlIC.LargeCustomer,
+		&sqlIC.Uncommitted,
+		&sqlIC.HighFrequencyPings,
+		&sqlIC.RouteDiversity,
+		&sqlIC.MultipathThreshold,
+		&sqlIC.EnableVanityMetrics,
+		&sqlIC.ReducePacketLossMinSliceNumber,
+	)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "InternalConfig() no rows were returned!")
+		return core.InternalConfig{}, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
+	case nil:
+		internalConfig := core.InternalConfig{
+			RouteSelectThreshold:           int32(sqlIC.RouteSelectThreshold),
+			RouteSwitchThreshold:           int32(sqlIC.RouteSwitchThreshold),
+			MaxLatencyTradeOff:             int32(sqlIC.MaxLatencyTradeOff),
+			RTTVeto_Default:                int32(sqlIC.RTTVetoDefault),
+			RTTVeto_PacketLoss:             int32(sqlIC.RTTVetoPacketLoss),
+			RTTVeto_Multipath:              int32(sqlIC.RTTVetoMultipath),
+			MultipathOverloadThreshold:     int32(sqlIC.MultipathOverloadThreshold),
+			TryBeforeYouBuy:                sqlIC.TryBeforeYouBuy,
+			ForceNext:                      sqlIC.ForceNext,
+			LargeCustomer:                  sqlIC.LargeCustomer,
+			Uncommitted:                    sqlIC.Uncommitted,
+			MaxRTT:                         int32(sqlIC.MaxRTT),
+			HighFrequencyPings:             sqlIC.HighFrequencyPings,
+			RouteDiversity:                 int32(sqlIC.RouteDiversity),
+			MultipathThreshold:             int32(sqlIC.MultipathThreshold),
+			EnableVanityMetrics:            sqlIC.EnableVanityMetrics,
+			ReducePacketLossMinSliceNumber: int32(sqlIC.ReducePacketLossMinSliceNumber),
+		}
+		return internalConfig, nil
+	default:
+		level.Error(db.Logger).Log("during", "InternalConfig() QueryRow returned an error: %v", err)
+		return core.InternalConfig{}, err
 	}
-
-	return internalConfig, nil
 
 }
 
