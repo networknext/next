@@ -2445,16 +2445,6 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	var sql bytes.Buffer
 
-	id := crypto.HashID(fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
-
-	db.datacenterMapMutex.RLock()
-	dcMap, ok := db.datacenterMaps[id]
-	db.datacenterMapMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "datacenter map", resourceRef: fmt.Sprintf("%016x", id)}
-	}
-
 	buyerID := db.buyerIDs[dcMap.BuyerID]
 	buyer := db.buyers[uint64(buyerID)]
 	datacenter := db.datacenters[dcMap.DatacenterID]
@@ -2482,12 +2472,6 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.datacenterMapMutex.Lock()
-	delete(db.datacenterMaps, id)
-	db.datacenterMapMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
