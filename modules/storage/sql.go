@@ -2491,97 +2491,97 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 // "true" forces the caller to sync from the database and updates
 // the local sequence number. "false" does not force a sync and does
 // not modify the local number.
-func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
-	var sequenceNumber int64
+// func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
+// 	var sequenceNumber int64
 
-	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(&sequenceNumber)
+// 	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(&sequenceNumber)
 
-	if err == sql.ErrNoRows {
-		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
-		return false, -1, err
-	} else if err != nil {
-		level.Error(db.Logger).Log("during", "query error", "err", err)
-		return false, -1, err
-	}
+// 	if err == sql.ErrNoRows {
+// 		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
+// 		return false, -1, err
+// 	} else if err != nil {
+// 		level.Error(db.Logger).Log("during", "query error", "err", err)
+// 		return false, -1, err
+// 	}
 
-	db.sequenceNumberMutex.RLock()
-	localSeqNum := db.SyncSequenceNumber
-	db.sequenceNumberMutex.RUnlock()
+// 	db.sequenceNumberMutex.RLock()
+// 	localSeqNum := db.SyncSequenceNumber
+// 	db.sequenceNumberMutex.RUnlock()
 
-	if localSeqNum < sequenceNumber {
-		db.sequenceNumberMutex.Lock()
-		db.SyncSequenceNumber = sequenceNumber
-		db.sequenceNumberMutex.Unlock()
-		return true, sequenceNumber, nil
-	} else if localSeqNum == sequenceNumber {
-		return false, -1, nil
-	} else {
-		err = fmt.Errorf("local sequence number larger than remote: %d > %d", localSeqNum, sequenceNumber)
-		level.Error(db.Logger).Log("during", "query error", "err", err)
-		return false, -1, err
-	}
-}
+// 	if localSeqNum < sequenceNumber {
+// 		db.sequenceNumberMutex.Lock()
+// 		db.SyncSequenceNumber = sequenceNumber
+// 		db.sequenceNumberMutex.Unlock()
+// 		return true, sequenceNumber, nil
+// 	} else if localSeqNum == sequenceNumber {
+// 		return false, -1, nil
+// 	} else {
+// 		err = fmt.Errorf("local sequence number larger than remote: %d > %d", localSeqNum, sequenceNumber)
+// 		level.Error(db.Logger).Log("during", "query error", "err", err)
+// 		return false, -1, err
+// 	}
+// }
 
 // SetSequenceNumber is required for testing with the Firestore emulator
-func (db *SQL) SetSequenceNumber(ctx context.Context, sequenceNumber int64) error {
-	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing SQL", "err", err)
-		return err
-	}
+// func (db *SQL) SetSequenceNumber(ctx context.Context, sequenceNumber int64) error {
+// 	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "error preparing SQL", "err", err)
+// 		return err
+// 	}
 
-	result, err := stmt.Exec(sequenceNumber)
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-	}
-	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-	}
+// 	result, err := stmt.Exec(sequenceNumber)
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
+// 	}
+// 	rows, err := result.RowsAffected()
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+// 	}
+// 	if rows != 1 {
+// 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+// 	}
 
-	db.sequenceNumberMutex.Lock()
-	db.SyncSequenceNumber = sequenceNumber
-	db.sequenceNumberMutex.Unlock()
+// 	db.sequenceNumberMutex.Lock()
+// 	db.SyncSequenceNumber = sequenceNumber
+// 	db.sequenceNumberMutex.Unlock()
 
-	return nil
-}
+// 	return nil
+// }
 
 // IncrementSequenceNumber is called by all CRUD operations defined in the Storage interface. It only
 // increments the remote seq number. When the sync() functions call CheckSequenceNumber(), if the
 // local and remote numbers are not the same, the data will be sync'd from the database and the local
 // sequence numbers updated.
-func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
+// func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
 
-	var sequenceNumber int64
+// 	var sequenceNumber int64
 
-	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(&sequenceNumber)
+// 	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(&sequenceNumber)
 
-	if err == sql.ErrNoRows {
-		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
-		return err
-	} else if err != nil {
-		level.Error(db.Logger).Log("during", "query error", "err", err)
-		return err
-	}
+// 	if err == sql.ErrNoRows {
+// 		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
+// 		return err
+// 	} else if err != nil {
+// 		level.Error(db.Logger).Log("during", "query error", "err", err)
+// 		return err
+// 	}
 
-	sequenceNumber++
+// 	sequenceNumber++
 
-	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing SQL", "err", err)
-		return err
-	}
+// 	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "error preparing SQL", "err", err)
+// 		return err
+// 	}
 
-	_, err = stmt.Exec(sequenceNumber)
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
-	}
+// 	_, err = stmt.Exec(sequenceNumber)
+// 	if err != nil {
+// 		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 type sqlDatacenter struct {
 	ID        int64
@@ -2647,17 +2647,70 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 
 // RouteShaders returns a slice of route shaders for the given buyer ID
 func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
-	db.routeShaderMutex.RLock()
-	defer db.routeShaderMutex.RUnlock()
+	// db.routeShaderMutex.RLock()
+	// defer db.routeShaderMutex.RUnlock()
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
+	// buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
 
-	routeShader, found := db.routeShaders[buyerID]
-	if !found {
-		return core.RouteShader{}, &DoesNotExistError{resourceType: "route shader", resourceRef: fmt.Sprintf("%x", buyerID)}
+	// routeShader, found := db.routeShaders[buyerID]
+	// if !found {
+	// 	return core.RouteShader{}, &DoesNotExistError{resourceType: "route shader", resourceRef: fmt.Sprintf("%x", buyerID)}
+	// }
+
+	// return routeShader, nil
+
+	var querySQL bytes.Buffer
+	var sqlRS sqlRouteShader
+
+	querySQL.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
+	querySQL.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
+	querySQL.Write([]byte("reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, "))
+	querySQL.Write([]byte("packet_loss_sustained, buyer_id from route_shaders where buyer_id = ( "))
+	querySQL.Write([]byte("select id from buyers where sdk_generated_id = $1))"))
+
+	row := db.Client.QueryRow(querySQL.String(), int64(ephemeralBuyerID))
+	err := row.Scan(
+		&sqlRS.ABTest,
+		&sqlRS.AcceptableLatency,
+		&sqlRS.AcceptablePacketLoss,
+		&sqlRS.BandwidthEnvelopeDownKbps,
+		&sqlRS.BandwidthEnvelopeUpKbps,
+		&sqlRS.DisableNetworkNext,
+		&sqlRS.LatencyThreshold,
+		&sqlRS.Multipath,
+		&sqlRS.ProMode,
+		&sqlRS.ReduceLatency,
+		&sqlRS.ReducePacketLoss,
+		&sqlRS.ReduceJitter,
+		&sqlRS.SelectionPercent,
+		&sqlRS.PacketLossSustained,
+	)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "RouteShader() no rows were returned!")
+		return core.RouteShader{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
+	case nil:
+		routeShader := core.RouteShader{
+			DisableNetworkNext:        sqlRS.DisableNetworkNext,
+			SelectionPercent:          int(sqlRS.SelectionPercent),
+			ABTest:                    sqlRS.ABTest,
+			ProMode:                   sqlRS.ProMode,
+			ReduceLatency:             sqlRS.ReduceLatency,
+			ReducePacketLoss:          sqlRS.ReducePacketLoss,
+			ReduceJitter:              sqlRS.ReduceJitter,
+			Multipath:                 sqlRS.Multipath,
+			AcceptableLatency:         int32(sqlRS.AcceptableLatency),
+			LatencyThreshold:          int32(sqlRS.LatencyThreshold),
+			AcceptablePacketLoss:      float32(sqlRS.AcceptablePacketLoss),
+			BandwidthEnvelopeUpKbps:   int32(sqlRS.BandwidthEnvelopeUpKbps),
+			BandwidthEnvelopeDownKbps: int32(sqlRS.BandwidthEnvelopeDownKbps),
+			PacketLossSustained:       float32(sqlRS.PacketLossSustained),
+		}
+		return routeShader, nil
+	default:
+		level.Error(db.Logger).Log("during", "RouteShader() QueryRow returned an error: %v", err)
+		return core.RouteShader{}, err
 	}
-
-	return routeShader, nil
 }
 
 // InternalConfig returns the InternalConfig entry for the specified buyer
