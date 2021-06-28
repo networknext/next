@@ -2530,19 +2530,11 @@ type FetchNotificationsReply struct {
 }
 
 type Notification struct {
-	Title    string              `json:"title"`
-	Message  string              `json:"message"`
-	Graphic  string              `json:"graphic"`
-	Priority NotificationPriorty `json:"priority"`
-	Type     NotificationType    `json:"notification_type"`
-	Data     NotificationData    `json:"data"`
-}
-
-// TODO: Flesh this out more. This is temporary to get the idea down
-type NotificationData struct {
-	LookerURL    string   `json:"url"`
-	TableHeaders []string `json:"headers"`
-	TableRows    []int32  `json:"rows"` // TODO: Placeholder...
+	AnalyticsURL string              `json:"analytics_url"`
+	Title        string              `json:"title"`
+	Message      string              `json:"message"`
+	Graphic      string              `json:"graphic"`
+	Priority     NotificationPriorty `json:"priority"`
 }
 
 func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificationsArgs, reply *FetchNotificationsReply) error {
@@ -2589,13 +2581,11 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 			Title:    "Super Important Looker Data",
 			Graphic:  "fire",
 			Priority: URGENT_PRIORITY,
-			Type:     NOTIFICATION_LOOK,
 		},
 		{
 			Title:    "Super Satisfying Table Data",
 			Graphic:  "smile",
 			Priority: INFO_PRIORITY,
-			Type:     NOTIFICATION_TABLE,
 		},
 	}
 
@@ -2603,55 +2593,44 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 		// TODO: Not sure if this will be necessary or not. We don't want to dump the whole SQL entry to the frontend, only data necessary for that type
 		returnNotification := Notification{
 			Title:    notification.Title,
+			Message:  "\"Help me, Obi-Wan Kenobi. You’re my only hope.\" — Leia Organa\n\"I find your lack of faith disturbing.\" — Darth Vader\n\"It’s the ship that made the Kessel run in less than twelve parsecs. I’ve outrun Imperial starships. Not the local bulk cruisers, mind you. I’m talking about the big Corellian ships, now. She’s fast enough for you, old man.\" — Han Solo\n",
 			Graphic:  notification.Graphic,
 			Priority: notification.Priority,
-			Type:     notification.Type,
 		}
 
-		switch notification.Type {
-		case NOTIFICATION_LOOK:
-			// TODO: Create actual notification class with subclassed types. We need to store data related to the notification type like looker url information or data table rows and column names
+		// TODO: Create actual notification class with subclassed types. We need to store data related to the notification type like looker url information or data table rows and column names
 
-			// Build the looker URL
-			nonce, err := GenerateRandomString(16)
-			if err != nil {
-				err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
-				return &err
-			}
-
-			// TODO: This data should come from a specific "looker" notification
-			urlOptions := LookerURLOptions{
-				Host:            LOOKER_HOST,
-				Secret:          s.LookerSecret,
-				ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-				FirstName:       "",
-				LastName:        "",
-				GroupsIds:       make([]int, 0),
-				ExternalGroupId: "",
-				Permissions:     []string{"access_data", "see_looks"},
-				Models:          []string{},
-				AccessFilters:   make(map[string]map[string]interface{}),
-				UserAttributes:  make(map[string]interface{}),
-				SessionLength:   3600,
-				EmbedURL:        "/login/embed/" + url.QueryEscape( /* TODO: we want notification.data.path or something similar here */ "/embed/looks/1"),
-				ForceLogout:     true,
-				Nonce:           fmt.Sprintf("\"%s\"", nonce),
-				Time:            time.Now().Unix(),
-			}
-
-			returnNotification.Data.LookerURL = s.BuildLookerURL(urlOptions)
-
-			reply.Notifications = append(reply.Notifications, returnNotification)
-		case NOTIFICATION_TABLE:
-			returnNotification.Data.TableHeaders = []string{"Test", "Headers", "1", "2", "3"}
-			returnNotification.Data.TableRows = []int32{1223, 1442321, 123451234, 218971293, 1274129}
-			reply.Notifications = append(reply.Notifications, returnNotification)
-		default:
-			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN_NOTIFICATION_TYPE)]
-			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Unknown notification type", err.Error()))
-			// Do not return the error because there may be more notifications to send
+		// Build the looker URL
+		nonce, err := GenerateRandomString(16)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+			return &err
 		}
+
+		// TODO: This data should come from a specific "looker" notification
+		urlOptions := LookerURLOptions{
+			Host:            LOOKER_HOST,
+			Secret:          s.LookerSecret,
+			ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+			FirstName:       "",
+			LastName:        "",
+			GroupsIds:       make([]int, 0),
+			ExternalGroupId: "",
+			Permissions:     []string{"access_data", "see_looks"},
+			Models:          []string{},
+			AccessFilters:   make(map[string]map[string]interface{}),
+			UserAttributes:  make(map[string]interface{}),
+			SessionLength:   3600,
+			EmbedURL:        "/login/embed/" + url.QueryEscape( /* TODO: we want notification.data.path or something similar here */ "/embed/looks/1"),
+			ForceLogout:     true,
+			Nonce:           fmt.Sprintf("\"%s\"", nonce),
+			Time:            time.Now().Unix(),
+		}
+
+		returnNotification.AnalyticsURL = s.BuildLookerURL(urlOptions)
+
+		reply.Notifications = append(reply.Notifications, returnNotification)
 	}
 
 	return nil
