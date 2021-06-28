@@ -53,6 +53,8 @@ func (g *GCPStorage) CopyFromBytesToStorage(ctx context.Context, inputBytes []by
 	// Create an object writer
 	writer := g.Bucket.Object(outputFileName).NewWriter(ctx)
 
+	writer.ObjectAttrs.ContentType = "application/octet-stream"
+
 	// Write to the file
 	if _, err := writer.Write(inputBytes); err != nil {
 		err = fmt.Errorf("failed to write to bucket object: %v", err)
