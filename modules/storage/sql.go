@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -38,44 +37,44 @@ type SQL struct {
 	Client *sql.DB
 	Logger log.Logger
 
-	datacenters    map[uint64]routing.Datacenter
-	relays         map[uint64]routing.Relay
-	customers      map[string]routing.Customer
-	buyers         map[uint64]routing.Buyer // this index is in fact the database ID cast to uint64
-	sellers        map[string]routing.Seller
-	datacenterMaps map[uint64]routing.DatacenterMap
+	// datacenters    map[uint64]routing.Datacenter
+	// relays         map[uint64]routing.Relay
+	// customers      map[string]routing.Customer
+	// buyers         map[uint64]routing.Buyer // this index is in fact the database ID cast to uint64
+	// sellers        map[string]routing.Seller
+	// datacenterMaps map[uint64]routing.DatacenterMap
 
-	internalConfigs map[uint64]core.InternalConfig // index: buyer ID
-	routeShaders    map[uint64]core.RouteShader    // index: buyer ID
-	bannedUsers     map[uint64]map[uint64]bool     // index: buyerID
+	// internalConfigs map[uint64]core.InternalConfig // index: buyer ID
+	// routeShaders    map[uint64]core.RouteShader    // index: buyer ID
+	// bannedUsers     map[uint64]map[uint64]bool     // index: buyerID
 
-	datacenterMutex     sync.RWMutex
-	relayMutex          sync.RWMutex
-	customerMutex       sync.RWMutex
-	buyerMutex          sync.RWMutex
-	sellerMutex         sync.RWMutex
-	datacenterMapMutex  sync.RWMutex
-	sequenceNumberMutex sync.RWMutex
-	internalConfigMutex sync.RWMutex
-	routeShaderMutex    sync.RWMutex
-	bannedUserMutex     sync.RWMutex
+	// datacenterMutex     sync.RWMutex
+	// relayMutex          sync.RWMutex
+	// customerMutex       sync.RWMutex
+	// buyerMutex          sync.RWMutex
+	// sellerMutex         sync.RWMutex
+	// datacenterMapMutex  sync.RWMutex
+	// sequenceNumberMutex sync.RWMutex
+	// internalConfigMutex sync.RWMutex
+	// routeShaderMutex    sync.RWMutex
+	// bannedUserMutex     sync.RWMutex
 
-	//  int64: PostgreSQL primary key
-	// uint64: backend/storer internal ID
-	datacenterIDs map[int64]uint64
-	relayIDs      map[int64]uint64
-	customerIDs   map[int64]string
-	buyerIDs      map[uint64]int64 // buyerIDs map is inverted
-	sellerIDs     map[int64]string
+	// //  int64: PostgreSQL primary key
+	// // uint64: backend/storer internal ID
+	// datacenterIDs map[int64]uint64
+	// relayIDs      map[int64]uint64
+	// customerIDs   map[int64]string
+	// buyerIDs      map[uint64]int64 // buyerIDs map is inverted
+	// sellerIDs     map[int64]string
 
-	datacenterIDsMutex  sync.RWMutex
-	relayIDsMutex       sync.RWMutex
-	customerIDsMutex    sync.RWMutex
-	buyerIDsMutex       sync.RWMutex
-	sellerIDsMutex      sync.RWMutex
-	datacenterMapsMutex sync.RWMutex
+	// datacenterIDsMutex  sync.RWMutex
+	// relayIDsMutex       sync.RWMutex
+	// customerIDsMutex    sync.RWMutex
+	// buyerIDsMutex       sync.RWMutex
+	// sellerIDsMutex      sync.RWMutex
+	// datacenterMapsMutex sync.RWMutex
 
-	SyncSequenceNumber int64
+	// SyncSequenceNumber int64
 }
 
 // Customer retrieves a Customer record using the company code
@@ -651,8 +650,8 @@ func (db *SQL) Seller(id string) (routing.Seller, error) {
 	var querySQL bytes.Buffer
 	var seller sqlSeller
 
-	querySQL.Write([]byte("select short_name, public_egress_price, secret, "))
-	querySQL.Write([]byte("customer_id from sellers where id = $1"))
+	querySQL.Write([]byte("select id, short_name, public_egress_price, secret, "))
+	querySQL.Write([]byte("customer_id from sellers where short_name = $1"))
 
 	row := db.Client.QueryRow(querySQL.String(), id)
 	err := row.Scan(&seller.DatabaseID,
@@ -677,6 +676,48 @@ func (db *SQL) Seller(id string) (routing.Seller, error) {
 			Name:                     c.Name,
 			EgressPriceNibblinsPerGB: routing.Nibblin(seller.EgressPriceNibblinsPerGB),
 			DatabaseID:               seller.DatabaseID,
+			CustomerID:               seller.CustomerID,
+		}
+		return s, nil
+	default:
+		level.Error(db.Logger).Log("during", "Seller() QueryRow returned an error: %v", err)
+		return routing.Seller{}, err
+	}
+}
+
+// SellerByDbId returns the sellers table entry for the given ID
+// TODO: add to storer interface?
+func (db *SQL) SellerByDbId(id int64) (routing.Seller, error) {
+
+	var querySQL bytes.Buffer
+	var seller sqlSeller
+
+	querySQL.Write([]byte("select short_name, public_egress_price, secret, "))
+	querySQL.Write([]byte("customer_id from sellers where id = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), id)
+	err := row.Scan(
+		&seller.ShortName,
+		&seller.EgressPriceNibblinsPerGB,
+		&seller.Secret,
+		&seller.CustomerID)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "Seller() no rows were returned!")
+		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
+	case nil:
+		c, err := db.Customer(seller.ShortName)
+		if err != nil {
+			return routing.Seller{}, &DoesNotExistError{resourceType: "customer", resourceRef: id}
+		}
+		s := routing.Seller{
+			ID:                       seller.ShortName,
+			ShortName:                seller.ShortName,
+			Secret:                   seller.Secret,
+			CompanyCode:              c.Code,
+			Name:                     c.Name,
+			EgressPriceNibblinsPerGB: routing.Nibblin(seller.EgressPriceNibblinsPerGB),
+			DatabaseID:               id,
 			CustomerID:               seller.CustomerID,
 		}
 		return s, nil
@@ -1013,12 +1054,12 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
 		}
 
-		datacenter, err := db.Datacenter(db.datacenterIDs[relay.DatacenterID])
+		datacenter, err := db.DatacenterByDbId(relay.DatacenterID)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
 		}
 
-		seller, err := db.Seller(db.sellerIDs[datacenter.SellerID])
+		seller, err := db.SellerByDbId(datacenter.SellerID)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
 		}
@@ -1194,12 +1235,12 @@ func (db *SQL) Relays() []routing.Relay {
 			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
 		}
 
-		datacenter, err := db.Datacenter(db.datacenterIDs[relay.DatacenterID])
+		datacenter, err := db.DatacenterByDbId(relay.DatacenterID)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
 		}
 
-		seller, err := db.Seller(db.sellerIDs[datacenter.SellerID])
+		seller, err := db.SellerByDbId(datacenter.SellerID)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
 		}
@@ -2074,6 +2115,49 @@ func (db *SQL) Datacenter(datacenterID uint64) (routing.Datacenter, error) {
 	}
 }
 
+// DatacenterByDbId retrives the entry in the datacenters table for the provided ID
+// TODO: add to storer interface?
+func (db *SQL) DatacenterByDbId(databaseID int64) (routing.Datacenter, error) {
+
+	var querySQL bytes.Buffer
+	var dc sqlDatacenter
+
+	querySQL.Write([]byte("select hex_id, display_name, latitude, longitude,"))
+	querySQL.Write([]byte("seller_id from datacenters where id = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), databaseID)
+	err := row.Scan(
+		&dc.HexID,
+		&dc.Name,
+		&dc.Latitude,
+		&dc.Longitude,
+		&dc.SellerID)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "DatacenterByDbId() no rows were returned!")
+		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%d", databaseID)}
+	case nil:
+		datacenterID, err := strconv.ParseUint(dc.HexID, 16, 64)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "DatacenterByDbId()error parsing hex ID")
+			return routing.Datacenter{}, &HexStringConversionError{hexString: dc.HexID}
+		}
+		d := routing.Datacenter{
+			ID:   datacenterID,
+			Name: dc.Name,
+			Location: routing.Location{
+				Latitude:  dc.Latitude,
+				Longitude: dc.Longitude,
+			},
+			SellerID:   dc.SellerID,
+			DatabaseID: dc.ID}
+		return d, nil
+	default:
+		level.Error(db.Logger).Log("during", "DatacenterByDbId() QueryRow returned an error: %v", err)
+		return routing.Datacenter{}, err
+	}
+}
+
 // Datacenters returns a copy of all stored datacenters.
 func (db *SQL) Datacenters() []routing.Datacenter {
 
@@ -2227,17 +2311,21 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 // }
 
 // GetDatacenterMapsForBuyer returns a map of datacenter aliases in use for a given
-// (internally generated) buyerID. The map is indexed by the datacenter ID. Returns
-// an empty map if there are no aliases for that buyerID.
+// (internally generated) buyerID. Returns an empty map if there are no aliases for that buyerID.
 func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]routing.DatacenterMap {
 
 	var querySQL bytes.Buffer
 	var dcMaps = make(map[uint64]routing.DatacenterMap)
-	var sqlMap sqlDatacenterMap
+	// var sqlMap sqlDatacenterMap
 
 	dbBuyerID := int64(ephemeralBuyerID)
 
 	querySQL.Write([]byte("select buyer_id, datacenter_id from datacenter_maps where buyer_id = "))
+	querySQL.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
+
+	querySQL.Write([]byte("select datacenters.hex_id from datacenter_maps "))
+	querySQL.Write([]byte("inner join datacenters on datacenter_maps.datacenter_id "))
+	querySQL.Write([]byte("= datacenters.id where datacenter_maps.buyer_id = "))
 	querySQL.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
 
 	rows, err := db.Client.QueryContext(context.Background(), querySQL.String(), dbBuyerID)
@@ -2248,15 +2336,22 @@ func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]rou
 	defer rows.Close()
 
 	for rows.Next() {
-		err = rows.Scan(&sqlMap.BuyerID, &sqlMap.DatacenterID)
+		var hexID string
+		err = rows.Scan(&hexID)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer(): error parsing returned row", "err", err)
 			return map[uint64]routing.DatacenterMap{}
 		}
 
+		dcID, err := strconv.ParseUint(hexID, 16, 64)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer() error parsing datacenter hex ID")
+			return map[uint64]routing.DatacenterMap{}
+		}
+
 		dcMap := routing.DatacenterMap{
 			BuyerID:      ephemeralBuyerID,
-			DatacenterID: db.datacenterIDs[sqlMap.DatacenterID],
+			DatacenterID: dcID,
 		}
 
 		id := crypto.HashID(fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
@@ -2271,18 +2366,13 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 	var sql bytes.Buffer
 
-	ephemeralBuyerID := dcMap.BuyerID
-	buyerID := db.buyerIDs[ephemeralBuyerID]
-
-	dcID := dcMap.DatacenterID
-
-	buyer, err := db.Buyer(uint64(buyerID))
+	buyer, err := db.Buyer(dcMap.BuyerID)
 	if err != nil {
 		fmt.Printf("buyer does not exist: %016x\n", dcMap.BuyerID)
-		return &DoesNotExistError{resourceType: "BuyerID", resourceRef: dcMap.BuyerID}
+		return &DoesNotExistError{resourceType: "Buyer.ID", resourceRef: fmt.Sprintf("%016x", dcMap.BuyerID)}
 	}
 
-	datacenter, err := db.Datacenter(dcID)
+	datacenter, err := db.Datacenter(dcMap.DatacenterID)
 	if err != nil {
 		fmt.Printf("datacenter does not exist: %016x\n", dcMap.DatacenterID)
 		return &DoesNotExistError{resourceType: "DatacenterID", resourceRef: dcMap.DatacenterID}
@@ -2766,14 +2856,6 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 
 	var sql bytes.Buffer
 
-	db.buyerMutex.RLock()
-	buyer, err := db.Buyer(ephemeralBuyerID)
-	db.buyerMutex.RUnlock()
-
-	if err != nil {
-		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
-	}
-
 	internalConfig := sqlInternalConfig{
 		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
 		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
@@ -2792,7 +2874,6 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		MultipathThreshold:             int64(ic.MultipathThreshold),
 		EnableVanityMetrics:            ic.EnableVanityMetrics,
 		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
-		BuyerID:                        buyer.DatabaseID,
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
@@ -2801,7 +2882,9 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 	sql.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
 	sql.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
 	sql.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number, buyer_id) "))
-	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)"))
+	sql.Write([]byte("values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, "))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $18)"))
+	sql.Write([]byte(")"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2827,7 +2910,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		internalConfig.MultipathThreshold,
 		internalConfig.EnableVanityMetrics,
 		internalConfig.ReducePacketLossMinSliceNumber,
-		internalConfig.BuyerID,
+		int64(ephemeralBuyerID),
 	)
 
 	if err != nil {
@@ -3433,39 +3516,31 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 	var stmt *sql.Stmt
 	var err error
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-
-	buyer, err := db.Buyer(buyerID)
-	if err != nil {
-		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
 	switch field {
 	case "Live":
 		live, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("Live: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update buyers set is_live_customer=$1 where id=$2"))
-		args = append(args, live, buyer.DatabaseID)
-		buyer.Live = live
+		updateSQL.Write([]byte("update buyers set is_live_customer=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, live, ephemeralBuyerID)
 	case "Debug":
 		debug, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("Debug: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update buyers set debug=$1 where id=$2"))
-		args = append(args, debug, buyer.DatabaseID)
-		buyer.Debug = debug
+		updateSQL.Write([]byte("update buyers set debug=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, debug, ephemeralBuyerID)
 	case "ShortName":
 		shortName, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
-		updateSQL.Write([]byte("update buyers set short_name=$1 where id=$2"))
-		args = append(args, shortName, buyer.DatabaseID)
-		buyer.ShortName = shortName
-
+		updateSQL.Write([]byte("update buyers set short_name=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, shortName, ephemeralBuyerID)
 	case "PublicKey":
 		pubKey, ok := value.(string)
 		if !ok {
@@ -3484,30 +3559,11 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		}
 
 		newBuyerID := binary.LittleEndian.Uint64(newPublicKey[:8])
-		updateSQL.Write([]byte("update buyers set public_key=$1, sdk_generated_id=$2 where id=$3"))
-		args = append(args, newPublicKey[8:], int64(newBuyerID), buyer.DatabaseID)
+		updateSQL.Write([]byte("update buyers set public_key=$1, sdk_generated_id=$2 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $3)"))
+		args = append(args, newPublicKey[8:], int64(newBuyerID), ephemeralBuyerID)
 
-		buyer.ID = newBuyerID
-		buyer.PublicKey = newPublicKey[8:]
-
-		db.buyerIDsMutex.Lock()
-		delete(db.buyerIDs, ephemeralBuyerID)
-		db.buyerIDs[newBuyerID] = buyer.DatabaseID
-		db.buyerIDsMutex.Unlock()
-
-		// Fix existing datacenter maps
-		dcMaps := db.GetDatacenterMapsForBuyer(ephemeralBuyerID)
-		if len(dcMaps) > 0 {
-			for key, dcMap := range dcMaps {
-				dcMap.BuyerID = newBuyerID
-				dcmID := crypto.HashID(fmt.Sprintf("%x", newBuyerID) + fmt.Sprintf("%x", dcMap.DatacenterID))
-
-				db.datacenterMapsMutex.Lock()
-				delete(db.datacenterMaps, key)
-				db.datacenterMaps[dcmID] = dcMap
-				db.datacenterMapsMutex.Unlock()
-			}
-		}
+		// TODO: datacenter maps for this buyer must be updated with the new buyer ID
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Buyer type", field)
