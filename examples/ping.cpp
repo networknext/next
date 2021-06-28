@@ -50,6 +50,7 @@ int main()
 
     next_config_t config;
     next_default_config( &config );
+    strncpy_s( config.ping_backend_hostname, "127.0.0.1", sizeof(config.ping_backend_hostname) - 1 );
     strncpy_s( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
     strncpy_s( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
 

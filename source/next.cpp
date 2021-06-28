@@ -55,7 +55,7 @@
 #else // #if !NEXT_DEVELOPMENT
 #define NEXT_PING_BACKEND_HOSTNAME     "dev.losangelesfreewaysatnight.com"
 #endif // #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_PORT                                     "40000"
+#define NEXT_PING_BACKEND_PORT                                     "40100"
 
 #define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
