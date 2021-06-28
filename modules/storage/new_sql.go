@@ -286,18 +286,18 @@ func (db *SQL) SyncLoop(ctx context.Context, c <-chan time.Time) {
 // Sync is a utility function that calls the individual sync* methods in the proper order.
 func (db *SQL) Sync(ctx context.Context) error {
 
-	seqNumberNotInSync, value, err := db.CheckSequenceNumber(ctx)
-	if err != nil {
-		return err
-	}
+	// seqNumberNotInSync, value, err := db.CheckSequenceNumber(ctx)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if !seqNumberNotInSync {
-		return nil
-	}
+	// if !seqNumberNotInSync {
+	// 	return nil
+	// }
 
-	db.sequenceNumberMutex.Lock()
-	db.SyncSequenceNumber = value
-	db.sequenceNumberMutex.Unlock()
+	// db.sequenceNumberMutex.Lock()
+	// db.SyncSequenceNumber = value
+	// db.sequenceNumberMutex.Unlock()
 
 	// Due to foreign key relationships in the tables, they must
 	// be synced in this order:
@@ -787,13 +787,6 @@ func (db *SQL) syncCustomers(ctx context.Context) error {
 	customers := make(map[string]routing.Customer)
 	customerIDs := make(map[int64]string)
 
-	// sql.Write([]byte("select customers.id, customers.debug, "))
-	// sql.Write([]byte("customers.automatic_signin_domain, customers.customer_name, "))
-	// sql.Write([]byte("customers.customer_code, buyers.id as buyer_id, "))
-	// sql.Write([]byte("sellers.id as seller_id from customers "))
-	// sql.Write([]byte("left join buyers on customers.id = buyers.customer_id "))
-	// sql.Write([]byte("left join sellers on customers.id = sellers.customer_id"))
-
 	sql.Write([]byte("select id, automatic_signin_domain, "))
 	sql.Write([]byte("customer_name, customer_code from customers"))
 
@@ -856,6 +849,7 @@ type sqlInternalConfig struct {
 	MultipathThreshold             int64
 	EnableVanityMetrics            bool
 	ReducePacketLossMinSliceNumber int64
+	BuyerID                        int64
 }
 
 func (db *SQL) syncInternalConfigs(ctx context.Context) error {
