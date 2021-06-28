@@ -125,7 +125,7 @@ int main()
         if ( ping_state == NEXT_PING_STATE_ERROR || ping_state == NEXT_PING_STATE_FINISHED )
             break;
         
-        next_sleep( 1.0 );
+        next_sleep( 1.0 / 60.0 );
     }
 
     // print out ping summary

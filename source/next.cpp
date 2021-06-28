@@ -14005,7 +14005,8 @@ void next_ping_update_resolve_hostname( next_ping_t * ping )
     next_platform_mutex_acquire( &ping->ping_mutex );
     for ( int i = 0; i < ping->num_tokens; ++i )
     {
-        ping->token_data[i].next_ping_time = current_time + double(i+1) / double(ping->num_tokens);
+        double offset = double(i+1) / double(ping->num_tokens);
+        ping->token_data[i].next_ping_time = current_time + offset;
     }
     next_platform_mutex_release( &ping->ping_mutex );
 
