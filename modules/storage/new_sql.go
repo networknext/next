@@ -286,18 +286,18 @@ func (db *SQL) SyncLoop(ctx context.Context, c <-chan time.Time) {
 // Sync is a utility function that calls the individual sync* methods in the proper order.
 func (db *SQL) Sync(ctx context.Context) error {
 
-	seqNumberNotInSync, value, err := db.CheckSequenceNumber(ctx)
-	if err != nil {
-		return err
-	}
+	// seqNumberNotInSync, value, err := db.CheckSequenceNumber(ctx)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if !seqNumberNotInSync {
-		return nil
-	}
+	// if !seqNumberNotInSync {
+	// 	return nil
+	// }
 
-	db.sequenceNumberMutex.Lock()
-	db.SyncSequenceNumber = value
-	db.sequenceNumberMutex.Unlock()
+	// db.sequenceNumberMutex.Lock()
+	// db.SyncSequenceNumber = value
+	// db.sequenceNumberMutex.Unlock()
 
 	// Due to foreign key relationships in the tables, they must
 	// be synced in this order:
@@ -849,6 +849,7 @@ type sqlInternalConfig struct {
 	MultipathThreshold             int64
 	EnableVanityMetrics            bool
 	ReducePacketLossMinSliceNumber int64
+	BuyerID                        int64
 }
 
 func (db *SQL) syncInternalConfigs(ctx context.Context) error {

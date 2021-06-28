@@ -2773,22 +2773,12 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 
 	var sql bytes.Buffer
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-
-	db.internalConfigMutex.RLock()
-	_, ok := db.internalConfigs[buyerID]
-	db.internalConfigMutex.RUnlock()
-
-	if ok {
-		return &AlreadyExistsError{resourceType: "InternalConfig", resourceRef: buyerID}
-	}
-
 	db.buyerMutex.RLock()
-	buyer, ok := db.buyers[buyerID]
+	buyer, err := db.Buyer(ephemeralBuyerID)
 	db.buyerMutex.RUnlock()
 
-	if !ok {
-		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	if err != nil {
+		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	}
 
 	internalConfig := sqlInternalConfig{
@@ -2809,6 +2799,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		MultipathThreshold:             int64(ic.MultipathThreshold),
 		EnableVanityMetrics:            ic.EnableVanityMetrics,
 		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
+		BuyerID:                        buyer.DatabaseID,
 	}
 
 	sql.Write([]byte("insert into rs_internal_configs "))
@@ -2843,7 +2834,7 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		internalConfig.MultipathThreshold,
 		internalConfig.EnableVanityMetrics,
 		internalConfig.ReducePacketLossMinSliceNumber,
-		buyer.DatabaseID,
+		internalConfig.BuyerID,
 	)
 
 	if err != nil {
@@ -2859,15 +2850,6 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.syncInternalConfigs(ctx)
-
-	buyer.InternalConfig = ic
-	db.buyerMutex.Lock()
-	db.buyers[buyerID] = buyer
-	db.buyerMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
