@@ -3376,17 +3376,32 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, us
 // BannedUsers returns the set of banned users for the specified buyer ID.
 func (db *SQL) BannedUsers(ephemeralBuyerID uint64) (map[uint64]bool, error) {
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
+	var sql bytes.Buffer
+	bannedUserList := make(map[uint64]bool)
 
-	db.bannedUserMutex.RLock()
-	bannedUsers, found := db.bannedUsers[buyerID]
-	db.bannedUserMutex.RUnlock()
+	sql.Write([]byte("select user_id from banned_users where buyer_id = "))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
 
-	if !found {
-		return map[uint64]bool{}, &DoesNotExistError{resourceType: "banned user", resourceRef: fmt.Sprintf("%x", buyerID)}
+	rows, err := db.Client.QueryContext(context.Background(), sql.String(), int64(ephemeralBuyerID))
+	if err != nil {
+		level.Error(db.Logger).Log("during", "BannedUsers(): QueryContext returned an error", "err", err)
+		return bannedUserList, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID int64
+		err := rows.Scan(&userID)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "BannedUsers() error parsing user and buyer IDs", "err", err)
+			return bannedUserList, err
+		}
+
+		bannedUserList[uint64(userID)] = true
 	}
 
-	return bannedUsers, nil
+	return bannedUserList, nil
+
 }
 
 type featureFlag struct {
