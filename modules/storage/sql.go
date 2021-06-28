@@ -3310,33 +3310,15 @@ func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userI
 
 	var sql bytes.Buffer
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-
-	db.buyerMutex.RLock()
-	buyer, ok := db.buyers[buyerID]
-	db.buyerMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
-	db.bannedUserMutex.RLock()
-	_, ok = db.bannedUsers[buyerID][userID]
-	db.bannedUserMutex.RUnlock()
-
-	if ok {
-		return &AlreadyExistsError{resourceType: "banned user", resourceRef: fmt.Sprintf("%016x", userID)}
-	}
-
-	sql.Write([]byte("insert into banned_users (user_id, buyer_id) values ($1, $2)"))
-
+	sql.Write([]byte("insert into banned_users (user_id, buyer_id) values ($1, "))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $2))"))
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing AddBannedUser SQL", "err", err)
 		return err
 	}
 
-	result, err := stmt.Exec(int64(userID), buyer.DatabaseID)
+	result, err := stmt.Exec(int64(userID), int64(ephemeralBuyerID))
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error adding banned user", "err", err)
 		return err
@@ -3351,35 +3333,8 @@ func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userI
 		return err
 	}
 
-	db.bannedUserMutex.Lock()
-	if _, ok := db.bannedUsers[buyerID]; !ok {
-		bannedUsers := make(map[uint64]bool)
-		db.bannedUsers[buyerID] = bannedUsers
-	}
-	db.bannedUsers[buyerID][userID] = true
-	db.bannedUserMutex.Unlock()
-
-	// we need to handle the case where the buyer is using the default
+	// TODO: we need to handle the case where the buyer is using the default
 	// route shader (and therefore does not have an entry in db.routeShaders)
-	var rs core.RouteShader
-	db.routeShaderMutex.Lock()
-	if rs, ok = db.routeShaders[buyerID]; !ok {
-		rs = core.NewRouteShader()
-	}
-
-	if len(rs.BannedUsers) == 0 {
-		rs.BannedUsers = make(map[uint64]bool)
-	}
-	rs.BannedUsers[userID] = true
-	db.routeShaders[buyerID] = rs
-	db.routeShaderMutex.Unlock()
-
-	buyer.RouteShader = rs
-	db.buyerMutex.Lock()
-	db.buyers[buyerID] = buyer
-	db.buyerMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 
@@ -3390,26 +3345,8 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, us
 
 	var sql bytes.Buffer
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-	db.buyerMutex.RLock()
-	buyer, ok := db.buyers[buyerID]
-	db.buyerMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
-	db.routeShaderMutex.RLock()
-	rs, ok := db.routeShaders[buyerID]
-	db.routeShaderMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	} else if !rs.BannedUsers[userID] {
-		return &DoesNotExistError{resourceType: "Banned User", resourceRef: fmt.Sprintf("%016x", userID)}
-	}
-
-	sql.Write([]byte("delete from banned_users where user_id = $1 and buyer_id = $2"))
+	sql.Write([]byte("delete from banned_users where user_id = $1 and buyer_id = "))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $2))"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -3417,7 +3354,7 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, us
 		return err
 	}
 
-	result, err := stmt.Exec(int64(userID), buyer.DatabaseID)
+	result, err := stmt.Exec(int64(userID), int64(ephemeralBuyerID))
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing banned user", "err", err)
 		return err
@@ -3431,17 +3368,6 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, us
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.bannedUserMutex.Lock()
-	delete(db.bannedUsers[buyerID], userID)
-	db.bannedUserMutex.Unlock()
-
-	delete(rs.BannedUsers, userID)
-	db.routeShaderMutex.Lock()
-	db.routeShaders[buyerID] = rs
-	db.routeShaderMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 
