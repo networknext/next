@@ -565,12 +565,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
 
-	buyer, err := db.Buyer(ephemeralBuyerID)
-	if err != nil {
-		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
-	}
-
-	sql.Write([]byte("delete from buyers where id = $1"))
+	sql.Write([]byte("delete from buyers where sdk_generated_id = $1"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -578,7 +573,7 @@ func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 		return err
 	}
 
-	result, err := stmt.Exec(buyer.DatabaseID)
+	result, err := stmt.Exec(int64(ephemeralBuyerID))
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing buyer", "err", err)
@@ -2445,11 +2440,9 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	var sql bytes.Buffer
 
-	buyerID := db.buyerIDs[dcMap.BuyerID]
-	buyer := db.buyers[uint64(buyerID)]
-	datacenter := db.datacenters[dcMap.DatacenterID]
-
-	sql.Write([]byte("delete from datacenter_maps where buyer_id = $1 and datacenter_id = $2"))
+	sql.Write([]byte("delete from datacenter_maps where buyer_id = "))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $1) "))
+	sql.Write([]byte("and datacenter_id = (select id from datacenters where hex_id = $2)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2457,7 +2450,7 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		return err
 	}
 
-	result, err := stmt.Exec(buyer.DatabaseID, datacenter.DatabaseID)
+	result, err := stmt.Exec(dcMap.BuyerID, dcMap.DatacenterID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing datacenter map", "err", err)
@@ -2857,22 +2850,9 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-
-	db.internalConfigMutex.RLock()
-	_, ok := db.internalConfigs[buyerID]
-	db.internalConfigMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
-	buyer, ok := db.buyers[buyerID]
-	if !ok {
-		return &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
-	sql.Write([]byte("delete from rs_internal_configs where buyer_id = $1"))
+	buyerID := int64(ephemeralBuyerID)
+	sql.Write([]byte("delete from rs_internal_configs where buyer_id = "))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -2880,7 +2860,7 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		return err
 	}
 
-	result, err := stmt.Exec(buyer.DatabaseID)
+	result, err := stmt.Exec(buyerID)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing internal config", "err", err)
@@ -2896,12 +2876,6 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		return err
 	}
 
-	db.internalConfigMutex.Lock()
-	delete(db.internalConfigs, buyerID)
-	db.internalConfigMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 }
 
@@ -2912,157 +2886,143 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 	var stmt *sql.Stmt
 	var err error
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-	ic, ok := db.internalConfigs[buyerID]
-	if !ok {
-		return &DoesNotExistError{resourceType: "internal config", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
-	db.buyerMutex.RLock()
-	buyer, ok := db.buyers[buyerID]
-	db.buyerMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
 	switch field {
 	case "RouteSelectThreshold":
 		routeSelectThreshold, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RouteSelectThreshold: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set route_select_threshold=$1 where buyer_id=$2"))
-		args = append(args, routeSelectThreshold, buyer.DatabaseID)
-		ic.RouteSelectThreshold = routeSelectThreshold
+		updateSQL.Write([]byte("update rs_internal_configs set route_select_threshold=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, routeSelectThreshold, ephemeralBuyerID)
 	case "RouteSwitchThreshold":
 		routeSwitchThreshold, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RouteSwitchThreshold: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set route_switch_threshold=$1 where buyer_id=$2"))
-		args = append(args, routeSwitchThreshold, buyer.DatabaseID)
-		ic.RouteSwitchThreshold = routeSwitchThreshold
+		updateSQL.Write([]byte("update rs_internal_configs set route_switch_threshold=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, routeSwitchThreshold, ephemeralBuyerID)
 	case "MaxLatencyTradeOff":
 		maxLatencyTradeOff, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("MaxLatencyTradeOff: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set max_latency_tradeoff=$1 where buyer_id=$2"))
-		args = append(args, maxLatencyTradeOff, buyer.DatabaseID)
-		ic.MaxLatencyTradeOff = maxLatencyTradeOff
+		updateSQL.Write([]byte("update rs_internal_configs set max_latency_tradeoff=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, maxLatencyTradeOff, ephemeralBuyerID)
 	case "RTTVeto_Default":
 		rttVetoDefault, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RTTVeto_Default: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_default=$1 where buyer_id=$2"))
-		args = append(args, rttVetoDefault, buyer.DatabaseID)
-		ic.RTTVeto_Default = rttVetoDefault
+		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_default=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, rttVetoDefault, ephemeralBuyerID)
 	case "RTTVeto_PacketLoss":
 		rttVetoPacketLoss, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RTTVeto_PacketLoss: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_packetloss=$1 where buyer_id=$2"))
-		args = append(args, rttVetoPacketLoss, buyer.DatabaseID)
-		ic.RTTVeto_PacketLoss = rttVetoPacketLoss
+		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_packetloss=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, rttVetoPacketLoss, ephemeralBuyerID)
 	case "RTTVeto_Multipath":
 		rttVetoMultipath, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RTTVeto_Multipath: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_multipath=$1 where buyer_id=$2"))
-		args = append(args, rttVetoMultipath, buyer.DatabaseID)
-		ic.RTTVeto_Multipath = rttVetoMultipath
+		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_multipath=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, rttVetoMultipath, ephemeralBuyerID)
 	case "MultipathOverloadThreshold":
 		multipathOverloadThreshold, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("MultipathOverloadThreshold: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set multipath_overload_threshold=$1 where buyer_id=$2"))
-		args = append(args, multipathOverloadThreshold, buyer.DatabaseID)
-		ic.MultipathOverloadThreshold = multipathOverloadThreshold
+		updateSQL.Write([]byte("update rs_internal_configs set multipath_overload_threshold=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, multipathOverloadThreshold, ephemeralBuyerID)
 	case "TryBeforeYouBuy":
 		tryBeforeYouBuy, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("TryBeforeYouBuy: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set try_before_you_buy=$1 where buyer_id=$2"))
-		args = append(args, tryBeforeYouBuy, buyer.DatabaseID)
-		ic.TryBeforeYouBuy = tryBeforeYouBuy
+		updateSQL.Write([]byte("update rs_internal_configs set try_before_you_buy=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, tryBeforeYouBuy, ephemeralBuyerID)
 	case "ForceNext":
 		forceNext, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("ForceNext: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set force_next=$1 where buyer_id=$2"))
-		args = append(args, forceNext, buyer.DatabaseID)
-		ic.ForceNext = forceNext
+		updateSQL.Write([]byte("update rs_internal_configs set force_next=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, forceNext, ephemeralBuyerID)
 	case "LargeCustomer":
 		largeCustomer, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("LargeCustomer: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set large_customer=$1 where buyer_id=$2"))
-		args = append(args, largeCustomer, buyer.DatabaseID)
-		ic.LargeCustomer = largeCustomer
+		updateSQL.Write([]byte("update rs_internal_configs set large_customer=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, largeCustomer, ephemeralBuyerID)
 	case "Uncommitted":
 		uncommitted, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("Uncommitted: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set is_uncommitted=$1 where buyer_id=$2"))
-		args = append(args, uncommitted, buyer.DatabaseID)
-		ic.Uncommitted = uncommitted
+		updateSQL.Write([]byte("update rs_internal_configs set is_uncommitted=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, uncommitted, ephemeralBuyerID)
 	case "HighFrequencyPings":
 		highFrequencyPings, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("HighFrequencyPings: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set high_frequency_pings=$1 where buyer_id=$2"))
-		args = append(args, highFrequencyPings, buyer.DatabaseID)
-		ic.HighFrequencyPings = highFrequencyPings
+		updateSQL.Write([]byte("update rs_internal_configs set high_frequency_pings=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, highFrequencyPings, ephemeralBuyerID)
 	case "MaxRTT":
 		maxRTT, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("MaxRTT: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id=$2"))
-		args = append(args, maxRTT, buyer.DatabaseID)
-		ic.MaxRTT = maxRTT
+		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, maxRTT, ephemeralBuyerID)
 	case "RouteDiversity":
 		routeDiversity, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("RouteDiversity: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set route_diversity=$1 where buyer_id=$2"))
-		args = append(args, routeDiversity, buyer.DatabaseID)
-		ic.RouteDiversity = routeDiversity
+		updateSQL.Write([]byte("update rs_internal_configs set route_diversity=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, routeDiversity, ephemeralBuyerID)
 	case "MultipathThreshold":
 		multipathThreshold, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("MultipathThreshold: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set multipath_threshold=$1 where buyer_id=$2"))
-		args = append(args, multipathThreshold, buyer.DatabaseID)
-		ic.MultipathThreshold = multipathThreshold
+		updateSQL.Write([]byte("update rs_internal_configs set multipath_threshold=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, multipathThreshold, ephemeralBuyerID)
 	case "EnableVanityMetrics":
 		enableVanityMetrics, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("EnableVanityMetrics: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set enable_vanity_metrics=$1 where buyer_id=$2"))
-		args = append(args, enableVanityMetrics, buyer.DatabaseID)
-		ic.EnableVanityMetrics = enableVanityMetrics
+		updateSQL.Write([]byte("update rs_internal_configs set enable_vanity_metrics=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, enableVanityMetrics, ephemeralBuyerID)
 	case "ReducePacketLossMinSliceNumber":
 		reducePacketLossMinSliceNumber, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("ReducePacketLossMinSliceNumber: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update rs_internal_configs set reduce_pl_min_slice_number=$1 where buyer_id=$2"))
-		args = append(args, reducePacketLossMinSliceNumber, buyer.DatabaseID)
-		ic.ReducePacketLossMinSliceNumber = reducePacketLossMinSliceNumber
+		updateSQL.Write([]byte("update rs_internal_configs set reduce_pl_min_slice_number=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, reducePacketLossMinSliceNumber, ephemeralBuyerID)
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
@@ -3090,36 +3050,12 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		return err
 	}
 
-	db.internalConfigMutex.Lock()
-	db.internalConfigs[buyerID] = ic
-	db.internalConfigMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 }
 
 func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemeralBuyerID uint64) error {
 
 	var sql bytes.Buffer
-
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-
-	db.routeShaderMutex.RLock()
-	_, ok := db.routeShaders[buyerID]
-	db.routeShaderMutex.RUnlock()
-
-	if ok {
-		return &AlreadyExistsError{resourceType: "RouteShader", resourceRef: buyerID}
-	}
-
-	db.buyerMutex.RLock()
-	buyer, ok := db.buyers[buyerID]
-	db.buyerMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
 
 	routeShader := sqlRouteShader{
 		ABTest:                    rs.ABTest,
@@ -3142,7 +3078,8 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
 	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, packet_loss_sustained, buyer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, )"))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $15)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -3165,7 +3102,7 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		routeShader.ReduceJitter,
 		routeShader.SelectionPercent,
 		routeShader.PacketLossSustained,
-		buyer.DatabaseID,
+		int64(ephemeralBuyerID),
 	)
 
 	if err != nil {
@@ -3182,17 +3119,6 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		return err
 	}
 
-	db.routeShaderMutex.Lock()
-	db.routeShaders[buyerID] = rs
-	db.routeShaderMutex.Unlock()
-
-	buyer.RouteShader = rs
-	db.buyerMutex.Lock()
-	db.buyers[buyer.ID] = buyer
-	db.buyerMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 
 }
@@ -3204,133 +3130,119 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 	var stmt *sql.Stmt
 	var err error
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-	rs, ok := db.routeShaders[buyerID]
-	if !ok {
-		return &DoesNotExistError{resourceType: "route shader", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
-	db.buyerMutex.RLock()
-	buyer, ok := db.buyers[buyerID]
-	db.buyerMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "Buyer", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
 	switch field {
 	case "ABTest":
 		abTest, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("ABTest: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set ab_test=$1 where buyer_id=$2"))
-		args = append(args, abTest, buyer.DatabaseID)
-		rs.ABTest = abTest
+		updateSQL.Write([]byte("update route_shaders set ab_test=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, abTest, ephemeralBuyerID)
 	case "AcceptableLatency":
 		acceptableLatency, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("AcceptableLatency: %v is not a valid int32 type ( %T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set acceptable_latency=$1 where buyer_id=$2"))
-		args = append(args, acceptableLatency, buyer.DatabaseID)
-		rs.AcceptableLatency = acceptableLatency
+		updateSQL.Write([]byte("update route_shaders set acceptable_latency=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, acceptableLatency, ephemeralBuyerID)
 	case "AcceptablePacketLoss":
 		acceptablePacketLoss, ok := value.(float32)
 		if !ok {
 			return fmt.Errorf("AcceptablePacketLoss: %v is not a valid float32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set acceptable_packet_loss=$1 where buyer_id=$2"))
-		args = append(args, acceptablePacketLoss, buyer.DatabaseID)
-		rs.AcceptablePacketLoss = acceptablePacketLoss
+		updateSQL.Write([]byte("update route_shaders set acceptable_packet_loss=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, acceptablePacketLoss, ephemeralBuyerID)
 	case "BandwidthEnvelopeDownKbps":
 		bandwidthEnvelopeDownKbps, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("BandwidthEnvelopeDownKbps: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set bw_envelope_down_kbps=$1 where buyer_id=$2"))
-		args = append(args, bandwidthEnvelopeDownKbps, buyer.DatabaseID)
-		rs.BandwidthEnvelopeDownKbps = bandwidthEnvelopeDownKbps
+		updateSQL.Write([]byte("update route_shaders set bw_envelope_down_kbps=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, bandwidthEnvelopeDownKbps, ephemeralBuyerID)
 	case "BandwidthEnvelopeUpKbps":
 		bandwidthEnvelopeUpKbps, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("BandwidthEnvelopeUpKbps: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set bw_envelope_up_kbps=$1 where buyer_id=$2"))
-		args = append(args, bandwidthEnvelopeUpKbps, buyer.DatabaseID)
-		rs.BandwidthEnvelopeUpKbps = bandwidthEnvelopeUpKbps
+		updateSQL.Write([]byte("update route_shaders set bw_envelope_up_kbps=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, bandwidthEnvelopeUpKbps, ephemeralBuyerID)
 	case "DisableNetworkNext":
 		disableNetworkNext, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("DisableNetworkNext: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set disable_network_next=$1 where buyer_id=$2"))
-		args = append(args, disableNetworkNext, buyer.DatabaseID)
-		rs.DisableNetworkNext = disableNetworkNext
+		updateSQL.Write([]byte("update route_shaders set disable_network_next=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, disableNetworkNext, ephemeralBuyerID)
 	case "LatencyThreshold":
 		latencyThreshold, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("LatencyThreshold: %v is not a valid int32 type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set latency_threshold=$1 where buyer_id=$2"))
-		args = append(args, latencyThreshold, buyer.DatabaseID)
-		rs.LatencyThreshold = latencyThreshold
+		updateSQL.Write([]byte("update route_shaders set latency_threshold=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, latencyThreshold, ephemeralBuyerID)
 	case "Multipath":
 		multipath, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("Multipath: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set multipath=$1 where buyer_id=$2"))
-		args = append(args, multipath, buyer.DatabaseID)
-		rs.Multipath = multipath
+		updateSQL.Write([]byte("update route_shaders set multipath=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, multipath, ephemeralBuyerID)
 	case "ProMode":
 		proMode, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("ProMode: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set pro_mode=$1 where buyer_id=$2"))
-		args = append(args, proMode, buyer.DatabaseID)
-		rs.ProMode = proMode
+		updateSQL.Write([]byte("update route_shaders set pro_mode=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, proMode, ephemeralBuyerID)
 	case "ReduceLatency":
 		reduceLatency, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("ReduceLatency: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set reduce_latency=$1 where buyer_id=$2"))
-		args = append(args, reduceLatency, buyer.DatabaseID)
-		rs.ReduceLatency = reduceLatency
+		updateSQL.Write([]byte("update route_shaders set reduce_latency=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, reduceLatency, ephemeralBuyerID)
 	case "ReducePacketLoss":
 		reducePacketLoss, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("ReducePacketLoss: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set reduce_packet_loss=$1 where buyer_id=$2"))
-		args = append(args, reducePacketLoss, buyer.DatabaseID)
-		rs.ReducePacketLoss = reducePacketLoss
+		updateSQL.Write([]byte("update route_shaders set reduce_packet_loss=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, reducePacketLoss, ephemeralBuyerID)
 	case "ReduceJitter":
 		reduceJitter, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("ReduceJitter: %v is not a valid boolean type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set reduce_jitter=$1 where buyer_id=$2"))
-		args = append(args, reduceJitter, buyer.DatabaseID)
-		rs.ReduceJitter = reduceJitter
+		updateSQL.Write([]byte("update route_shaders set reduce_jitter=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, reduceJitter, ephemeralBuyerID)
 	case "SelectionPercent":
 		selectionPercent, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("SelectionPercent: %v is not a valid int type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id=$2"))
-		args = append(args, selectionPercent, buyer.DatabaseID)
-		rs.SelectionPercent = selectionPercent
+		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, selectionPercent, ephemeralBuyerID)
 	case "PacketLossSustained":
 		packetLossSustained, ok := value.(float32)
 		if !ok {
 			return fmt.Errorf("PacketLossSustained: %v is not a valid float type (%T)", value, value)
 		}
-		updateSQL.Write([]byte("update route_shaders set packet_loss_sustained=$1 where buyer_id=$2"))
-		args = append(args, packetLossSustained, buyer.DatabaseID)
-		rs.PacketLossSustained = packetLossSustained
+		updateSQL.Write([]byte("update route_shaders set packet_loss_sustained=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, packetLossSustained, ephemeralBuyerID)
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
 
@@ -3358,12 +3270,6 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		return err
 	}
 
-	db.routeShaderMutex.Lock()
-	db.routeShaders[buyerID] = rs
-	db.routeShaderMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
-
 	return nil
 
 }
@@ -3371,21 +3277,8 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
 
-	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-	db.routeShaderMutex.RLock()
-	_, ok := db.routeShaders[buyerID]
-	db.routeShaderMutex.RUnlock()
-
-	if !ok {
-		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
-	buyer, ok := db.buyers[buyerID]
-	if !ok {
-		return &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
-	}
-
-	sql.Write([]byte("delete from route_shaders where buyer_id = $1"))
+	sql.Write([]byte("delete from route_shaders where buyer_id = "))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
@@ -3393,7 +3286,7 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) e
 		return err
 	}
 
-	result, err := stmt.Exec(buyer.DatabaseID)
+	result, err := stmt.Exec(int64(ephemeralBuyerID))
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing route shader", "err", err)
@@ -3408,12 +3301,6 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) e
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	db.routeShaderMutex.Lock()
-	delete(db.routeShaders, buyerID)
-	db.routeShaderMutex.Unlock()
-
-	db.IncrementSequenceNumber(ctx)
 
 	return nil
 }
