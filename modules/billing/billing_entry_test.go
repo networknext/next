@@ -130,6 +130,8 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		DatacenterNotEnabled:            false,
 		BuyerNotLive:                    false,
 		StaleRouteMatrix:                false,
+		NextBytesUp:                     rand.Uint64(),
+		NextBytesDown:                   rand.Uint64(),
 	}
 }
 
@@ -175,14 +177,14 @@ func TestSerializeBillingEntry2_Empty(t *testing.T) {
 	writeStream, err := encoding.CreateWriteStream(buffer[:])
 	assert.NoError(t, err)
 
-	writeObject := &billing.BillingEntry2{}
+	writeObject := &billing.BillingEntry2{Version: billing.BillingEntryVersion2}
 	err = writeObject.Serialize(writeStream)
 	assert.NoError(t, err)
 
 	writeStream.Flush()
 
 	readStream := encoding.CreateReadStream(buffer[:])
-	readObject := &billing.BillingEntry2{}
+	readObject := &billing.BillingEntry2{Version: billing.BillingEntryVersion2}
 	err = readObject.Serialize(readStream)
 	assert.NoError(t, err)
 
@@ -193,7 +195,7 @@ func TestWriteBillingEntry2_Empty(t *testing.T) {
 
 	t.Parallel()
 
-	entry := &billing.BillingEntry2{}
+	entry := &billing.BillingEntry2{Version: billing.BillingEntryVersion2}
 	data, err := billing.WriteBillingEntry2(entry)
 
 	assert.NotEmpty(t, data)
@@ -204,13 +206,13 @@ func TestReadBillingEntry2_Empty(t *testing.T) {
 
 	t.Parallel()
 
-	entry := &billing.BillingEntry2{}
+	entry := &billing.BillingEntry2{Version: billing.BillingEntryVersion2}
 	data, err := billing.WriteBillingEntry2(entry)
 
 	assert.NotEmpty(t, data)
 	assert.NoError(t, err)
 
-	entryRead := &billing.BillingEntry2{}
+	entryRead := &billing.BillingEntry2{Version: billing.BillingEntryVersion2}
 
 	err = billing.ReadBillingEntry2(entryRead, data)
 	assert.NoError(t, err)

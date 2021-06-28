@@ -1168,7 +1168,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 // ------------------------------------------------------------------------
 
 const (
-	BillingEntryVersion2 = uint32(0)
+	BillingEntryVersion2 = uint32(1)
 
 	MaxBillingEntry2Bytes = 4096
 )
@@ -1242,6 +1242,8 @@ type BillingEntry2 struct {
 	RTTReduction        bool
 	PacketLossReduction bool
 	RouteChanged        bool
+	NextBytesUp         uint64
+	NextBytesDown       uint64
 
 	// error state only
 
@@ -1420,6 +1422,21 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		stream.SerializeBool(&entry.BuyerNotLive)
 		stream.SerializeBool(&entry.StaleRouteMatrix)
 
+	}
+
+	/*
+		Version 1
+
+		Include Next Bytes Up/Down for slices on next.
+	*/
+	if entry.Version >= uint32(1) {
+
+		if entry.Next {
+
+			stream.SerializeUint64(&entry.NextBytesUp)
+			stream.SerializeUint64(&entry.NextBytesDown)
+
+		}
 	}
 
 	return stream.Error()
@@ -2041,6 +2058,10 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 		if entry.RouteChanged {
 			e["routeChanged"] = true
 		}
+
+		e["nextBytesUp"] = int(entry.NextBytesUp)
+		e["nextBytesDown"] = int(entry.NextBytesDown)
+
 	}
 
 	/*

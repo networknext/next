@@ -242,14 +242,8 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		// current page date is today - page number * 1 day. Add 1 day to compensate for filter excluding end date
 		currentPageDate := today.Add(-time.Duration((reply.Page - 1) * 24 * int(time.Hour)))
 
-		fmt.Println()
-
-		fmt.Printf("Current page date: %s\n", currentPageDate.String())
-
 		// get next page date
 		nextPageDate := today.Add(-time.Duration(reply.Page * 24 * int(time.Hour)))
-
-		fmt.Printf("Next page date: %s\n", nextPageDate.String())
 
 		currentPage := reply.Page
 
@@ -336,9 +330,6 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 		}
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
-		fmt.Printf("Found %d sessions in bigtable\n", len(rows))
-		fmt.Printf("Found %d sessions so far\n", len(btRows))
-
 		if reply.Page >= MaxBigTableDays {
 			// We are out of pages
 			break
@@ -348,9 +339,6 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 
 		nextPageDate = nextPageDate.Add(-24 * time.Hour)
 		currentPageDate = currentPageDate.Add(-24 * time.Hour)
-
-		fmt.Printf("Current page date: %s\n", currentPageDate.String())
-		fmt.Printf("Next page date: %s\n", nextPageDate.String())
 
 		// Gets the rows within [nextPageDate, currentPageDate)
 		chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
@@ -471,6 +459,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		redisClient.Flush()
 
 		for _, buyer := range buyers {
+
 			firstCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
@@ -478,7 +467,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
-			firstNextCount += firstCount
 
 			secondCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
@@ -487,16 +475,20 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
-			secondNextCount += secondCount
 
+			// If ghost army, scale the redis number and add that to the total otherwise just add the redis number to the total
 			if buyer.ID == ghostArmyBuyerID {
 				if firstCount > secondCount {
 					ghostArmyNextCount = firstCount * int(ghostArmyNextScaler)
 				} else {
 					ghostArmyNextCount = secondCount * int(ghostArmyNextScaler)
 				}
+
 				firstNextCount += ghostArmyNextCount
 				secondNextCount += ghostArmyNextCount
+			} else {
+				firstNextCount += firstCount
+				secondNextCount += secondCount
 			}
 		}
 		reply.Next = firstNextCount
@@ -515,6 +507,13 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		redisClient.Flush()
 
 		for _, buyer := range buyers {
+			// If ghost army, use the next counts in place of the direct counts (ghost army doesn't have direct sessions)
+			if buyer.ID == ghostArmyBuyerID {
+				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+				continue
+			}
+
 			firstCounts, err := redis.Strings(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive first session count: %v", err)
@@ -551,13 +550,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				}
 
 				secondTotalCount += int(secondCount)
-			}
-
-			if buyer.ID == ghostArmyBuyerID {
-				// scale by next values because ghost army data contains 0 direct
-				// if ghost army is turned off then this number will be 0 and have no effect
-				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
 			}
 		}
 
@@ -606,14 +598,15 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 
+		// If ghost army, scale the number coming from redis and use that
 		if buyer.ID == ghostArmyBuyerID {
 			if firstNextCount > secondNextCount {
 				ghostArmyNextCount = firstNextCount * int(ghostArmyNextScaler)
 			} else {
 				ghostArmyNextCount = secondNextCount * int(ghostArmyNextScaler)
 			}
-			firstNextCount += ghostArmyNextCount
-			secondNextCount += ghostArmyNextCount
+			firstNextCount = ghostArmyNextCount
+			secondNextCount = ghostArmyNextCount
 		}
 
 		reply.Next = firstNextCount
@@ -624,49 +617,48 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		var firstTotalCount int
 		var secondTotalCount int
 
-		firstCounts, err := redis.Strings(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts")
-			return err
-		}
-
-		for i := 0; i < len(firstCounts); i++ {
-			firstCount, err := strconv.ParseUint(firstCounts[i], 10, 32)
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			firstTotalCount += int(firstCount)
-		}
-
-		secondCounts, err := redis.Strings(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts")
-			return err
-		}
-
-		for i := 0; i < len(secondCounts); i++ {
-			secondCount, err := strconv.ParseUint(secondCounts[i], 10, 32)
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			secondTotalCount += int(secondCount)
-		}
-
 		if buyer.ID == ghostArmyBuyerID {
-			// scale by next values because ghost army data contains 0 direct
-			// if ghost army is turned off then this number will be 0 and have no effect
-			firstTotalCount += firstNextCount*int(ghostArmyScalar) + firstNextCount
-			secondTotalCount += secondNextCount*int(ghostArmyScalar) + secondNextCount
+			// If ghost army, use the next counts in place of the direct counts (ghost army doesn't have direct sessions)
+			firstTotalCount = ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+			secondTotalCount = ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+		} else {
+			firstCounts, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts")
+				return err
+			}
+
+			for i := 0; i < len(firstCounts); i++ {
+				firstCount, err := strconv.ParseUint(firstCounts[i], 10, 32)
+				if err != nil {
+					err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				firstTotalCount += int(firstCount)
+			}
+
+			secondCounts, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts")
+				return err
+			}
+
+			for i := 0; i < len(secondCounts); i++ {
+				secondCount, err := strconv.ParseUint(secondCounts[i], 10, 32)
+				if err != nil {
+					err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				secondTotalCount += int(secondCount)
+			}
 		}
 
 		totalCount := firstTotalCount

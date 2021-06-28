@@ -2196,7 +2196,7 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 			if len(args) > 0 {
 				output = args[0]
 			}
-			saveCostMatrix(env, output)
+			getCostMatrix(env, output)
 			fmt.Printf("Cost matrix from %s saved to %s\n", env.Name, output)
 			return nil
 		},
