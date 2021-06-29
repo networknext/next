@@ -2829,8 +2829,8 @@ func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, err
 	querySQL.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
 	querySQL.Write([]byte("rtt_veto_multipath, rtt_veto_packetloss, try_before_you_buy, force_next, "))
 	querySQL.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
-	querySQL.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number, "))
-	querySQL.Write([]byte("buyer_id from rs_internal_configs where buyer_id = ( "))
+	querySQL.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number "))
+	querySQL.Write([]byte("from rs_internal_configs where buyer_id = ( "))
 	querySQL.Write([]byte("select id from buyers where sdk_generated_id = $1)"))
 
 	row := db.Client.QueryRow(querySQL.String(), int64(ephemeralBuyerID))
