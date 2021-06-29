@@ -29,52 +29,10 @@ import (
 // 	Relay.ID     : Internal-use, calculated from public IP:Port
 //  Relay.RelayID: Database primary key for the relays table
 //
-// The PK is required to enforce business rules in the DB. The *IDs
-// maps below provide an easy look-up mechanism for the PK. This also
-// enforces the "unique" nature of the internally generated IDs (map
-// keys must be unique).
+// The PK is required to enforce business rules in the DB.
 type SQL struct {
 	Client *sql.DB
 	Logger log.Logger
-
-	// datacenters    map[uint64]routing.Datacenter
-	// relays         map[uint64]routing.Relay
-	// customers      map[string]routing.Customer
-	// buyers         map[uint64]routing.Buyer // this index is in fact the database ID cast to uint64
-	// sellers        map[string]routing.Seller
-	// datacenterMaps map[uint64]routing.DatacenterMap
-
-	// internalConfigs map[uint64]core.InternalConfig // index: buyer ID
-	// routeShaders    map[uint64]core.RouteShader    // index: buyer ID
-	// bannedUsers     map[uint64]map[uint64]bool     // index: buyerID
-
-	// datacenterMutex     sync.RWMutex
-	// relayMutex          sync.RWMutex
-	// customerMutex       sync.RWMutex
-	// buyerMutex          sync.RWMutex
-	// sellerMutex         sync.RWMutex
-	// datacenterMapMutex  sync.RWMutex
-	// sequenceNumberMutex sync.RWMutex
-	// internalConfigMutex sync.RWMutex
-	// routeShaderMutex    sync.RWMutex
-	// bannedUserMutex     sync.RWMutex
-
-	// //  int64: PostgreSQL primary key
-	// // uint64: backend/storer internal ID
-	// datacenterIDs map[int64]uint64
-	// relayIDs      map[int64]uint64
-	// customerIDs   map[int64]string
-	// buyerIDs      map[uint64]int64 // buyerIDs map is inverted
-	// sellerIDs     map[int64]string
-
-	// datacenterIDsMutex  sync.RWMutex
-	// relayIDsMutex       sync.RWMutex
-	// customerIDsMutex    sync.RWMutex
-	// buyerIDsMutex       sync.RWMutex
-	// sellerIDsMutex      sync.RWMutex
-	// datacenterMapsMutex sync.RWMutex
-
-	// SyncSequenceNumber int64
 }
 
 type sqlBuyer struct {
@@ -166,37 +124,6 @@ func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 	}
 
 }
-
-// CustomerWithName retrieves a record using the customer's name
-// func (db *SQL) CustomerWithName(name string) (routing.Customer, error) {
-// 	var querySQL bytes.Buffer
-// 	var customer sqlCustomer
-
-// 	querySQL.Write([]byte("select id, automatic_signin_domain,"))
-// 	querySQL.Write([]byte("customer_name, customer_code from customers where customer_name = $1"))
-
-// 	row := db.Client.QueryRow(querySQL.String(), name)
-// 	err := row.Scan(&customer.ID,
-// 		&customer.AutomaticSignInDomains,
-// 		&customer.Name,
-// 		&customer.CustomerCode)
-// 	switch err {
-// 	case sql.ErrNoRows:
-// 		level.Error(db.Logger).Log("during", "CustomerWithName() no rows were returned!")
-// 		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%s", name)}
-// 	case nil:
-// 		c := routing.Customer{
-// 			Code:                   customer.CustomerCode,
-// 			Name:                   customer.Name,
-// 			AutomaticSignInDomains: customer.AutomaticSignInDomains,
-// 			DatabaseID:             customer.ID,
-// 		}
-// 		return c, nil
-// 	default:
-// 		level.Error(db.Logger).Log("during", "CustomerWithName() QueryRow returned an error: %v", err)
-// 		return routing.Customer{}, err
-// 	}
-// }
 
 // Customers retrieves the full list
 // TODO: not covered by sql_test.go
@@ -648,58 +575,6 @@ func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 	return nil
 }
 
-// SetBuyer updates a subset of the fields in the buyers table and
-// updates the local copy.
-//		Live
-//		Debug
-//		PublicKey
-// func (db *SQL) SetBuyer(ctx context.Context, b routing.Buyer) error {
-
-// 	var sql bytes.Buffer
-
-// 	ephemeralBuyerID := b.ID
-// 	buyerID := db.buyerIDs[ephemeralBuyerID]
-
-// 	db.buyerMutex.RLock()
-// 	_, ok := db.buyers[uint64(buyerID)]
-// 	db.buyerMutex.RUnlock()
-
-// 	if !ok {
-// 		return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", b.ID)}
-// 	}
-
-// 	sql.Write([]byte("update buyers set (is_live_customer, debug, public_key) = ($1, $2, $3) where id = $4 "))
-
-// 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error preparing SetBuyer SQL", "err", err)
-// 		return err
-// 	}
-
-// 	result, err := stmt.Exec(b.Live, b.Debug, b.PublicKey, b.DatabaseID)
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error modifying buyer record", "err", err)
-// 		return err
-// 	}
-// 	rows, err := result.RowsAffected()
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-// 		return err
-// 	}
-// 	if rows != 1 {
-// 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-// 		return err
-// 	}
-
-// 	db.buyerMutex.Lock()
-// 	db.buyers[uint64(b.DatabaseID)] = b
-// 	db.buyerMutex.Unlock()
-
-// 	db.IncrementSequenceNumber(ctx)
-
-// 	return nil
-// }
-
 // Seller gets a copy of a seller with the specified seller ID,
 // and returns an empty seller and an error if a seller with that ID doesn't exist in storage.
 func (db *SQL) Seller(id string) (routing.Seller, error) {
@@ -941,55 +816,6 @@ func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 	return nil
 }
 
-// SetSeller updates a subset of the sellers table entry:
-//		Name		(not yet implemented, derived from parent customer)
-//		CompanyCode (not yet implemented, awaiting business rule decision)
-//		IngressPriceNibblinsPerGB
-//  	EgressPriceNibblinsPerGB
-// func (db *SQL) SetSeller(ctx context.Context, seller routing.Seller) error {
-
-// 	var sql bytes.Buffer
-
-// 	db.sellerMutex.RLock()
-// 	_, ok := db.sellers[seller.ID]
-// 	db.sellerMutex.RUnlock()
-
-// 	if !ok {
-// 		return &DoesNotExistError{resourceType: "seller", resourceRef: fmt.Sprintf("%s", seller.ID)}
-// 	}
-
-// 	sql.Write([]byte("update sellers set public_egress_price = $1 where id = $2 "))
-
-// 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error preparing SetBuyer SQL", "err", err)
-// 		return err
-// 	}
-
-// 	result, err := stmt.Exec(seller.EgressPriceNibblinsPerGB, seller.DatabaseID)
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error modifying seller record", "err", err)
-// 		return err
-// 	}
-// 	rows, err := result.RowsAffected()
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-// 		return err
-// 	}
-// 	if rows != 1 {
-// 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-// 		return err
-// 	}
-
-// 	db.sellerMutex.Lock()
-// 	db.sellers[seller.ID] = seller
-// 	db.sellerMutex.Unlock()
-
-// 	db.IncrementSequenceNumber(ctx)
-
-// 	return nil
-// }
-
 // BuyerIDFromCustomerName is called by the SetCustomerLink endpoint, which is deprecated.
 func (db *SQL) BuyerIDFromCustomerName(ctx context.Context, customerName string) (uint64, error) {
 	return 0, fmt.Errorf("BuyerIDFromCustomerName() not implemented in SQL Storer")
@@ -1213,16 +1039,6 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 
 // Relays returns a copy of all stored relays.
 func (db *SQL) Relays() []routing.Relay {
-	// db.relayMutex.RLock()
-	// defer db.relayMutex.RUnlock()
-
-	// var relays []routing.Relay
-	// for _, relay := range db.relays {
-	// 	relays = append(relays, relay)
-	// }
-
-	// sort.Slice(relays, func(i int, j int) bool { return relays[i].ID < relays[j].ID })
-	// return relays
 
 	var sqlQuery bytes.Buffer
 	var relay sqlRelay
@@ -1238,9 +1054,6 @@ func (db *SQL) Relays() []routing.Relay {
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
 	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays "))
-	// sql.Write([]byte("inner join relay_states on relays.relay_state = relay_states.id "))
-	// sql.Write([]byte("inner join machine_types on relays.machine_type = machine_types.id "))
-	// sql.Write([]byte("inner join bw_billing_rules on relays.bw_billing_rule = bw_billing_rules.id "))
 
 	rows, err := db.Client.QueryContext(context.Background(), sqlQuery.String())
 	if err != nil {
@@ -1571,7 +1384,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set bw_billing_rule=$1 where id=$2"))
 		args = append(args, int64(bwRule), relay.DatabaseID)
-		// already checked int validity above
 
 	case "ContractTerm":
 		term, ok := value.(float64)
@@ -1755,7 +1567,6 @@ type sqlRelay struct {
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
 func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
-	// fmt.Printf("AddRelay() r: %s\n", r.String())
 	var sqlQuery bytes.Buffer
 	var err error
 
@@ -2282,70 +2093,6 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 	return nil
 }
 
-// SetDatacenter updates a subset of fields in the datacenters table.
-//		Name
-//		Enabled
-//		Latitude
-//		Longitude
-// func (db *SQL) SetDatacenter(ctx context.Context, d routing.Datacenter) error {
-
-// 	var sql bytes.Buffer
-
-// 	db.datacenterMutex.RLock()
-// 	_, ok := db.datacenters[d.ID]
-// 	db.datacenterMutex.RUnlock()
-
-// 	if !ok {
-// 		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%016x", d.ID)}
-// 	}
-
-// 	dc := sqlDatacenter{
-// 		Name:      d.Name,
-// 		Latitude:  d.Location.Latitude,
-// 		Longitude: d.Location.Longitude,
-// 		SellerID:  d.SellerID,
-// 	}
-
-// 	sql.Write([]byte("update datacenters set ("))
-// 	sql.Write([]byte("display_name, latitude, longitude, "))
-// 	sql.Write([]byte("seller_id ) = ($1, $2, $3, $4) where id = $5"))
-
-// 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error preparing SetDatacenter SQL", "err", err)
-// 		return err
-// 	}
-
-// 	result, err := stmt.Exec(dc.Name,
-// 		dc.Latitude,
-// 		dc.Longitude,
-// 		dc.SellerID,
-// 		d.DatabaseID,
-// 	)
-
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error modifying datacenter", "err", err)
-// 		return err
-// 	}
-// 	rows, err := result.RowsAffected()
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-// 		return err
-// 	}
-// 	if rows != 1 {
-// 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-// 		return err
-// 	}
-
-// 	db.datacenterMutex.Lock()
-// 	db.datacenters[d.ID] = d
-// 	db.datacenterMutex.Unlock()
-
-// 	db.IncrementSequenceNumber(ctx)
-
-// 	return nil
-// }
-
 // GetDatacenterMapsForBuyer returns a map of datacenter aliases in use for a given
 // (internally generated) buyerID. The map is indexed by the datacenter ID. Returns
 // an empty map if there are no aliases for that buyerID.
@@ -2445,81 +2192,6 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	return nil
 }
 
-// func (db *SQL) UpdateDatacenterMap(ctx context.Context, ephemeralBuyerID uint64, datacenterID uint64, field string, value interface{}) error {
-// 	var updateSQL bytes.Buffer
-// 	var args []interface{}
-// 	var stmt *sql.Stmt
-// 	var err error
-
-// 	dcmID := crypto.HashID(fmt.Sprintf("%016x", ephemeralBuyerID) + fmt.Sprintf("%016x", datacenterID))
-// 	workingDatacenterMap, ok := db.datacenterMaps[dcmID]
-// 	if !ok {
-// 		return fmt.Errorf("Datacenter map for buyerID %016x, datacenterID %016x does not exist", ephemeralBuyerID, datacenterID)
-// 	}
-
-// 	buyerID := uint64(db.buyerIDs[ephemeralBuyerID])
-// 	// if the dcMap exists then the buyer and datacenter IDs are legit
-// 	originalDatacenter := db.datacenters[datacenterID]
-// 	originalBuyer := db.buyers[buyerID]
-
-// 	switch field {
-// 	case "HexDatacenterID":
-// 		hexDatacenterID, ok := value.(string)
-// 		if !ok {
-// 			return fmt.Errorf("%v is not a valid string value", value)
-// 		}
-
-// 		newDatacenterID, err := strconv.ParseUint(hexDatacenterID, 16, 64)
-// 		if err != nil {
-// 			return fmt.Errorf("Could not parse hexDatacenterID: %v", value)
-// 		}
-
-// 		newDatacenter := db.datacenters[newDatacenterID]
-
-// 		updateSQL.Write([]byte("update datacenter_maps set datacenter_id=$1 where datacenter_id=$2 and buyer_id=$3"))
-// 		args = append(args, newDatacenter.DatabaseID, originalDatacenter.DatabaseID, originalBuyer.DatabaseID)
-// 		workingDatacenterMap.DatacenterID = newDatacenterID
-
-// 		// changing the datacenter ID in the alias changes the datacenter map ID so
-// 		// delete the old one and add the new one
-// 		db.datacenterMapsMutex.Lock()
-// 		delete(db.datacenterMaps, dcmID)
-// 		dcmID = crypto.HashID(fmt.Sprintf("%x", ephemeralBuyerID) + fmt.Sprintf("%x", newDatacenterID))
-// 		db.datacenterMaps[dcmID] = workingDatacenterMap
-// 		db.datacenterMapsMutex.Unlock()
-
-// 	default:
-// 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.DatacenterMap type", field)
-
-// 	}
-
-// 	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error preparing UpdateDatacenterMap SQL", "err", err)
-// 		return err
-// 	}
-
-// 	result, err := stmt.Exec(args...)
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error modifying datacenter map record", "err", err)
-// 		return err
-// 	}
-
-// 	rows, err := result.RowsAffected()
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-// 		return err
-// 	}
-// 	if rows != 1 {
-// 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-// 		return err
-// 	}
-
-// 	db.IncrementSequenceNumber(ctx)
-
-// 	return nil
-// }
-
 // ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 // empty dcID returns a list of all maps.
 func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
@@ -2592,113 +2264,6 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 
 	return nil
 }
-
-// SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
-// func (db *SQL) SetRelayMetadata(ctx context.Context, relay routing.Relay) error {
-// 	err := db.SetRelay(ctx, relay)
-// 	return err
-// }
-
-// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
-// Returns:
-// 	true: if the remote sequence number > local sequence number
-//	false: if the remote sequence number = local sequence number
-//  false + error: if the remote sequence number < local sequence number
-//
-// "true" forces the caller to sync from the database and updates
-// the local sequence number. "false" does not force a sync and does
-// not modify the local number.
-// func (db *SQL) CheckSequenceNumber(ctx context.Context) (bool, int64, error) {
-// 	var sequenceNumber int64
-
-// 	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(&sequenceNumber)
-
-// 	if err == sql.ErrNoRows {
-// 		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
-// 		return false, -1, err
-// 	} else if err != nil {
-// 		level.Error(db.Logger).Log("during", "query error", "err", err)
-// 		return false, -1, err
-// 	}
-
-// 	db.sequenceNumberMutex.RLock()
-// 	localSeqNum := db.SyncSequenceNumber
-// 	db.sequenceNumberMutex.RUnlock()
-
-// 	if localSeqNum < sequenceNumber {
-// 		db.sequenceNumberMutex.Lock()
-// 		db.SyncSequenceNumber = sequenceNumber
-// 		db.sequenceNumberMutex.Unlock()
-// 		return true, sequenceNumber, nil
-// 	} else if localSeqNum == sequenceNumber {
-// 		return false, -1, nil
-// 	} else {
-// 		err = fmt.Errorf("local sequence number larger than remote: %d > %d", localSeqNum, sequenceNumber)
-// 		level.Error(db.Logger).Log("during", "query error", "err", err)
-// 		return false, -1, err
-// 	}
-// }
-
-// SetSequenceNumber is required for testing with the Firestore emulator
-// func (db *SQL) SetSequenceNumber(ctx context.Context, sequenceNumber int64) error {
-// 	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error preparing SQL", "err", err)
-// 		return err
-// 	}
-
-// 	result, err := stmt.Exec(sequenceNumber)
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
-// 	}
-// 	rows, err := result.RowsAffected()
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
-// 	}
-// 	if rows != 1 {
-// 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
-// 	}
-
-// 	db.sequenceNumberMutex.Lock()
-// 	db.SyncSequenceNumber = sequenceNumber
-// 	db.sequenceNumberMutex.Unlock()
-
-// 	return nil
-// }
-
-// IncrementSequenceNumber is called by all CRUD operations defined in the Storage interface. It only
-// increments the remote seq number. When the sync() functions call CheckSequenceNumber(), if the
-// local and remote numbers are not the same, the data will be sync'd from the database and the local
-// sequence numbers updated.
-// func (db *SQL) IncrementSequenceNumber(ctx context.Context) error {
-
-// 	var sequenceNumber int64
-
-// 	err := db.Client.QueryRowContext(ctx, "select sync_sequence_number from metadata").Scan(&sequenceNumber)
-
-// 	if err == sql.ErrNoRows {
-// 		level.Error(db.Logger).Log("during", "No sequence number returned", "err", err)
-// 		return err
-// 	} else if err != nil {
-// 		level.Error(db.Logger).Log("during", "query error", "err", err)
-// 		return err
-// 	}
-
-// 	sequenceNumber++
-
-// 	stmt, err := db.Client.PrepareContext(ctx, "update metadata set sync_sequence_number = $1")
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error preparing SQL", "err", err)
-// 		return err
-// 	}
-
-// 	_, err = stmt.Exec(sequenceNumber)
-// 	if err != nil {
-// 		level.Error(db.Logger).Log("during", "error setting sequence number", "err", err)
-// 	}
-
-// 	return nil
-// }
 
 type sqlDatacenter struct {
 	ID        int64
@@ -3456,9 +3021,6 @@ func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userI
 		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
-
-	// TODO: we need to handle the case where the buyer is using the default
-	// route shader (and therefore does not have an entry in db.routeShaders)
 
 	return nil
 
