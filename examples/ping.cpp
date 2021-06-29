@@ -21,6 +21,7 @@
 */
 
 #include "next.h"
+#include "../source/next_crypto.h" // todo
 #include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -36,6 +37,8 @@ const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKs
 const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
 
 static volatile int quit = 0;
+
+extern int next_base64_encode_data( const uint8_t * input, size_t input_length, char * output, size_t output_size );
 
 void interrupt_handler( int signal )
 {
@@ -59,6 +62,54 @@ int main()
         printf( "error: could not initialize network next\n" );
         return 1;
     }
+
+    /*
+    // temporary: generate keypair
+
+    unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+    unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+    next_crypto_sign_keypair( public_key, private_key );
+
+    printf( "\n" );
+
+    printf( "public key: { " );
+    for ( int i = 0; i < NEXT_CRYPTO_SIGN_PUBLICKEYBYTES; ++i )
+    {
+        if ( i < NEXT_CRYPTO_SIGN_PUBLICKEYBYTES - 1 )
+        {
+            printf( "0x%02X, ", public_key[i] );
+        }
+        else
+        {
+            printf( "0x%02x }\n\n", public_key[i] );
+        }
+    }
+
+    printf( "private key: { " );
+    for ( int i = 0; i < NEXT_CRYPTO_SIGN_SECRETKEYBYTES; ++i )
+    {
+        if ( i < NEXT_CRYPTO_SIGN_SECRETKEYBYTES - 1 )
+        {
+            printf( "0x%02X, ", private_key[i] );
+        }
+        else
+        {
+            printf( "0x%02X }\n\n", private_key[i] );
+        }
+    }
+
+    char buffer[1024];
+    memset( buffer, 0, sizeof(buffer) );
+    next_base64_encode_data( public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES, buffer, sizeof(buffer) );
+    printf( "public key base64: %s\n\n", buffer );
+
+    memset( buffer, 0, sizeof(buffer) );
+    next_base64_encode_data( private_key, NEXT_CRYPTO_SIGN_SECRETKEYBYTES, buffer, sizeof(buffer) );
+    printf( "private key base64: %s\n\n", buffer );
+
+    // todo
+    return 0;
+    */
 
     // grab customer info from the SDK post init
 

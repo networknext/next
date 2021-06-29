@@ -205,12 +205,20 @@ static next_address_t next_beacon_address;
 
 #endif // #if NEXT_BEACON_ADDRESS
 
-static uint8_t next_backend_public_key[] = 
+static uint8_t next_server_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
     160, 181, 151, 195, 202, 224, 207, 113, 
       8,  45,  37,  60, 145,  14, 212, 111, 
      25,  34, 175, 186,  37, 150, 163,  64 
+};
+
+static uint8_t next_ping_backend_public_key[] = 
+{ 
+    0x6F, 0x5A, 0x36, 0x07, 0x6F, 0xD1, 0xF7, 0xEB, 
+    0x81, 0x91, 0x42, 0xE9, 0xF4, 0xA7, 0x3A, 0xFA, 
+    0x80, 0xCF, 0x99, 0xD4, 0xCD, 0x23, 0x18, 0x01, 
+    0x4A, 0xA8, 0x19, 0xA6, 0xC1, 0x2A, 0x06, 0x40 
 };
 
 static uint8_t next_router_public_key[] = 
@@ -3983,12 +3991,12 @@ int next_init( void * context, next_config_t * config_in )
         config.server_backend_hostname[sizeof(config.server_backend_hostname)-1] = '\0';
     }
 
-    const char * server_backend_public_key_env = next_platform_getenv( "NEXT_BACKEND_PUBLIC_KEY" );
+    const char * server_backend_public_key_env = next_platform_getenv( "NEXT_SERVER_BACKEND_PUBLIC_KEY" );
     if ( server_backend_public_key_env )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server backend public key override" );
         
-        if ( next_base64_decode_data( server_backend_public_key_env, next_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
+        if ( next_base64_decode_data( server_backend_public_key_env, next_server_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "valid server backend public key" );
         }
@@ -3997,6 +4005,24 @@ int next_init( void * context, next_config_t * config_in )
             if ( server_backend_public_key_env[0] != '\0' )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server backend public key is invalid: \"%s\"", server_backend_public_key_env );
+            }
+        }
+    }
+
+    const char * ping_backend_public_key_env = next_platform_getenv( "NEXT_PING_BACKEND_PUBLIC_KEY" );
+    if ( ping_backend_public_key_env )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "ping backend public key override" );
+        
+        if ( next_base64_decode_data( ping_backend_public_key_env, next_ping_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "valid ping backend public key" );
+        }
+        else
+        {
+            if ( ping_backend_public_key_env[0] != '\0' )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "ping backend public key is invalid: \"%s\"", ping_backend_public_key_env );
             }
         }
     }
@@ -11534,7 +11560,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             NextBackendServerInitResponsePacket packet;
 
-            if ( next_read_backend_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_backend_public_key ) != packet_id )
+            if ( next_read_backend_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server init response packet from backend. packet failed to read" );
                 return;
@@ -11602,7 +11628,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             NextBackendSessionResponsePacket packet;
 
-            if ( next_read_backend_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_backend_public_key ) != packet_id )
+            if ( next_read_backend_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. packet failed to read" );
                 return;
