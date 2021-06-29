@@ -1458,7 +1458,7 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 
 	bestRouteCost := GetBestRouteCost(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays)
 
-	if currentRouteCost > bestRouteCost+switchThreshold {
+	if int64(currentRouteCost) > int64(bestRouteCost)+int64(switchThreshold) {
 		Debug("current route no longer within switch threshold of best route. picking a new random route.\ncurrent route cost = %d, best route cost = %d, route switch threshold = %d\n", currentRouteCost, bestRouteCost, switchThreshold)
 		if debug != nil {
 			*debug += fmt.Sprintf("current route no longer within switch threshold of best route. picking a new random route.\ncurrent route cost = %d, best route cost = %d, route switch threshold = %d\n", currentRouteCost, bestRouteCost, switchThreshold)
