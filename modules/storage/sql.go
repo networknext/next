@@ -797,6 +797,7 @@ func (db *SQL) Sellers() []routing.Seller {
 
 	rows, err := db.Client.QueryContext(context.Background(), sql.String())
 	if err != nil {
+		fmt.Printf("err: %v\n", err)
 		level.Error(db.Logger).Log("during", "Sellers(): QueryContext returned an error", "err", err)
 		return []routing.Seller{}
 	}
@@ -811,12 +812,14 @@ func (db *SQL) Sellers() []routing.Seller {
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "Sellers(): error parsing returned row", "err", err)
+			fmt.Printf("err: %v\n", err)
 			return []routing.Seller{}
 		}
 
 		c, err := db.Customer(seller.ShortName)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "Sellers(): customer does not exist", "err", err)
+			fmt.Printf("err: %v\n", err)
 			return []routing.Seller{}
 		}
 		s := routing.Seller{
@@ -839,6 +842,7 @@ func (db *SQL) Sellers() []routing.Seller {
 
 type sqlSeller struct {
 	ID                       string
+	CompanyCode              string
 	ShortName                string
 	Secret                   bool
 	EgressPriceNibblinsPerGB int64
@@ -861,6 +865,7 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	newSellerData := sqlSeller{
 		ID:                       s.ID,
 		ShortName:                s.ShortName,
+		CompanyCode:              s.ShortName,
 		Secret:                   s.Secret,
 		EgressPriceNibblinsPerGB: int64(s.EgressPriceNibblinsPerGB),
 		CustomerID:               c.DatabaseID,
@@ -1048,6 +1053,8 @@ func (db *SQL) SetCustomerLink(ctx context.Context, customerName string, buyerID
 func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 	hexID := fmt.Sprintf("%016x", id)
 
+	// fmt.Printf("relay() hexID: %s\n", hexID)
+
 	var sqlQuery bytes.Buffer
 	var relay sqlRelay
 
@@ -1094,6 +1101,8 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 	switch err {
 	case sql.ErrNoRows:
 		level.Error(db.Logger).Log("during", "Relay() no rows were returned!")
+		// fmt.Printf("sql.ErrNoRows %v\n", err)
+		// fmt.Printf("%s", sqlQuery.String())
 		return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: hexID}
 	case nil:
 		relayState, err := routing.GetRelayStateSQL(relay.State)
@@ -1113,6 +1122,7 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 
 		datacenter, err := db.DatacenterByDbId(relay.DatacenterID)
 		if err != nil {
+			fmt.Printf("err derefercing datacenter: %v\n", err)
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
 		}
 
@@ -1121,7 +1131,7 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
 		}
 
-		internalID, err := strconv.ParseUint(relay.HexID, 16, 64)
+		internalID, err := strconv.ParseUint(hexID, 16, 64)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays error parsing hex_id", "err", err)
 		}
@@ -1147,6 +1157,8 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 			DatabaseID:          relay.DatabaseID,
 			Version:             relay.Version,
 		}
+
+		// fmt.Printf("relay() r: %s\n", r.String())
 
 		// nullable values follow
 		if relay.InternalIP.Valid {
@@ -1178,10 +1190,11 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 			}
 
 			if !found {
-				errString := fmt.Sprintf("syncRelays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
+				errString := fmt.Sprintf("Relay() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
 				level.Error(db.Logger).Log("during", errString, "err", err)
 			}
 
+		} else {
 		}
 
 		if relay.StartDate.Valid {
@@ -1824,6 +1837,8 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		endDate = sql.NullTime{}
 	}
 
+	// fmt.Printf("addRelay r: %s\n", r.String())
+
 	var billingSupplier sql.NullInt64
 	if r.BillingSupplier != "" {
 		supplier, err := db.Seller(r.BillingSupplier)
@@ -1860,6 +1875,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("relay version can not be an empty string and must be a valid value (e.g. '2.0.6')")
 	}
 
+	// fmt.Printf("billingSupplier: %d\n", billingSupplier.Int64)
 	relay := sqlRelay{
 		Name:               r.Name,
 		HexID:              fmt.Sprintf("%016x", rid),
@@ -2081,7 +2097,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
 	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) where id = $22"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) where id = $23"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
@@ -2207,7 +2223,8 @@ func (db *SQL) DatacenterByDbId(databaseID int64) (routing.Datacenter, error) {
 				Longitude: dc.Longitude,
 			},
 			SellerID:   dc.SellerID,
-			DatabaseID: dc.ID}
+			DatabaseID: databaseID,
+		}
 		return d, nil
 	default:
 		level.Error(db.Logger).Log("during", "DatacenterByDbId() QueryRow returned an error: %v", err)
@@ -2368,7 +2385,8 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 // }
 
 // GetDatacenterMapsForBuyer returns a map of datacenter aliases in use for a given
-// (internally generated) buyerID. Returns an empty map if there are no aliases for that buyerID.
+// (internally generated) buyerID. The map is indexed by the datacenter ID. Returns
+// an empty map if there are no aliases for that buyerID.
 func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]routing.DatacenterMap {
 
 	var querySQL bytes.Buffer
@@ -2376,9 +2394,6 @@ func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]rou
 	// var sqlMap sqlDatacenterMap
 
 	dbBuyerID := int64(ephemeralBuyerID)
-
-	querySQL.Write([]byte("select buyer_id, datacenter_id from datacenter_maps where buyer_id = "))
-	querySQL.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
 
 	querySQL.Write([]byte("select datacenters.hex_id from datacenter_maps "))
 	querySQL.Write([]byte("inner join datacenters on datacenter_maps.datacenter_id "))
@@ -2388,6 +2403,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]rou
 	rows, err := db.Client.QueryContext(context.Background(), querySQL.String(), dbBuyerID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer(): QueryContext returned an error", "err", err)
+		fmt.Printf("err: %v\n", err)
 		return map[uint64]routing.DatacenterMap{}
 	}
 	defer rows.Close()
@@ -2411,8 +2427,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]rou
 			DatacenterID: dcID,
 		}
 
-		id := crypto.HashID(fmt.Sprintf("%016x", dcMap.BuyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
-		dcMaps[id] = dcMap
+		dcMaps[dcID] = dcMap
 	}
 
 	return dcMaps
@@ -2597,7 +2612,7 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		return err
 	}
 
-	result, err := stmt.Exec(dcMap.BuyerID, dcMap.DatacenterID)
+	result, err := stmt.Exec(int64(dcMap.BuyerID), fmt.Sprintf("%016x", dcMap.DatacenterID))
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing datacenter map", "err", err)
