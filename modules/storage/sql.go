@@ -3470,7 +3470,7 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, us
 	var sql bytes.Buffer
 
 	sql.Write([]byte("delete from banned_users where user_id = $1 and buyer_id = "))
-	sql.Write([]byte("(select id from buyers where sdk_generated_id = $2))"))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sql.String())
 	if err != nil {
