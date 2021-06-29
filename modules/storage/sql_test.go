@@ -738,27 +738,27 @@ func TestUpdateSQL(t *testing.T) {
 
 	// t.Run("SetBuyer", func(t *testing.T) {
 
-	// 	publicKey := make([]byte, crypto.KeySize)
-	// 	_, err = rand.Read(publicKey)
-	// 	assert.NoError(t, err)
+	// publicKey := make([]byte, crypto.KeySize)
+	// _, err = rand.Read(publicKey)
+	// assert.NoError(t, err)
 
-	// 	internalID := uint64(3142537350691193170)
+	// internalID := uint64(3142537350691193170)
 
-	// 	buyer := routing.Buyer{
-	// 		ID:          internalID,
-	// 		ShortName:   customerWithID.Code,
-	// 		CompanyCode: customerWithID.Code,
-	// 		Live:        true,
-	// 		Debug:       true,
-	// 		PublicKey:   publicKey,
-	// 		// CustomerID:  customerWithID.DatabaseID,
-	// 	}
+	// buyer := routing.Buyer{
+	// 	ID:          internalID,
+	// 	ShortName:   customerWithID.Code,
+	// 	CompanyCode: customerWithID.Code,
+	// 	Live:        true,
+	// 	Debug:       true,
+	// 	PublicKey:   publicKey,
+	// 	// CustomerID:  customerWithID.DatabaseID,
+	// }
 
-	// 	err = db.AddBuyer(ctx, buyer)
-	// 	assert.NoError(t, err)
+	// err = db.AddBuyer(ctx, buyer)
+	// assert.NoError(t, err)
 
-	// 	buyerWithID, err = db.Buyer(internalID)
-	// 	assert.NoError(t, err)
+	// buyerWithID, err = db.Buyer(internalID)
+	// assert.NoError(t, err)
 
 	// 	buyerWithID.Live = false
 	// 	buyerWithID.Debug = false
@@ -775,9 +775,89 @@ func TestUpdateSQL(t *testing.T) {
 
 	// })
 
-	t.Run("SetSeller", func(t *testing.T) {
+	// t.Run("SetSeller", func(t *testing.T) {
+	// 	seller := routing.Seller{
+	// 		ID:                       "compcode",
+	// 		ShortName:                "compcode",
+	// 		EgressPriceNibblinsPerGB: 20,
+	// 		Secret:                   true,
+	// 		CustomerID:               customerWithID.DatabaseID,
+	// 		CompanyCode:              customerWithID.Code,
+	// 	}
+
+	// 	err = db.AddSeller(ctx, seller)
+	// 	assert.NoError(t, err)
+
+	// 	sellerWithID, err = db.Seller("compcode")
+	// 	assert.NoError(t, err)
+
+	// 	sellerWithID.EgressPriceNibblinsPerGB = 200
+
+	// err = db.SetSeller(ctx, sellerWithID)
+	// assert.NoError(t, err)
+
+	// checkSeller, err := db.Seller("compcode")
+	// assert.NoError(t, err)
+	// assert.Equal(t, true, sellerWithID.Secret)
+	// assert.Equal(t, checkSeller.EgressPriceNibblinsPerGB, sellerWithID.EgressPriceNibblinsPerGB)
+
+	// // we need a second seller to test Relay.BillingSupplier
+	// seller2 := routing.Seller{
+	// 	ID:                       "DifferentSupplier",
+	// 	ShortName:                "DifferentSeller",
+	// 	EgressPriceNibblinsPerGB: 20,
+	// 	Secret:                   true,
+	// 	CustomerID:               customerWithID2.DatabaseID,
+	// 	CompanyCode:              customerWithID2.Code,
+	// }
+
+	// err = db.AddSeller(ctx, seller2)
+	// assert.NoError(t, err)
+
+	// sellerWithID2, err = db.Seller("DifferentSupplier")
+	// assert.NoError(t, err)
+
+	// })
+
+	// t.Run("SetDatacenter", func(t *testing.T) {
+
+	// 	did := crypto.HashID("some.locale.name")
+	// 	datacenter := routing.Datacenter{
+	// 		ID:   did,
+	// 		Name: "some.locale.name",
+	// 		Location: routing.Location{
+	// 			Latitude:  70.5,
+	// 			Longitude: 120.5,
+	// 		},
+	// 		SellerID: sellerWithID.DatabaseID,
+	// 	}
+
+	// 	err = db.AddDatacenter(ctx, datacenter)
+	// 	assert.NoError(t, err)
+
+	// 	datacenterWithID, err = db.Datacenter(did)
+	// 	assert.NoError(t, err)
+
+	// modifiedDatacenter := datacenterWithID
+	// modifiedDatacenter.Name = "some.newlocale.name"
+	// modifiedDatacenter.Location.Longitude = 70.5
+	// modifiedDatacenter.Location.Latitude = 120.5
+
+	// err = db.SetDatacenter(ctx, modifiedDatacenter)
+	// assert.NoError(t, err)
+
+	// checkModDC, err := db.Datacenter(did)
+	// assert.NoError(t, err)
+	// assert.Equal(t, modifiedDatacenter.Name, checkModDC.Name)
+	// assert.Equal(t, modifiedDatacenter.Location.Longitude, checkModDC.Location.Longitude)
+	// assert.Equal(t, modifiedDatacenter.Location.Latitude, checkModDC.Location.Latitude)
+	// })
+
+	t.Run("UpdateDatacenter", func(t *testing.T) {
+
 		seller := routing.Seller{
 			ID:                       "compcode",
+			ShortName:                "compcode",
 			EgressPriceNibblinsPerGB: 20,
 			Secret:                   true,
 			CustomerID:               customerWithID.DatabaseID,
@@ -789,36 +869,6 @@ func TestUpdateSQL(t *testing.T) {
 
 		sellerWithID, err = db.Seller("compcode")
 		assert.NoError(t, err)
-
-		sellerWithID.EgressPriceNibblinsPerGB = 200
-
-		// err = db.SetSeller(ctx, sellerWithID)
-		// assert.NoError(t, err)
-
-		// checkSeller, err := db.Seller("compcode")
-		// assert.NoError(t, err)
-		// assert.Equal(t, true, sellerWithID.Secret)
-		// assert.Equal(t, checkSeller.EgressPriceNibblinsPerGB, sellerWithID.EgressPriceNibblinsPerGB)
-
-		// // we need a second seller to test Relay.BillingSupplier
-		// seller2 := routing.Seller{
-		// 	ID:                       "DifferentSupplier",
-		// 	ShortName:                "DifferentSeller",
-		// 	EgressPriceNibblinsPerGB: 20,
-		// 	Secret:                   true,
-		// 	CustomerID:               customerWithID2.DatabaseID,
-		// 	CompanyCode:              customerWithID2.Code,
-		// }
-
-		// err = db.AddSeller(ctx, seller2)
-		// assert.NoError(t, err)
-
-		// sellerWithID2, err = db.Seller("DifferentSupplier")
-		// assert.NoError(t, err)
-
-	})
-
-	t.Run("SetDatacenter", func(t *testing.T) {
 
 		did := crypto.HashID("some.locale.name")
 		datacenter := routing.Datacenter{
@@ -834,27 +884,6 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.AddDatacenter(ctx, datacenter)
 		assert.NoError(t, err)
 
-		datacenterWithID, err = db.Datacenter(did)
-		assert.NoError(t, err)
-
-		// modifiedDatacenter := datacenterWithID
-		// modifiedDatacenter.Name = "some.newlocale.name"
-		// modifiedDatacenter.Location.Longitude = 70.5
-		// modifiedDatacenter.Location.Latitude = 120.5
-
-		// err = db.SetDatacenter(ctx, modifiedDatacenter)
-		// assert.NoError(t, err)
-
-		// checkModDC, err := db.Datacenter(did)
-		// assert.NoError(t, err)
-		// assert.Equal(t, modifiedDatacenter.Name, checkModDC.Name)
-		// assert.Equal(t, modifiedDatacenter.Location.Longitude, checkModDC.Location.Longitude)
-		// assert.Equal(t, modifiedDatacenter.Location.Latitude, checkModDC.Location.Latitude)
-	})
-
-	t.Run("UpdateDatacenter", func(t *testing.T) {
-		did := crypto.HashID("some.locale.name")
-
 		err = db.UpdateDatacenter(ctx, did, "Latitude", float32(130.3))
 		assert.NoError(t, err)
 
@@ -868,6 +897,29 @@ func TestUpdateSQL(t *testing.T) {
 	})
 
 	t.Run("UpdateDatacenterMap", func(t *testing.T) {
+
+		publicKey := make([]byte, crypto.KeySize)
+		_, err = rand.Read(publicKey)
+		assert.NoError(t, err)
+
+		internalID := uint64(3142537350691193170)
+
+		buyer := routing.Buyer{
+			ID:          internalID,
+			ShortName:   customerWithID.Code,
+			CompanyCode: customerWithID.Code,
+			Live:        true,
+			Debug:       true,
+			PublicKey:   publicKey,
+			// CustomerID:  customerWithID.DatabaseID,
+		}
+
+		err = db.AddBuyer(ctx, buyer)
+		assert.NoError(t, err)
+
+		buyerWithID, err = db.Buyer(internalID)
+		assert.NoError(t, err)
+
 		did1 := crypto.HashID("some.locale.name.1")
 		datacenter1 := routing.Datacenter{
 			ID:   did1,
@@ -972,10 +1024,8 @@ func TestUpdateSQL(t *testing.T) {
 	})
 
 	t.Run("UpdateSeller", func(t *testing.T) {
-		err := db.UpdateSeller(ctx, sellerWithID.ID, "EgressPriceNibblinsPerGB", 133.44)
-		assert.NoError(t, err)
 
-		err = db.UpdateSeller(ctx, sellerWithID.ID, "ShortName", "newname")
+		err := db.UpdateSeller(ctx, sellerWithID.ID, "EgressPriceNibblinsPerGB", 133.44)
 		assert.NoError(t, err)
 
 		err = db.UpdateSeller(ctx, sellerWithID.ID, "Secret", false)
@@ -985,7 +1035,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, routing.Nibblin(13344000000000), checkSeller.EgressPriceNibblinsPerGB)
-		assert.Equal(t, "newname", checkSeller.ShortName)
 		assert.Equal(t, false, checkSeller.Secret)
 	})
 
@@ -1004,6 +1053,12 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		initialRelayVersion := "2.0.6"
+
+		// fmt.Printf("test sellerWithID: %s\n", sellerWithID.String())
+
+		did := crypto.HashID("some.locale.name")
+		datacenterWithID, err = db.Datacenter(did)
+		assert.NoError(t, err)
 
 		relay := routing.Relay{
 			ID:                  rid,
@@ -1149,8 +1204,10 @@ func TestUpdateSQL(t *testing.T) {
 		startDate := "July 7, 2023"
 		err = db.UpdateRelay(ctx, rid, "StartDate", startDate)
 		assert.NoError(t, err)
+
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
+
 		startDateFormatted, err := time.Parse("January 2, 2006", startDate)
 		assert.NoError(t, err)
 		assert.Equal(t, startDateFormatted, checkRelay.StartDate)

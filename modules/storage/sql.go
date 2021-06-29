@@ -1053,8 +1053,6 @@ func (db *SQL) SetCustomerLink(ctx context.Context, customerName string, buyerID
 func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 	hexID := fmt.Sprintf("%016x", id)
 
-	// fmt.Printf("relay() hexID: %s\n", hexID)
-
 	var sqlQuery bytes.Buffer
 	var relay sqlRelay
 
@@ -1101,8 +1099,6 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 	switch err {
 	case sql.ErrNoRows:
 		level.Error(db.Logger).Log("during", "Relay() no rows were returned!")
-		// fmt.Printf("sql.ErrNoRows %v\n", err)
-		// fmt.Printf("%s", sqlQuery.String())
 		return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: hexID}
 	case nil:
 		relayState, err := routing.GetRelayStateSQL(relay.State)
@@ -1158,8 +1154,6 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 			Version:             relay.Version,
 		}
 
-		// fmt.Printf("relay() r: %s\n", r.String())
-
 		// nullable values follow
 		if relay.InternalIP.Valid {
 			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
@@ -1194,7 +1188,6 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 				level.Error(db.Logger).Log("during", errString, "err", err)
 			}
 
-		} else {
 		}
 
 		if relay.StartDate.Valid {
@@ -1208,6 +1201,7 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 		if relay.Notes.Valid {
 			r.Notes = relay.Notes.String
 		}
+
 		return r, nil
 
 	default:
@@ -1427,7 +1421,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set display_name=$1 where id=$2"))
 		args = append(args, name, relay.DatabaseID)
-		relay.Name = name
 
 	case "Addr":
 		addrString, ok := value.(string)
@@ -1452,13 +1445,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
 		}
 
-		// addr will be ':0' for "removed" relays
-		addr, err := net.ResolveUDPAddr("udp", addrString)
-		if err != nil {
-			return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
-		}
-		relay.Addr = *addr
-
 	case "InternalAddr":
 		addrString, ok := value.(string)
 		if !ok {
@@ -1469,7 +1455,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = (null, null) "))
 			updateSQL.Write([]byte("where id=$1"))
 			args = append(args, relay.DatabaseID)
-			relay.InternalAddr = net.UDPAddr{}
 
 		} else {
 			uriTuple := strings.Split(addrString, ":")
@@ -1481,12 +1466,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = ($1, $2) "))
 			updateSQL.Write([]byte("where id=$3"))
 			args = append(args, uriTuple[0], uriTuple[1], relay.DatabaseID)
-
-			addr, err := net.ResolveUDPAddr("udp", addrString)
-			if err != nil {
-				return fmt.Errorf("Error converting relay address %s: %v", addrString, err)
-			}
-			relay.InternalAddr = *addr
 		}
 
 	case "PublicKey":
@@ -1502,7 +1481,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 
 		updateSQL.Write([]byte("update relays set public_key=$1 where id=$2"))
 		args = append(args, newPublicKey, relay.DatabaseID)
-		relay.PublicKey = newPublicKey
 
 	case "NICSpeedMbps":
 		portSpeed, ok := value.(float64)
@@ -1511,7 +1489,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set port_speed=$1 where id=$2"))
 		args = append(args, portSpeed, relay.DatabaseID)
-		relay.NICSpeedMbps = int32(portSpeed)
 
 	case "IncludedBandwidthGB":
 		includedBW, ok := value.(float64)
@@ -1520,7 +1497,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set included_bandwidth_gb=$1 where id=$2"))
 		args = append(args, includedBW, relay.DatabaseID)
-		relay.IncludedBandwidthGB = int32(includedBW)
 
 	case "State":
 		state, ok := value.(float64)
@@ -1532,8 +1508,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set relay_state=$1 where id=$2"))
 		args = append(args, int64(state), relay.DatabaseID)
-		// already checked int validity above
-		relay.State, _ = routing.GetRelayStateSQL(int64(state))
 
 	case "ManagementAddr":
 		// routing.Relay.ManagementIP is currently a string type although
@@ -1544,7 +1518,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set management_ip=$1 where id=$2"))
 		args = append(args, managementIP, relay.DatabaseID)
-		relay.ManagementAddr = managementIP
 
 	case "SSHUser":
 		user, ok := value.(string)
@@ -1553,7 +1526,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set ssh_user=$1 where id=$2"))
 		args = append(args, user, relay.DatabaseID)
-		relay.SSHUser = user
 
 	case "SSHPort":
 		port, ok := value.(float64)
@@ -1562,7 +1534,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set ssh_port=$1 where id=$2"))
 		args = append(args, port, relay.DatabaseID)
-		relay.SSHPort = int64(port)
 
 	case "MaxSessions":
 		maxSessions, ok := value.(float64)
@@ -1571,7 +1542,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set max_sessions=$1 where id=$2"))
 		args = append(args, int64(maxSessions), relay.DatabaseID)
-		relay.MaxSessions = uint32(maxSessions)
 
 	case "MRC":
 		mrcUSD, ok := value.(float64)
@@ -1581,7 +1551,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		mrc := routing.DollarsToNibblins(mrcUSD)
 		updateSQL.Write([]byte("update relays set mrc=$1 where id=$2"))
 		args = append(args, int64(mrc), relay.DatabaseID)
-		relay.MRC = mrc
 
 	case "Overage":
 		overageUSD, ok := value.(float64)
@@ -1591,7 +1560,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		overage := routing.DollarsToNibblins(overageUSD)
 		updateSQL.Write([]byte("update relays set overage=$1 where id=$2"))
 		args = append(args, int64(overage), relay.DatabaseID)
-		relay.Overage = overage
 
 	case "BWRule":
 		bwRule, ok := value.(float64)
@@ -1604,7 +1572,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		updateSQL.Write([]byte("update relays set bw_billing_rule=$1 where id=$2"))
 		args = append(args, int64(bwRule), relay.DatabaseID)
 		// already checked int validity above
-		relay.BWRule, _ = routing.GetBandwidthRuleSQL(int64(bwRule))
 
 	case "ContractTerm":
 		term, ok := value.(float64)
@@ -1616,7 +1583,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set contract_term=$1 where id=$2"))
 		args = append(args, int64(term), relay.DatabaseID)
-		relay.ContractTerm = int32(term)
 
 	case "StartDate":
 		startDate, ok := value.(string)
@@ -1624,7 +1590,10 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 
+		fmt.Printf("UpdateRelays() StartDate: %s\n", startDate)
+
 		if startDate == "" {
+			fmt.Println("writing null startdate")
 			updateSQL.Write([]byte("update relays set start_date=null where id=$1"))
 			args = append(args, relay.DatabaseID)
 			relay.StartDate = time.Time{}
@@ -1633,10 +1602,10 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			if err != nil {
 				return fmt.Errorf("could not parse `%s` - must be of the form 'January 2, 2006'", startDate)
 			}
-
+			fmt.Printf("writing start date: %v\n", newStartDate)
+			fmt.Printf("for relay with database id %d\n", relay.DatabaseID)
 			updateSQL.Write([]byte("update relays set start_date=$1 where id=$2"))
-			args = append(args, startDate, relay.DatabaseID)
-			relay.StartDate = newStartDate
+			args = append(args, newStartDate, relay.DatabaseID)
 		}
 
 	case "EndDate":
@@ -1656,8 +1625,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			}
 
 			updateSQL.Write([]byte("update relays set end_date=$1 where id=$2"))
-			args = append(args, endDate, relay.DatabaseID)
-			relay.EndDate = newEndDate
+			args = append(args, newEndDate, relay.DatabaseID)
 		}
 
 	case "Type":
@@ -1670,8 +1638,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set machine_type=$1 where id=$2"))
 		args = append(args, int64(machineType), relay.DatabaseID)
-		// already checked int validity above
-		relay.Type, _ = routing.GetMachineTypeSQL(int64(machineType))
 
 	case "Notes":
 		notes, ok := value.(string)
@@ -1682,11 +1648,9 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		if notes == "" {
 			updateSQL.Write([]byte("update relays set notes=null where id=$1"))
 			args = append(args, relay.DatabaseID)
-			relay.Notes = ""
 		} else {
 			updateSQL.Write([]byte("update relays set notes=$1 where id=$2"))
 			args = append(args, notes, relay.DatabaseID)
-			relay.Notes = notes
 		}
 
 	case "BillingSupplier":
@@ -1698,7 +1662,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		if billingSupplier == "" {
 			updateSQL.Write([]byte("update relays set billing_supplier=null where id=$1"))
 			args = append(args, relay.DatabaseID)
-			relay.BillingSupplier = ""
 		} else {
 
 			sellerDatabaseID := 0
@@ -1714,7 +1677,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 
 			updateSQL.Write([]byte("update relays set billing_supplier=$1 where id=$2"))
 			args = append(args, sellerDatabaseID, relay.DatabaseID)
-			relay.BillingSupplier = billingSupplier
 		}
 
 	case "Version":
@@ -1729,7 +1691,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 
 		updateSQL.Write([]byte("update relays set relay_version=$1 where id=$2"))
 		args = append(args, version, relay.DatabaseID)
-		relay.Version = version
 
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
@@ -1794,6 +1755,7 @@ type sqlRelay struct {
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
 func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
+	// fmt.Printf("AddRelay() r: %s\n", r.String())
 	var sqlQuery bytes.Buffer
 	var err error
 
@@ -2869,7 +2831,7 @@ func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, err
 	querySQL.Write([]byte("large_customer, is_uncommitted, high_frequency_pings, route_diversity, "))
 	querySQL.Write([]byte("multipath_threshold, enable_vanity_metrics, reduce_pl_min_slice_number, "))
 	querySQL.Write([]byte("buyer_id from rs_internal_configs where buyer_id = ( "))
-	querySQL.Write([]byte("select id from buyers where sdk_generated_id = $1))"))
+	querySQL.Write([]byte("select id from buyers where sdk_generated_id = $1)"))
 
 	row := db.Client.QueryRow(querySQL.String(), int64(ephemeralBuyerID))
 	err := row.Scan(
@@ -3732,9 +3694,14 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 	var args []interface{}
 	var stmt *sql.Stmt
 
+	fmt.Printf("UpdateSeller() sellerID: %s\n", sellerID)
+	fmt.Printf("UpdateSeller() field   : %s\n", field)
+	fmt.Printf("UpdateSeller() value   : %v\n", value)
+
 	seller, err := db.Seller(sellerID)
 	if err != nil {
-		return &DoesNotExistError{resourceType: "seller", resourceRef: fmt.Sprintf("%016x", sellerID)}
+		fmt.Printf("Seller() err: %v\n", err)
+		return &DoesNotExistError{resourceType: "seller", resourceRef: sellerID}
 	}
 
 	switch field {
