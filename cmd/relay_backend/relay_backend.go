@@ -729,12 +729,14 @@ func mainReturnWithCode() int {
 				}
 
 				// Track the relays that are near max capacity
+				// Relays with MaxSessions set to 0 are never considered full
 				var full bool
 
 				maxSessions := int(relay.MaxSessions)
 				if maxSessions != 0 && float64(numSessions/maxSessions) >= relayFullThreshold {
 					fullRelayIDs = append(fullRelayIDs, relay.ID)
 					full = true
+					core.Debug("Relay ID %016x is full (%d/%d sessions)", relay.ID, numSessions, maxSessions)
 				}
 
 				entries[count] = analytics.RelayStatsEntry{
