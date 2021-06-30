@@ -977,20 +977,18 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 
 			if entry.NumRoutes > 0 {
 
-				// Do not consider routes with full relays
 			routeRelayLoop:
 				for k := int32(0); k < entry.NumRoutes; k++ {
-					Debug("route relays for num route %d is %v, route cost is %d", k, entry.RouteRelays[k], entry.RouteCost[k])
 					for l := 0; l < len(entry.RouteRelays[0]); l++ {
+
+						// Do not consider routes with full relays
 						if _, isRelayFull := fullRelaySet[entry.RouteRelays[k][l]]; isRelayFull {
-							Debug("GetBestRouteCost() skipping route because relay %v is full", entry.RouteRelays[k][l])
 							continue routeRelayLoop
 						}
 					}
 
 					cost := sourceRelayCost[i] + entry.RouteCost[k]
 					if cost < bestRouteCost {
-						Debug("best route cost is updated from %d to %d", bestRouteCost, cost)
 						bestRouteCost = cost
 					}
 				}
@@ -998,11 +996,9 @@ func GetBestRouteCost(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, sou
 		}
 	}
 	if bestRouteCost == int32(math.MaxInt32) {
-		Debug("returning max int32")
 		return bestRouteCost
 	}
 
-	Debug("end of function, returning best routecost + cost bias = %d", bestRouteCost+CostBias)
 	return bestRouteCost + CostBias
 }
 
@@ -1147,12 +1143,10 @@ func GetBestRoutes(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, source
 				bestRoutes[numRoutes].Cost = cost
 				bestRoutes[numRoutes].NumRelays = entry.RouteNumRelays[k]
 
-				Debug("GetBestRoutes() route relays for num route %d is %v, route cost is %d", k, entry.RouteRelays[k], cost)
 				for l := 0; l < len(entry.RouteRelays[0]); l++ {
 
 					// Skip over any relays that are considered full
 					if _, isRelayFull := fullRelaySet[entry.RouteRelays[k][l]]; isRelayFull {
-						Debug("GetBestRoutes() Skipping over route because relay %v is full", entry.RouteRelays[k][l])
 						continue routeEntryLoop
 					}
 
@@ -1390,7 +1384,6 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, s
 	}
 
 	bestRouteCost := GetBestRouteCost(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays)
-	Debug("best route cost is %v, max cost is %v", bestRouteCost, maxCost)
 	if debug != nil {
 		*debug += fmt.Sprintf("best route cost is %d\n", bestRouteCost)
 	}
@@ -1407,7 +1400,6 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, s
 	bestRoutes := make([]BestRoute, 1024)
 	GetBestRoutes(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes, &routeDiversity)
 	if numBestRoutes == 0 {
-		Debug("could not find any next routes")
 		if debug != nil {
 			*debug += "could not find any next routes\n"
 		}
@@ -1421,7 +1413,6 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, s
 				numNearRelays++
 			}
 		}
-		Debug("found %d suitable routes in [%d,%d] from %d/%d near relays", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numNearRelays, len(sourceRelays))
 		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numNearRelays, len(sourceRelays))
 	}
 
@@ -1470,7 +1461,6 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 	bestRouteCost := GetBestRouteCost(routeMatrix, fullRelaySet, sourceRelays, sourceRelayCost, destRelays)
 
 	if int64(currentRouteCost) > int64(bestRouteCost)+int64(switchThreshold) {
-		Debug("current route no longer within switch threshold of best route. picking a new random route.\ncurrent route cost = %d, best route cost = %d, route switch threshold = %d\n", currentRouteCost, bestRouteCost, switchThreshold)
 		if debug != nil {
 			*debug += fmt.Sprintf("current route no longer within switch threshold of best route. picking a new random route.\ncurrent route cost = %d, best route cost = %d, route switch threshold = %d\n", currentRouteCost, bestRouteCost, switchThreshold)
 		}
