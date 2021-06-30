@@ -94,19 +94,19 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 	return entry
 }
 
-func (sdb *StatsDatabase) ExtractPingStats(maxJitter float32, maxPacketLoss float32, instanceID string, isDebug bool) []analytics.PingStatsEntry {
-	sdb.mu.Lock()
-	length := TriMatrixLength(len(sdb.Entries))
+func (database *StatsDatabase) ExtractPingStats(maxJitter float32, maxPacketLoss float32, instanceID string, isDebug bool) []analytics.PingStatsEntry {
+	database.mu.Lock()
+	length := TriMatrixLength(len(database.Entries))
 	entries := make([]analytics.PingStatsEntry, length)
 
-	ids := make([]uint64, len(sdb.Entries))
+	ids := make([]uint64, len(database.Entries))
 
 	idx := 0
-	for k := range sdb.Entries {
+	for k := range database.Entries {
 		ids[idx] = k
 		idx++
 	}
-	sdb.mu.Unlock()
+	database.mu.Unlock()
 
 	if length == 0 {
 		return entries
@@ -117,7 +117,7 @@ func (sdb *StatsDatabase) ExtractPingStats(maxJitter float32, maxPacketLoss floa
 			idA := ids[i]
 			idB := ids[j]
 
-			rtt, jitter, pl := sdb.GetSample(idA, idB)
+			rtt, jitter, pl := database.GetSample(idA, idB)
 			routable := rtt != InvalidRouteValue && jitter != InvalidRouteValue && pl != InvalidRouteValue
 
 			if jitter > maxJitter {
