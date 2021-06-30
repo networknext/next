@@ -14088,19 +14088,36 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_thread_
 
         // process the packet
 
-        double packet_receive_time = next_time();
-
         next_assert( packet_bytes >= 0 );
 
         if ( packet_bytes <= 1 )
             continue;
 
-        printf( "ping received packet (%d bytes)\n", packet_bytes );
+        int packet_type = packet_data[0];
 
-        // todo: process packet
+        switch ( packet_type )
+        {
+            case NEXT_PING_SYSTEM_PING_RESPONSE_PACKET:
+            {
+                next_crypto_sign_state_t state;
+                next_crypto_sign_init( &state );
+                next_crypto_sign_update( &state, packet_data, size_t(packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
+                if ( next_crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, next_ping_backend_public_key ) != 0 )
+                {
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet did not pass signature check" );
+                    continue;
+                }
+
+                printf( "ping received ping response packet (%d bytes)\n", packet_bytes );
+
+                // todo: read and process ping response packet
+            }
+            break;
+        }
+
+        // todo
         (void) from;
         (void) packet_bytes;
-        (void) packet_receive_time;
     }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "ping thread finished" );

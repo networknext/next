@@ -63,54 +63,6 @@ int main()
         return 1;
     }
 
-    /*
-    // temporary: generate keypair
-
-    unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-    unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-    next_crypto_sign_keypair( public_key, private_key );
-
-    printf( "\n" );
-
-    printf( "public key: { " );
-    for ( int i = 0; i < NEXT_CRYPTO_SIGN_PUBLICKEYBYTES; ++i )
-    {
-        if ( i < NEXT_CRYPTO_SIGN_PUBLICKEYBYTES - 1 )
-        {
-            printf( "0x%02X, ", public_key[i] );
-        }
-        else
-        {
-            printf( "0x%02x }\n\n", public_key[i] );
-        }
-    }
-
-    printf( "private key: { " );
-    for ( int i = 0; i < NEXT_CRYPTO_SIGN_SECRETKEYBYTES; ++i )
-    {
-        if ( i < NEXT_CRYPTO_SIGN_SECRETKEYBYTES - 1 )
-        {
-            printf( "0x%02X, ", private_key[i] );
-        }
-        else
-        {
-            printf( "0x%02X }\n\n", private_key[i] );
-        }
-    }
-
-    char buffer[1024];
-    memset( buffer, 0, sizeof(buffer) );
-    next_base64_encode_data( public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES, buffer, sizeof(buffer) );
-    printf( "public key base64: %s\n\n", buffer );
-
-    memset( buffer, 0, sizeof(buffer) );
-    next_base64_encode_data( private_key, NEXT_CRYPTO_SIGN_SECRETKEYBYTES, buffer, sizeof(buffer) );
-    printf( "private key base64: %s\n\n", buffer );
-
-    // todo
-    return 0;
-    */
-
     // grab customer info from the SDK post init
 
     const uint64_t customer_id = next_customer_id();
