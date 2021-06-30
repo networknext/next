@@ -26,6 +26,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/go-github/v36/github"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
@@ -47,14 +48,15 @@ const (
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
 	LOOKER_HOST              = "networknextexternal.cloud.looker.com"
-	// TODO: Move these somewhere else like the jsonrpc error codes
+	// TODO: Move these somewhere else like the jsonrpc error codes and use them for something
 	DEFAULT_PRIORITY NotificationPriorty = 0
 	INFO_PRIORITY    NotificationPriorty = 1
 	WARNING_PRIORITY NotificationPriorty = 2
 	URGENT_PRIORITY  NotificationPriorty = 3
-	// TODO: Move these somewhere else like the jsonrpc error codes
-	NOTIFICATION_TABLE NotificationType = 0
-	NOTIFICATION_LOOK  NotificationType = 1
+	// TODO: Move these somewhere else like the jsonrpc error codes and actually use them for something
+	NOTIFICATION_SYSTEM    NotificationType = 0
+	NOTIFICATION_DASHBOARD NotificationType = 1
+	NOTIFICATION_INVOICE   NotificationType = 2
 )
 
 var (
@@ -80,6 +82,8 @@ type BuyersService struct {
 	BigTableMetrics *metrics.BigTableMetrics
 
 	BqClient *bigquery.Client
+
+	GithubClient *github.Client
 
 	RedisPoolTopSessions   *redis.Pool
 	RedisPoolSessionMeta   *redis.Pool
@@ -2530,11 +2534,12 @@ type FetchNotificationsReply struct {
 }
 
 type Notification struct {
-	AnalyticsURL string              `json:"analytics_url"`
-	Title        string              `json:"title"`
-	Message      string              `json:"message"`
-	Graphic      string              `json:"graphic"`
-	Priority     NotificationPriorty `json:"priority"`
+	AnalyticsURL  string              `json:"analytics_url"`
+	Title         string              `json:"title"`
+	Message       string              `json:"message"`
+	Graphic       string              `json:"graphic"`
+	Priority      NotificationPriorty `json:"priority"`
+	ReleaseNotees string              `json:"release_notes"` // TODO: Move this to its own specific notification type
 }
 
 func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificationsArgs, reply *FetchNotificationsReply) error {
@@ -2559,21 +2564,12 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 		return &err
 	}
 
-	// Fetch all the notifications for the specific buyer
-	/* 	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-	   	if !ok {
-	   		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
-	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-	   		return &err
-	   	}
-
-	   	// TODO: Add in call for fetching the notifications related to the buyer. Need JohnnyB's help here with SQL tables
-	   	buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
-	   	if err != nil {
-	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-	   		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-	   		return &err
-	   	} */
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+		return &err
+	}
 
 	// Seeding data for the time being for demos and such
 	notifications := []Notification{
@@ -2589,13 +2585,21 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 		},
 	}
 
+	releaseNotes, err := s.FetchReleaseNotes()
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to fetch release notes", err.Error()))
+		return &err
+	}
+
 	for _, notification := range notifications {
 		// TODO: Not sure if this will be necessary or not. We don't want to dump the whole SQL entry to the frontend, only data necessary for that type
 		returnNotification := Notification{
-			Title:    notification.Title,
-			Message:  "\"Help me, Obi-Wan Kenobi. You’re my only hope.\" — Leia Organa\n\"I find your lack of faith disturbing.\" — Darth Vader\n\"It’s the ship that made the Kessel run in less than twelve parsecs. I’ve outrun Imperial starships. Not the local bulk cruisers, mind you. I’m talking about the big Corellian ships, now. She’s fast enough for you, old man.\" — Han Solo\n",
-			Graphic:  notification.Graphic,
-			Priority: notification.Priority,
+			Title:         notification.Title,
+			Message:       "\"Help me, Obi-Wan Kenobi. You’re my only hope.\" — Leia Organa\n\"I find your lack of faith disturbing.\" — Darth Vader\n\"It’s the ship that made the Kessel run in less than twelve parsecs. I’ve outrun Imperial starships. Not the local bulk cruisers, mind you. I’m talking about the big Corellian ships, now. She’s fast enough for you, old man.\" — Han Solo\n",
+			Graphic:       notification.Graphic,
+			Priority:      notification.Priority,
+			ReleaseNotees: releaseNotes,
 		}
 
 		// TODO: Create actual notification class with subclassed types. We need to store data related to the notification type like looker url information or data table rows and column names
@@ -2618,7 +2622,7 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 			GroupsIds:       make([]int, 0),
 			ExternalGroupId: "",
 			Permissions:     []string{"access_data", "see_looks"},
-			Models:          []string{},
+			Models:          []string{"networknext_pbl"},
 			AccessFilters:   make(map[string]map[string]interface{}),
 			UserAttributes:  make(map[string]interface{}),
 			SessionLength:   3600,
@@ -2628,12 +2632,29 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 			Time:            time.Now().Unix(),
 		}
 
+		urlOptions.UserAttributes["customer_code"] = "velan"
+
+		fmt.Println("Actual company code: ")
+		fmt.Println(companyCode)
+
 		returnNotification.AnalyticsURL = s.BuildLookerURL(urlOptions)
 
 		reply.Notifications = append(reply.Notifications, returnNotification)
 	}
 
 	return nil
+}
+
+func (s *BuyersService) FetchReleaseNotes() (string, error) {
+	gistList, _, err := s.GithubClient.Gists.List(context.Background(), "", &github.GistListOptions{})
+	if err != nil {
+		return "", err
+	}
+	// <script src="https://gist.github.com/network-next-notifications/7cb0be9fc66f9dfb21c60ce0aa6241cd.js"></script>
+
+	gistID := gistList[0].ID
+
+	return fmt.Sprintf("https://gist.github.com/network-next-notifications/%s.js", *gistID), nil
 }
 
 type FetchLookerURLArgs struct{}
@@ -2698,7 +2719,7 @@ func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs
 		Time:            time.Now().Unix(),
 	}
 
-	urlOptions.UserAttributes["company_code"] = companyCode
+	urlOptions.UserAttributes["customer_code"] = companyCode
 
 	reply.URL = s.BuildLookerURL(urlOptions)
 	return nil
