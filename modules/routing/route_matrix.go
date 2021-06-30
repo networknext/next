@@ -134,6 +134,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 			stream.SerializeUint32(&entry.MaxSessions)
 			stream.SerializeUint32(&entry.NumRoutable)
 			stream.SerializeUint32(&entry.NumUnroutable)
+			stream.SerializeBool(&entry.Full)
 		}
 
 		numPingEntries := uint32(len(m.PingStats))
