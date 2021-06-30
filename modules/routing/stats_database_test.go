@@ -1,8 +1,8 @@
 package routing_test
 
-// todo: not today
-/*
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/networknext/backend/modules/crypto"
@@ -28,13 +28,6 @@ func TestHistory(t *testing.T) {
 		})
 	})
 
-	t.Run("HistoryMean()", func(t *testing.T) {
-		t.Run("returns a float32 that is the average of the input", func(t *testing.T) {
-			history := []float32{1, 2, 3, 4, 5, 4, 3, 2, 1}
-			assert.Equal(t, float32(25.0/9.0), routing.HistoryMean(history))
-		})
-	})
-
 	t.Run("Old tests", func(t *testing.T) {
 		t.Run("TestHistoryMax()", func(t *testing.T) {
 
@@ -49,21 +42,6 @@ func TestHistory(t *testing.T) {
 			history[2] = 100.0
 
 			assert.Equal(t, float32(100.0), routing.HistoryMax(history[:]))
-		})
-
-		t.Run("TestHistoryMean", func(t *testing.T) {
-
-			t.Parallel()
-
-			history := routing.HistoryNotSet()
-
-			assert.Equal(t, float32(0.0), routing.HistoryMean(history[:]))
-
-			history[0] = 5.0
-			history[1] = 3.0
-			history[2] = 100.0
-
-			assert.Equal(t, float32(36.0), routing.HistoryMean(history[:]))
 		})
 	})
 }
@@ -144,7 +122,7 @@ func TestStatsDatabase(t *testing.T) {
 			entry := routing.NewStatsEntry()
 			statsEntry1 := makeBasicStats()
 			entry.Relays[relay1ID] = statsEntry1
-			statsdb.Entries[update.ID] = *entry
+			statsdb.Entries[update.ID] = entry
 
 			statsdb.ProcessStats(&update)
 
@@ -161,7 +139,7 @@ func TestStatsDatabase(t *testing.T) {
 			entry := routing.NewStatsEntry()
 			statsEntry1 := makeBasicStats()
 			entry.Relays[relay1ID] = statsEntry1
-			statsdb.Entries[sourceID] = *entry
+			statsdb.Entries[sourceID] = entry
 
 			cpy := statsdb.MakeCopy()
 
@@ -181,7 +159,7 @@ func TestStatsDatabase(t *testing.T) {
 		t.Run("entry exists but stats for the internal entry does not", func(t *testing.T) {
 			statsdb := routing.NewStatsDatabase()
 			entry := routing.NewStatsEntry()
-			statsdb.Entries[sourceID] = *entry
+			statsdb.Entries[sourceID] = entry
 
 			stats := statsdb.GetEntry(sourceID, relay1ID)
 
@@ -194,7 +172,7 @@ func TestStatsDatabase(t *testing.T) {
 			// this entry makes no sense, test puposes only
 			statsEntry1 := makeBasicStats()
 			entry.Relays[relay1ID] = statsEntry1
-			statsdb.Entries[sourceID] = *entry
+			statsdb.Entries[sourceID] = entry
 
 			stats := statsdb.GetEntry(sourceID, relay1ID)
 
@@ -210,12 +188,12 @@ func TestStatsDatabase(t *testing.T) {
 			statsEntryRelay := routing.NewStatsEntryRelay()
 			entry := routing.NewStatsEntry()
 			entry.Relays[id2] = statsEntryRelay
-			statsdb.Entries[id1] = *entry
+			statsdb.Entries[id1] = entry
 		}
 
 		t.Run("relay 1 -> relay 2 does not exist", func(t *testing.T) {
 			statsdb := routing.NewStatsDatabase()
-			statsdb.Entries[id1] = *routing.NewStatsEntry()
+			statsdb.Entries[id1] = routing.NewStatsEntry()
 			makeBasicConnection(statsdb, id2, id1)
 
 			rtt, jitter, packetLoss := statsdb.GetSample(id1, id2)
@@ -227,7 +205,7 @@ func TestStatsDatabase(t *testing.T) {
 
 		t.Run("relay 2 -> relay 1 does not exist", func(t *testing.T) {
 			statsdb := routing.NewStatsDatabase()
-			statsdb.Entries[id2] = *routing.NewStatsEntry()
+			statsdb.Entries[id2] = routing.NewStatsEntry()
 			makeBasicConnection(statsdb, id1, id2)
 
 			rtt, jitter, packetLoss := statsdb.GetSample(id1, id2)
@@ -255,8 +233,8 @@ func TestStatsDatabase(t *testing.T) {
 			entryForID1.Relays[id2] = statsForID2
 			entryForID2.Relays[id1] = statsForID1
 
-			statsdb.Entries[id1] = *entryForID1
-			statsdb.Entries[id2] = *entryForID2
+			statsdb.Entries[id1] = entryForID1
+			statsdb.Entries[id2] = entryForID2
 
 			rtt, jitter, packetLoss := statsdb.GetSample(id1, id2)
 
@@ -265,150 +243,255 @@ func TestStatsDatabase(t *testing.T) {
 			assert.Equal(t, float32(989.0), packetLoss)
 		})
 	})
+}
 
-	t.Run("GetCostMatrix()", func(t *testing.T) {
-		t.Run("returns the cost matrix", func(t *testing.T) {
-			statsdb := routing.NewStatsDatabase()
-			relayMap := routing.NewRelayMap(func(relayData routing.RelayData) error {
-				statsdb.DeleteEntry(relayData.ID)
-				return nil
-			})
-			// Setup
+func TestDeleteEntry(t *testing.T) {
+	db := routing.NewStatsDatabase()
+	sourceID := crypto.HashID("127.0.0.1")
+	relay1ID := crypto.HashID("127.9.9.9")
+	relay2ID := crypto.HashID("999.999.9.9")
 
-			fillRelayDatabase(relayMap)
-			fillStatsDatabase(statsdb)
+	update := routing.RelayStatsUpdate{
+		ID: sourceID,
+		PingStats: []routing.RelayStatsPing{
+			{
+				RelayID:    relay1ID,
+				RTT:        0.5,
+				Jitter:     0.7,
+				PacketLoss: 0.9,
+			},
+			{
+				RelayID:    relay2ID,
+				RTT:        0,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+	}
 
-			allRelayData := relayMap.GetAllRelayData()
+	t.Run("delete existing entry", func(t *testing.T) {
+		db.ProcessStats(&update)
 
-			i := 0
-			for _, r := range allRelayData {
-				if i == 0 {
-					r.Datacenter.ID = 0
-					relayMap.AddRelayDataEntry(r.Addr.String(), r)
-				} else {
-					r.Datacenter.ID = uint64(i)
-					relayMap.AddRelayDataEntry(r.Addr.String(), r)
-				}
-				i++
-			}
+		entry, ok := db.Entries[update.ID]
+		assert.True(t, ok)
+		assert.NotNil(t, entry.Relays)
 
-			modifyEntry := func(addr1, addr2 string, rtt, jitter, packetloss float32) {
-				entry := statsdb.GetEntry(crypto.HashID(addr1), crypto.HashID(addr2))
-				entry.RTT = rtt
-				entry.Jitter = jitter
-				entry.PacketLoss = packetloss
-			}
+		db.DeleteEntry(update.ID)
 
-			maxJitter := float32(10.0)
-			maxPacketLoss := float32(0.1)
-
-			// valid
-			modifyEntry("127.0.0.1:40000", "127.0.0.2:40000", 123.00, 1.3, 0.0)
-
-			// invalid - rtt = invalid route value
-			modifyEntry("127.0.0.1:40000", "127.0.0.3:40000", routing.InvalidRouteValue, 0.3, 0.0)
-
-			// invalid - jitter > MaxJitter
-			modifyEntry("127.0.0.1:40000", "127.0.0.4:40000", 1.0, maxJitter+1, 0.0)
-
-			// invalid - packet loss > MaxPacketLoss
-			modifyEntry("127.0.0.1:40000", "127.0.0.5:40000", 1.0, 0.3, maxPacketLoss+1)
-
-			relayIDs := make([]uint64, 0)
-			for _, relayData := range allRelayData {
-				relayIDs = append(relayIDs, relayData.ID)
-			}
-
-			costs := statsdb.GetCosts(relayIDs, maxJitter, maxPacketLoss)
-			assert.NotEmpty(t, costs)
-
-			// Testing
-			// assert that all non-invalid rtt's are within the cost matrix
-			getAddressIndex := func(addr1, addr2 string) int {
-				addr1ID := crypto.HashID(addr1)
-				addr2ID := crypto.HashID(addr2)
-				indxOfI := -1
-				indxOfJ := -1
-
-				for i, id := range relayIDs {
-					if uint64(id) == addr1ID {
-						indxOfI = i
-					} else if uint64(id) == addr2ID {
-						indxOfJ = i
-					}
-
-					if indxOfI != -1 && indxOfJ != -1 {
-						break
-					}
-				}
-
-				return routing.TriMatrixIndex(indxOfI, indxOfJ)
-			}
-
-			assert.Equal(t, int32(123), costs[getAddressIndex("127.0.0.1:40000", "127.0.0.2:40000")])
-			assert.Equal(t, int32(-1), costs[getAddressIndex("127.0.0.1:40000", "127.0.0.3:40000")])
-			assert.Equal(t, int32(-1), costs[getAddressIndex("127.0.0.1:40000", "127.0.0.4:40000")])
-			assert.Equal(t, int32(-1), costs[getAddressIndex("127.0.0.1:40000", "127.0.0.5:40000")])
-		})
+		entry, ok = db.Entries[update.ID]
+		assert.False(t, ok)
+		assert.Nil(t, entry)
 	})
 
-	func TestExtractPingStats(t *testing.T) {
-		numRelays := 10
+	t.Run("delete non existing entry", func(t *testing.T) {
+		db.DeleteEntry(update.ID)
+	})
+}
 
-		statsdb := routing.NewStatsDatabase()
+func TestGetCosts(t *testing.T) {
+	db := routing.NewStatsDatabase()
+	sourceID := crypto.HashID("127.0.0.1")
+	relay1ID := crypto.HashID("127.9.9.9")
+	relay2ID := crypto.HashID("999.999.9.9")
 
-		for i := 0; i < numRelays; i++ {
-			var update routing.RelayStatsUpdate
-			update.ID = uint64(i)
-			update.PingStats = make([]routing.RelayStatsPing, numRelays-1)
+	update := routing.RelayStatsUpdate{
+		ID: sourceID,
+		PingStats: []routing.RelayStatsPing{
+			{
+				RelayID:    relay1ID,
+				RTT:        0.5,
+				Jitter:     0.7,
+				PacketLoss: 0.9,
+			},
+			{
+				RelayID:    relay2ID,
+				RTT:        0,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+	}
 
-			for j, idx := 0, 0; j < numRelays; j++ {
-				if i == j {
-					continue
-				}
+	relayIDs := []uint64{
+		sourceID,
+		relay1ID,
+		relay2ID,
+	}
 
-				update.PingStats[idx].RelayID = uint64(j)
-				update.PingStats[idx].RTT = rand.Float32()
-				update.PingStats[idx].Jitter = rand.Float32()
-				update.PingStats[idx].PacketLoss = rand.Float32()
+	db.ProcessStats(&update)
 
-				idx++
+	costs := db.GetCosts(relayIDs, 5, 5)
+
+	expectedCosts := []int32{
+		-1,
+		-1,
+		-1,
+		1,
+	}
+
+	for i := 0; i < len(costs); i++ {
+		assert.Equal(t, expectedCosts[i], costs[i])
+	}
+}
+
+func TestGetCostsLocal(t *testing.T) {
+	db := routing.NewStatsDatabase()
+	sourceID := crypto.HashID("127.0.0.1")
+	relay1ID := crypto.HashID("127.9.9.9")
+	relay2ID := crypto.HashID("999.999.9.9")
+
+	update := routing.RelayStatsUpdate{
+		ID: sourceID,
+		PingStats: []routing.RelayStatsPing{
+			{
+				RelayID:    relay1ID,
+				RTT:        0.5,
+				Jitter:     0.7,
+				PacketLoss: 0.9,
+			},
+			{
+				RelayID:    relay2ID,
+				RTT:        0,
+				Jitter:     0,
+				PacketLoss: 0,
+			},
+		},
+	}
+
+	relayIDs := []uint64{
+		sourceID,
+		relay1ID,
+		relay2ID,
+	}
+
+	db.ProcessStats(&update)
+
+	costs := db.GetCostsLocal(relayIDs, 0, 0)
+
+	for i := 0; i < len(costs); i++ {
+		assert.Equal(t, int32(0), costs[i])
+	}
+}
+
+func TestTriMatrixLength(t *testing.T) {
+	t.Run("size of 0", func(t *testing.T) {
+		length := routing.TriMatrixLength(0)
+		assert.Equal(t, 0, length)
+	})
+
+	t.Run("size of 1", func(t *testing.T) {
+		length := routing.TriMatrixLength(1)
+		assert.Equal(t, 0, length)
+	})
+
+	t.Run("size of 2", func(t *testing.T) {
+		length := routing.TriMatrixLength(2)
+		assert.Equal(t, 1, length)
+	})
+
+	t.Run("size of 5", func(t *testing.T) {
+		length := routing.TriMatrixLength(5)
+		assert.Equal(t, 10, length)
+	})
+
+	t.Run("size of 10", func(t *testing.T) {
+		length := routing.TriMatrixLength(10)
+		assert.Equal(t, 45, length)
+	})
+
+	t.Run("size of 27", func(t *testing.T) {
+		length := routing.TriMatrixLength(27)
+		assert.Equal(t, 351, length)
+	})
+
+	t.Run("size of 138", func(t *testing.T) {
+		length := routing.TriMatrixLength(138)
+		assert.Equal(t, 9453, length)
+	})
+
+	t.Run("size of 2148", func(t *testing.T) {
+		length := routing.TriMatrixLength(2148)
+		assert.Equal(t, 2305878, length)
+	})
+}
+
+func TestTriMatrixIndex(t *testing.T) {
+	t.Run("index at 0,0", func(t *testing.T) {
+		index := routing.TriMatrixIndex(0, 0)
+		assert.Equal(t, 0, index)
+	})
+
+	t.Run("index i > j", func(t *testing.T) {
+		index := routing.TriMatrixIndex(10, 20)
+		assert.Equal(t, 200, index)
+	})
+
+	t.Run("index i < j", func(t *testing.T) {
+		index := routing.TriMatrixIndex(20, 10)
+		assert.Equal(t, 200, index)
+	})
+
+	t.Run("index i == j", func(t *testing.T) {
+		index := routing.TriMatrixIndex(20, 20)
+		assert.Equal(t, 210, index)
+	})
+}
+
+func TestExtractPingStats(t *testing.T) {
+	numRelays := 10
+
+	statsdb := routing.NewStatsDatabase()
+
+	for i := 0; i < numRelays; i++ {
+		var update routing.RelayStatsUpdate
+		update.ID = uint64(i)
+		update.PingStats = make([]routing.RelayStatsPing, numRelays-1)
+
+		for j, idx := 0, 0; j < numRelays; j++ {
+			if i == j {
+				continue
 			}
 
-			statsdb.ProcessStats(&update)
+			update.PingStats[idx].RelayID = uint64(j)
+			update.PingStats[idx].RTT = rand.Float32()
+			update.PingStats[idx].Jitter = rand.Float32()
+			update.PingStats[idx].PacketLoss = rand.Float32()
+
+			idx++
 		}
 
-		maxJitter := float32(5.0)
-		maxPacketLoss := float32(0.1)
-		instanceID := "12345"
-		isDebug := false
+		statsdb.ProcessStats(&update)
+	}
 
-		pairs := analytics.ExtractPingStats(statsdb, maxJitter, maxPacketLoss, instanceID, isDebug)
-		assert.Len(t, pairs, numRelays*(numRelays-1)/2)
+	maxJitter := float32(5.0)
+	maxPacketLoss := float32(0.1)
+	instanceID := "12345"
+	isDebug := false
 
-		for i := 0; i < numRelays; i++ {
-			for j := 0; j < numRelays; j++ {
-				var expectedTimesFound int
-				if i == j {
-					// this pair should not be in the list
-					expectedTimesFound = 0
-				} else {
-					// this pair should be in the list only once
-					expectedTimesFound = 1
-				}
+	pairs := statsdb.ExtractPingStats(maxJitter, maxPacketLoss, instanceID, isDebug)
+	assert.Len(t, pairs, numRelays*(numRelays-1)/2)
 
-				timesFound := 0
-
-				for k := range pairs {
-					pair := &pairs[k]
-					if (pair.RelayA == uint64(i) && pair.RelayB == uint64(j)) || (pair.RelayA == uint64(j) && pair.RelayB == uint64(i)) {
-						timesFound++
-					}
-				}
-
-				assert.Equal(t, expectedTimesFound, timesFound, fmt.Sprintf("i = %d, j = %d, pairs = %v", i, j, pairs))
+	for i := 0; i < numRelays; i++ {
+		for j := 0; j < numRelays; j++ {
+			var expectedTimesFound int
+			if i == j {
+				// this pair should not be in the list
+				expectedTimesFound = 0
+			} else {
+				// this pair should be in the list only once
+				expectedTimesFound = 1
 			}
+
+			timesFound := 0
+
+			for k := range pairs {
+				pair := &pairs[k]
+				if (pair.RelayA == uint64(i) && pair.RelayB == uint64(j)) || (pair.RelayA == uint64(j) && pair.RelayB == uint64(i)) {
+					timesFound++
+				}
+			}
+
+			assert.Equal(t, expectedTimesFound, timesFound, fmt.Sprintf("i = %d, j = %d, pairs = %v", i, j, pairs))
 		}
 	}
 }
-*/

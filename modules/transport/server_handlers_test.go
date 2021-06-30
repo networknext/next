@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"net"
 	"testing"
 	"time"
@@ -1161,6 +1162,333 @@ func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_NoRelaysInDatacent
 
 	assert.False(t, transport.SessionUpdateNearRelayStats(&state))
 	assert.Equal(t, float64(1), state.Metrics.NoRelaysInDatacenter.Value())
+}
+
+func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_HoldNearRelays(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Large Customer Transition false -> true before slice 4", func(t *testing.T) {
+		updatePacket := transport.SessionUpdatePacket{
+			SliceNumber: uint32(2),
+		}
+
+		metricsHandler := metrics.LocalHandler{}
+		metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+		assert.NoError(t, err)
+
+		buyer := routing.Buyer{
+			InternalConfig: core.InternalConfig{
+				LargeCustomer: false,
+			},
+		}
+
+		dc := routing.Datacenter{
+			ID:        crypto.HashID("datacenter.name"),
+			Name:      "datacenter.name",
+			AliasName: "datacenter.name",
+		}
+
+		routeMatrix := &routing.RouteMatrix{
+			RelayIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+			RelayDatacenterIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+		}
+
+		state := transport.SessionHandlerState{
+			Packet:      updatePacket,
+			Metrics:     metrics.SessionUpdateMetrics,
+			RouteMatrix: routeMatrix,
+			Datacenter:  dc,
+			Buyer:       buyer,
+		}
+
+		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStats(&state))
+		assert.False(t, state.Output.HoldNearRelays)
+
+		state.Packet.SliceNumber++
+		state.Buyer.InternalConfig.LargeCustomer = true
+
+		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStats(&state))
+		assert.False(t, state.Output.HoldNearRelays)
+	})
+
+	t.Run("Large Customer Transition true -> false before slice 4", func(t *testing.T) {
+		updatePacket := transport.SessionUpdatePacket{
+			SliceNumber: uint32(2),
+		}
+
+		metricsHandler := metrics.LocalHandler{}
+		metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+		assert.NoError(t, err)
+
+		buyer := routing.Buyer{
+			InternalConfig: core.InternalConfig{
+				LargeCustomer: true,
+			},
+		}
+
+		dc := routing.Datacenter{
+			ID:        crypto.HashID("datacenter.name"),
+			Name:      "datacenter.name",
+			AliasName: "datacenter.name",
+		}
+
+		routeMatrix := &routing.RouteMatrix{
+			RelayIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+			RelayDatacenterIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+		}
+
+		state := transport.SessionHandlerState{
+			Packet:      updatePacket,
+			Metrics:     metrics.SessionUpdateMetrics,
+			RouteMatrix: routeMatrix,
+			Datacenter:  dc,
+			Buyer:       buyer,
+		}
+
+		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStats(&state))
+		assert.False(t, state.Output.HoldNearRelays)
+
+		state.Packet.SliceNumber++
+		state.Buyer.InternalConfig.LargeCustomer = false
+
+		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStats(&state))
+		assert.False(t, state.Output.HoldNearRelays)
+	})
+
+	t.Run("Large Customer Transition false -> true on or after slice 4", func(t *testing.T) {
+		rand.Seed(time.Now().Unix())
+
+		updatePacket := transport.SessionUpdatePacket{
+			SliceNumber: uint32(4),
+			NearRelayIDs: []uint64{
+				rand.Uint64(),
+				rand.Uint64(),
+				rand.Uint64(),
+			},
+			NearRelayRTT: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayJitter: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayPacketLoss: []int32{
+				rand.Int31n(100),
+				rand.Int31n(100),
+				rand.Int31n(100),
+			},
+		}
+
+		metricsHandler := metrics.LocalHandler{}
+		metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+		assert.NoError(t, err)
+
+		buyer := routing.Buyer{
+			InternalConfig: core.InternalConfig{
+				LargeCustomer: false,
+			},
+		}
+
+		dc := routing.Datacenter{
+			ID:        crypto.HashID("datacenter.name"),
+			Name:      "datacenter.name",
+			AliasName: "datacenter.name",
+		}
+
+		routeMatrix := &routing.RouteMatrix{
+			RelayIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+			RelayDatacenterIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+		}
+
+		state := transport.SessionHandlerState{
+			Packet:      updatePacket,
+			Metrics:     metrics.SessionUpdateMetrics,
+			RouteMatrix: routeMatrix,
+			Datacenter:  dc,
+			Buyer:       buyer,
+		}
+
+		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStats(&state))
+		assert.False(t, state.Output.HoldNearRelays)
+
+		state.Packet.SliceNumber++
+		state.Buyer.InternalConfig.LargeCustomer = true
+		state.Input = state.Output
+
+		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStats(&state))
+		assert.True(t, state.Output.HoldNearRelays)
+
+		updatePacket = transport.SessionUpdatePacket{
+			SliceNumber: state.Packet.SliceNumber + 1,
+			NearRelayIDs: []uint64{
+				rand.Uint64(),
+				rand.Uint64(),
+				rand.Uint64(),
+			},
+			NearRelayRTT: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayJitter: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayPacketLoss: []int32{
+				rand.Int31n(100),
+				rand.Int31n(100),
+				rand.Int31n(100),
+			},
+		}
+
+		state.Packet = updatePacket
+		state.Input = state.Output
+
+		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStats(&state))
+		assert.True(t, state.Output.HoldNearRelays)
+		assert.Equal(t, state.Packet.NearRelayIDs, updatePacket.NearRelayIDs)
+		for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
+			assert.Equal(t, state.Packet.NearRelayRTT[i], state.Input.HoldNearRelayRTT[i])
+			assert.Equal(t, state.Packet.NearRelayRTT[i], updatePacket.NearRelayRTT[i])
+		}
+	})
+
+	t.Run("Large Customer Transition true -> false on or after slice 4", func(t *testing.T) {
+		rand.Seed(time.Now().Unix())
+
+		updatePacket := transport.SessionUpdatePacket{
+			SliceNumber: uint32(4),
+			NearRelayIDs: []uint64{
+				rand.Uint64(),
+				rand.Uint64(),
+				rand.Uint64(),
+			},
+			NearRelayRTT: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayJitter: []int32{
+				rand.Int31n(255),
+				rand.Int31n(255),
+				rand.Int31n(255),
+			},
+			NearRelayPacketLoss: []int32{
+				rand.Int31n(100),
+				rand.Int31n(100),
+				rand.Int31n(100),
+			},
+		}
+
+		metricsHandler := metrics.LocalHandler{}
+		metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+		assert.NoError(t, err)
+
+		buyer := routing.Buyer{
+			InternalConfig: core.InternalConfig{
+				LargeCustomer: true,
+			},
+		}
+
+		dc := routing.Datacenter{
+			ID:        crypto.HashID("datacenter.name"),
+			Name:      "datacenter.name",
+			AliasName: "datacenter.name",
+		}
+
+		routeMatrix := &routing.RouteMatrix{
+			RelayIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+			RelayDatacenterIDs: []uint64{
+				crypto.HashID("datacenter.name"),
+				uint64(1234),
+				uint64(12345),
+				uint64(123456),
+			},
+		}
+
+		state := transport.SessionHandlerState{
+			Packet:      updatePacket,
+			Metrics:     metrics.SessionUpdateMetrics,
+			RouteMatrix: routeMatrix,
+			Datacenter:  dc,
+			Buyer:       buyer,
+		}
+
+		assert.True(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStats(&state))
+		assert.True(t, state.Output.HoldNearRelays)
+
+		state.Packet.SliceNumber++
+		state.Buyer.InternalConfig.LargeCustomer = false
+		state.Input = state.Output
+
+		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStats(&state))
+		assert.True(t, state.Output.HoldNearRelays)
+		assert.Equal(t, state.Packet.NearRelayIDs, updatePacket.NearRelayIDs)
+		for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
+			assert.Equal(t, state.Packet.NearRelayRTT[i], state.Input.HoldNearRelayRTT[i])
+			assert.Equal(t, state.Packet.NearRelayRTT[i], updatePacket.NearRelayRTT[i])
+		}
+
+		state.Packet.SliceNumber++
+		state.Input = state.Output
+
+		assert.False(t, state.Buyer.InternalConfig.LargeCustomer)
+		assert.True(t, transport.SessionUpdateNearRelayStats(&state))
+		assert.True(t, state.Output.HoldNearRelays)
+		assert.Equal(t, state.Packet.NearRelayIDs, updatePacket.NearRelayIDs)
+		for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
+			assert.Equal(t, state.Packet.NearRelayRTT[i], state.Input.HoldNearRelayRTT[i])
+			assert.Equal(t, state.Packet.NearRelayRTT[i], updatePacket.NearRelayRTT[i])
+		}
+	})
 }
 
 // todo add more SessionUpdateNearRelayStats tests here
