@@ -378,7 +378,6 @@ func (db *SQL) BuyerWithCompanyCode(companCode string) (routing.Buyer, error) {
 	)
 	switch err {
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() no rows were returned!")
 		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: fmt.Sprintf("%016x", companCode)}
 	case nil:
 		buyer.ID = uint64(buyer.SdkID)
@@ -451,15 +450,14 @@ func (db *SQL) Buyers() []routing.Buyer {
 
 		ic, err := db.InternalConfig(buyer.ID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() InternalConfig query returned an error: %v", err)
-			return []routing.Buyer{}
+			ic = core.NewInternalConfig()
 		}
 
 		rs, err := db.RouteShader(buyer.ID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() RouteShader query returned an error: %v", err)
-			return []routing.Buyer{}
+			rs = core.NewRouteShader()
 		}
+
 		b := routing.Buyer{
 			ID:             buyer.ID,
 			HexID:          fmt.Sprintf("%016x", buyer.ID),
@@ -842,7 +840,6 @@ func (db *SQL) SellerWithCompanyCode(code string) (routing.Seller, error) {
 		&seller.CustomerID)
 	switch err {
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "SellerWithCompanyCode() no rows were returned!")
 		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: code}
 	case nil:
 		c, err := db.Customer(code)
