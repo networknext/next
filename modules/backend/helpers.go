@@ -251,10 +251,10 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			}
 		}
 
-		dbSyncInterval, err := envvar.GetDuration("GOOGLE_CLOUD_SQL_SYNC_INTERVAL", time.Second*10)
-		if err != nil {
-			return nil, err
-		}
+		// dbSyncInterval, err := envvar.GetDuration("GOOGLE_CLOUD_SQL_SYNC_INTERVAL", time.Second*10)
+		// if err != nil {
+		// 	return nil, err
+		// }
 
 		if env == "local" {
 			customerPublicKey, err := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
@@ -298,10 +298,10 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 		}
 
 		// Start a goroutine to sync from Firestore
-		go func() {
-			ticker := time.NewTicker(dbSyncInterval)
-			db.SyncLoop(ctx, ticker.C)
-		}()
+		// go func() {
+		// 	ticker := time.NewTicker(dbSyncInterval)
+		// 	db.SyncLoop(ctx, ticker.C)
+		// }()
 
 		return db, nil
 	}
