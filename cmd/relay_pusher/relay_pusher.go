@@ -188,13 +188,13 @@ func mainReturnWithCode() int {
 	}
 
 	ispStorageName := envvar.Get("MAXMIND_ISP_STORAGE_FILE_NAME", "")
-	if ispFileName == "" {
+	if ispStorageName == "" {
 		level.Error(logger).Log("err", "MAXMIND_ISP_STORAGE_FILE_NAME not defined", "err")
 		return 1
 	}
 
 	cityStorageName := envvar.Get("MAXMIND_CITY_STORAGE_FILE_NAME", "")
-	if cityFileName == "" {
+	if cityStorageName == "" {
 		level.Error(logger).Log("err", "MAXMIND_CITY_STORAGE_FILE_NAME not defined", "err")
 		return 1
 	}
@@ -364,15 +364,14 @@ func mainReturnWithCode() int {
 					}
 				}
 
-				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), maxmindInstanceNames, cityFileName); err != nil {
-					level.Error(logger).Log("msg", "failed to copy maxmind city file to server backends", "err", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
-					continue
-				}
-
 				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), cityStorageName); err != nil {
 					level.Error(logger).Log("msg", "failed to copy maxmind City file to gcp cloud storage", "err", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity.Add(1)
+				}
+
+				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), maxmindInstanceNames, cityFileName); err != nil {
+					level.Error(logger).Log("msg", "failed to copy maxmind city file to server backends", "err", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
 					continue
 				}
 

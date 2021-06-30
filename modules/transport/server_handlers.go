@@ -986,11 +986,11 @@ func SessionFilterNearRelays(state *SessionHandlerState) {
 		return
 	}
 
-	// IMPORTANT: On slice 4, grab the *processed* near relay RTTs from ReframeRelays,
-	// which are set to 255 for any near relays excluded because of high jitter or PL
-	// and hold them as the near relay RTTs to use from now on.
+	// IMPORTANT: On any slice after 4, if we haven't already, grab the *processed*
+	// near relay RTTs from ReframeRelays, which are set to 255 for any near relays
+	// excluded because of high jitter or PL and hold them as the near relay RTTs to use from now on.
 
-	if state.Packet.SliceNumber == 4 {
+	if !state.Input.HoldNearRelays {
 		core.Debug("holding near relays")
 		state.Output.HoldNearRelays = true
 		for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
