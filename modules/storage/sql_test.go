@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -202,8 +201,6 @@ func TestInsertSQL(t *testing.T) {
 		checkRelay, err := db.Relay(rid)
 		assert.NoError(t, err)
 
-		// fmt.Printf("checkRelay: %s\n", checkRelay.String())
-
 		assert.Equal(t, relay.Name, checkRelay.Name)
 		assert.Equal(t, relay.Addr, checkRelay.Addr)
 		assert.Equal(t, relay.InternalAddr, checkRelay.InternalAddr)
@@ -264,7 +261,6 @@ func TestInsertSQL(t *testing.T) {
 		err = db.SetRelay(ctx, relayMod)
 		assert.NoError(t, err)
 
-		fmt.Printf("test relay.ID: %s\n", fmt.Sprintf("%016x", relay.ID))
 		checkRelayMod, err := db.Relay(relay.ID)
 		assert.NoError(t, err)
 
@@ -903,8 +899,6 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		initialRelayVersion := "2.0.6"
-
-		// fmt.Printf("test sellerWithID: %s\n", sellerWithID.String())
 
 		did := crypto.HashID("some.locale.name")
 		datacenterWithID, err = db.Datacenter(did)

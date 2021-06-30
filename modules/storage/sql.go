@@ -670,7 +670,6 @@ func (db *SQL) Sellers() []routing.Seller {
 
 	rows, err := db.Client.QueryContext(context.Background(), sql.String())
 	if err != nil {
-		fmt.Printf("err: %v\n", err)
 		level.Error(db.Logger).Log("during", "Sellers(): QueryContext returned an error", "err", err)
 		return []routing.Seller{}
 	}
@@ -685,14 +684,12 @@ func (db *SQL) Sellers() []routing.Seller {
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "Sellers(): error parsing returned row", "err", err)
-			fmt.Printf("err: %v\n", err)
 			return []routing.Seller{}
 		}
 
 		c, err := db.Customer(seller.ShortName)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "Sellers(): customer does not exist", "err", err)
-			fmt.Printf("err: %v\n", err)
 			return []routing.Seller{}
 		}
 		s := routing.Seller{
@@ -829,8 +826,8 @@ func (db *SQL) SellerWithCompanyCode(code string) (routing.Seller, error) {
 	var querySQL bytes.Buffer
 	var seller sqlSeller
 
-	querySQL.Write([]byte("select short_name, public_egress_price, secret, "))
-	querySQL.Write([]byte("customer_id from sellers where id = $1"))
+	querySQL.Write([]byte("select id, short_name, public_egress_price, secret, "))
+	querySQL.Write([]byte("customer_id from sellers where short_name = $1"))
 
 	row := db.Client.QueryRow(querySQL.String(), code)
 	err := row.Scan(&seller.DatabaseID,
@@ -858,7 +855,7 @@ func (db *SQL) SellerWithCompanyCode(code string) (routing.Seller, error) {
 		}
 		return s, nil
 	default:
-		level.Error(db.Logger).Log("during", "SellerWithCompanyCode() QueryRow returned an error: %v", err)
+		level.Error(db.Logger).Log("during", "SellerWithCompanyCode() QueryRow returned an error", "err", err)
 		return routing.Seller{}, err
 	}
 }
@@ -941,7 +938,6 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 
 		datacenter, err := db.DatacenterByDbId(relay.DatacenterID)
 		if err != nil {
-			fmt.Printf("err derefercing datacenter: %v\n", err)
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
 		}
 
@@ -1399,10 +1395,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 
-		fmt.Printf("UpdateRelays() StartDate: %s\n", startDate)
-
 		if startDate == "" {
-			fmt.Println("writing null startdate")
 			updateSQL.Write([]byte("update relays set start_date=null where id=$1"))
 			args = append(args, relay.DatabaseID)
 			relay.StartDate = time.Time{}
@@ -1411,8 +1404,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 			if err != nil {
 				return fmt.Errorf("could not parse `%s` - must be of the form 'January 2, 2006'", startDate)
 			}
-			fmt.Printf("writing start date: %v\n", newStartDate)
-			fmt.Printf("for relay with database id %d\n", relay.DatabaseID)
 			updateSQL.Write([]byte("update relays set start_date=$1 where id=$2"))
 			args = append(args, newStartDate, relay.DatabaseID)
 		}
@@ -1607,8 +1598,6 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		endDate = sql.NullTime{}
 	}
 
-	// fmt.Printf("addRelay r: %s\n", r.String())
-
 	var billingSupplier sql.NullInt64
 	if r.BillingSupplier != "" {
 		supplier, err := db.Seller(r.BillingSupplier)
@@ -1645,7 +1634,6 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("relay version can not be an empty string and must be a valid value (e.g. '2.0.6')")
 	}
 
-	// fmt.Printf("billingSupplier: %d\n", billingSupplier.Int64)
 	relay := sqlRelay{
 		Name:               r.Name,
 		HexID:              fmt.Sprintf("%016x", rid),
@@ -2109,7 +2097,6 @@ func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]rou
 	rows, err := db.Client.QueryContext(context.Background(), querySQL.String(), dbBuyerID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer(): QueryContext returned an error", "err", err)
-		fmt.Printf("err: %v\n", err)
 		return map[uint64]routing.DatacenterMap{}
 	}
 	defer rows.Close()
@@ -2146,13 +2133,11 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 	buyer, err := db.Buyer(dcMap.BuyerID)
 	if err != nil {
-		fmt.Printf("buyer does not exist: %016x\n", dcMap.BuyerID)
 		return &DoesNotExistError{resourceType: "Buyer.ID", resourceRef: fmt.Sprintf("%016x", dcMap.BuyerID)}
 	}
 
 	datacenter, err := db.Datacenter(dcMap.DatacenterID)
 	if err != nil {
-		fmt.Printf("datacenter does not exist: %016x\n", dcMap.DatacenterID)
 		return &DoesNotExistError{resourceType: "DatacenterID", resourceRef: dcMap.DatacenterID}
 	}
 
@@ -3272,7 +3257,6 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 
 	seller, err := db.Seller(sellerID)
 	if err != nil {
-		fmt.Printf("Seller() err: %v\n", err)
 		return &DoesNotExistError{resourceType: "seller", resourceRef: sellerID}
 	}
 
