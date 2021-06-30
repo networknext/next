@@ -141,7 +141,7 @@ func SeedSQLStorage(
 
 		ghostSeller := routing.Seller{
 			ID:                       ghostCust.Code,
-			ShortName:                "ghost",
+			ShortName:                "ghost-army",
 			CompanyCode:              "ghost-army",
 			Secret:                   false,
 			Name:                     ghostCust.Name,
