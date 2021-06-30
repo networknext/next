@@ -284,6 +284,7 @@ func (r *Relay) String() string {
 	relay := "\nrouting.Relay:\n"
 
 	relay += "\tID                 : " + fmt.Sprintf("%d", r.ID) + "\n"
+	relay += "\tHex ID             : " + fmt.Sprintf("%016x", r.ID) + "\n"
 	relay += "\tName               : " + r.Name + "\n"
 	relay += "\tAddr               : " + r.Addr.String() + "\n"
 	relay += "\tInternalAddr       : " + r.InternalAddr.String() + "\n"
