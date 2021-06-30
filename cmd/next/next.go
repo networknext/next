@@ -2743,7 +2743,6 @@ Update one field for the specified seller. The field
 must be one of the following and is case-sensitive:
 
   EgressPrice  US Dollars
-  ShortName    string
   Secret       boolean
 
 The value should be whatever type is appropriate for the field
