@@ -10,9 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -54,9 +56,10 @@ const (
 	WARNING_PRIORITY NotificationPriorty = 2
 	URGENT_PRIORITY  NotificationPriorty = 3
 	// TODO: Move these somewhere else like the jsonrpc error codes and actually use them for something
-	NOTIFICATION_SYSTEM    NotificationType = 0
-	NOTIFICATION_DASHBOARD NotificationType = 1
-	NOTIFICATION_INVOICE   NotificationType = 2
+	NOTIFICATION_SYSTEM        NotificationType = 0
+	NOTIFICATION_RELEASE_NOTES NotificationType = 1
+	NOTIFICATION_DASHBOARD     NotificationType = 2
+	NOTIFICATION_INVOICE       NotificationType = 3
 )
 
 var (
@@ -2534,12 +2537,13 @@ type FetchNotificationsReply struct {
 }
 
 type Notification struct {
-	AnalyticsURL  string              `json:"analytics_url"`
-	Title         string              `json:"title"`
-	Message       string              `json:"message"`
-	Graphic       string              `json:"graphic"`
-	Priority      NotificationPriorty `json:"priority"`
-	ReleaseNotees string              `json:"release_notes"` // TODO: Move this to its own specific notification type
+	Type         NotificationType    `json:"type"`
+	AnalyticsURL string              `json:"analytics_url"`
+	Title        string              `json:"title"`
+	Message      string              `json:"message"`
+	Graphic      string              `json:"graphic"`
+	Priority     NotificationPriorty `json:"priority"`
+	ReleaseNotes GistEmbed           `json:"release_notes"` // TODO: Move this to its own specific notification type OR figure out the best way of doing this IE: always show release notes notification
 }
 
 func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificationsArgs, reply *FetchNotificationsReply) error {
@@ -2574,13 +2578,23 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	// Seeding data for the time being for demos and such
 	notifications := []Notification{
 		{
-			Title:    "Super Important Looker Data",
-			Graphic:  "fire",
+			Type:     NOTIFICATION_SYSTEM,
+			Title:    "Super Important System Updates",
 			Priority: URGENT_PRIORITY,
 		},
 		{
-			Title:    "Super Satisfying Table Data",
-			Graphic:  "smile",
+			Type:     NOTIFICATION_INVOICE,
+			Title:    "Super Satisfying Invoice Information",
+			Priority: WARNING_PRIORITY,
+		},
+		{
+			Type:     NOTIFICATION_RELEASE_NOTES,
+			Title:    "Super Cool Release Notes",
+			Priority: DEFAULT_PRIORITY,
+		},
+		{
+			Type:     NOTIFICATION_DASHBOARD,
+			Title:    "Super Intriguing Looker Data",
 			Priority: INFO_PRIORITY,
 		},
 	}
@@ -2595,11 +2609,12 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	for _, notification := range notifications {
 		// TODO: Not sure if this will be necessary or not. We don't want to dump the whole SQL entry to the frontend, only data necessary for that type
 		returnNotification := Notification{
-			Title:         notification.Title,
-			Message:       "\"Help me, Obi-Wan Kenobi. You’re my only hope.\" — Leia Organa\n\"I find your lack of faith disturbing.\" — Darth Vader\n\"It’s the ship that made the Kessel run in less than twelve parsecs. I’ve outrun Imperial starships. Not the local bulk cruisers, mind you. I’m talking about the big Corellian ships, now. She’s fast enough for you, old man.\" — Han Solo\n",
-			Graphic:       notification.Graphic,
-			Priority:      notification.Priority,
-			ReleaseNotees: releaseNotes,
+			Type:         notification.Type,
+			Title:        notification.Title,
+			Message:      "\"Help me, Obi-Wan Kenobi. You’re my only hope.\" — Leia Organa\n\"I find your lack of faith disturbing.\" — Darth Vader\n\"It’s the ship that made the Kessel run in less than twelve parsecs. I’ve outrun Imperial starships. Not the local bulk cruisers, mind you. I’m talking about the big Corellian ships, now. She’s fast enough for you, old man.\" — Han Solo\n",
+			Graphic:      notification.Graphic,
+			Priority:     notification.Priority,
+			ReleaseNotes: releaseNotes,
 		}
 
 		// TODO: Create actual notification class with subclassed types. We need to store data related to the notification type like looker url information or data table rows and column names
@@ -2645,16 +2660,52 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	return nil
 }
 
-func (s *BuyersService) FetchReleaseNotes() (string, error) {
+// TODO: Determine if this is the best approach. We may want to just always have a release notes notification available making this struct more valuable then the release notes property in the notification struct
+type GistEmbed struct {
+	CSSURL    string `json:"css_url"`
+	EmbedHTML string `json:"embed_html"`
+}
+
+func (s *BuyersService) FetchReleaseNotes() (GistEmbed, error) {
+	embedGist := GistEmbed{}
+
 	gistList, _, err := s.GithubClient.Gists.List(context.Background(), "", &github.GistListOptions{})
 	if err != nil {
-		return "", err
+		return embedGist, err
 	}
-	// <script src="https://gist.github.com/network-next-notifications/7cb0be9fc66f9dfb21c60ce0aa6241cd.js"></script>
 
+	// TODO: Replace this with the name of the release notes Gist page
 	gistID := gistList[0].ID
 
-	return fmt.Sprintf("https://gist.github.com/network-next-notifications/%s.js", *gistID), nil
+	resp, err := http.Get(fmt.Sprintf("https://gist.github.com/network-next-notifications/%s.js", *gistID))
+	if err != nil {
+		return embedGist, err
+	}
+
+	buffer, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return embedGist, err
+	}
+
+	fullEmbedOutput := string(buffer)
+
+	cssRegex := regexp.MustCompile(`https:\/\/github\.githubassets\.com\/assets\/gist-embed-[a-z0-9]+\.css`)
+	htmlRegex := regexp.MustCompile(`<div [a-z=\\"0-9\s>\-_A-Z</:.#&;]+`)
+
+	cssURL := cssRegex.FindString(fullEmbedOutput)
+	embedHTML := htmlRegex.FindString(fullEmbedOutput)
+	embedHTML = strings.ReplaceAll(embedHTML, "\\n", "")
+	embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
+
+	fmt.Println("cssURL")
+	fmt.Println(cssURL)
+	fmt.Println("gistEmbed")
+	fmt.Println(embedHTML)
+
+	embedGist.CSSURL = cssURL
+	embedGist.EmbedHTML = embedHTML
+
+	return embedGist, nil
 }
 
 type FetchLookerURLArgs struct{}
