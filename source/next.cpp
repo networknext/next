@@ -13694,7 +13694,7 @@ bool next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_pu
 
     const int size = 8 + 8 + 8 + 8;
 
-    if ( ping_token_bytes < int( 1 + size + NEXT_CRYPTO_SIGN_BYTES ) )
+    if ( ping_token_bytes != int( 1 + size + NEXT_CRYPTO_SIGN_BYTES ) )
         return false;
 
     uint64_t token_timestamp = next_read_uint64( &p );
