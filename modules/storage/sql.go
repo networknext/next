@@ -2201,7 +2201,7 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 
 	querySQL.Write([]byte("select sdk_generated_id from buyers where id in ( "))
 	querySQL.Write([]byte("select buyer_id from datacenter_maps where datacenter_id = ( "))
-	querySQL.Write([]byte("select id from datacenters where hex_id = '323c61af696bff50' )) "))
+	querySQL.Write([]byte("select id from datacenters where hex_id = $1 )) "))
 
 	rows, err := db.Client.QueryContext(context.Background(), querySQL.String(), hexID)
 	if err != nil {
@@ -3269,10 +3269,6 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 	var updateSQL bytes.Buffer
 	var args []interface{}
 	var stmt *sql.Stmt
-
-	fmt.Printf("UpdateSeller() sellerID: %s\n", sellerID)
-	fmt.Printf("UpdateSeller() field   : %s\n", field)
-	fmt.Printf("UpdateSeller() value   : %v\n", value)
 
 	seller, err := db.Seller(sellerID)
 	if err != nil {
