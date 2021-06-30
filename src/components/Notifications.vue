@@ -24,11 +24,6 @@
                 data-placement="right"
                 title="Urgent Notifications">{{ urgentNotifications.length }}</span>
         </div>
-        <div class="mb-2 mb-md-0 flex-grow-1">
-          <button v-if="false" class="btn btn-primary" type="button" data-toggle="collapse" data-target="#notification-0" aria-expanded="false" aria-controls="collapseExample">
-            Test Collapse
-          </button>
-        </div>
         <div class="pr-5">
           <font-awesome-icon
             aria-expanded="false"
@@ -51,8 +46,13 @@
         </div>
       </div>
     </div>
+    <!-- TODO: It may be a good idea to break out these collapsable cards to be used elsewhere potentially -->
     <div class="card" v-for="(notification, index) in notifications" v-bind:key="index" style="margin-top: 20px;text-align: center;">
-      <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center">
+      <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center" >
+        <div class="mb-2 mb-md-0 flex-grow-1"></div>
+        <div class="pr-5">
+          {{ notification.title }}
+        </div>
         <div class="mb-2 mb-md-0 flex-grow-1"></div>
         <div class="pr-5">
           <font-awesome-icon
@@ -75,81 +75,70 @@
           />
         </div>
       </div>
-      <div class="collapse collapse-all" v-bind:id="`notification-${index}`">
-        <div class="card-body" v-if="notification.notification_type === 0">
-          <div class="table-responsive table-no-top-line">
-            <table class="table table-sm" :class="{'table-striped': notification.data.headers.length > 0, 'table-hover': notification.data.headers.length > 0}">
-              <thead>
-                <tr>
-                  <th v-for="(header, index) in notification.data.headers" v-bind:key="index">
-                    <span>{{ header }}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody v-if="notification.data.rows.length === 0">
-                <tr>
-                  <td colspan="7" class="text-muted">
-                      There is no data at this time.
-                  </td>
-                </tr>
-              </tbody>
-              <tbody>
-                <tr v-for="(row, index) in notification.data.rows" v-bind:key="index">
-                  <td v-for="(header, index) in notification.data.headers" v-bind:key="index">
-                    {{ row }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+      <div class="collapse collapse-all" :id="`notification-${index}`">
+        <div class="card-body">
+          <div class="row" v-if="notification.type === 0">
+            <div class="col" style="max-width:500px;height:300px;">
+<!--               <iframe
+                style="padding-top:10px;padding-bottom:10px;"
+                v-if="notification.analytics_url !== ''"
+                v-bind:src="notification.analytics_url"
+                width="300"
+                height="300"
+                frameborder="0">
+              </iframe> -->
+            </div>
+            <div class="col">
+            </div>
+          </div>
+          <div v-if="notification.type === 1">
+            <GistEmbed :cssURL="notification.release_notes.css_url" :embedHTML="notification.release_notes.embed_html"/>
+          </div>
+          <div class="row" v-if="notification.type === 2">
+            <div class="col">
+            </div>
+            <div class="col">
+            </div>
+          </div>
+          <div class="row" v-if="notification.type === 3">
+            <div class="col">
+            </div>
+            <div class="col">
+            </div>
           </div>
         </div>
-        <div class="card-body" v-if="notification.notification_type === 1">
-          <iframe
-            v-bind:src="notification.data.url"
-            width="600"
-            height="300"
-            frameborder="0">
-          </iframe>
-        </div>
-    </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import GistEmbed from '@/components/GistEmbed.vue'
 
-@Component
+@Component({
+  components: {
+    GistEmbed
+  }
+})
 export default class Notifications extends Vue {
   private notifications: Array<any>
   private urgentNotifications: Array<any>
   private infoNotifications: Array<any>
   private unwatchNotifications: any
   private notificationLoop: any
+  private releaseNotes: Array<string>
 
   constructor () {
     super()
     this.notifications = []
     this.urgentNotifications = []
     this.infoNotifications = []
+    this.releaseNotes = []
   }
 
-  private mounted () {
-    this.restartLoop()
-    this.unwatchNotifications = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.currentFilter
-      },
-      () => {
-        clearInterval(this.notificationLoop)
-        this.restartLoop()
-      }
-    )
-  }
-
-  private beforeDestroy () {
-    clearInterval(this.notificationLoop)
-    this.unwatchNotifications()
+  private created () {
+    this.fetchNotifications()
   }
 
   private fetchNotifications () {
