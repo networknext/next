@@ -2358,7 +2358,12 @@ func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
 	)
 	switch err {
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "RouteShader() no rows were returned!")
+		// By default buyers do not have a custom route shader so will not
+		// have an entry in the route_shaders table. We probably don't need
+		// to log an error here. However, the return is checked and the
+		// default core.RouteShader is applied to the buyer if an error
+		// is returned.
+		// level.Error(db.Logger).Log("during", "RouteShader() no rows were returned!")
 		return core.RouteShader{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	case nil:
 		routeShader := core.RouteShader{
@@ -2427,7 +2432,12 @@ func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, err
 	)
 	switch err {
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "InternalConfig() no rows were returned!")
+		// By default buyers do not have a custom internal config so will not
+		// have an entry in the rs_internal_configs table. We probably don't need
+		// to log an error here. However, the return is checked and the
+		// default core.InternalConfig is applied to the buyer if an error
+		// is returned.
+		// level.Error(db.Logger).Log("during", "InternalConfig() no rows were returned!")
 		return core.InternalConfig{}, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	case nil:
 		internalConfig := core.InternalConfig{
