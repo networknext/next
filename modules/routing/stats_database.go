@@ -95,46 +95,48 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 }
 
 func (sdb *StatsDatabase) ExtractPingStats(maxJitter float32, maxPacketLoss float32, instanceID string, isDebug bool) []analytics.PingStatsEntry {
+	sdb.mu.Lock()
 	length := TriMatrixLength(len(sdb.Entries))
 	entries := make([]analytics.PingStatsEntry, length)
 
-	if length > 0 { // prevent crash with only 1 relay
-		ids := make([]uint64, len(sdb.Entries))
+	ids := make([]uint64, len(sdb.Entries))
 
-		idx := 0
-		sdb.mu.Lock()
-		for k := range sdb.Entries {
-			ids[idx] = k
-			idx++
-		}
-		sdb.mu.Unlock()
+	idx := 0
+	for k := range sdb.Entries {
+		ids[idx] = k
+		idx++
+	}
+	sdb.mu.Unlock()
 
-		for i := 1; i < len(ids); i++ {
-			for j := 0; j < i; j++ {
-				idA := ids[i]
-				idB := ids[j]
+	if length == 0 {
+		return entries
+	}
 
-				rtt, jitter, pl := sdb.GetSample(idA, idB)
-				routable := rtt != InvalidRouteValue && jitter != InvalidRouteValue && pl != InvalidRouteValue
+	for i := 1; i < len(ids); i++ {
+		for j := 0; j < i; j++ {
+			idA := ids[i]
+			idB := ids[j]
 
-				if jitter > maxJitter {
-					routable = false
-				}
+			rtt, jitter, pl := sdb.GetSample(idA, idB)
+			routable := rtt != InvalidRouteValue && jitter != InvalidRouteValue && pl != InvalidRouteValue
 
-				if pl > maxPacketLoss {
-					routable = false
-				}
+			if jitter > maxJitter {
+				routable = false
+			}
 
-				entries[TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
-					RelayA:     idA,
-					RelayB:     idB,
-					RTT:        rtt,
-					Jitter:     jitter,
-					PacketLoss: pl,
-					Routable:   routable,
-					InstanceID: instanceID,
-					Debug:      isDebug,
-				}
+			if pl > maxPacketLoss {
+				routable = false
+			}
+
+			entries[TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
+				RelayA:     idA,
+				RelayB:     idB,
+				RTT:        rtt,
+				Jitter:     jitter,
+				PacketLoss: pl,
+				Routable:   routable,
+				InstanceID: instanceID,
+				Debug:      isDebug,
 			}
 		}
 	}
