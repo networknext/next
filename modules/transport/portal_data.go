@@ -231,8 +231,97 @@ func (s SessionPortalData) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
+func (s *SessionPortalData) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&s.Version)
+
+	var err error
+	var meta []byte
+
+	if stream.IsWriting() {
+		meta, err = WriteSessionMeta(&s.Meta)
+		if err != nil {
+			return err
+		}
+	}
+	stream.SerializeBytes(meta)
+	if stream.IsReading() {
+		err = ReadSessionMeta(&s.Meta, meta)
+		if err != nil {
+			return err
+		}
+	}
+
+	var slice []byte
+
+	if stream.IsWriting() {
+		slice, err = WriteSessionSlice(&s.Slice)
+		if err != nil {
+			return err
+		}
+	}
+	stream.SerializeBytes(slice)
+	if stream.IsReading() {
+		err = ReadSessionSlice(&s.Slice, slice)
+		if err != nil {
+			return err
+		}
+	}
+
+	var point []byte
+
+	if stream.IsWriting() {
+		point, err = WriteSessionMapPoint(&s.Point)
+		if err != nil {
+			return err
+		}
+	}
+	stream.SerializeBytes(point)
+	if stream.IsReading() {
+		err = ReadSessionMapPoint(&s.Point, point)
+		if err != nil {
+			return err
+		}
+	}
+
+	stream.SerializeBool(&s.LargeCustomer)
+
+	stream.SerializeBool(&s.EverOnNext)
+
+	return stream.Error()
+}
+
 func (s *SessionPortalData) Size() uint64 {
 	return 4 + 4 + s.Meta.Size() + 4 + s.Slice.Size() + 4 + s.Point.Size() + 1 + 1
+}
+
+func WriteSessionPortalData(entry *SessionPortalData) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionPortalData packet entry write: %v\n", r)
+		}
+	}()
+
+	size := entry.Size()
+	buffer := make([]byte, size)
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadSessionPortalData(entry *SessionPortalData, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 type RelayHop struct {
@@ -1254,7 +1343,7 @@ func (s *SessionSlice) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&envelopeDown)
 	if stream.IsReading() {
 		s.Envelope = routing.Envelope{
-			Up: int64(envelopeUp),
+			Up:   int64(envelopeUp),
 			Down: int64(envelopeDown),
 		}
 	}
