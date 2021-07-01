@@ -284,7 +284,7 @@ func (h *RelayHop) Serialize(stream encoding.Stream) error {
 
 func (h *RelayHop) Size() uint64 {
 	return 4 + // Version
-			4 + // ID
+			8 + // ID
 			MaxNameLength // Name
 }
 
@@ -359,6 +359,62 @@ func (n *NearRelayPortalData) ParseRedisString(values []string) error {
 	}
 	index += 3
 
+	return nil
+}
+
+func (n *NearRelayPortalData) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&h.Version)
+
+	stream.SerializeUint64(&h.ID)
+
+	stream.SerializeString(&h.Name, MaxNameLength)
+
+	if stream.IsReading() {
+		n.ClientStats = routing.Stats{}
+	}
+
+	stats := &n.ClientStats
+	stream.SerializeFloat64(&stats.RTT)
+	stream.SerializeFloat64(&stats.Jitter)
+	stream.SerializeFloat64(&stats.PacketLoss)
+}
+
+func (n *NearRelayPortalData) Size() uint64 {
+	return 4 + // Version
+			8 + // ID
+			MaxNameLength + // Name
+			8 + // Client Stats RTT
+			8 + // Client Stats Jitter
+			8 // Client Stats Packet Loss
+}
+
+func WriteNearRelayPortalData(entry *NearRelayPortalData) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during NearRelayPortalData packet entry write: %v\n", r)
+		}
+	}()
+
+	size := entry.Size()
+	buffer := [size]byte{}
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadNearRelayPortalData(entry *NearRelayPortalData, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
 	return nil
 }
 
