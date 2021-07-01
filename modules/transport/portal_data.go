@@ -1437,11 +1437,50 @@ func (s SessionMapPoint) MarshalBinary() ([]byte, error) {
 }
 
 func (s *SessionMapPoint) Serialize(stream encoding.Stream) error {
-	stream.
+	stream.SerializeUint32(&s.Version)
+
+	stream.SerializeFloat64(&s.Latitude)
+	stream.SerializeFloat64(&s.Longitude)
+
+	if s.Version >= 1 {
+		stream.SerializeUint64(&s.SessionID)
+	}
+
+	return stream.Error()
 }
 
 func (s SessionMapPoint) Size() uint64 {
 	return 4 + 8 + 8 + 8
+}
+
+func WriteSessionMapPoint(entry *SessionMapPoint) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionMapPoint packet entry write: %v\n", r)
+		}
+	}()
+
+	size := *entry.Size()
+	buffer := [size]byte{}
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadSessionMapPoint(entry *SessionMapPoint, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s SessionMapPoint) RedisString() string {
