@@ -650,6 +650,14 @@ func commitDatabaseBin(env Environment) {
 			handleRunTimeError(fmt.Sprintf("Error copying database.bin to %s: %v\n", bucketName, err), 1)
 		}
 
+		var timeStampArgs = localjsonrpc.NextBinFileCommitTimeStampArgs{}
+		var timeStampReply = localjsonrpc.NextBinFileCommitTimeStampReply{}
+
+		if err := makeRPCCall(env, &timeStampReply, "RelayFleetService.NextBinFileCommitTimeStamp", timeStampArgs); err != nil {
+			handleJSONRPCError(env, err)
+			return
+		}
+
 		fmt.Printf("\ndatabase.bin copied to %s.\n", bucketName)
 	} else {
 		fmt.Printf("\nOk - not pushing database.bin to %s\n", bucketName)

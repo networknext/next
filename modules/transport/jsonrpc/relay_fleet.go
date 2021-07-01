@@ -505,6 +505,32 @@ func (rfs *RelayFleetService) NextBinFileHandler(
 	return nil
 }
 
+type NextBinFileCommitTimeStampArgs struct{}
+
+type NextBinFileCommitTimeStampReply struct{}
+
+func (rfs *RelayFleetService) NextBinFileCommitTimeStamp(
+	r *http.Request,
+	args *NextBinFileCommitTimeStampArgs,
+	reply *NextBinFileCommitTimeStampReply,
+) error {
+
+	metaData := routing.DatabaseBinFileMetaData{
+		DatabaseBinFileAuthor:       "next cli",
+		DatabaseBinFileCreationTime: time.Now(),
+	}
+
+	err := rfs.Storage.UpdateDatabaseBinFileMetaData(context.Background(), metaData)
+	if err != nil {
+		err := fmt.Errorf("NextBinFileCommitTimeStamp() error writing bin file metadata to db: %v", err)
+		rfs.Logger.Log("err", err)
+		return err
+	}
+
+	return nil
+
+}
+
 func (rfs *RelayFleetService) BinFileGenerator(userEmail string) (routing.DatabaseBinWrapper, error) {
 
 	var dbWrapper routing.DatabaseBinWrapper
