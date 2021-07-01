@@ -663,7 +663,7 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 	stream.SerializeFloat32(&location.Latitude)
 	stream.SerializeFloat32(&location.Longitude)
 	stream.SerializeString(&location.ISP, routing.maxISPNameLength)
-	stream.SerializeInteger(&location.ASN, 0, math.MaxInt32)
+	stream.SerializeInteger(&location.ASN, math.MinInt32, math.MaxInt32)
 
 	stream.SerializeString(&s.ClientAddr, MaxAddressLength)
 	stream.SerializeString(&s.ServerAddr, MaxAddressLength)
@@ -720,6 +720,8 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&s.Platform, 32)
 
 	stream.SerializeUint64(&s.BuyerID)
+
+	return stream.Error()
 }
 
 func (s SessionMeta) Size() uint64 {
@@ -744,7 +746,7 @@ func WriteSessionMeta(entry *SessionMeta) ([]byte, error) {
 		}
 	}()
 
-	size := entry.Size()
+	size := *entry.Size()
 	buffer := [size]byte{}
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
@@ -1161,8 +1163,109 @@ func (s SessionSlice) MarshalBinary() ([]byte, error) {
 	return data[:index], nil
 }
 
+func (s *SessionSlice) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&s.Version)
+
+	var unixTime uint64
+	if stream.IsWriting() {
+		unixTime = uint64(s.Timestamp.UnixNano())
+	}
+	stream.SerializeUint64(&unixTime)
+
+	if stream.IsReading() {
+		s.Timestamp = time.Unix(0, unixTime)
+	}
+
+	if stream.IsReading() {
+		s.Next = routing.Stats{}
+		s.Direct = routing.Stats{}
+
+		if s.Version >= 1 {
+			s.Predicted = routing.Stats{}
+		}
+
+		if s.Version >= 2 {
+			s.ClientToServerStats = routing.Stats{}
+			s.ServerToClientStats = routing.Stats{}
+		}
+	}
+
+	nextStats := &s.Next
+	stream.SerializeFloat64(&nextStats.RTT)
+	stream.SerializeFloat64(&nextStats.Jitter)
+	stream.SerializeFloat64(&nextStats.PacketLoss)
+
+	directStats := &s.Direct
+	stream.SerializeFloat64(&directStats.RTT)
+	stream.SerializeFloat64(&directStats.Jitter)
+	stream.SerializeFloat64(&directStats.PacketLoss)
+
+	if s.Version >= 1 {
+		predictedStats := &s.Predicted
+		stream.SerializeFloat64(&predictedStats.RTT)
+	}
+
+	if s.Version >= 2 {
+		clientToServerStats := &s.ClientToServerStats
+		stream.SerializeFloat64(&clientToServerStats.Jitter)
+		stream.SerializeFloat64(&clientToServerStats.PacketLoss)
+
+		serverToClientStats := &s.ServerToClientStats
+		stream.SerializeFloat64(&serverToClientStats.Jitter)
+		stream.SerializeFloat64(&serverToClientStats.PacketLoss)
+
+		stream.SerializeUint32(&s.RouteDiversity)
+	}
+
+	if stream.IsReading() {
+		s.Envelope = routing.Envelope{}
+	}
+
+	envelope := &s.Envelope
+	stream.SerializeInteger(&envelope.Up, 0, math.MaxInt32)
+	stream.SerializeInteger(&envelope.Down, 0, math.MaxInt32)
+
+	stream.SerializeBool(&s.OnNetworkNext)
+
+	stream.SerializeBool(&s.IsMultiPath)
+
+	stream.SerializeBool(&s.IsTryBeforeYouBuy)
+
+	return stream.Error()
+}
+
 func (s SessionSlice) Size() uint64 {
 	return 4 + 8 + (3 * 8) + (3 * 8) + 8 + (2 * 8) + (2 * 8) + 4 + (2 * 8) + 1 + 1 + 1
+}
+
+func WriteSessionSlice(entry *SessionSlice) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionSlice packet entry write: %v\n", r)
+		}
+	}()
+
+	size := *entry.Size()
+	buffer := [size]byte{}
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadSessionSlice(entry *SessionSlice, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s SessionSlice) RedisString() string {
@@ -1331,6 +1434,10 @@ func (s SessionMapPoint) MarshalBinary() ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func (s *SessionMapPoint) Serialize(stream encoding.Stream) error {
+	stream.
 }
 
 func (s SessionMapPoint) Size() uint64 {
