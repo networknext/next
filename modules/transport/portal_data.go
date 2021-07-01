@@ -22,7 +22,9 @@ const (
 	SessionMapPointVersion     = 1
 	RelayHopVersion            = 1
 	NearRelayPortalDataVersion = 1
+
 	MaxSessionIDLength         = 1024
+	MaxNameLength 			   = 256
 )
 
 type SessionCountData struct {
@@ -267,6 +269,52 @@ func (h *RelayHop) ParseRedisString(values []string) error {
 	h.Name = values[index]
 	index++
 
+	return nil
+}
+
+func (h *RelayHop) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&h.Version)
+
+	stream.SerializeUint64(&h.ID)
+
+	stream.SerializeString(&h.Name, MaxNameLength)
+
+	return stream.Error()
+}
+
+func (h *RelayHop) Size() uint64 {
+	return 4 + // Version
+			4 + // ID
+			MaxNameLength // Name
+}
+
+func WriteRelayHop(entry *RelayHop) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during RelayHop packet entry write: %v\n", r)
+		}
+	}()
+
+	size := entry.Size()
+	buffer := [size]byte{}
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadRelayHop(entry *RelayHop, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
 	return nil
 }
 
