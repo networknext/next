@@ -37,12 +37,10 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/middleware"
+	"github.com/networknext/backend/modules/transport/notifications"
 
 	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )
-
-type NotificationPriorty int32
-type NotificationType int32
 
 const (
 	TopSessionsSize          = 1000
@@ -50,16 +48,6 @@ const (
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
 	LOOKER_HOST              = "networknextexternal.cloud.looker.com"
-	// TODO: Move these somewhere else like the jsonrpc error codes and use them for something
-	DEFAULT_PRIORITY NotificationPriorty = 0
-	INFO_PRIORITY    NotificationPriorty = 1
-	WARNING_PRIORITY NotificationPriorty = 2
-	URGENT_PRIORITY  NotificationPriorty = 3
-	// TODO: Move these somewhere else like the jsonrpc error codes and actually use them for something
-	NOTIFICATION_SYSTEM        NotificationType = 0
-	NOTIFICATION_RELEASE_NOTES NotificationType = 1
-	NOTIFICATION_DASHBOARD     NotificationType = 2
-	NOTIFICATION_INVOICE       NotificationType = 3
 )
 
 var (
@@ -2533,17 +2521,10 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 type FetchNotificationsArgs struct{}
 
 type FetchNotificationsReply struct {
-	Notifications []Notification `json:"notifications"`
-}
-
-type Notification struct {
-	Type         NotificationType    `json:"type"`
-	AnalyticsURL string              `json:"analytics_url"`
-	Title        string              `json:"title"`
-	Message      string              `json:"message"`
-	Graphic      string              `json:"graphic"`
-	Priority     NotificationPriorty `json:"priority"`
-	ReleaseNotes GistEmbed           `json:"release_notes"` // TODO: Move this to its own specific notification type OR figure out the best way of doing this IE: always show release notes notification
+	SystemNotifications      []notifications.SystemNotification     `json:"system_notifications"`
+	AnalyticsNotifications   []notifications.AnalyticsNotification  `json:"analytics_notifications"`
+	ReleaseNotesNotification notifications.ReleaseNotesNotification `json:"release_notes_notification"`
+	InvoiceNotifications     []notifications.InvoiceNotification    `json:"invoice_notifications"`
 }
 
 func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificationsArgs, reply *FetchNotificationsReply) error {
@@ -2553,72 +2534,47 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 		return &err
 	}
 
-	user := r.Context().Value(middleware.Keys.UserKey)
-	if user == nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-		return &err
-	}
+	// TODO: bring these back for analytics notifications at some point
+	/* 	user := r.Context().Value(middleware.Keys.UserKey)
+	   	if user == nil {
+	   		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+	   		return &err
+	   	}
 
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	requestID, ok := claims["sub"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
-		return &err
-	}
+	   	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	   	requestID, ok := claims["sub"].(string)
+	   	if !ok {
+	   		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
+	   		return &err
+	   	}
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
-		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-		return &err
-	}
+	   	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	   	if !ok {
+	   		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+	   		return &err
+	   	} */
 
-	// Seeding data for the time being for demos and such
-	notifications := []Notification{
-		{
-			Type:     NOTIFICATION_SYSTEM,
-			Title:    "Super Important System Updates",
-			Priority: URGENT_PRIORITY,
-		},
-		{
-			Type:     NOTIFICATION_INVOICE,
-			Title:    "Super Satisfying Invoice Information",
-			Priority: WARNING_PRIORITY,
-		},
-		{
-			Type:     NOTIFICATION_RELEASE_NOTES,
-			Title:    "Super Cool Release Notes",
-			Priority: DEFAULT_PRIORITY,
-		},
-		{
-			Type:     NOTIFICATION_DASHBOARD,
-			Title:    "Super Intriguing Looker Data",
-			Priority: INFO_PRIORITY,
-		},
-	}
-
-	releaseNotes, err := s.FetchReleaseNotes()
+	// TODO: Have this run every 30 minutes or something and cache the results - git API has 5000 request per hour
+	gistDetails, err := s.FetchReleaseNotes()
 	if err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
 		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to fetch release notes", err.Error()))
 		return &err
 	}
 
-	for _, notification := range notifications {
-		// TODO: Not sure if this will be necessary or not. We don't want to dump the whole SQL entry to the frontend, only data necessary for that type
-		returnNotification := Notification{
-			Type:         notification.Type,
-			Title:        notification.Title,
-			Message:      "\"Help me, Obi-Wan Kenobi. You’re my only hope.\" — Leia Organa\n\"I find your lack of faith disturbing.\" — Darth Vader\n\"It’s the ship that made the Kessel run in less than twelve parsecs. I’ve outrun Imperial starships. Not the local bulk cruisers, mind you. I’m talking about the big Corellian ships, now. She’s fast enough for you, old man.\" — Han Solo\n",
-			Graphic:      notification.Graphic,
-			Priority:     notification.Priority,
-			ReleaseNotes: releaseNotes,
-		}
+	// Build release notes notification
+	releaseNotesNotification := notifications.NewReleaseNotesNotifications()
+	releaseNotesNotification.CSSURL = gistDetails.CSSURL
+	releaseNotesNotification.EmbedHTML = gistDetails.EmbedHTML
 
-		// TODO: Create actual notification class with subclassed types. We need to store data related to the notification type like looker url information or data table rows and column names
+	reply.ReleaseNotesNotification = releaseNotesNotification
 
+	// TODO: Fetch all invoice, system, and looker notifications from storage
+
+	/*
 		// Build the looker URL
 		nonce, err := GenerateRandomString(16)
 		if err != nil {
@@ -2641,7 +2597,7 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 			AccessFilters:   make(map[string]map[string]interface{}),
 			UserAttributes:  make(map[string]interface{}),
 			SessionLength:   3600,
-			EmbedURL:        "/login/embed/" + url.QueryEscape( /* TODO: we want notification.data.path or something similar here */ "/embed/looks/1"),
+			EmbedURL:        "/login/embed/" + url.QueryEscape( TODO: we want notification.data.path or something similar here - "/embed/looks/1"),
 			ForceLogout:     true,
 			Nonce:           fmt.Sprintf("\"%s\"", nonce),
 			Time:            time.Now().Unix(),
@@ -2653,21 +2609,12 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 		fmt.Println(companyCode)
 
 		returnNotification.AnalyticsURL = s.BuildLookerURL(urlOptions)
-
-		reply.Notifications = append(reply.Notifications, returnNotification)
-	}
-
+	*/
 	return nil
 }
 
-// TODO: Determine if this is the best approach. We may want to just always have a release notes notification available making this struct more valuable then the release notes property in the notification struct
-type GistEmbed struct {
-	CSSURL    string `json:"css_url"`
-	EmbedHTML string `json:"embed_html"`
-}
-
-func (s *BuyersService) FetchReleaseNotes() (GistEmbed, error) {
-	embedGist := GistEmbed{}
+func (s *BuyersService) FetchReleaseNotes() (notifications.GistEmbed, error) {
+	embedGist := notifications.GistEmbed{}
 
 	gistList, _, err := s.GithubClient.Gists.List(context.Background(), "", &github.GistListOptions{})
 	if err != nil {
@@ -2689,6 +2636,7 @@ func (s *BuyersService) FetchReleaseNotes() (GistEmbed, error) {
 
 	fullEmbedOutput := string(buffer)
 
+	// Extract the actual css url and html that needs to be added to the notification
 	cssRegex := regexp.MustCompile(`https:\/\/github\.githubassets\.com\/assets\/gist-embed-[a-z0-9]+\.css`)
 	htmlRegex := regexp.MustCompile(`<div [a-z=\\"0-9\s>\-_A-Z</:.#&;]+`)
 
