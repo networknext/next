@@ -71,7 +71,7 @@
                 $store.getters.currentPage == 'analytics' ||
                 $store.getters.currentPage == 'invoicing'
             }"
-            v-if="$flagService.isEnabled(FeatureEnum.FEATURE_EXPLORE) && (!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus)"
+            v-if="$store.getters.isAdmin"
           >Explore</router-link>
         </li>
         <li class="nav-item text-nowrap">

@@ -151,7 +151,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
-  if ((!store.getters.isBuyer && !store.getters.isAdmin) && (to.name === 'notifications' || to.name === 'analytics' || to.name === 'invoicing')) {
+  if (!store.getters.isAdmin && (to.name === 'notifications' || to.name === 'analytics' || to.name === 'invoicing')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
