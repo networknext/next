@@ -23,8 +23,9 @@ const (
 	RelayHopVersion            = 1
 	NearRelayPortalDataVersion = 1
 
-	MaxSessionIDLength         = 1024
-	MaxNameLength 			   = 256
+	MaxSessionIDLength  = 1024
+	MaxAddressLength    = 256
+	MaxSDKVersionLength = 11
 )
 
 type SessionCountData struct {
@@ -277,15 +278,15 @@ func (h *RelayHop) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeUint64(&h.ID)
 
-	stream.SerializeString(&h.Name, MaxNameLength)
+	stream.SerializeString(&h.Name, routing.MaxRelayNameLength)
 
 	return stream.Error()
 }
 
 func (h *RelayHop) Size() uint64 {
 	return 4 + // Version
-			8 + // ID
-			MaxNameLength // Name
+		8 + // ID
+		routing.MaxRelayNameLength // Name
 }
 
 func WriteRelayHop(entry *RelayHop) ([]byte, error) {
@@ -363,11 +364,11 @@ func (n *NearRelayPortalData) ParseRedisString(values []string) error {
 }
 
 func (n *NearRelayPortalData) Serialize(stream encoding.Stream) error {
-	stream.SerializeUint32(&h.Version)
+	stream.SerializeUint32(&n.Version)
 
-	stream.SerializeUint64(&h.ID)
+	stream.SerializeUint64(&n.ID)
 
-	stream.SerializeString(&h.Name, MaxNameLength)
+	stream.SerializeString(&n.Name, routing.MaxRelayNameLength)
 
 	if stream.IsReading() {
 		n.ClientStats = routing.Stats{}
@@ -381,11 +382,11 @@ func (n *NearRelayPortalData) Serialize(stream encoding.Stream) error {
 
 func (n *NearRelayPortalData) Size() uint64 {
 	return 4 + // Version
-			8 + // ID
-			MaxNameLength + // Name
-			8 + // Client Stats RTT
-			8 + // Client Stats Jitter
-			8 // Client Stats Packet Loss
+		8 + // ID
+		routing.MaxRelayNameLength + // Name
+		8 + // Client Stats RTT
+		8 + // Client Stats Jitter
+		8 // Client Stats Packet Loss
 }
 
 func WriteNearRelayPortalData(entry *NearRelayPortalData) ([]byte, error) {
@@ -458,11 +459,11 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionMeta] invalid read at user hash")
 	}
 
-	if !encoding.ReadString(data, &index, &s.DatacenterName, math.MaxInt32) {
+	if !encoding.ReadString(data, &index, &s.DatacenterName, MaxDatacenterNameLength) {
 		return errors.New("[SessionMeta] invalid read at datacenter name")
 	}
 
-	if !encoding.ReadString(data, &index, &s.DatacenterAlias, math.MaxInt32) {
+	if !encoding.ReadString(data, &index, &s.DatacenterAlias, MaxDatacenterNameLength) {
 		return errors.New("[SessionMeta] invalid read at datacenter alias")
 	}
 
@@ -496,11 +497,11 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 		return err
 	}
 
-	if !encoding.ReadString(data, &index, &s.ClientAddr, math.MaxInt32) {
+	if !encoding.ReadString(data, &index, &s.ClientAddr, MaxAddressLength) {
 		return errors.New("[SessionMeta] invalid read at client address")
 	}
 
-	if !encoding.ReadString(data, &index, &s.ServerAddr, math.MaxInt32) {
+	if !encoding.ReadString(data, &index, &s.ServerAddr, MaxAddressLength) {
 		return errors.New("[SessionMeta] invalid read at server address")
 	}
 
@@ -521,12 +522,12 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 			return errors.New("[SessionMeta] invalid read at relay hops relay ID")
 		}
 
-		if !encoding.ReadString(data, &index, &s.Hops[i].Name, math.MaxInt32) {
+		if !encoding.ReadString(data, &index, &s.Hops[i].Name, routing.MaxRelayNameLength) {
 			return errors.New("[SessionMeta] invalid read at relay hops relay name")
 		}
 	}
 
-	if !encoding.ReadString(data, &index, &s.SDK, math.MaxInt32) {
+	if !encoding.ReadString(data, &index, &s.SDK, MaxSDKVersionLength) {
 		return errors.New("[SessionMeta] invalid read at SDK version")
 	}
 
@@ -551,7 +552,7 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 			return errors.New("[SessionMeta] invalid read at nearby relays relay ID")
 		}
 
-		if !encoding.ReadString(data, &index, &s.NearbyRelays[i].Name, math.MaxInt32) {
+		if !encoding.ReadString(data, &index, &s.NearbyRelays[i].Name, routing.MaxRelayNameLength) {
 			return errors.New("[SessionMeta] invalid read at nearby relays relay name")
 		}
 
@@ -633,6 +634,94 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
+func (s *SessionMeta) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&s.Version)
+
+	stream.SerializeUint64(&s.ID)
+
+	stream.SerializeUint64(&s.UserHash)
+
+	stream.SerializeString(&s.DatacenterName, MaxDatacenterNameLength)
+	stream.SerializeString(&s.DatacenterAlias, MaxDatacenterNameLength)
+
+	stream.SerializeBool(&s.OnNetworkNext)
+
+	stream.SerializeFloat64(&s.NextRTT)
+	stream.SerializeFloat64(&s.DirectRTT)
+	stream.SerializeFloat64(&s.DeltaRTT)
+
+	if stream.IsReading() {
+		s.Location = routing.Location{}
+	}
+	location := &s.Location
+
+	stream.SerializeString(&location.Continent, routing.MaxContinentLength)
+	stream.SerializeString(&location.Country, routing.MaxCountryLength)
+	stream.SerializeString(&location.CountryCode, routing.MaxCountryCodeLength)
+	stream.SerializeString(&location.Region, routing.MaxRegionLength)
+	stream.SerializeString(&location.City, routing.MaxCityLength)
+	stream.SerializeFloat32(&location.Latitude)
+	stream.SerializeFloat32(&location.Longitude)
+	stream.SerializeString(&location.ISP, routing.maxISPNameLength)
+	stream.SerializeInteger(&location.ASN, 0, math.MaxInt32)
+
+	stream.SerializeString(&s.ClientAddr, MaxAddressLength)
+	stream.SerializeString(&s.ServerAddr, MaxAddressLength)
+
+	numHops := uint32(len(s.Hops))
+	stream.SerializeUint32(&numHops)
+
+	if stream.IsReading() {
+		s.Hops = make([]RelayHop, numHops)
+	}
+
+	for i := uint32(0); i < numHops; i++ {
+		hop := &s.Hops[i]
+
+		if s.Version >= 2 {
+			stream.SerializeUint32(&hop.Version)
+		}
+
+		stream.SerializeUint64(&hop.ID)
+		stream.SerializeString(&hop.Name, routing.MaxRelayNameLength)
+	}
+
+	stream.SerializeString(&s.SDK, MaxSDKVersionLength)
+
+	stream.SerializeBits(&s.Connection, 32)
+
+	numNearbyRelays := uint32(len(s.NearbyRelays))
+	stream.SerializeUint32(&numNearbyRelays)
+
+	if stream.IsReading() {
+		s.NearbyRelays = make([]NearRelayPortalData, numNearbyRelays)
+	}
+
+	for i := uint32(0); i < numNearbyRelays; i++ {
+		nearbyRelay := &s.NearbyRelays[i]
+
+		if s.Version >= 2 {
+			stream.SerializeUint32(&nearbyRelay.Version)
+		}
+
+		stream.SerializeUint64(&nearbyRelay.ID)
+		stream.SerializeString(&nearbyRelay.Name, routing.MaxRelayNameLength)
+
+		if stream.IsReading() {
+			nearbyRelay.ClientStats = routing.Stats{}
+		}
+
+		stats := &nearbyRelay.ClientStats
+		stream.SerializeFloat64(&stats.RTT)
+		stream.SerializeFloat64(&stats.Jitter)
+		stream.SerializeFloat64(&stats.PacketLoss)
+	}
+
+	stream.SerializeBits(&s.Platform, 32)
+
+	stream.SerializeUint64(&s.BuyerID)
+}
+
 func (s SessionMeta) Size() uint64 {
 	var relayHopsSize uint64
 	for _, hop := range s.Hops {
@@ -646,6 +735,36 @@ func (s SessionMeta) Size() uint64 {
 
 	return 4 + 8 + 8 + 4 + uint64(len(s.DatacenterName)) + 4 + uint64(len(s.DatacenterAlias)) + 1 + 8 + 8 + 8 + 4 + s.Location.Size() +
 		4 + uint64(len(s.ClientAddr)) + 4 + uint64(len(s.ServerAddr)) + (4 + relayHopsSize) + 4 + uint64(len(s.SDK)) + 1 + (4 + nearbyRelaysSize) + 1 + 8
+}
+
+func WriteSessionMeta(entry *SessionMeta) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionMeta packet entry write: %v\n", r)
+		}
+	}()
+
+	size := entry.Size()
+	buffer := [size]byte{}
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadSessionMeta(entry *SessionMeta, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *SessionMeta) UnmarshalJSON(data []byte) error {

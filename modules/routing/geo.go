@@ -16,8 +16,14 @@ import (
 )
 
 const (
-	LocationVersion  = 1
-	MaxISPNameLength = 64
+	LocationVersion = 1
+
+	MaxContinentLength   = 16
+	MaxCountryLength     = 64
+	MaxCountryCodeLength = 16
+	MaxRegionLength      = 64
+	MaxCityLength        = 128
+	MaxISPNameLength     = 64
 )
 
 // IPLocator defines anything that returns a routing.Location given an net.IP
