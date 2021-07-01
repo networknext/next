@@ -1,4 +1,5 @@
 import { FeatureEnum, Flag } from '@/components/types/FeatureTypes'
+import { faMeteor } from '@fortawesome/free-solid-svg-icons'
 import { JSONRPCService } from './jsonrpc'
 
 export class FeatureFlagService {
@@ -35,11 +36,14 @@ export class FeatureFlagService {
 
   private isEnabled (name: FeatureEnum): boolean {
     let value = false
-    this.flags.forEach((flag: any) => {
+    this.flags.forEach((flag: Flag) => {
       if (flag.name === name) {
         switch (typeof flag.value) {
           case 'boolean':
             value = flag.value
+            break
+          case 'string':
+            value = flag.value === 'true'
             break
           default:
             throw new Error('Unknown flag')
