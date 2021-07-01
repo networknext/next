@@ -1685,48 +1685,6 @@ func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacen
 
 }
 
-// UpdateDatacenterMapArgs: HexBuyerID and HexDatacenterID are the combined primary
-// key needed to look up the existing datacenter map
-type UpdateDatacenterMapArgs struct {
-	HexBuyerID      string `json:"hexBuyerID"`
-	HexDatacenterID string `json:"hexDatacenterID"`
-	Field           string `json:"field"`
-	Value           string `json:"value"`
-}
-
-type UpdateDatacenterMapReply struct{}
-
-func (s *BuyersService) UpdateDatacenterMap(r *http.Request, args *UpdateDatacenterMapArgs, reply *UpdateDatacenterMapReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
-	datacenterID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
-	if err != nil {
-		return fmt.Errorf("Value: %v is not a valid hex ID", args.Value)
-	}
-
-	buyerID, err := strconv.ParseUint(args.HexBuyerID, 16, 64)
-	if err != nil {
-		return fmt.Errorf("Value: %v is not a valid hex ID", args.Value)
-	}
-
-	switch args.Field {
-	case "HexDatacenterID", "Alias":
-		err = s.Storage.UpdateDatacenterMap(context.Background(), buyerID, datacenterID, args.Field, args.Value)
-		if err != nil {
-			err = fmt.Errorf("UpdateDatacenterMap() error updating datacenter map: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-	default:
-		return fmt.Errorf("Field '%v' does not exist or is not editable on the DatacenterMap type", args.Field)
-	}
-
-	return nil
-}
-
 type JSAddDatacenterMapArgs struct {
 	HexBuyerID      string `json:"hexBuyerID"`
 	HexDatacenterID string `json:"hexDatacenterID"`

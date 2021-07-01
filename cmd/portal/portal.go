@@ -582,6 +582,12 @@ func main() {
 			os.Exit(1)
 		}
 
+		mondayApiKey, ok := os.LookupEnv("MONDAY_API_KEY")
+		if !ok {
+			level.Error(logger).Log("err", "MONDAY_API_KEY environment variable not set")
+			os.Exit(1)
+		}
+
 		s.RegisterService(&jsonrpc.RelayFleetService{
 			RelayFrontendURI:  relayFrontEnd,
 			RelayGatewayURI:   relayGateway,
@@ -589,6 +595,7 @@ func main() {
 			Logger:            logger,
 			Storage:           db,
 			Env:               env,
+			MondayApiKey:      mondayApiKey,
 		}, "")
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
