@@ -375,7 +375,7 @@ func (h *RelayHop) Serialize(stream encoding.Stream) error {
 func (h *RelayHop) Size() uint64 {
 	return 4 + // Version
 		8 + // ID
-		routing.MaxRelayNameLength // Name
+		routing.MaxRelayNameLength + 1 // Name
 }
 
 func WriteRelayHop(entry *RelayHop) ([]byte, error) {
@@ -474,7 +474,7 @@ func (n *NearRelayPortalData) Serialize(stream encoding.Stream) error {
 func (n *NearRelayPortalData) Size() uint64 {
 	return 4 + // Version
 		8 + // ID
-		routing.MaxRelayNameLength + // Name
+		routing.MaxRelayNameLength + 1 + // Name
 		8 + // Client Stats RTT
 		8 + // Client Stats Jitter
 		8 // Client Stats Packet Loss
@@ -754,11 +754,11 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 	stream.SerializeFloat32(&location.Latitude)
 	stream.SerializeFloat32(&location.Longitude)
 	stream.SerializeString(&location.ISP, routing.MaxISPNameLength)
-	var asn int32
+	var asn uint64
 	if stream.IsWriting() {
-		asn = int32(location.ASN)
+		asn = uint64(location.ASN)
 	}
-	stream.SerializeInteger(&asn, math.MinInt32, math.MaxInt32)
+	stream.SerializeUint64(&asn)
 	if stream.IsReading() {
 		location.ASN = int(asn)
 	}
@@ -790,7 +790,7 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 	if stream.IsWriting() {
 		conn = uint32(s.Connection)
 	}
-	stream.SerializeBits(&conn, 32)
+	stream.SerializeBits(&conn, 8)
 	if stream.IsReading() {
 		s.Connection = uint8(conn)
 	}
@@ -826,7 +826,7 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 	if stream.IsWriting() {
 		platform = uint32(s.Platform)
 	}
-	stream.SerializeBits(&platform, 32)
+	stream.SerializeBits(&platform, 8)
 	if stream.IsReading() {
 		s.Connection = uint8(platform)
 	}
@@ -851,6 +851,46 @@ func (s SessionMeta) Size() uint64 {
 		4 + uint64(len(s.ClientAddr)) + 4 + uint64(len(s.ServerAddr)) + (4 + relayHopsSize) + 4 + uint64(len(s.SDK)) + 1 + (4 + nearbyRelaysSize) + 1 + 8
 }
 
+func (s SessionMeta) SerializeSize() uint64 {
+	hopSize := uint64(0)
+	for i := 0; i < len(s.Hops); i++ {
+		hopSize += s.Hops[i].Size()
+	}
+
+	nearbyRelaySize := uint64(0)
+	for i := 0; i < len(s.NearbyRelays); i++ {
+		nearbyRelaySize += s.NearbyRelays[i].Size()
+	}
+
+	return 4 + // Version
+		8 + // ID
+		8 + // UserHash
+		MaxDatacenterNameLength + // DataceterName
+		MaxDatacenterNameLength + // DatacenterAlias
+		1 + // OnNetworkNext
+		8 + // NextRTT
+		8 + // DirectRTT
+		8 + // DeltaRTT
+		routing.MaxContinentLength + // Continent
+		routing.MaxCountryLength + // Country
+		routing.MaxCountryCodeLength + // CountryCode
+		routing.MaxRegionLength + // Region
+		routing.MaxCityLength + // City
+		4 + // Latitude
+		4 + // Longitude
+		routing.MaxISPNameLength + // ISP
+		8 + // ASN
+		MaxAddressLength + // ClientAddr
+		MaxAddressLength + // ServerAddr
+		hopSize + // Hops
+		MaxSDKVersionLength + 1 + // SDK
+		1 + // Connection
+		nearbyRelaySize + // NearbyRelays
+		1 + // Platform
+		8 + // BuyerID
+		1 // extra bytes to be divisible by 4
+}
+
 func WriteSessionMeta(entry *SessionMeta) ([]byte, error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -858,7 +898,7 @@ func WriteSessionMeta(entry *SessionMeta) ([]byte, error) {
 		}
 	}()
 
-	size := entry.Size()
+	size := entry.SerializeSize()
 	buffer := make([]byte, size)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
