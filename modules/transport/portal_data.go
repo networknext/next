@@ -70,8 +70,50 @@ func (s SessionCountData) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
+func (s *SessionCountData) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&s.Version)
+
+	stream.SerializeUint64(&s.ServerID)
+
+	stream.SerializeUint64(&s.BuyerID)
+
+	stream.SerializeUint32(&s.NumSessions)
+
+	return stream.Error()
+}
+
 func (s *SessionCountData) Size() uint64 {
 	return 4 + 8 + 8 + 4
+}
+
+func WriteSessionCountData(entry *SessionCountData) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionCountData packet entry write: %v\n", r)
+		}
+	}()
+
+	size := entry.Size()
+	buffer := [size]byte{}
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadSessionCountData(entry *SessionCountData, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 type SessionPortalData struct {
