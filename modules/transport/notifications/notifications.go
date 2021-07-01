@@ -34,10 +34,8 @@ type ReleaseNotesNotification struct {
 	EmbedHTML string              `json:"embed_html"`
 }
 
-func NewReleaseNotesNotifications() ReleaseNotesNotification {
+func NewReleaseNotesNotification() ReleaseNotesNotification {
 	return ReleaseNotesNotification{
-		// TODO: Figure out what scale these are going to be at. IE: All time, month to month, per release, etc
-		Title:    fmt.Sprintf("Release notes for the month of %s", time.Now().Month()),
 		Type:     NOTIFICATION_RELEASE_NOTES,
 		Priority: DEFAULT_PRIORITY,
 	}
@@ -72,15 +70,12 @@ func NewAnalyticsNotification() AnalyticsNotification {
 	}
 }
 
-// TODO: figure out what needs to go in here
-type InvoiceData struct{}
-
 type InvoiceNotification struct {
-	Type        NotificationType    `json:"type"`
-	Title       string              `json:"title"`
-	Message     string              `json:"message"`
-	Priority    NotificationPriorty `json:"priority"`
-	InvoiceData InvoiceData         `json:"invoice_data"`
+	Type      NotificationType    `json:"type"`
+	Title     string              `json:"title"`
+	Message   string              `json:"message"`
+	Priority  NotificationPriorty `json:"priority"`
+	InvoiceID string              `json:"invoice_id"`
 }
 
 func NewInvoiceNotification() InvoiceNotification {

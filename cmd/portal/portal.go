@@ -408,8 +408,8 @@ func main() {
 		}
 	}()
 
-	/* 	go func() {
-		fetchReleaseNotesInterval, err := envvar.GetDuration("RELEASE_NOTES_INTERVAL", time.Minute*5)
+	go func() {
+		fetchReleaseNotesInterval, err := envvar.GetDuration("RELEASE_NOTES_INTERVAL", time.Second*30)
 		if err != nil {
 			level.Error(logger).Log("envvar", "RELEASE_NOTES_INTERVAL", "value", fetchReleaseNotesInterval, "err", err)
 			os.Exit(1)
@@ -422,7 +422,7 @@ func main() {
 			}
 			time.Sleep(fetchReleaseNotesInterval)
 		}
-	}() */
+	}()
 
 	uiDir := os.Getenv("UI_DIR")
 	if uiDir == "" {

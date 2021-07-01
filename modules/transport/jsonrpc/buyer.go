@@ -74,7 +74,8 @@ type BuyersService struct {
 
 	BqClient *bigquery.Client
 
-	GithubClient *github.Client
+	GithubClient                   *github.Client
+	ReleaseNotesNotificationsCache []notifications.ReleaseNotesNotification
 
 	RedisPoolTopSessions   *redis.Pool
 	RedisPoolSessionMeta   *redis.Pool
@@ -2518,21 +2519,33 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 	return nil
 }
 
-type FetchNotificationsArgs struct{}
+type FetchNotificationsArgs struct {
+	CompanyCode string `json:"company_code"`
+}
 
 type FetchNotificationsReply struct {
-	SystemNotifications      []notifications.SystemNotification     `json:"system_notifications"`
-	AnalyticsNotifications   []notifications.AnalyticsNotification  `json:"analytics_notifications"`
-	ReleaseNotesNotification notifications.ReleaseNotesNotification `json:"release_notes_notification"`
-	InvoiceNotifications     []notifications.InvoiceNotification    `json:"invoice_notifications"`
+	SystemNotifications       []notifications.SystemNotification       `json:"system_notifications"`
+	AnalyticsNotifications    []notifications.AnalyticsNotification    `json:"analytics_notifications"`
+	ReleaseNotesNotifications []notifications.ReleaseNotesNotification `json:"release_notes_notifications"`
+	InvoiceNotifications      []notifications.InvoiceNotification      `json:"invoice_notifications"`
 }
 
 func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificationsArgs, reply *FetchNotificationsReply) error {
+	reply.AnalyticsNotifications = make([]notifications.AnalyticsNotification, 0)
+	reply.SystemNotifications = make([]notifications.SystemNotification, 0)
+	reply.InvoiceNotifications = make([]notifications.InvoiceNotification, 0)
+	reply.ReleaseNotesNotifications = make([]notifications.ReleaseNotesNotification, 0)
+
 	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) { // TODO: Add in roles for looker feature if necessary
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
 		return &err
 	}
+
+	// Grab release notes notifications from cache
+	reply.ReleaseNotesNotifications = s.ReleaseNotesNotificationsCache
+
+	// Everything below here will be implemented at some point in the future. It is primarily waiting on storage and admin tool support
 
 	// TODO: bring these back for analytics notifications at some point
 	/* 	user := r.Context().Value(middleware.Keys.UserKey)
@@ -2555,105 +2568,134 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	   		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
 	   		return &err
-	   	} */
+	   	}
 
-	// TODO: Have this run every 30 minutes or something and cache the results - git API has 5000 request per hour
-	gistDetails, err := s.FetchReleaseNotes()
-	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
-		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to fetch release notes", err.Error()))
-		return &err
-	}
+			// Admins can request access to the notifications of another company only
+			if args.CompanyCode != "" && args.CompanyCode != companyCode && middleware.VerifyAllRoles(r, middleware.AdminRole) {
+				err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+				return &err
+			}
 
-	// Build release notes notification
-	releaseNotesNotification := notifications.NewReleaseNotesNotifications()
-	releaseNotesNotification.CSSURL = gistDetails.CSSURL
-	releaseNotesNotification.EmbedHTML = gistDetails.EmbedHTML
-
-	reply.ReleaseNotesNotification = releaseNotesNotification
+			if args.CompanyCode != "" {
+				companyCode = args.CompanyCode
+			}
+	*/
 
 	// TODO: Fetch all invoice, system, and looker notifications from storage
 
 	/*
-		// Build the looker URL
-		nonce, err := GenerateRandomString(16)
+		notifications, err := s.Storage.Notifications(buyerID)
 		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to fetch notifications", err.Error()))
 			return &err
 		}
 
-		// TODO: This data should come from a specific "looker" notification
-		urlOptions := LookerURLOptions{
-			Host:            LOOKER_HOST,
-			Secret:          s.LookerSecret,
-			ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-			FirstName:       "",
-			LastName:        "",
-			GroupsIds:       make([]int, 0),
-			ExternalGroupId: "",
-			Permissions:     []string{"access_data", "see_looks"},
-			Models:          []string{"networknext_pbl"},
-			AccessFilters:   make(map[string]map[string]interface{}),
-			UserAttributes:  make(map[string]interface{}),
-			SessionLength:   3600,
-			EmbedURL:        "/login/embed/" + url.QueryEscape( TODO: we want notification.data.path or something similar here - "/embed/looks/1"),
-			ForceLogout:     true,
-			Nonce:           fmt.Sprintf("\"%s\"", nonce),
-			Time:            time.Now().Unix(),
+		for _, notification := range notifications {
+			switch notification.type {
+			case NOTIFICATION_SYSTEM:
+				systemNotification := notifications.NewSystemNotification
+				// TODO: figure out if anything else is needed here
+				reply.SystemNotifications = append(reply.SystemNotifications, systemNotification)
+			case NOTIFICATION_ANALYTICS:
+				analyticsNotification := notifications.NewAnalyticsNotification()
+
+				nonce, err := GenerateRandomString(16)
+				if err != nil {
+					err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+					s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+					return &err
+				}
+
+				// TODO: This data should come from a specific "looker" notification
+				urlOptions := LookerURLOptions{
+					Host:            LOOKER_HOST,
+					Secret:          s.LookerSecret,
+					ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+					FirstName:       "",
+					LastName:        "",
+					GroupsIds:       make([]int, 0),
+					ExternalGroupId: "",
+					Permissions:     notifications.data.permissions,
+					Models:          notification.data.models,
+					AccessFilters:   make(map[string]map[string]interface{}),
+					UserAttributes:  make(map[string]interface{}),
+					SessionLength:   3600,
+					EmbedURL:        "/login/embed/" + url.QueryEscape(notification.data.url),
+					ForceLogout:     true,
+					Nonce:           fmt.Sprintf("\"%s\"", nonce),
+					Time:            time.Now().Unix(),
+				}
+
+				urlOptions.UserAttributes["customer_code"] = companyCode
+
+				analyticsNotification.LookerURL = s.BuildLookerURL(urlOptions)
+				reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, analyticsNotification)
+			case NOTIFICATION_INVOICE:
+				invoiceNotification := notifications.NewInvoiceNotification
+				invoice, err := s.Storage.Invoice()
+				invoiceNotification.InvoiceID = fmt.Sprintf("%016x", notification.data.invoiceID)
+				reply.InvoiceNotification = append(reply.InvoiceNotification, invoiceNotification)
+			default:
+				err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Unknown notification type", err.Error()))
+				continue
+			}
 		}
-
-		urlOptions.UserAttributes["customer_code"] = "velan"
-
-		fmt.Println("Actual company code: ")
-		fmt.Println(companyCode)
-
-		returnNotification.AnalyticsURL = s.BuildLookerURL(urlOptions)
 	*/
 	return nil
 }
 
-func (s *BuyersService) FetchReleaseNotes() (notifications.GistEmbed, error) {
-	embedGist := notifications.GistEmbed{}
+func (s *BuyersService) FetchReleaseNotes() error {
+	cacheList := make([]notifications.ReleaseNotesNotification, 0)
 
 	gistList, _, err := s.GithubClient.Gists.List(context.Background(), "", &github.GistListOptions{})
 	if err != nil {
-		return embedGist, err
+		err = fmt.Errorf("FetchReleaseNotes() error fetching gist list: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
 	}
 
-	// TODO: Replace this with the name of the release notes Gist page
-	gistID := gistList[0].ID
+	for _, list := range gistList {
+		gistID := list.ID
 
-	resp, err := http.Get(fmt.Sprintf("https://gist.github.com/network-next-notifications/%s.js", *gistID))
-	if err != nil {
-		return embedGist, err
+		resp, err := http.Get(fmt.Sprintf("https://gist.github.com/network-next-notifications/%s.js", *gistID))
+		if err != nil {
+			err = fmt.Errorf("FetchReleaseNotes() failed fetching embed data: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			continue
+		}
+
+		buffer, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			err = fmt.Errorf("FetchReleaseNotes() failed reading embed data: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			continue
+		}
+
+		fullEmbedOutput := string(buffer)
+
+		// Extract the actual css url and html that needs to be added to the notification
+		cssRegex := regexp.MustCompile(`https:\/\/github\.githubassets\.com\/assets\/gist-embed-[a-z0-9]+\.css`)
+		htmlRegex := regexp.MustCompile(`<div [a-z=\\"0-9\s>\-_A-Z</:.#&;]+`)
+
+		cssURL := cssRegex.FindString(fullEmbedOutput)
+		embedHTML := htmlRegex.FindString(fullEmbedOutput)
+		embedHTML = strings.ReplaceAll(embedHTML, "\\n", "")
+		embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
+
+		notification := notifications.NewReleaseNotesNotification()
+		notification.Title = fmt.Sprintf("Service updates for the month of %s", list.GetDescription())
+		notification.EmbedHTML = embedHTML
+		notification.CSSURL = cssURL
+
+		cacheList = append(cacheList, notification)
 	}
 
-	buffer, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return embedGist, err
-	}
+	s.ReleaseNotesNotificationsCache = cacheList
 
-	fullEmbedOutput := string(buffer)
-
-	// Extract the actual css url and html that needs to be added to the notification
-	cssRegex := regexp.MustCompile(`https:\/\/github\.githubassets\.com\/assets\/gist-embed-[a-z0-9]+\.css`)
-	htmlRegex := regexp.MustCompile(`<div [a-z=\\"0-9\s>\-_A-Z</:.#&;]+`)
-
-	cssURL := cssRegex.FindString(fullEmbedOutput)
-	embedHTML := htmlRegex.FindString(fullEmbedOutput)
-	embedHTML = strings.ReplaceAll(embedHTML, "\\n", "")
-	embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
-
-	fmt.Println("cssURL")
-	fmt.Println(cssURL)
-	fmt.Println("gistEmbed")
-	fmt.Println(embedHTML)
-
-	embedGist.CSSURL = cssURL
-	embedGist.EmbedHTML = embedHTML
-
-	return embedGist, nil
+	return nil
 }
 
 type FetchLookerURLArgs struct{}
