@@ -14108,16 +14108,89 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_thread_
                     continue;
                 }
 
-                printf( "ping received ping response packet (%d bytes)\n", packet_bytes );
+                const uint8_t * p = packet_data + 1;
 
-                // todo: read and process ping response packet
+                uint8_t packet_version = next_read_uint8( &p );
+
+                if ( packet_version != 0 )
+                {
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet had unknown version %d\n", packet_version );
+                    continue;
+                }
+
+                uint64_t packet_response_timestamp = next_read_uint64( &p );
+
+                uint64_t packet_token_timestamp = next_read_uint64( &p );
+
+                uint64_t packet_datacenter_id = next_read_uint64( &p );
+
+                // todo
+                (void) packet_response_timestamp;
+                (void) packet_token_timestamp;
+                (void) packet_datacenter_id;
+
+                // look up ping token index by datacenter id
+
+                bool already_received = false;
+                int datacenter_index = -1;
+                next_platform_mutex_acquire( &ping->ping_mutex );
+                for ( int i = 0; i < ping->num_tokens; ++i )
+                {
+                    if ( ping->token_data[i].datacenter_id == packet_datacenter_id )
+                    {
+                        if ( ping->token_data[i].has_response )
+                        {
+                            already_received = true;
+                        }
+                        else
+                        {
+                            datacenter_index = i;
+                        }
+                        break;
+                    }
+                }
+                next_platform_mutex_release( &ping->ping_mutex );
+
+                if ( already_received )
+                {
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet already received for datacenter %d [%" PRIx64 "]", datacenter_index, packet_datacenter_id );
+                    continue;
+                }
+
+                if ( datacenter_index == -1 )
+                {
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet had unknown datacenter %" PRIx64, packet_datacenter_id );
+                    continue;
+                }
+
+                // if the ping response token timestamp doesn't match the ping token timestamp, ignore it
+
+                // if the ping response timestamp is in the future, ignore it
+
+                // if the ping response timestamp is too old, ignore it
+
+                // validation has passed
+
+                next_printf( NEXT_LOG_LEVEL_INFO, "ping received ping response for datacenter %d [%" PRIx64 "]", datacenter_index, packet_datacenter_id );
+
+                /*
+                    encoding.WriteUint32(data, &index, pingResponse.numRelays)
+                    for i := 0; i < int(pingResponse.numRelays); i++ {
+                        encoding.WriteUint64(data, &index, pingResponse.relayIds[i])
+                        encoding.WriteAddressVariable(data, &index, &pingResponse.relayAddresses[i])
+                    }
+                */
+
+                // stash the ping response data and mark the ping response as being processed
+
+                next_platform_mutex_acquire( &ping->ping_mutex );
+                // todo: stash data
+                ping->token_data[datacenter_index].has_response = true;
+                next_platform_mutex_release( &ping->ping_mutex );
+
             }
             break;
         }
-
-        // todo
-        (void) from;
-        (void) packet_bytes;
     }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "ping thread finished" );
