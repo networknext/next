@@ -97,7 +97,7 @@ func WriteSessionCountData(entry *SessionCountData) ([]byte, error) {
 	}()
 
 	size := entry.Size()
-	buffer := [size]byte{}
+	buffer := make([]byte, size)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -297,7 +297,7 @@ func WriteRelayHop(entry *RelayHop) ([]byte, error) {
 	}()
 
 	size := entry.Size()
-	buffer := [size]byte{}
+	buffer := make([]byte, size)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -378,6 +378,8 @@ func (n *NearRelayPortalData) Serialize(stream encoding.Stream) error {
 	stream.SerializeFloat64(&stats.RTT)
 	stream.SerializeFloat64(&stats.Jitter)
 	stream.SerializeFloat64(&stats.PacketLoss)
+
+	return stream.Error()
 }
 
 func (n *NearRelayPortalData) Size() uint64 {
@@ -397,7 +399,7 @@ func WriteNearRelayPortalData(entry *NearRelayPortalData) ([]byte, error) {
 	}()
 
 	size := entry.Size()
-	buffer := [size]byte{}
+	buffer := make([]byte, size)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -662,8 +664,15 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 	stream.SerializeString(&location.City, routing.MaxCityLength)
 	stream.SerializeFloat32(&location.Latitude)
 	stream.SerializeFloat32(&location.Longitude)
-	stream.SerializeString(&location.ISP, routing.maxISPNameLength)
-	stream.SerializeInteger(&location.ASN, math.MinInt32, math.MaxInt32)
+	stream.SerializeString(&location.ISP, routing.MaxISPNameLength)
+	var asn int32
+	if stream.IsWriting() {
+		asn = int32(location.ASN)
+	}
+	stream.SerializeInteger(&asn, math.MinInt32, math.MaxInt32)
+	if stream.IsReading() {
+		location.ASN = int(asn)
+	}
 
 	stream.SerializeString(&s.ClientAddr, MaxAddressLength)
 	stream.SerializeString(&s.ServerAddr, MaxAddressLength)
@@ -688,7 +697,14 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeString(&s.SDK, MaxSDKVersionLength)
 
-	stream.SerializeBits(&s.Connection, 32)
+	var conn uint32
+	if stream.IsWriting() {
+		conn = uint32(s.Connection)
+	}
+	stream.SerializeBits(&conn, 32)
+	if stream.IsReading() {
+		s.Connection = uint8(conn)
+	}
 
 	numNearbyRelays := uint32(len(s.NearbyRelays))
 	stream.SerializeUint32(&numNearbyRelays)
@@ -717,7 +733,14 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 		stream.SerializeFloat64(&stats.PacketLoss)
 	}
 
-	stream.SerializeBits(&s.Platform, 32)
+	var platform uint32
+	if stream.IsWriting() {
+		platform = uint32(s.Platform)
+	}
+	stream.SerializeBits(&platform, 32)
+	if stream.IsReading() {
+		s.Connection = uint8(platform)
+	}
 
 	stream.SerializeUint64(&s.BuyerID)
 
@@ -746,8 +769,8 @@ func WriteSessionMeta(entry *SessionMeta) ([]byte, error) {
 		}
 	}()
 
-	size := *entry.Size()
-	buffer := [size]byte{}
+	size := entry.Size()
+	buffer := make([]byte, size)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -1173,7 +1196,7 @@ func (s *SessionSlice) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&unixTime)
 
 	if stream.IsReading() {
-		s.Timestamp = time.Unix(0, unixTime)
+		s.Timestamp = time.Unix(0, int64(unixTime))
 	}
 
 	if stream.IsReading() {
@@ -1221,9 +1244,20 @@ func (s *SessionSlice) Serialize(stream encoding.Stream) error {
 		s.Envelope = routing.Envelope{}
 	}
 
-	envelope := &s.Envelope
-	stream.SerializeInteger(&envelope.Up, 0, math.MaxInt32)
-	stream.SerializeInteger(&envelope.Down, 0, math.MaxInt32)
+	var envelopeUp uint64
+	var envelopeDown uint64
+	if stream.IsWriting() {
+		envelopeUp = uint64(s.Envelope.Up)
+		envelopeDown = uint64(s.Envelope.Down)
+	}
+	stream.SerializeUint64(&envelopeUp)
+	stream.SerializeUint64(&envelopeDown)
+	if stream.IsReading() {
+		s.Envelope = routing.Envelope{
+			Up: int64(envelopeUp),
+			Down: int64(envelopeDown),
+		}
+	}
 
 	stream.SerializeBool(&s.OnNetworkNext)
 
@@ -1245,8 +1279,8 @@ func WriteSessionSlice(entry *SessionSlice) ([]byte, error) {
 		}
 	}()
 
-	size := *entry.Size()
-	buffer := [size]byte{}
+	size := entry.Size()
+	buffer := make([]byte, size)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -1460,8 +1494,8 @@ func WriteSessionMapPoint(entry *SessionMapPoint) ([]byte, error) {
 		}
 	}()
 
-	size := *entry.Size()
-	buffer := [size]byte{}
+	size := entry.Size()
+	buffer := make([]byte, size)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
