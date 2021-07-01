@@ -13,10 +13,7 @@ export default class GistEmbed extends Vue {
   @Prop() readonly embedHTML!: string
 
   private mounted () {
-    console.log(document.getElementById('gist-embed'))
-
     const gistContainer = document.getElementById('gist-embed')
-
     if (gistContainer) {
       gistContainer.insertAdjacentHTML('afterend', this.embedHTML)
     }

@@ -12,7 +12,7 @@
                 style="font-size: 1rem;margin-right: 1rem;"
                 data-toggle="tooltip"
                 data-placement="right"
-                title="All Notifications">{{ notifications.length }}</span>
+                title="All Notifications">{{ analyticsNotifications.length + systemNotifications.length + invoiceNotifications.length + 1 }}</span>
           <span class="badge rounded-pill custom-badge-info"
                 style="font-size: 1rem;margin-right: 1rem;"
                 data-toggle="tooltip"
@@ -47,7 +47,8 @@
       </div>
     </div>
     <!-- TODO: It may be a good idea to break out these collapsable cards to be used elsewhere potentially -->
-    <div class="card" v-for="(notification, index) in notifications" v-bind:key="index" style="margin-top: 20px;text-align: center;">
+    <!-- TODO TODO: Yes please do this for notifications. Use prop to determine type -->
+    <div class="card" v-for="(notification, index) in analyticsNotifications" v-bind:key="index" style="margin-top: 20px;text-align: center;">
       <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center" >
         <div class="mb-2 mb-md-0 flex-grow-1"></div>
         <div class="pr-5">
@@ -75,37 +76,56 @@
           />
         </div>
       </div>
-      <div class="collapse collapse-all" :id="`notification-${index}`">
+      <div class="collapse collapse-all" :id="`analytics-notification-${index}`">
         <div class="card-body">
-          <div class="row" v-if="notification.type === 0">
+          <div class="row">
             <div class="col" style="max-width:500px;height:300px;">
-<!--               <iframe
+              <iframe
                 style="padding-top:10px;padding-bottom:10px;"
                 v-if="notification.analytics_url !== ''"
                 v-bind:src="notification.analytics_url"
                 width="300"
                 height="300"
                 frameborder="0">
-              </iframe> -->
+              </iframe>
             </div>
             <div class="col">
             </div>
           </div>
-          <div v-if="notification.type === 1">
-            <GistEmbed :cssURL="notification.release_notes.css_url" :embedHTML="notification.release_notes.embed_html"/>
-          </div>
-          <div class="row" v-if="notification.type === 2">
-            <div class="col">
-            </div>
-            <div class="col">
-            </div>
-          </div>
-          <div class="row" v-if="notification.type === 3">
-            <div class="col">
-            </div>
-            <div class="col">
-            </div>
-          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top: 20px;text-align: center;" v-if="showReleaseNotes">
+      <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center" >
+        <div class="mb-2 mb-md-0 flex-grow-1"></div>
+        <div class="pr-5">
+          {{ releaseNotes.title }}
+        </div>
+        <div class="mb-2 mb-md-0 flex-grow-1"></div>
+        <div class="pr-5">
+          <font-awesome-icon
+            aria-expanded="false"
+            id="status"
+            icon="chevron-left"
+            class="fa-w-16 fa-fw"
+            type="button"
+            data-toggle="collapse"
+            data-target="#release-notes-notification"
+          />
+          <font-awesome-icon
+            aria-expanded="false"
+            id="status"
+            icon="chevron-down"
+            class="fa-w-16 fa-fw"
+            type="button"
+            data-toggle="collapse"
+            data-target="#release-notes-notification"
+          />
+        </div>
+      </div>
+      <div class="collapse collapse-all" id="release-notes-notification">
+        <div class="card-body" style="padding-bottom: calc(1.25rem - 16px);">
+          <GistEmbed :cssURL="releaseNotes.css_url" :embedHTML="releaseNotes.embed_html"/>
         </div>
       </div>
     </div>
@@ -122,19 +142,27 @@ import GistEmbed from '@/components/GistEmbed.vue'
   }
 })
 export default class Notifications extends Vue {
-  private notifications: Array<any>
+  private analyticsNotifications: Array<any>
+  private invoiceNotifications: Array<any>
+  private systemNotifications: Array<any>
+
+  private releaseNotes: any
+  private showReleaseNotes: boolean
+
   private urgentNotifications: Array<any>
   private infoNotifications: Array<any>
+
   private unwatchNotifications: any
   private notificationLoop: any
-  private releaseNotes: Array<string>
 
   constructor () {
     super()
-    this.notifications = []
+    this.analyticsNotifications = []
+    this.invoiceNotifications = []
+    this.systemNotifications = []
     this.urgentNotifications = []
     this.infoNotifications = []
-    this.releaseNotes = []
+    this.showReleaseNotes = false
   }
 
   private created () {
@@ -145,17 +173,12 @@ export default class Notifications extends Vue {
     this.$apiService
       .fetchNotifications()
       .then((response: any) => {
-        console.log(response.notifications)
-        this.notifications = response.notifications || []
-        this.infoNotifications = this.notifications.filter((notification: any) => {
-          return notification.priority === 1
-        })
-        this.urgentNotifications = this.notifications.filter((notification: any) => {
-          return notification.priority === 3
-        })
+        this.releaseNotes = response.release_notes_notification
+        this.showReleaseNotes = true
       })
   }
 
+  // TODO: Figure out if this is necessary or not
   private restartLoop () {
     if (this.notificationLoop) {
       clearInterval(this.notificationLoop)
