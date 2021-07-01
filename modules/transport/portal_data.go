@@ -461,11 +461,11 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 		return errors.New("[SessionMeta] invalid read at user hash")
 	}
 
-	if !encoding.ReadString(data, &index, &s.DatacenterName, MaxDatacenterNameLength) {
+	if !encoding.ReadString(data, &index, &s.DatacenterName, math.MaxInt32) {
 		return errors.New("[SessionMeta] invalid read at datacenter name")
 	}
 
-	if !encoding.ReadString(data, &index, &s.DatacenterAlias, MaxDatacenterNameLength) {
+	if !encoding.ReadString(data, &index, &s.DatacenterAlias, math.MaxInt32) {
 		return errors.New("[SessionMeta] invalid read at datacenter alias")
 	}
 
@@ -499,11 +499,11 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 		return err
 	}
 
-	if !encoding.ReadString(data, &index, &s.ClientAddr, MaxAddressLength) {
+	if !encoding.ReadString(data, &index, &s.ClientAddr, math.MaxInt32) {
 		return errors.New("[SessionMeta] invalid read at client address")
 	}
 
-	if !encoding.ReadString(data, &index, &s.ServerAddr, MaxAddressLength) {
+	if !encoding.ReadString(data, &index, &s.ServerAddr, math.MaxInt32) {
 		return errors.New("[SessionMeta] invalid read at server address")
 	}
 
@@ -524,12 +524,12 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 			return errors.New("[SessionMeta] invalid read at relay hops relay ID")
 		}
 
-		if !encoding.ReadString(data, &index, &s.Hops[i].Name, routing.MaxRelayNameLength) {
+		if !encoding.ReadString(data, &index, &s.Hops[i].Name, math.MaxInt32) {
 			return errors.New("[SessionMeta] invalid read at relay hops relay name")
 		}
 	}
 
-	if !encoding.ReadString(data, &index, &s.SDK, MaxSDKVersionLength) {
+	if !encoding.ReadString(data, &index, &s.SDK, math.MaxInt32) {
 		return errors.New("[SessionMeta] invalid read at SDK version")
 	}
 
@@ -554,7 +554,7 @@ func (s *SessionMeta) UnmarshalBinary(data []byte) error {
 			return errors.New("[SessionMeta] invalid read at nearby relays relay ID")
 		}
 
-		if !encoding.ReadString(data, &index, &s.NearbyRelays[i].Name, routing.MaxRelayNameLength) {
+		if !encoding.ReadString(data, &index, &s.NearbyRelays[i].Name, math.MaxInt32) {
 			return errors.New("[SessionMeta] invalid read at nearby relays relay name")
 		}
 
