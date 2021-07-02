@@ -22,13 +22,7 @@
     </div>
     <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="!$store.getters.isAnonymousPlus" style="max-width: 300px;">
       <div class="mr-auto"></div>
-      <div class="px-2" v-if="$store.getters.isBuyer || $store.getters.isAdmin">
-        <select class="form-control" v-on:change="updateFilter($event.target.value)">
-          <option v-for="option in filterOptions" :key="option.value" v-bind:value="option.value" v-bind:selected="$store.getters.currentFilter.companyCode === option.value">
-            {{ option.name }}
-          </option>
-        </select>
-      </div>
+      <BuyerFilter />
     </div>
   </div>
 </template>
@@ -37,6 +31,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { AlertType } from './types/AlertTypes'
 import Alert from '@/components/Alert.vue'
+import BuyerFilter from '@/components/BuyerFilter.vue'
 
 /**
  * This component displays the total session counts and has all of the associated logic and api calls
@@ -56,7 +51,8 @@ interface TotalSessionsReply {
 
 @Component({
   components: {
-    Alert
+    Alert,
+    BuyerFilter
   }
 })
 export default class SessionCounts extends Vue {
@@ -72,8 +68,9 @@ export default class SessionCounts extends Vue {
   private totalSessionsReply: TotalSessionsReply
   private showCount: boolean
   private countLoop: any
-  private filterOptions: Array<any>
   private alertToggle: boolean
+
+  private unwatchFilter: any
 
   constructor () {
     super()
@@ -82,25 +79,20 @@ export default class SessionCounts extends Vue {
       onNN: 0
     }
     this.showCount = false
-    this.filterOptions = []
     this.alertToggle = false
   }
 
   private mounted () {
-    this.filterOptions.push({
-      name: 'All',
-      value: ''
-    })
-
-    this.$store.getters.allBuyers.forEach((buyer: any) => {
-      if (!this.$store.getters.isAdmin || (this.$store.getters.isAdmin && buyer.is_live)) {
-        this.filterOptions.push({
-          name: buyer.company_name,
-          value: buyer.company_code
-        })
+    this.restartLoop()
+    this.unwatchFilter = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.currentFilter
+      },
+      () => {
+        clearInterval(this.countLoop)
+        this.restartLoop()
       }
-    })
-
+    )
     if (this.$store.getters.isAnonymousPlus) {
       this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
       this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
@@ -112,6 +104,7 @@ export default class SessionCounts extends Vue {
 
   private beforeDestroy () {
     clearInterval(this.countLoop)
+    this.unwatchFilter()
     this.$root.$off('failedMapPointLookup')
   }
 
@@ -132,22 +125,6 @@ export default class SessionCounts extends Vue {
           this.showCount = true
         }
       })
-  }
-
-  private getBuyerName () {
-    const allBuyers = this.$store.getters.allBuyers
-    let i = 0
-    for (i; i < allBuyers.length; i++) {
-      if (allBuyers[i].company_code === this.$store.getters.userProfile.companyCode) {
-        return allBuyers[i].company_name
-      }
-    }
-    return 'Private'
-  }
-
-  private updateFilter (companyCode: string) {
-    this.$store.commit('UPDATE_CURRENT_FILTER', { companyCode: companyCode })
-    this.restartLoop()
   }
 
   private restartLoop () {
