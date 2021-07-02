@@ -828,7 +828,7 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 	}
 	stream.SerializeBits(&platform, 8)
 	if stream.IsReading() {
-		s.Connection = uint8(platform)
+		s.Platform = uint8(platform)
 	}
 
 	stream.SerializeUint64(&s.BuyerID)

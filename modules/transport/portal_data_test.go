@@ -199,9 +199,9 @@ func testSessionMeta() transport.SessionMeta {
 		ServerAddr:   generateRandomStringSequence(rand.Intn(transport.MaxAddressLength - 1)),
 		Hops:         hops,
 		SDK:          generateRandomStringSequence(rand.Intn(transport.MaxSDKVersionLength - 1)),
-		Connection:   uint8(rand.Int()),
+		Connection:   uint8(rand.Intn(256)),
 		NearbyRelays: nearRelays,
-		Platform:     uint8(rand.Int()),
+		Platform:     uint8(rand.Intn(256)),
 		BuyerID:      rand.Uint64(),
 	}
 
