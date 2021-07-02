@@ -97,7 +97,6 @@ export default class SessionCounts extends Vue {
       this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
       this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
     }
-    this.restartLoop()
 
     this.$root.$on('failedMapPointLookup', this.failedMapPointLookupCallback)
   }
