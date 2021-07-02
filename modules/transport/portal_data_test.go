@@ -113,19 +113,25 @@ func TestRelayHop_Serialize(t *testing.T) {
 	})
 }
 
+func testRoutingStats() routing.Stats {
+	data := routing.Stats{
+		RTT:        rand.Float64(),
+		Jitter:     rand.Float64(),
+		PacketLoss: rand.Float64(),
+	}
+
+	return data
+}
+
 func testNearRelayPortalData() transport.NearRelayPortalData {
 	// Seed randomness
 	rand.Seed(time.Now().UnixNano())
 
 	data := transport.NearRelayPortalData{
-		Version: transport.NearRelayPortalDataVersion,
-		ID:      rand.Uint64(),
-		Name:    generateRandomStringSequence(rand.Intn(routing.MaxRelayNameLength)),
-		ClientStats: routing.Stats{
-			RTT:        rand.Float64(),
-			Jitter:     rand.Float64(),
-			PacketLoss: rand.Float64(),
-		},
+		Version:     transport.NearRelayPortalDataVersion,
+		ID:          rand.Uint64(),
+		Name:        generateRandomStringSequence(rand.Intn(routing.MaxRelayNameLength)),
+		ClientStats: testRoutingStats(),
 	}
 
 	return data
@@ -235,29 +241,129 @@ func TestSessionMeta_Serialize(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, metaData, readMetaData)
 	})
+}
 
-	// t.Run("test binary write", func(t *testing.T) {
-	// 	metaData := testSessionMeta()
+func testSessionSlice() transport.SessionSlice {
+	// Seed randomness
+	rand.Seed(time.Now().UnixNano())
 
-	// 	data, err := metaData.MarshalBinary()
+	data := transport.SessionSlice{
+		Version:             transport.SessionSliceVersion,
+		Timestamp:           time.Unix(0, rand.Int63()),
+		Next:                testRoutingStats(),
+		Direct:              testRoutingStats(),
+		Predicted:           testRoutingStats(),
+		ClientToServerStats: testRoutingStats(),
+		ServerToClientStats: testRoutingStats(),
+		RouteDiversity:      rand.Uint32(),
+		Envelope: routing.Envelope{
+			Up:   rand.Int63(),
+			Down: rand.Int63(),
+		},
+		OnNetworkNext:     true,
+		IsMultiPath:       true,
+		IsTryBeforeYouBuy: false,
+	}
 
-	// 	assert.NoError(t, err)
-	// 	assert.NotEmpty(t, data)
-	// })
+	return data
+}
 
-	// t.Run("test binary read", func(t *testing.T) {
-	// 	metaData := testSessionMeta()
+func TestSessionSlice_Serialize(t *testing.T) {
+	t.Parallel()
 
-	// 	data, err := metaData.MarshalBinary()
+	t.Run("test serialize write v0", func(t *testing.T) {
+		sliceData := testSessionSlice()
+		sliceData.Version = uint32(0)
 
-	// 	assert.NoError(t, err)
-	// 	assert.NotEmpty(t, data)
+		data, err := transport.WriteSessionSlice(&sliceData)
 
-	// 	var readMetaData transport.SessionMeta
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+	})
 
-	// 	err = readMetaData.UnmarshalBinary(data)
-	// 	assert.NoError(t, err)
+	t.Run("test serialize read v0", func(t *testing.T) {
+		sliceData := testSessionSlice()
+		sliceData.Version = uint32(0)
+		sliceData.Predicted = routing.Stats{}
+		sliceData.ClientToServerStats = routing.Stats{}
+		sliceData.ServerToClientStats = routing.Stats{}
+		sliceData.RouteDiversity = uint32(0)
 
-	// 	assert.Equal(t, metaData, readMetaData)
-	// })
+		data, err := transport.WriteSessionSlice(&sliceData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+
+		var readSliceData transport.SessionSlice
+
+		err = transport.ReadSessionSlice(&readSliceData, data)
+
+		assert.NoError(t, err)
+		assert.Equal(t, sliceData, readSliceData)
+	})
+
+	t.Run("test serialize write v1", func(t *testing.T) {
+		sliceData := testSessionSlice()
+		sliceData.Version = uint32(1)
+
+		data, err := transport.WriteSessionSlice(&sliceData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+	})
+
+	t.Run("test serialize read v1", func(t *testing.T) {
+		sliceData := testSessionSlice()
+		sliceData.Version = uint32(1)
+		sliceData.ClientToServerStats = routing.Stats{}
+		sliceData.ServerToClientStats = routing.Stats{}
+		sliceData.RouteDiversity = uint32(0)
+
+		// Some fields are not serialized
+		sliceData.Predicted.Jitter = float64(0)
+		sliceData.Predicted.PacketLoss = float64(0)
+
+		data, err := transport.WriteSessionSlice(&sliceData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+
+		var readSliceData transport.SessionSlice
+
+		err = transport.ReadSessionSlice(&readSliceData, data)
+
+		assert.NoError(t, err)
+		assert.Equal(t, sliceData, readSliceData)
+	})
+
+	t.Run("test serialize write v2", func(t *testing.T) {
+		sliceData := testSessionSlice()
+
+		data, err := transport.WriteSessionSlice(&sliceData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+	})
+
+	t.Run("test serialize read v2", func(t *testing.T) {
+		sliceData := testSessionSlice()
+
+		// Some fields are not serialized
+		sliceData.Predicted.Jitter = float64(0)
+		sliceData.Predicted.PacketLoss = float64(0)
+		sliceData.ClientToServerStats.RTT = float64(0)
+		sliceData.ServerToClientStats.RTT = float64(0)
+
+		data, err := transport.WriteSessionSlice(&sliceData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+
+		var readSliceData transport.SessionSlice
+
+		err = transport.ReadSessionSlice(&readSliceData, data)
+
+		assert.NoError(t, err)
+		assert.Equal(t, sliceData, readSliceData)
+	})
 }

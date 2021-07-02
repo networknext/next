@@ -1401,6 +1401,22 @@ func (s SessionSlice) Size() uint64 {
 	return 4 + 8 + (3 * 8) + (3 * 8) + 8 + (2 * 8) + (2 * 8) + 4 + (2 * 8) + 1 + 1 + 1
 }
 
+func (s SessionSlice) SerializeSize() uint64 {
+	return 4 + // Version
+		8 + // Timestamp
+		8*3 + // Next
+		8*3 + // Direct
+		8 + // Predicted
+		8*2 + // ClientToServerStats
+		8*2 + // ServerToClientStats
+		4 + // RouteDiversity
+		8*2 + // Envelope
+		1 + // OnNetworkNext
+		1 + // IsMultiPath
+		1 + // IsTryBeforeYouBuy
+		1 // extra bytes to be divisible by 4
+}
+
 func WriteSessionSlice(entry *SessionSlice) ([]byte, error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1408,7 +1424,7 @@ func WriteSessionSlice(entry *SessionSlice) ([]byte, error) {
 		}
 	}()
 
-	size := entry.Size()
+	size := entry.SerializeSize()
 	buffer := make([]byte, size)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
