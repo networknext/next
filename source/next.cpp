@@ -845,6 +845,34 @@ void next_read_address( const uint8_t ** buffer, next_address_t * address )
     next_assert( *buffer - start == NEXT_ADDRESS_BYTES );
 }
 
+void next_read_address_variable( const uint8_t ** buffer, next_address_t * address )
+{
+    const uint8_t * start = *buffer;
+
+    memset( address, 0, sizeof(next_address_t) );
+
+    address->type = next_read_uint8( buffer );
+
+    if ( address->type == NEXT_ADDRESS_IPV4 )
+    {
+        for ( int j = 0; j < 4; ++j )
+        {
+            address->data.ipv4[j] = next_read_uint8( buffer );
+        }
+        address->port = next_read_uint16( buffer );
+    }
+    else if ( address->type == NEXT_ADDRESS_IPV6 )
+    {
+        for ( int j = 0; j < 8; ++j )
+        {
+            address->data.ipv6[j] = next_read_uint16( buffer );
+        }
+        address->port = next_read_uint16( buffer );
+    }
+
+    (void) start;
+}
+
 // -------------------------------------------------------------
 
 static const unsigned char base64_table_encode[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -13745,7 +13773,7 @@ uint64_t next_ping_token_datacenter_id( const uint8_t * ping_token_data, int pin
     const int size = 8 + 8 + 8 + 8;
 
     if ( ping_token_bytes < int( 1 + size + NEXT_CRYPTO_SIGN_BYTES ) )
-        return false;
+        return 0;
 
     uint64_t token_timestamp = next_read_uint64( &p );
     uint64_t token_customer_id = next_read_uint64( &p );
@@ -13755,6 +13783,42 @@ uint64_t next_ping_token_datacenter_id( const uint8_t * ping_token_data, int pin
     (void) token_customer_id;    
 
     return token_datacenter_id;
+}
+
+uint64_t next_ping_token_timestamp( const uint8_t * ping_token_data, int ping_token_bytes )
+{
+    next_assert( ping_token_data );
+
+    if ( ping_token_bytes < 0 )
+        return 0;
+
+    if ( ping_token_bytes > NEXT_MAX_PING_TOKEN_BYTES )
+        return 0;
+
+    if ( ping_token_bytes < int( 1 + NEXT_CRYPTO_SIGN_BYTES ) )
+        return 0;
+
+    const uint8_t * p = ping_token_data;
+
+    uint8_t version = next_read_uint8( &p );
+
+    if ( version != 0 )
+        return 0;
+
+    const int size = 8 + 8 + 8 + 8;
+
+    if ( ping_token_bytes < int( 1 + size + NEXT_CRYPTO_SIGN_BYTES ) )
+        return 0;
+
+    uint64_t token_timestamp = next_read_uint64( &p );
+    uint64_t token_customer_id = next_read_uint64( &p );
+    uint64_t token_datacenter_id = next_read_uint64( &p );
+
+    (void) token_timestamp;
+    (void) token_customer_id;    
+    (void) token_datacenter_id;    
+
+    return token_timestamp;
 }
 
 // ---------------------------------------------------------------
@@ -13769,8 +13833,13 @@ struct next_ping_token_data_t
     uint8_t token_data[NEXT_MAX_PING_TOKEN_BYTES];
     int token_bytes;
     uint64_t datacenter_id;
+    uint64_t token_timestamp;
     double next_ping_time;
     bool has_response;
+    bool processed;
+    int num_relays;
+    uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
+    next_address_t relay_addresses[NEXT_MAX_NEAR_RELAYS];
 };
 
 struct next_ping_t
@@ -13862,6 +13931,7 @@ next_ping_t * next_ping_create( void * context, const char * bind_address_string
         ping->token_data[i].token_bytes = ping_token_bytes[i];
         memcpy( ping->token_data[i].token_data, ping_token_data[i], ping_token_bytes[i] );
         ping->token_data[i].datacenter_id = next_ping_token_datacenter_id( ping_token_data[i], ping_token_bytes[i] );
+        ping->token_data[i].token_timestamp = next_ping_token_timestamp( ping_token_data[i], ping_token_bytes[i] );
     }
 
     next_printf( NEXT_LOG_LEVEL_INFO, "ping loaded %d tokens", num_ping_tokens );
@@ -14119,15 +14189,21 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_thread_
                 }
 
                 uint64_t packet_response_timestamp = next_read_uint64( &p );
-
                 uint64_t packet_token_timestamp = next_read_uint64( &p );
-
                 uint64_t packet_datacenter_id = next_read_uint64( &p );
+                uint32_t packet_num_relays = next_read_uint32( &p );
 
-                // todo
-                (void) packet_response_timestamp;
-                (void) packet_token_timestamp;
-                (void) packet_datacenter_id;
+                if ( packet_num_relays == 0 )
+                {
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet has no relays" );
+                    continue;
+                }
+
+                if ( packet_num_relays > NEXT_MAX_NEAR_RELAYS )
+                {
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet has too many relays" );
+                    continue;
+                }
 
                 // look up ping token index by datacenter id
 
@@ -14163,31 +14239,43 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_thread_
                     continue;
                 }
 
-                // if the ping response token timestamp doesn't match the ping token timestamp, ignore it
+                if ( packet_token_timestamp != ping->token_data[datacenter_index].token_timestamp )
+                {
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet token timestamp mismatch" );
+                    continue;
+                }
 
-                // if the ping response timestamp is in the future, ignore it
+                if ( packet_response_timestamp < ping->token_data[datacenter_index].token_timestamp || packet_response_timestamp > ping->token_data[datacenter_index].token_timestamp + NEXT_PING_DURATION )
+                {
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet has bad response timestamp" );
+                    continue;
+                }
 
-                // if the ping response timestamp is too old, ignore it
+                // read in near relay data from the packet
+
+                uint64_t packet_relay_ids[NEXT_MAX_NEAR_RELAYS];
+                next_address_t packet_relay_addresses[NEXT_MAX_NEAR_RELAYS];
+                for ( int i = 0; i < int(packet_num_relays); ++i )
+                {
+                    packet_relay_ids[i] = next_read_uint64( &p );
+                    next_read_address_variable( &p, &packet_relay_addresses[i] );
+                }
 
                 // validation has passed
 
                 next_printf( NEXT_LOG_LEVEL_INFO, "ping received ping response for datacenter %d [%" PRIx64 "]", datacenter_index, packet_datacenter_id );
 
-                /*
-                    encoding.WriteUint32(data, &index, pingResponse.numRelays)
-                    for i := 0; i < int(pingResponse.numRelays); i++ {
-                        encoding.WriteUint64(data, &index, pingResponse.relayIds[i])
-                        encoding.WriteAddressVariable(data, &index, &pingResponse.relayAddresses[i])
-                    }
-                */
-
-                // stash the ping response data and mark the ping response as being processed
+                // stash the ping response data and mark the ping response as processed
 
                 next_platform_mutex_acquire( &ping->ping_mutex );
-                // todo: stash data
                 ping->token_data[datacenter_index].has_response = true;
+                ping->token_data[datacenter_index].num_relays = packet_num_relays;
+                for ( int i = 0; i < int(packet_num_relays); ++i )
+                {
+                    ping->token_data[datacenter_index].relay_ids[i] = packet_relay_ids[i];
+                    ping->token_data[datacenter_index].relay_addresses[i] = packet_relay_addresses[i];
+                }
                 next_platform_mutex_release( &ping->ping_mutex );
-
             }
             break;
         }
@@ -14231,6 +14319,29 @@ void next_ping_update_send_ping_requests( next_ping_t * ping )
     }
 }
 
+void next_ping_update_process_ping_responses( next_ping_t * ping )
+{
+    next_platform_mutex_acquire( &ping->ping_mutex );
+    for ( int i = 0; i < ping->num_tokens; ++i )
+    {
+        if ( ping->token_data[i].has_response && !ping->token_data[i].processed )
+        {
+            printf( "processing ping response\n" );
+
+            // todo
+            char buffer[1024];
+            for ( int j = 0; j < int(ping->num_tokens); ++j )
+            {
+                printf( "%d: relay id = %" PRIx64 "\n", j, ping->token_data[i].relay_ids[j] );
+                printf( "%d: relay address = %s\n", j, next_address_to_string( &ping->token_data[i].relay_addresses[j], buffer ) );
+            }
+
+            ping->token_data[i].processed = true;
+        }
+    }
+    next_platform_mutex_release( &ping->ping_mutex );
+}
+
 void next_ping_update( next_ping_t * ping )
 {
     next_assert( ping );
@@ -14249,6 +14360,8 @@ void next_ping_update( next_ping_t * ping )
     next_ping_update_resolve_hostname( ping );
 
     next_ping_update_send_ping_requests( ping );
+
+    next_ping_update_process_ping_responses( ping );
 }
 
 int next_ping_state( next_ping_t * ping )
