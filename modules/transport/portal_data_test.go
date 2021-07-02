@@ -217,7 +217,46 @@ func testSessionMeta() transport.SessionMeta {
 func TestSessionMeta_Serialize(t *testing.T) {
 	t.Parallel()
 
-	t.Run("test serialize write", func(t *testing.T) {
+	t.Run("test serialize write v0 and v1", func(t *testing.T) {
+		metaData := testSessionMeta()
+		metaData.Version = uint32(1)
+		for i := 0; i < len(metaData.Hops); i++ {
+			metaData.Hops[i].Version = uint32(0)
+		}
+		for i := 0; i < len(metaData.NearbyRelays); i++ {
+			metaData.NearbyRelays[i].Version = uint32(0)
+		}
+
+		data, err := transport.WriteSessionMeta(&metaData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+	})
+
+	t.Run("test serialize read v0 and v1", func(t *testing.T) {
+		metaData := testSessionMeta()
+		metaData.Version = uint32(1)
+		for i := 0; i < len(metaData.Hops); i++ {
+			metaData.Hops[i].Version = uint32(0)
+		}
+		for i := 0; i < len(metaData.NearbyRelays); i++ {
+			metaData.NearbyRelays[i].Version = uint32(0)
+		}
+
+		data, err := transport.WriteSessionMeta(&metaData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+
+		var readMetaData transport.SessionMeta
+
+		err = transport.ReadSessionMeta(&readMetaData, data)
+
+		assert.NoError(t, err)
+		assert.Equal(t, metaData, readMetaData)
+	})
+
+	t.Run("test serialize write v2", func(t *testing.T) {
 		metaData := testSessionMeta()
 
 		data, err := transport.WriteSessionMeta(&metaData)
@@ -226,7 +265,7 @@ func TestSessionMeta_Serialize(t *testing.T) {
 		assert.NotEmpty(t, data)
 	})
 
-	t.Run("test serialize read", func(t *testing.T) {
+	t.Run("test serialize read v2", func(t *testing.T) {
 		metaData := testSessionMeta()
 
 		data, err := transport.WriteSessionMeta(&metaData)
