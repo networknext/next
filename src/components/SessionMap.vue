@@ -49,15 +49,24 @@ export default class SessionMap extends Vue {
 
   constructor () {
     super()
-    this.viewState = {
-      latitude: 0,
-      longitude: 0,
-      zoom: 2,
-      pitch: 0,
-      bearing: 0,
-      minZoom: 2,
-      maxZoom: 16
+
+    // If there is not stored viewport, add the default one and use that
+    if (!this.$store.getters.currentViewport) {
+      this.$store.commit(
+        'UPDATE_CURRENT_VIEWPORT',
+        {
+          latitude: 0,
+          longitude: 0,
+          zoom: 2,
+          pitch: 0,
+          bearing: 0,
+          minZoom: 2,
+          maxZoom: 16
+        }
+      )
     }
+
+    this.viewState = this.$store.getters.currentViewport
 
     // Use this to test using the canned json files
     /* this.sessions = (data1 as any).result.map_points
@@ -104,13 +113,17 @@ export default class SessionMap extends Vue {
         }
 
         if (!this.mapInstance) {
+          // Init the mapbox instance using the shared viewport values
           this.mapInstance = new (window as any).mapboxgl.Map({
             accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
             style: 'mapbox://styles/mapbox/dark-v10',
-            center: [0, 0],
-            zoom: 2,
-            pitch: 0,
-            bearing: 0,
+            center: [
+              this.viewState.longitude,
+              this.viewState.latitude
+            ],
+            zoom: this.viewState.zoom,
+            pitch: this.viewState.pitch,
+            bearing: this.viewState.bearing,
             container: 'map',
             minZoom: 1.9
           })
@@ -205,6 +218,7 @@ export default class SessionMap extends Vue {
             },
             // change the map's viewstate whenever the view state of deck.gl changes
             onViewStateChange: ({ viewState }: any) => {
+              // Whenever the viewport changes, update the mapbox instance and the stored version of the viewport
               this.mapInstance.jumpTo({
                 center: [viewState.longitude, viewState.latitude],
                 zoom: viewState.zoom,
@@ -213,6 +227,19 @@ export default class SessionMap extends Vue {
                 minZoom: 2,
                 maxZoom: 16
               })
+
+              this.$store.commit(
+                'UPDATE_CURRENT_VIEWPORT',
+                {
+                  latitude: viewState.latitude,
+                  longitude: viewState.longitude,
+                  zoom: viewState.zoom,
+                  pitch: viewState.pitch,
+                  bearing: viewState.bearing,
+                  minZoom: 2,
+                  maxZoom: 16
+                }
+              )
             },
             layers: layers,
             getCursor: ({ isHovering, isDragging }: any) => {
