@@ -2,10 +2,13 @@ import Vue from 'vue'
 import VueRouter, { RouteConfig, Route, NavigationGuardNext } from 'vue-router'
 import store from '@/store'
 
+import Invoicing from '@/components/Invoicing.vue'
+import Analytics from '@/components/Analytics.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
-import Explore from '@/components/Explore.vue'
+import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
+import Notifications from '@/components/Notifications.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
@@ -94,7 +97,24 @@ const routes: Array<RouteConfig> = [
   {
     path: '/explore',
     name: 'explore',
-    component: Explore
+    component: ExplorationWorkspace,
+    children: [
+      {
+        path: 'notifications',
+        name: 'notifications',
+        component: Notifications
+      },
+      {
+        path: 'analytics',
+        name: 'analytics',
+        component: Analytics
+      },
+      {
+        path: 'invoicing',
+        name: 'invoicing',
+        component: Invoicing
+      }
+    ]
   },
   {
     path: '*',
@@ -111,6 +131,10 @@ const router = new VueRouter({
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // TODO: Make sure all edge cases for illegal routing are caught here
   // TODO: Clean this up. Figure out a better way of handling user role and legal route relationships
+  if (!store.getters.isAdmin && to.name === 'explore') {
+    next('/map')
+    return
+  }
   if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
@@ -125,6 +149,23 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
       (window as any).Intercom('update')
     }
     next('/map')
+    return
+  }
+  if (!store.getters.isAdmin && (to.name === 'notifications' || to.name === 'analytics' || to.name === 'invoicing')) {
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
+    next('/map')
+    return
+  }
+  // TODO: Add in checks for different parts of the explore page with new roles TBD
+  if (to.name === 'explore') {
+    store.commit('UPDATE_CURRENT_PAGE', 'notifications')
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
+    next('/explore/notifications')
     return
   }
   if (to.name === 'settings') {

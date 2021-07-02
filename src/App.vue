@@ -9,10 +9,18 @@
 import Vue from 'vue'
 
 import {
+  faBell,
   faCheck,
+  faChevronDown,
+  faChevronLeft,
   faCircle,
+  faClipboard,
+  faCreditCard,
   faDownload,
+  faFileAlt,
+  faMinusSquare,
   faPen,
+  faPlusSquare,
   faTimes,
   faTrash
 } from '@fortawesome/free-solid-svg-icons'
@@ -33,10 +41,18 @@ import Workspace from '@/workspaces/Workspace.vue'
  */
 
 const ICONS = [
+  faBell,
   faCheck,
+  faChevronDown,
+  faChevronLeft,
   faCircle,
+  faClipboard,
+  faCreditCard,
   faDownload,
+  faFileAlt,
+  faMinusSquare,
   faPen,
+  faPlusSquare,
   faTimes,
   faTrash
 ]

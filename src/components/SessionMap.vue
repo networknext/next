@@ -108,7 +108,7 @@ export default class SessionMap extends Vue {
       })
       .then((response: any) => {
         // check if mapbox exists - primarily for tests
-        if (!(window as any).mapboxgl) {
+        if (!(window as any).mapboxgl || !(window as any).deck) {
           return
         }
 

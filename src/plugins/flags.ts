@@ -1,4 +1,5 @@
-import { FeatureEnum } from '@/components/types/FeatureTypes'
+import { FeatureEnum, Flag } from '@/components/types/FeatureTypes'
+import { faMeteor } from '@fortawesome/free-solid-svg-icons'
 import { JSONRPCService } from './jsonrpc'
 
 export class FeatureFlagService {
@@ -27,22 +28,22 @@ export class FeatureFlagService {
   }
 
   private fetchEnvVarFeatureFlags () {
-    this.flags.forEach((flag: any) => {
+    this.flags.forEach((flag: Flag) => {
       const envVarString = `VUE_APP_${flag.name}`
-      flag.value = process.env[envVarString] || false
+      flag.value = process.env[envVarString] ? process.env[envVarString].toLowerCase() === 'true' : false
     })
   }
 
   private isEnabled (name: FeatureEnum): boolean {
     let value = false
-    this.flags.forEach((flag: any) => {
+    this.flags.forEach((flag: Flag) => {
       if (flag.name === name) {
         switch (typeof flag.value) {
-          case 'string':
-            value = flag.value.toLowerCase() === 'true' || false
-            break
           case 'boolean':
             value = flag.value
+            break
+          case 'string':
+            value = flag.value === 'true'
             break
           default:
             throw new Error('Unknown flag')
@@ -50,6 +51,14 @@ export class FeatureFlagService {
       }
     })
     return value
+  }
+
+  private printEnabledFlags (): void {
+    this.flags.forEach((flag: Flag) => {
+      if (flag.value) {
+        console.log(flag)
+      }
+    })
   }
 }
 

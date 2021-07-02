@@ -155,6 +155,14 @@ export class JSONRPCService {
   public sendUE4DownloadNotifications (args: any): Promise<any> {
     return this.call('AuthService.CustomerDownloadedUE4PluginNotifications', args)
   }
+
+  public fetchNotifications (): Promise<any> {
+    return this.call('BuyersService.FetchNotifications', {})
+  }
+
+  public fetchLookerURL (): Promise<any> {
+    return this.call('BuyersService.FetchLookerURL', {})
+  }
 }
 
 export const JSONRPCPlugin = {
