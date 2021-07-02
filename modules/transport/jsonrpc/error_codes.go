@@ -21,6 +21,8 @@ const (
 	ERROR_PASSWORD_GENERATION_FAILURE json2.ErrorCode = 7
 	ERROR_ILLEGAL_OPERATION           json2.ErrorCode = 8
 	ERROR_SLACK_FAILURE               json2.ErrorCode = 9
+	ERROR_NONCE_GENERATION_FAILURE    json2.ErrorCode = 10
+	ERROR_UNKNOWN_NOTIFICATION_TYPE   json2.ErrorCode = 11
 )
 
 var JSONRPCErrorCodes []json2.Error = []json2.Error{
@@ -92,6 +94,20 @@ var JSONRPCErrorCodes []json2.Error = []json2.Error{
 		Code:    ERROR_SLACK_FAILURE,
 		Data: &JSONRPCErrorData{
 			Name: "ERROR_SLACK_FAILURE",
+		},
+	},
+	{
+		Message: "Failed to generate nonce value",
+		Code:    ERROR_NONCE_GENERATION_FAILURE,
+		Data: &JSONRPCErrorData{
+			Name: "ERROR_NONCE_GENERATION_FAILURE",
+		},
+	},
+	{
+		Message: "Unknown notification type",
+		Code:    ERROR_UNKNOWN_NOTIFICATION_TYPE,
+		Data: &JSONRPCErrorData{
+			Name: "ERROR_UNKNOWN_NOTIFICATION_TYPE",
 		},
 	},
 }
