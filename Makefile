@@ -308,6 +308,9 @@ export FEATURE_POSTGRESQL=false
 export JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/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
 export SLACK_CHANNEL=portal-test
+export LOOKER_SECRET=d61764ff20f99e672af3ec7fde75531a790acdb6d58bf46dbe55dac06a6019c0
+export GITHUB_ACCESS_TOKEN=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
+export RELEASE_NOTES_INTERVAL=30s
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
