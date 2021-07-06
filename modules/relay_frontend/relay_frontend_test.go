@@ -237,41 +237,6 @@ func TestRelayFrontendSvc_CacheMatrixNormal(t *testing.T) {
 	assert.Equal(t, bin, svc.routeMatrix.GetMatrix())
 }
 
-func TestRelayFrontendSvc_GetCostMatrix(t *testing.T) {
-	svc := &RelayFrontendSvc{}
-	svc.costMatrix = new(helpers.MatrixData)
-	testMatrix := testMatrix(t)
-	svc.costMatrix.SetMatrix(testMatrix.GetResponseData())
-
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrixHandlerFunc()))
-
-	resp, err := http.Get(ts.URL)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, resp.Body)
-
-	buffer, err := ioutil.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, buffer)
-
-	var newRouteMatrix routing.RouteMatrix
-	rs := encoding.CreateReadStream(buffer)
-	err = newRouteMatrix.Serialize(rs)
-	assert.NoError(t, err)
-
-	newRouteMatrix.WriteResponseData(5000)
-	assert.Equal(t, testMatrix, newRouteMatrix)
-}
-
-func TestRelayFrontendSvc_GetCostMatrixNotFound(t *testing.T) {
-	svc := &RelayFrontendSvc{}
-	svc.costMatrix = new(helpers.MatrixData)
-	ts := httptest.NewServer(http.HandlerFunc(svc.GetCostMatrixHandlerFunc()))
-
-	resp, err := http.Get(ts.URL)
-	assert.NoError(t, err)
-	assert.Equal(t, resp.StatusCode, http.StatusNotFound)
-}
-
 func TestRelayFrontendSvc_ResetCostMatrix(t *testing.T) {
 	svc := &RelayFrontendSvc{}
 	svc.costMatrix = new(helpers.MatrixData)
@@ -348,22 +313,20 @@ func TestRelayFrontendSvc_ResetRouteMatrix(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedEmptyRouteMatrix := routing.RouteMatrix{
-		RelayIDsToIndices:   make(map[uint64]int32),
-		RelayIDs:            []uint64{},
-		RelayAddresses:      []net.UDPAddr{},
-		RelayNames:          []string{},
-		RelayLatitudes:      []float32{},
-		RelayLongitudes:     []float32{},
-		RelayDatacenterIDs:  []uint64{},
-		RouteEntries:        []core.RouteEntry{},
-		BinFileBytes:        0,
-		CreatedAt:           0,
-		Version:             routing.RouteMatrixSerializeVersion,
-		DestRelays:          []bool{},
-		PingStats:           []analytics.PingStatsEntry{},
-		RelayStats:          []analytics.RelayStatsEntry{},
-		FullRelayIDs:        []uint64{},
-		FullRelayIndicesSet: make(map[int32]bool),
+		RelayIDsToIndices:  make(map[uint64]int32),
+		RelayIDs:           []uint64{},
+		RelayAddresses:     []net.UDPAddr{},
+		RelayNames:         []string{},
+		RelayLatitudes:     []float32{},
+		RelayLongitudes:    []float32{},
+		RelayDatacenterIDs: []uint64{},
+		RouteEntries:       []core.RouteEntry{},
+		BinFileBytes:       0,
+		CreatedAt:          0,
+		Version:            routing.RouteMatrixSerializeVersion,
+		DestRelays:         []bool{},
+		PingStats:          []analytics.PingStatsEntry{},
+		RelayStats:         []analytics.RelayStatsEntry{},
 	}
 
 	receivedRouteMatrixBin := svc.routeMatrix.GetMatrix()

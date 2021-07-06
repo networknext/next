@@ -141,7 +141,7 @@ func SeedSQLStorage(
 
 		ghostSeller := routing.Seller{
 			ID:                       ghostCust.Code,
-			ShortName:                "ghost",
+			ShortName:                "ghost-army",
 			CompanyCode:              "ghost-army",
 			Secret:                   false,
 			Name:                     ghostCust.Name,
@@ -481,6 +481,21 @@ func SeedSQLStorage(
 		err = db.AddBannedUser(ctx, ghostBuyer.ID, userID3)
 		if err != nil {
 			return fmt.Errorf("Error adding BannedUser for local buyer: %v", err)
+		}
+
+		// set creation time to 1.5 hours ago to avoid cooldown ticker in UI
+		now := time.Now()
+		duration, _ := time.ParseDuration("-1.5h")
+		then := now.Add(duration)
+
+		metaData := routing.DatabaseBinFileMetaData{
+			DatabaseBinFileAuthor:       "arthur@networknext.com",
+			DatabaseBinFileCreationTime: then,
+		}
+
+		err = db.UpdateDatabaseBinFileMetaData(context.Background(), metaData)
+		if err != nil {
+			return fmt.Errorf("AdminBinFileHandler() error writing bin file metadata to db: %v", err)
 		}
 
 	}

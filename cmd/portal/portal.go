@@ -14,10 +14,12 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/go-github/v36/github"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
+	"golang.org/x/oauth2"
 	"gopkg.in/auth0.v4/management"
 
 	gcplogging "cloud.google.com/go/logging"
@@ -350,6 +352,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	lookerSecret, ok := os.LookupEnv("LOOKER_SECRET")
+	if !ok {
+		level.Error(logger).Log("err", "env var LOOKER_SECRET must be set")
+		os.Exit(1)
+	}
+
+	githubAccessToken, ok := os.LookupEnv("GITHUB_ACCESS_TOKEN")
+	if !ok {
+		level.Error(logger).Log("err", "env var GITHUB_ACCESS_TOKEN must be set")
+	}
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: githubAccessToken},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+
+	githubClient := github.NewClient(tc)
+
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -364,6 +383,8 @@ func main() {
 		Storage:                db,
 		Env:                    env,
 		Metrics:                serviceMetrics,
+		LookerSecret:           lookerSecret,
+		GithubClient:           githubClient,
 	}
 
 	configService := jsonrpc.ConfigService{
@@ -372,10 +393,9 @@ func main() {
 	}
 
 	go func() {
-		genmapinterval := os.Getenv("SESSION_MAP_INTERVAL")
-		syncInterval, err := time.ParseDuration(genmapinterval)
+		mapGenInterval, err := envvar.GetDuration("SESSION_MAP_INTERVAL", time.Second*1)
 		if err != nil {
-			level.Error(logger).Log("envvar", "SESSION_MAP_INTERVAL", "value", genmapinterval, "err", err)
+			level.Error(logger).Log("envvar", "SESSION_MAP_INTERVAL", "value", mapGenInterval, "err", err)
 			os.Exit(1)
 		}
 
@@ -384,7 +404,23 @@ func main() {
 				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
 				os.Exit(1)
 			}
-			time.Sleep(syncInterval)
+			time.Sleep(mapGenInterval)
+		}
+	}()
+
+	go func() {
+		fetchReleaseNotesInterval, err := envvar.GetDuration("RELEASE_NOTES_INTERVAL", time.Second*30)
+		if err != nil {
+			level.Error(logger).Log("envvar", "RELEASE_NOTES_INTERVAL", "value", fetchReleaseNotesInterval, "err", err)
+			os.Exit(1)
+		}
+
+		for {
+			if err := buyerService.FetchReleaseNotes(); err != nil {
+				level.Error(logger).Log("msg", "error fetching today's release notes", "err", err)
+				os.Exit(1)
+			}
+			time.Sleep(fetchReleaseNotesInterval)
 		}
 	}()
 
@@ -546,6 +582,12 @@ func main() {
 			os.Exit(1)
 		}
 
+		mondayApiKey, ok := os.LookupEnv("MONDAY_API_KEY")
+		if !ok {
+			level.Error(logger).Log("err", "MONDAY_API_KEY environment variable not set")
+			os.Exit(1)
+		}
+
 		s.RegisterService(&jsonrpc.RelayFleetService{
 			RelayFrontendURI:  relayFrontEnd,
 			RelayGatewayURI:   relayGateway,
@@ -553,6 +595,7 @@ func main() {
 			Logger:            logger,
 			Storage:           db,
 			Env:               env,
+			MondayApiKey:      mondayApiKey,
 		}, "")
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")

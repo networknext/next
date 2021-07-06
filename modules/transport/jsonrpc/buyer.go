@@ -2,14 +2,19 @@ package jsonrpc
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,9 +24,11 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/bigtable"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/go-github/v36/github"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
@@ -30,6 +37,7 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/middleware"
+	"github.com/networknext/backend/modules/transport/notifications"
 
 	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )
@@ -39,6 +47,7 @@ const (
 	MapPointByteCacheVersion = uint8(1)
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
+	LOOKER_HOST              = "networknextexternal.cloud.looker.com"
 )
 
 var (
@@ -65,6 +74,9 @@ type BuyersService struct {
 
 	BqClient *bigquery.Client
 
+	GithubClient                   *github.Client
+	ReleaseNotesNotificationsCache []notifications.ReleaseNotesNotification
+
 	RedisPoolTopSessions   *redis.Pool
 	RedisPoolSessionMeta   *redis.Pool
 	RedisPoolSessionSlices *redis.Pool
@@ -74,6 +86,8 @@ type BuyersService struct {
 	Metrics *metrics.BuyerEndpointMetrics
 	Storage storage.Storer
 	Logger  log.Logger
+
+	LookerSecret string
 }
 
 type FlushSessionsArgs struct{}
@@ -242,14 +256,8 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		// current page date is today - page number * 1 day. Add 1 day to compensate for filter excluding end date
 		currentPageDate := today.Add(-time.Duration((reply.Page - 1) * 24 * int(time.Hour)))
 
-		fmt.Println()
-
-		fmt.Printf("Current page date: %s\n", currentPageDate.String())
-
 		// get next page date
 		nextPageDate := today.Add(-time.Duration(reply.Page * 24 * int(time.Hour)))
-
-		fmt.Printf("Next page date: %s\n", nextPageDate.String())
 
 		currentPage := reply.Page
 
@@ -336,9 +344,6 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 		}
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
-		fmt.Printf("Found %d sessions in bigtable\n", len(rows))
-		fmt.Printf("Found %d sessions so far\n", len(btRows))
-
 		if reply.Page >= MaxBigTableDays {
 			// We are out of pages
 			break
@@ -348,9 +353,6 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 
 		nextPageDate = nextPageDate.Add(-24 * time.Hour)
 		currentPageDate = currentPageDate.Add(-24 * time.Hour)
-
-		fmt.Printf("Current page date: %s\n", currentPageDate.String())
-		fmt.Printf("Next page date: %s\n", nextPageDate.String())
 
 		// Gets the rows within [nextPageDate, currentPageDate)
 		chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
@@ -472,7 +474,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 		for _, buyer := range buyers {
 
-			fmt.Printf("\n\nBuyer: %016x - Code: %s\n", buyer.ID, buyer.CompanyCode)
 			firstCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
@@ -480,8 +481,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
-
-			fmt.Printf("First Next count: %d\n", firstCount)
 
 			secondCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
@@ -491,8 +490,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				return err
 			}
 
-			fmt.Printf("Second Next count: %d\n", secondCount)
-
 			// If ghost army, scale the redis number and add that to the total otherwise just add the redis number to the total
 			if buyer.ID == ghostArmyBuyerID {
 				if firstCount > secondCount {
@@ -501,7 +498,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 					ghostArmyNextCount = secondCount * int(ghostArmyNextScaler)
 				}
 
-				fmt.Printf("Ghost Army Next count: %d\n", ghostArmyNextCount)
 				firstNextCount += ghostArmyNextCount
 				secondNextCount += ghostArmyNextCount
 			} else {
@@ -513,8 +509,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if secondNextCount > firstNextCount {
 			reply.Next = secondNextCount
 		}
-
-		fmt.Printf("Final Next count: %d\n", reply.Next)
 
 		var firstTotalCount int
 		var secondTotalCount int
@@ -531,8 +525,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if buyer.ID == ghostArmyBuyerID {
 				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
 				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-				fmt.Printf("Ghost Army First Total count: %d\n", firstTotalCount)
-				fmt.Printf("Ghost Army Second Total count: %d\n", secondTotalCount)
 				continue
 			}
 
@@ -555,8 +547,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				firstTotalCount += int(firstCount)
 			}
 
-			fmt.Printf("First Total count: %d\n", firstTotalCount)
-
 			secondCounts, err := redis.Strings(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive second session count: %v", err)
@@ -575,8 +565,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 				secondTotalCount += int(secondCount)
 			}
-
-			fmt.Printf("Second Total count: %d\n", secondTotalCount)
 		}
 
 		totalCount := firstTotalCount
@@ -584,11 +572,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			totalCount = secondTotalCount
 		}
 
-		fmt.Printf("Final Total count: %d\n", totalCount)
-
 		reply.Direct = totalCount - reply.Next
-
-		fmt.Printf("Final Direct count: %d\n", reply.Direct)
 
 	default:
 		var ghostArmyNextCount int
@@ -612,8 +596,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		redisClient.Send("HVALS", fmt.Sprintf("c-%s-%d", buyerID, minutes))
 		redisClient.Flush()
 
-		fmt.Printf("\n\nBuyer: %016x - Code: %s\n", buyer.ID, buyer.CompanyCode)
-
 		firstNextCount, err := redis.Int(redisClient.Receive())
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
@@ -622,8 +604,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 
-		fmt.Printf("First Next count: %d\n", firstNextCount)
-
 		secondNextCount, err := redis.Int(redisClient.Receive())
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
@@ -631,8 +611,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts")
 			return err
 		}
-
-		fmt.Printf("Second Next count: %d\n", secondNextCount)
 
 		// If ghost army, scale the number coming from redis and use that
 		if buyer.ID == ghostArmyBuyerID {
@@ -643,15 +621,12 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			}
 			firstNextCount = ghostArmyNextCount
 			secondNextCount = ghostArmyNextCount
-			fmt.Printf("Ghost Army Next count: %d\n", ghostArmyNextCount)
 		}
 
 		reply.Next = firstNextCount
 		if secondNextCount > firstNextCount {
 			reply.Next = secondNextCount
 		}
-
-		fmt.Printf("Final Next count: %d\n", reply.Next)
 
 		var firstTotalCount int
 		var secondTotalCount int
@@ -660,8 +635,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			// If ghost army, use the next counts in place of the direct counts (ghost army doesn't have direct sessions)
 			firstTotalCount = ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
 			secondTotalCount = ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-			fmt.Printf("Ghost Army First Total count: %d\n", firstTotalCount)
-			fmt.Printf("Ghost Army Second Total count: %d\n", secondTotalCount)
 		} else {
 			firstCounts, err := redis.Strings(redisClient.Receive())
 			if err != nil {
@@ -682,8 +655,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				firstTotalCount += int(firstCount)
 			}
 
-			fmt.Printf("First Total count: %d\n", firstTotalCount)
-
 			secondCounts, err := redis.Strings(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
@@ -702,8 +673,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 				secondTotalCount += int(secondCount)
 			}
-
-			fmt.Printf("Second Total count: %d\n", secondTotalCount)
 		}
 
 		totalCount := firstTotalCount
@@ -711,11 +680,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			totalCount = secondTotalCount
 		}
 
-		fmt.Printf("Final Total count: %d\n", totalCount)
-
 		reply.Direct = totalCount - reply.Next
-
-		fmt.Printf("Final Direct count: %d\n", reply.Direct)
 	}
 
 	return nil
@@ -1720,48 +1685,6 @@ func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacen
 
 }
 
-// UpdateDatacenterMapArgs: HexBuyerID and HexDatacenterID are the combined primary
-// key needed to look up the existing datacenter map
-type UpdateDatacenterMapArgs struct {
-	HexBuyerID      string `json:"hexBuyerID"`
-	HexDatacenterID string `json:"hexDatacenterID"`
-	Field           string `json:"field"`
-	Value           string `json:"value"`
-}
-
-type UpdateDatacenterMapReply struct{}
-
-func (s *BuyersService) UpdateDatacenterMap(r *http.Request, args *UpdateDatacenterMapArgs, reply *UpdateDatacenterMapReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
-	datacenterID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
-	if err != nil {
-		return fmt.Errorf("Value: %v is not a valid hex ID", args.Value)
-	}
-
-	buyerID, err := strconv.ParseUint(args.HexBuyerID, 16, 64)
-	if err != nil {
-		return fmt.Errorf("Value: %v is not a valid hex ID", args.Value)
-	}
-
-	switch args.Field {
-	case "HexDatacenterID", "Alias":
-		err = s.Storage.UpdateDatacenterMap(context.Background(), buyerID, datacenterID, args.Field, args.Value)
-		if err != nil {
-			err = fmt.Errorf("UpdateDatacenterMap() error updating datacenter map: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-	default:
-		return fmt.Errorf("Field '%v' does not exist or is not editable on the DatacenterMap type", args.Field)
-	}
-
-	return nil
-}
-
 type JSAddDatacenterMapArgs struct {
 	HexBuyerID      string `json:"hexBuyerID"`
 	HexDatacenterID string `json:"hexDatacenterID"`
@@ -2552,4 +2475,340 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 	}
 
 	return nil
+}
+
+type FetchNotificationsArgs struct {
+	CompanyCode string `json:"company_code"`
+}
+
+type FetchNotificationsReply struct {
+	SystemNotifications       []notifications.SystemNotification       `json:"system_notifications"`
+	AnalyticsNotifications    []notifications.AnalyticsNotification    `json:"analytics_notifications"`
+	ReleaseNotesNotifications []notifications.ReleaseNotesNotification `json:"release_notes_notifications"`
+	InvoiceNotifications      []notifications.InvoiceNotification      `json:"invoice_notifications"`
+}
+
+func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificationsArgs, reply *FetchNotificationsReply) error {
+	reply.AnalyticsNotifications = make([]notifications.AnalyticsNotification, 0)
+	reply.SystemNotifications = make([]notifications.SystemNotification, 0)
+	reply.InvoiceNotifications = make([]notifications.InvoiceNotification, 0)
+	reply.ReleaseNotesNotifications = make([]notifications.ReleaseNotesNotification, 0)
+
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) { // TODO: Add in roles for looker feature if necessary
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+		return &err
+	}
+
+	// Grab release notes notifications from cache
+	reply.ReleaseNotesNotifications = s.ReleaseNotesNotificationsCache
+
+	// Everything below here will be implemented at some point in the future. It is primarily waiting on storage and admin tool support
+
+	// TODO: bring these back for analytics notifications at some point
+	/* 	user := r.Context().Value(middleware.Keys.UserKey)
+	   	if user == nil {
+	   		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+	   		return &err
+	   	}
+
+	   	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	   	requestID, ok := claims["sub"].(string)
+	   	if !ok {
+	   		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
+	   		return &err
+	   	}
+
+	   	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	   	if !ok {
+	   		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+	   		return &err
+	   	}
+
+			// Admins can request access to the notifications of another company only
+			if args.CompanyCode != "" && args.CompanyCode != companyCode && middleware.VerifyAllRoles(r, middleware.AdminRole) {
+				err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+				return &err
+			}
+
+			if args.CompanyCode != "" {
+				companyCode = args.CompanyCode
+			}
+	*/
+
+	// TODO: Fetch all invoice, system, and looker notifications from storage
+
+	/*
+		notifications, err := s.Storage.Notifications(buyerID)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to fetch notifications", err.Error()))
+			return &err
+		}
+
+		for _, notification := range notifications {
+			switch notification.type {
+			case NOTIFICATION_SYSTEM:
+				systemNotification := notifications.NewSystemNotification
+				// TODO: figure out if anything else is needed here
+				reply.SystemNotifications = append(reply.SystemNotifications, systemNotification)
+			case NOTIFICATION_ANALYTICS:
+				analyticsNotification := notifications.NewAnalyticsNotification()
+
+				nonce, err := GenerateRandomString(16)
+				if err != nil {
+					err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+					s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+					return &err
+				}
+
+				// TODO: This data should come from a specific "looker" notification
+				urlOptions := LookerURLOptions{
+					Host:            LOOKER_HOST,
+					Secret:          s.LookerSecret,
+					ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+					FirstName:       "",
+					LastName:        "",
+					GroupsIds:       make([]int, 0),
+					ExternalGroupId: "",
+					Permissions:     notifications.data.permissions,
+					Models:          notification.data.models,
+					AccessFilters:   make(map[string]map[string]interface{}),
+					UserAttributes:  make(map[string]interface{}),
+					SessionLength:   3600,
+					EmbedURL:        "/login/embed/" + url.QueryEscape(notification.data.url),
+					ForceLogout:     true,
+					Nonce:           fmt.Sprintf("\"%s\"", nonce),
+					Time:            time.Now().Unix(),
+				}
+
+				urlOptions.UserAttributes["customer_code"] = companyCode
+
+				analyticsNotification.LookerURL = s.BuildLookerURL(urlOptions)
+				reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, analyticsNotification)
+			case NOTIFICATION_INVOICE:
+				invoiceNotification := notifications.NewInvoiceNotification
+				invoice, err := s.Storage.Invoice()
+				invoiceNotification.InvoiceID = fmt.Sprintf("%016x", notification.data.invoiceID)
+				reply.InvoiceNotification = append(reply.InvoiceNotification, invoiceNotification)
+			default:
+				err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Unknown notification type", err.Error()))
+				continue
+			}
+		}
+	*/
+	return nil
+}
+
+func (s *BuyersService) FetchReleaseNotes() error {
+	cacheList := make([]notifications.ReleaseNotesNotification, 0)
+
+	gistList, _, err := s.GithubClient.Gists.List(context.Background(), "", &github.GistListOptions{})
+	if err != nil {
+		err = fmt.Errorf("FetchReleaseNotes() error fetching gist list: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	for _, list := range gistList {
+		gistID := list.ID
+
+		resp, err := http.Get(fmt.Sprintf("https://gist.github.com/network-next-notifications/%s.js", *gistID))
+		if err != nil {
+			err = fmt.Errorf("FetchReleaseNotes() failed fetching embed data: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			continue
+		}
+
+		buffer, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			err = fmt.Errorf("FetchReleaseNotes() failed reading embed data: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			continue
+		}
+
+		fullEmbedOutput := string(buffer)
+
+		// Extract the actual css url and html that needs to be added to the notification
+		cssRegex := regexp.MustCompile(`https:\/\/github\.githubassets\.com\/assets\/gist-embed-[a-z0-9]+\.css`)
+		htmlRegex := regexp.MustCompile(`<div [a-z=\\"0-9\s>\-_A-Z</:.#&;]+`)
+
+		cssURL := cssRegex.FindString(fullEmbedOutput)
+		embedHTML := htmlRegex.FindString(fullEmbedOutput)
+		embedHTML = strings.ReplaceAll(embedHTML, "\\n", "")
+		embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
+
+		notification := notifications.NewReleaseNotesNotification()
+		notification.Title = fmt.Sprintf("Service updates for the month of %s", list.GetDescription())
+		notification.EmbedHTML = embedHTML
+		notification.CSSURL = cssURL
+
+		cacheList = append(cacheList, notification)
+	}
+
+	s.ReleaseNotesNotificationsCache = cacheList
+
+	return nil
+}
+
+type FetchLookerURLArgs struct{}
+
+type FetchLookerURLReply struct {
+	URL string `json:"url"`
+}
+
+func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs, reply *FetchLookerURLReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) { // TODO: Add in roles for looker feature if necessary
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
+	nonce, err := GenerateRandomString(16)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to generate nonce", err.Error()))
+		return &err
+	}
+
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	// TODO: Figure out what params are needed from frontend
+	urlOptions := LookerURLOptions{
+		Host:            LOOKER_HOST,
+		Secret:          s.LookerSecret,
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		FirstName:       "",
+		LastName:        "",
+		GroupsIds:       make([]int, 0),
+		ExternalGroupId: "",
+		Permissions:     []string{"access_data", "see_looks"},
+		Models:          []string{"networknext_pbl"},
+		AccessFilters:   make(map[string]map[string]interface{}),
+		UserAttributes:  make(map[string]interface{}),
+		SessionLength:   3600,
+		EmbedURL:        "/login/embed/" + url.QueryEscape( /* TODO: we want notification.data.path or something similar here */ "/embed/looks/1"),
+		ForceLogout:     true,
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Time:            time.Now().Unix(),
+	}
+
+	urlOptions.UserAttributes["customer_code"] = companyCode
+
+	reply.URL = s.BuildLookerURL(urlOptions)
+	return nil
+}
+
+type LookerURLOptions struct {
+	Secret          string                            //required
+	Host            string                            //required
+	EmbedURL        string                            //required
+	Nonce           string                            //required
+	Time            int64                             //required
+	SessionLength   int                               //required
+	ExternalUserId  string                            //required
+	Permissions     []string                          //required
+	Models          []string                          //required
+	ForceLogout     bool                              //required
+	GroupsIds       []int                             //optional
+	ExternalGroupId string                            //optional
+	UserAttributes  map[string]interface{}            //optional
+	AccessFilters   map[string]map[string]interface{} //required
+	FirstName       string                            //optional
+	LastName        string                            //optional
+}
+
+func (s *BuyersService) BuildLookerURL(urlOptions LookerURLOptions) string {
+	// TODO: Verify logic below, this came from here: https://github.com/looker/looker_embed_sso_examples/pull/36 and is NOT an official implementation. That being said, be careful changing it because it works :P
+	jsonPerms, _ := json.Marshal(urlOptions.Permissions)
+	jsonModels, _ := json.Marshal(urlOptions.Models)
+	jsonUserAttrs, _ := json.Marshal(urlOptions.UserAttributes)
+	jsonFilters, _ := json.Marshal(urlOptions.AccessFilters)
+	jsonGroupIds, _ := json.Marshal(urlOptions.GroupsIds)
+	strTime := strconv.Itoa(int(urlOptions.Time))
+	strSessionLen := strconv.Itoa(urlOptions.SessionLength)
+	strForceLogin := strconv.FormatBool(urlOptions.ForceLogout)
+
+	strToSign := strings.Join([]string{urlOptions.Host,
+		urlOptions.EmbedURL,
+		urlOptions.Nonce,
+		strTime,
+		strSessionLen,
+		urlOptions.ExternalUserId,
+		string(jsonPerms),
+		string(jsonModels)}, "\n")
+
+	strToSign = strToSign + "\n"
+
+	if len(urlOptions.GroupsIds) > 0 {
+		strToSign = strToSign + string(jsonGroupIds) + "\n"
+	}
+
+	if urlOptions.ExternalGroupId != "" {
+		strToSign = strToSign + urlOptions.ExternalGroupId + "\n"
+	}
+
+	if len(urlOptions.UserAttributes) > 0 {
+		strToSign = strToSign + string(jsonUserAttrs) + "\n"
+	}
+
+	strToSign = strToSign + string(jsonFilters)
+
+	h := hmac.New(sha1.New, []byte(urlOptions.Secret))
+	h.Write([]byte(strToSign))
+	encoded := base64.StdEncoding.EncodeToString(h.Sum(nil))
+
+	query := url.Values{}
+	query.Add("nonce", urlOptions.Nonce)
+	query.Add("time", strTime)
+	query.Add("session_length", strSessionLen)
+	query.Add("external_user_id", urlOptions.ExternalUserId)
+	query.Add("permissions", string(jsonPerms))
+	query.Add("models", string(jsonModels))
+	query.Add("access_filters", string(jsonFilters))
+	query.Add("first_name", urlOptions.FirstName)
+	query.Add("last_name", urlOptions.LastName)
+	query.Add("force_logout_login", strForceLogin)
+	query.Add("signature", encoded)
+
+	if len(urlOptions.GroupsIds) > 0 {
+		query.Add("group_ids", string(jsonGroupIds))
+	}
+
+	if urlOptions.ExternalGroupId != "" {
+		query.Add("external_group_id", urlOptions.ExternalGroupId)
+	}
+
+	if len(urlOptions.UserAttributes) > 0 {
+		query.Add("user_attributes", string(jsonUserAttrs))
+	}
+
+	finalUrl := fmt.Sprintf("https://%s%s?%s", urlOptions.Host, urlOptions.EmbedURL, query.Encode())
+
+	return finalUrl
 }

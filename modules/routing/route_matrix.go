@@ -481,6 +481,36 @@ type JsonMatrixAnalysis struct {
 	RelayPairsWIthNoRoutesPercent float64 `json:"relayPairsWIthNoRoutesPercent"`
 }
 
+func (jma *JsonMatrixAnalysis) String() string {
+
+	var jmaString string
+
+	jmaString = "RttImprovementNone: " + fmt.Sprintf("%d", jma.RttImprovementNone) + "\n"
+	jmaString += "RttImprovement0_5ms: " + fmt.Sprintf("%d", jma.RttImprovement0_5ms) + "\n"
+	jmaString += "RttImprovement5_10ms: " + fmt.Sprintf("%d", jma.RttImprovement5_10ms) + "\n"
+	jmaString += "RttImprovement10_15ms: " + fmt.Sprintf("%d", jma.RttImprovement10_15ms) + "\n"
+	jmaString += "RttImprovement15_20ms: " + fmt.Sprintf("%d", jma.RttImprovement15_20ms) + "\n"
+	jmaString += "RttImprovement20_25ms: " + fmt.Sprintf("%d", jma.RttImprovement20_25ms) + "\n"
+	jmaString += "RttImprovement25_30ms: " + fmt.Sprintf("%d", jma.RttImprovement25_30ms) + "\n"
+	jmaString += "RttImprovement30_35ms: " + fmt.Sprintf("%d", jma.RttImprovement30_35ms) + "\n"
+	jmaString += "RttImprovement35_40ms: " + fmt.Sprintf("%d", jma.RttImprovement35_40ms) + "\n"
+	jmaString += "RttImprovement40_45ms: " + fmt.Sprintf("%d", jma.RttImprovement40_45ms) + "\n"
+	jmaString += "RttImprovement45_50ms: " + fmt.Sprintf("%d", jma.RttImprovement45_50ms) + "\n"
+	jmaString += "RttImprovement50plusms: " + fmt.Sprintf("%d", jma.RttImprovement50plusms) + "\n"
+	jmaString += "RelayCount: " + fmt.Sprintf("%d", jma.RelayCount) + "\n"
+	jmaString += "TotalRoutes: " + fmt.Sprintf("%d", jma.TotalRoutes) + "\n"
+	jmaString += "RelayPairs: " + fmt.Sprintf("%d", jma.RelayPairs) + "\n"
+	jmaString += "DestinationRelays: " + fmt.Sprintf("%d", jma.DestinationRelays) + "\n"
+	jmaString += "AvgRoutesPerRelayPair: " + fmt.Sprintf("%f", jma.AvgRoutesPerRelayPair) + "\n"
+	jmaString += "MaxRoutesPerRelayPair: " + fmt.Sprintf("%d", jma.MaxRoutesPerRelayPair) + "\n"
+	jmaString += "AvgRelaysPerRoute: " + fmt.Sprintf("%f", jma.AvgRelaysPerRoute) + "\n"
+	jmaString += "MaxRelaysPerRoute: " + fmt.Sprintf("%d", jma.MaxRelaysPerRoute) + "\n"
+	jmaString += "RelayPairsWithOneRoutePercent: " + fmt.Sprintf("%f", jma.RelayPairsWithOneRoutePercent) + "\n"
+	jmaString += "RelayPairsWIthNoRoutesPercent: " + fmt.Sprintf("%f", jma.RelayPairsWIthNoRoutesPercent)
+
+	return jmaString
+}
+
 // GetJsonAnalysis returns a JsonMatrixAnalysis of the route matrix for ease
 // of transmission on the wire
 func (m *RouteMatrix) GetJsonAnalysis() JsonMatrixAnalysis {

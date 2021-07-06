@@ -33,6 +33,22 @@ func HistoryMax(history []float32) float32 {
 	return max
 }
 
+func HistoryMean(history []float32) float32 {
+	var sum float64
+	var count int
+	for i := 0; i < len(history); i++ {
+		if history[i] >= 0 {
+			sum += float64(history[i])
+			count++
+		}
+	}
+	if count > 0 {
+		return float32(sum/float64(count))
+	} else {
+		return InvalidRouteValue		
+	}
+}
+
 func HistoryNotSet() [HistorySize]float32 {
 	var res [HistorySize]float32
 	for i := 0; i < HistorySize; i++ {
@@ -94,47 +110,49 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 	return entry
 }
 
-func (sdb *StatsDatabase) ExtractPingStats(maxJitter float32, maxPacketLoss float32, instanceID string, isDebug bool) []analytics.PingStatsEntry {
-	length := TriMatrixLength(len(sdb.Entries))
+func (database *StatsDatabase) ExtractPingStats(maxJitter float32, maxPacketLoss float32, instanceID string, isDebug bool) []analytics.PingStatsEntry {
+	database.mu.Lock()
+	length := TriMatrixLength(len(database.Entries))
 	entries := make([]analytics.PingStatsEntry, length)
 
-	if length > 0 { // prevent crash with only 1 relay
-		ids := make([]uint64, len(sdb.Entries))
+	ids := make([]uint64, len(database.Entries))
 
-		idx := 0
-		sdb.mu.Lock()
-		for k := range sdb.Entries {
-			ids[idx] = k
-			idx++
-		}
-		sdb.mu.Unlock()
+	idx := 0
+	for k := range database.Entries {
+		ids[idx] = k
+		idx++
+	}
+	database.mu.Unlock()
 
-		for i := 1; i < len(ids); i++ {
-			for j := 0; j < i; j++ {
-				idA := ids[i]
-				idB := ids[j]
+	if length == 0 {
+		return entries
+	}
 
-				rtt, jitter, pl := sdb.GetSample(idA, idB)
-				routable := rtt != InvalidRouteValue && jitter != InvalidRouteValue && pl != InvalidRouteValue
+	for i := 1; i < len(ids); i++ {
+		for j := 0; j < i; j++ {
+			idA := ids[i]
+			idB := ids[j]
 
-				if jitter > maxJitter {
-					routable = false
-				}
+			rtt, jitter, pl := database.GetSample(idA, idB)
+			routable := rtt != InvalidRouteValue && jitter != InvalidRouteValue && pl != InvalidRouteValue
 
-				if pl > maxPacketLoss {
-					routable = false
-				}
+			if jitter > maxJitter {
+				routable = false
+			}
 
-				entries[TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
-					RelayA:     idA,
-					RelayB:     idB,
-					RTT:        rtt,
-					Jitter:     jitter,
-					PacketLoss: pl,
-					Routable:   routable,
-					InstanceID: instanceID,
-					Debug:      isDebug,
-				}
+			if pl > maxPacketLoss {
+				routable = false
+			}
+
+			entries[TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
+				RelayA:     idA,
+				RelayB:     idB,
+				RTT:        rtt,
+				Jitter:     jitter,
+				PacketLoss: pl,
+				Routable:   routable,
+				InstanceID: instanceID,
+				Debug:      isDebug,
 			}
 		}
 	}
@@ -194,14 +212,12 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 
 		relay.Index = (relay.Index + 1) % HistorySize
 
-		// By taking the maximum value seen across the last 5 minutes
-		// we plan routes very conservatively. It's better for us to never
-		// accelerate somebody that we otherwise could, than to accelerate
-		// somebody and make their packet loss, latency or jitter worse.
+		// By taking the mean value seen across the last 5 minutes
+		// we plan routes conservatively, but not TOO conservatively.
 
-		relay.RTT = HistoryMax(relay.RTTHistory[:])
-		relay.Jitter = HistoryMax(relay.JitterHistory[:])
-		relay.PacketLoss = HistoryMax(relay.PacketLossHistory[:])
+		relay.RTT = HistoryMean(relay.RTTHistory[:])
+		relay.Jitter = HistoryMean(relay.JitterHistory[:])
+		relay.PacketLoss = HistoryMean(relay.PacketLossHistory[:])
 
 		database.mu.Lock()
 		entry.Relays[destRelayID] = relay

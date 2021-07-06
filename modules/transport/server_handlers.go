@@ -986,11 +986,11 @@ func SessionFilterNearRelays(state *SessionHandlerState) {
 		return
 	}
 
-	// IMPORTANT: On slice 4, grab the *processed* near relay RTTs from ReframeRelays,
-	// which are set to 255 for any near relays excluded because of high jitter or PL
-	// and hold them as the near relay RTTs to use from now on.
+	// IMPORTANT: On any slice after 4, if we haven't already, grab the *processed*
+	// near relay RTTs from ReframeRelays, which are set to 255 for any near relays
+	// excluded because of high jitter or PL and hold them as the near relay RTTs to use from now on.
 
-	if state.Packet.SliceNumber == 4 {
+	if !state.Input.HoldNearRelays {
 		core.Debug("holding near relays")
 		state.Output.HoldNearRelays = true
 		for i := 0; i < len(state.Packet.NearRelayIDs); i++ {
@@ -1569,6 +1569,15 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 	}
 
 	/*
+		Calculate the actual amounts of bytes sent up and down along the network next route
+		for the duration of the previous slice (just being reported up from the SDK).
+
+		This is *not* what we bill on.
+	*/
+
+	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.Packet.NextKbpsUp), uint64(state.Packet.NextKbpsDown), sliceDuration)
+
+	/*
 		Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
 
 		This is what we bill on.
@@ -1712,6 +1721,8 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		RTTReduction:                    state.Input.RouteState.ReduceLatency,
 		PacketLossReduction:             state.Input.RouteState.ReducePacketLoss,
 		RouteChanged:                    state.Input.RouteChanged,
+		NextBytesUp:                     nextBytesUp,
+		NextBytesDown:                   nextBytesDown,
 		FallbackToDirect:                state.Packet.FallbackToDirect,
 		MultipathVetoed:                 state.Input.RouteState.MultipathOverload,
 		Mispredicted:                    state.Input.RouteState.Mispredict,

@@ -70,6 +70,10 @@ ifndef RELAY_FORWARDER
 export RELAY_FORWARDER =
 endif
 
+ifndef MONDAY_API_KEY
+export MONDAY_API_KEY = eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjExNDIwOTg2NCwidWlkIjoxMzkwNDcyNSwiaWFkIjoiMjAyMS0wNi0xOFQxNjoyODo0MS44ODRaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6NTAyNzE4MCwicmduIjoidXNlMSJ9.0lFdTkvvUL1qFyWSQmgIehQZ_9nlEgrDHwKUQ9qQL24
+endif
+
 ifndef RELAY_ADDRESS
 #export RELAY_ADDRESS = 127.0.0.1
 export RELAY_ADDRESS = 127.0.0.1:35000
@@ -304,6 +308,9 @@ export FEATURE_POSTGRESQL=false
 export JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/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
 export SLACK_CHANNEL=portal-test
+export LOOKER_SECRET=d61764ff20f99e672af3ec7fde75531a790acdb6d58bf46dbe55dac06a6019c0
+export GITHUB_ACCESS_TOKEN=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
+export RELEASE_NOTES_INTERVAL=30s
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway

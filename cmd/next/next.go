@@ -2196,7 +2196,7 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 			if len(args) > 0 {
 				output = args[0]
 			}
-			saveCostMatrix(env, output)
+			getCostMatrix(env, output)
 			fmt.Printf("Cost matrix from %s saved to %s\n", env.Name, output)
 			return nil
 		},
@@ -2743,7 +2743,6 @@ Update one field for the specified seller. The field
 must be one of the following and is case-sensitive:
 
   EgressPrice  US Dollars
-  ShortName    string
   Secret       boolean
 
 The value should be whatever type is appropriate for the field
