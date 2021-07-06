@@ -8,6 +8,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/notifications"
 )
 
 type InMemory struct {
@@ -606,4 +607,24 @@ func (m *InMemory) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData
 
 func (m *InMemory) UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error {
 	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in InMemory storer")
+}
+
+// Notifications Get all notifications in the database
+func (m *InMemory) Notifications() []notifications.Notification {
+	return []notifications.Notification{}
+}
+
+// NotificationsByCustomer Get all notifications in the database
+func (m *InMemory) NotificationsByCustomer(customerCode string) []notifications.Notification {
+	return []notifications.Notification{}
+}
+
+// UpdateNotification Update a specific notification
+func (m *InMemory) UpdateNotification(id uint64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateNotification not implemented in InMemory storer")
+}
+
+// RemoveNotification Remove a specific notification
+func (m *InMemory) RemoveNotification(ctx context.Context, id uint64) error {
+	return fmt.Errorf("RemoveNotification not implemented in InMemory storer")
 }

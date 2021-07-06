@@ -6,6 +6,7 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/notifications"
 )
 
 type Storer interface {
@@ -174,5 +175,17 @@ type Storer interface {
 	GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error)
 
 	// UpdateDatabaseBinFileMetaData updates the specified field in an database_bin_meta table
-	UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error
+	UpdateDatabaseBinFileMetaData(ctx context.Context, meta routing.DatabaseBinFileMetaData) error
+
+	// Notifications Get all notifications in the database
+	Notifications() []notifications.Notification
+
+	// NotificationsByCustomer Get all notifications in the database
+	NotificationsByCustomer(customerCode string) []notifications.Notification
+
+	// UpdateNotification Update a specific notification
+	UpdateNotification(id uint64, field string, value interface{}) error
+
+	// RemoveNotification Remove a specific notification
+	RemoveNotification(ctx context.Context, id uint64) error
 }
