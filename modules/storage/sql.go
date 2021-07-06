@@ -3551,7 +3551,7 @@ func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Noti
 }
 
 // UpdateNotification Update a specific notification
-func (db *SQL) UpdateNotification(ctx context.Context, id uint64, field string, value interface{}) error {
+func (db *SQL) UpdateNotification(id int64, field string, value interface{}) error {
 	var updateSQL bytes.Buffer
 	var args []interface{}
 	var stmt *sql.Stmt
@@ -3622,7 +3622,7 @@ func (db *SQL) UpdateNotification(ctx context.Context, id uint64, field string, 
 
 	}
 
-	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
+	stmt, err = db.Client.PrepareContext(context.Background(), updateSQL.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing UpdateNotification SQL", "err", err)
 		return err
@@ -3648,12 +3648,12 @@ func (db *SQL) UpdateNotification(ctx context.Context, id uint64, field string, 
 }
 
 // RemoveNotification Remove a specific notification
-func (db *SQL) RemoveNotification(ctx context.Context, id uint64) error {
+func (db *SQL) RemoveNotification(id int64) error {
 	var sql bytes.Buffer
 
 	sql.Write([]byte("delete from notifications where id = $1"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
+	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error preparing RemoveNotification SQL", "err", err)
 		return err

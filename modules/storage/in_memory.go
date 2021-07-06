@@ -620,11 +620,11 @@ func (m *InMemory) NotificationsByCustomer(customerCode string) []notifications.
 }
 
 // UpdateNotification Update a specific notification
-func (m *InMemory) UpdateNotification(id uint64, field string, value interface{}) error {
+func (m *InMemory) UpdateNotification(id int64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateNotification not implemented in InMemory storer")
 }
 
 // RemoveNotification Remove a specific notification
-func (m *InMemory) RemoveNotification(ctx context.Context, id uint64) error {
+func (m *InMemory) RemoveNotification(id int64) error {
 	return fmt.Errorf("RemoveNotification not implemented in InMemory storer")
 }

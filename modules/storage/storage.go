@@ -184,8 +184,8 @@ type Storer interface {
 	NotificationsByCustomer(customerCode string) []notifications.Notification
 
 	// UpdateNotification Update a specific notification
-	UpdateNotification(id uint64, field string, value interface{}) error
+	UpdateNotification(id int64, field string, value interface{}) error
 
 	// RemoveNotification Remove a specific notification
-	RemoveNotification(ctx context.Context, id uint64) error
+	RemoveNotification(id int64) error
 }

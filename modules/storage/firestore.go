@@ -2398,11 +2398,11 @@ func (fs *Firestore) NotificationsByCustomer(customerCode string) []notification
 }
 
 // UpdateNotification Update a specific notification
-func (fs *Firestore) UpdateNotification(id uint64, field string, value interface{}) error {
+func (fs *Firestore) UpdateNotification(id int64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateNotification not implemented in Firestore storer")
 }
 
 // RemoveNotification Remove a specific notification
-func (fs *Firestore) RemoveNotification(ctx context.Context, id uint64) error {
+func (fs *Firestore) RemoveNotification(id int64) error {
 	return fmt.Errorf("RemoveNotification not implemented in Firestore storer")
 }
