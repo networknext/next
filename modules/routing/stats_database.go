@@ -38,16 +38,15 @@ func HistoryMean(history []float32) float32 {
 	var count int
 	for i := 0; i < len(history); i++ {
 		if history[i] >= 0 {
-			sum += history[i]
+			sum += float64(history[i])
 			count++
 		}
 	}
 	if count > 0 {
-		return sum / count
+		return float32(sum/float64(count))
 	} else {
 		return InvalidRouteValue		
 	}
-	return max
 }
 
 func HistoryNotSet() [HistorySize]float32 {
