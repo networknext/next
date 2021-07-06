@@ -33,6 +33,23 @@ func HistoryMax(history []float32) float32 {
 	return max
 }
 
+func HistoryMean(history []float32) float32 {
+	var sum float64
+	var count int
+	for i := 0; i < len(history); i++ {
+		if history[i] >= 0 {
+			sum += history[i]
+			count++
+		}
+	}
+	if count > 0 {
+		return sum / count
+	} else {
+		return InvalidRouteValue		
+	}
+	return max
+}
+
 func HistoryNotSet() [HistorySize]float32 {
 	var res [HistorySize]float32
 	for i := 0; i < HistorySize; i++ {
@@ -196,14 +213,12 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 
 		relay.Index = (relay.Index + 1) % HistorySize
 
-		// By taking the maximum value seen across the last 5 minutes
-		// we plan routes very conservatively. It's better for us to never
-		// accelerate somebody that we otherwise could, than to accelerate
-		// somebody and make their packet loss, latency or jitter worse.
+		// By taking the mean value seen across the last 5 minutes
+		// we plan routes conservatively, but not TOO conservatively.
 
-		relay.RTT = HistoryMax(relay.RTTHistory[:])
-		relay.Jitter = HistoryMax(relay.JitterHistory[:])
-		relay.PacketLoss = HistoryMax(relay.PacketLossHistory[:])
+		relay.RTT = HistoryMean(relay.RTTHistory[:])
+		relay.Jitter = HistoryMean(relay.JitterHistory[:])
+		relay.PacketLoss = HistoryMean(relay.PacketLossHistory[:])
 
 		database.mu.Lock()
 		entry.Relays[destRelayID] = relay
