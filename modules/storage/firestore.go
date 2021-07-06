@@ -16,6 +16,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/notifications"
 	"google.golang.org/api/iterator"
 )
 
@@ -2384,4 +2385,24 @@ func (fs *Firestore) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaDa
 
 func (fs *Firestore) UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error {
 	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in Firestore storer")
+}
+
+// Notifications Get all notifications in the database
+func (fs *Firestore) Notifications() []notifications.Notification {
+	return []notifications.Notification{}
+}
+
+// NotificationsByCustomer Get all notifications in the database
+func (fs *Firestore) NotificationsByCustomer(customerCode string) []notifications.Notification {
+	return []notifications.Notification{}
+}
+
+// UpdateNotification Update a specific notification
+func (fs *Firestore) UpdateNotification(id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateNotification not implemented in Firestore storer")
+}
+
+// RemoveNotification Remove a specific notification
+func (fs *Firestore) RemoveNotification(id int64) error {
+	return fmt.Errorf("RemoveNotification not implemented in Firestore storer")
 }
