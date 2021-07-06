@@ -23,6 +23,7 @@ type AuthService struct {
 	SlackClient      notifications.SlackClient
 	Storage          storage.Storer
 	Logger           log.Logger
+	LookerSecret     string
 }
 
 type AccountsArgs struct {
@@ -41,6 +42,7 @@ type AccountArgs struct {
 type AccountReply struct {
 	UserAccount account  `json:"account"`
 	Domains     []string `json:"domains"`
+	LookerURL   string   `json:"looker_url"`
 }
 
 type account struct {
@@ -153,7 +155,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 	}
 
 	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	requestID, ok := claims["sub"]
+	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Failed to parse user ID", err.Error()))
