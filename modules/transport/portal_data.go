@@ -23,6 +23,14 @@ const (
 	RelayHopVersion            = 1
 	NearRelayPortalDataVersion = 1
 
+	MaxSessionCountDataSize    = 48
+	MaxRelayHopSize            = 128
+	MaxNearRelayPortalDataSize = 256
+	MaxSessionMetaSize         = 8192
+	MaxSessionSliceSize        = 256
+	MaxSessionMapPointSize     = 64
+	MaxSessionPortalDataSize   = MaxSessionMetaSize + MaxSessionSliceSize + MaxSessionMapPointSize + 16
+
 	MaxSessionIDLength  = 1024
 	MaxAddressLength    = 256
 	MaxSDKVersionLength = 11
@@ -96,8 +104,7 @@ func WriteSessionCountData(entry *SessionCountData) ([]byte, error) {
 		}
 	}()
 
-	size := entry.Size()
-	buffer := make([]byte, size)
+	buffer := make([]byte, MaxSessionCountDataSize)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -243,6 +250,7 @@ func (s *SessionPortalData) Serialize(stream encoding.Stream) error {
 			return err
 		}
 	}
+
 	stream.SerializeBytes(meta)
 	if stream.IsReading() {
 		err = ReadSessionMeta(&s.Meta, meta)
@@ -294,16 +302,6 @@ func (s *SessionPortalData) Size() uint64 {
 	return 4 + 4 + s.Meta.Size() + 4 + s.Slice.Size() + 4 + s.Point.Size() + 1 + 1
 }
 
-func (s *SessionPortalData) SerializeSize() uint64 {
-	return 4 + // Version
-			s.Meta.SerializeSize() + // Meta
-			s.Slice.SerializeSize() + // Slice
-			s.Point.Size() + // Point
-			1 + // LargeCustomer
-			1 + // EverOnNext
-			2 // extra bytes to be divisible by 4	
-}
-
 func WriteSessionPortalData(entry *SessionPortalData) ([]byte, error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -311,8 +309,7 @@ func WriteSessionPortalData(entry *SessionPortalData) ([]byte, error) {
 		}
 	}()
 
-	size := entry.SerializeSize()
-	buffer := make([]byte, size)
+	buffer := make([]byte, MaxSessionPortalDataSize)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -395,8 +392,7 @@ func WriteRelayHop(entry *RelayHop) ([]byte, error) {
 		}
 	}()
 
-	size := entry.Size()
-	buffer := make([]byte, size)
+	buffer := make([]byte, MaxRelayHopSize)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -497,8 +493,7 @@ func WriteNearRelayPortalData(entry *NearRelayPortalData) ([]byte, error) {
 		}
 	}()
 
-	size := entry.Size()
-	buffer := make([]byte, size)
+	buffer := make([]byte, MaxNearRelayPortalDataSize)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -861,46 +856,6 @@ func (s SessionMeta) Size() uint64 {
 		4 + uint64(len(s.ClientAddr)) + 4 + uint64(len(s.ServerAddr)) + (4 + relayHopsSize) + 4 + uint64(len(s.SDK)) + 1 + (4 + nearbyRelaysSize) + 1 + 8
 }
 
-func (s SessionMeta) SerializeSize() uint64 {
-	hopSize := uint64(0)
-	for i := 0; i < len(s.Hops); i++ {
-		hopSize += s.Hops[i].Size()
-	}
-
-	nearbyRelaySize := uint64(0)
-	for i := 0; i < len(s.NearbyRelays); i++ {
-		nearbyRelaySize += s.NearbyRelays[i].Size()
-	}
-
-	return 4 + // Version
-		8 + // ID
-		8 + // UserHash
-		MaxDatacenterNameLength + // DataceterName
-		MaxDatacenterNameLength + // DatacenterAlias
-		1 + // OnNetworkNext
-		8 + // NextRTT
-		8 + // DirectRTT
-		8 + // DeltaRTT
-		routing.MaxContinentLength + // Continent
-		routing.MaxCountryLength + // Country
-		routing.MaxCountryCodeLength + // CountryCode
-		routing.MaxRegionLength + // Region
-		routing.MaxCityLength + // City
-		4 + // Latitude
-		4 + // Longitude
-		routing.MaxISPNameLength + // ISP
-		8 + // ASN
-		MaxAddressLength + // ClientAddr
-		MaxAddressLength + // ServerAddr
-		hopSize + // Hops
-		MaxSDKVersionLength + 1 + // SDK
-		1 + // Connection
-		nearbyRelaySize + // NearbyRelays
-		1 + // Platform
-		8 + // BuyerID
-		1 // extra bytes to be divisible by 4
-}
-
 func WriteSessionMeta(entry *SessionMeta) ([]byte, error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -908,8 +863,7 @@ func WriteSessionMeta(entry *SessionMeta) ([]byte, error) {
 		}
 	}()
 
-	size := entry.SerializeSize()
-	buffer := make([]byte, size)
+	buffer := make([]byte, MaxSessionMetaSize)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -1411,22 +1365,6 @@ func (s SessionSlice) Size() uint64 {
 	return 4 + 8 + (3 * 8) + (3 * 8) + 8 + (2 * 8) + (2 * 8) + 4 + (2 * 8) + 1 + 1 + 1
 }
 
-func (s SessionSlice) SerializeSize() uint64 {
-	return 4 + // Version
-		8 + // Timestamp
-		8*3 + // Next
-		8*3 + // Direct
-		8 + // Predicted
-		8*2 + // ClientToServerStats
-		8*2 + // ServerToClientStats
-		4 + // RouteDiversity
-		8*2 + // Envelope
-		1 + // OnNetworkNext
-		1 + // IsMultiPath
-		1 + // IsTryBeforeYouBuy
-		1 // extra bytes to be divisible by 4
-}
-
 func WriteSessionSlice(entry *SessionSlice) ([]byte, error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1434,8 +1372,7 @@ func WriteSessionSlice(entry *SessionSlice) ([]byte, error) {
 		}
 	}()
 
-	size := entry.SerializeSize()
-	buffer := make([]byte, size)
+	buffer := make([]byte, MaxSessionSliceSize)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
@@ -1649,8 +1586,7 @@ func WriteSessionMapPoint(entry *SessionMapPoint) ([]byte, error) {
 		}
 	}()
 
-	size := entry.Size()
-	buffer := make([]byte, size)
+	buffer := make([]byte, MaxSessionMapPointSize)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {

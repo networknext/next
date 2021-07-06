@@ -171,12 +171,12 @@ func testSessionMeta() transport.SessionMeta {
 	// Seed randomness
 	rand.Seed(time.Now().UnixNano())
 
-	hops := make([]transport.RelayHop, rand.Intn(32))
+	hops := make([]transport.RelayHop, 5) //rand.Intn(32))
 	for i := 0; i < len(hops); i++ {
 		hops[i] = testRelayHop()
 	}
 
-	nearRelays := make([]transport.NearRelayPortalData, rand.Intn(32))
+	nearRelays := make([]transport.NearRelayPortalData, 32) // rand.Intn(32))
 	for i := 0; i < len(nearRelays); i++ {
 		nearRelays[i] = testNearRelayPortalData()
 	}
@@ -449,12 +449,12 @@ func TestSessionMapPoint_Serialize(t *testing.T) {
 
 func testSessionPortalData() transport.SessionPortalData {
 	data := transport.SessionPortalData{
-		Version: transport.SessionPortalDataVersion,
-		Meta: testSessionMeta(),
-		Slice: testSessionSlice(),
-		Point: testSessionMapPoint(),
+		Version:       transport.SessionPortalDataVersion,
+		Meta:          testSessionMeta(),
+		Slice:         testSessionSlice(),
+		Point:         testSessionMapPoint(),
 		LargeCustomer: true,
-		EverOnNext: true,
+		EverOnNext:    true,
 	}
 
 	return data
@@ -489,5 +489,3 @@ func TestSessionPortalData_Serialize(t *testing.T) {
 		fmt.Printf("%+v", data)
 	})
 }
-
-
