@@ -294,6 +294,16 @@ func (s *SessionPortalData) Size() uint64 {
 	return 4 + 4 + s.Meta.Size() + 4 + s.Slice.Size() + 4 + s.Point.Size() + 1 + 1
 }
 
+func (s *SessionPortalData) SerializeSize() uint64 {
+	return 4 + // Version
+			s.Meta.SerializeSize() + // Meta
+			s.Slice.SerializeSize() + // Slice
+			s.Point.Size() + // Point
+			1 + // LargeCustomer
+			1 + // EverOnNext
+			2 // extra bytes to be divisible by 4	
+}
+
 func WriteSessionPortalData(entry *SessionPortalData) ([]byte, error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -301,7 +311,7 @@ func WriteSessionPortalData(entry *SessionPortalData) ([]byte, error) {
 		}
 	}()
 
-	size := entry.Size()
+	size := entry.SerializeSize()
 	buffer := make([]byte, size)
 
 	ws, err := encoding.CreateWriteStream(buffer[:])

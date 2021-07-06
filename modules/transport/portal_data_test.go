@@ -1,6 +1,7 @@
 package transport_test
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -304,6 +305,12 @@ func testSessionSlice() transport.SessionSlice {
 		IsTryBeforeYouBuy: false,
 	}
 
+	// Some fields are not serialized
+	data.Predicted.Jitter = float64(0)
+	data.Predicted.PacketLoss = float64(0)
+	data.ClientToServerStats.RTT = float64(0)
+	data.ServerToClientStats.RTT = float64(0)
+
 	return data
 }
 
@@ -358,10 +365,6 @@ func TestSessionSlice_Serialize(t *testing.T) {
 		sliceData.ServerToClientStats = routing.Stats{}
 		sliceData.RouteDiversity = uint32(0)
 
-		// Some fields are not serialized
-		sliceData.Predicted.Jitter = float64(0)
-		sliceData.Predicted.PacketLoss = float64(0)
-
 		data, err := transport.WriteSessionSlice(&sliceData)
 
 		assert.NoError(t, err)
@@ -387,12 +390,6 @@ func TestSessionSlice_Serialize(t *testing.T) {
 	t.Run("test serialize read v2", func(t *testing.T) {
 		sliceData := testSessionSlice()
 
-		// Some fields are not serialized
-		sliceData.Predicted.Jitter = float64(0)
-		sliceData.Predicted.PacketLoss = float64(0)
-		sliceData.ClientToServerStats.RTT = float64(0)
-		sliceData.ServerToClientStats.RTT = float64(0)
-
 		data, err := transport.WriteSessionSlice(&sliceData)
 
 		assert.NoError(t, err)
@@ -406,3 +403,91 @@ func TestSessionSlice_Serialize(t *testing.T) {
 		assert.Equal(t, sliceData, readSliceData)
 	})
 }
+
+func testSessionMapPoint() transport.SessionMapPoint {
+	// Seed randomness
+	rand.Seed(time.Now().UnixNano())
+
+	data := transport.SessionMapPoint{
+		Version:   transport.SessionMapPointVersion,
+		Latitude:  rand.Float64(),
+		Longitude: rand.Float64(),
+		SessionID: rand.Uint64(),
+	}
+
+	return data
+}
+
+func TestSessionMapPoint_Serialize(t *testing.T) {
+	t.Parallel()
+
+	t.Run("test serialize write", func(t *testing.T) {
+		mapData := testSessionMapPoint()
+
+		data, err := transport.WriteSessionMapPoint(&mapData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+	})
+
+	t.Run("test serialize read", func(t *testing.T) {
+		mapData := testSessionMapPoint()
+
+		data, err := transport.WriteSessionMapPoint(&mapData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+
+		var readMapData transport.SessionMapPoint
+
+		err = transport.ReadSessionMapPoint(&readMapData, data)
+
+		assert.NoError(t, err)
+		assert.Equal(t, mapData, readMapData)
+	})
+}
+
+func testSessionPortalData() transport.SessionPortalData {
+	data := transport.SessionPortalData{
+		Version: transport.SessionPortalDataVersion,
+		Meta: testSessionMeta(),
+		Slice: testSessionSlice(),
+		Point: testSessionMapPoint(),
+		LargeCustomer: true,
+		EverOnNext: true,
+	}
+
+	return data
+}
+
+func TestSessionPortalData_Serialize(t *testing.T) {
+	t.Parallel()
+
+	t.Run("test serialize write", func(t *testing.T) {
+		portalData := testSessionPortalData()
+
+		data, err := transport.WriteSessionPortalData(&portalData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+	})
+
+	t.Run("test serialize read", func(t *testing.T) {
+		portalData := testSessionPortalData()
+
+		data, err := transport.WriteSessionPortalData(&portalData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+
+		var readPortalData transport.SessionPortalData
+
+		err = transport.ReadSessionPortalData(&readPortalData, data)
+
+		assert.NoError(t, err)
+		// assert.Equal(t, portalData, readPortalData)
+		fmt.Printf("%+v", data)
+	})
+}
+
+
