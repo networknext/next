@@ -12,7 +12,8 @@ const (
 	RelayStatsEntryVersion     = uint8(3)
 	RelayNamesHashEntryVersion = uint8(1)
 
-	MaxInstanceIDLength = 64
+	MaxInstanceIDLength    = 64
+	MaxRelayStatsEntrySize = 128
 )
 
 type PingStatsEntry struct {
@@ -166,7 +167,7 @@ type RelayStatsEntry struct {
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*int(8+4+4+4+4+4+4+4+4+4+4+4+4+4+4+1)
+	length := 1 + 8 + len(entries)*int(MaxRelayStatsEntrySize)
 	data := make([]byte, length)
 
 	index := 0
@@ -193,7 +194,7 @@ func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
 		encoding.WriteBool(data, &index, entry.Full)
 	}
 
-	return data
+	return data[:index]
 }
 
 func ReadRelayStatsEntries(data []byte) ([]*RelayStatsEntry, bool) {
