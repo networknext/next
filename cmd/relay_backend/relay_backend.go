@@ -200,12 +200,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	relayFullThreshold, err := envvar.GetFloat("RELAY_FULL_THRESHOLD", 0.90)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
 	instanceID, err := getInstanceID(env)
 	if err != nil {
 		level.Error(logger).Log("msg", "error getting relay backend instance ID", "err", err)
@@ -733,7 +727,7 @@ func mainReturnWithCode() int {
 				var full bool
 
 				maxSessions := int(relay.MaxSessions)
-				if maxSessions != 0 && float64(numSessions/maxSessions) >= relayFullThreshold {
+				if maxSessions != 0 && numSessions >= maxSessions {
 					fullRelayIDs = append(fullRelayIDs, relay.ID)
 					full = true
 					core.Debug("Relay ID %016x is full (%d/%d sessions)", relay.ID, numSessions, maxSessions)
