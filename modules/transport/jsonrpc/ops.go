@@ -1187,8 +1187,7 @@ type ListDatacenterMapsReply struct {
 // A zero DatacenterID returns a list of all maps.
 func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) error {
 
-	var dcm map[uint64]routing.DatacenterMap
-	dcm = s.Storage.ListDatacenterMaps(args.DatacenterID)
+	dcm := s.Storage.ListDatacenterMaps(args.DatacenterID)
 
 	var replySlice []DatacenterMapsFull
 	for _, dcMap := range dcm {

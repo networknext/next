@@ -16,6 +16,7 @@ require (
 	github.com/auth0/go-jwt-middleware v0.0.0-20190805220309-36081240882b
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 // indirect
 	github.com/benbjohnson/clock v1.0.1 // indirect
+	github.com/bradleyfalzon/ghinstallation v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
@@ -26,7 +27,10 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.6
+	github.com/google/go-github/v29 v29.0.3 // indirect
+	github.com/google/go-github/v36 v36.0.0
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
@@ -47,10 +51,10 @@ require (
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
 	golang.org/x/mod v0.4.0 // indirect
-	golang.org/x/net v0.0.0-20201021035429-f5854403a974
-	golang.org/x/sys v0.0.0-20210403161142-5e06dd20ab57
+	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
+	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
 	golang.org/x/tools v0.0.0-20201206230334-368bee879bfd // indirect
 	google.golang.org/api v0.31.0
 	google.golang.org/genproto v0.0.0-20200911024640-645f7a48b24f
