@@ -3845,7 +3845,7 @@ func (db *SQL) NotificationTypes() []notifications.NotificationType {
 
 	allNotificationTypes := []notifications.NotificationType{}
 
-	sql.Write([]byte("select id, name from notification_types"))
+	sql.Write([]byte("select id, priority_type from notification_types"))
 
 	rows, err := db.Client.QueryContext(context.Background(), sql.String())
 	if err != nil {
@@ -3880,7 +3880,7 @@ func (db *SQL) NotificationTypeByID(id int64) (notifications.NotificationType, e
 	var sqlQuery bytes.Buffer
 	var notificationType sqlNotificationType
 
-	sqlQuery.Write([]byte("select id, name from notification_types where id = $1"))
+	sqlQuery.Write([]byte("select id, priority_type from notification_types where id = $1"))
 
 	row := db.Client.QueryRow(sqlQuery.String(), id)
 	err := row.Scan(&notificationType.ID,
@@ -3906,7 +3906,7 @@ func (db *SQL) NotificationTypeByName(name string) (notifications.NotificationTy
 	var sqlQuery bytes.Buffer
 	var notificationType sqlNotificationType
 
-	sqlQuery.Write([]byte("select id, name from notification_types where priority_type = $1"))
+	sqlQuery.Write([]byte("select id, priority_type from notification_types where priority_type = $1"))
 
 	row := db.Client.QueryRow(sqlQuery.String(), name)
 	err := row.Scan(&notificationType.ID,
@@ -4084,7 +4084,7 @@ func (db *SQL) NotificationPriorities() []notifications.NotificationPriority {
 
 	allNotificationPriorities := []notifications.NotificationPriority{}
 
-	sql.Write([]byte("select id, name from notification_priorities"))
+	sql.Write([]byte("select id, priority_name from notification_priorities"))
 
 	rows, err := db.Client.QueryContext(context.Background(), sql.String())
 	if err != nil {
@@ -4121,7 +4121,7 @@ func (db *SQL) NotificationPriorityByID(id int64) (notifications.NotificationPri
 	var sqlQuery bytes.Buffer
 	var notificationPriority sqlNotificationPriority
 
-	sqlQuery.Write([]byte("select id, name from notification_priorities where id = $1"))
+	sqlQuery.Write([]byte("select id, priority_name from notification_priorities where id = $1"))
 
 	row := db.Client.QueryRow(sqlQuery.String(), id)
 	err := row.Scan(&notificationPriority.ID,
@@ -4149,7 +4149,7 @@ func (db *SQL) NotificationPriorityByName(name string) (notifications.Notificati
 	var sqlQuery bytes.Buffer
 	var notificationPriority sqlNotificationPriority
 
-	sqlQuery.Write([]byte("select id, name from notification_priorities where priority_name = $1"))
+	sqlQuery.Write([]byte("select id, priority_name from notification_priorities where priority_name = $1"))
 
 	row := db.Client.QueryRow(sqlQuery.String(), name)
 	err := row.Scan(&notificationPriority.ID,
