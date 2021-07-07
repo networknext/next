@@ -19,6 +19,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/notifications"
 )
 
 // SQL is an implementation of the Storer interface. It can
@@ -169,6 +170,10 @@ func (db *SQL) Customers() []routing.Customer {
 
 	sort.Slice(customers, func(i int, j int) bool { return customers[i].Name < customers[j].Name })
 	return customers
+}
+
+func (db *SQL) CustomerIDToCode(id int64) (string, error) {
+	return "", nil
 }
 
 type sqlCustomer struct {
@@ -359,15 +364,14 @@ func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
 }
 
 // BuyerWithCompanyCode gets the Buyer with the matching company code
-func (db *SQL) BuyerWithCompanyCode(companCode string) (routing.Buyer, error) {
-
+func (db *SQL) BuyerWithCompanyCode(companyCode string) (routing.Buyer, error) {
 	var querySQL bytes.Buffer
 	var buyer sqlBuyer
 
 	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where short_name = $1"))
 
-	row := db.Client.QueryRow(querySQL.String(), companCode)
+	row := db.Client.QueryRow(querySQL.String(), companyCode)
 	err := row.Scan(
 		&buyer.DatabaseID,
 		&buyer.SdkID,
@@ -378,7 +382,7 @@ func (db *SQL) BuyerWithCompanyCode(companCode string) (routing.Buyer, error) {
 	)
 	switch err {
 	case sql.ErrNoRows:
-		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: fmt.Sprintf("%016x", companCode)}
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: companyCode}
 	case nil:
 		buyer.ID = uint64(buyer.SdkID)
 		ic, err := db.InternalConfig(buyer.ID)
@@ -3425,6 +3429,896 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 	}
 	if rows != 1 {
 		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
+}
+
+type sqlNotification struct {
+	ID         int64
+	Timestamp  time.Time
+	Author     string
+	Title      string
+	Message    string
+	Type       int64
+	CustomerID int64
+	Public     bool
+	Paid       bool
+	Data       string
+}
+
+// Notifications returns all notifications in the database
+func (db *SQL) Notifications() []notifications.Notification {
+	var sqlQuery bytes.Buffer
+	var notification sqlNotification
+
+	allNotifications := []notifications.Notification{}
+
+	sqlQuery.Write([]byte("select id, creation_date, author, "))
+	sqlQuery.Write([]byte("card_title, card_body, type_id, "))
+	sqlQuery.Write([]byte("customer_id, priority_id, public, paid, "))
+	sqlQuery.Write([]byte("json_string from notifications"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sqlQuery.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "Notifications(): QueryContext returned an error", "err", err)
+		return allNotifications
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&notification.ID,
+			&notification.Timestamp,
+			&notification.Author,
+			&notification.Title,
+			&notification.Message,
+			&notification.Type,
+			&notification.CustomerID,
+			&notification.Public,
+			&notification.Paid,
+			&notification.Data,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Notifications(): error parsing returned row", "err", err)
+			return allNotifications
+		}
+
+		notificationType, _ := db.NotificationTypeByID(notification.Type)
+
+		customerCode, err := db.CustomerIDToCode(notification.CustomerID)
+		if err != nil {
+			continue
+		}
+
+		n := notifications.Notification{
+			ID:           notification.ID,
+			Timestamp:    notification.Timestamp,
+			Author:       notification.Author,
+			Title:        notification.Title,
+			Message:      notification.Message,
+			Type:         notificationType,
+			CustomerCode: customerCode,
+			Public:       notification.Public,
+			Paid:         notification.Paid,
+			Data:         notification.Data,
+		}
+
+		allNotifications = append(allNotifications, n)
+	}
+
+	sort.Slice(allNotifications, func(i int, j int) bool { return allNotifications[i].Timestamp.Before(allNotifications[j].Timestamp) })
+	return allNotifications
+}
+
+// NotificationsByCustomer Get all notifications in the database
+func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Notification {
+	var sqlQuery bytes.Buffer
+	var notification sqlNotification
+
+	allNotifications := []notifications.Notification{}
+
+	customer, err := db.Customer(customerCode)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "NotificationsByCustomer(): ", "err", err)
+		return allNotifications
+	}
+
+	sqlQuery.Write([]byte("select id, creation_date, author, "))
+	sqlQuery.Write([]byte("card_title, card_body, type_id, "))
+	sqlQuery.Write([]byte("customer_id, priority_id, public, paid, "))
+	sqlQuery.Write([]byte("json_string from notifications where customer_id = $1"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sqlQuery.String(), customer.DatabaseID)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "NotificationsByCustomer(): QueryContext returned an error", "err", err)
+		return allNotifications
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&notification.ID,
+			&notification.Timestamp,
+			&notification.Author,
+			&notification.Title,
+			&notification.Message,
+			&notification.Type,
+			&notification.CustomerID,
+			&notification.Public,
+			&notification.Paid,
+			&notification.Data,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "NotificationsByCustomer(): error parsing returned row", "err", err)
+			return allNotifications
+		}
+
+		notificationType, _ := db.NotificationTypeByID(notification.ID)
+
+		n := notifications.Notification{
+			ID:           notification.ID,
+			Timestamp:    notification.Timestamp,
+			Author:       notification.Author,
+			Title:        notification.Title,
+			Message:      notification.Message,
+			Type:         notificationType,
+			CustomerCode: customerCode,
+			Public:       notification.Public,
+			Paid:         notification.Paid,
+			Data:         notification.Data,
+		}
+
+		allNotifications = append(allNotifications, n)
+	}
+
+	return allNotifications
+}
+
+// NotificationByID Remove a specific notification by ID
+func (db *SQL) NotificationByID(id int64) (notifications.Notification, error) {
+	var sqlQuery bytes.Buffer
+	var notification sqlNotification
+
+	sqlQuery.Write([]byte("select id, creation_date, author, "))
+	sqlQuery.Write([]byte("card_title, card_body, type_id, "))
+	sqlQuery.Write([]byte("customer_id, priority_id, public, paid, "))
+	sqlQuery.Write([]byte("json_string from notifications where id = $1"))
+
+	row := db.Client.QueryRow(sqlQuery.String(), id)
+	err := row.Scan(&notification.ID,
+		&notification.Timestamp,
+		&notification.Author,
+		&notification.Title,
+		&notification.Message,
+		&notification.Type,
+		&notification.CustomerID,
+		&notification.Public,
+		&notification.Paid,
+		&notification.Data,
+	)
+	switch err {
+	case sql.ErrNoRows:
+		return notifications.Notification{}, &DoesNotExistError{resourceType: "notification id", resourceRef: id}
+	case nil:
+		notificiationType, _ := db.NotificationTypeByID(notification.Type)
+
+		// TODO: this functionality needs to be a sub select
+		customerCode, err := db.CustomerIDToCode(notification.CustomerID)
+		if err != nil {
+			return notifications.Notification{}, err
+		}
+
+		n := notifications.Notification{
+			ID:           notification.ID,
+			Timestamp:    notification.Timestamp,
+			Author:       notification.Author,
+			Title:        notification.Title,
+			Message:      notification.Message,
+			Type:         notificiationType,
+			CustomerCode: customerCode,
+			Public:       notification.Public,
+			Paid:         notification.Paid,
+			Data:         notification.Data,
+		}
+		return n, nil
+	default:
+		level.Error(db.Logger).Log("during", "NotificationByID() QueryRow returned an error: %v", err)
+		return notifications.Notification{}, err
+	}
+}
+
+func (db *SQL) AddNotification(notification notifications.Notification) error {
+	var sqlQuery bytes.Buffer
+
+	// Add the buyer in remote storage
+
+	sqlQuery.Write([]byte("insert into notifications ("))
+	sqlQuery.Write([]byte("creation_date, author, card_title, card_body, type_id, "))
+	sqlQuery.Write([]byte("customer_id, priority_id, public, paid, json_string"))
+	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"))
+
+	stmt, err := db.Client.PrepareContext(context.Background(), sqlQuery.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing AddNotification SQL", "err", err)
+		return err
+	}
+
+	customer, err := db.Customer(notification.CustomerCode)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "NotificationsByCustomer(): ", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(
+		notification.Timestamp,
+		notification.Author,
+		notification.Title,
+		notification.Message,
+		notification.Type.ID,
+		customer.DatabaseID,
+		notification.Priority.ID,
+		notification.Public,
+		notification.Paid,
+		notification.Data,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding notification", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
+}
+
+// UpdateNotification Update a specific notification
+func (db *SQL) UpdateNotification(id int64, field string, value interface{}) error {
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+	var err error
+
+	switch field {
+	case "Author":
+		author, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("Author: %v is not a valid string type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update notifications set author=$1 where id="))
+		updateSQL.Write([]byte("(select id from notifications where id = $2)"))
+		args = append(args, author, id)
+	case "Title":
+		title, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("Title: %v is not a valid string type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update notifications set card_title=$1 where id="))
+		updateSQL.Write([]byte("(select id from notifications where id = $2)"))
+		args = append(args, title, id)
+	case "Message":
+		message, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("Message: %v is not a valid string type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update notifications set card_body=$1 where id="))
+		updateSQL.Write([]byte("(select id from notifications where id = $2)"))
+		args = append(args, message, id)
+	case "Type":
+		newType, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("Type: %v is not a valid int64 type (%T)", value, value)
+		}
+
+		updateSQL.Write([]byte("update notifications set type_id=$1 where id="))
+		updateSQL.Write([]byte("(select id from notifications where id = $2)"))
+		args = append(args, newType, id)
+	case "CustomerCode":
+		customerCode, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer, err := db.Customer(customerCode)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "customer does not exist", "err", err)
+			return err
+		}
+
+		updateSQL.Write([]byte("update notifications set customer_id=$1 where id="))
+		updateSQL.Write([]byte("(select id from notifications where id = $2)"))
+		args = append(args, customer.DatabaseID, id)
+	case "Priority":
+		newPriority, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("Type: %v is not a valid int64 type (%T)", value, value)
+		}
+
+		updateSQL.Write([]byte("update notifications set priority_id=$1 where id="))
+		updateSQL.Write([]byte("(select id from notifications where id = $2)"))
+		args = append(args, newPriority, id)
+	case "Public":
+		public, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Public: %v is not a valid bool type (%T)", value, value)
+		}
+
+		updateSQL.Write([]byte("update notifications set public=$1 where id="))
+		updateSQL.Write([]byte("(select id from notifications where id = $2)"))
+		args = append(args, public, id)
+	case "Paid":
+		paid, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Paid: %v is not a valid bool type (%T)", value, value)
+		}
+
+		updateSQL.Write([]byte("update notifications set paid=$1 where id="))
+		updateSQL.Write([]byte("(select id from notifications where id = $2)"))
+		args = append(args, paid, id)
+	case "Data":
+		data, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update notifications set json_string=$1 where id="))
+		updateSQL.Write([]byte("(select id from notifications where id = $2)"))
+		args = append(args, data, id)
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the notifications.Notification type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(context.Background(), updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateNotification SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying notification record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// RemoveNotification Remove a specific notification
+func (db *SQL) RemoveNotification(id int64) error {
+	var sql bytes.Buffer
+
+	sql.Write([]byte("delete from notifications where id = $1"))
+
+	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing RemoveNotification SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(id)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing notification", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
+}
+
+type sqlNotificationType struct {
+	ID   int64
+	Name string
+}
+
+// NotificationTypes returns a list of notification types
+func (db *SQL) NotificationTypes() []notifications.NotificationType {
+	var sql bytes.Buffer
+	var notificationType sqlNotificationType
+
+	allNotificationTypes := []notifications.NotificationType{}
+
+	sql.Write([]byte("select id, name from notification_types"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "NotificationTypes(): QueryContext returned an error", "err", err)
+		return allNotificationTypes
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&notificationType.ID,
+			&notificationType.Name,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "Notifications(): error parsing returned row", "err", err)
+			return allNotificationTypes
+		}
+
+		t := notifications.NotificationType{
+			ID:   notificationType.ID,
+			Name: notificationType.Name,
+		}
+
+		allNotificationTypes = append(allNotificationTypes, t)
+	}
+
+	sort.Slice(allNotificationTypes, func(i int, j int) bool { return allNotificationTypes[i].ID < allNotificationTypes[j].ID })
+	return allNotificationTypes
+}
+
+// NotificationTypeByID Get a specific notification type by ID
+func (db *SQL) NotificationTypeByID(id int64) (notifications.NotificationType, error) {
+	var sqlQuery bytes.Buffer
+	var notificationType sqlNotificationType
+
+	sqlQuery.Write([]byte("select id, name from notification_types where id = $1"))
+
+	row := db.Client.QueryRow(sqlQuery.String(), id)
+	err := row.Scan(&notificationType.ID,
+		&notificationType.Name,
+	)
+	switch err {
+	case sql.ErrNoRows:
+		return notifications.NotificationType{}, &DoesNotExistError{resourceType: "notificationType id", resourceRef: id}
+	case nil:
+		t := notifications.NotificationType{
+			ID:   notificationType.ID,
+			Name: notificationType.Name,
+		}
+		return t, nil
+	default:
+		level.Error(db.Logger).Log("during", "NotificationByID() QueryRow returned an error: %v", err)
+		return notifications.NotificationType{}, err
+	}
+}
+
+// NotificationTypeByName Remove a specific notification priority by name
+func (db *SQL) NotificationTypeByName(name string) (notifications.NotificationType, error) {
+	var sqlQuery bytes.Buffer
+	var notificationType sqlNotificationType
+
+	sqlQuery.Write([]byte("select id, name from notification_types where priority_type = $1"))
+
+	row := db.Client.QueryRow(sqlQuery.String(), name)
+	err := row.Scan(&notificationType.ID,
+		&notificationType.Name,
+	)
+	switch err {
+	case sql.ErrNoRows:
+		return notifications.NotificationType{}, &DoesNotExistError{resourceType: "notificationType name", resourceRef: name}
+	case nil:
+		t := notifications.NotificationType{
+			ID:   notificationType.ID,
+			Name: notificationType.Name,
+		}
+		return t, nil
+	default:
+		level.Error(db.Logger).Log("during", "NotificationByID() QueryRow returned an error: %v", err)
+		return notifications.NotificationType{}, err
+	}
+}
+
+// AddNotificationType Add a notification type to the database
+func (db *SQL) AddNotificationType(notificationType notifications.NotificationType) error {
+	var sql bytes.Buffer
+
+	// Add the buyer in remote storage
+	sql.Write([]byte("insert into notification_types (priority_type) values ($1)"))
+
+	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing AddNotificationType SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(
+		notificationType.Name,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding notification type", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
+}
+
+// UpdateNotificationType Update a specific notification type
+func (db *SQL) UpdateNotificationType(id int64, field string, value interface{}) error {
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+	var err error
+
+	switch field {
+	case "Name":
+		name, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update notification_types set priority_type=$1 where id="))
+		updateSQL.Write([]byte("(select id from notification_types where id = $2)"))
+		args = append(args, name, id)
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the notifications.NotificationType type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(context.Background(), updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateNotificationType SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying notification record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// RemoveNotificationTypeByID Remove a specific notification type
+func (db *SQL) RemoveNotificationTypeByID(id int64) error {
+	var sql bytes.Buffer
+
+	sql.Write([]byte("delete from notification_types where id = $1"))
+
+	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing RemoveNotificationTypeByID SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(id)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing notification type by id", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
+}
+
+// RemoveNotificationTypeByName Remove a specific notification type
+func (db *SQL) RemoveNotificationTypeByName(name string) error {
+	var sql bytes.Buffer
+
+	sql.Write([]byte("delete from notification_types where priority_type = $1"))
+
+	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing RemoveNotificationTypeByName SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(name)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing notification type by name", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
+}
+
+type sqlNotificationPriority struct {
+	ID    int64
+	Name  string
+	Color int64
+}
+
+// NotificationPriorities returns a list of priorities
+func (db *SQL) NotificationPriorities() []notifications.NotificationPriority {
+	var sql bytes.Buffer
+	var notificationPriority sqlNotificationPriority
+
+	allNotificationPriorities := []notifications.NotificationPriority{}
+
+	sql.Write([]byte("select id, name from notification_priorities"))
+
+	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "NotificationPriorities(): QueryContext returned an error", "err", err)
+		return allNotificationPriorities
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(&notificationPriority.ID,
+			&notificationPriority.Name,
+			&notificationPriority.Color,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "NotificationPriorities(): error parsing returned row", "err", err)
+			return allNotificationPriorities
+		}
+
+		p := notifications.NotificationPriority{
+			ID:    notificationPriority.ID,
+			Name:  notificationPriority.Name,
+			Color: notificationPriority.Color,
+		}
+
+		allNotificationPriorities = append(allNotificationPriorities, p)
+	}
+
+	sort.Slice(allNotificationPriorities, func(i int, j int) bool { return allNotificationPriorities[i].ID < allNotificationPriorities[j].ID })
+	return allNotificationPriorities
+}
+
+// NotificationPriorityByID Get a specific notification priority by ID
+func (db *SQL) NotificationPriorityByID(id int64) (notifications.NotificationPriority, error) {
+	var sqlQuery bytes.Buffer
+	var notificationPriority sqlNotificationPriority
+
+	sqlQuery.Write([]byte("select id, name from notification_priorities where id = $1"))
+
+	row := db.Client.QueryRow(sqlQuery.String(), id)
+	err := row.Scan(&notificationPriority.ID,
+		&notificationPriority.Name,
+		&notificationPriority.Color,
+	)
+	switch err {
+	case sql.ErrNoRows:
+		return notifications.NotificationPriority{}, &DoesNotExistError{resourceType: "notificationPriority id", resourceRef: id}
+	case nil:
+		p := notifications.NotificationPriority{
+			ID:    notificationPriority.ID,
+			Name:  notificationPriority.Name,
+			Color: notificationPriority.Color,
+		}
+		return p, nil
+	default:
+		level.Error(db.Logger).Log("during", "NotificationPriorityByID() QueryRow returned an error: %v", err)
+		return notifications.NotificationPriority{}, err
+	}
+}
+
+// NotificationPriorityByName Remove a specific notification priority by name
+func (db *SQL) NotificationPriorityByName(name string) (notifications.NotificationPriority, error) {
+	var sqlQuery bytes.Buffer
+	var notificationPriority sqlNotificationPriority
+
+	sqlQuery.Write([]byte("select id, name from notification_priorities where priority_name = $1"))
+
+	row := db.Client.QueryRow(sqlQuery.String(), name)
+	err := row.Scan(&notificationPriority.ID,
+		&notificationPriority.Name,
+		&notificationPriority.Color,
+	)
+	switch err {
+	case sql.ErrNoRows:
+		return notifications.NotificationPriority{}, &DoesNotExistError{resourceType: "notificationPriority name", resourceRef: name}
+	case nil:
+		p := notifications.NotificationPriority{
+			ID:    notificationPriority.ID,
+			Name:  notificationPriority.Name,
+			Color: notificationPriority.Color,
+		}
+		return p, nil
+	default:
+		level.Error(db.Logger).Log("during", "NotificationPriorityByName() QueryRow returned an error: %v", err)
+		return notifications.NotificationPriority{}, err
+	}
+}
+
+// AddNotificationPriority Add a notification priority to the database
+func (db *SQL) AddNotificationPriority(priority notifications.NotificationPriority) error {
+	var sql bytes.Buffer
+
+	// Add the buyer in remote storage
+	sql.Write([]byte("insert into notification_priorities (name, color) values ($1, $2)"))
+
+	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing AddNotificationPriority SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(
+		priority.Name,
+		priority.Color,
+	)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error adding notification priority", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
+}
+
+// UpdateNotificationPriority Update a specific notification priority
+func (db *SQL) UpdateNotificationPriority(id int64, field string, value interface{}) error {
+	var updateSQL bytes.Buffer
+	var args []interface{}
+	var stmt *sql.Stmt
+	var err error
+
+	switch field {
+	case "Name":
+		name, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		updateSQL.Write([]byte("update notification_priorities set name=$1 where id="))
+		updateSQL.Write([]byte("(select id from notification_priorities where id = $2)"))
+		args = append(args, name, id)
+	case "Color":
+		color, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int64 value", value)
+		}
+		updateSQL.Write([]byte("update notification_priorities set color=$1 where id="))
+		updateSQL.Write([]byte("(select id from notification_priorities where id = $2)"))
+		args = append(args, color, id)
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the notifications.NotificationPriority type", field)
+
+	}
+
+	stmt, err = db.Client.PrepareContext(context.Background(), updateSQL.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing UpdateNotificationPriority SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying notification priority record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// RemoveNotificationPriorityByID Remove a specific notification priority by ID
+func (db *SQL) RemoveNotificationPriorityByID(id int64) error {
+	var sql bytes.Buffer
+
+	sql.Write([]byte("delete from notification_priority where id = $1"))
+
+	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing RemoveNotificationPriorityByID SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(id)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing notification priority by id", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
+}
+
+// RemoveNotificationPriorityByName Remove a specific notification priority by name
+func (db *SQL) RemoveNotificationPriorityByName(name string) error {
+	var sql bytes.Buffer
+
+	sql.Write([]byte("delete from notification_priority where priority_name = $1"))
+
+	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing RemoveNotificationPriorityByName SQL", "err", err)
+		return err
+	}
+
+	result, err := stmt.Exec(name)
+
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing notification priority by name", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
 		return err
 	}
 
