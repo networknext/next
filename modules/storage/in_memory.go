@@ -566,7 +566,7 @@ func (m *InMemory) RemoveRouteShader(ctx context.Context, buyerID uint64) error 
 }
 
 func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
-	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
+	return fmt.Errorf(("UpdateRelay not impemented in InMemory storer"))
 }
 
 func (m *InMemory) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
@@ -619,6 +619,16 @@ func (m *InMemory) NotificationsByCustomer(customerCode string) []notifications.
 	return []notifications.Notification{}
 }
 
+// NotificationByID Remove a specific notification by ID
+func (m *InMemory) NotificationByID(id int64) notifications.Notification {
+	return notifications.Notification{}
+}
+
+// AddNotification Add a notification type to the database
+func (m *InMemory) AddNotification(notification notifications.Notification) error {
+	return fmt.Errorf("AddNotification not implemented in InMemory storer")
+}
+
 // UpdateNotification Update a specific notification
 func (m *InMemory) UpdateNotification(id int64, field string, value interface{}) error {
 	return fmt.Errorf("UpdateNotification not implemented in InMemory storer")
@@ -627,4 +637,74 @@ func (m *InMemory) UpdateNotification(id int64, field string, value interface{})
 // RemoveNotification Remove a specific notification
 func (m *InMemory) RemoveNotification(id int64) error {
 	return fmt.Errorf("RemoveNotification not implemented in InMemory storer")
+}
+
+// NotificationTypes returns a list of notification types
+func (m *InMemory) NotificationTypes() []notifications.NotificationType {
+	return []notifications.NotificationType{}
+}
+
+// NotificationTypeByID Get a specific notification type by ID
+func (m *InMemory) NotificationTypeByID(id int64) notifications.NotificationType {
+	return notifications.NotificationType{}
+}
+
+// NotificationTypeByName Remove a specific notification priority by name
+func (m *InMemory) NotificationTypeByName(name string) notifications.NotificationType {
+	return notifications.NotificationType{}
+}
+
+// AddNotificationType Add a notification type to the database
+func (m *InMemory) AddNotificationType(notificationType notifications.NotificationType) error {
+	return fmt.Errorf("AddNotificationType not implemented in InMemory storer")
+}
+
+// UpdateNotificationType Update a specific notification type
+func (m *InMemory) UpdateNotificationType(id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateNotificationType not implemented in InMemory storer")
+}
+
+// RemoveNotificationTypeByID Remove a specific notification type
+func (m *InMemory) RemoveNotificationTypeByID(id int64) error {
+	return fmt.Errorf("RemoveNotificationTypeByID not implemented in InMemory storer")
+}
+
+// RemoveNotificationTypeByName Remove a specific notification type
+func (m *InMemory) RemoveNotificationTypeByName(name string) error {
+	return fmt.Errorf("RemoveNotificationTypeByName not implemented in InMemory storer")
+}
+
+// NotificationPriorities returns a list of priorities
+func (m *InMemory) NotificationPriorities() []notifications.NotificationPriority {
+	return []notifications.NotificationPriority{}
+}
+
+// NotificationPriorityByID Remove a specific notification priority by ID
+func (m *InMemory) NotificationPriorityByID(id int64) notifications.NotificationPriority {
+	return notifications.NotificationPriority{}
+}
+
+// NotificationPriorityByName Remove a specific notification priority by name
+func (m *InMemory) NotificationPriorityByName(name string) notifications.NotificationPriority {
+	return notifications.NotificationPriority{}
+}
+
+// AddNotificationPriority Add a notification priority to the database
+func (m *InMemory) AddNotificationPriority(priority notifications.NotificationPriority) error {
+	return fmt.Errorf("AddNotificationPriority not implemented in InMemory storer")
+}
+
+// UpdateNotificationPriority Update a specific notification priority
+func (m *InMemory) UpdateNotificationPriority(id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateNotificationPriority not implemented in InMemory storer")
+}
+
+// RemoveNotificationPriorityByID Remove a specific notification priority by ID
+func (m *InMemory) RemoveNotificationPriorityByID(id int64) error {
+	return fmt.Errorf("RemoveNotificationPriorityByID not implemented in InMemory storer")
+}
+
+// RemoveNotificationPriorityByName Remove a specific notification priority by name
+func (m *InMemory) RemoveNotificationPriorityByName(name string) error {
+	return fmt.Errorf("RemoveNotificationPriorityByName not implemented in InMemory storer")
 }

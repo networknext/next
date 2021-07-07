@@ -3483,7 +3483,7 @@ func (db *SQL) Notifications() []notifications.Notification {
 			Timestamp:    notification.Timestamp,
 			Title:        notification.Title,
 			Message:      notification.Message,
-			Type:         notifications.NotificationType(notification.Type),
+			Type:         db.NotificationTypeByID(notification.Type),
 			CustomerCode: notification.CustomerCode,
 			Public:       notification.Public,
 			Paid:         notification.Paid,
@@ -3537,7 +3537,7 @@ func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Noti
 			Timestamp:    notification.Timestamp,
 			Title:        notification.Title,
 			Message:      notification.Message,
-			Type:         notifications.NotificationType(notification.Type),
+			Type:         db.NotificationTypeByID(notification.ID),
 			CustomerCode: notification.CustomerCode,
 			Public:       notification.Public,
 			Paid:         notification.Paid,
@@ -3548,6 +3548,15 @@ func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Noti
 	}
 
 	return allNotifications
+}
+
+// NotificationByID Remove a specific notification by ID
+func (db *SQL) NotificationByID(id int64) notifications.Notification {
+	return notifications.Notification{}
+}
+
+func (db *SQL) AddNotification(notification notifications.Notification) error {
+	return nil
 }
 
 // UpdateNotification Update a specific notification
@@ -3676,4 +3685,74 @@ func (db *SQL) RemoveNotification(id int64) error {
 	}
 
 	return nil
+}
+
+// NotificationTypes returns a list of notification types
+func (db *SQL) NotificationTypes() []notifications.NotificationType {
+	return []notifications.NotificationType{}
+}
+
+// NotificationTypeByID Get a specific notification type by ID
+func (db *SQL) NotificationTypeByID(id int64) notifications.NotificationType {
+	return notifications.NotificationType{}
+}
+
+// NotificationTypeByName Remove a specific notification priority by name
+func (db *SQL) NotificationTypeByName(name string) notifications.NotificationType {
+	return notifications.NotificationType{}
+}
+
+// AddNotificationType Add a notification type to the database
+func (db *SQL) AddNotificationType(notificationType notifications.NotificationType) error {
+	return fmt.Errorf("AddNotificationType not implemented in SQL storer")
+}
+
+// UpdateNotificationType Update a specific notification type
+func (db *SQL) UpdateNotificationType(id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateNotificationType not implemented in SQL storer")
+}
+
+// RemoveNotificationTypeByID Remove a specific notification type
+func (db *SQL) RemoveNotificationTypeByID(id int64) error {
+	return fmt.Errorf("RemoveNotificationTypeByID not implemented in SQL storer")
+}
+
+// RemoveNotificationTypeByName Remove a specific notification type
+func (db *SQL) RemoveNotificationTypeByName(name string) error {
+	return fmt.Errorf("RemoveNotificationTypeByName not implemented in SQL storer")
+}
+
+// NotificationPriorities returns a list of priorities
+func (db *SQL) NotificationPriorities() []notifications.NotificationPriority {
+	return []notifications.NotificationPriority{}
+}
+
+// NotificationPriorityByID Remove a specific notification priority by ID
+func (db *SQL) NotificationPriorityByID(id int64) notifications.NotificationPriority {
+	return notifications.NotificationPriority{}
+}
+
+// NotificationPriorityByName Remove a specific notification priority by name
+func (db *SQL) NotificationPriorityByName(name string) notifications.NotificationPriority {
+	return notifications.NotificationPriority{}
+}
+
+// AddNotificationPriority Add a notification priority to the database
+func (db *SQL) AddNotificationPriority(priority notifications.NotificationPriority) error {
+	return fmt.Errorf("AddNotificationPriority not implemented in SQL storer")
+}
+
+// UpdateNotificationPriority Update a specific notification priority
+func (db *SQL) UpdateNotificationPriority(id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateNotificationPriority not implemented in SQL storer")
+}
+
+// RemoveNotificationPriorityByID Remove a specific notification priority by ID
+func (db *SQL) RemoveNotificationPriorityByID(id int64) error {
+	return fmt.Errorf("RemoveNotificationPriorityByID not implemented in SQL storer")
+}
+
+// RemoveNotificationPriorityByName Remove a specific notification priority by name
+func (db *SQL) RemoveNotificationPriorityByName(name string) error {
+	return fmt.Errorf("RemoveNotificationPriorityByName not implemented in SQL storer")
 }

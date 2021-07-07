@@ -183,9 +183,57 @@ type Storer interface {
 	// NotificationsByCustomer Get all notifications in the database
 	NotificationsByCustomer(customerCode string) []notifications.Notification
 
+	// NotificationByID Get a specific notification by ID
+	NotificationByID(id int64) notifications.Notification
+
+	// AddNotifications Add a notification to the database
+	AddNotification(notification notifications.Notification) error
+
 	// UpdateNotification Update a specific notification
 	UpdateNotification(id int64, field string, value interface{}) error
 
 	// RemoveNotification Remove a specific notification
 	RemoveNotification(id int64) error
+
+	// NotificationTypes returns a list of notification types
+	NotificationTypes() []notifications.NotificationType
+
+	// NotificationTypeByID returns a list of notification types
+	NotificationTypeByID(id int64) notifications.NotificationType
+
+	// NotificationTypeByName returns a list of notification types
+	NotificationTypeByName(name string) notifications.NotificationType
+
+	// AddNotificationType Add a notification type to the database
+	AddNotificationType(notificationType notifications.NotificationType) error
+
+	// UpdateNotificationType Update a specific notification type
+	UpdateNotificationType(id int64, field string, value interface{}) error
+
+	// RemoveNotificationTypeByID Remove a specific notification type
+	RemoveNotificationTypeByID(id int64) error
+
+	// RemoveNotificationTypeByName Remove a specific notification type
+	RemoveNotificationTypeByName(name string) error
+
+	// NotificationPriorities returns a list of priorities
+	NotificationPriorities() []notifications.NotificationPriority
+
+	// NotificationPriorityByID Get notification priority by ID
+	NotificationPriorityByID(id int64) notifications.NotificationPriority
+
+	// NotificationPriorityByName Get notification priority by name
+	NotificationPriorityByName(name string) notifications.NotificationPriority
+
+	// AddNotificationPriority Add a notification priority to the database
+	AddNotificationPriority(priority notifications.NotificationPriority) error
+
+	// UpdateNotificationPriority Update a specific notification priority
+	UpdateNotificationPriority(id int64, field string, value interface{}) error
+
+	// RemoveNotificationPriorityByID Remove a specific notification priority by ID
+	RemoveNotificationPriorityByID(id int64) error
+
+	// RemoveNotificationPriorityByName Remove a specific notification priority by name
+	RemoveNotificationPriorityByName(name string) error
 }

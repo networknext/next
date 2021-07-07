@@ -2538,12 +2538,12 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 
 	allNotifications := s.Storage.NotificationsByCustomer(companyCode)
 	for _, notification := range allNotifications {
-		switch notification.Type {
-		case notifications.NOTIFICATION_SYSTEM:
+		switch notification.Type.Name {
+		case "System":
 			systemNotification := notification.NewSystemNotification()
 			// TODO: figure out if anything else is needed here
 			reply.SystemNotifications = append(reply.SystemNotifications, systemNotification)
-		case notifications.NOTIFICATION_ANALYTICS:
+		case "Analytics":
 			analyticsNotification := notification.NewAnalyticsNotification()
 
 			// Unmarshal the data string to get the looker URL params
@@ -2585,7 +2585,7 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 
 			analyticsNotification.LookerURL = s.BuildLookerURL(urlOptions)
 			reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, analyticsNotification)
-		case notifications.NOTIFICATION_INVOICE:
+		case "Invoice":
 			invoiceNotification := notification.NewInvoiceNotification()
 			reply.InvoiceNotifications = append(reply.InvoiceNotifications, invoiceNotification)
 		default:
@@ -2636,7 +2636,10 @@ func (s *BuyersService) FetchReleaseNotes() error {
 		embedHTML = strings.ReplaceAll(embedHTML, "\\n", "")
 		embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
 
-		notification := notifications.NewReleaseNotesNotification()
+		notification := notifications.ReleaseNotesNotification{
+			Type:     s.Storage.NotificationTypeByName("ReleaseNotes"),
+			Priority: s.Storage.NotificationPriorityByName("Default"),
+		}
 		notification.Title = fmt.Sprintf("Service updates for the month of %s", list.GetDescription())
 		notification.EmbedHTML = embedHTML
 		notification.CSSURL = cssURL
