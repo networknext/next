@@ -127,9 +127,9 @@ func TestStatsDatabase(t *testing.T) {
 			statsdb.ProcessStats(&update)
 
 			assert.Equal(t, 2, statsEntry1.Index)
-			assert.Equal(t, float32(1.0), statsEntry1.RTT)
-			assert.Equal(t, float32(1.0), statsEntry1.Jitter)
-			assert.Equal(t, float32(1.0), statsEntry1.PacketLoss)
+			assert.Equal(t, float32(0.75), statsEntry1.RTT)
+			assert.Equal(t, float32(0.85), statsEntry1.Jitter)
+			assert.Equal(t, float32(0.95), statsEntry1.PacketLoss)
 		})
 	})
 

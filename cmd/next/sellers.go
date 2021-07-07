@@ -23,7 +23,7 @@ func sellers(env Environment) {
 		Name           string
 		ID             string
 		EgressPriceUSD string
-		Seller         string
+		Secret         string
 	}{}
 
 	for _, seller := range reply.Sellers {
@@ -31,12 +31,12 @@ func sellers(env Environment) {
 			Name           string
 			ID             string
 			EgressPriceUSD string
-			Seller         string
+			Secret         string
 		}{
 			Name:           seller.Name,
 			ID:             seller.ID,
 			EgressPriceUSD: fmt.Sprintf("$%02.2f", seller.EgressPriceNibblins.ToDollars()),
-			Seller:         fmt.Sprintf("%t", seller.Secret),
+			Secret:         fmt.Sprintf("%t", seller.Secret),
 		})
 	}
 
