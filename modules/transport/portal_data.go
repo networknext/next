@@ -26,10 +26,10 @@ const (
 	MaxSessionCountDataSize    = 48
 	MaxRelayHopSize            = 128
 	MaxNearRelayPortalDataSize = 256
-	MaxSessionMetaSize         = 8192
+	MaxSessionMetaSize         = 6144
 	MaxSessionSliceSize        = 256
 	MaxSessionMapPointSize     = 64
-	MaxSessionPortalDataSize   = MaxSessionMetaSize + MaxSessionSliceSize + MaxSessionMapPointSize + 16
+	MaxSessionPortalDataSize   = MaxSessionMetaSize + MaxSessionSliceSize + MaxSessionMapPointSize + 128
 
 	MaxSessionIDLength  = 1024
 	MaxAddressLength    = 256
@@ -242,6 +242,7 @@ func (s *SessionPortalData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint32(&s.Version)
 
 	var err error
+	var metaSize uint64
 	var meta []byte
 
 	if stream.IsWriting() {
@@ -249,16 +250,28 @@ func (s *SessionPortalData) Serialize(stream encoding.Stream) error {
 		if err != nil {
 			return err
 		}
+
+		metaSize = s.Meta.Size()
 	}
 
-	stream.SerializeBytes(meta)
-	if stream.IsReading() {
-		err = ReadSessionMeta(&s.Meta, meta)
-		if err != nil {
-			return err
+	stream.SerializeUint64(&metaSize)
+	if metaSize > 0 {
+		if stream.IsReading() {
+			meta = make([]byte, MaxSessionMetaSize)
+		}
+
+		meta = meta[:metaSize]
+		stream.SerializeBytes(meta)
+		
+		if stream.IsReading() {
+			err = ReadSessionMeta(&s.Meta, meta)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
+	var sliceSize uint64
 	var slice []byte
 
 	if stream.IsWriting() {
@@ -266,15 +279,27 @@ func (s *SessionPortalData) Serialize(stream encoding.Stream) error {
 		if err != nil {
 			return err
 		}
+
+		sliceSize = s.Slice.Size()
 	}
-	stream.SerializeBytes(slice)
-	if stream.IsReading() {
-		err = ReadSessionSlice(&s.Slice, slice)
-		if err != nil {
-			return err
+
+	stream.SerializeUint64(&sliceSize)
+	if sliceSize > 0 {
+		if stream.IsReading() {
+			slice = make([]byte, sliceSize)
+		}
+
+		stream.SerializeBytes(slice)
+		
+		if stream.IsReading() {
+			err = ReadSessionSlice(&s.Slice, slice)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
+	var pointSize uint64
 	var point []byte
 
 	if stream.IsWriting() {
@@ -282,12 +307,23 @@ func (s *SessionPortalData) Serialize(stream encoding.Stream) error {
 		if err != nil {
 			return err
 		}
+
+		pointSize = s.Point.Size()
 	}
-	stream.SerializeBytes(point)
-	if stream.IsReading() {
-		err = ReadSessionMapPoint(&s.Point, point)
-		if err != nil {
-			return err
+
+	stream.SerializeUint64(&pointSize)
+	if pointSize > 0 {
+		if stream.IsReading() {
+			point = make([]byte, pointSize)
+		}
+
+		stream.SerializeBytes(point)
+		
+		if stream.IsReading() {
+			err = ReadSessionMapPoint(&s.Point, point)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -746,26 +782,34 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 	stream.SerializeFloat64(&s.DirectRTT)
 	stream.SerializeFloat64(&s.DeltaRTT)
 
-	if stream.IsReading() {
-		s.Location = routing.Location{}
-	}
-	location := &s.Location
+	var err error
+	var locSize uint64
+	var loc []byte
 
-	stream.SerializeString(&location.Continent, routing.MaxContinentLength)
-	stream.SerializeString(&location.Country, routing.MaxCountryLength)
-	stream.SerializeString(&location.CountryCode, routing.MaxCountryCodeLength)
-	stream.SerializeString(&location.Region, routing.MaxRegionLength)
-	stream.SerializeString(&location.City, routing.MaxCityLength)
-	stream.SerializeFloat32(&location.Latitude)
-	stream.SerializeFloat32(&location.Longitude)
-	stream.SerializeString(&location.ISP, routing.MaxISPNameLength)
-	var asn uint64
 	if stream.IsWriting() {
-		asn = uint64(location.ASN)
+		loc, err = routing.WriteLocation(&s.Location)
+		if err != nil {
+			return err
+		}
+
+		locSize = s.Location.Size()
 	}
-	stream.SerializeUint64(&asn)
-	if stream.IsReading() {
-		location.ASN = int(asn)
+
+	stream.SerializeUint64(&locSize)
+	if locSize > 0 {
+		if stream.IsReading() {
+			loc = make([]byte, routing.MaxLocationSize)
+		}
+
+		loc = loc[:locSize]
+		stream.SerializeBytes(loc)
+		
+		if stream.IsReading() {
+			err = routing.ReadLocation(&s.Location, loc)
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	stream.SerializeString(&s.ClientAddr, MaxAddressLength)
