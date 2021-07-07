@@ -33,7 +33,7 @@ const (
 
 	MaxSessionIDLength  = 1024
 	MaxAddressLength    = 256
-	MaxSDKVersionLength = 11
+	MaxSDKVersionLength = 12
 )
 
 type SessionCountData struct {
@@ -925,6 +925,12 @@ func WriteSessionMeta(entry *SessionMeta) ([]byte, error) {
 }
 
 func ReadSessionMeta(entry *SessionMeta, data []byte) error {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionMeta packet entry read: %v\n", r)
+		}
+	}()
+
 	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
 		return err
 	}
