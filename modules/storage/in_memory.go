@@ -620,8 +620,8 @@ func (m *InMemory) NotificationsByCustomer(customerCode string) []notifications.
 }
 
 // NotificationByID Remove a specific notification by ID
-func (m *InMemory) NotificationByID(id int64) notifications.Notification {
-	return notifications.Notification{}
+func (m *InMemory) NotificationByID(id int64) (notifications.Notification, error) {
+	return notifications.Notification{}, fmt.Errorf("NotificationByID not implemented in InMemory storer")
 }
 
 // AddNotification Add a notification type to the database
@@ -645,13 +645,13 @@ func (m *InMemory) NotificationTypes() []notifications.NotificationType {
 }
 
 // NotificationTypeByID Get a specific notification type by ID
-func (m *InMemory) NotificationTypeByID(id int64) notifications.NotificationType {
-	return notifications.NotificationType{}
+func (m *InMemory) NotificationTypeByID(id int64) (notifications.NotificationType, error) {
+	return notifications.NotificationType{}, fmt.Errorf("NotificationTypeByID not implemented in InMemory storer")
 }
 
 // NotificationTypeByName Remove a specific notification priority by name
-func (m *InMemory) NotificationTypeByName(name string) notifications.NotificationType {
-	return notifications.NotificationType{}
+func (m *InMemory) NotificationTypeByName(name string) (notifications.NotificationType, error) {
+	return notifications.NotificationType{}, fmt.Errorf("NotificationTypeByName not implemented in InMemory storer")
 }
 
 // AddNotificationType Add a notification type to the database
@@ -680,13 +680,13 @@ func (m *InMemory) NotificationPriorities() []notifications.NotificationPriority
 }
 
 // NotificationPriorityByID Remove a specific notification priority by ID
-func (m *InMemory) NotificationPriorityByID(id int64) notifications.NotificationPriority {
-	return notifications.NotificationPriority{}
+func (m *InMemory) NotificationPriorityByID(id int64) (notifications.NotificationPriority, error) {
+	return notifications.NotificationPriority{}, fmt.Errorf("NotificationPriorityByID not implemented in InMemory storer")
 }
 
 // NotificationPriorityByName Remove a specific notification priority by name
-func (m *InMemory) NotificationPriorityByName(name string) notifications.NotificationPriority {
-	return notifications.NotificationPriority{}
+func (m *InMemory) NotificationPriorityByName(name string) (notifications.NotificationPriority, error) {
+	return notifications.NotificationPriority{}, fmt.Errorf("NotificationPriorityByName not implemented in InMemory storer")
 }
 
 // AddNotificationPriority Add a notification priority to the database

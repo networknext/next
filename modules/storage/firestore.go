@@ -2398,8 +2398,8 @@ func (fs *Firestore) NotificationsByCustomer(customerCode string) []notification
 }
 
 // NotificationByID Remove a specific notification by ID
-func (fs *Firestore) NotificationByID(id int64) notifications.Notification {
-	return notifications.Notification{}
+func (fs *Firestore) NotificationByID(id int64) (notifications.Notification, error) {
+	return notifications.Notification{}, fmt.Errorf("NotificationByID not implemented in Firestore storer")
 }
 
 // AddNotifications Add a notification to the database
@@ -2423,13 +2423,13 @@ func (fs *Firestore) NotificationTypes() []notifications.NotificationType {
 }
 
 // NotificationTypeByID Get a specific notification type by ID
-func (fs *Firestore) NotificationTypeByID(id int64) notifications.NotificationType {
-	return notifications.NotificationType{}
+func (fs *Firestore) NotificationTypeByID(id int64) (notifications.NotificationType, error) {
+	return notifications.NotificationType{}, fmt.Errorf("NotificationTypeByID not implemented in Firestore storer")
 }
 
 // NotificationTypeByName Remove a specific notification priority by name
-func (fs *Firestore) NotificationTypeByName(name string) notifications.NotificationType {
-	return notifications.NotificationType{}
+func (fs *Firestore) NotificationTypeByName(name string) (notifications.NotificationType, error) {
+	return notifications.NotificationType{}, fmt.Errorf("NotificationTypeByName not implemented in Firestore storer")
 }
 
 // AddNotificationType Add a notification type to the database
@@ -2458,13 +2458,13 @@ func (fs *Firestore) NotificationPriorities() []notifications.NotificationPriori
 }
 
 // NotificationPriorityByID Remove a specific notification priority by ID
-func (fs *Firestore) NotificationPriorityByID(id int64) notifications.NotificationPriority {
-	return notifications.NotificationPriority{}
+func (fs *Firestore) NotificationPriorityByID(id int64) (notifications.NotificationPriority, error) {
+	return notifications.NotificationPriority{}, fmt.Errorf("NotificationPriorityByID not implemented in Firestore storer")
 }
 
 // NotificationPriorityByName Remove a specific notification priority by name
-func (fs *Firestore) NotificationPriorityByName(name string) notifications.NotificationPriority {
-	return notifications.NotificationPriority{}
+func (fs *Firestore) NotificationPriorityByName(name string) (notifications.NotificationPriority, error) {
+	return notifications.NotificationPriority{}, fmt.Errorf("NotificationPriorityByName not implemented in Firestore storer")
 }
 
 // AddNotificationPriority Add a notification priority to the database

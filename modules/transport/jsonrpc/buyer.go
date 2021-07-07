@@ -2636,9 +2636,19 @@ func (s *BuyersService) FetchReleaseNotes() error {
 		embedHTML = strings.ReplaceAll(embedHTML, "\\n", "")
 		embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
 
+		notificationType, err := s.Storage.NotificationTypeByName("ReleaseNotes")
+		if err != nil {
+			return nil
+		}
+
+		notificationPriority, err := s.Storage.NotificationPriorityByName("Default")
+		if err != nil {
+			return nil
+		}
+
 		notification := notifications.ReleaseNotesNotification{
-			Type:     s.Storage.NotificationTypeByName("ReleaseNotes"),
-			Priority: s.Storage.NotificationPriorityByName("Default"),
+			Type:     notificationType,
+			Priority: notificationPriority,
 		}
 		notification.Title = fmt.Sprintf("Service updates for the month of %s", list.GetDescription())
 		notification.EmbedHTML = embedHTML

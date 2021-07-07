@@ -184,7 +184,7 @@ type Storer interface {
 	NotificationsByCustomer(customerCode string) []notifications.Notification
 
 	// NotificationByID Get a specific notification by ID
-	NotificationByID(id int64) notifications.Notification
+	NotificationByID(id int64) (notifications.Notification, error)
 
 	// AddNotifications Add a notification to the database
 	AddNotification(notification notifications.Notification) error
@@ -199,10 +199,10 @@ type Storer interface {
 	NotificationTypes() []notifications.NotificationType
 
 	// NotificationTypeByID returns a list of notification types
-	NotificationTypeByID(id int64) notifications.NotificationType
+	NotificationTypeByID(id int64) (notifications.NotificationType, error)
 
 	// NotificationTypeByName returns a list of notification types
-	NotificationTypeByName(name string) notifications.NotificationType
+	NotificationTypeByName(name string) (notifications.NotificationType, error)
 
 	// AddNotificationType Add a notification type to the database
 	AddNotificationType(notificationType notifications.NotificationType) error
@@ -220,10 +220,10 @@ type Storer interface {
 	NotificationPriorities() []notifications.NotificationPriority
 
 	// NotificationPriorityByID Get notification priority by ID
-	NotificationPriorityByID(id int64) notifications.NotificationPriority
+	NotificationPriorityByID(id int64) (notifications.NotificationPriority, error)
 
 	// NotificationPriorityByName Get notification priority by name
-	NotificationPriorityByName(name string) notifications.NotificationPriority
+	NotificationPriorityByName(name string) (notifications.NotificationPriority, error)
 
 	// AddNotificationPriority Add a notification priority to the database
 	AddNotificationPriority(priority notifications.NotificationPriority) error
