@@ -1,7 +1,6 @@
 package transport_test
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -167,21 +166,21 @@ func TestNearRelayPortalData_Serialize(t *testing.T) {
 	})
 }
 
-func testLocation() routing.Location{
+func testLocation() routing.Location {
 	// Seed randomness
 	rand.Seed(time.Now().UnixNano())
 
 	return routing.Location{
-			Continent:   generateRandomStringSequence(rand.Intn(routing.MaxContinentLength - 1)),
-			Country:     generateRandomStringSequence(rand.Intn(routing.MaxCountryLength - 1)),
-			CountryCode: generateRandomStringSequence(rand.Intn(routing.MaxCountryCodeLength - 1)),
-			Region:      generateRandomStringSequence(rand.Intn(routing.MaxRegionLength - 1)),
-			City:        generateRandomStringSequence(rand.Intn(routing.MaxCityLength - 1)),
-			Latitude:    rand.Float32(),
-			Longitude:   rand.Float32(),
-			ISP:         generateRandomStringSequence(rand.Intn(routing.MaxISPNameLength - 1)),
-			ASN:         rand.Int(),
-		}
+		Continent:   generateRandomStringSequence(rand.Intn(routing.MaxContinentLength - 1)),
+		Country:     generateRandomStringSequence(rand.Intn(routing.MaxCountryLength - 1)),
+		CountryCode: generateRandomStringSequence(rand.Intn(routing.MaxCountryCodeLength - 1)),
+		Region:      generateRandomStringSequence(rand.Intn(routing.MaxRegionLength - 1)),
+		City:        generateRandomStringSequence(rand.Intn(routing.MaxCityLength - 1)),
+		Latitude:    rand.Float32(),
+		Longitude:   rand.Float32(),
+		ISP:         generateRandomStringSequence(rand.Intn(routing.MaxISPNameLength - 1)),
+		ASN:         rand.Int(),
+	}
 }
 
 func testSessionMeta() transport.SessionMeta {
@@ -208,15 +207,15 @@ func testSessionMeta() transport.SessionMeta {
 		NextRTT:         rand.Float64(),
 		DirectRTT:       rand.Float64(),
 		DeltaRTT:        rand.Float64(),
-		Location: 		 testLocation(),
-		ClientAddr:   generateRandomStringSequence(rand.Intn(transport.MaxAddressLength - 1)),
-		ServerAddr:   generateRandomStringSequence(rand.Intn(transport.MaxAddressLength - 1)),
-		Hops:         hops,
-		SDK:          generateRandomStringSequence(rand.Intn(transport.MaxSDKVersionLength - 1)),
-		Connection:   uint8(rand.Intn(256)),
-		NearbyRelays: nearRelays,
-		Platform:     uint8(rand.Intn(256)),
-		BuyerID:      rand.Uint64(),
+		Location:        testLocation(),
+		ClientAddr:      generateRandomStringSequence(rand.Intn(transport.MaxAddressLength - 1)),
+		ServerAddr:      generateRandomStringSequence(rand.Intn(transport.MaxAddressLength - 1)),
+		Hops:            hops,
+		SDK:             generateRandomStringSequence(rand.Intn(transport.MaxSDKVersionLength - 1)),
+		Connection:      uint8(rand.Intn(256)),
+		NearbyRelays:    nearRelays,
+		Platform:        uint8(rand.Intn(256)),
+		BuyerID:         rand.Uint64(),
 	}
 
 	// Zero out unused Location fields
@@ -499,7 +498,6 @@ func TestSessionPortalData_Serialize(t *testing.T) {
 		err = transport.ReadSessionPortalData(&readPortalData, data)
 
 		assert.NoError(t, err)
-		// assert.Equal(t, portalData, readPortalData)
-		fmt.Printf("%+v", data)
+		assert.Equal(t, portalData, readPortalData)
 	})
 }

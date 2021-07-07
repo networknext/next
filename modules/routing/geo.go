@@ -26,7 +26,6 @@ const (
 	MaxISPNameLength     = 64
 
 	MaxLocationSize = 128
-
 )
 
 // IPLocator defines anything that returns a routing.Location given an net.IP
@@ -145,11 +144,11 @@ func (l *Location) Serialize(stream encoding.Stream) error {
 
 	stream.SerializeString(&l.ISP, MaxISPNameLength)
 
-	var asn int32
+	var asn uint64
 	if stream.IsWriting() {
-		asn = int32(l.ASN)
+		asn = uint64(l.ASN)
 	}
-	stream.SerializeInteger(&asn, math.MinInt32, math.MaxInt32)
+	stream.SerializeUint64(&asn)
 	if stream.IsReading() {
 		l.ASN = int(asn)
 	}

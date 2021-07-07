@@ -262,7 +262,7 @@ func (s *SessionPortalData) Serialize(stream encoding.Stream) error {
 
 		meta = meta[:metaSize]
 		stream.SerializeBytes(meta)
-		
+
 		if stream.IsReading() {
 			err = ReadSessionMeta(&s.Meta, meta)
 			if err != nil {
@@ -286,11 +286,12 @@ func (s *SessionPortalData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sliceSize)
 	if sliceSize > 0 {
 		if stream.IsReading() {
-			slice = make([]byte, sliceSize)
+			slice = make([]byte, MaxSessionSliceSize)
 		}
 
+		slice = slice[:sliceSize]
 		stream.SerializeBytes(slice)
-		
+
 		if stream.IsReading() {
 			err = ReadSessionSlice(&s.Slice, slice)
 			if err != nil {
@@ -314,11 +315,12 @@ func (s *SessionPortalData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&pointSize)
 	if pointSize > 0 {
 		if stream.IsReading() {
-			point = make([]byte, pointSize)
+			point = make([]byte, MaxSessionMapPointSize)
 		}
 
+		point = point[:pointSize]
 		stream.SerializeBytes(point)
-		
+
 		if stream.IsReading() {
 			err = ReadSessionMapPoint(&s.Point, point)
 			if err != nil {
@@ -803,7 +805,7 @@ func (s *SessionMeta) Serialize(stream encoding.Stream) error {
 
 		loc = loc[:locSize]
 		stream.SerializeBytes(loc)
-		
+
 		if stream.IsReading() {
 			err = routing.ReadLocation(&s.Location, loc)
 			if err != nil {
