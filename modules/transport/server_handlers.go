@@ -1,10 +1,12 @@
 package transport
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/networknext/backend/modules/billing"
@@ -156,7 +158,21 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metri
 
 // ----------------------------------------------------------------------------
 
-func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, PostSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerTrackerHandlerFunc(serverTracker *storage.ServerTracker) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		w.Header().Set("Content-Type", "application/json")
+
+		serverTracker.TrackerMutex.RLock()
+		defer serverTracker.TrackerMutex.RUnlock()
+		json.NewEncoder(w).Encode(serverTracker.Tracker)
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, PostSessionHandler *PostSessionHandler, ServerTracker *storage.ServerTracker, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
@@ -221,6 +237,9 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Pos
 			NumSessions: packet.NumSessions,
 		}
 		PostSessionHandler.SendPortalCounts(countData)
+
+		// Track which servers are sending updates
+		ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress)
 
 		if !datacenterExists(database, packet.DatacenterID) {
 			core.Debug("datacenter does not exist %x", packet.DatacenterID)
