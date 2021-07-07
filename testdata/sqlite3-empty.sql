@@ -158,12 +158,12 @@ create table datacenter_maps (
 
 create table notification_types (
   id integer primary key autoincrement,
-  name text not null
+  priority_type text not null
 );
 
 create table notification_priorities (
   id integer primary key autoincrement,
-  name text not null,
+  priority_name text not null,
   color integer not null
 );
 
@@ -171,13 +171,14 @@ create table notifications (
   id integer primary key autoincrement,
   creation_date date not null,
   author text not null,
-  message text not null,
+  card_title text not null,
+  card_body text not null,
   type_id integer not null,
   customer_id integer not null,
   priority_id integer not null,
   public boolean not null default false,
   paid boolean not null default false,
-  data text not null,
+  json_string text not null,
   constraint fk_customer_id foreign key (customer_id) references customers(id),
   constraint fk_notification_type_id foreign key (type_id) references notification_types(id),
   constraint fk_notification_priority_id foreign key (priority_id) references notification_priorities(id)
