@@ -284,6 +284,10 @@ func (fs *Firestore) CustomerWithName(name string) (routing.Customer, error) {
 	return routing.Customer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: name}
 }
 
+func (fs *Firestore) CustomerIDToCode(id int64) (string, error) {
+	return "", fmt.Errorf("CustomerIDToCode not implemented in Firestore storer")
+}
+
 func (fs *Firestore) AddCustomer(ctx context.Context, c routing.Customer) error {
 	fs.customerMutex.RLock()
 	_, ok := fs.customers[c.Code]

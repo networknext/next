@@ -199,6 +199,10 @@ func (m *InMemory) CustomerWithName(name string) (routing.Customer, error) {
 	return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: name}
 }
 
+func (m *InMemory) CustomerIDToCode(id int64) (string, error) {
+	return "", fmt.Errorf("CustomerIDToCode not implemented in InMemory storer")
+}
+
 func (m *InMemory) AddCustomer(ctx context.Context, customer routing.Customer) error {
 	for _, c := range m.localCustomers {
 		if c.Code == customer.Code {

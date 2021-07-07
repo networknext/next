@@ -172,6 +172,10 @@ func (db *SQL) Customers() []routing.Customer {
 	return customers
 }
 
+func (db *SQL) CustomerIDToCode(id int64) (string, error) {
+	return "", nil
+}
+
 type sqlCustomer struct {
 	ID                     int64
 	Name                   string
@@ -3432,16 +3436,16 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 }
 
 type sqlNotification struct {
-	ID           int64
-	Timestamp    time.Time
-	Author       string
-	Title        string
-	Message      string
-	Type         int64
-	CustomerCode string
-	Public       bool
-	Paid         bool
-	Data         string
+	ID         int64
+	Timestamp  time.Time
+	Author     string
+	Title      string
+	Message    string
+	Type       int64
+	CustomerID int64
+	Public     bool
+	Paid       bool
+	Data       string
 }
 
 // Notifications returns all notifications in the database
@@ -3453,7 +3457,7 @@ func (db *SQL) Notifications() []notifications.Notification {
 
 	sql.Write([]byte("select id, timestamp, "))
 	sql.Write([]byte("title, message, type, "))
-	sql.Write([]byte("customer_code, public, paid, "))
+	sql.Write([]byte("customer_id, public, paid, "))
 	sql.Write([]byte("data from notifications"))
 
 	rows, err := db.Client.QueryContext(context.Background(), sql.String())
@@ -3470,7 +3474,7 @@ func (db *SQL) Notifications() []notifications.Notification {
 			&notification.Title,
 			&notification.Message,
 			&notification.Type,
-			&notification.CustomerCode,
+			&notification.CustomerID,
 			&notification.Public,
 			&notification.Paid,
 			&notification.Data,
@@ -3482,6 +3486,11 @@ func (db *SQL) Notifications() []notifications.Notification {
 
 		notificationType, _ := db.NotificationTypeByID(notification.Type)
 
+		customerCode, err := db.CustomerIDToCode(notification.CustomerID)
+		if err != nil {
+			continue
+		}
+
 		n := notifications.Notification{
 			ID:           notification.ID,
 			Timestamp:    notification.Timestamp,
@@ -3489,7 +3498,7 @@ func (db *SQL) Notifications() []notifications.Notification {
 			Title:        notification.Title,
 			Message:      notification.Message,
 			Type:         notificationType,
-			CustomerCode: notification.CustomerCode,
+			CustomerCode: customerCode,
 			Public:       notification.Public,
 			Paid:         notification.Paid,
 			Data:         notification.Data,
@@ -3509,10 +3518,12 @@ func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Noti
 
 	allNotifications := []notifications.Notification{}
 
+	// TODO - add a sub select here to get customer code rather customer ID
+
 	sql.Write([]byte("select id, timestamp, "))
 	sql.Write([]byte("title, message, type, "))
-	sql.Write([]byte("customer_code, public, paid, "))
-	sql.Write([]byte("data from notifications where customer_code = $1"))
+	sql.Write([]byte("customer_id, public, paid, "))
+	sql.Write([]byte("data from notifications where customer_id = $1"))
 
 	rows, err := db.Client.QueryContext(context.Background(), sql.String(), customerCode)
 	if err != nil {
@@ -3528,7 +3539,7 @@ func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Noti
 			&notification.Title,
 			&notification.Message,
 			&notification.Type,
-			&notification.CustomerCode,
+			&notification.CustomerID,
 			&notification.Public,
 			&notification.Paid,
 			&notification.Data,
@@ -3540,6 +3551,11 @@ func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Noti
 
 		notificationType, _ := db.NotificationTypeByID(notification.ID)
 
+		/* 		customer, err := db.CustomerIDToCode(notification.Customer)
+		   		if err != nil {
+		   			continue
+		   		} */
+
 		n := notifications.Notification{
 			ID:           notification.ID,
 			Timestamp:    notification.Timestamp,
@@ -3547,7 +3563,7 @@ func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Noti
 			Title:        notification.Title,
 			Message:      notification.Message,
 			Type:         notificationType,
-			CustomerCode: notification.CustomerCode,
+			CustomerCode: customerCode,
 			Public:       notification.Public,
 			Paid:         notification.Paid,
 			Data:         notification.Data,
@@ -3566,7 +3582,7 @@ func (db *SQL) NotificationByID(id int64) (notifications.Notification, error) {
 
 	sqlQuery.Write([]byte("select id, timestamp, "))
 	sqlQuery.Write([]byte("title, message, type, "))
-	sqlQuery.Write([]byte("customer_code, public, paid, "))
+	sqlQuery.Write([]byte("customer_id, public, paid, "))
 	sqlQuery.Write([]byte("data from notifications where id = $1"))
 
 	row := db.Client.QueryRow(sqlQuery.String(), id)
@@ -3576,7 +3592,7 @@ func (db *SQL) NotificationByID(id int64) (notifications.Notification, error) {
 		&notification.Title,
 		&notification.Message,
 		&notification.Type,
-		&notification.CustomerCode,
+		&notification.CustomerID,
 		&notification.Public,
 		&notification.Paid,
 		&notification.Data,
@@ -3587,6 +3603,11 @@ func (db *SQL) NotificationByID(id int64) (notifications.Notification, error) {
 	case nil:
 		notificiationType, _ := db.NotificationTypeByID(notification.Type)
 
+		customerCode, err := db.CustomerIDToCode(notification.CustomerID)
+		if err != nil {
+			return notifications.Notification{}, err
+		}
+
 		n := notifications.Notification{
 			ID:           notification.ID,
 			Timestamp:    notification.Timestamp,
@@ -3594,7 +3615,7 @@ func (db *SQL) NotificationByID(id int64) (notifications.Notification, error) {
 			Title:        notification.Title,
 			Message:      notification.Message,
 			Type:         notificiationType,
-			CustomerCode: notification.CustomerCode,
+			CustomerCode: customerCode,
 			Public:       notification.Public,
 			Paid:         notification.Paid,
 			Data:         notification.Data,
@@ -3611,7 +3632,7 @@ func (db *SQL) AddNotification(notification notifications.Notification) error {
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into notifications ("))
-	sql.Write([]byte("timestamp, author, title, message, type, customer_code, public, paid, data"))
+	sql.Write([]byte("timestamp, author, title, message, type, customer_id, public, paid, data"))
 	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9)"))
 
 	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
@@ -3688,7 +3709,7 @@ func (db *SQL) UpdateNotification(id int64, field string, value interface{}) err
 		if !ok {
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
-		updateSQL.Write([]byte("update notifications set customer_code=$1 where id="))
+		updateSQL.Write([]byte("update notifications set customer_id=$1 where id="))
 		updateSQL.Write([]byte("(select id from notifications where id = $2)"))
 		args = append(args, customerCode, id)
 	case "Type":

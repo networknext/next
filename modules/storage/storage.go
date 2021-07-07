@@ -14,6 +14,8 @@ type Storer interface {
 
 	Customers() []routing.Customer
 
+	CustomerIDToCode(id int64) (string, error)
+
 	AddCustomer(ctx context.Context, customer routing.Customer) error
 
 	RemoveCustomer(ctx context.Context, code string) error
