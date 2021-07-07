@@ -263,8 +263,12 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 		switch messageInfo.Topic {
 		case pubsub.TopicPortalCruncherSessionCounts:
 			var sessionCountData transport.SessionCountData
-			if err := sessionCountData.UnmarshalBinary(messageInfo.Message); err != nil {
-				return &ErrUnmarshalMessage{err: err}
+			if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
+
+				sessionCountData = transport.SessionCountData{}
+				if err = sessionCountData.UnmarshalBinary(messageInfo.Message); err != nil {
+					return &ErrUnmarshalMessage{err: err}
+				}
 			}
 
 			select {
@@ -275,8 +279,12 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 
 		case pubsub.TopicPortalCruncherSessionData:
 			var sessionPortalData transport.SessionPortalData
-			if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
-				return &ErrUnmarshalMessage{err: err}
+			if err := transport.ReadSessionPortalData(&sessionPortalData, messageInfo.Message); err != nil {
+
+				sessionPortalData = transport.SessionPortalData{}
+				if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
+					return &ErrUnmarshalMessage{err: err}
+				}
 			}
 
 			select {
@@ -660,11 +668,11 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortal
 		// 2) Slice
 
 		// Create byte slices of the session data
-		metaBinary, err := meta.MarshalBinary()
+		metaBinary, err := transport.WriteSessionMeta(meta)
 		if err != nil {
 			return err
 		}
-		sliceBinary, err := slice.MarshalBinary()
+		sliceBinary, err := transport.WriteSessionSlice(slice)
 		if err != nil {
 			return err
 		}
