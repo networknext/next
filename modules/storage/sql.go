@@ -173,7 +173,23 @@ func (db *SQL) Customers() []routing.Customer {
 }
 
 func (db *SQL) CustomerIDToCode(id int64) (string, error) {
-	return "", nil
+	var querySQL bytes.Buffer
+	var customer sqlCustomer
+
+	querySQL.Write([]byte("select customer_code from customers where id = $1"))
+
+	row := db.Client.QueryRow(querySQL.String(), id)
+	err := row.Scan(&customer.CustomerCode)
+	switch err {
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "CustomerIDToCode() no rows were returned!")
+		return "", &DoesNotExistError{resourceType: "customer id", resourceRef: id}
+	case nil:
+		return customer.CustomerCode, nil
+	default:
+		level.Error(db.Logger).Log("during", "CustomerIDToCode() QueryRow returned an error: %v", err)
+		return "", err
+	}
 }
 
 type sqlCustomer struct {
@@ -3443,6 +3459,7 @@ type sqlNotification struct {
 	Message    string
 	Type       int64
 	CustomerID int64
+	Priority   int64
 	Public     bool
 	Paid       bool
 	Data       string
@@ -3475,6 +3492,7 @@ func (db *SQL) Notifications() []notifications.Notification {
 			&notification.Message,
 			&notification.Type,
 			&notification.CustomerID,
+			&notification.Priority,
 			&notification.Public,
 			&notification.Paid,
 			&notification.Data,
@@ -3485,11 +3503,8 @@ func (db *SQL) Notifications() []notifications.Notification {
 		}
 
 		notificationType, _ := db.NotificationTypeByID(notification.Type)
-
-		customerCode, err := db.CustomerIDToCode(notification.CustomerID)
-		if err != nil {
-			continue
-		}
+		notificationPriority, _ := db.NotificationPriorityByID(notification.Priority)
+		customerCode, _ := db.CustomerIDToCode(notification.CustomerID)
 
 		n := notifications.Notification{
 			ID:           notification.ID,
@@ -3499,6 +3514,7 @@ func (db *SQL) Notifications() []notifications.Notification {
 			Message:      notification.Message,
 			Type:         notificationType,
 			CustomerCode: customerCode,
+			Priority:     notificationPriority,
 			Public:       notification.Public,
 			Paid:         notification.Paid,
 			Data:         notification.Data,
@@ -3544,6 +3560,7 @@ func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Noti
 			&notification.Message,
 			&notification.Type,
 			&notification.CustomerID,
+			&notification.Priority,
 			&notification.Public,
 			&notification.Paid,
 			&notification.Data,
@@ -3553,7 +3570,8 @@ func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Noti
 			return allNotifications
 		}
 
-		notificationType, _ := db.NotificationTypeByID(notification.ID)
+		notificationType, _ := db.NotificationTypeByID(notification.Type)
+		notificationPriority, _ := db.NotificationPriorityByID(notification.Priority)
 
 		n := notifications.Notification{
 			ID:           notification.ID,
@@ -3563,6 +3581,7 @@ func (db *SQL) NotificationsByCustomer(customerCode string) []notifications.Noti
 			Message:      notification.Message,
 			Type:         notificationType,
 			CustomerCode: customerCode,
+			Priority:     notificationPriority,
 			Public:       notification.Public,
 			Paid:         notification.Paid,
 			Data:         notification.Data,
@@ -3592,6 +3611,7 @@ func (db *SQL) NotificationByID(id int64) (notifications.Notification, error) {
 		&notification.Message,
 		&notification.Type,
 		&notification.CustomerID,
+		&notification.Priority,
 		&notification.Public,
 		&notification.Paid,
 		&notification.Data,
@@ -3601,6 +3621,7 @@ func (db *SQL) NotificationByID(id int64) (notifications.Notification, error) {
 		return notifications.Notification{}, &DoesNotExistError{resourceType: "notification id", resourceRef: id}
 	case nil:
 		notificiationType, _ := db.NotificationTypeByID(notification.Type)
+		notificiationPriority, _ := db.NotificationPriorityByID(notification.Priority)
 
 		// TODO: this functionality needs to be a sub select
 		customerCode, err := db.CustomerIDToCode(notification.CustomerID)
@@ -3616,6 +3637,7 @@ func (db *SQL) NotificationByID(id int64) (notifications.Notification, error) {
 			Message:      notification.Message,
 			Type:         notificiationType,
 			CustomerCode: customerCode,
+			Priority:     notificiationPriority,
 			Public:       notification.Public,
 			Paid:         notification.Paid,
 			Data:         notification.Data,
@@ -4084,7 +4106,7 @@ func (db *SQL) NotificationPriorities() []notifications.NotificationPriority {
 
 	allNotificationPriorities := []notifications.NotificationPriority{}
 
-	sql.Write([]byte("select id, priority_name from notification_priorities"))
+	sql.Write([]byte("select id, priority_name, color from notification_priorities"))
 
 	rows, err := db.Client.QueryContext(context.Background(), sql.String())
 	if err != nil {
@@ -4121,7 +4143,7 @@ func (db *SQL) NotificationPriorityByID(id int64) (notifications.NotificationPri
 	var sqlQuery bytes.Buffer
 	var notificationPriority sqlNotificationPriority
 
-	sqlQuery.Write([]byte("select id, priority_name from notification_priorities where id = $1"))
+	sqlQuery.Write([]byte("select id, priority_name, color from notification_priorities where id = $1"))
 
 	row := db.Client.QueryRow(sqlQuery.String(), id)
 	err := row.Scan(&notificationPriority.ID,
@@ -4149,7 +4171,7 @@ func (db *SQL) NotificationPriorityByName(name string) (notifications.Notificati
 	var sqlQuery bytes.Buffer
 	var notificationPriority sqlNotificationPriority
 
-	sqlQuery.Write([]byte("select id, priority_name from notification_priorities where priority_name = $1"))
+	sqlQuery.Write([]byte("select id, priority_name, color from notification_priorities where priority_name = $1"))
 
 	row := db.Client.QueryRow(sqlQuery.String(), name)
 	err := row.Scan(&notificationPriority.ID,
@@ -4177,7 +4199,7 @@ func (db *SQL) AddNotificationPriority(priority notifications.NotificationPriori
 	var sql bytes.Buffer
 
 	// Add the buyer in remote storage
-	sql.Write([]byte("insert into notification_priorities (name, color) values ($1, $2)"))
+	sql.Write([]byte("insert into notification_priorities (priority_name, color) values ($1, $2)"))
 
 	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
 	if err != nil {
@@ -4222,7 +4244,7 @@ func (db *SQL) UpdateNotificationPriority(id int64, field string, value interfac
 		if !ok {
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
-		updateSQL.Write([]byte("update notification_priorities set name=$1 where id="))
+		updateSQL.Write([]byte("update notification_priorities set priority_name=$1 where id="))
 		updateSQL.Write([]byte("(select id from notification_priorities where id = $2)"))
 		args = append(args, name, id)
 	case "Color":
@@ -4267,7 +4289,7 @@ func (db *SQL) UpdateNotificationPriority(id int64, field string, value interfac
 func (db *SQL) RemoveNotificationPriorityByID(id int64) error {
 	var sql bytes.Buffer
 
-	sql.Write([]byte("delete from notification_priority where id = $1"))
+	sql.Write([]byte("delete from notification_priorities where id = $1"))
 
 	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
 	if err != nil {
@@ -4298,7 +4320,7 @@ func (db *SQL) RemoveNotificationPriorityByID(id int64) error {
 func (db *SQL) RemoveNotificationPriorityByName(name string) error {
 	var sql bytes.Buffer
 
-	sql.Write([]byte("delete from notification_priority where priority_name = $1"))
+	sql.Write([]byte("delete from notification_priorities where priority_name = $1"))
 
 	stmt, err := db.Client.PrepareContext(context.Background(), sql.String())
 	if err != nil {
