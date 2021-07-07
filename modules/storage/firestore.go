@@ -16,6 +16,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/notifications"
 	"google.golang.org/api/iterator"
 )
 
@@ -281,6 +282,10 @@ func (fs *Firestore) CustomerWithName(name string) (routing.Customer, error) {
 	}
 
 	return routing.Customer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: name}
+}
+
+func (fs *Firestore) CustomerIDToCode(id int64) (string, error) {
+	return "", fmt.Errorf("CustomerIDToCode not implemented in Firestore storer")
 }
 
 func (fs *Firestore) AddCustomer(ctx context.Context, c routing.Customer) error {
@@ -2384,4 +2389,104 @@ func (fs *Firestore) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaDa
 
 func (fs *Firestore) UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error {
 	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in Firestore storer")
+}
+
+// Notifications Get all notifications in the database
+func (fs *Firestore) Notifications() []notifications.Notification {
+	return []notifications.Notification{}
+}
+
+// NotificationsByCustomer Get all notifications in the database
+func (fs *Firestore) NotificationsByCustomer(customerCode string) []notifications.Notification {
+	return []notifications.Notification{}
+}
+
+// NotificationByID Remove a specific notification by ID
+func (fs *Firestore) NotificationByID(id int64) (notifications.Notification, error) {
+	return notifications.Notification{}, fmt.Errorf("NotificationByID not implemented in Firestore storer")
+}
+
+// AddNotifications Add a notification to the database
+func (fs *Firestore) AddNotification(notification notifications.Notification) error {
+	return fmt.Errorf("AddNotification not implemented in Firestore storer")
+}
+
+// UpdateNotification Update a specific notification
+func (fs *Firestore) UpdateNotification(id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateNotification not implemented in Firestore storer")
+}
+
+// RemoveNotification Remove a specific notification
+func (fs *Firestore) RemoveNotification(id int64) error {
+	return fmt.Errorf("RemoveNotification not implemented in Firestore storer")
+}
+
+// NotificationTypes returns a list of notification types
+func (fs *Firestore) NotificationTypes() []notifications.NotificationType {
+	return []notifications.NotificationType{}
+}
+
+// NotificationTypeByID Get a specific notification type by ID
+func (fs *Firestore) NotificationTypeByID(id int64) (notifications.NotificationType, error) {
+	return notifications.NotificationType{}, fmt.Errorf("NotificationTypeByID not implemented in Firestore storer")
+}
+
+// NotificationTypeByName Remove a specific notification priority by name
+func (fs *Firestore) NotificationTypeByName(name string) (notifications.NotificationType, error) {
+	return notifications.NotificationType{}, fmt.Errorf("NotificationTypeByName not implemented in Firestore storer")
+}
+
+// AddNotificationType Add a notification type to the database
+func (fs *Firestore) AddNotificationType(notificationType notifications.NotificationType) error {
+	return fmt.Errorf("AddNotificationType not implemented in Firestore storer")
+}
+
+// UpdateNotificationType Update a specific notification type
+func (fs *Firestore) UpdateNotificationType(id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateNotificationType not implemented in Firestore storer")
+}
+
+// RemoveNotificationTypeByID Remove a specific notification type
+func (fs *Firestore) RemoveNotificationTypeByID(id int64) error {
+	return fmt.Errorf("RemoveNotificationTypeByID not implemented in Firestore storer")
+}
+
+// RemoveNotificationTypeByName Remove a specific notification type
+func (fs *Firestore) RemoveNotificationTypeByName(name string) error {
+	return fmt.Errorf("RemoveNotificationTypeByName not implemented in Firestore storer")
+}
+
+// NotificationPriorities returns a list of priorities
+func (fs *Firestore) NotificationPriorities() []notifications.NotificationPriority {
+	return []notifications.NotificationPriority{}
+}
+
+// NotificationPriorityByID Remove a specific notification priority by ID
+func (fs *Firestore) NotificationPriorityByID(id int64) (notifications.NotificationPriority, error) {
+	return notifications.NotificationPriority{}, fmt.Errorf("NotificationPriorityByID not implemented in Firestore storer")
+}
+
+// NotificationPriorityByName Remove a specific notification priority by name
+func (fs *Firestore) NotificationPriorityByName(name string) (notifications.NotificationPriority, error) {
+	return notifications.NotificationPriority{}, fmt.Errorf("NotificationPriorityByName not implemented in Firestore storer")
+}
+
+// AddNotificationPriority Add a notification priority to the database
+func (fs *Firestore) AddNotificationPriority(priority notifications.NotificationPriority) error {
+	return fmt.Errorf("AddNotificationPriority not implemented in Firestore storer")
+}
+
+// UpdateNotificationPriority Update a specific notification priority
+func (fs *Firestore) UpdateNotificationPriority(id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateNotificationPriority not implemented in Firestore storer")
+}
+
+// RemoveNotificationPriorityByID Remove a specific notification priority by ID
+func (fs *Firestore) RemoveNotificationPriorityByID(id int64) error {
+	return fmt.Errorf("RemoveNotificationPriorityByID not implemented in Firestore storer")
+}
+
+// RemoveNotificationPriorityByName Remove a specific notification priority by name
+func (fs *Firestore) RemoveNotificationPriorityByName(name string) error {
+	return fmt.Errorf("RemoveNotificationPriorityByName not implemented in Firestore storer")
 }
