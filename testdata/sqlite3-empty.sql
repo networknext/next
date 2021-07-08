@@ -158,12 +158,12 @@ create table datacenter_maps (
 
 create table notification_types (
   id integer primary key autoincrement,
-  priority_type text not null
+  priority_type text not null unique
 );
 
 create table notification_priorities (
   id integer primary key autoincrement,
-  priority_name text not null,
+  priority_name text not null unique,
   color integer not null
 );
 

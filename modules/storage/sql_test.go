@@ -1715,6 +1715,13 @@ func TestNotifications(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("AddNotificationType - invalid !unique", func(t *testing.T) {
+		err := db.AddNotificationType(notifications.NotificationType{
+			Name: "Test Type",
+		})
+		assert.Error(t, err)
+	})
+
 	t.Run("NotificationTypeByName", func(t *testing.T) {
 		notificationType, err := db.NotificationTypeByName("Test Type")
 		assert.NoError(t, err)
@@ -1753,6 +1760,21 @@ func TestNotifications(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	err = db.AddNotificationType(notifications.NotificationType{
+		Name: "Test Type 2",
+	})
+	assert.NoError(t, err)
+
+	t.Run("UpdateNotificationType - !unique", func(t *testing.T) {
+		notificationType, err := db.NotificationTypeByName("Test Type")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Type", notificationType.Name)
+
+		err = db.UpdateNotificationType(notificationType.ID, "Name", "Test Type 2")
+		assert.Error(t, err)
+	})
+
 	t.Run("UpdateNotificationType", func(t *testing.T) {
 		notificationType, err := db.NotificationTypeByName("Test Type")
 		assert.NoError(t, err)
@@ -1775,6 +1797,14 @@ func TestNotifications(t *testing.T) {
 			Color: int64(4360181),
 		})
 		assert.NoError(t, err)
+	})
+
+	t.Run("AddNotificationPriority - invalid !unique", func(t *testing.T) {
+		err := db.AddNotificationPriority(notifications.NotificationPriority{
+			Name:  "Test Priority",
+			Color: int64(4360181),
+		})
+		assert.Error(t, err)
 	})
 
 	t.Run("NotificationPriorityByName", func(t *testing.T) {
@@ -1814,6 +1844,22 @@ func TestNotifications(t *testing.T) {
 		assert.Equal(t, "Test Priority", notificationPriority.Name)
 
 		err = db.UpdateNotificationPriority(notificationPriority.ID, "ID", 123)
+		assert.Error(t, err)
+	})
+
+	err = db.AddNotificationPriority(notifications.NotificationPriority{
+		Name:  "Test Priority 2",
+		Color: int64(4360181),
+	})
+	assert.NoError(t, err)
+
+	t.Run("UpdateNotificationPriority - !unique", func(t *testing.T) {
+		notificationPriority, err := db.NotificationPriorityByName("Test Priority")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Priority", notificationPriority.Name)
+
+		err = db.UpdateNotificationPriority(notificationPriority.ID, "Name", "Test Priority 2")
 		assert.Error(t, err)
 	})
 
