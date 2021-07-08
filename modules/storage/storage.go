@@ -6,12 +6,15 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/notifications"
 )
 
 type Storer interface {
 	Customer(code string) (routing.Customer, error)
 
 	Customers() []routing.Customer
+
+	CustomerIDToCode(id int64) (string, error)
 
 	AddCustomer(ctx context.Context, customer routing.Customer) error
 
@@ -174,5 +177,65 @@ type Storer interface {
 	GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error)
 
 	// UpdateDatabaseBinFileMetaData updates the specified field in an database_bin_meta table
-	UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error
+	UpdateDatabaseBinFileMetaData(ctx context.Context, meta routing.DatabaseBinFileMetaData) error
+
+	// Notifications Get all notifications in the database
+	Notifications() []notifications.Notification
+
+	// NotificationsByCustomer Get all notifications in the database
+	NotificationsByCustomer(customerCode string) []notifications.Notification
+
+	// NotificationByID Get a specific notification by ID
+	NotificationByID(id int64) (notifications.Notification, error)
+
+	// AddNotifications Add a notification to the database
+	AddNotification(notification notifications.Notification) error
+
+	// UpdateNotification Update a specific notification
+	UpdateNotification(id int64, field string, value interface{}) error
+
+	// RemoveNotification Remove a specific notification
+	RemoveNotification(id int64) error
+
+	// NotificationTypes returns a list of notification types
+	NotificationTypes() []notifications.NotificationType
+
+	// NotificationTypeByID returns a list of notification types
+	NotificationTypeByID(id int64) (notifications.NotificationType, error)
+
+	// NotificationTypeByName returns a list of notification types
+	NotificationTypeByName(name string) (notifications.NotificationType, error)
+
+	// AddNotificationType Add a notification type to the database
+	AddNotificationType(notificationType notifications.NotificationType) error
+
+	// UpdateNotificationType Update a specific notification type
+	UpdateNotificationType(id int64, field string, value interface{}) error
+
+	// RemoveNotificationTypeByID Remove a specific notification type
+	RemoveNotificationTypeByID(id int64) error
+
+	// RemoveNotificationTypeByName Remove a specific notification type
+	RemoveNotificationTypeByName(name string) error
+
+	// NotificationPriorities returns a list of priorities
+	NotificationPriorities() []notifications.NotificationPriority
+
+	// NotificationPriorityByID Get notification priority by ID
+	NotificationPriorityByID(id int64) (notifications.NotificationPriority, error)
+
+	// NotificationPriorityByName Get notification priority by name
+	NotificationPriorityByName(name string) (notifications.NotificationPriority, error)
+
+	// AddNotificationPriority Add a notification priority to the database
+	AddNotificationPriority(priority notifications.NotificationPriority) error
+
+	// UpdateNotificationPriority Update a specific notification priority
+	UpdateNotificationPriority(id int64, field string, value interface{}) error
+
+	// RemoveNotificationPriorityByID Remove a specific notification priority by ID
+	RemoveNotificationPriorityByID(id int64) error
+
+	// RemoveNotificationPriorityByName Remove a specific notification priority by name
+	RemoveNotificationPriorityByName(name string) error
 }
