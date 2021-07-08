@@ -16,6 +16,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/notifications"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -1693,4 +1694,675 @@ func TestDatabaseBinMetaData(t *testing.T) {
 
 	})
 
+}
+
+func TestNotifications(t *testing.T) {
+
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	t.Run("AddNotificationType", func(t *testing.T) {
+		err := db.AddNotificationType(notifications.NotificationType{
+			Name: "Test Type",
+		})
+		assert.NoError(t, err)
+	})
+
+	t.Run("AddNotificationType - invalid !unique", func(t *testing.T) {
+		err := db.AddNotificationType(notifications.NotificationType{
+			Name: "Test Type",
+		})
+		assert.Error(t, err)
+	})
+
+	t.Run("NotificationTypeByName", func(t *testing.T) {
+		notificationType, err := db.NotificationTypeByName("Test Type")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Type", notificationType.Name)
+	})
+
+	t.Run("NotificationTypeByID", func(t *testing.T) {
+		notificationType, err := db.NotificationTypeByName("Test Type")
+		assert.NoError(t, err)
+
+		notificationType2, err := db.NotificationTypeByID(notificationType.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, notificationType2.ID, notificationType.ID)
+		assert.Equal(t, notificationType2.Name, notificationType.Name)
+	})
+
+	t.Run("UpdateNotificationType - unknown field", func(t *testing.T) {
+		notificationType, err := db.NotificationTypeByName("Test Type")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Type", notificationType.Name)
+
+		err = db.UpdateNotificationType(notificationType.ID, "Unknown", "unknown fields are bad")
+		assert.Error(t, err)
+	})
+
+	t.Run("UpdateNotificationType - readonly field", func(t *testing.T) {
+		notificationType, err := db.NotificationTypeByName("Test Type")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Type", notificationType.Name)
+
+		err = db.UpdateNotificationType(notificationType.ID, "ID", 123)
+		assert.Error(t, err)
+	})
+
+	err = db.AddNotificationType(notifications.NotificationType{
+		Name: "Test Type 2",
+	})
+	assert.NoError(t, err)
+
+	t.Run("UpdateNotificationType - !unique", func(t *testing.T) {
+		notificationType, err := db.NotificationTypeByName("Test Type")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Type", notificationType.Name)
+
+		err = db.UpdateNotificationType(notificationType.ID, "Name", "Test Type 2")
+		assert.Error(t, err)
+	})
+
+	t.Run("UpdateNotificationType", func(t *testing.T) {
+		notificationType, err := db.NotificationTypeByName("Test Type")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Type", notificationType.Name)
+
+		err = db.UpdateNotificationType(notificationType.ID, "Name", "Test Type Renamed")
+		assert.NoError(t, err)
+
+		notificationType2, err := db.NotificationTypeByName("Test Type Renamed")
+		assert.NoError(t, err)
+
+		assert.Equal(t, notificationType.ID, notificationType2.ID)
+		assert.Equal(t, "Test Type Renamed", notificationType2.Name)
+	})
+
+	t.Run("AddNotificationPriority", func(t *testing.T) {
+		err := db.AddNotificationPriority(notifications.NotificationPriority{
+			Name:  "Test Priority",
+			Color: int64(4360181),
+		})
+		assert.NoError(t, err)
+	})
+
+	t.Run("AddNotificationPriority - invalid !unique", func(t *testing.T) {
+		err := db.AddNotificationPriority(notifications.NotificationPriority{
+			Name:  "Test Priority",
+			Color: int64(4360181),
+		})
+		assert.Error(t, err)
+	})
+
+	t.Run("NotificationPriorityByName", func(t *testing.T) {
+		notificationPriority, err := db.NotificationPriorityByName("Test Priority")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Priority", notificationPriority.Name)
+		assert.Equal(t, int64(4360181), notificationPriority.Color)
+	})
+
+	t.Run("NotificationPriorityByID", func(t *testing.T) {
+		notificationPriority, err := db.NotificationPriorityByName("Test Priority")
+		assert.NoError(t, err)
+
+		notificationPriority2, err := db.NotificationPriorityByID(notificationPriority.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, notificationPriority2.ID, notificationPriority.ID)
+		assert.Equal(t, notificationPriority2.Name, notificationPriority.Name)
+		assert.Equal(t, notificationPriority2.Color, notificationPriority.Color)
+	})
+
+	t.Run("UpdateNotificationPriority - unknown field", func(t *testing.T) {
+		notificationPriority, err := db.NotificationPriorityByName("Test Priority")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Priority", notificationPriority.Name)
+
+		err = db.UpdateNotificationPriority(notificationPriority.ID, "Unknown", "unknown fields are bad")
+		assert.Error(t, err)
+	})
+
+	t.Run("UpdateNotificationPriority - readonly field", func(t *testing.T) {
+		notificationPriority, err := db.NotificationPriorityByName("Test Priority")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Priority", notificationPriority.Name)
+
+		err = db.UpdateNotificationPriority(notificationPriority.ID, "ID", 123)
+		assert.Error(t, err)
+	})
+
+	err = db.AddNotificationPriority(notifications.NotificationPriority{
+		Name:  "Test Priority 2",
+		Color: int64(4360181),
+	})
+	assert.NoError(t, err)
+
+	t.Run("UpdateNotificationPriority - !unique", func(t *testing.T) {
+		notificationPriority, err := db.NotificationPriorityByName("Test Priority")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Priority", notificationPriority.Name)
+
+		err = db.UpdateNotificationPriority(notificationPriority.ID, "Name", "Test Priority 2")
+		assert.Error(t, err)
+	})
+
+	t.Run("UpdateNotificationPriority", func(t *testing.T) {
+		notificationPriority, err := db.NotificationPriorityByName("Test Priority")
+		assert.NoError(t, err)
+
+		assert.Equal(t, "Test Priority", notificationPriority.Name)
+
+		err = db.UpdateNotificationPriority(notificationPriority.ID, "Name", "Test Priority Renamed")
+		assert.NoError(t, err)
+
+		notificationPriority2, err := db.NotificationPriorityByName("Test Priority Renamed")
+		assert.NoError(t, err)
+
+		assert.Equal(t, notificationPriority.ID, notificationPriority2.ID)
+		assert.Equal(t, notificationPriority.Color, notificationPriority2.Color)
+		assert.Equal(t, "Test Priority Renamed", notificationPriority2.Name)
+
+		err = db.UpdateNotificationPriority(notificationPriority.ID, "Color", int64(123456))
+		assert.NoError(t, err)
+
+		notificationPriority3, err := db.NotificationPriorityByName("Test Priority Renamed")
+		assert.NoError(t, err)
+
+		assert.Equal(t, notificationPriority.ID, notificationPriority3.ID)
+		assert.Equal(t, notificationPriority2.Name, notificationPriority3.Name)
+		assert.Equal(t, int64(123456), notificationPriority3.Color)
+	})
+
+	t.Run("AddNotification - customer doesn't exist", func(t *testing.T) {
+		notification := notifications.Notification{
+			Timestamp:    time.Now(),
+			Author:       "me",
+			CustomerCode: "testin123456",
+			Title:        "Test notification",
+			Message:      "This is the body of a test notification",
+			Type: notifications.NotificationType{
+				ID: 0,
+			},
+			Priority: notifications.NotificationPriority{
+				ID: 0,
+			},
+			Public: false,
+			Paid:   false,
+			Data:   "",
+		}
+		err := db.AddNotification(notification)
+		assert.Error(t, err)
+	})
+
+	err = db.AddCustomer(context.Background(), routing.Customer{
+		Code: "test-customer",
+		Name: "Test Customer",
+	})
+	assert.NoError(t, err)
+
+	t.Run("AddNotification - type doesn't exist", func(t *testing.T) {
+		notification := notifications.Notification{
+			Timestamp:    time.Now(),
+			Author:       "me",
+			CustomerCode: "test-customer",
+			Title:        "Test notification",
+			Message:      "This is the body of a test notification",
+			Type: notifications.NotificationType{
+				ID: 0,
+			},
+			Priority: notifications.NotificationPriority{
+				ID: 0,
+			},
+			Public: false,
+			Paid:   false,
+			Data:   "",
+		}
+		err := db.AddNotification(notification)
+		assert.Error(t, err)
+	})
+
+	err = db.AddNotificationType(notifications.NotificationType{
+		Name: "Test",
+	})
+	assert.NoError(t, err)
+
+	t.Run("AddNotification - priority doesn't exist", func(t *testing.T) {
+		notification := notifications.Notification{
+			Timestamp:    time.Now(),
+			Author:       "me",
+			CustomerCode: "test-customer",
+			Title:        "Test notification",
+			Message:      "This is the body of a test notification",
+			Type: notifications.NotificationType{
+				ID: 0,
+			},
+			Priority: notifications.NotificationPriority{
+				ID: 0,
+			},
+			Public: false,
+			Paid:   false,
+			Data:   "",
+		}
+		err := db.AddNotification(notification)
+		assert.Error(t, err)
+	})
+
+	err = db.AddNotificationPriority(notifications.NotificationPriority{
+		Name: "Test",
+	})
+	assert.NoError(t, err)
+
+	t.Run("AddNotification", func(t *testing.T) {
+		priority, err := db.NotificationPriorityByName("Test Priority Renamed")
+		assert.NoError(t, err)
+
+		notificationType, err := db.NotificationTypeByName("Test Type Renamed")
+		assert.NoError(t, err)
+
+		notification := notifications.Notification{
+			Timestamp:    time.Now(),
+			Author:       "me",
+			CustomerCode: "test-customer",
+			Title:        "Test notification",
+			Message:      "This is the body of a test notification",
+			Type:         notificationType,
+			Priority:     priority,
+			Public:       true,
+			Paid:         true,
+			Data:         "data data data data",
+		}
+		err = db.AddNotification(notification)
+		assert.NoError(t, err)
+	})
+
+	t.Run("Notifications", func(t *testing.T) {
+		dbNotifications := db.Notifications()
+		assert.Len(t, dbNotifications, 1)
+		assert.Equal(t, "me", dbNotifications[0].Author)
+		assert.Equal(t, "test-customer", dbNotifications[0].CustomerCode)
+		assert.Equal(t, "Test notification", dbNotifications[0].Title)
+		assert.True(t, dbNotifications[0].Public)
+		assert.True(t, dbNotifications[0].Paid)
+		assert.Equal(t, "data data data data", dbNotifications[0].Data)
+
+		notificationType, err := db.NotificationTypeByName("Test Type Renamed")
+		assert.NoError(t, err)
+		assert.Equal(t, notificationType.ID, dbNotifications[0].Type.ID)
+		assert.Equal(t, notificationType.Name, dbNotifications[0].Type.Name)
+
+		notificationPriority, err := db.NotificationPriorityByName("Test Priority Renamed")
+		assert.NoError(t, err)
+		assert.Equal(t, notificationPriority.ID, dbNotifications[0].Priority.ID)
+		assert.Equal(t, notificationPriority.Name, dbNotifications[0].Priority.Name)
+		assert.Equal(t, notificationPriority.Color, dbNotifications[0].Priority.Color)
+
+		notification := notifications.Notification{
+			Timestamp:    time.Now(),
+			Author:       "me",
+			CustomerCode: "test-customer",
+			Title:        "Test notification",
+			Message:      "This is the body of a test notification",
+			Type:         notificationType,
+			Priority:     notificationPriority,
+			Public:       true,
+			Paid:         true,
+			Data:         "data data data data",
+		}
+		err = db.AddNotification(notification)
+		assert.NoError(t, err)
+
+		err = db.AddNotification(notification)
+		assert.NoError(t, err)
+
+		err = db.AddNotification(notification)
+		assert.NoError(t, err)
+
+		dbNotifications = db.Notifications()
+		assert.Len(t, dbNotifications, 4)
+	})
+
+	t.Run("NotificationsByCustomer", func(t *testing.T) {
+		dbNotifications := db.NotificationsByCustomer("test-customer")
+		assert.Len(t, dbNotifications, 4)
+
+		dbNotifications = db.NotificationsByCustomer("local")
+		assert.Len(t, dbNotifications, 0)
+
+		dbNotifications = db.NotificationsByCustomer("customer-dne")
+		assert.Len(t, dbNotifications, 0)
+	})
+
+	t.Run("NotificationByID", func(t *testing.T) {
+		dbNotifications := db.Notifications()
+		assert.Len(t, dbNotifications, 4)
+
+		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, dbNotifications[0].ID, actualNotification.ID)
+		assert.Equal(t, dbNotifications[0].Timestamp, actualNotification.Timestamp)
+		assert.Equal(t, dbNotifications[0].Author, actualNotification.Author)
+		assert.Equal(t, dbNotifications[0].CustomerCode, actualNotification.CustomerCode)
+		assert.Equal(t, dbNotifications[0].Title, actualNotification.Title)
+		assert.Equal(t, dbNotifications[0].Message, actualNotification.Message)
+		assert.Equal(t, dbNotifications[0].Public, actualNotification.Public)
+		assert.Equal(t, dbNotifications[0].Paid, actualNotification.Paid)
+		assert.Equal(t, dbNotifications[0].Data, actualNotification.Data)
+
+		assert.Equal(t, dbNotifications[0].Type.ID, actualNotification.Type.ID)
+		assert.Equal(t, dbNotifications[0].Type.Name, actualNotification.Type.Name)
+
+		assert.Equal(t, dbNotifications[0].Priority.ID, actualNotification.Priority.ID)
+		assert.Equal(t, dbNotifications[0].Priority.Name, actualNotification.Priority.Name)
+		assert.Equal(t, dbNotifications[0].Priority.Color, actualNotification.Priority.Color)
+	})
+
+	t.Run("UpdateNotification - unknown field", func(t *testing.T) {
+		dbNotifications := db.Notifications()
+		assert.Len(t, dbNotifications, 4)
+
+		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		err = db.UpdateNotification(actualNotification.ID, "Unknown", "unknown fields are bad")
+		assert.Error(t, err)
+
+		assert.Equal(t, dbNotifications[0].ID, actualNotification.ID)
+		assert.Equal(t, dbNotifications[0].Timestamp, actualNotification.Timestamp)
+		assert.Equal(t, dbNotifications[0].Author, actualNotification.Author)
+		assert.Equal(t, dbNotifications[0].CustomerCode, actualNotification.CustomerCode)
+		assert.Equal(t, dbNotifications[0].Title, actualNotification.Title)
+		assert.Equal(t, dbNotifications[0].Message, actualNotification.Message)
+		assert.Equal(t, dbNotifications[0].Public, actualNotification.Public)
+		assert.Equal(t, dbNotifications[0].Paid, actualNotification.Paid)
+		assert.Equal(t, dbNotifications[0].Data, actualNotification.Data)
+
+		assert.Equal(t, dbNotifications[0].Type.ID, actualNotification.Type.ID)
+		assert.Equal(t, dbNotifications[0].Type.Name, actualNotification.Type.Name)
+
+		assert.Equal(t, dbNotifications[0].Priority.ID, actualNotification.Priority.ID)
+		assert.Equal(t, dbNotifications[0].Priority.Name, actualNotification.Priority.Name)
+		assert.Equal(t, dbNotifications[0].Priority.Color, actualNotification.Priority.Color)
+	})
+
+	t.Run("UpdateNotification - readonly field", func(t *testing.T) {
+		dbNotifications := db.Notifications()
+		assert.Len(t, dbNotifications, 4)
+
+		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		err = db.UpdateNotification(actualNotification.ID, "ID", 123)
+		assert.Error(t, err)
+
+		assert.Equal(t, dbNotifications[0].ID, actualNotification.ID)
+		assert.Equal(t, dbNotifications[0].Timestamp, actualNotification.Timestamp)
+		assert.Equal(t, dbNotifications[0].Author, actualNotification.Author)
+		assert.Equal(t, dbNotifications[0].CustomerCode, actualNotification.CustomerCode)
+		assert.Equal(t, dbNotifications[0].Title, actualNotification.Title)
+		assert.Equal(t, dbNotifications[0].Message, actualNotification.Message)
+		assert.Equal(t, dbNotifications[0].Public, actualNotification.Public)
+		assert.Equal(t, dbNotifications[0].Paid, actualNotification.Paid)
+		assert.Equal(t, dbNotifications[0].Data, actualNotification.Data)
+
+		assert.Equal(t, dbNotifications[0].Type.ID, actualNotification.Type.ID)
+		assert.Equal(t, dbNotifications[0].Type.Name, actualNotification.Type.Name)
+
+		assert.Equal(t, dbNotifications[0].Priority.ID, actualNotification.Priority.ID)
+		assert.Equal(t, dbNotifications[0].Priority.Name, actualNotification.Priority.Name)
+		assert.Equal(t, dbNotifications[0].Priority.Color, actualNotification.Priority.Color)
+	})
+
+	t.Run("UpdateNotification", func(t *testing.T) {
+		dbNotifications := db.Notifications()
+		assert.Len(t, dbNotifications, 4)
+
+		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		err = db.UpdateNotification(actualNotification.ID, "Title", "New title for an old notification")
+		assert.NoError(t, err)
+
+		updatedNotification, err := db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, actualNotification.ID, updatedNotification.ID)
+		assert.Equal(t, actualNotification.Timestamp, updatedNotification.Timestamp)
+		assert.Equal(t, actualNotification.Author, updatedNotification.Author)
+		assert.Equal(t, actualNotification.CustomerCode, updatedNotification.CustomerCode)
+		assert.NotEqual(t, actualNotification.Title, updatedNotification.Title)
+		assert.Equal(t, "New title for an old notification", updatedNotification.Title)
+		assert.Equal(t, actualNotification.Message, updatedNotification.Message)
+		assert.Equal(t, actualNotification.Public, updatedNotification.Public)
+		assert.Equal(t, actualNotification.Paid, updatedNotification.Paid)
+		assert.Equal(t, actualNotification.Data, updatedNotification.Data)
+
+		assert.Equal(t, actualNotification.Type.ID, updatedNotification.Type.ID)
+		assert.Equal(t, actualNotification.Type.Name, updatedNotification.Type.Name)
+
+		assert.Equal(t, actualNotification.Priority.ID, updatedNotification.Priority.ID)
+		assert.Equal(t, actualNotification.Priority.Name, updatedNotification.Priority.Name)
+		assert.Equal(t, actualNotification.Priority.Color, updatedNotification.Priority.Color)
+	})
+
+	t.Run("UpdateNotification - type", func(t *testing.T) {
+		dbNotifications := db.Notifications()
+		assert.Len(t, dbNotifications, 4)
+
+		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		err = db.UpdateNotification(actualNotification.ID, "Type", "Bad type for an old notification")
+		assert.Error(t, err)
+
+		updatedNotification, err := db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, actualNotification.ID, updatedNotification.ID)
+		assert.Equal(t, actualNotification.Timestamp, updatedNotification.Timestamp)
+		assert.Equal(t, actualNotification.Author, updatedNotification.Author)
+		assert.Equal(t, actualNotification.CustomerCode, updatedNotification.CustomerCode)
+		assert.Equal(t, actualNotification.Title, updatedNotification.Title)
+		assert.Equal(t, actualNotification.Message, updatedNotification.Message)
+		assert.Equal(t, actualNotification.Public, updatedNotification.Public)
+		assert.Equal(t, actualNotification.Paid, updatedNotification.Paid)
+		assert.Equal(t, actualNotification.Data, updatedNotification.Data)
+
+		assert.Equal(t, actualNotification.Type.ID, updatedNotification.Type.ID)
+		assert.Equal(t, actualNotification.Type.Name, updatedNotification.Type.Name)
+
+		assert.Equal(t, actualNotification.Priority.ID, updatedNotification.Priority.ID)
+		assert.Equal(t, actualNotification.Priority.Name, updatedNotification.Priority.Name)
+		assert.Equal(t, actualNotification.Priority.Color, updatedNotification.Priority.Color)
+
+		newNotificationType, err := db.NotificationTypeByName("Test")
+		assert.NoError(t, err)
+
+		err = db.UpdateNotification(actualNotification.ID, "Type", newNotificationType.ID)
+
+		updatedNotification, err = db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, actualNotification.ID, updatedNotification.ID)
+		assert.Equal(t, actualNotification.Timestamp, updatedNotification.Timestamp)
+		assert.Equal(t, actualNotification.Author, updatedNotification.Author)
+		assert.Equal(t, actualNotification.CustomerCode, updatedNotification.CustomerCode)
+		assert.Equal(t, actualNotification.Title, updatedNotification.Title)
+		assert.Equal(t, actualNotification.Message, updatedNotification.Message)
+		assert.Equal(t, actualNotification.Public, updatedNotification.Public)
+		assert.Equal(t, actualNotification.Paid, updatedNotification.Paid)
+		assert.Equal(t, actualNotification.Data, updatedNotification.Data)
+
+		assert.NotEqual(t, actualNotification.Type.ID, updatedNotification.Type.ID)
+		assert.NotEqual(t, actualNotification.Type.Name, updatedNotification.Type.Name)
+
+		assert.Equal(t, newNotificationType.ID, updatedNotification.Type.ID)
+		assert.Equal(t, newNotificationType.Name, updatedNotification.Type.Name)
+
+		assert.Equal(t, actualNotification.Priority.ID, updatedNotification.Priority.ID)
+		assert.Equal(t, actualNotification.Priority.Name, updatedNotification.Priority.Name)
+		assert.Equal(t, actualNotification.Priority.Color, updatedNotification.Priority.Color)
+	})
+
+	t.Run("UpdateNotification - priority", func(t *testing.T) {
+		dbNotifications := db.Notifications()
+		assert.Len(t, dbNotifications, 4)
+
+		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		err = db.UpdateNotification(actualNotification.ID, "Priority", "Bad priority for an old notification")
+		assert.Error(t, err)
+
+		updatedNotification, err := db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, actualNotification.ID, updatedNotification.ID)
+		assert.Equal(t, actualNotification.Timestamp, updatedNotification.Timestamp)
+		assert.Equal(t, actualNotification.Author, updatedNotification.Author)
+		assert.Equal(t, actualNotification.CustomerCode, updatedNotification.CustomerCode)
+		assert.Equal(t, actualNotification.Title, updatedNotification.Title)
+		assert.Equal(t, actualNotification.Message, updatedNotification.Message)
+		assert.Equal(t, actualNotification.Public, updatedNotification.Public)
+		assert.Equal(t, actualNotification.Paid, updatedNotification.Paid)
+		assert.Equal(t, actualNotification.Data, updatedNotification.Data)
+
+		assert.Equal(t, actualNotification.Type.ID, updatedNotification.Type.ID)
+		assert.Equal(t, actualNotification.Type.Name, updatedNotification.Type.Name)
+
+		assert.Equal(t, actualNotification.Priority.ID, updatedNotification.Priority.ID)
+		assert.Equal(t, actualNotification.Priority.Name, updatedNotification.Priority.Name)
+		assert.Equal(t, actualNotification.Priority.Color, updatedNotification.Priority.Color)
+
+		newNotificationPriority, err := db.NotificationPriorityByName("Test")
+		assert.NoError(t, err)
+
+		err = db.UpdateNotification(actualNotification.ID, "Priority", newNotificationPriority.ID)
+
+		updatedNotification, err = db.NotificationByID(dbNotifications[0].ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, actualNotification.ID, updatedNotification.ID)
+		assert.Equal(t, actualNotification.Timestamp, updatedNotification.Timestamp)
+		assert.Equal(t, actualNotification.Author, updatedNotification.Author)
+		assert.Equal(t, actualNotification.CustomerCode, updatedNotification.CustomerCode)
+		assert.Equal(t, actualNotification.Title, updatedNotification.Title)
+		assert.Equal(t, actualNotification.Message, updatedNotification.Message)
+		assert.Equal(t, actualNotification.Public, updatedNotification.Public)
+		assert.Equal(t, actualNotification.Paid, updatedNotification.Paid)
+		assert.Equal(t, actualNotification.Data, updatedNotification.Data)
+
+		assert.Equal(t, actualNotification.Type.ID, updatedNotification.Type.ID)
+		assert.Equal(t, actualNotification.Type.Name, updatedNotification.Type.Name)
+
+		assert.NotEqual(t, actualNotification.Priority.ID, updatedNotification.Priority.ID)
+		assert.NotEqual(t, actualNotification.Priority.Name, updatedNotification.Priority.Name)
+		assert.NotEqual(t, actualNotification.Priority.Color, updatedNotification.Priority.Color)
+
+		assert.Equal(t, newNotificationPriority.ID, updatedNotification.Type.ID)
+		assert.Equal(t, newNotificationPriority.Name, updatedNotification.Type.Name)
+		assert.Equal(t, newNotificationPriority.Color, updatedNotification.Priority.Color)
+	})
+
+	t.Run("RemoveNotification - all", func(t *testing.T) {
+		for _, notification := range db.Notifications() {
+			err := db.RemoveNotification(notification.ID)
+			assert.NoError(t, err)
+		}
+
+		notificationList := db.Notifications()
+		assert.Len(t, notificationList, 0)
+	})
+
+	notificationType, err := db.NotificationTypeByName("Test Type Renamed")
+	assert.NoError(t, err)
+
+	notificationPriority, err := db.NotificationPriorityByName("Test Priority Renamed")
+	assert.NoError(t, err)
+
+	notification := notifications.Notification{
+		Timestamp:    time.Now(),
+		Author:       "me",
+		CustomerCode: "test-customer",
+		Title:        "Test notification",
+		Message:      "This is the body of a test notification",
+		Type:         notificationType,
+		Priority:     notificationPriority,
+		Public:       true,
+		Paid:         true,
+		Data:         "data data data data",
+	}
+
+	err = db.AddNotification(notification)
+	assert.NoError(t, err)
+
+	t.Run("RemoveNotificationTypeByID - FK violation", func(t *testing.T) {
+		err := db.RemoveNotificationTypeByID(notification.Type.ID)
+		assert.Error(t, err)
+	})
+
+	t.Run("RemoveNotificationTypeByName - FK violation", func(t *testing.T) {
+		err := db.RemoveNotificationTypeByName(notification.Type.Name)
+		assert.Error(t, err)
+	})
+
+	t.Run("RemoveNotificationPriorityByID - FK violation", func(t *testing.T) {
+		err := db.RemoveNotificationPriorityByID(notification.Priority.ID)
+		assert.Error(t, err)
+	})
+
+	t.Run("RemoveNotificationPriorityByName - FK violation", func(t *testing.T) {
+		err := db.RemoveNotificationPriorityByName(notification.Priority.Name)
+		assert.Error(t, err)
+	})
+
+	err = db.RemoveNotification(db.Notifications()[0].ID)
+	assert.NoError(t, err)
+
+	t.Run("RemoveNotificationTypeByID", func(t *testing.T) {
+		err := db.RemoveNotificationTypeByID(notification.Type.ID)
+		assert.NoError(t, err)
+	})
+
+	err = db.AddNotificationType(notifications.NotificationType{
+		Name: notification.Type.Name,
+	})
+	assert.NoError(t, err)
+
+	t.Run("RemoveNotificationTypeByName", func(t *testing.T) {
+		err := db.RemoveNotificationTypeByName(notification.Type.Name)
+		assert.NoError(t, err)
+	})
+
+	t.Run("RemoveNotificationPriorityByID", func(t *testing.T) {
+		err := db.RemoveNotificationPriorityByID(notification.Priority.ID)
+		assert.NoError(t, err)
+	})
+
+	err = db.AddNotificationPriority(notifications.NotificationPriority{
+		Name: notification.Priority.Name,
+	})
+	assert.NoError(t, err)
+
+	t.Run("RemoveNotificationPriorityByName", func(t *testing.T) {
+		err := db.RemoveNotificationPriorityByName(notification.Priority.Name)
+		assert.NoError(t, err)
+	})
 }

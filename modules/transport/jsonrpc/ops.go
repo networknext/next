@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/crypto"
@@ -22,6 +23,11 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport/middleware"
+	"github.com/networknext/backend/modules/transport/notifications"
+)
+
+const (
+	DEFAULT_COLOR = int64(10791603)
 )
 
 type RelayVersion struct {
@@ -1629,5 +1635,513 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Datacenter type", args.Field)
 	}
 
+	return nil
+}
+
+type AddNotificationArgs struct {
+	Title         string   `json:"title"`
+	Message       string   `json:"message"`
+	Type          int64    `json:"type_id"`
+	CustomerCodes []string `json:"customer_codes"`
+	Priority      int64    `json:"priority_id"`
+	Public        bool     `json:"public"`
+	Paid          bool     `json:"private"`
+	Data          string   `json:"data"`
+}
+
+type AddNotificationReply struct {
+}
+
+func (s *OpsService) AddNotification(r *http.Request, args *AddNotificationArgs, reply *AddNotificationReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v", err.Error()))
+		return &err
+	}
+
+	if args.Title == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Title"
+		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Title is required", err.Error()))
+		return &err
+	}
+
+	if args.Message == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Message"
+		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Message is required", err.Error()))
+		return &err
+	}
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v", err.Error()))
+		return &err
+	}
+
+	requestEmail, ok := user.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
+	if !ok {
+		if middleware.VerifyAllRoles(r, middleware.OpsRole) {
+			requestEmail = "cli"
+		} else {
+			err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Failed to parse email", err.Error()))
+			return &err
+		}
+	}
+
+	priority, err := s.Storage.NotificationPriorityByID(args.Priority)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Failed to lookup priority level", err.Error()))
+		return &err
+	}
+
+	notificationType, err := s.Storage.NotificationTypeByID(args.Type)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Failed to lookup priority level", err.Error()))
+		return &err
+	}
+
+	// Loop over customers and add a notification for each
+	for _, code := range args.CustomerCodes {
+		notification := notifications.Notification{
+			Timestamp:    time.Now(),
+			Author:       requestEmail,
+			Title:        args.Title,
+			Message:      args.Message,
+			Type:         notificationType,
+			CustomerCode: code,
+			Priority:     priority,
+			Public:       args.Public,
+			Paid:         args.Paid,
+			Data:         args.Data,
+		}
+
+		err := s.Storage.AddNotification(notification)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Failed to add notification", err.Error()))
+		}
+	}
+
+	return nil
+}
+
+type AddNotificationTypeArgs struct {
+	Name string `json:"name"`
+}
+
+type AddNotificationTypeReply struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+func (s *OpsService) AddNotificationType(r *http.Request, args *AddNotificationTypeArgs, reply *AddNotificationTypeReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("AddNotificationType(): %v", err.Error()))
+		return &err
+	}
+
+	if args.Name == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Name"
+		s.Logger.Log("err", fmt.Errorf("AddNotificationType(): %v: Name is required", err.Error()))
+		return &err
+	}
+
+	lowerName := strings.ToLower(args.Name)
+
+	notificationType := notifications.NotificationType{
+		Name: lowerName,
+	}
+
+	err := s.Storage.AddNotificationType(notificationType)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("AddNotificationType(): %v: Failed to add notification", err.Error()))
+	}
+
+	newType, err := s.Storage.NotificationTypeByName(lowerName)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("AddNotificationType(): %v: Failed to lookup new type", err.Error()))
+	}
+
+	reply.ID = fmt.Sprintf("%016x", newType.ID)
+	reply.Name = lowerName
+
+	return nil
+}
+
+type AddNotificationPriorityArgs struct {
+	Name  string `json:"name"`
+	Color int64  `json:"color"`
+}
+
+type AddNotificationPriorityReply struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+func (s *OpsService) AddNotificationPriority(r *http.Request, args *AddNotificationPriorityArgs, reply *AddNotificationPriorityReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("AddNotificationPriority(): %v", err.Error()))
+		return &err
+	}
+
+	if args.Name == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Name"
+		s.Logger.Log("err", fmt.Errorf("AddNotificationPriority(): %v: Name is required", err.Error()))
+		return &err
+	}
+
+	color := args.Color
+
+	if color == 0 {
+		color = DEFAULT_COLOR
+	}
+
+	lowerName := strings.ToLower(args.Name)
+
+	notificationPriority := notifications.NotificationPriority{
+		Name:  lowerName,
+		Color: color,
+	}
+
+	err := s.Storage.AddNotificationPriority(notificationPriority)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("AddNotificationPriority(): %v: Failed to add notification", err.Error()))
+	}
+
+	newPriority, err := s.Storage.NotificationPriorityByName(lowerName)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("AddNotificationPriority(): %v: Failed to lookup new priority", err.Error()))
+	}
+
+	reply.ID = fmt.Sprintf("%016x", newPriority.ID)
+	reply.Name = lowerName
+	reply.Color = fmt.Sprintf("%016x", color)
+
+	return nil
+}
+
+type UpdateNotificationArgs struct {
+	ID    string `json:"id"`
+	Field string `json:"field"`
+	Value string `json:"value"`
+}
+
+type UpdateNotificationReply struct {
+}
+
+func (s *OpsService) UpdateNotification(r *http.Request, args *UpdateNotificationArgs, reply *UpdateNotificationReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("UpdateNotification(): %v", err.Error()))
+		return &err
+	}
+
+	if args.ID == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "ID"
+		s.Logger.Log("err", fmt.Errorf("UpdateNotification(): %v: ID is required", err.Error()))
+		return &err
+	}
+
+	if args.Field == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Field"
+		s.Logger.Log("err", fmt.Errorf("UpdateNotification(): %v: Field is required", err.Error()))
+		return &err
+	}
+
+	if args.Value == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Value"
+		s.Logger.Log("err", fmt.Errorf("UpdateNotification(): %v: Value is required", err.Error()))
+		return &err
+	}
+
+	intID, err := strconv.ParseInt(args.ID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("Failed to parse string ID: %s", args.ID)
+	}
+
+	switch args.Field {
+	case "Author", "Title", "Message", "CustomerCode", "Data":
+		err = s.Storage.UpdateNotification(intID, args.Field, args.Value)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("UpdateNotification(): %v: Failed to update notification", err.Error()))
+			return &err
+		}
+	case "Type", "Priority":
+		value, err := strconv.ParseInt(args.ID, 10, 64)
+		if err != nil {
+			return fmt.Errorf("Failed to parse string value for field: %s", args.Field)
+		}
+
+		err = s.Storage.UpdateNotification(intID, args.Field, value)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("UpdateNotification(): %v: Failed to update notification", err.Error()))
+			return &err
+		}
+	case "Public", "Paid":
+		value, err := strconv.ParseBool(args.ID)
+		if err != nil {
+			return fmt.Errorf("Failed to parse string value for field: %s", args.Field)
+		}
+
+		err = s.Storage.UpdateNotification(intID, args.Field, value)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("UpdateNotification(): %v: Failed to update notification", err.Error()))
+			return &err
+		}
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Notification type", args.Field)
+	}
+
+	return nil
+}
+
+type UpdateNotificationTypeArgs struct {
+	ID    string `json:"id"`
+	Field string `json:"field"`
+	Value string `json:"value"`
+}
+
+type UpdateNotificationTypeReply struct {
+}
+
+func (s *OpsService) UpdateNotificationType(r *http.Request, args *UpdateNotificationTypeArgs, reply *UpdateNotificationTypeReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("UpdateNotificationType(): %v", err.Error()))
+		return &err
+	}
+
+	if args.ID == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "ID"
+		s.Logger.Log("err", fmt.Errorf("UpdateNotificationType(): %v: ID is required", err.Error()))
+		return &err
+	}
+
+	if args.Field == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Field"
+		s.Logger.Log("err", fmt.Errorf("UpdateNotificationType(): %v: Field is required", err.Error()))
+		return &err
+	}
+
+	if args.Value == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Value"
+		s.Logger.Log("err", fmt.Errorf("UpdateNotificationType(): %v: Value is required", err.Error()))
+		return &err
+	}
+
+	intID, err := strconv.ParseInt(args.ID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("Failed to parse string ID: %s", args.ID)
+	}
+
+	switch args.Field {
+	case "Name":
+		err = s.Storage.UpdateNotificationType(intID, args.Field, args.Value)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("UpdateNotificationType(): %v: Failed to update notification type", err.Error()))
+			return &err
+		}
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the NotificationType type", args.Field)
+	}
+
+	return nil
+}
+
+type UpdateNotificationPriorityArgs struct {
+	ID    string `json:"id"`
+	Field string `json:"field"`
+	Value string `json:"value"`
+}
+
+type UpdateNotificationPriorityReply struct {
+}
+
+func (s *OpsService) UpdateNotificationPriority(r *http.Request, args *UpdateNotificationPriorityArgs, reply *UpdateNotificationPriorityReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("UpdateNotificationPriority(): %v", err.Error()))
+		return &err
+	}
+
+	if args.ID == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "ID"
+		s.Logger.Log("err", fmt.Errorf("UpdateNotificationPriority(): %v: ID is required", err.Error()))
+		return &err
+	}
+
+	if args.Field == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Field"
+		s.Logger.Log("err", fmt.Errorf("UpdateNotificationPriority(): %v: Field is required", err.Error()))
+		return &err
+	}
+
+	if args.Value == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Value"
+		s.Logger.Log("err", fmt.Errorf("UpdateNotificationPriority(): %v: Value is required", err.Error()))
+		return &err
+	}
+
+	intID, err := strconv.ParseInt(args.ID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("Failed to parse string ID: %s", args.ID)
+	}
+
+	switch args.Field {
+	case "Name":
+		err = s.Storage.UpdateNotificationPriority(intID, args.Field, args.Value)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("UpdateNotificationPriority(): %v: Failed to update notification priority", err.Error()))
+			return &err
+		}
+	case "Color":
+		value, err := strconv.ParseInt(args.ID, 10, 64)
+		if err != nil {
+			return fmt.Errorf("Failed to parse string value for field: %s", args.Field)
+		}
+
+		err = s.Storage.UpdateNotificationPriority(intID, args.Field, value)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("UpdateNotificationPriority(): %v: Failed to update notification priority", err.Error()))
+			return &err
+		}
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the NotificationPriority type", args.Field)
+	}
+
+	return nil
+}
+
+type RemoveNotificationArgs struct {
+	ID string `json:"id"`
+}
+
+type RemoveNotificationReply struct {
+}
+
+func (s *OpsService) RemoveNotification(r *http.Request, args *RemoveNotificationArgs, reply *RemoveNotificationReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("RemoveNotification(): %v", err.Error()))
+		return &err
+	}
+
+	if args.ID == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "ID"
+		s.Logger.Log("err", fmt.Errorf("RemoveNotification(): %v: ID is required", err.Error()))
+		return &err
+	}
+
+	intID, err := strconv.ParseInt(args.ID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("Failed to parse string ID: %s", args.ID)
+	}
+
+	err = s.Storage.RemoveNotification(intID)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("RemoveNotification(): %v: Failed to remove notification", err.Error()))
+		return &err
+	}
+	return nil
+}
+
+type RemoveNotificationTypeArgs struct {
+	ID string `json:"id"`
+}
+
+type RemoveNotificationTypeReply struct {
+}
+
+func (s *OpsService) RemoveNotificationType(r *http.Request, args *RemoveNotificationTypeArgs, reply *RemoveNotificationTypeReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("RemoveNotificationType(): %v", err.Error()))
+		return &err
+	}
+
+	if args.ID == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "ID"
+		s.Logger.Log("err", fmt.Errorf("RemoveNotificationType(): %v: ID is required", err.Error()))
+		return &err
+	}
+
+	intID, err := strconv.ParseInt(args.ID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("Failed to parse string ID: %s", args.ID)
+	}
+
+	err = s.Storage.RemoveNotificationTypeByID(intID)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("RemoveNotificationType(): %v: Failed to remove type", err.Error()))
+		return &err
+	}
+	return nil
+}
+
+type RemoveNotificationPriorityArgs struct {
+	ID string `json:"id"`
+}
+
+type RemoveNotificationPriorityReply struct {
+}
+
+func (s *OpsService) RemoveNotificationPriority(r *http.Request, args *RemoveNotificationPriorityArgs, reply *RemoveNotificationPriorityReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("RemoveNotificationPriority(): %v", err.Error()))
+		return &err
+	}
+
+	if args.ID == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "ID"
+		s.Logger.Log("err", fmt.Errorf("RemoveNotificationPriority(): %v: ID is required", err.Error()))
+		return &err
+	}
+
+	intID, err := strconv.ParseInt(args.ID, 10, 64)
+	if err != nil {
+		return fmt.Errorf("Failed to parse string ID: %s", args.ID)
+	}
+
+	err = s.Storage.RemoveNotificationPriorityByID(intID)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("RemoveNotificationPriority(): %v: Failed to remove priority", err.Error()))
+		return &err
+	}
 	return nil
 }

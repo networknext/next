@@ -1,25 +1,34 @@
 package notifications
 
 import (
-	"fmt"
+	"encoding/json"
 	"time"
 )
 
-type NotificationPriorty int32
-type NotificationType int32
+type NotificationType struct {
+	ID   int64
+	Name string
+}
 
-const (
-	// TODO: Move these somewhere else like the jsonrpc error codes and use them for something
-	DEFAULT_PRIORITY NotificationPriorty = 0
-	INFO_PRIORITY    NotificationPriorty = 1
-	WARNING_PRIORITY NotificationPriorty = 2
-	URGENT_PRIORITY  NotificationPriorty = 3
-	// TODO: Move these somewhere else like the jsonrpc error codes and actually use them for something
-	NOTIFICATION_SYSTEM        NotificationType = 0
-	NOTIFICATION_RELEASE_NOTES NotificationType = 1
-	NOTIFICATION_ANALYTICS     NotificationType = 2
-	NOTIFICATION_INVOICE       NotificationType = 3
-)
+type NotificationPriority struct {
+	ID    int64
+	Name  string
+	Color int64
+}
+
+type Notification struct {
+	ID           int64
+	Timestamp    time.Time
+	Author       string
+	Title        string
+	Message      string
+	Type         NotificationType
+	CustomerCode string
+	Priority     NotificationPriority
+	Public       bool
+	Paid         bool
+	Data         string
+}
 
 type GistEmbed struct {
 	CSSURL    string
@@ -27,62 +36,107 @@ type GistEmbed struct {
 }
 
 type ReleaseNotesNotification struct {
-	Type      NotificationType    `json:"type"`
-	Title     string              `json:"title"`
-	Priority  NotificationPriorty `json:"priority"`
-	CSSURL    string              `json:"css_url"`
-	EmbedHTML string              `json:"embed_html"`
-}
-
-func NewReleaseNotesNotification() ReleaseNotesNotification {
-	return ReleaseNotesNotification{
-		Type:     NOTIFICATION_RELEASE_NOTES,
-		Priority: DEFAULT_PRIORITY,
-	}
+	Type      NotificationType     `json:"type"`
+	Title     string               `json:"title"`
+	Priority  NotificationPriority `json:"priority"`
+	CSSURL    string               `json:"css_url"`
+	EmbedHTML string               `json:"embed_html"`
 }
 
 type SystemNotification struct {
-	Type     NotificationType    `json:"type"`
-	Title    string              `json:"title"`
-	Message  string              `json:"message"`
-	Priority NotificationPriorty `json:"priority"`
+	ID        int64                `json:"id"`
+	Type      NotificationType     `json:"type"`
+	Title     string               `json:"title"`
+	Message   string               `json:"message"`
+	Priority  NotificationPriority `json:"priority"`
+	Timestamp time.Time            `json:"timestamp"`
+	// TODO: figure out what kind of data we may need for system notifications
 }
 
-func NewSystemNotifications() SystemNotification {
+// TODO: figure out if this is necessary or not. If data field isn't needed, remove this
+func (notification *Notification) NewSystemNotification() SystemNotification {
 	return SystemNotification{
-		Type:     NOTIFICATION_SYSTEM,
-		Priority: DEFAULT_PRIORITY,
+		ID:        notification.ID,
+		Type:      notification.Type,
+		Title:     notification.Title,
+		Message:   notification.Message,
+		Priority:  notification.Priority,
+		Timestamp: notification.Timestamp,
 	}
 }
 
 type AnalyticsNotification struct {
-	Type      NotificationType    `json:"type"`
-	Title     string              `json:"title"`
-	Message   string              `json:"message"`
-	Priority  NotificationPriorty `json:"priority"`
-	LookerURL string              `json:"looker_url"`
+	ID        int64                `json:"id"`
+	Type      NotificationType     `json:"type"`
+	Title     string               `json:"title"`
+	Message   string               `json:"message"`
+	Priority  NotificationPriority `json:"priority"`
+	Timestamp time.Time            `json:"timestamp"`
+	LookerURL string               `json:"looker_url"`
 }
 
-func NewAnalyticsNotification() AnalyticsNotification {
+// TODO: figure out if this is necessary or not. If data field isn't needed, remove this
+func (notification *Notification) NewAnalyticsNotification() AnalyticsNotification {
 	return AnalyticsNotification{
-		Type:     NOTIFICATION_ANALYTICS,
-		Priority: DEFAULT_PRIORITY,
+		ID:        notification.ID,
+		Type:      notification.Type,
+		Title:     notification.Title,
+		Message:   notification.Message,
+		Priority:  notification.Priority,
+		Timestamp: notification.Timestamp,
+		LookerURL: "", // TODO: Figure out the best way to generate this (in notifications or transport)
 	}
 }
 
-type InvoiceNotification struct {
-	Type      NotificationType    `json:"type"`
-	Title     string              `json:"title"`
-	Message   string              `json:"message"`
-	Priority  NotificationPriorty `json:"priority"`
-	InvoiceID string              `json:"invoice_id"`
+type AnalyticsNotificationData struct {
+	Permissions     []string
+	Models          []string
+	AnalyticsPath   string
+	GroupIds        []int
+	ExternalGroupId string
+	AccessFilters   map[string]map[string]interface{}
+	UserAttributes  map[string]interface{}
 }
 
-func NewInvoiceNotification() InvoiceNotification {
+func UnmarshalAnalyticsDataString(dataString string) (AnalyticsNotificationData, error) {
+	returnData := AnalyticsNotificationData{}
+	byteString := []byte(dataString)
+	jsonMap := make(map[string]interface{})
+
+	if err := json.Unmarshal(byteString, &jsonMap); err != nil {
+		return returnData, err
+	}
+
+	returnData.Permissions = jsonMap["permissions"].([]string)
+	returnData.Models = jsonMap["models"].([]string)
+	returnData.AnalyticsPath = jsonMap["analytics_path"].(string)
+	returnData.GroupIds = jsonMap["group_ids"].([]int)
+	returnData.ExternalGroupId = jsonMap["external_group_id"].(string)
+
+	// TODO: Figure out the best way to handle these
+	returnData.AccessFilters = make(map[string]map[string]interface{})
+	returnData.UserAttributes = make(map[string]interface{}) // This should be fine as is. Mainly used for row filtering
+
+	return returnData, nil
+}
+
+// Invoices should be similar to release notes. They are generated by datascience, a new notification is made containing the ID, this is used to fetch it for the customer
+type InvoiceNotification struct {
+	Type      NotificationType     `json:"type"`
+	Title     string               `json:"title"`
+	Message   string               `json:"message"`
+	Priority  NotificationPriority `json:"priority"`
+	Timestamp time.Time            `json:"timestamp"`
+	InvoiceID string               `json:"invoice_id"`
+}
+
+func (notification *Notification) NewInvoiceNotification() InvoiceNotification {
 	return InvoiceNotification{
-		Title:    fmt.Sprintf("Invoice for the month of %s", time.Now().Month()),
-		Message:  "Your invoice is ready and can be viewed in the \"Invoicing\" tab",
-		Type:     NOTIFICATION_INVOICE,
-		Priority: DEFAULT_PRIORITY,
+		Title:     notification.Title,   // TODO: follow this for pre canned invoice title: fmt.Sprintf("Invoice for the month of %s", time.Now().Month()),
+		Message:   notification.Message, // TODO: follow this for pre canned invoice message: "Your invoice is ready and can be viewed in the \"Invoicing\" tab",
+		Type:      notification.Type,
+		Priority:  notification.Priority,
+		Timestamp: notification.Timestamp,
+		InvoiceID: notification.Data, // This is assuming that the only thing in data for an invoice notification is the ID of the invoice
 	}
 }
