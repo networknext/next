@@ -2494,7 +2494,7 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	reply.InvoiceNotifications = make([]notifications.InvoiceNotification, 0)
 	reply.ReleaseNotesNotifications = make([]notifications.ReleaseNotesNotification, 0)
 
-	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) { // TODO: Add in roles for looker feature if necessary
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || (!middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.AdminRole)) { // TODO: Add in roles for looker feature if necessary
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
 		return &err
@@ -2519,14 +2519,14 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	}
 
 	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-	if !ok {
+	if !ok || companyCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
 		return &err
 	}
 
 	// Admins can request access to the notifications of another company only
-	if args.CompanyCode != "" && args.CompanyCode != companyCode && middleware.VerifyAllRoles(r, middleware.AdminRole) {
+	if args.CompanyCode != "" && args.CompanyCode != companyCode && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
 		return &err
@@ -2539,11 +2539,11 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	allNotifications := s.Storage.NotificationsByCustomer(companyCode)
 	for _, notification := range allNotifications {
 		switch notification.Type.Name {
-		case "System":
+		case "system":
 			systemNotification := notification.NewSystemNotification()
 			// TODO: figure out if anything else is needed here
 			reply.SystemNotifications = append(reply.SystemNotifications, systemNotification)
-		case "Analytics":
+		case "analytics":
 			analyticsNotification := notification.NewAnalyticsNotification()
 
 			// Unmarshal the data string to get the looker URL params
@@ -2585,7 +2585,7 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 
 			analyticsNotification.LookerURL = s.BuildLookerURL(urlOptions)
 			reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, analyticsNotification)
-		case "Invoice":
+		case "invoice":
 			invoiceNotification := notification.NewInvoiceNotification()
 			reply.InvoiceNotifications = append(reply.InvoiceNotifications, invoiceNotification)
 		default:

@@ -3713,7 +3713,7 @@ func (db *SQL) UpdateNotification(id int64, field string, value interface{}) err
 	switch field {
 	case "Author":
 		author, ok := value.(string)
-		if !ok {
+		if !ok || author == "" {
 			return fmt.Errorf("Author: %v is not a valid string type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update notifications set author=$1 where id="))
@@ -3721,7 +3721,7 @@ func (db *SQL) UpdateNotification(id int64, field string, value interface{}) err
 		args = append(args, author, id)
 	case "Title":
 		title, ok := value.(string)
-		if !ok {
+		if !ok || title == "" {
 			return fmt.Errorf("Title: %v is not a valid string type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update notifications set card_title=$1 where id="))
@@ -3729,7 +3729,7 @@ func (db *SQL) UpdateNotification(id int64, field string, value interface{}) err
 		args = append(args, title, id)
 	case "Message":
 		message, ok := value.(string)
-		if !ok {
+		if !ok || message == "" {
 			return fmt.Errorf("Message: %v is not a valid string type (%T)", value, value)
 		}
 		updateSQL.Write([]byte("update notifications set card_body=$1 where id="))
@@ -3995,7 +3995,7 @@ func (db *SQL) UpdateNotificationType(id int64, field string, value interface{})
 	switch field {
 	case "Name":
 		name, ok := value.(string)
-		if !ok {
+		if !ok || name == "" {
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 		updateSQL.Write([]byte("update notification_types set priority_type=$1 where id="))
@@ -4241,7 +4241,7 @@ func (db *SQL) UpdateNotificationPriority(id int64, field string, value interfac
 	switch field {
 	case "Name":
 		name, ok := value.(string)
-		if !ok {
+		if !ok || name == "" {
 			return fmt.Errorf("%v is not a valid string value", value)
 		}
 		updateSQL.Write([]byte("update notification_priorities set priority_name=$1 where id="))
