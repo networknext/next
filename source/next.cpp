@@ -41,8 +41,6 @@
 #pragma warning(disable : 4996)
 #endif
 
-// #define NEXT_EXPERIMENTAL 1
-
 #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_HOSTNAME                  "prod.spacecats.net"
 #else // #if !NEXT_DEVELOPMENT
@@ -13642,6 +13640,8 @@ void next_mutex_destroy( next_mutex_t * mutex )
 
 // ---------------------------------------------------------------
 
+#if NEXT_EXPERIMENTAL
+
 uint64_t next_customer_id()
 {
     return next_global_config.customer_id;
@@ -14368,6 +14368,8 @@ int next_ping_state( next_ping_t * ping )
 {
     return ping->state;
 }
+
+#endif // #if NEXT_EXPERIMENTAL
 
 // ---------------------------------------------------------------
 
@@ -17818,6 +17820,8 @@ void test_beacon()
 
 #endif // #if NEXT_BEACON_ENABLED
 
+#if NEXT_EXPERIMENTAL
+
 void test_ping_token()
 {
     int ping_token_bytes = 0;
@@ -17847,6 +17851,8 @@ void test_ping_token()
 
     next_check( token_datacenter_id == expected_datacenter_id );
 }
+
+#endif // #if NEXT_EXPERIMENTAL
 
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
@@ -17913,7 +17919,9 @@ void next_test()
 #if NEXT_BEACON_ENABLED
     RUN_TEST( test_beacon );
 #endif // #if NEXT_BEACON_ENABLED
+#if NEXT_EXPERIMENTAL
     RUN_TEST( test_ping_token );
+#endif // #if NEXT_EXPERIMENTAL4
 }
 
 #ifdef _MSC_VER

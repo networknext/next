@@ -29,6 +29,8 @@
 #include <string.h>
 #include <inttypes.h>
 
+#if NEXT_EXPERIMENTAL
+
 #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
 #define strncpy_s strncpy
 #endif // #if NEXT_PLATFORM != NEXT_PLATFORM_WINDOWS
@@ -152,3 +154,12 @@ int main()
     
     return 0;
 }
+
+#else // #if NEXT_EXPERIMENTAL
+
+int main()
+{
+    return 0;
+}
+
+#endif // #if NEXT_EXPERIMENTAL

@@ -30,6 +30,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+// #define NEXT_EXPERIMENTAL 1
+
 #if !defined(NEXT_DEVELOPMENT)
 
     #define NEXT_VERSION_FULL                              "4.0.15"
@@ -358,6 +360,10 @@ struct next_mutex_helper_t
 
 #define next_mutex_guard( _mutex ) next_mutex_helper_t __mutex_helper( _mutex )
 
+// =======================================================================================
+
+#if NEXT_EXPERIMENTAL
+
 // -----------------------------------------
 
 NEXT_EXPORT_FUNC uint64_t next_customer_id();
@@ -394,6 +400,10 @@ NEXT_EXPORT_FUNC void next_ping_update( next_ping_t * ping );
 NEXT_EXPORT_FUNC int next_ping_state( next_ping_t * ping );
 
 // -----------------------------------------
+¡
+#endif // #if NEXT_EXPERIMENTAL
+
+// =======================================================================================
 
 NEXT_EXPORT_FUNC void next_test();
 
