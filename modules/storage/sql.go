@@ -4096,7 +4096,7 @@ func (db *SQL) RemoveNotificationTypeByName(name string) error {
 type sqlNotificationPriority struct {
 	ID    int64
 	Name  string
-	Color int64
+	Color string
 }
 
 // NotificationPriorities returns a list of priorities
@@ -4248,8 +4248,8 @@ func (db *SQL) UpdateNotificationPriority(id int64, field string, value interfac
 		updateSQL.Write([]byte("(select id from notification_priorities where id = $2)"))
 		args = append(args, name, id)
 	case "Color":
-		color, ok := value.(int64)
-		if !ok {
+		color, ok := value.(string)
+		if !ok || color == "" {
 			return fmt.Errorf("%v is not a valid int64 value", value)
 		}
 		updateSQL.Write([]byte("update notification_priorities set color=$1 where id="))

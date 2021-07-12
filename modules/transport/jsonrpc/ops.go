@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	DEFAULT_COLOR = int64(10791603)
+	DEFAULT_COLOR = "737475"
 )
 
 type RelayVersion struct {
@@ -1639,16 +1639,17 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 }
 
 type notification struct {
-	ID         string    `json:"id"`
-	Timestamp  time.Time `json:"timestamp"`
-	Author     string    `json:"author"`
-	Title      string    `json:"title"`
-	Message    string    `json:"message"`
-	TypeID     string    `json:"type_id"`
-	PriorityID string    `json:"priority_id"`
-	Public     bool      `json:"public"`
-	Paid       bool      `json:"paid"`
-	Data       string    `json:"data"`
+	ID           string    `json:"id"`
+	Timestamp    time.Time `json:"timestamp"`
+	Author       string    `json:"author"`
+	Title        string    `json:"title"`
+	Message      string    `json:"message"`
+	TypeID       string    `json:"type_id"`
+	CustomerCode string    `json:"customer_code"`
+	PriorityID   string    `json:"priority_id"`
+	Public       bool      `json:"public"`
+	Paid         bool      `json:"paid"`
+	Data         string    `json:"data"`
 }
 
 type NotificationsArgs struct {
@@ -1660,6 +1661,7 @@ type NotificationsReply struct {
 }
 
 func (s *OpsService) Notifications(r *http.Request, args *NotificationsArgs, reply *NotificationsReply) error {
+	reply.Notifications = make([]notification, 0)
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("Notifications(): %v", err.Error()))
@@ -1671,16 +1673,17 @@ func (s *OpsService) Notifications(r *http.Request, args *NotificationsArgs, rep
 	for _, dbNotification := range allNotifications {
 		if args.CustomerCode == "" || dbNotification.CustomerCode == args.CustomerCode {
 			reply.Notifications = append(reply.Notifications, notification{
-				ID:         fmt.Sprintf("%016x", dbNotification.ID),
-				Timestamp:  dbNotification.Timestamp,
-				Author:     dbNotification.Author,
-				Title:      dbNotification.Title,
-				Message:    dbNotification.Message,
-				TypeID:     fmt.Sprintf("%016x", dbNotification.Type.ID),
-				PriorityID: fmt.Sprintf("%016x", dbNotification.Priority.ID),
-				Public:     dbNotification.Public,
-				Paid:       dbNotification.Paid,
-				Data:       dbNotification.Data,
+				ID:           fmt.Sprintf("%016x", dbNotification.ID),
+				Timestamp:    dbNotification.Timestamp,
+				Author:       dbNotification.Author,
+				Title:        dbNotification.Title,
+				Message:      dbNotification.Message,
+				TypeID:       fmt.Sprintf("%016x", dbNotification.Type.ID),
+				CustomerCode: dbNotification.CustomerCode,
+				PriorityID:   fmt.Sprintf("%016x", dbNotification.Priority.ID),
+				Public:       dbNotification.Public,
+				Paid:         dbNotification.Paid,
+				Data:         dbNotification.Data,
 			})
 		}
 	}
@@ -1700,6 +1703,8 @@ type NotificationTypesReply struct {
 }
 
 func (s *OpsService) NotificationTypes(r *http.Request, args *NotificationTypesArgs, reply *NotificationTypesReply) error {
+	reply.NotificationTypes = make([]notificationType, 0)
+
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("NotificationTypes(): %v", err.Error()))
@@ -1731,6 +1736,8 @@ type NotificationPrioritiesReply struct {
 }
 
 func (s *OpsService) NotificationPriorities(r *http.Request, args *NotificationPrioritiesArgs, reply *NotificationPrioritiesReply) error {
+	reply.NotificationPriorities = make([]notificationPriority, 0)
+
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("NotificationPriorities(): %v", err.Error()))
@@ -1752,9 +1759,9 @@ func (s *OpsService) NotificationPriorities(r *http.Request, args *NotificationP
 type AddNotificationArgs struct {
 	Title         string   `json:"title"`
 	Message       string   `json:"message"`
-	Type          int64    `json:"type_id"`
+	TypeID        string   `json:"type_id"`
 	CustomerCodes []string `json:"customer_codes"`
-	Priority      int64    `json:"priority_id"`
+	PriorityID    string   `json:"priority_id"`
 	Public        bool     `json:"public"`
 	Paid          bool     `json:"private"`
 	Data          string   `json:"data"`
@@ -1788,22 +1795,41 @@ func (s *OpsService) AddNotification(r *http.Request, args *AddNotificationArgs,
 		}
 	}
 
-	priority, err := s.Storage.NotificationPriorityByID(args.Priority)
+	priorityID, err := strconv.ParseInt(args.PriorityID, 10, 64)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Failed to parse priority ID", err.Error()))
+		return &err
+	}
+	typeID, err := strconv.ParseInt(args.TypeID, 10, 64)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Failed to parse type ID", err.Error()))
+		return &err
+	}
+
+	priority, err := s.Storage.NotificationPriorityByID(priorityID)
 	if err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Failed to lookup priority level", err.Error()))
 		return &err
 	}
 
-	notificationType, err := s.Storage.NotificationTypeByID(args.Type)
+	notificationType, err := s.Storage.NotificationTypeByID(typeID)
 	if err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Failed to lookup priority level", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("AddNotification(): %v: Failed to lookup notification type", err.Error()))
 		return &err
 	}
 
-	codes := []string{""}
-	if len(args.CustomerCodes) > 0 {
+	customers := s.Storage.Customers()
+
+	codes := make([]string, len(customers))
+	if len(args.CustomerCodes) == 0 {
+		for i, customer := range customers {
+			codes[i] = customer.Code
+		}
+	} else {
 		codes = args.CustomerCodes
 	}
 
@@ -1848,6 +1874,13 @@ func (s *OpsService) AddNotificationType(r *http.Request, args *AddNotificationT
 		return &err
 	}
 
+	if args.Name == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Name"
+		s.Logger.Log("err", fmt.Errorf("UpdateNotification(): %v: Name is required", err.Error()))
+		return &err
+	}
+
 	lowerName := strings.ToLower(args.Name)
 
 	notificationType := notifications.NotificationType{
@@ -1874,7 +1907,7 @@ func (s *OpsService) AddNotificationType(r *http.Request, args *AddNotificationT
 
 type AddNotificationPriorityArgs struct {
 	Name  string `json:"name"`
-	Color int64  `json:"color"`
+	Color string `json:"color"`
 }
 
 type AddNotificationPriorityReply struct {
@@ -1892,7 +1925,7 @@ func (s *OpsService) AddNotificationPriority(r *http.Request, args *AddNotificat
 
 	color := args.Color
 
-	if color == 0 {
+	if color == "" {
 		color = DEFAULT_COLOR
 	}
 

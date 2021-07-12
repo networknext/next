@@ -1095,7 +1095,7 @@ func TestNotifications(t *testing.T) {
 
 	err = storer.AddNotificationPriority(notifications.NotificationPriority{
 		Name:  "default",
-		Color: int64(12341231),
+		Color: jsonrpc.DEFAULT_COLOR,
 	})
 	assert.NoError(t, err)
 
@@ -1204,7 +1204,7 @@ func TestAddNotification(t *testing.T) {
 
 	err = storer.AddNotificationPriority(notifications.NotificationPriority{
 		Name:  "default",
-		Color: int64(12341231),
+		Color: jsonrpc.DEFAULT_COLOR,
 	})
 	assert.NoError(t, err)
 
@@ -1216,9 +1216,9 @@ func TestAddNotification(t *testing.T) {
 		args := jsonrpc.AddNotificationArgs{
 			Title:         "Test system notification",
 			Message:       "This is a test system notification",
-			Type:          systemType.ID,
+			TypeID:        fmt.Sprintf("%016x", systemType.ID),
 			CustomerCodes: []string{},
-			Priority:      priority.ID,
+			PriorityID:    fmt.Sprintf("%016x", priority.ID),
 			Public:        false,
 			Paid:          false,
 			Data:          "",
@@ -1231,9 +1231,9 @@ func TestAddNotification(t *testing.T) {
 		assert.Len(t, allNotifications, 1)
 		assert.Equal(t, args.Title, allNotifications[0].Title)
 		assert.Equal(t, args.Message, allNotifications[0].Message)
-		assert.Equal(t, args.Type, allNotifications[0].Type)
+		assert.Equal(t, args.TypeID, allNotifications[0].Type)
 		assert.Equal(t, "", allNotifications[0].CustomerCode)
-		assert.Equal(t, args.Priority, allNotifications[0].Priority)
+		assert.Equal(t, args.PriorityID, allNotifications[0].Priority)
 		assert.Equal(t, args.Public, allNotifications[0].Public)
 		assert.Equal(t, args.Paid, allNotifications[0].Paid)
 		assert.Equal(t, args.Data, allNotifications[0].Data)
@@ -1244,9 +1244,9 @@ func TestAddNotification(t *testing.T) {
 		args := jsonrpc.AddNotificationArgs{
 			Title:         "Test system notification",
 			Message:       "This is a test system notification",
-			Type:          systemType.ID,
+			TypeID:        fmt.Sprintf("%016x", systemType.ID),
 			CustomerCodes: []string{"test"},
-			Priority:      priority.ID,
+			PriorityID:    fmt.Sprintf("%016x", priority.ID),
 			Public:        false,
 			Paid:          false,
 			Data:          "",
@@ -1259,9 +1259,9 @@ func TestAddNotification(t *testing.T) {
 		assert.Len(t, allNotifications, 1)
 		assert.Equal(t, args.Title, allNotifications[0].Title)
 		assert.Equal(t, args.Message, allNotifications[0].Message)
-		assert.Equal(t, args.Type, allNotifications[0].Type)
+		assert.Equal(t, args.TypeID, allNotifications[0].Type)
 		assert.Equal(t, "test", allNotifications[0].CustomerCode)
-		assert.Equal(t, args.Priority, allNotifications[0].Priority)
+		assert.Equal(t, args.PriorityID, allNotifications[0].Priority)
 		assert.Equal(t, args.Public, allNotifications[0].Public)
 		assert.Equal(t, args.Paid, allNotifications[0].Paid)
 		assert.Equal(t, args.Data, allNotifications[0].Data)
@@ -1272,9 +1272,9 @@ func TestAddNotification(t *testing.T) {
 		args := jsonrpc.AddNotificationArgs{
 			Title:         "Test system notification",
 			Message:       "This is a test system notification",
-			Type:          systemType.ID,
+			TypeID:        fmt.Sprintf("%016x", systemType.ID),
 			CustomerCodes: []string{"test", "testing", "tested"},
-			Priority:      priority.ID,
+			PriorityID:    fmt.Sprintf("%016x", priority.ID),
 			Public:        false,
 			Paid:          false,
 			Data:          "",
@@ -1331,7 +1331,7 @@ func TestUpdateNotification(t *testing.T) {
 
 	err = storer.AddNotificationPriority(notifications.NotificationPriority{
 		Name:  "default",
-		Color: int64(12341231),
+		Color: jsonrpc.DEFAULT_COLOR,
 	})
 	assert.NoError(t, err)
 
@@ -1343,7 +1343,7 @@ func TestUpdateNotification(t *testing.T) {
 
 	err = storer.AddNotificationPriority(notifications.NotificationPriority{
 		Name:  "urgent",
-		Color: int64(1837162),
+		Color: jsonrpc.DEFAULT_COLOR,
 	})
 	assert.NoError(t, err)
 
@@ -1538,7 +1538,7 @@ func TestRemoveNotification(t *testing.T) {
 
 	err = storer.AddNotificationPriority(notifications.NotificationPriority{
 		Name:  "default",
-		Color: int64(12341231),
+		Color: jsonrpc.DEFAULT_COLOR,
 	})
 	assert.NoError(t, err)
 
@@ -1919,7 +1919,7 @@ func TestAddNotificationPriority(t *testing.T) {
 		var reply jsonrpc.AddNotificationPriorityReply
 		args := jsonrpc.AddNotificationPriorityArgs{
 			Name:  "test",
-			Color: int64(123712673),
+			Color: jsonrpc.DEFAULT_COLOR,
 		}
 		err := svc.AddNotificationPriority(req, &args, &reply)
 		assert.NoError(t, err)

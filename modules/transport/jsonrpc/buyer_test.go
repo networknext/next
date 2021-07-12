@@ -1641,7 +1641,7 @@ func TestFetchNotifications(t *testing.T) {
 
 	storer.AddNotificationPriority(notifications.NotificationPriority{
 		Name:  "default",
-		Color: int64(12341231),
+		Color: jsonrpc.DEFAULT_COLOR,
 	})
 
 	priority, err := storer.NotificationPriorityByName("default")

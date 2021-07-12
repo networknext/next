@@ -164,7 +164,7 @@ create table notification_types (
 create table notification_priorities (
   id integer primary key autoincrement,
   priority_name text not null unique,
-  color integer not null
+  color text not null
 );
 
 create table notifications (

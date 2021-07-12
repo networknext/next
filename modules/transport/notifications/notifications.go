@@ -13,7 +13,7 @@ type NotificationType struct {
 type NotificationPriority struct {
 	ID    int64
 	Name  string
-	Color int64
+	Color string
 }
 
 type Notification struct {

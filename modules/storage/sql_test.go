@@ -16,6 +16,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/networknext/backend/modules/transport/notifications"
 	"github.com/stretchr/testify/assert"
 )
@@ -1794,7 +1795,7 @@ func TestNotifications(t *testing.T) {
 	t.Run("AddNotificationPriority", func(t *testing.T) {
 		err := db.AddNotificationPriority(notifications.NotificationPriority{
 			Name:  "Test Priority",
-			Color: int64(4360181),
+			Color: jsonrpc.DEFAULT_COLOR,
 		})
 		assert.NoError(t, err)
 	})
@@ -1802,7 +1803,7 @@ func TestNotifications(t *testing.T) {
 	t.Run("AddNotificationPriority - invalid !unique", func(t *testing.T) {
 		err := db.AddNotificationPriority(notifications.NotificationPriority{
 			Name:  "Test Priority",
-			Color: int64(4360181),
+			Color: jsonrpc.DEFAULT_COLOR,
 		})
 		assert.Error(t, err)
 	})
@@ -1812,7 +1813,7 @@ func TestNotifications(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, "Test Priority", notificationPriority.Name)
-		assert.Equal(t, int64(4360181), notificationPriority.Color)
+		assert.Equal(t, jsonrpc.DEFAULT_COLOR, notificationPriority.Color)
 	})
 
 	t.Run("NotificationPriorityByID", func(t *testing.T) {
@@ -1849,7 +1850,7 @@ func TestNotifications(t *testing.T) {
 
 	err = db.AddNotificationPriority(notifications.NotificationPriority{
 		Name:  "Test Priority 2",
-		Color: int64(4360181),
+		Color: jsonrpc.DEFAULT_COLOR,
 	})
 	assert.NoError(t, err)
 
@@ -1879,7 +1880,7 @@ func TestNotifications(t *testing.T) {
 		assert.Equal(t, notificationPriority.Color, notificationPriority2.Color)
 		assert.Equal(t, "Test Priority Renamed", notificationPriority2.Name)
 
-		err = db.UpdateNotificationPriority(notificationPriority.ID, "Color", int64(123456))
+		err = db.UpdateNotificationPriority(notificationPriority.ID, "Color", "253863")
 		assert.NoError(t, err)
 
 		notificationPriority3, err := db.NotificationPriorityByName("Test Priority Renamed")
@@ -1887,7 +1888,7 @@ func TestNotifications(t *testing.T) {
 
 		assert.Equal(t, notificationPriority.ID, notificationPriority3.ID)
 		assert.Equal(t, notificationPriority2.Name, notificationPriority3.Name)
-		assert.Equal(t, int64(123456), notificationPriority3.Color)
+		assert.Equal(t, "253863", notificationPriority3.Color)
 	})
 
 	t.Run("AddNotification - customer doesn't exist", func(t *testing.T) {
