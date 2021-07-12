@@ -313,22 +313,20 @@ func TestRelayFrontendSvc_ResetRouteMatrix(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedEmptyRouteMatrix := routing.RouteMatrix{
-		RelayIDsToIndices:   make(map[uint64]int32),
-		RelayIDs:            []uint64{},
-		RelayAddresses:      []net.UDPAddr{},
-		RelayNames:          []string{},
-		RelayLatitudes:      []float32{},
-		RelayLongitudes:     []float32{},
-		RelayDatacenterIDs:  []uint64{},
-		RouteEntries:        []core.RouteEntry{},
-		BinFileBytes:        0,
-		CreatedAt:           0,
-		Version:             routing.RouteMatrixSerializeVersion,
-		DestRelays:          []bool{},
-		PingStats:           []analytics.PingStatsEntry{},
-		RelayStats:          []analytics.RelayStatsEntry{},
-		FullRelayIDs:        []uint64{},
-		FullRelayIndicesSet: make(map[int32]bool),
+		RelayIDsToIndices:  make(map[uint64]int32),
+		RelayIDs:           []uint64{},
+		RelayAddresses:     []net.UDPAddr{},
+		RelayNames:         []string{},
+		RelayLatitudes:     []float32{},
+		RelayLongitudes:    []float32{},
+		RelayDatacenterIDs: []uint64{},
+		RouteEntries:       []core.RouteEntry{},
+		BinFileBytes:       0,
+		CreatedAt:          0,
+		Version:            routing.RouteMatrixSerializeVersion,
+		DestRelays:         []bool{},
+		PingStats:          []analytics.PingStatsEntry{},
+		RelayStats:         []analytics.RelayStatsEntry{},
 	}
 
 	receivedRouteMatrixBin := svc.routeMatrix.GetMatrix()
