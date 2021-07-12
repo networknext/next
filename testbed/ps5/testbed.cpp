@@ -27,7 +27,7 @@ void packet_received( next_client_t * client, void * context, const uint8_t * pa
 
 int32_t main( int argc, const char * const argv[] )
 {
-    SceKernelModule next_library = sceKernelLoadStartModule( "/app0/next-ps5-4.0.15.prx", 0, NULL, 0, NULL, NULL );
+    SceKernelModule next_library = sceKernelLoadStartModule( "/app0/next-ps5-4.0.16.prx", 0, NULL, 0, NULL, NULL );
     if ( next_library < 0 )
     {
         printf( "Failed to load next PRX library\n" );

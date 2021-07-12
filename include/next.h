@@ -34,10 +34,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.0.15"
+    #define NEXT_VERSION_FULL                              "4.0.16"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                                0
-    #define NEXT_VERSION_PATCH_INT                               15
+    #define NEXT_VERSION_PATCH_INT                               16
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -400,7 +400,7 @@ NEXT_EXPORT_FUNC void next_ping_update( next_ping_t * ping );
 NEXT_EXPORT_FUNC int next_ping_state( next_ping_t * ping );
 
 // -----------------------------------------
-¡
+
 #endif // #if NEXT_EXPERIMENTAL
 
 // =======================================================================================

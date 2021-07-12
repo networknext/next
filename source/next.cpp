@@ -10879,6 +10879,8 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
     {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server initializing with backend" );
+
         server->state = NEXT_SERVER_STATE_INITIALIZING;
     }
     
@@ -12734,8 +12736,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     if ( server->state == NEXT_SERVER_STATE_INITIALIZING && !server->resolving_hostname )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
-
-        next_printf( NEXT_LOG_LEVEL_INFO, "server initializing with backend" );
 
         NextBackendServerInitRequestPacket packet;
         packet.request_id = next_random_uint64();

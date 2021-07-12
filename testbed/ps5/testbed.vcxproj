@@ -58,14 +58,14 @@
       <AdditionalIncludeDirectories>..\..\include</AdditionalIncludeDirectories>
     </ClCompile>
     <CustomBuildStep>
-      <Command>copy ..\..\lib\Playstation5\Debug\next-ps5-4.0.15.prx Prospero_Debug</Command>
+      <Command>copy ..\..\lib\Playstation5\Debug\next-ps5-4.0.16.prx Prospero_Debug</Command>
     </CustomBuildStep>
     <CustomBuildStep>
-      <Outputs>next-ps5-4.0.15.prx</Outputs>
+      <Outputs>next-ps5-4.0.16.prx</Outputs>
       <Message>Copying network next library</Message>
     </CustomBuildStep>
     <Link>
-      <AdditionalDependencies>../../lib/Playstation5/Debug/next-ps5-4.0.15_stub.a</AdditionalDependencies>
+      <AdditionalDependencies>../../lib/Playstation5/Debug/next-ps5-4.0.16_stub.a</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Prospero'">
@@ -76,16 +76,16 @@
       <AdditionalIncludeDirectories>..\..\include</AdditionalIncludeDirectories>
     </ClCompile>
     <CustomBuildStep>
-      <Command>copy ..\..\lib\Playstation5\Debug\next-ps5-4.0.15.prx Prospero_Release</Command>
+      <Command>copy ..\..\lib\Playstation5\Debug\next-ps5-4.0.16.prx Prospero_Release</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Copying network next library</Message>
     </CustomBuildStep>
     <CustomBuildStep>
-      <Outputs>next-ps5-4.0.15.prx</Outputs>
+      <Outputs>next-ps5-4.0.16.prx</Outputs>
     </CustomBuildStep>
     <Link>
-      <AdditionalDependencies>..\..\lib\Playstation5\Debug\next-ps5-4.0.15_stub.a</AdditionalDependencies>
+      <AdditionalDependencies>..\..\lib\Playstation5\Debug\next-ps5-4.0.16_stub.a</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
