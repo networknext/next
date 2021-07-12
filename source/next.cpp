@@ -10289,8 +10289,6 @@ struct next_server_internal_t
     uint64_t upgrade_sequence;
     uint64_t server_update_sequence;
     uint64_t server_init_request_id;
-    double last_backend_server_init;
-    double first_backend_server_init;
     double last_backend_server_update;
     double next_resolve_hostname_time;
     next_address_t backend_address;
@@ -10886,8 +10884,6 @@ void next_server_internal_resolve_hostname( next_server_internal_t * server )
     
     server->resolving_hostname = true;
     server->resolve_hostname_finished = false;
-    server->next_resolve_hostname_time = next_time() + 5.0*60.0 + ( next_random_float() * 5.0*60.0 );
-    server->first_backend_server_init = 0.0;
 }
 
 void next_server_internal_destroy( next_server_internal_t * server );
@@ -11637,7 +11633,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             next_printf( NEXT_LOG_LEVEL_INFO, "welcome to network next :)" );
 
             server->state = NEXT_SERVER_STATE_INITIALIZED;
-            server->first_backend_server_init = 0.0;
 
             return;
         }
@@ -12669,15 +12664,6 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
     if ( next_global_config.disable_network_next )
         return true;
 
-    const double current_time = next_time();
-    
-    if ( server->next_resolve_hostname_time <= current_time )
-    {
-        next_server_internal_resolve_hostname( server );
-        server->next_resolve_hostname_time = current_time + 5.0*60.0 + next_random_float() * 5.0*60.0;
-        server->first_backend_server_init = 0.0;
-    }
-
     if ( !server->resolving_hostname )
         return true;
 
@@ -12749,45 +12735,27 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
-        if ( server->first_backend_server_init == 0.0 )
+        next_printf( NEXT_LOG_LEVEL_INFO, "server initializing with backend" );
+
+        NextBackendServerInitRequestPacket packet;
+        packet.request_id = next_random_uint64();
+        packet.customer_id = server->customer_id;
+        packet.datacenter_id = server->datacenter_id;
+        strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+        packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+
+        server->server_init_request_id = packet.request_id;
+
+        int packet_bytes = 0;
+        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server initializing with backend" );
-            server->first_backend_server_init = current_time;
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
+            return;
         }
 
-        if ( server->last_backend_server_init + 1.0 <= current_time )
-        {
-            NextBackendServerInitRequestPacket packet;
-            packet.request_id = next_random_uint64();
-            packet.customer_id = server->customer_id;
-            packet.datacenter_id = server->datacenter_id;
-            strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-            packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
+        next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-            server->server_init_request_id = packet.request_id;
-
-            int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
-                return;
-            }
-
-            next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
-
-            server->last_backend_server_init = current_time;
-
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
-        }
-
-        if ( server->first_backend_server_init + 10.0 <= current_time )
-        {
-            double retry_delay = 5.0*60.0 + next_random_float() * 5.0*60.0;
-            next_printf( NEXT_LOG_LEVEL_INFO, "server did not get an init response from backend. trying again in %.1f seconds", retry_delay );
-            server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
-            server->next_resolve_hostname_time = current_time + double(retry_delay);
-            server->first_backend_server_init = 0.0;
-        }
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
     }
 
     // tracker updates
