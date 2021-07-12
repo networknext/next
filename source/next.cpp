@@ -4010,8 +4010,16 @@ int next_init( void * context, next_config_t * config_in )
     }
 
     const char * next_server_backend_hostname_override = next_platform_getenv( "NEXT_SERVER_BACKEND_HOSTNAME" );
+
+    // IMPORTANT: For backwards compatibility
+    if ( !next_server_backend_hostname_override )
+    {
+        next_server_backend_hostname_override = next_platform_getenv( "NEXT_HOSTNAME" );
+    }
+
     if ( next_server_backend_hostname_override )
     {
+    
         next_printf( NEXT_LOG_LEVEL_INFO, "override server backend hostname: '%s'", next_server_backend_hostname_override );
         strncpy( config.server_backend_hostname, next_server_backend_hostname_override, sizeof(config.server_backend_hostname) );
         config.server_backend_hostname[sizeof(config.server_backend_hostname)-1] = '\0';
