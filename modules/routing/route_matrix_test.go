@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
@@ -241,5 +242,45 @@ func TestRouteMatrixGetJsonAnalysis(t *testing.T) {
 	assert.Equal(t, 5, jsonMatrixAnalysis.MaxRelaysPerRoute)
 	assert.Equal(t, 14.937079309335674, jsonMatrixAnalysis.RelayPairsWithOneRoutePercent)
 	assert.Equal(t, 9.089844893181153, jsonMatrixAnalysis.RelayPairsWIthNoRoutesPercent)
+
+}
+
+func TestRouteMatrixRelayFull(t *testing.T) {
+	expected := getRouteMatrix(t)
+	// Fill in all the info up to v4
+	expected.BinFileBytes = 0
+	expected.BinFileData = []byte{}
+	expected.CreatedAt = uint64(0)
+	expected.Version = routing.RouteMatrixSerializeVersion
+	expected.DestRelays = []bool{false, false, false, false}
+	expected.PingStats = []analytics.PingStatsEntry{}
+	expected.RelayStats = []analytics.RelayStatsEntry{}
+	expected.FullRelayIDs = []uint64{1}
+
+	buffer := make([]byte, 1000)
+
+	ws, err := encoding.CreateWriteStream(buffer)
+	assert.NoError(t, err)
+	err = expected.Serialize(ws)
+	assert.NoError(t, err)
+
+	ws.Flush()
+	data := ws.GetData()[:ws.GetBytesProcessed()]
+
+	var actual routing.RouteMatrix
+	rs := encoding.CreateReadStream(data)
+	err = actual.Serialize(rs)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected.FullRelayIDs, actual.FullRelayIDs)
+	assert.Equal(t, 1, len(actual.FullRelayIndicesSet))
+
+	relayIndex, exists := actual.RelayIDsToIndices[uint64(1)]
+	assert.True(t, exists)
+	assert.Equal(t, int32(0), relayIndex)
+
+	val, ok := actual.FullRelayIndicesSet[relayIndex]
+	assert.True(t, ok)
+	assert.NotEmpty(t, val)
 
 }

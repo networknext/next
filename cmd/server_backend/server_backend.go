@@ -590,6 +590,9 @@ func mainReturnWithCode() int {
 	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, biller2, featureBilling, featureBilling2, logger, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx)
 
+	// Create a server tracker to keep track of which servers are sending updates to this backend
+	serverTracker := storage.NewServerTracker()
+
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
 	if err != nil {
 		core.Error("could not create local multipath veto handler: %v", err)
@@ -652,6 +655,7 @@ func mainReturnWithCode() int {
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+		router.HandleFunc("/servers", transport.ServerTrackerHandlerFunc(serverTracker))
 		router.Handle("/debug/vars", expvar.Handler())
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
@@ -756,7 +760,7 @@ func mainReturnWithCode() int {
 	}
 
 	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, backendMetrics.ServerUpdateMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, serverTracker, backendMetrics.ServerUpdateMetrics)
 	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
 
 	for i := 0; i < numThreads; i++ {
