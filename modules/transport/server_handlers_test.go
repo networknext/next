@@ -287,7 +287,9 @@ func TestServerUpdateHandlerFunc_BuyerNotFound(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -312,7 +314,9 @@ func TestServerUpdateHandlerFunc_BuyerNotLive(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -337,7 +341,9 @@ func TestServerUpdateHandlerFunc_SigCheckFail(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -362,7 +368,9 @@ func TestServerUpdateHandlerFunc_SDKToOld(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -387,7 +395,9 @@ func TestServerUpdateHandlerFunc_DatacenterNotFound(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -410,7 +420,9 @@ func TestServerUpdateHandlerFunc_Success(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
