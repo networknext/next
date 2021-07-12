@@ -30,12 +30,14 @@
 #include <stdint.h>
 #include <stddef.h>
 
+// #define NEXT_EXPERIMENTAL 1
+
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.0.14"
+    #define NEXT_VERSION_FULL                              "4.0.16"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                                0
-    #define NEXT_VERSION_PATCH_INT                               14
+    #define NEXT_VERSION_PATCH_INT                               16
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -137,13 +139,13 @@
 
 struct next_config_t
 {
-    char hostname[256];
+    char server_backend_hostname[256];
+    char ping_backend_hostname[256];
     char customer_public_key[256];
     char customer_private_key[256];
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
-    bool disable_packet_tagging;
 };
 
 NEXT_EXPORT_FUNC void next_default_config( next_config_t * config );
@@ -233,7 +235,6 @@ struct next_client_stats_t
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
-    uint64_t user_flags;
 };
 
 // -----------------------------------------
@@ -270,8 +271,6 @@ NEXT_EXPORT_FUNC uint64_t next_client_session_id( next_client_t * client );
 
 NEXT_EXPORT_FUNC const next_client_stats_t * next_client_stats( next_client_t * client );
 
-NEXT_EXPORT_FUNC void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
-
 NEXT_EXPORT_FUNC const next_address_t * next_client_server_address( next_client_t * client );
 
 // -----------------------------------------
@@ -304,15 +303,13 @@ struct next_server_stats_t
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
-    uint64_t user_flags;
-    uint64_t tags[NEXT_MAX_TAGS];
     int num_tags;
+    uint64_t tags[NEXT_MAX_TAGS];
 };
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
-#define NEXT_SERVER_STATE_RESOLVING_HOSTNAME        1
-#define NEXT_SERVER_STATE_INITIALIZING              2
-#define NEXT_SERVER_STATE_INITIALIZED               3
+#define NEXT_SERVER_STATE_INITIALIZING              1
+#define NEXT_SERVER_STATE_INITIALIZED               2
 
 struct next_server_t;
 
@@ -363,7 +360,50 @@ struct next_mutex_helper_t
 
 #define next_mutex_guard( _mutex ) next_mutex_helper_t __mutex_helper( _mutex )
 
+// =======================================================================================
+
+#if NEXT_EXPERIMENTAL
+
 // -----------------------------------------
+
+NEXT_EXPORT_FUNC uint64_t next_customer_id();
+
+NEXT_EXPORT_FUNC const uint8_t * next_customer_private_key();
+
+NEXT_EXPORT_FUNC const uint8_t * next_customer_public_key();
+
+// -----------------------------------------
+
+#define NEXT_PING_DURATION 10.0
+#define NEXT_MAX_PING_TOKENS 256
+#define NEXT_MAX_PING_TOKEN_BYTES 256
+
+NEXT_EXPORT_FUNC void next_generate_ping_token( uint64_t customer_id, const uint8_t * customer_private_key, const next_address_t * client_address, const char * datacenter_name, const char * user_id, uint8_t * out_ping_token_data, int * out_ping_token_bytes );
+
+NEXT_EXPORT_FUNC bool next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_public_key, const next_address_t * client_address, const uint8_t * ping_token_data, int ping_token_bytes );
+
+// -----------------------------------------
+
+struct next_ping_t;
+
+#define NEXT_PING_STATE_RESOLVING_HOSTNAME          0
+#define NEXT_PING_STATE_SENDING_PINGS               1
+#define NEXT_PING_STATE_FINISHED                    2
+#define NEXT_PING_STATE_ERROR                       3
+
+NEXT_EXPORT_FUNC next_ping_t * next_ping_create( void * context, const char * bind_address, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens );
+
+NEXT_EXPORT_FUNC void next_ping_destroy( next_ping_t * ping );
+
+NEXT_EXPORT_FUNC void next_ping_update( next_ping_t * ping );
+
+NEXT_EXPORT_FUNC int next_ping_state( next_ping_t * ping );
+
+// -----------------------------------------
+
+#endif // #if NEXT_EXPERIMENTAL
+
+// =======================================================================================
 
 NEXT_EXPORT_FUNC void next_test();
 
