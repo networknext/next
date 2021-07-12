@@ -15,26 +15,24 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const RouteMatrixSerializeVersion = 4
+const RouteMatrixSerializeVersion = 3
 
 type RouteMatrix struct {
-	RelayIDsToIndices   map[uint64]int32
-	RelayIDs            []uint64
-	RelayAddresses      []net.UDPAddr // external IPs only
-	RelayNames          []string
-	RelayLatitudes      []float32
-	RelayLongitudes     []float32
-	RelayDatacenterIDs  []uint64
-	RouteEntries        []core.RouteEntry
-	BinFileBytes        int32
-	BinFileData         []byte
-	CreatedAt           uint64
-	Version             uint32
-	DestRelays          []bool
-	PingStats           []analytics.PingStatsEntry
-	RelayStats          []analytics.RelayStatsEntry
-	FullRelayIDs        []uint64
-	FullRelayIndicesSet map[int32]bool
+	RelayIDsToIndices  map[uint64]int32
+	RelayIDs           []uint64
+	RelayAddresses     []net.UDPAddr // external IPs only
+	RelayNames         []string
+	RelayLatitudes     []float32
+	RelayLongitudes    []float32
+	RelayDatacenterIDs []uint64
+	RouteEntries       []core.RouteEntry
+	BinFileBytes       int32
+	BinFileData        []byte
+	CreatedAt          uint64
+	Version            uint32
+	DestRelays         []bool
+	PingStats          []analytics.PingStatsEntry
+	RelayStats         []analytics.RelayStatsEntry
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -134,7 +132,6 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 			stream.SerializeUint32(&entry.MaxSessions)
 			stream.SerializeUint32(&entry.NumRoutable)
 			stream.SerializeUint32(&entry.NumUnroutable)
-			stream.SerializeBool(&entry.Full)
 		}
 
 		numPingEntries := uint32(len(m.PingStats))
@@ -156,26 +153,6 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 			stream.SerializeBool(&entry.Routable)
 			stream.SerializeString(&entry.InstanceID, 64)
 			stream.SerializeBool(&entry.Debug)
-		}
-	}
-
-	if m.Version >= 4 {
-
-		numFullRelayIDs := uint32(len(m.FullRelayIDs))
-		stream.SerializeUint32(&numFullRelayIDs)
-
-		if stream.IsReading() {
-			m.FullRelayIDs = make([]uint64, numFullRelayIDs)
-			m.FullRelayIndicesSet = make(map[int32]bool)
-		}
-
-		for i := uint32(0); i < numFullRelayIDs; i++ {
-			stream.SerializeUint64(&m.FullRelayIDs[i])
-
-			if stream.IsReading() {
-				relayIndex, _ := m.RelayIDsToIndices[m.FullRelayIDs[i]]
-				m.FullRelayIndicesSet[relayIndex] = true
-			}
 		}
 	}
 
