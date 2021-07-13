@@ -1,10 +1,12 @@
 package transport
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/networknext/backend/modules/billing"
@@ -156,7 +158,21 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metri
 
 // ----------------------------------------------------------------------------
 
-func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, PostSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerTrackerHandlerFunc(serverTracker *storage.ServerTracker) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		w.Header().Set("Content-Type", "application/json")
+
+		serverTracker.TrackerMutex.RLock()
+		defer serverTracker.TrackerMutex.RUnlock()
+		json.NewEncoder(w).Encode(serverTracker.Tracker)
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, PostSessionHandler *PostSessionHandler, ServerTracker *storage.ServerTracker, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
@@ -221,6 +237,9 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Pos
 			NumSessions: packet.NumSessions,
 		}
 		PostSessionHandler.SendPortalCounts(countData)
+
+		// Track which servers are sending updates
+		ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress)
 
 		if !datacenterExists(database, packet.DatacenterID) {
 			core.Debug("datacenter does not exist %x", packet.DatacenterID)
@@ -1037,7 +1056,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, &state.Buyer.RouteShader, &state.Output.RouteState, multipathVetoMap, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
+		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, &state.Buyer.RouteShader, &state.Output.RouteState, multipathVetoMap, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
 			BuildNextTokens(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 		}
 
@@ -1068,7 +1087,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 			state.Metrics.RouteDoesNotExist.Add(1)
 		}
 
-		stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
+		stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
 
 		if stayOnNext {
 
