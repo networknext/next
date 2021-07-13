@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -18,15 +17,24 @@ import (
 
 // Chose the utility function to use
 func main() {
-	DatacenterReverseLookup()
+	// DatacenterReverseLookup()
 
 	// Set these variables depending on the environment
 	// Remember to also export GOOGLE_APPLICATION_CREDENTIALS env var
-	gcpProjectID := "local"
-	btInstanceID := "localhost:8086"
-	btTableName := "portal-session-history"
-	prefix := "prefix_of_rows_to_delete_goes_here"
-	DeleteBigtableRows(gcpProjectID, btInstanceID, btTableName, prefix)
+	// gcpProjectID := "local"
+	// btInstanceID := "localhost:8086"
+	// btTableName := "portal-session-history"
+	// prefix := "prefix_of_rows_to_delete_goes_here"
+	// DeleteBigtableRows(gcpProjectID, btInstanceID, btTableName, prefix)
+
+	// Provide the external IPs of server backend instances
+	serverBackendIPs := []string{"http://34.121.78.228", "http://35.238.240.228"}
+	prodDatabaseBinPath := "./database.bin"
+	err := GetLiveServers(serverBackendIPs, prodDatabaseBinPath)
+	if err != nil {
+		fmt.Printf("err: %v", err)
+		os.Exit(1)
+	}
 }
 
 // Fill in the "matches" string slice with datacenter hashes you want to brute force search.
@@ -228,8 +236,8 @@ func DeleteBigtableRows(gcpProjectID, btInstanceID, btTableName, prefix string) 
 // Gets the datacenter names, IPs, and timestamps for all servers connected to server backend instances per buyer
 func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 	type DatacenterInfo struct {
-		Timestamp uint64,
-		DatacenterIPs []string,
+		Timestamp     uint64
+		DatacenterIPs []string
 	}
 
 	// Output mapping will be {Buyer Name: {Datacenter Name: [Timestamp, IP]}}
@@ -242,24 +250,25 @@ func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 	// Load in JSON from server backend's /server endpoint
 	for _, serverBackendIP := range serverBackendIPs {
 		endpoint := fmt.Sprintf("%s/servers", serverBackendIP)
-		
+
 		r, err := client.Get(endpoint)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		tracker := storage.NewServerTracker()
 
 		json.NewDecoder(r.Body).Decode(tracker)
-		r.Body.Close() 
+		r.Body.Close()
 
-		trackers = append(trackers, tracker)
+		trackers = append(trackers, *tracker)
+		fmt.Printf("%+v\n", tracker)
 	}
 
 	// Load in database.bin
 	f2, err := os.Open(databaseBinPath)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	var incomingDB routing.DatabaseBinWrapper
@@ -276,20 +285,21 @@ func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 	buyerMap := make(map[string]routing.Buyer)
 	for _, buyer := range incomingDB.BuyerMap {
 		hexID := fmt.Sprintf("%016x", buyer.ID)
-		buyer[hexID] = buyer
+		buyerMap[hexID] = buyer
 	}
 
 	// Create map of datacenter hex ID datacneter
 	datacenterMap := make(map[string]routing.Datacenter)
-	for _, dc := range incomingDB.Datacenter {
+	for _, dc := range incomingDB.DatacenterMap {
 		hexID := fmt.Sprintf("%016x", dc.ID)
 		datacenterMap[hexID] = dc
 	}
 
 	// Loop through trackers and add to output mapping
 	for _, tracker := range trackers {
-		for buyerHexID, ipMapping := range tracker {
-			if buyer, ok = buyerMap[buyerHexID]; !ok {
+		for buyerHexID, ipMapping := range tracker.Tracker {
+			buyer, ok := buyerMap[buyerHexID]
+			if !ok {
 				return fmt.Errorf("buyer %s does not exist in buyer map", buyerHexID)
 			}
 
@@ -298,23 +308,21 @@ func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 			dcMap := make(map[string]DatacenterInfo)
 
 			for serverIP, serverInfo := range ipMapping {
-				host := strings.Split(serverIP, ":")[0]
-				port := strings.Split(serverIP, ":")[1]
-
 				datacenterHexID := serverInfo.DatacenterID
-				if datacenter, ok := datacenterMap[datacenterHexID]; !ok {
+				datacenter, ok := datacenterMap[datacenterHexID]
+				if !ok {
 					return fmt.Errorf("datacenter %s does not exist in datacenter map", datacenterHexID)
 				}
 
 				datacenterName := datacenter.Name
 
 				var info DatacenterInfo
-				var exists bool 
+				var exists bool
 				info, exists = dcMap[datacenterName]
 				if !exists {
 					// First time we see this datacenter for this buyer
 					dcMap[datacenterName] = DatacenterInfo{
-						Timestamp: serverInfo.Timestamp,
+						Timestamp:     serverInfo.Timestamp,
 						DatacenterIPs: []string{serverIP},
 					}
 				} else {
@@ -358,4 +366,19 @@ func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 	}
 
 	// Save the file
+	jsonData, err := json.Marshal(output)
+	if err != nil {
+		return err
+	}
+
+	jsonFile, err := os.Create("./datacenter_list.json")
+	if err != nil {
+		return err
+	}
+	defer jsonFile.Close()
+
+	jsonFile.Write(jsonData)
+	fmt.Printf("Wrote JSON output to %s\n", jsonFile.Name())
+
+	return nil
 }
