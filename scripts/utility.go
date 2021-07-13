@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -258,11 +259,10 @@ func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 
 		tracker := storage.NewServerTracker()
 
-		json.NewDecoder(r.Body).Decode(tracker)
+		json.NewDecoder(r.Body).Decode(&tracker.Tracker)
 		r.Body.Close()
 
 		trackers = append(trackers, *tracker)
-		fmt.Printf("%+v\n", tracker)
 	}
 
 	// Load in database.bin
@@ -310,12 +310,15 @@ func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 			for serverIP, serverInfo := range ipMapping {
 				datacenterHexID := serverInfo.DatacenterID
 				datacenter, ok := datacenterMap[datacenterHexID]
+				
+				var datacenterName string
 				if !ok {
-					return fmt.Errorf("datacenter %s does not exist in datacenter map", datacenterHexID)
+					host := strings.Split(serverIP, ":")[0]
+					datacenterName = fmt.Sprintf("unknown - %s", host) 
+					fmt.Printf("datacenter %s does not exist in datacenter map. Buyer Name: %s, Server IP: %s\n", datacenterHexID, buyerName, serverIP)
+				} else {
+					datacenterName = datacenter.Name
 				}
-
-				datacenterName := datacenter.Name
-
 				var info DatacenterInfo
 				var exists bool
 				info, exists = dcMap[datacenterName]
@@ -365,20 +368,26 @@ func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 		}
 	}
 
-	// Save the file
-	jsonData, err := json.Marshal(output)
-	if err != nil {
-		return err
+	// Save the file, one per buyer
+	for buyer, liveServers := range output {
+		jsonData, err := json.MarshalIndent(liveServers, "", "\t")
+		if err != nil {
+			return err
+		}
+
+		currentDate := time.Now().Local().Format("2006-01-02")
+
+		jsonFile, err := os.Create(fmt.Sprintf("./datacenter_list_%s_%s.json", buyer, currentDate))
+		if err != nil {
+			return err
+		}
+
+		jsonFile.Write(jsonData)
+
+		fmt.Printf("Wrote JSON output to %s\n", jsonFile.Name())
+
+		jsonFile.Close()
 	}
-
-	jsonFile, err := os.Create("./datacenter_list.json")
-	if err != nil {
-		return err
-	}
-	defer jsonFile.Close()
-
-	jsonFile.Write(jsonData)
-	fmt.Printf("Wrote JSON output to %s\n", jsonFile.Name())
-
+	
 	return nil
 }
