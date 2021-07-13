@@ -33,14 +33,13 @@
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
               />
-              SDK v4.0.10
+              SDK v4.0.16
             </a>
             <a
               href="#"
               id="docs-button"
               v-on:click="downloadUE4()"
               class="btn btn-primary m-1 btn-width"
-              v-if="false"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
@@ -135,7 +134,7 @@ export default class DownloadsWorkspace extends Vue {
         event_category: 'Important Clicks'
       })
     }
-    window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.10.zip')
+    window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.16.zip')
     this.$apiService.sendSDKDownloadSlackNotification({ email: this.$store.getters.userProfile.email, customer_name: this.$store.getters.userProfile.companyName, customer_code: this.$store.getters.userProfile.companyCode })
   }
 
