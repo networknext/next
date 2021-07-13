@@ -18,23 +18,23 @@ import (
 
 // Chose the utility function to use
 func main() {
-	// DatacenterReverseLookup()
+	DatacenterReverseLookup()
 
 	// Set these variables depending on the environment
 	// Remember to also export GOOGLE_APPLICATION_CREDENTIALS env var
-	// gcpProjectID := "local"
-	// btInstanceID := "localhost:8086"
-	// btTableName := "portal-session-history"
-	// prefix := "prefix_of_rows_to_delete_goes_here"
-	// DeleteBigtableRows(gcpProjectID, btInstanceID, btTableName, prefix)
+	gcpProjectID := "local"
+	btInstanceID := "localhost:8086"
+	btTableName := "portal-session-history"
+	prefix := "prefix_of_rows_to_delete_goes_here"
+	DeleteBigtableRows(gcpProjectID, btInstanceID, btTableName, prefix)
 
 	// Provide the external IPs of server backend instances
 	serverBackendIPs := []string{"http://34.121.78.228", "http://35.238.240.228"}
+	// Provide the prod database.bin path
 	prodDatabaseBinPath := "./database.bin"
 	err := GetLiveServers(serverBackendIPs, prodDatabaseBinPath)
 	if err != nil {
 		fmt.Printf("err: %v", err)
-		os.Exit(1)
 	}
 }
 
