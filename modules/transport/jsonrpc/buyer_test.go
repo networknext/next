@@ -1670,9 +1670,19 @@ func TestFetchNotifications(t *testing.T) {
 	defaultInvoiceNotification.Title = "Test invoice notification"
 	defaultInvoiceNotification.Message = "This is a  test invoice notification"
 
-	storer.AddNotification(defaultSystemNotification)
-	storer.AddNotification(defaultAnalyticsNotification)
-	storer.AddNotification(defaultInvoiceNotification)
+	err = storer.AddNotification(defaultSystemNotification)
+	assert.NoError(t, err)
+
+	err = storer.AddNotification(defaultAnalyticsNotification)
+	assert.NoError(t, err)
+
+	err = storer.AddNotification(defaultInvoiceNotification)
+	assert.NoError(t, err)
+
+	defaultInvoiceNotification.Visible = false
+
+	err = storer.AddNotification(defaultInvoiceNotification)
+	assert.NoError(t, err)
 
 	t.Run("success - one of each basic type", func(t *testing.T) {
 		var reply jsonrpc.FetchNotificationsReply

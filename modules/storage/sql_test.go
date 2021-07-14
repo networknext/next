@@ -1904,9 +1904,10 @@ func TestNotifications(t *testing.T) {
 			Priority: notifications.NotificationPriority{
 				ID: 0,
 			},
-			Public: false,
-			Paid:   false,
-			Data:   "",
+			Public:  false,
+			Paid:    false,
+			Visible: true,
+			Data:    "",
 		}
 		err := db.AddNotification(notification)
 		assert.Error(t, err)
@@ -1931,9 +1932,10 @@ func TestNotifications(t *testing.T) {
 			Priority: notifications.NotificationPriority{
 				ID: 0,
 			},
-			Public: false,
-			Paid:   false,
-			Data:   "",
+			Public:  false,
+			Paid:    false,
+			Visible: true,
+			Data:    "",
 		}
 		err := db.AddNotification(notification)
 		assert.Error(t, err)
@@ -1957,9 +1959,10 @@ func TestNotifications(t *testing.T) {
 			Priority: notifications.NotificationPriority{
 				ID: 0,
 			},
-			Public: false,
-			Paid:   false,
-			Data:   "",
+			Public:  false,
+			Paid:    false,
+			Visible: true,
+			Data:    "",
 		}
 		err := db.AddNotification(notification)
 		assert.Error(t, err)
@@ -1987,6 +1990,7 @@ func TestNotifications(t *testing.T) {
 			Priority:     priority,
 			Public:       true,
 			Paid:         true,
+			Visible:      true,
 			Data:         "data data data data",
 		}
 		err = db.AddNotification(notification)
@@ -2024,6 +2028,7 @@ func TestNotifications(t *testing.T) {
 			Priority:     notificationPriority,
 			Public:       true,
 			Paid:         true,
+			Visible:      true,
 			Data:         "data data data data",
 		}
 		err = db.AddNotification(notification)
@@ -2035,8 +2040,13 @@ func TestNotifications(t *testing.T) {
 		err = db.AddNotification(notification)
 		assert.NoError(t, err)
 
+		notification.Visible = false
+
+		err = db.AddNotification(notification)
+		assert.NoError(t, err)
+
 		dbNotifications = db.Notifications()
-		assert.Len(t, dbNotifications, 4)
+		assert.Len(t, dbNotifications, 5)
 	})
 
 	t.Run("NotificationsByCustomer", func(t *testing.T) {
@@ -2052,7 +2062,7 @@ func TestNotifications(t *testing.T) {
 
 	t.Run("NotificationByID", func(t *testing.T) {
 		dbNotifications := db.Notifications()
-		assert.Len(t, dbNotifications, 4)
+		assert.Len(t, dbNotifications, 5)
 
 		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
 		assert.NoError(t, err)
@@ -2077,7 +2087,7 @@ func TestNotifications(t *testing.T) {
 
 	t.Run("UpdateNotification - unknown field", func(t *testing.T) {
 		dbNotifications := db.Notifications()
-		assert.Len(t, dbNotifications, 4)
+		assert.Len(t, dbNotifications, 5)
 
 		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
 		assert.NoError(t, err)
@@ -2105,7 +2115,7 @@ func TestNotifications(t *testing.T) {
 
 	t.Run("UpdateNotification - readonly field", func(t *testing.T) {
 		dbNotifications := db.Notifications()
-		assert.Len(t, dbNotifications, 4)
+		assert.Len(t, dbNotifications, 5)
 
 		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
 		assert.NoError(t, err)
@@ -2133,7 +2143,7 @@ func TestNotifications(t *testing.T) {
 
 	t.Run("UpdateNotification", func(t *testing.T) {
 		dbNotifications := db.Notifications()
-		assert.Len(t, dbNotifications, 4)
+		assert.Len(t, dbNotifications, 5)
 
 		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
 		assert.NoError(t, err)
@@ -2165,7 +2175,7 @@ func TestNotifications(t *testing.T) {
 
 	t.Run("UpdateNotification - type", func(t *testing.T) {
 		dbNotifications := db.Notifications()
-		assert.Len(t, dbNotifications, 4)
+		assert.Len(t, dbNotifications, 5)
 
 		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
 		assert.NoError(t, err)
@@ -2224,7 +2234,7 @@ func TestNotifications(t *testing.T) {
 
 	t.Run("UpdateNotification - priority", func(t *testing.T) {
 		dbNotifications := db.Notifications()
-		assert.Len(t, dbNotifications, 4)
+		assert.Len(t, dbNotifications, 5)
 
 		actualNotification, err := db.NotificationByID(dbNotifications[0].ID)
 		assert.NoError(t, err)

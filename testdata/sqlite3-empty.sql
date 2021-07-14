@@ -178,6 +178,7 @@ create table notifications (
   priority_id integer not null,
   public boolean not null default false,
   paid boolean not null default false,
+  visible boolean not null default false,
   json_string text not null,
   constraint fk_customer_id foreign key (customer_id) references customers(id),
   constraint fk_notification_type_id foreign key (type_id) references notification_types(id),

@@ -1112,6 +1112,7 @@ func TestNotifications(t *testing.T) {
 		Priority:     priority,
 		Public:       false,
 		Paid:         false,
+		Visible:      true,
 		Data:         "",
 	}
 

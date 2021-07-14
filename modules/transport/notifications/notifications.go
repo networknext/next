@@ -27,6 +27,7 @@ type Notification struct {
 	Priority     NotificationPriority
 	Public       bool
 	Paid         bool
+	Visible      bool
 	Data         string
 }
 

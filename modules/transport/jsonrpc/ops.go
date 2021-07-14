@@ -1649,6 +1649,7 @@ type notification struct {
 	PriorityID   string    `json:"priority_id"`
 	Public       bool      `json:"public"`
 	Paid         bool      `json:"paid"`
+	Visible      bool      `json:"visible"`
 	Data         string    `json:"data"`
 }
 
@@ -1683,6 +1684,7 @@ func (s *OpsService) Notifications(r *http.Request, args *NotificationsArgs, rep
 				PriorityID:   fmt.Sprintf("%016x", dbNotification.Priority.ID),
 				Public:       dbNotification.Public,
 				Paid:         dbNotification.Paid,
+				Visible:      dbNotification.Visible,
 				Data:         dbNotification.Data,
 			})
 		}
@@ -1750,7 +1752,7 @@ func (s *OpsService) NotificationPriorities(r *http.Request, args *NotificationP
 		reply.NotificationPriorities = append(reply.NotificationPriorities, notificationPriority{
 			ID:    fmt.Sprintf("%016x", dbNotificationPriority.ID),
 			Name:  dbNotificationPriority.Name,
-			Color: fmt.Sprintf("%016x", dbNotificationPriority.Color),
+			Color: dbNotificationPriority.Color,
 		})
 	}
 	return nil
@@ -1763,7 +1765,8 @@ type AddNotificationArgs struct {
 	CustomerCodes []string `json:"customer_codes"`
 	PriorityID    string   `json:"priority_id"`
 	Public        bool     `json:"public"`
-	Paid          bool     `json:"private"`
+	Paid          bool     `json:"paid"`
+	Visible       bool     `json:"visible"`
 	Data          string   `json:"data"`
 }
 
@@ -1845,6 +1848,7 @@ func (s *OpsService) AddNotification(r *http.Request, args *AddNotificationArgs,
 			Priority:     priority,
 			Public:       args.Public,
 			Paid:         args.Paid,
+			Visible:      args.Visible,
 			Data:         args.Data,
 		}
 
@@ -1877,7 +1881,7 @@ func (s *OpsService) AddNotificationType(r *http.Request, args *AddNotificationT
 	if args.Name == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Name"
-		s.Logger.Log("err", fmt.Errorf("UpdateNotification(): %v: Name is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("AddNotificationType(): %v: Name is required", err.Error()))
 		return &err
 	}
 
@@ -1950,7 +1954,7 @@ func (s *OpsService) AddNotificationPriority(r *http.Request, args *AddNotificat
 
 	reply.ID = fmt.Sprintf("%016x", newPriority.ID)
 	reply.Name = lowerName
-	reply.Color = fmt.Sprintf("%016x", color)
+	reply.Color = color
 
 	return nil
 }
@@ -1992,7 +1996,7 @@ func (s *OpsService) UpdateNotification(r *http.Request, args *UpdateNotificatio
 			return &err
 		}
 	case "Type", "Priority":
-		value, err := strconv.ParseInt(args.ID, 10, 64)
+		value, err := strconv.ParseInt(args.Value, 10, 64)
 		if err != nil {
 			return fmt.Errorf("Failed to parse string value for field: %s", args.Field)
 		}
@@ -2004,7 +2008,7 @@ func (s *OpsService) UpdateNotification(r *http.Request, args *UpdateNotificatio
 			return &err
 		}
 	case "Public", "Paid":
-		value, err := strconv.ParseBool(args.ID)
+		value, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("Failed to parse string value for field: %s", args.Field)
 		}
@@ -2079,6 +2083,8 @@ func (s *OpsService) UpdateNotificationPriority(r *http.Request, args *UpdateNot
 		return fmt.Errorf("Failed to parse string ID: %s", args.ID)
 	}
 
+	fmt.Printf("Updating priority: %d. Field %s is being updated to %s\n", intID, args.Field, args.Value)
+
 	switch args.Field {
 	case "Name":
 		err = s.Storage.UpdateNotificationPriority(intID, args.Field, args.Value)
@@ -2088,12 +2094,7 @@ func (s *OpsService) UpdateNotificationPriority(r *http.Request, args *UpdateNot
 			return &err
 		}
 	case "Color":
-		value, err := strconv.ParseInt(args.ID, 10, 64)
-		if err != nil {
-			return fmt.Errorf("Failed to parse string value for field: %s", args.Field)
-		}
-
-		err = s.Storage.UpdateNotificationPriority(intID, args.Field, value)
+		err = s.Storage.UpdateNotificationPriority(intID, args.Field, args.Value)
 		if err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			s.Logger.Log("err", fmt.Errorf("UpdateNotificationPriority(): %v: Failed to update notification priority", err.Error()))
