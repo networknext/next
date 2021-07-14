@@ -156,6 +156,35 @@ create table datacenter_maps (
   constraint fk_datacenter foreign key (datacenter_id) references datacenters(id)
 );
 
+create table notification_types (
+  id integer primary key autoincrement,
+  priority_type text not null unique
+);
+
+create table notification_priorities (
+  id integer primary key autoincrement,
+  priority_name text not null unique,
+  color text not null
+);
+
+create table notifications (
+  id integer primary key autoincrement,
+  creation_date date not null,
+  author text not null,
+  card_title text not null,
+  card_body text not null,
+  type_id integer not null,
+  customer_id integer not null,
+  priority_id integer not null,
+  public boolean not null default false,
+  paid boolean not null default false,
+  visible boolean not null default false,
+  json_string text not null,
+  constraint fk_customer_id foreign key (customer_id) references customers(id),
+  constraint fk_notification_type_id foreign key (type_id) references notification_types(id),
+  constraint fk_notification_priority_id foreign key (priority_id) references notification_priorities(id)
+);
+
 create table metadata (
   sync_sequence_number bigint not null
 );

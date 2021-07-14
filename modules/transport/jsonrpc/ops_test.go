@@ -1,5 +1,23 @@
 package jsonrpc_test
 
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/middleware"
+	"github.com/networknext/backend/modules/transport/notifications"
+	"github.com/stretchr/testify/assert"
+)
+
 /*func TestBuyers(t *testing.T) {
 	t.Parallel()
 
@@ -1008,3 +1026,1047 @@ func TestRemoveDatacenter(t *testing.T) {
 	})
 }
 */
+
+func TestNotifications(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+
+	pubkey := make([]byte, 4)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges - anonymous", func(t *testing.T) {
+		var reply jsonrpc.NotificationsReply
+		err := svc.Notifications(req, &jsonrpc.NotificationsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success - no notifications", func(t *testing.T) {
+		var reply jsonrpc.NotificationsReply
+		err := svc.Notifications(req, &jsonrpc.NotificationsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Len(t, reply.Notifications, 0)
+	})
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "system",
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "analytics",
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "invoice",
+	})
+	assert.NoError(t, err)
+
+	systemType, err := storer.NotificationTypeByName("system")
+	assert.NoError(t, err)
+
+	analyticsType, err := storer.NotificationTypeByName("analytics")
+	assert.NoError(t, err)
+
+	invoiceType, err := storer.NotificationTypeByName("invoice")
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name:  "default",
+		Color: jsonrpc.DEFAULT_COLOR,
+	})
+	assert.NoError(t, err)
+
+	priority, err := storer.NotificationPriorityByName("default")
+	assert.NoError(t, err)
+
+	defaultSystemNotification := notifications.Notification{
+		Timestamp:    time.Now(),
+		Author:       "me",
+		Title:        "Test system notification",
+		Message:      "This is a test system notification",
+		Type:         systemType,
+		CustomerCode: "local",
+		Priority:     priority,
+		Public:       false,
+		Paid:         false,
+		Visible:      true,
+		Data:         "",
+	}
+
+	defaultAnalyticsNotification := defaultSystemNotification
+	defaultAnalyticsNotification.Type = analyticsType
+	defaultAnalyticsNotification.Title = "Test analytics notification"
+	defaultAnalyticsNotification.Message = "This is a  test analytics notification"
+	defaultAnalyticsNotification.CustomerCode = "test"
+
+	defaultInvoiceNotification := defaultSystemNotification
+	defaultInvoiceNotification.Type = invoiceType
+	defaultInvoiceNotification.Title = "Test invoice notification"
+	defaultInvoiceNotification.Message = "This is a  test invoice notification"
+
+	err = storer.AddNotification(defaultSystemNotification)
+	assert.NoError(t, err)
+
+	err = storer.AddNotification(defaultAnalyticsNotification)
+	assert.NoError(t, err)
+
+	err = storer.AddNotification(defaultInvoiceNotification)
+	assert.NoError(t, err)
+
+	t.Run("success - all", func(t *testing.T) {
+		var reply jsonrpc.NotificationsReply
+		err := svc.Notifications(req, &jsonrpc.NotificationsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Len(t, reply.Notifications, 3)
+	})
+
+	t.Run("success - sorted", func(t *testing.T) {
+		var reply jsonrpc.NotificationsReply
+		err := svc.Notifications(req, &jsonrpc.NotificationsArgs{CustomerCode: "test"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Len(t, reply.Notifications, 1)
+		assert.Equal(t, defaultAnalyticsNotification.Type.ID, reply.Notifications[0].TypeID)
+		assert.Equal(t, defaultAnalyticsNotification.Title, reply.Notifications[0].Title)
+		assert.Equal(t, defaultAnalyticsNotification.Message, reply.Notifications[0].Message)
+	})
+}
+
+func TestAddNotification(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+
+	pubkey := make([]byte, 4)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AddNotificationReply
+		err := svc.AddNotification(req, &jsonrpc.AddNotificationArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
+		Claims: jwt.MapClaims{
+			"sub": "123456",
+		},
+	})
+	req = req.WithContext(reqContext)
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "system",
+	})
+	assert.NoError(t, err)
+
+	systemType, err := storer.NotificationTypeByName("system")
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name:  "default",
+		Color: jsonrpc.DEFAULT_COLOR,
+	})
+	assert.NoError(t, err)
+
+	priority, err := storer.NotificationPriorityByName("default")
+	assert.NoError(t, err)
+
+	t.Run("success - no customer codes", func(t *testing.T) {
+		var reply jsonrpc.AddNotificationReply
+		args := jsonrpc.AddNotificationArgs{
+			Title:         "Test system notification",
+			Message:       "This is a test system notification",
+			TypeID:        fmt.Sprintf("%016x", systemType.ID),
+			CustomerCodes: []string{},
+			PriorityID:    fmt.Sprintf("%016x", priority.ID),
+			Public:        false,
+			Paid:          false,
+			Data:          "",
+		}
+		err := svc.AddNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		allNotifications := storer.Notifications()
+
+		assert.Len(t, allNotifications, 1)
+		assert.Equal(t, args.Title, allNotifications[0].Title)
+		assert.Equal(t, args.Message, allNotifications[0].Message)
+		assert.Equal(t, args.TypeID, allNotifications[0].Type)
+		assert.Equal(t, "", allNotifications[0].CustomerCode)
+		assert.Equal(t, args.PriorityID, allNotifications[0].Priority)
+		assert.Equal(t, args.Public, allNotifications[0].Public)
+		assert.Equal(t, args.Paid, allNotifications[0].Paid)
+		assert.Equal(t, args.Data, allNotifications[0].Data)
+	})
+
+	t.Run("success - 1 customer code", func(t *testing.T) {
+		var reply jsonrpc.AddNotificationReply
+		args := jsonrpc.AddNotificationArgs{
+			Title:         "Test system notification",
+			Message:       "This is a test system notification",
+			TypeID:        fmt.Sprintf("%016x", systemType.ID),
+			CustomerCodes: []string{"test"},
+			PriorityID:    fmt.Sprintf("%016x", priority.ID),
+			Public:        false,
+			Paid:          false,
+			Data:          "",
+		}
+		err := svc.AddNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		allNotifications := storer.Notifications()
+
+		assert.Len(t, allNotifications, 1)
+		assert.Equal(t, args.Title, allNotifications[0].Title)
+		assert.Equal(t, args.Message, allNotifications[0].Message)
+		assert.Equal(t, args.TypeID, allNotifications[0].Type)
+		assert.Equal(t, "test", allNotifications[0].CustomerCode)
+		assert.Equal(t, args.PriorityID, allNotifications[0].Priority)
+		assert.Equal(t, args.Public, allNotifications[0].Public)
+		assert.Equal(t, args.Paid, allNotifications[0].Paid)
+		assert.Equal(t, args.Data, allNotifications[0].Data)
+	})
+
+	t.Run("success - multiple customer codes", func(t *testing.T) {
+		var reply jsonrpc.AddNotificationReply
+		args := jsonrpc.AddNotificationArgs{
+			Title:         "Test system notification",
+			Message:       "This is a test system notification",
+			TypeID:        fmt.Sprintf("%016x", systemType.ID),
+			CustomerCodes: []string{"test", "testing", "tested"},
+			PriorityID:    fmt.Sprintf("%016x", priority.ID),
+			Public:        false,
+			Paid:          false,
+			Data:          "",
+		}
+		err := svc.AddNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		allNotifications := storer.Notifications()
+
+		assert.Len(t, allNotifications, 3)
+
+		found := false
+		for _, dbNotification := range allNotifications {
+			if dbNotification.CustomerCode == args.CustomerCodes[0] || dbNotification.CustomerCode == args.CustomerCodes[1] || dbNotification.CustomerCode == args.CustomerCodes[2] {
+				found = true
+			} else {
+				found = false
+			}
+			assert.True(t, found)
+			found = false
+		}
+	})
+}
+
+func TestUpdateNotification(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+
+	pubkey := make([]byte, 4)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "system",
+	})
+	assert.NoError(t, err)
+
+	systemType, err := storer.NotificationTypeByName("system")
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name:  "default",
+		Color: jsonrpc.DEFAULT_COLOR,
+	})
+	assert.NoError(t, err)
+
+	defaultPriority, err := storer.NotificationPriorityByName("default")
+	assert.NoError(t, err)
+
+	analyticsType, err := storer.NotificationTypeByName("analytics")
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name:  "urgent",
+		Color: jsonrpc.DEFAULT_COLOR,
+	})
+	assert.NoError(t, err)
+
+	urgentPriority, err := storer.NotificationPriorityByName("urgent")
+	assert.NoError(t, err)
+
+	oldNotification := notifications.Notification{
+		Timestamp:    time.Now(),
+		Title:        "Test notification",
+		Message:      "Test notification message",
+		Author:       "me",
+		Type:         systemType,
+		CustomerCode: "",
+		Priority:     defaultPriority,
+		Public:       false,
+		Paid:         false,
+		Data:         "",
+	}
+
+	err = storer.AddNotification(oldNotification)
+	assert.NoError(t, err)
+
+	oldNotificationID := storer.Notifications()[0].ID
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateNotificationReply
+		err := svc.UpdateNotification(req, &jsonrpc.UpdateNotificationArgs{ID: ""}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no id", func(t *testing.T) {
+		var reply jsonrpc.UpdateNotificationReply
+
+		err := svc.UpdateNotification(req, &jsonrpc.UpdateNotificationArgs{ID: ""}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success - no customer codes", func(t *testing.T) {
+		var reply jsonrpc.UpdateNotificationReply
+		args := jsonrpc.UpdateNotificationArgs{
+			ID:    fmt.Sprintf("%016x", oldNotificationID),
+			Field: "Title",
+			Value: "Updated Test Notification",
+		}
+		err := svc.UpdateNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotification, err := storer.NotificationByID(oldNotificationID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldNotification.Title, updatedNotification.Title)
+		assert.Equal(t, "Updated Test Notification", updatedNotification.Title)
+
+		args = jsonrpc.UpdateNotificationArgs{
+			ID:    fmt.Sprintf("%016x", oldNotificationID),
+			Field: "Message",
+			Value: "Updated test notification message",
+		}
+		err = svc.UpdateNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotification, err = storer.NotificationByID(oldNotificationID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldNotification.Message, updatedNotification.Message)
+		assert.Equal(t, "Updated test notification message", updatedNotification.Message)
+
+		args = jsonrpc.UpdateNotificationArgs{
+			ID:    fmt.Sprintf("%016x", oldNotificationID),
+			Field: "Author",
+			Value: "you",
+		}
+		err = svc.UpdateNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotification, err = storer.NotificationByID(oldNotificationID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldNotification.Author, updatedNotification.Author)
+		assert.Equal(t, "you", updatedNotification.Author)
+
+		args = jsonrpc.UpdateNotificationArgs{
+			ID:    fmt.Sprintf("%016x", oldNotificationID),
+			Field: "CustomerCode",
+			Value: "test",
+		}
+		err = svc.UpdateNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotification, err = storer.NotificationByID(oldNotificationID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldNotification.CustomerCode, updatedNotification.CustomerCode)
+		assert.Equal(t, "test", updatedNotification.CustomerCode)
+
+		args = jsonrpc.UpdateNotificationArgs{
+			ID:    fmt.Sprintf("%016x", oldNotificationID),
+			Field: "Paid",
+			Value: "true",
+		}
+		err = svc.UpdateNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotification, err = storer.NotificationByID(oldNotificationID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldNotification.Paid, updatedNotification.Paid)
+		assert.True(t, updatedNotification.Paid)
+
+		args = jsonrpc.UpdateNotificationArgs{
+			ID:    fmt.Sprintf("%016x", oldNotificationID),
+			Field: "Public",
+			Value: "true",
+		}
+		err = svc.UpdateNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotification, err = storer.NotificationByID(oldNotificationID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldNotification.Public, updatedNotification.Public)
+		assert.True(t, updatedNotification.Public)
+
+		args = jsonrpc.UpdateNotificationArgs{
+			ID:    fmt.Sprintf("%016x", oldNotificationID),
+			Field: "Type",
+			Value: fmt.Sprintf("%016x", analyticsType.ID),
+		}
+		err = svc.UpdateNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotification, err = storer.NotificationByID(oldNotificationID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldNotification.Type.ID, updatedNotification.Type.ID)
+		assert.Equal(t, analyticsType.ID, updatedNotification.Type.ID)
+		assert.Equal(t, analyticsType.Name, updatedNotification.Type.Name)
+
+		args = jsonrpc.UpdateNotificationArgs{
+			ID:    fmt.Sprintf("%016x", oldNotificationID),
+			Field: "Priority",
+			Value: fmt.Sprintf("%016x", urgentPriority.ID),
+		}
+		err = svc.UpdateNotification(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotification, err = storer.NotificationByID(oldNotificationID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, oldNotification.Priority.ID, updatedNotification.Priority.ID)
+		assert.Equal(t, urgentPriority.ID, updatedNotification.Priority.ID)
+		assert.Equal(t, urgentPriority.Name, updatedNotification.Priority.Name)
+		assert.Equal(t, urgentPriority.Color, updatedNotification.Priority.Color)
+	})
+}
+
+func TestRemoveNotification(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+
+	pubkey := make([]byte, 4)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "system",
+	})
+	assert.NoError(t, err)
+
+	systemType, err := storer.NotificationTypeByName("system")
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name:  "default",
+		Color: jsonrpc.DEFAULT_COLOR,
+	})
+	assert.NoError(t, err)
+
+	defaultPriority, err := storer.NotificationPriorityByName("default")
+	assert.NoError(t, err)
+
+	oldNotification := notifications.Notification{
+		Timestamp:    time.Now(),
+		Title:        "Test notification",
+		Message:      "Test notification message",
+		Author:       "me",
+		Type:         systemType,
+		CustomerCode: "",
+		Priority:     defaultPriority,
+		Public:       false,
+		Paid:         false,
+		Data:         "",
+	}
+
+	err = storer.AddNotification(oldNotification)
+	assert.NoError(t, err)
+
+	oldNotificationID := storer.Notifications()[0].ID
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RemoveNotificationReply
+		err := svc.RemoveNotification(req, &jsonrpc.RemoveNotificationArgs{ID: ""}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no id", func(t *testing.T) {
+		var reply jsonrpc.RemoveNotificationReply
+		err := svc.RemoveNotification(req, &jsonrpc.RemoveNotificationArgs{ID: ""}, &reply)
+		assert.NoError(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		allNotifications := storer.Notifications()
+		assert.Len(t, allNotifications, 1)
+
+		var reply jsonrpc.RemoveNotificationReply
+		err := svc.RemoveNotification(req, &jsonrpc.RemoveNotificationArgs{ID: fmt.Sprintf("%016x", oldNotificationID)}, &reply)
+		assert.NoError(t, err)
+
+		allNotifications = storer.Notifications()
+		assert.Len(t, allNotifications, 0)
+
+		_, err = storer.NotificationByID(oldNotificationID)
+		assert.Error(t, err)
+	})
+}
+
+func TestNotificationTypes(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges - anonymous", func(t *testing.T) {
+		var reply jsonrpc.NotificationTypesReply
+		err := svc.NotificationTypes(req, &jsonrpc.NotificationTypesArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success - no types", func(t *testing.T) {
+		var reply jsonrpc.NotificationTypesReply
+		err := svc.NotificationTypes(req, &jsonrpc.NotificationTypesArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Len(t, reply.NotificationTypes, 0)
+	})
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "system",
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "analytics",
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "invoice",
+	})
+
+	t.Run("success - all", func(t *testing.T) {
+		var reply jsonrpc.NotificationTypesReply
+		err := svc.NotificationTypes(req, &jsonrpc.NotificationTypesArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Len(t, reply.NotificationTypes, 3)
+	})
+}
+
+func TestAddNotificationType(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AddNotificationTypeReply
+		err := svc.AddNotificationType(req, &jsonrpc.AddNotificationTypeArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no name", func(t *testing.T) {
+		var reply jsonrpc.AddNotificationTypeReply
+		err := svc.AddNotificationType(req, &jsonrpc.AddNotificationTypeArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.AddNotificationTypeReply
+		args := jsonrpc.AddNotificationTypeArgs{
+			Name: "test",
+		}
+		err := svc.AddNotificationType(req, &args, &reply)
+		assert.NoError(t, err)
+
+		allNotificationTypes := storer.NotificationTypes()
+		testType, err := storer.NotificationTypeByName("test")
+		assert.NoError(t, err)
+
+		assert.Len(t, allNotificationTypes, 1)
+		assert.Equal(t, testType.ID, allNotificationTypes[0].ID)
+		assert.Equal(t, testType.Name, allNotificationTypes[0].Name)
+		assert.Equal(t, args.Name, allNotificationTypes[0].Name)
+	})
+}
+
+func TestUpdateNotificationType(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "system",
+	})
+	assert.NoError(t, err)
+
+	systemType, err := storer.NotificationTypeByName("system")
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateNotificationTypeReply
+		err := svc.UpdateNotificationType(req, &jsonrpc.UpdateNotificationTypeArgs{ID: ""}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no id", func(t *testing.T) {
+		var reply jsonrpc.UpdateNotificationTypeReply
+
+		err := svc.UpdateNotificationType(req, &jsonrpc.UpdateNotificationTypeArgs{ID: ""}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.UpdateNotificationTypeReply
+		args := jsonrpc.UpdateNotificationTypeArgs{
+			ID:    fmt.Sprintf("%016x", systemType.ID),
+			Field: "Name",
+			Value: "updated system",
+		}
+		err := svc.UpdateNotificationType(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotificationType, err := storer.NotificationTypeByID(systemType.ID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, systemType.Name, updatedNotificationType.Name)
+		assert.Equal(t, "updated system", updatedNotificationType.Name)
+	})
+}
+
+func TestRemoveNotificationType(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err = storer.AddNotificationType(notifications.NotificationType{
+		Name: "system",
+	})
+	assert.NoError(t, err)
+
+	systemType, err := storer.NotificationTypeByName("system")
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RemoveNotificationTypeReply
+		err := svc.RemoveNotificationType(req, &jsonrpc.RemoveNotificationTypeArgs{ID: ""}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no id", func(t *testing.T) {
+		var reply jsonrpc.RemoveNotificationTypeReply
+		err := svc.RemoveNotificationType(req, &jsonrpc.RemoveNotificationTypeArgs{ID: ""}, &reply)
+		assert.NoError(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		allNotifications := storer.NotificationTypes()
+		assert.Len(t, allNotifications, 1)
+
+		var reply jsonrpc.RemoveNotificationTypeReply
+		err := svc.RemoveNotificationType(req, &jsonrpc.RemoveNotificationTypeArgs{ID: fmt.Sprintf("%016x", systemType.ID)}, &reply)
+		assert.NoError(t, err)
+
+		allNotificationTypes := storer.NotificationTypes()
+		assert.Len(t, allNotificationTypes, 0)
+
+		_, err = storer.NotificationByID(systemType.ID)
+		assert.Error(t, err)
+	})
+}
+
+func TestNotificationPriorities(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges - anonymous", func(t *testing.T) {
+		var reply jsonrpc.NotificationPrioritiesReply
+		err := svc.NotificationPriorities(req, &jsonrpc.NotificationPrioritiesArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success - no priorities", func(t *testing.T) {
+		var reply jsonrpc.NotificationPrioritiesReply
+		err := svc.NotificationPriorities(req, &jsonrpc.NotificationPrioritiesArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Len(t, reply.NotificationPriorities, 0)
+	})
+
+	err = storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name: "default",
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name: "urgent",
+	})
+	assert.NoError(t, err)
+
+	err = storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name: "warning",
+	})
+
+	t.Run("success - all", func(t *testing.T) {
+		var reply jsonrpc.NotificationPrioritiesReply
+		err := svc.NotificationPriorities(req, &jsonrpc.NotificationPrioritiesArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Len(t, reply.NotificationPriorities, 3)
+	})
+}
+
+func TestAddNotificationPriority(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AddNotificationPriorityReply
+		err := svc.AddNotificationPriority(req, &jsonrpc.AddNotificationPriorityArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no name", func(t *testing.T) {
+		var reply jsonrpc.AddNotificationPriorityReply
+		err := svc.AddNotificationPriority(req, &jsonrpc.AddNotificationPriorityArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.AddNotificationPriorityReply
+		args := jsonrpc.AddNotificationPriorityArgs{
+			Name:  "test",
+			Color: jsonrpc.DEFAULT_COLOR,
+		}
+		err := svc.AddNotificationPriority(req, &args, &reply)
+		assert.NoError(t, err)
+
+		allNotificationPriorities := storer.NotificationPriorities()
+		testPriority, err := storer.NotificationPriorityByName("test")
+		assert.NoError(t, err)
+
+		assert.Len(t, allNotificationPriorities, 1)
+		assert.Equal(t, testPriority.ID, allNotificationPriorities[0].ID)
+		assert.Equal(t, testPriority.Name, allNotificationPriorities[0].Name)
+		assert.Equal(t, testPriority.Color, allNotificationPriorities[0].Color)
+		assert.Equal(t, args.Name, allNotificationPriorities[0].Name)
+		assert.Equal(t, args.Color, allNotificationPriorities[0].Color)
+	})
+}
+
+func TestUpdateNotificationPriority(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err = storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name: "default",
+	})
+	assert.NoError(t, err)
+
+	defaultPriority, err := storer.NotificationPriorityByName("default")
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateNotificationPriorityReply
+		err := svc.UpdateNotificationPriority(req, &jsonrpc.UpdateNotificationPriorityArgs{ID: ""}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no id", func(t *testing.T) {
+		var reply jsonrpc.UpdateNotificationPriorityReply
+
+		err := svc.UpdateNotificationPriority(req, &jsonrpc.UpdateNotificationPriorityArgs{ID: ""}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.UpdateNotificationPriorityReply
+		args := jsonrpc.UpdateNotificationPriorityArgs{
+			ID:    fmt.Sprintf("%016x", defaultPriority.ID),
+			Field: "Name",
+			Value: "updated system",
+		}
+		err := svc.UpdateNotificationPriority(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotificationPriority, err := storer.NotificationPriorityByID(defaultPriority.ID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, defaultPriority.Name, updatedNotificationPriority.Name)
+		assert.Equal(t, "updated system", updatedNotificationPriority.Name)
+		assert.Equal(t, defaultPriority.Color, updatedNotificationPriority.Color)
+
+		args = jsonrpc.UpdateNotificationPriorityArgs{
+			ID:    fmt.Sprintf("%016x", defaultPriority.ID),
+			Field: "Color",
+			Value: "12354642346",
+		}
+		err = svc.UpdateNotificationPriority(req, &args, &reply)
+		assert.NoError(t, err)
+
+		updatedNotificationPriority, err = storer.NotificationPriorityByID(defaultPriority.ID)
+		assert.NoError(t, err)
+
+		assert.NotEqual(t, defaultPriority.Color, updatedNotificationPriority.Color)
+		assert.Equal(t, "updated system", updatedNotificationPriority.Name)
+		assert.Equal(t, int64(12354642346), updatedNotificationPriority.Color)
+	})
+}
+
+func TestRemoveNotificationPriority(t *testing.T) {
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	err = storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name: "default",
+	})
+	assert.NoError(t, err)
+
+	defaultPriority, err := storer.NotificationPriorityByName("default")
+	assert.NoError(t, err)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RemoveNotificationPriorityReply
+		err := svc.RemoveNotificationPriority(req, &jsonrpc.RemoveNotificationPriorityArgs{ID: ""}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no id", func(t *testing.T) {
+		var reply jsonrpc.RemoveNotificationPriorityReply
+		err := svc.RemoveNotificationPriority(req, &jsonrpc.RemoveNotificationPriorityArgs{ID: ""}, &reply)
+		assert.NoError(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		allNotifications := storer.NotificationPriorities()
+		assert.Len(t, allNotifications, 1)
+
+		var reply jsonrpc.RemoveNotificationPriorityReply
+		err := svc.RemoveNotificationPriority(req, &jsonrpc.RemoveNotificationPriorityArgs{ID: fmt.Sprintf("%016x", defaultPriority.ID)}, &reply)
+		assert.NoError(t, err)
+
+		allNotificationPriorities := storer.NotificationPriorities()
+		assert.Len(t, allNotificationPriorities, 0)
+
+		_, err = storer.NotificationByID(defaultPriority.ID)
+		assert.Error(t, err)
+	})
+}

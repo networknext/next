@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/modules/metrics"
@@ -20,6 +21,7 @@ import (
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/networknext/backend/modules/transport/middleware"
+	"github.com/networknext/backend/modules/transport/notifications"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -1527,6 +1529,227 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 		verified, err := sameBuyerRoleFunc(req)
 		assert.NoError(t, err)
 		assert.True(t, verified)
+	})
+}
+
+func TestFetchNotifications(t *testing.T) {
+	t.Parallel()
+
+	logger := log.NewNopLogger()
+
+	var storer storage.Storer
+
+	storer, err := storage.NewSQLite3(context.Background(), logger)
+	assert.NoError(t, err)
+
+	pubkey := make([]byte, 4)
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+
+	svc := jsonrpc.BuyersService{
+		Storage: storer,
+		Logger:  logger,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, true)
+
+	t.Run("insufficient privileges - anonymous", func(t *testing.T) {
+		var reply jsonrpc.FetchNotificationsReply
+		err := svc.FetchNotifications(req, &jsonrpc.FetchNotificationsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	middleware.SetIsAnonymous(req, false)
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
+		Claims: jwt.MapClaims{
+			"sub":            "123456",
+			"email_verified": false,
+		},
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("insufficient privileges - not verified", func(t *testing.T) {
+		var reply jsonrpc.FetchNotificationsReply
+		err := svc.FetchNotifications(req, &jsonrpc.FetchNotificationsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext = req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
+		Claims: jwt.MapClaims{
+			"sub":            "123456",
+			"email_verified": true,
+		},
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("insufficient privileges - not owner or admin", func(t *testing.T) {
+		var reply jsonrpc.FetchNotificationsReply
+		err := svc.FetchNotifications(req, &jsonrpc.FetchNotificationsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext = req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Owner",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("not assigned to company", func(t *testing.T) {
+		var reply jsonrpc.FetchNotificationsReply
+		err := svc.FetchNotifications(req, &jsonrpc.FetchNotificationsArgs{}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext = req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	req = req.WithContext(reqContext)
+
+	t.Run("success - no notifications", func(t *testing.T) {
+		var reply jsonrpc.FetchNotificationsReply
+		err := svc.FetchNotifications(req, &jsonrpc.FetchNotificationsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Len(t, reply.AnalyticsNotifications, 0)
+		assert.Len(t, reply.SystemNotifications, 0)
+		assert.Len(t, reply.InvoiceNotifications, 0)
+		assert.GreaterOrEqual(t, 0, len(reply.ReleaseNotesNotifications))
+	})
+
+	storer.AddNotificationType(notifications.NotificationType{
+		Name: "system",
+	})
+	storer.AddNotificationType(notifications.NotificationType{
+		Name: "analytics",
+	})
+	storer.AddNotificationType(notifications.NotificationType{
+		Name: "invoice",
+	})
+
+	systemType, err := storer.NotificationTypeByName("system")
+	assert.NoError(t, err)
+
+	analyticsType, err := storer.NotificationTypeByName("analytics")
+	assert.NoError(t, err)
+
+	invoiceType, err := storer.NotificationTypeByName("invoice")
+	assert.NoError(t, err)
+
+	storer.AddNotificationPriority(notifications.NotificationPriority{
+		Name:  "default",
+		Color: jsonrpc.DEFAULT_COLOR,
+	})
+
+	priority, err := storer.NotificationPriorityByName("default")
+	assert.NoError(t, err)
+
+	defaultSystemNotification := notifications.Notification{
+		Timestamp:    time.Now(),
+		Author:       "me",
+		Title:        "Test system notification",
+		Message:      "This is a test system notification",
+		Type:         systemType,
+		CustomerCode: "local",
+		Priority:     priority,
+		Public:       false,
+		Paid:         false,
+		Data:         "",
+	}
+
+	defaultAnalyticsNotification := defaultSystemNotification
+	defaultAnalyticsNotification.Type = analyticsType
+	defaultAnalyticsNotification.Title = "Test analytics notification"
+	defaultAnalyticsNotification.Message = "This is a  test analytics notification"
+
+	defaultInvoiceNotification := defaultSystemNotification
+	defaultInvoiceNotification.Type = invoiceType
+	defaultInvoiceNotification.Title = "Test invoice notification"
+	defaultInvoiceNotification.Message = "This is a  test invoice notification"
+
+	err = storer.AddNotification(defaultSystemNotification)
+	assert.NoError(t, err)
+
+	err = storer.AddNotification(defaultAnalyticsNotification)
+	assert.NoError(t, err)
+
+	err = storer.AddNotification(defaultInvoiceNotification)
+	assert.NoError(t, err)
+
+	defaultInvoiceNotification.Visible = false
+
+	err = storer.AddNotification(defaultInvoiceNotification)
+	assert.NoError(t, err)
+
+	t.Run("success - one of each basic type", func(t *testing.T) {
+		var reply jsonrpc.FetchNotificationsReply
+		err := svc.FetchNotifications(req, &jsonrpc.FetchNotificationsArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Len(t, reply.AnalyticsNotifications, 1)
+		assert.Equal(t, defaultAnalyticsNotification.Type.ID, reply.AnalyticsNotifications[0].Type.ID)
+		assert.Equal(t, defaultAnalyticsNotification.Type.Name, reply.AnalyticsNotifications[0].Type.Name)
+		assert.Equal(t, defaultAnalyticsNotification.Title, reply.AnalyticsNotifications[0].Title)
+		assert.Equal(t, defaultAnalyticsNotification.Message, reply.AnalyticsNotifications[0].Message)
+
+		assert.Len(t, reply.SystemNotifications, 1)
+		assert.Equal(t, defaultSystemNotification.Type.ID, reply.SystemNotifications[0].Type.ID)
+		assert.Equal(t, defaultSystemNotification.Type.Name, reply.SystemNotifications[0].Type.Name)
+		assert.Equal(t, defaultSystemNotification.Title, reply.SystemNotifications[0].Title)
+		assert.Equal(t, defaultSystemNotification.Message, reply.SystemNotifications[0].Message)
+
+		assert.Len(t, reply.InvoiceNotifications, 1)
+		assert.Equal(t, defaultInvoiceNotification.Type.ID, reply.InvoiceNotifications[0].Type.ID)
+		assert.Equal(t, defaultInvoiceNotification.Type.Name, reply.InvoiceNotifications[0].Type.Name)
+		assert.Equal(t, defaultInvoiceNotification.Title, reply.InvoiceNotifications[0].Title)
+		assert.Equal(t, defaultInvoiceNotification.Message, reply.InvoiceNotifications[0].Message)
+
+		assert.GreaterOrEqual(t, 0, len(reply.ReleaseNotesNotifications))
+	})
+
+	reqContext = req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+	req = req.WithContext(reqContext)
+
+	t.Run("insufficient privileges - !sameBuyer && !admin", func(t *testing.T) {
+		var reply jsonrpc.FetchNotificationsReply
+		err := svc.FetchNotifications(req, &jsonrpc.FetchNotificationsArgs{CompanyCode: "local"}, &reply)
+		assert.Error(t, err)
+	})
+
+	reqContext = req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success - !sameBuyer && admin", func(t *testing.T) {
+		var reply jsonrpc.FetchNotificationsReply
+		err := svc.FetchNotifications(req, &jsonrpc.FetchNotificationsArgs{CompanyCode: "local"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Len(t, reply.AnalyticsNotifications, 1)
+		assert.Equal(t, defaultAnalyticsNotification.Type.ID, reply.AnalyticsNotifications[0].Type.ID)
+		assert.Equal(t, defaultAnalyticsNotification.Type.Name, reply.AnalyticsNotifications[0].Type.Name)
+		assert.Equal(t, defaultAnalyticsNotification.Title, reply.AnalyticsNotifications[0].Title)
+		assert.Equal(t, defaultAnalyticsNotification.Message, reply.AnalyticsNotifications[0].Message)
+
+		assert.Len(t, reply.SystemNotifications, 1)
+		assert.Equal(t, defaultSystemNotification.Type.ID, reply.SystemNotifications[0].Type.ID)
+		assert.Equal(t, defaultSystemNotification.Type.Name, reply.SystemNotifications[0].Type.Name)
+		assert.Equal(t, defaultSystemNotification.Title, reply.SystemNotifications[0].Title)
+		assert.Equal(t, defaultSystemNotification.Message, reply.SystemNotifications[0].Message)
+
+		assert.Len(t, reply.InvoiceNotifications, 1)
+		assert.Equal(t, defaultInvoiceNotification.Type.ID, reply.InvoiceNotifications[0].Type.ID)
+		assert.Equal(t, defaultInvoiceNotification.Type.Name, reply.InvoiceNotifications[0].Type.Name)
+		assert.Equal(t, defaultInvoiceNotification.Title, reply.InvoiceNotifications[0].Title)
+		assert.Equal(t, defaultInvoiceNotification.Message, reply.InvoiceNotifications[0].Message)
+
+		assert.GreaterOrEqual(t, 0, len(reply.ReleaseNotesNotifications))
 	})
 }
 
