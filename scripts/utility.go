@@ -237,8 +237,8 @@ func DeleteBigtableRows(gcpProjectID, btInstanceID, btTableName, prefix string) 
 // Gets the datacenter names, IPs, and timestamps for all servers connected to server backend instances per buyer
 func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 	type DatacenterInfo struct {
-		Timestamp     uint64
-		DatacenterIPs []string
+		Timestamp uint64
+		ServerIPs []string
 	}
 
 	// Output mapping will be {Buyer Name: {Datacenter Name: [Timestamp, IP]}}
@@ -308,32 +308,42 @@ func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 			dcMap := make(map[string]DatacenterInfo)
 
 			for serverIP, serverInfo := range ipMapping {
+				host := strings.Split(serverIP, ":")[0]
 				datacenterHexID := serverInfo.DatacenterID
 				datacenter, ok := datacenterMap[datacenterHexID]
-				
+
 				var datacenterName string
 				if !ok {
-					host := strings.Split(serverIP, ":")[0]
-					datacenterName = fmt.Sprintf("unknown - %s", host) 
+					datacenterName = fmt.Sprintf("unknown - %s", host)
 					fmt.Printf("datacenter %s does not exist in datacenter map. Buyer Name: %s, Server IP: %s\n", datacenterHexID, buyerName, serverIP)
 				} else {
 					datacenterName = datacenter.Name
 				}
+
 				var info DatacenterInfo
 				var exists bool
 				info, exists = dcMap[datacenterName]
 				if !exists {
 					// First time we see this datacenter for this buyer
 					dcMap[datacenterName] = DatacenterInfo{
-						Timestamp:     serverInfo.Timestamp,
-						DatacenterIPs: []string{serverIP},
+						Timestamp: serverInfo.Timestamp,
+						ServerIPs: []string{host},
 					}
 				} else {
+					// Use the latest timestamp
 					if serverInfo.Timestamp > info.Timestamp {
 						info.Timestamp = serverInfo.Timestamp
 					}
 
-					info.DatacenterIPs = append(info.DatacenterIPs, serverIP)
+					// Don't add duplicate server IPs
+					unionMap := make(map[string]bool)
+					for _, existingServerIP := range info.ServerIPs {
+						unionMap[existingServerIP] = true
+					}
+
+					if _, alreadyExists := unionMap[host]; !alreadyExists {
+						info.ServerIPs = append(info.ServerIPs, host)
+					}
 
 					dcMap[datacenterName] = info
 				}
@@ -351,13 +361,13 @@ func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 						}
 
 						unionMap := make(map[string]bool)
-						for _, existingDatacenterIP := range existingDcInfo.DatacenterIPs {
-							unionMap[existingDatacenterIP] = true
+						for _, existingServerIP := range existingDcInfo.ServerIPs {
+							unionMap[existingServerIP] = true
 						}
 
-						for _, datacenterIP := range dcInfo.DatacenterIPs {
-							if _, alreadyExists := unionMap[datacenterIP]; !alreadyExists {
-								existingDcInfo.DatacenterIPs = append(existingDcInfo.DatacenterIPs, datacenterIP)
+						for _, serverIP := range dcInfo.ServerIPs {
+							if _, alreadyExists := unionMap[serverIP]; !alreadyExists {
+								existingDcInfo.ServerIPs = append(existingDcInfo.ServerIPs, serverIP)
 							}
 						}
 					}
@@ -388,6 +398,6 @@ func GetLiveServers(serverBackendIPs []string, databaseBinPath string) error {
 
 		jsonFile.Close()
 	}
-	
+
 	return nil
 }
