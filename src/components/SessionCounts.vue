@@ -14,21 +14,15 @@
       >{{ totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
     </h1>
     <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
-      <Alert ref="verifyAlert">
-        <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
+      <Alert ref="sessionCountAlert">
+        <a href="#" @click="$refs.sessionCountAlert.resendVerificationEmail()">
           Resend email
         </a>
       </Alert>
     </div>
-    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="!$store.getters.isAnonymousPlus">
+    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="!$store.getters.isAnonymousPlus" style="max-width: 300px;">
       <div class="mr-auto"></div>
-      <div class="px-2" v-if="$store.getters.isBuyer || $store.getters.isAdmin">
-        <select class="form-control" v-on:change="updateFilter($event.target.value)">
-          <option v-for="option in filterOptions" :key="option.value" v-bind:value="option.value" v-bind:selected="$store.getters.currentFilter.companyCode === option.value">
-            {{ option.name }}
-          </option>
-        </select>
-      </div>
+      <BuyerFilter />
     </div>
   </div>
 </template>
@@ -37,6 +31,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { AlertType } from './types/AlertTypes'
 import Alert from '@/components/Alert.vue'
+import BuyerFilter from '@/components/BuyerFilter.vue'
 
 /**
  * This component displays the total session counts and has all of the associated logic and api calls
@@ -56,7 +51,8 @@ interface TotalSessionsReply {
 
 @Component({
   components: {
-    Alert
+    Alert,
+    BuyerFilter
   }
 })
 export default class SessionCounts extends Vue {
@@ -66,13 +62,15 @@ export default class SessionCounts extends Vue {
 
   // Register the alert component to access its set methods
   $refs!: {
-    verifyAlert: Alert;
+    sessionCountAlert: Alert;
   }
 
   private totalSessionsReply: TotalSessionsReply
   private showCount: boolean
   private countLoop: any
-  private filterOptions: Array<any>
+  private alertToggle: boolean
+
+  private unwatchFilter: any
 
   constructor () {
     super()
@@ -81,33 +79,32 @@ export default class SessionCounts extends Vue {
       onNN: 0
     }
     this.showCount = false
-    this.filterOptions = []
+    this.alertToggle = false
   }
 
   private mounted () {
-    this.filterOptions.push({
-      name: 'All',
-      value: ''
-    })
-
-    this.$store.getters.allBuyers.forEach((buyer: any) => {
-      if (!this.$store.getters.isAdmin || (this.$store.getters.isAdmin && buyer.is_live)) {
-        this.filterOptions.push({
-          name: buyer.company_name,
-          value: buyer.company_code
-        })
-      }
-    })
-
-    if (this.$store.getters.isAnonymousPlus) {
-      this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
-      this.$refs.verifyAlert.setAlertType(AlertType.INFO)
-    }
     this.restartLoop()
+    this.unwatchFilter = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.currentFilter
+      },
+      () => {
+        clearInterval(this.countLoop)
+        this.restartLoop()
+      }
+    )
+    if (this.$store.getters.isAnonymousPlus) {
+      this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+      this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
+    }
+
+    this.$root.$on('failedMapPointLookup', this.failedMapPointLookupCallback)
   }
 
   private beforeDestroy () {
     clearInterval(this.countLoop)
+    this.unwatchFilter()
+    this.$root.$off('failedMapPointLookup')
   }
 
   private fetchSessionCounts () {
@@ -115,40 +112,18 @@ export default class SessionCounts extends Vue {
       .then((response: any) => {
         this.totalSessionsReply.direct = response.direct
         this.totalSessionsReply.onNN = response.next
+      })
+      .catch((error: Error) => {
+        this.totalSessionsReply.direct = 0
+        this.totalSessionsReply.onNN = 0
+        console.log('Something went wrong fetching session counts')
+        console.log(error)
+      })
+      .finally(() => {
         if (!this.showCount) {
           this.showCount = true
         }
       })
-      .catch((error: Error) => {
-        console.log(error)
-      })
-  }
-
-  private getBuyerCode () {
-    const allBuyers = this.$store.getters.allBuyers
-    let i = 0
-    for (i; i < allBuyers.length; i++) {
-      if (allBuyers[i].company_code === this.$store.getters.userProfile.companyCode) {
-        return allBuyers[i].company_code
-      }
-    }
-    return 'Private'
-  }
-
-  private getBuyerName () {
-    const allBuyers = this.$store.getters.allBuyers
-    let i = 0
-    for (i; i < allBuyers.length; i++) {
-      if (allBuyers[i].company_code === this.$store.getters.userProfile.companyCode) {
-        return allBuyers[i].company_name
-      }
-    }
-    return 'Private'
-  }
-
-  private updateFilter (companyCode: string) {
-    this.$store.commit('UPDATE_CURRENT_FILTER', { companyCode: companyCode })
-    this.restartLoop()
   }
 
   private restartLoop () {
@@ -159,6 +134,25 @@ export default class SessionCounts extends Vue {
     this.countLoop = setInterval(() => {
       this.fetchSessionCounts()
     }, 1000)
+  }
+
+  private failedMapPointLookupCallback () {
+    if (!this.alertToggle) {
+      this.alertToggle = true
+      this.$refs.sessionCountAlert.toggleSlots(false)
+      this.$refs.sessionCountAlert.setMessage('Map point lookup was unsuccessful. Please zoom in closer and try again')
+      this.$refs.sessionCountAlert.setAlertType(AlertType.WARNING)
+      setTimeout(() => {
+        if (this.$store.getters.isAnonymousPlus) {
+          this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+          this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
+        } else {
+          this.$refs.sessionCountAlert.resetAlert()
+        }
+        this.$refs.sessionCountAlert.toggleSlots(true)
+        this.alertToggle = false
+      }, 10000)
+    }
   }
 }
 </script>

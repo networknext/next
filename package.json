@@ -31,6 +31,7 @@
     "vue-multiselect": "^2.1.6",
     "vue-property-decorator": "^8.4.2",
     "vue-router": "^3.2.0",
+    "vue-tour": "^1.5.0",
     "vuex": "^3.4.0"
   },
   "devDependencies": {
@@ -57,7 +58,7 @@
     "eslint-plugin-standard": "^4.0.0",
     "eslint-plugin-vue": "^5.2.3",
     "miragejs": "^0.1.40",
-    "node-sass": "^4.12.0",
+    "node-sass": "4.14.0",
     "sass-loader": "^8.0.2",
     "typescript": "~3.9.3",
     "vue-template-compiler": "^2.6.11"
@@ -84,6 +85,7 @@
     "overrides": [
       {
         "files": [
+          "**/src/*.js",
           "**/__tests__/*.{j,t}s?(x)",
           "**/tests/unit/**/*.spec.{j,t}s?(x)"
         ],

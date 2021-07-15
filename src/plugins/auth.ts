@@ -1,6 +1,6 @@
 import store from '@/store'
 import { Auth0Client } from '@auth0/auth0-spa-js'
-import { UserProfile } from '@/components/types/AuthTypes.ts'
+import { UserProfile } from '@/components/types/AuthTypes'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import Vue from 'vue'
 
@@ -38,9 +38,15 @@ export class AuthService {
 
   public signUp (email: string | undefined) {
     const emailHint = email || ''
+    if (emailHint === '' && Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      console.log('Sending clicked sign up')
+      Vue.prototype.$gtag.event('Clicked sign up', {
+        event_category: 'Account Creation'
+      })
+    }
     this.authClient.loginWithRedirect({
       connection: 'Username-Password-Authentication',
-      redirect_uri: window.location.origin + '/map',
+      redirect_uri: window.location.origin + '/map?signup=true',
       screen_hint: 'signup',
       login_hint: emailHint
     })
@@ -102,7 +108,6 @@ export class AuthService {
       userProfile.verified = authResult.email_verified
       userProfile.companyCode = companyCode
       userProfile.newsletterConsent = newsletterConsent
-      // TODO: There should be a better way to access the Vue instance rather than through the router object
       if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
         (window as any).Intercom('boot', {
           api_base: process.env.VUE_APP_INTERCOM_BASE_API,
@@ -126,7 +131,6 @@ export class AuthService {
         })
       return this.processAuthentication()
     }
-    // TODO: There should be a better way to access the Vue instance rather than through the router object
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('boot', {
         api_base: process.env.VUE_APP_INTERCOM_BASE_API,

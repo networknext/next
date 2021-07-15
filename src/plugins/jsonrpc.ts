@@ -129,7 +129,7 @@ export class JSONRPCService {
   }
 
   public updateGameConfiguration (args: any): Promise<any> {
-    return this.call('BuyersService.UpdateGameConfiguration', args)
+    return this.call('BuyersService.UpdateBuyerInformation', args)
   }
 
   public resendVerificationEmail (args: any): Promise<any> {
@@ -138,6 +138,34 @@ export class JSONRPCService {
 
   public fetchFeatureFlags (): Promise<any> {
     return this.call('ConfigService.AllFeatureFlags', {})
+  }
+
+  public sendSignUpSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerSignedUpSlackNotification', args)
+  }
+
+  public sendDocsViewSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerViewedTheDocsSlackNotification', args)
+  }
+
+  public sendSDKDownloadSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloadedSDKSlackNotification', args)
+  }
+
+  public sendPublicKeyEnteredSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerEnteredPublicKeySlackNotification', args)
+  }
+
+  public sendUE4DownloadNotifications (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloadedUE4PluginNotifications', args)
+  }
+
+  public fetchNotifications (): Promise<any> {
+    return this.call('BuyersService.FetchNotifications', {})
+  }
+
+  public fetchLookerURL (): Promise<any> {
+    return this.call('BuyersService.FetchLookerURL', {})
   }
 }
 

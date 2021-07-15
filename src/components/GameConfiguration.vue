@@ -24,6 +24,7 @@
         ></textarea>
       </div>
       <button
+        id="game-config-button"
         type="submit"
         class="btn btn-primary btn-sm"
         v-if="$store.getters.isOwner || $store.getters.isAdmin"
@@ -37,7 +38,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
-import { UserProfile } from '@/components/types/AuthTypes.ts'
+import { UserProfile } from '@/components/types/AuthTypes'
 import { cloneDeep } from 'lodash'
 
 /**
@@ -88,7 +89,7 @@ export default class GameConfiguration extends Vue {
         new_public_key: this.pubKey
       })
       .then((response: any) => {
-        this.userProfile.pubKey = response.game_config.public_key
+        this.userProfile.pubKey = response.public_key
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
         this.$refs.responseAlert.setMessage('Updated public key successfully')
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
@@ -102,6 +103,7 @@ export default class GameConfiguration extends Vue {
             const allBuyers = response.buyers
             this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
           })
+        this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
@@ -120,4 +122,12 @@ export default class GameConfiguration extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  #game-config-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #game-config-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
 </style>

@@ -38,7 +38,7 @@
             >
           </div>
           <div class="col-auto">
-            <button class="btn btn-primary" type="submit">
+            <button id="session-tool-button" class="btn btn-primary" type="submit">
               View Stats
             </button>
           </div>
@@ -96,6 +96,9 @@ export default class SessionToolWorkspace extends Vue {
 
   private created () {
     this.searchID = this.$route.params.pathMatch || ''
+    if (this.searchID !== '') {
+      this.fetchSessionDetails()
+    }
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
@@ -130,4 +133,12 @@ export default class SessionToolWorkspace extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  #session-tool-button {
+    border-color: #009FDF;
+    background-color: #009fdf;
+  }
+  #session-tool-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
 </style>

@@ -1,4 +1,4 @@
-import { UserProfile } from '@/components/types/AuthTypes.ts'
+import { UserProfile } from '@/components/types/AuthTypes'
 import { cloneDeep } from 'lodash'
 import Vue from 'vue'
 

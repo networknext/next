@@ -6,6 +6,7 @@ import { waitFor } from './utils'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { faCircle } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import VueTour from 'vue-tour'
 
 describe('UserSessions.vue no sessions', () => {
   const localVue = createLocalVue()
@@ -18,7 +19,8 @@ describe('UserSessions.vue no sessions', () => {
     },
     getters: {
       currentFilter: (state: any) => state.filter,
-      isAnonymous: () => true
+      isAnonymous: () => true,
+      isSignUpTour: () => false
     },
     mutations: {
       TOGGLE_SESSION_TABLE (state: any, showTable: boolean) {
@@ -40,6 +42,7 @@ describe('UserSessions.vue no sessions', () => {
   localVue.component('font-awesome-icon', FontAwesomeIcon)
 
   localVue.use(JSONRPCPlugin)
+  localVue.use(VueTour)
 
   const spy = jest.spyOn(localVue.prototype.$apiService, 'fetchTopSessions').mockImplementation(() => {
     return Promise.resolve({

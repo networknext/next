@@ -18,7 +18,7 @@
             Setting this to a comma seperated list of email domains will allow anyone with that domain to assign themselves to your account using your company code ({{ companyCode }}) in the account settings page.
           </small>
         </div>
-        <button type="submit" class="btn btn-primary btn-sm">
+        <button id="auto-signup-button" type="submit" class="btn btn-primary btn-sm">
           Save Automatic Sign up
         </button>
         <p class="text-muted text-small mt-2"></p>
@@ -57,7 +57,7 @@
           The permission level to grant the added user accounts.
         </small>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm">
+      <button id="add-user-button" type="submit" class="btn btn-primary btn-sm">
         Add Users
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -101,6 +101,7 @@
           </td>
           <td class="td-btn" v-show="!account.edit && !account.delete">
             <button
+              id="edit-user-button"
               class="btn btn-xs btn-primary"
               data-toggle="tooltip"
               data-placement="bottom"
@@ -383,4 +384,28 @@ export default class UserManagement extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+  #add-user-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #add-user-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
+  #auto-signup-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #auto-signup-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
+  #edit-user-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #edit-user-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
 </style>
