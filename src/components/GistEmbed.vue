@@ -24,7 +24,7 @@ export default class GistEmbed extends Vue {
       }
 
       for (let i = metaElements.length - 1; i >= 0; --i) {
-        metaElements[i].classList.add('hidden')
+        metaElements[i].remove()
       }
     }
   }
