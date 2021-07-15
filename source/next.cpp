@@ -10512,7 +10512,7 @@ bool next_autodetect_amazon( char * output )
 
     char azid[256];
     azid[0] = '\0';
-    file = popen( "curl \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 10 -vs 2>/dev/null", "r" );
+    file = popen( "curl \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 2 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
