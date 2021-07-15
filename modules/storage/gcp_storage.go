@@ -1,0 +1,178 @@
+package storage
+
+import (
+	"context"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+
+	"cloud.google.com/go/storage"
+	"google.golang.org/api/option"
+)
+
+type GCPStorage struct {
+	Client *storage.Client
+	Logger log.Logger
+	Bucket *storage.BucketHandle
+}
+
+type GCPStorageError struct {
+	err error
+}
+
+func (g *GCPStorageError) Error() string {
+	return fmt.Sprintf("unknown GCP storage error: %v", g.err)
+}
+
+// Create new GCPStorage client
+func NewGCPStorageClient(ctx context.Context, bucketName string, logger log.Logger, opts ...option.ClientOption) (*GCPStorage, error) {
+	client, err := storage.NewClient(ctx, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	if bucketName == "" {
+		err := fmt.Errorf("NewGCPStorageClient() bucket name is empty or not defined")
+		level.Error(logger).Log("err", err)
+		return nil, err
+	}
+	bucket := client.Bucket(bucketName)
+
+	return &GCPStorage{
+		Client: client,
+		Logger: logger,
+		Bucket: bucket,
+	}, nil
+}
+
+func (g *GCPStorage) CopyFromBytesToStorage(ctx context.Context, inputBytes []byte, outputFileName string) error {
+	// Create an object writer
+	writer := g.Bucket.Object(outputFileName).NewWriter(ctx)
+
+	writer.ObjectAttrs.ContentType = "application/octet-stream"
+
+	// Write to the file
+	if _, err := writer.Write(inputBytes); err != nil {
+		err = fmt.Errorf("failed to write to bucket object: %v", err)
+		return err
+	}
+
+	if err := writer.Close(); err != nil {
+		err = fmt.Errorf("failed to write to bucket object: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []string, outputFileName string) error {
+	// Check if there is a temp file with the same name already
+	if LocalFileExists(outputFileName) {
+		// delete temp file
+		if err := os.Remove(outputFileName); err != nil {
+			err = fmt.Errorf("failed to remove existing output file: %v", err)
+			return err
+		}
+	}
+
+	// Write bytes to temp file location
+	if err := ioutil.WriteFile(outputFileName, inputBytes, 0644); err != nil {
+		err = fmt.Errorf("failed to write to temp file: %v", err)
+		return err
+	}
+
+	// If we error somewhere in the loop, don't exit until all instances have been tried (debug instance isn't live)
+	var loopError error
+	for _, name := range instanceNames {
+		// Call gsutil to copy the tmp file over to the instance
+		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
+
+		buffer, err := runnable.CombinedOutput()
+		level.Debug(g.Logger).Log("msg", buffer)
+		if err != nil {
+			err = fmt.Errorf("failed to copy file to instance: %v", err)
+			loopError = err
+		}
+	}
+
+	if loopError != nil {
+		return loopError
+	}
+	// delete temp file to clean up
+	if err := os.Remove(outputFileName); err != nil {
+		err = fmt.Errorf("failed to clean up tmp file: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// Copy artifact to local a local file location
+func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName string, outputLocation string) error {
+	if LocalFileExists(outputLocation) {
+		// delete output file
+		if err := os.Remove(outputLocation); err != nil {
+			err = fmt.Errorf("failed to remove existing output file: %v", err)
+			return err
+		}
+	}
+
+	runnable := exec.Command("gsutil", "cp", artifactName, outputLocation)
+	buffer, err := runnable.CombinedOutput()
+
+	level.Debug(g.Logger).Log("msg", buffer)
+	if err != nil {
+		err = fmt.Errorf("failed to copy file to instance: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// Copy artifact to remote file location (SCP function)
+func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName string, instanceNames []string, outputFileName string) error {
+	// grab file from bucket
+	if err := g.CopyFromBucketToLocal(ctx, artifactName, outputFileName); err != nil {
+		err = fmt.Errorf("failed to fetch file from GCP bucket: %v", err)
+		return err
+	}
+
+	// If we error somewhere in the loop, don't exit until all instances have been tried (debug instance isn't live)
+	var loopError error
+	for _, name := range instanceNames {
+		// Call gsutil to copy the tmp file over to the instance
+		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
+
+		buffer, err := runnable.CombinedOutput()
+
+		level.Debug(g.Logger).Log("msg", buffer)
+		if err != nil {
+			err = fmt.Errorf("failed to copy file to instance %s: %v", name, err)
+			loopError = err
+		}
+	}
+
+	if loopError != nil {
+		return loopError
+	}
+
+	// delete src file to clean up
+	if err := os.Remove(outputFileName); err != nil {
+		err = fmt.Errorf("failed to clean up tmp file: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func LocalFileExists(fileName string) bool {
+	info, err := os.Stat(fileName)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}

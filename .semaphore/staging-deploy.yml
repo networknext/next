@@ -64,10 +64,22 @@ blocks:
           commands:
             - make build-portal-cruncher-artifacts-staging
             - make publish-portal-cruncher-artifacts-staging
+        - name: Relay Gateway
+          commands:
+            - make build-relay-gateway-artifacts-staging
+            - make publish-relay-gateway-artifacts-staging
         - name: Relay Backend
           commands:
             - make build-relay-backend-artifacts-staging
             - make publish-relay-backend-artifacts-staging
+        - name: Relay Frontend
+          commands:
+            - make build-relay-frontend-artifacts-staging
+            - make publish-relay-frontend-artifacts-staging
+        - name: Relay Forwarder
+          commands:
+            - make build-relay-forwarder-artifacts-staging
+            - make publish-relay-forwarder-artifacts-staging
         - name: Server Backend
           commands:
             - make build-server-backend-artifacts-staging
@@ -76,6 +88,14 @@ blocks:
           commands:
             - make build-debug-server-backend-artifacts-staging
             - make publish-debug-server-backend-artifacts-staging
+        - name: Debug Relay Backend
+          commands:
+            - make build-debug-relay-backend-artifacts-staging
+            - make publish-debug-relay-backend-artifacts-staging
+        - name: Fake Relays
+          commands:
+            - make build-fake-relays-artifacts-staging
+            - make publish-fake-relays-artifacts-staging
         - name: Fake Server
           commands:
             - make build-fake-server-artifacts-staging
@@ -88,17 +108,9 @@ blocks:
             - make build-ghost-army-artifacts-staging
             - make publish-ghost-army-artifacts-staging
             - make publish-ghost-army-bootstrap-script-staging
-        - name: Relay Gateway
+        - name: Relay Pusher
           commands:
-            - make build-relay-gateway-artifacts-staging
-            - make publish-relay-gateway-artifacts-staging
-        - name: Optimizer
-          commands:
-            - make build-optimizer-artifacts-staging
-            - make publish-optimizer-artifacts-staging
-        - name: Route Matrix Selector
-          commands:
-            - make build-route-matrix-selector-artifacts-staging
-            - make publish-route-matrix-selector-artifacts-staging
+            - make build-relay-pusher-artifacts-staging
+            - make publish-relay-pusher-artifacts-staging
       secrets:
         - name: google-cloud-platform-staging

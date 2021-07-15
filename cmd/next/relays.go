@@ -3,22 +3,17 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"net"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/modood/table"
-	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 )
 
 func opsRelays(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	regex string,
 	relaysStateShowFlags [6]bool,
@@ -38,7 +33,7 @@ func opsRelays(
 	// os.Exit(0)
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -249,7 +244,6 @@ func opsRelays(
 }
 
 func relays(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	regex string,
 	relaysStateShowFlags [6]bool,
@@ -269,24 +263,16 @@ func relays(
 	// os.Exit(0)
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
 
-	sort.SliceStable(reply.Relays, func(i int, j int) bool {
-		return reply.Relays[i].TrafficStats.SessionCount > reply.Relays[j].TrafficStats.SessionCount
-	})
-
 	relays := []struct {
-		Name        string
-		ID          string
-		Address     string
-		State       string
-		Sessions    string
-		Tx          string
-		Rx          string
-		LastUpdated string
+		Name    string
+		ID      string
+		Address string
+		State   string
 	}{}
 
 	relaysCSV := [][]string{{}}
@@ -295,13 +281,18 @@ func relays(
 		relaysCSV = append(relaysCSV, []string{"Name"})
 	} else {
 		relaysCSV = append(relaysCSV, []string{
-			"Name", "ID", "Address", "State", "Sessions", "Tx", "Rx", "Version", "LastUpdated"})
+			"Name", "ID", "Address", "State"})
 	}
 
 	for _, relay := range reply.Relays {
 		relayState, err := routing.ParseRelayState(relay.State)
 		if err != nil {
 			handleRunTimeError(fmt.Sprintf("could not parse invalid relay state %s\n", relay.State), 0)
+		}
+
+		// TODO: fix once routing.Relay.State is updated
+		if relay.State == "decommissioned" {
+			relay.State = "removed"
 		}
 
 		includeRelay := true
@@ -321,20 +312,6 @@ func relays(
 
 		if relaysStateHideFlags[relayState] {
 			// Relay should be hidden, so don't include in final output
-			includeRelay = false
-		}
-		unitFormat(0)
-		bitsTransmitted := unitFormat(relay.TrafficStats.AllTx() * 8)
-		bitsReceived := unitFormat(relay.TrafficStats.AllRx() * 8)
-
-		lastUpdateDuration := time.Since(relay.LastUpdateTime).Truncate(time.Second)
-		lastUpdated := "n/a"
-		if relay.State == "enabled" {
-			lastUpdated = lastUpdateDuration.String()
-		}
-
-		if relaysDownFlag && lastUpdateDuration < 30*time.Second {
-			// Relay is still up and shouldn't be included in the final output
 			includeRelay = false
 		}
 
@@ -362,11 +339,6 @@ func relays(
 					relayID,
 					address,
 					relay.State,
-					fmt.Sprintf("%d", relay.TrafficStats.SessionCount),
-					bitsTransmitted,
-					bitsReceived,
-					relay.Version,
-					lastUpdated,
 				})
 			}
 
@@ -378,23 +350,15 @@ func relays(
 				relayID = fmt.Sprintf("%016x", relay.ID)
 			}
 			relays = append(relays, struct {
-				Name        string
-				ID          string
-				Address     string
-				State       string
-				Sessions    string
-				Tx          string
-				Rx          string
-				LastUpdated string
+				Name    string
+				ID      string
+				Address string
+				State   string
 			}{
-				Name:        relay.Name,
-				ID:          relayID,
-				Address:     address,
-				State:       relay.State,
-				Sessions:    fmt.Sprintf("%d", relay.TrafficStats.SessionCount),
-				Tx:          bitsTransmitted,
-				Rx:          bitsReceived,
-				LastUpdated: lastUpdated,
+				Name:    relay.Name,
+				ID:      relayID,
+				Address: address,
+				State:   relay.State,
 			})
 		}
 
@@ -440,111 +404,56 @@ func relays(
 
 }
 
-func addRelay(rpcClient jsonrpc.RPCClient, env Environment, r relay) {
-
-	dcID, err := strconv.ParseUint(r.DatacenterID, 16, 64)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Could not parse %s in to a hex integer", r.DatacenterID), 0)
-	}
-
-	dcArg := localjsonrpc.DatacenterArg{
-		ID: dcID,
-	}
-
-	var dcReply localjsonrpc.DatacenterReply
-
-	if err := rpcClient.CallFor(&dcReply, "OpsService.Datacenter", dcArg); err != nil {
-		handleJSONRPCError(env, err)
-	}
-
-	addr, err := net.ResolveUDPAddr("udp", r.Addr)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("Could not resolve udp address for Addr %s: %v\n", r.Addr, err), 1)
-	}
+func addRelayJS(env Environment, r relay) {
 
 	bwRule, err := routing.ParseBandwidthRule(r.BWRule)
 	if err != nil {
-		handleRunTimeError(fmt.Sprintf("value '%s' is not a valid bandwidth rule", r.BWRule), 0)
-	}
-
-	machineType, err := routing.ParseMachineType(r.Type)
-	if err != nil {
-		handleRunTimeError(fmt.Sprintf("value '%s' is not a valid machine type", r.Type), 0)
-	}
-
-	sellerArg := localjsonrpc.SellerArg{
-		ID: r.Seller,
-	}
-
-	sellerReply := localjsonrpc.SellerReply{}
-
-	if err := rpcClient.CallFor(&sellerReply, "OpsService.Seller", sellerArg); err != nil {
-		handleJSONRPCError(env, err)
-	}
-
-	rid := crypto.HashID(r.Addr)
-	relay := routing.Relay{
-		ID:                  rid,
-		Name:                r.Name,
-		Addr:                *addr,
-		PublicKey:           []byte(r.PublicKey),
-		Datacenter:          dcReply.Datacenter,
-		NICSpeedMbps:        r.NicSpeedMbps,
-		IncludedBandwidthGB: r.IncludedBandwidthGB,
-		State:               routing.RelayStateMaintenance,
-		ManagementAddr:      r.ManagementAddr,
-		SSHUser:             r.SSHUser,
-		SSHPort:             r.SSHPort,
-		MaxSessions:         r.MaxSessions,
-		MRC:                 routing.DollarsToNibblins(r.MRC),
-		Overage:             routing.DollarsToNibblins(r.Overage),
-		BWRule:              bwRule,
-		ContractTerm:        r.ContractTerm,
-		Type:                machineType,
-		Seller:              sellerReply.Seller,
-		Notes:               r.Notes,
-	}
-
-	var internalAddr *net.UDPAddr
-	if r.InternalAddr != "" {
-		internalAddr, err = net.ResolveUDPAddr("udp", r.InternalAddr)
-		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Could not resolve udp address for InternalAddr %s: %v\n", r.Addr, err), 1)
-		}
-		relay.InternalAddr = *internalAddr
-	}
-
-	if r.StartDate != "" {
-		startDate, err := time.Parse("January 2, 2006", r.StartDate)
-		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.StartDate), 0)
-		}
-		relay.StartDate = startDate
-	}
-
-	if r.EndDate != "" {
-		endDate, err := time.Parse("January 2, 2006", r.EndDate)
-		if err != nil {
-			handleRunTimeError(fmt.Sprintf("Could not parse `%s` - must be of the form 'January 2, 2006'", r.EndDate), 0)
-		}
-		relay.EndDate = endDate
-	}
-
-	args := localjsonrpc.AddRelayArgs{
-		Relay: relay,
-	}
-
-	var reply localjsonrpc.AddRelayReply
-	if err := rpcClient.CallFor(&reply, "OpsService.AddRelay", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
 
-	fmt.Printf("Relay \"%s\" added to storage.\n", relay.Name)
+	machineType, err := routing.ParseMachineType(r.Type)
+	if err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	args := localjsonrpc.JSAddRelayArgs{
+		Name:                r.Name,
+		Addr:                r.Addr,
+		InternalAddr:        r.InternalAddr,
+		PublicKey:           r.PublicKey,
+		SellerID:            r.Seller,       // not used
+		DatacenterID:        r.DatacenterID, // hex
+		NICSpeedMbps:        int64(r.NicSpeedMbps),
+		IncludedBandwidthGB: int64(r.IncludedBandwidthGB),
+		ManagementAddr:      r.ManagementAddr,
+		SSHUser:             r.SSHUser,
+		SSHPort:             r.SSHPort,
+		MaxSessions:         int64(r.MaxSessions),
+		MRC:                 int64(routing.DollarsToNibblins(r.MRC)),
+		Overage:             int64(routing.DollarsToNibblins(r.Overage)),
+		BWRule:              int64(bwRule),
+		ContractTerm:        int64(r.ContractTerm),
+		StartDate:           r.StartDate,
+		EndDate:             r.EndDate,
+		Type:                int64(machineType),
+		BillingSupplier:     r.BillingSupplier,
+		Version:             r.Version,
+	}
+
+	var reply localjsonrpc.JSAddRelayReply
+	if err := makeRPCCall(env, &reply, "OpsService.JSAddRelay", args); err != nil {
+		handleJSONRPCError(env, err)
+		return
+	}
+
+	fmt.Printf("Relay \"%s\" added to storage.\n", r.Name)
+
 }
 
-func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
-	relays := getRelayInfo(rpcClient, env, name)
+func removeRelay(env Environment, name string) {
+	relays := getRelayInfo(env, name)
 
 	if len(relays) == 0 {
 		handleRunTimeError(fmt.Sprintf("no relays matched the name '%s'\n", name), 0)
@@ -567,7 +476,7 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 	}
 
 	var reply localjsonrpc.RemoveRelayReply
-	if err := rpcClient.CallFor(&reply, "OpsService.RemoveRelay", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.RemoveRelay", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -575,13 +484,13 @@ func removeRelay(rpcClient jsonrpc.RPCClient, env Environment, name string) {
 	fmt.Printf("Relay \"%s\" removed.\n", info.name)
 }
 
-func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
+func countRelays(env Environment, regex string) {
 	args := localjsonrpc.RelaysArgs{
 		Regex: regex,
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return
 	}
@@ -601,8 +510,11 @@ func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 		relayCountList[relay.State] = 1
 	}
 
+	var totalRelays int
+
 	for key, relayCount := range relayCountList {
 		if key != "decommissioned" {
+			totalRelays += relayCount
 			relayList = append(relayList, struct {
 				State string
 				Count string
@@ -618,7 +530,7 @@ func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 		Count string
 	}{
 		State: "total",
-		Count: strconv.Itoa(len(reply.Relays)),
+		Count: strconv.Itoa(totalRelays),
 	})
 
 	table.Output(relayList)
@@ -626,7 +538,6 @@ func countRelays(rpcClient jsonrpc.RPCClient, env Environment, regex string) {
 }
 
 func modifyRelayField(
-	rpcClient jsonrpc.RPCClient,
 	env Environment,
 	relayRegex string,
 	field string,
@@ -638,7 +549,7 @@ func modifyRelayField(
 	}
 
 	var reply localjsonrpc.RelaysReply
-	if err := rpcClient.CallFor(&reply, "OpsService.Relays", args); err != nil {
+	if err := makeRPCCall(env, &reply, "OpsService.Relays", args); err != nil {
 		handleJSONRPCError(env, err)
 		return nil
 	}
@@ -657,12 +568,21 @@ func modifyRelayField(
 
 	emptyReply := localjsonrpc.ModifyRelayFieldReply{}
 
+	// TODO: remove once routing.Relay.State is updated
+	if field == "State" {
+		if value == "removed" {
+			value = "decommissioned"
+		} else if value == "offline" || value == "maintenance" {
+			handleRunTimeError(fmt.Sprintf("'%s' is no longer a valid relay state\n", value), 0)
+		}
+	}
+
 	modifyArgs := localjsonrpc.ModifyRelayFieldArgs{
 		RelayID: reply.Relays[0].ID,
 		Field:   field,
 		Value:   value,
 	}
-	if err := rpcClient.CallFor(&emptyReply, "OpsService.ModifyRelayField", modifyArgs); err != nil {
+	if err := makeRPCCall(env, &emptyReply, "OpsService.ModifyRelayField", modifyArgs); err != nil {
 		fmt.Printf("%v\n", err)
 		return nil
 	}

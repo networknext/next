@@ -17,7 +17,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 9
+	SessionDataVersion = 13
 
 	MaxSessionDataSize = 511
 
@@ -30,19 +30,21 @@ const (
 	PacketTypeServerInitResponse = 224
 
 	InitResponseOK                   = 0
-	InitResponseUnknownCustomer      = 1
+	InitResponseUnknownBuyer         = 1
 	InitResponseUnknownDatacenter    = 2
 	InitResponseOldSDKVersion        = 3
 	InitResponseSignatureCheckFailed = 4
-	InitResponseCustomerNotActive    = 5
+	InitResponseBuyerNotActive       = 5
 	InitResponseDataCenterNotEnabled = 6
 
+	// IMPORTANT: Update Serialize(), Validate(), and ClampEntry() in modules/billing/billing_entry.go when a new connection type is added
 	ConnectionTypeUnknown  = 0
 	ConnectionTypeWired    = 1
 	ConnectionTypeWifi     = 2
 	ConnectionTypeCellular = 3
 	ConnectionTypeMax      = 3
 
+	// IMPORTANT: Update Serialize(), Validate(), and ClampEntry() in modules/billing/billing_entry.go when a new platform type is added
 	PlatformTypeUnknown     = 0
 	PlatformTypeWindows     = 1
 	PlatformTypeMac         = 2
@@ -51,12 +53,12 @@ const (
 	PlatformTypePS4         = 5
 	PlatformTypeIOS         = 6
 	PlatformTypeXBoxOne     = 7
-	PlatformTypeMax_404     = 7 	// SDK 4.0.4 and older
+	PlatformTypeMax_404     = 7 // SDK 4.0.4 and older
 	PlatformTypeXBoxSeriesX = 8
 	PlatformTypePS5         = 9
-	PlatformTypeMax_405     = 9 	// SDK 4.0.5 and newer
+	PlatformTypeMax_405     = 9 // SDK 4.0.5 and newer
 	PlatformTypeGDK         = 10
-	PlatformTypeMax_410     = 10 	// SDK 4.0.10 and newer
+	PlatformTypeMax_410     = 10 // SDK 4.0.10 and newer
 	PlatformTypeMax         = 10
 
 	FallbackFlagsBadRouteToken              = (1 << 0)
@@ -203,22 +205,23 @@ func UnmarshalPacket(packet Packet, data []byte) error {
 }
 
 func MarshalPacket(packet Packet) ([]byte, error) {
-	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	buffer := [DefaultMaxPacketSize]byte{}
+	stream, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
 		return nil, err
 	}
 
-	if err := packet.Serialize(ws); err != nil {
+	if err := packet.Serialize(stream); err != nil {
 		return nil, err
 	}
-	ws.Flush()
+	stream.Flush()
 
-	return ws.GetData()[:ws.GetBytesProcessed()], nil
+	return buffer[:stream.GetBytesProcessed()], nil
 }
 
 type ServerInitRequestPacket struct {
 	Version        SDKVersion
-	CustomerID     uint64
+	BuyerID        uint64
 	DatacenterID   uint64
 	RequestID      uint64
 	DatacenterName string
@@ -232,7 +235,7 @@ func (packet *ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&versionMinor, 8)
 	stream.SerializeBits(&versionPatch, 8)
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.BuyerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint64(&packet.RequestID)
 	stream.SerializeString(&packet.DatacenterName, MaxDatacenterNameLength)
@@ -252,7 +255,7 @@ func (packet *ServerInitResponsePacket) Serialize(stream encoding.Stream) error 
 
 type ServerUpdatePacket struct {
 	Version       SDKVersion
-	CustomerID    uint64
+	BuyerID       uint64
 	DatacenterID  uint64
 	NumSessions   uint32
 	ServerAddress net.UDPAddr
@@ -266,7 +269,7 @@ func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeBits(&versionMinor, 8)
 	stream.SerializeBits(&versionPatch, 8)
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.BuyerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
@@ -275,7 +278,7 @@ func (packet *ServerUpdatePacket) Serialize(stream encoding.Stream) error {
 
 type SessionUpdatePacket struct {
 	Version                         SDKVersion
-	CustomerID                      uint64
+	BuyerID                         uint64
 	DatacenterID                    uint64
 	SessionID                       uint64
 	SliceNumber                     uint32
@@ -335,7 +338,7 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 
 	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
 
-	stream.SerializeUint64(&packet.CustomerID)
+	stream.SerializeUint64(&packet.BuyerID)
 	stream.SerializeUint64(&packet.DatacenterID)
 	stream.SerializeUint64(&packet.SessionID)
 	stream.SerializeUint32(&packet.SliceNumber)
@@ -604,6 +607,9 @@ type SessionData struct {
 	PrevPacketsSentServerToClient uint64
 	PrevPacketsLostClientToServer uint64
 	PrevPacketsLostServerToClient uint64
+	HoldNearRelays                bool
+	HoldNearRelayRTT              [core.MaxNearRelays]int32
+	WroteSummary                  bool
 }
 
 func UnmarshalSessionData(sessionData *SessionData, data []byte) error {
@@ -619,25 +625,28 @@ func MarshalSessionData(sessionData *SessionData) ([]byte, error) {
 		sessionData.Version = SessionDataVersion
 	}
 
-	ws, err := encoding.CreateWriteStream(DefaultMaxPacketSize)
+	buffer := [DefaultMaxPacketSize]byte{}
+
+	stream, err := encoding.CreateWriteStream(buffer[:])
 	if err != nil {
 		return nil, err
 	}
 
-	if err := sessionData.Serialize(ws); err != nil {
+	if err := sessionData.Serialize(stream); err != nil {
 		return nil, err
 	}
-	ws.Flush()
+	stream.Flush()
 
-	return ws.GetData()[:ws.GetBytesProcessed()], nil
+	return buffer[:stream.GetBytesProcessed()], nil
 }
 
 func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
+	// IMPORTANT: DO NOT EVER CHANGE CODE IN THIS FUNCTION BELOW HERE.
+	// CHANGING CODE BELOW HERE *WILL* BREAK PRODUCTION!!!!
+
 	stream.SerializeBits(&sessionData.Version, 8)
 
-	// IMPORTANT: If you ever make this serialize not backwards compatible with old session data
-	// you must update the too old version number here and it will be a disruptive update (sessions will fall back to direct!)
 	if sessionData.Version < 8 {
 		return errors.New("session data is too old")
 	}
@@ -702,11 +711,8 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.MultipathOverload)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
-
 	stream.SerializeBool(&sessionData.RouteState.Mispredict)
-
 	stream.SerializeBool(&sessionData.EverOnNext)
-
 	stream.SerializeBool(&sessionData.FellBackToDirect)
 
 	stream.SerializeInteger(&sessionData.RouteState.NumNearRelays, 0, core.MaxNearRelays)
@@ -751,7 +757,38 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
 	}
 
-	// IMPORTANT: Add new fields at the bottom. Never remove or change old fields or it becomes a disruptive update!
+	if sessionData.Version >= 10 {
+		stream.SerializeBool(&sessionData.RouteState.LocationVeto)
+	}
+
+	if sessionData.Version >= 11 {
+		stream.SerializeBool(&sessionData.HoldNearRelays)
+		if sessionData.HoldNearRelays {
+			for i := 0; i < core.MaxNearRelays; i++ {
+				stream.SerializeInteger(&sessionData.HoldNearRelayRTT[i], 0, 255)
+			}
+		}
+	}
+
+	// IMPORTANT: Remove this in the future. We need this to stem fall back to directs 05-27-21
+	// Done
+
+	if sessionData.Version >= 12 {
+		stream.SerializeInteger(&sessionData.RouteState.PLSustainedCounter, 0, 3)
+	}
+
+	if sessionData.Version >= 13 {
+		stream.SerializeBool(&sessionData.WroteSummary)
+	}
+
+	// IMPORTANT: ADD NEW FIELDS BELOW HERE ONLY.
+
+	// >>> new fields go here <<<
+
+	// IMPORTANT: ADD NEW FIELDS ABOVE HERE ONLY.
+	// AFTER YOU ADD NEW FIELDS, UPDATE THE COMMENTS SO FIELDS
+	// MAY ONLY BE ADDED *AFTER* YOUR NEW FIELDS.
+	// FAILING TO FOLLOW THESE INSRUCTIONS WILL BREAK PRODUCTION!!!!
 
 	return stream.Error()
 }

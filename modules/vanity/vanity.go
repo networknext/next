@@ -85,11 +85,15 @@ type VanityMetrics struct {
 }
 
 func NewVanityMetricHandler(vanityHandler metrics.Handler, vanityServiceMetrics *metrics.VanityServiceMetrics, chanBufferSize int,
-	vanitySubscriber pubsub.Subscriber, redisSessions string, redisMaxIdleConnections int, redisMaxActiveConnections int,
+	vanitySubscriber pubsub.Subscriber, redisSessions string, redisPassword string, redisMaxIdleConnections int, redisMaxActiveConnections int,
 	vanityMaxUserIdleTime time.Duration, vanitySetName string, env string, logger log.Logger) (*VanityMetricHandler, error) {
 
 	// Create Redis client for userHash -> sessionID, timestamp map
-	vanitySessionsMap := storage.NewRedisPool(redisSessions, redisMaxIdleConnections, redisMaxActiveConnections)
+	vanitySessionsMap := storage.NewRedisPool(redisSessions, redisPassword, redisMaxIdleConnections, redisMaxActiveConnections)
+	if err := storage.ValidateRedisPool(vanitySessionsMap); err != nil {
+		level.Error(logger).Log("msg", "could not validate redis pool", "err", err)
+		return nil, err
+	}
 
 	// List of metrics that need the number of hours calculated (i.e. Hours of Latency Reduced)
 	vanityHourMetricsMap := map[string]bool{
@@ -247,7 +251,7 @@ func (vm *VanityMetricHandler) Start(ctx context.Context, numVanityUpdateGorouti
 				// Buffer up some vanity metric entries to insert into StackDriver
 				case vanityData := <-vm.vanityMetricDataChan:
 					vanityMetricDataBuffer = append(vanityMetricDataBuffer, vanityData)
-					
+
 					if err := vm.UpdateMetrics(ctx, vanityMetricDataBuffer); err != nil {
 						vm.metrics.UpdateVanityFailureCount.Add(1)
 						errChan <- err
@@ -280,7 +284,7 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) error {
 
 	case messageInfo := <-vm.subscriber.ReceiveMessage():
 		vm.metrics.ReceivedVanityCount.Add(1)
-		
+
 		if messageInfo.Err != nil {
 			level.Error(vm.logger).Log("err", messageInfo.Err)
 			return &ErrReceiveMessage{err: messageInfo.Err}
@@ -340,7 +344,7 @@ func (vm *VanityMetricHandler) AddNewBuyerID(ctx context.Context, buyerID string
 		vm.mapMutex.Lock()
 		vm.buyerMetricMap[buyerID] = vanityMetricPerBuyer
 		vm.mapMutex.Unlock()
-		
+
 		level.Debug(vm.logger).Log("msg", "Found new buyer ID, inserted into map for quick lookup", "buyerID", buyerID)
 		return true, nil
 	}
@@ -353,7 +357,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 	for j := range vanityMetricDataBuffer {
 		buyerID := fmt.Sprintf("%016x", vanityMetricDataBuffer[j].BuyerID)
 		level.Debug(vm.logger).Log("msg", "Buyer ID obtained from data", "buyerID", buyerID)
-		
+
 		// Get the counters / gauges / histograms per vanity metric for this buyer ID
 		vm.mapMutex.RLock()
 		vanityMetricPerBuyer, exists := vm.buyerMetricMap[buyerID]
@@ -362,7 +366,7 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 		if !exists {
 			return fmt.Errorf("Could not find buyerID %s in map", buyerID)
 		}
-		
+
 		// Calculate sessionsAccelerated
 		newSession, err := vm.IsNewSession(vanityMetricDataBuffer[j].SessionID)
 		if err != nil {
@@ -458,17 +462,17 @@ func (vm *VanityMetricHandler) UpdateMetrics(ctx context.Context, vanityMetricDa
 // Checks if a userHash has moved onto a new sessionID at a later point in time
 func (vm *VanityMetricHandler) IsNewSession(sessionID uint64) (bool, error) {
 	sessionIDStr := fmt.Sprintf("%016x", sessionID)
-	
+
 	exists, err := vm.SessionIDExists(sessionIDStr)
 	if err != nil {
 		return exists, nil
 	}
-	
+
 	if exists {
 		// Not a new sessionID
 		return false, nil
 	}
-	
+
 	// Found a new sessionID, add it to the set
 	err = vm.AddSessionID(sessionIDStr)
 	if err != nil {
@@ -698,7 +702,7 @@ func (vm *VanityMetricHandler) AddSessionID(sessionID string) error {
 func (vm *VanityMetricHandler) ExpireOldSessions(conn redis.Conn) error {
 	currentTime := time.Now().UnixNano()
 	numRemoved, err := redis.Int(conn.Do("ZREMRANGEBYSCORE", redis.Args{}.Add(vm.redisSetName).Add("-inf").Add(fmt.Sprintf("(%d", currentTime))...))
-	
+
 	if numRemoved != 0 {
 		level.Debug(vm.logger).Log("msg", "Removed Session IDs from redis", "numRemoved", numRemoved)
 	}

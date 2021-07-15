@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -313,24 +314,107 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 
 }
 
+func refreshAuth(env Environment) error {
+	req, err := http.NewRequest(
+		http.MethodPost,
+		"https://networknext.auth0.com/oauth/token",
+		strings.NewReader(`{
+				"client_id":"6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb",
+				"client_secret":"EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj",
+				"audience":"https://portal.networknext.com",
+				"grant_type":"client_credentials"
+			}`),
+	)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return err
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
+	env.Write()
+
+	fmt.Print("Successfully authorized\n")
+	return nil
+}
+
+func makeRPCCall(env Environment, reply interface{}, method string, params interface{}) error {
+	protocol := "https"
+	if env.PortalHostname() == PortalHostnameLocal {
+		protocol = "http"
+	}
+
+	rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
+		CustomHeaders: map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
+		},
+	})
+
+	if err := rpcClient.CallFor(&reply, method, params); err != nil {
+		switch e := err.(type) {
+		case *jsonrpc.HTTPError:
+			switch e.Code {
+			case http.StatusUnauthorized:
+				// Refresh token and try again
+				if err := refreshAuth(env); err != nil {
+					handleRunTimeError(err.Error(), 1)
+				}
+				env.Read()
+
+				rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
+					CustomHeaders: map[string]string{
+						"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
+					},
+				})
+
+				if err := rpcClient.CallFor(&reply, method, params); err != nil {
+					return err
+				}
+			default:
+				return err
+			}
+		default:
+			return err
+		}
+	}
+	return nil
+}
+
 type internalConfig struct {
-	RouteSelectThreshold       int32
-	RouteSwitchThreshold       int32
-	MaxLatencyTradeOff         int32
-	RTTVeto_Default            int32
-	RTTVeto_PacketLoss         int32
-	RTTVeto_Multipath          int32
-	MultipathOverloadThreshold int32
-	TryBeforeYouBuy            bool
-	ForceNext                  bool
-	LargeCustomer              bool
-	Uncommitted                bool
-	MaxRTT                     int32
-	HighFrequencyPings         bool
-	RouteDiversity             int32
-	MultipathThreshold         int32
-	EnableVanityMetrics        bool
-	BuyerID                    string
+	RouteSelectThreshold           int32
+	RouteSwitchThreshold           int32
+	MaxLatencyTradeOff             int32
+	RTTVeto_Default                int32
+	RTTVeto_PacketLoss             int32
+	RTTVeto_Multipath              int32
+	MultipathOverloadThreshold     int32
+	TryBeforeYouBuy                bool
+	ForceNext                      bool
+	LargeCustomer                  bool
+	Uncommitted                    bool
+	MaxRTT                         int32
+	HighFrequencyPings             bool
+	RouteDiversity                 int32
+	MultipathThreshold             int32
+	EnableVanityMetrics            bool
+	ReducePacketLossMinSliceNumber int32
+	BuyerID                        string
 }
 
 type routeShader struct {
@@ -348,6 +432,7 @@ type routeShader struct {
 	BandwidthEnvelopeUpKbps   int32
 	BandwidthEnvelopeDownKbps int32
 	BuyerID                   string
+	PacketLossSustained       float32
 }
 
 type buyer struct {
@@ -388,6 +473,8 @@ type relay struct {
 	EndDate             string
 	Type                string
 	Notes               string
+	BillingSupplier     string
+	Version             string
 }
 
 type datacenter struct {
@@ -404,11 +491,10 @@ type datacenter struct {
 type dcMapStrings struct {
 	BuyerID    string `json:"buyer_id"`
 	Datacenter string `json:"datacenter"`
-	Alias      string `json:"alias"`
 }
 
 func (dcm dcMapStrings) String() string {
-	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n\tAlias        : %s\n}", dcm.BuyerID, dcm.Datacenter, dcm.Alias)
+	return fmt.Sprintf("{\n\tBuyer ID     : %s\n\tDatacenter ID: %s\n}", dcm.BuyerID, dcm.Datacenter)
 }
 
 func main() {
@@ -419,16 +505,12 @@ func main() {
 	}
 	env.Read()
 
-	protocol := "https"
-	if env.PortalHostname() == PortalHostnameLocal || env.PortalHostname() == PortalHostnameNRB {
-		protocol = "http"
+	if env.AuthToken == "" {
+		if err := refreshAuth(env); err != nil {
+			handleRunTimeError(err.Error(), 1)
+		}
+		env.Read()
 	}
-
-	rpcClient := jsonrpc.NewClientWithOpts(protocol+"://"+env.PortalHostname()+"/rpc", &jsonrpc.RPCClientOpts{
-		CustomHeaders: map[string]string{
-			"Authorization": fmt.Sprintf("Bearer %s", env.AuthToken),
-		},
-	})
 
 	var srcRelays arrayFlags
 	var destRelays arrayFlags
@@ -480,62 +562,73 @@ func main() {
 	relayupdatefs.BoolVar(&updateOpts.force, "force", false, "force the relay update regardless of the version")
 	relayupdatefs.BoolVar(&updateOpts.hard, "hard", false, "hard update the relay(s), killing the process immediately")
 
+	fakerelaysfs := flag.NewFlagSet("fake relays", flag.ExitOnError)
+
+	// Create staging database.bin with N fake relays
+	var fakeRelayCount int
+	fakerelaysfs.IntVar(&fakeRelayCount, "n", 80, "number of fake relays for the staging environment (default: 80)")
+
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
-
-	// Flags to only show relays in certain states
-	var relaysStateShowFlags [6]bool
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", false, "only show enabled relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "decommissioned", false, "only show decommissioned relays")
-	relaysfs.BoolVar(&relaysStateShowFlags[routing.RelayStateOffline], "offline", false, "only show offline relays")
-
-	// Flags to hide relays in certain states
-	var relaysStateHideFlags [6]bool
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "nodecommissioned", false, "hide decommissioned relays")
-	relaysfs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
-
-	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
-	var relaysDownFlag bool
-	relaysfs.BoolVar(&relaysDownFlag, "down", false, "show relays that are down")
-
-	// Show all relays (including decommissioned ones) regardless of other flags
-	var relaysAllFlag bool
-	relaysfs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
-
-	// -list and -csv should work with all other flags
-	// Show only a list or relay names
-	var relaysListFlag bool
-	relaysfs.BoolVar(&relaysListFlag, "list", false, "show list of names")
-
-	// Return a CSV file instead of a table
-	var csvOutputFlag bool
-	relaysfs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
-
-	// Return all relays at this version
-	var relayVersionFilter string
-	relaysfs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
 
 	// Limit the number of relays displayed, in descending order of sessions carried
 	var relaysCount int64
 	relaysfs.Int64Var(&relaysCount, "n", 0, "number of relays to display (default: all)")
 
+	var relaysAlphaSort bool
+	relaysfs.BoolVar(&relaysAlphaSort, "alpha", false, "Sort relays by name, not by sessions carried")
+
+	relaysDbFs := flag.NewFlagSet("relays state", flag.ExitOnError)
+
+	// Flags to only show relays in certain states
+	var relaysStateShowFlags [6]bool
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateEnabled], "enabled", false, "only show enabled relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateMaintenance], "maintenance", false, "only show relays in maintenance")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDisabled], "disabled", false, "only show disabled relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateQuarantine], "quarantined", false, "only show quarantined relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateDecommissioned], "removed", false, "only show removed relays")
+	relaysDbFs.BoolVar(&relaysStateShowFlags[routing.RelayStateOffline], "offline", false, "only show offline relays")
+
+	// Flags to hide relays in certain states
+	var relaysStateHideFlags [6]bool
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateEnabled], "noenabled", false, "hide enabled relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateMaintenance], "nomaintenance", false, "hide relays in maintenance")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDisabled], "nodisabled", false, "hide disabled relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateQuarantine], "noquarantined", false, "hide quarantined relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateDecommissioned], "noremoved", false, "hide removed relays")
+	relaysDbFs.BoolVar(&relaysStateHideFlags[routing.RelayStateOffline], "nooffline", false, "hide offline relays")
+
+	// Flag to see relays that are down (haven't pinged backend in 30 seconds)
+	var relaysDownFlag bool
+	relaysDbFs.BoolVar(&relaysDownFlag, "down", false, "show relays that are down")
+
+	// Show all relays (including decommissioned ones) regardless of other flags
+	var relaysAllFlag bool
+	relaysDbFs.BoolVar(&relaysAllFlag, "all", false, "show all relays")
+
+	// -list and -csv should work with all other flags
+	// Show only a list or relay names
+	var relaysListFlag bool
+	relaysDbFs.BoolVar(&relaysListFlag, "list", false, "show list of names")
+
+	// Return a CSV file instead of a table
+	var csvOutputFlag bool
+	relaysDbFs.BoolVar(&csvOutputFlag, "csv", false, "return a CSV file")
+
+	// Return all relays at this version
+	var relayVersionFilter string
+	relaysDbFs.StringVar(&relayVersionFilter, "version", "all", "show only relays at this version level")
+
 	// Display relay IDs as signed ints instead of the default hex
 	var relayIDSigned bool
-	relaysfs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
+	relaysDbFs.BoolVar(&relayIDSigned, "signed", false, "display relay IDs as signed integers")
 
 	// display the OPS version of the relay output
 	var relayOpsOutput bool
-	relaysfs.BoolVar(&relayOpsOutput, "ops", false, "display ops metadata (costs, bandwidth, terms, etc)")
+	relaysDbFs.BoolVar(&relayOpsOutput, "ops", false, "display ops metadata (costs, bandwidth, terms, etc)")
 
 	// Sort -ops output by IncludedBandwidthGB, descending
 	var relayBWSort bool
-	relaysfs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
+	relaysDbFs.BoolVar(&relayBWSort, "bw", false, "Sort -ops output by IncludedBandwidthGB, descending (ignored w/o -ops)")
 
 	// accept session ID as a signed int (next session dump)
 	sessionDumpfs := flag.NewFlagSet("session dump", flag.ExitOnError)
@@ -547,43 +640,7 @@ func main() {
 		ShortUsage: "next auth",
 		ShortHelp:  "Authorize the operator tool to interact with the Portal API",
 		Exec: func(_ context.Context, args []string) error {
-			req, err := http.NewRequest(
-				http.MethodPost,
-				"https://networknext.auth0.com/oauth/token",
-				strings.NewReader(`{
-						"client_id":"6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb",
-						"client_secret":"EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj",
-						"audience":"https://portal.networknext.com",
-						"grant_type":"client_credentials"
-					}`),
-			)
-			if err != nil {
-				return err
-			}
-
-			req.Header.Add("Content-Type", "application/json")
-
-			res, err := http.DefaultClient.Do(req)
-			if err != nil {
-				return err
-			}
-			defer res.Body.Close()
-
-			if res.StatusCode != http.StatusOK {
-				return fmt.Errorf("auth0 returned code %d", res.StatusCode)
-			}
-
-			body, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				return err
-			}
-			defer res.Body.Close()
-
-			env.AuthToken = gjson.ParseBytes(body).Get("access_token").String()
-			env.Write()
-
-			fmt.Print("Successfully authorized\n")
-
+			refreshAuth(env)
 			return nil
 		},
 	}
@@ -603,6 +660,32 @@ func main() {
 
 			env.Name = args[0]
 			env.Write()
+
+			if args[0] == "local" {
+				// Set up everything needed to run the database.bin generator
+				os.Setenv("RELAY_PUBLIC_KEY", "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=")
+				os.Setenv("FEATURE_POSTGRESQL", "false")
+				os.Setenv("GOOGLE_CLOUD_SQL_SYNC_INTERVAL", "10s")
+				os.Setenv("NEXT_CUSTOMER_PUBLIC_KEY", "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==")
+				getLocalDatabaseBin()
+
+				// Start redis server if it isn't already
+				runnable := exec.Command("ps", "aux")
+				buffer, err := runnable.CombinedOutput()
+
+				if err != nil {
+					fmt.Printf("Failed to run ps aux: %v\n", err)
+				}
+
+				psAuxOutput := string(buffer)
+
+				if !strings.Contains(psAuxOutput, "redis-server") {
+					runnable := exec.Command("redis-server")
+					if err := runnable.Start(); err != nil {
+						fmt.Printf("Failed to start redis: %v\n", err)
+					}
+				}
+			}
 
 			fmt.Printf("Selected %s environment\n", env.Name)
 			return nil
@@ -627,8 +710,8 @@ func main() {
 
 			env.RemoteRelease = "Unknown"
 			env.RemoteBuildTime = "Unknown"
-			var reply localjsonrpc.CurrentReleaseReply
-			if err := rpcClient.CallFor(&reply, "OpsService.CurrentRelease", localjsonrpc.CurrentReleaseArgs{}); err == nil {
+			var reply localjsonrpc.CurrentReleaseReply = localjsonrpc.CurrentReleaseReply{}
+			if err := makeRPCCall(env, &reply, "OpsService.CurrentRelease", localjsonrpc.CurrentReleaseArgs{}); err == nil {
 				env.RemoteRelease = reply.Release
 				env.RemoteBuildTime = reply.BuildTime
 			}
@@ -636,6 +719,69 @@ func main() {
 			env.CLIRelease = release
 			env.CLIBuildTime = buildtime
 			fmt.Print(env.String())
+			return nil
+		},
+	}
+
+	var usersCommand = &ffcli.Command{
+		Name:       "users",
+		ShortUsage: "next users",
+		ShortHelp:  "Sort through auth0 users to get more information about associated company and/or buyer account",
+		Exec: func(_ context.Context, args []string) error {
+			reply := localjsonrpc.UserDatabaseReply{}
+			fmt.Println("Looking up all accounts associated to a company/buyer account")
+			fmt.Println("")
+			if err := makeRPCCall(env, &reply, "AuthService.UserDatabase", localjsonrpc.UserDatabaseArgs{}); err == nil {
+				usersCSV := [][]string{{}}
+
+				usersCSV = append(usersCSV, []string{
+					"Email", "Company Code", "Buyer ID", "Is Owner?", "Time Created"})
+
+				for _, entry := range reply.Entries {
+					fmt.Printf("Email: %s - Company Code: %s - Buyer ID: %s - Is Owner: %s - Time Created: %s\n\n", entry.Email, entry.CompanyCode, entry.BuyerID, strconv.FormatBool(entry.IsOwner), entry.CreationTime)
+					usersCSV = append(usersCSV, []string{
+						entry.Email,
+						entry.CompanyCode,
+						entry.BuyerID,
+						strconv.FormatBool(entry.IsOwner),
+						entry.CreationTime,
+					})
+				}
+
+				fileName := "./users.csv"
+				f, err := os.Create(fileName)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
+				}
+
+				writer := csv.NewWriter(f)
+				err = writer.WriteAll(usersCSV)
+				if err != nil {
+					handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
+				}
+				fmt.Println("CSV file written: users.csv")
+				return nil
+			}
+			return nil
+		},
+	}
+
+	var hashCommand = &ffcli.Command{
+		Name:       "hash",
+		ShortUsage: "next hash (string)",
+		ShortHelp:  "Provide the 64-bit FNV-1a hash for the provided string (big-endian)",
+		Exec: func(_ context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintf("Please provided a string"), 0)
+			}
+
+			hashValue := crypto.HashID(args[0])
+			hexStr := fmt.Sprintf("%016x\n", hashValue)
+
+			fmt.Printf("unsigned: %d\n", hashValue)
+			fmt.Printf("signed  : %d\n", int64(hashValue))
+			fmt.Printf("hex     : 0x%s\n", strings.ToUpper(hexStr))
+
 			return nil
 		},
 	}
@@ -700,10 +846,10 @@ func main() {
 		FlagSet:    sessionsfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				sessions(rpcClient, env, args[0], sessionCount)
+				sessions(env, args[0], sessionCount)
 				return nil
 			}
-			sessionsByBuyer(rpcClient, env, buyerName, sessionCount)
+			sessionsByBuyer(env, buyerName, sessionCount)
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
@@ -712,7 +858,7 @@ func main() {
 				ShortUsage: "next sessions flush",
 				ShortHelp:  "Flush all sessions in Redis in the Portal",
 				Exec: func(ctx context.Context, args []string) error {
-					flushsessions(rpcClient, env)
+					flushsessions(env)
 					fmt.Println("All sessions flushed.")
 					return nil
 				},
@@ -728,7 +874,7 @@ func main() {
 			if len(args) != 1 {
 				fmt.Printf("A session ID must be provided (see ./next sessions).")
 			}
-			sessions(rpcClient, env, args[0], sessionCount)
+			sessions(env, args[0], sessionCount)
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
@@ -757,8 +903,69 @@ func main() {
 						}
 					}
 
-					dumpSession(rpcClient, env, sessionID)
+					dumpSession(env, sessionID)
 
+					return nil
+				},
+			},
+		},
+	}
+
+	var databaseCommand = &ffcli.Command{
+		Name:       "database",
+		ShortUsage: "next database <subcommand>",
+		ShortHelp:  "Generate, check and publish database.bin files",
+		Exec: func(ctx context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "get",
+				ShortUsage: "next database get",
+				ShortHelp:  "Generate a local database.bin file based on the current database state.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					getDatabaseBin(env)
+
+					return nil
+				},
+			},
+			{
+				Name:       "staging",
+				ShortUsage: "next database staging -n <numRelays>",
+				ShortHelp:  "Generate a database.bin file for the staging environment with n fake relays (default: 80).",
+				FlagSet:    fakerelaysfs,
+				Exec: func(ctx context.Context, args []string) error {
+
+					createStagingDatabaseBin(fakeRelayCount)
+
+					return nil
+				},
+			},
+			{
+				Name:       "check",
+				ShortUsage: "next database check",
+				ShortHelp:  "Sanity check a local database.bin file.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					checkMetaData()
+					checkRelaysInBinFile()
+					checkDatacentersInBinFile()
+					checkSellersInBinFile()
+					checkBuyersInBinFile()
+					checkDCMapsInBinFile()
+
+					return nil
+				},
+			},
+
+			{
+				Name:       "commit",
+				ShortUsage: "next database commit",
+				ShortHelp:  "Publish a local database.bin file to the relevant GCP bucket.",
+				Exec: func(ctx context.Context, args []string) error {
+
+					commitDatabaseBin(env)
 					return nil
 				},
 			},
@@ -768,80 +975,96 @@ func main() {
 	var relaysCommand = &ffcli.Command{
 		Name:       "relays",
 		ShortUsage: "next relays <regex>",
-		ShortHelp:  "List relays",
+		ShortHelp:  "Return real-time relay data from the relay backend",
 		FlagSet:    relaysfs,
 		Exec: func(_ context.Context, args []string) error {
-			if relaysfs.NFlag() == 0 ||
-				((relaysfs.NFlag() == 1) && relayOpsOutput) ||
-				((relaysfs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
-				// If no flags are given, set the default set of flags
-				relaysStateShowFlags[routing.RelayStateEnabled] = true
-				relaysStateHideFlags[routing.RelayStateEnabled] = false
-			}
 
-			if relaysAllFlag {
-				// Show all relays (except for decommissioned relays) with --all flag
-				relaysStateShowFlags[routing.RelayStateEnabled] = true
-				relaysStateShowFlags[routing.RelayStateMaintenance] = true
-				relaysStateShowFlags[routing.RelayStateDisabled] = true
-				relaysStateShowFlags[routing.RelayStateQuarantine] = true
-				relaysStateShowFlags[routing.RelayStateOffline] = true
-				relaysStateHideFlags[routing.RelayStateEnabled] = false
-				relaysStateHideFlags[routing.RelayStateMaintenance] = false
-				relaysStateHideFlags[routing.RelayStateDisabled] = false
-				relaysStateHideFlags[routing.RelayStateQuarantine] = false
-				relaysStateHideFlags[routing.RelayStateOffline] = false
-			}
-
-			var arg string
+			var regexName string
 			if len(args) > 0 {
-				arg = args[0]
+				regexName = args[0]
 			}
 
-			if relayOpsOutput {
-				opsRelays(
-					rpcClient,
-					env,
-					arg,
-					relaysStateShowFlags,
-					relaysStateHideFlags,
-					relaysDownFlag,
-					csvOutputFlag,
-					relayVersionFilter,
-					relaysCount,
-					relayIDSigned,
-					relayBWSort,
-				)
-			} else {
-				relays(
-					rpcClient,
-					env,
-					arg,
-					relaysStateShowFlags,
-					relaysStateHideFlags,
-					relaysDownFlag,
-					relaysListFlag,
-					csvOutputFlag,
-					relayVersionFilter,
-					relaysCount,
-					relayIDSigned,
-				)
-			}
+			getFleetRelays(env, relaysCount, relaysAlphaSort, regexName)
 
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
+			{
+				Name:       "db",
+				ShortUsage: "next relays db <regex>",
+				ShortHelp:  "Collect and present relay data from the database",
+				FlagSet:    relaysDbFs,
+				Exec: func(ctx context.Context, args []string) error {
+
+					if relaysDbFs.NFlag() == 0 ||
+						((relaysDbFs.NFlag() == 1) && relayOpsOutput) ||
+						((relaysDbFs.NFlag() == 2) && relayOpsOutput && csvOutputFlag) {
+						// If no flags are given, set the default set of flags
+						relaysStateShowFlags[routing.RelayStateEnabled] = true
+						relaysStateHideFlags[routing.RelayStateEnabled] = false
+					}
+
+					if relaysAllFlag {
+						// Show all relays (except for decommissioned relays) with --all flag
+						relaysStateShowFlags[routing.RelayStateEnabled] = true
+						relaysStateShowFlags[routing.RelayStateMaintenance] = true
+						relaysStateShowFlags[routing.RelayStateDisabled] = true
+						relaysStateShowFlags[routing.RelayStateQuarantine] = true
+						relaysStateShowFlags[routing.RelayStateOffline] = true
+						relaysStateHideFlags[routing.RelayStateEnabled] = false
+						relaysStateHideFlags[routing.RelayStateMaintenance] = false
+						relaysStateHideFlags[routing.RelayStateDisabled] = false
+						relaysStateHideFlags[routing.RelayStateQuarantine] = false
+						relaysStateHideFlags[routing.RelayStateOffline] = false
+					}
+
+					var arg string
+					if len(args) > 0 {
+						arg = args[0]
+					}
+
+					if relayOpsOutput {
+						opsRelays(
+							env,
+							arg,
+							relaysStateShowFlags,
+							relaysStateHideFlags,
+							relaysDownFlag,
+							csvOutputFlag,
+							relayVersionFilter,
+							relaysCount,
+							relayIDSigned,
+							relayBWSort,
+						)
+					} else {
+						relays(
+							env,
+							arg,
+							relaysStateShowFlags,
+							relaysStateHideFlags,
+							relaysDownFlag,
+							relaysListFlag,
+							csvOutputFlag,
+							relayVersionFilter,
+							relaysCount,
+							relayIDSigned,
+						)
+					}
+
+					return nil
+				},
+			},
 			{
 				Name:       "count",
 				ShortUsage: "next relays count <regex>",
 				ShortHelp:  "Return the number of relays in each state",
 				Exec: func(ctx context.Context, args []string) error {
 					if len(args) > 0 {
-						countRelays(rpcClient, env, args[0])
+						countRelays(env, args[0])
 						return nil
 					}
 
-					countRelays(rpcClient, env, "")
+					countRelays(env, "")
 					return nil
 				},
 			},
@@ -873,11 +1096,11 @@ func main() {
 						relaysStateHideFlags[routing.RelayStateOffline] = false
 					}
 					if len(args) == 0 {
-						validate(rpcClient, env, relaysStateShowFlags, relaysStateHideFlags, "optimize.bin")
+						validate(env, relaysStateShowFlags, relaysStateHideFlags, "optimize.bin")
 						return nil
 					}
 
-					validate(rpcClient, env, relaysStateShowFlags, relaysStateHideFlags, args[0])
+					validate(env, relaysStateShowFlags, relaysStateHideFlags, args[0])
 					return nil
 				},
 			},
@@ -903,7 +1126,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
 					}
 
-					relayLogs(rpcClient, env, loglines, args)
+					relayLogs(env, loglines, args)
 
 					return nil
 				},
@@ -938,7 +1161,7 @@ func main() {
 						regex = args[0]
 					}
 
-					checkRelays(rpcClient, env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, csvOutputFlag)
+					checkRelays(env, regex, relaysStateShowFlags, relaysStateHideFlags, relaysDownFlag, csvOutputFlag)
 					return nil
 				},
 			},
@@ -947,7 +1170,7 @@ func main() {
 				ShortUsage: "next relay keys <relay name>",
 				ShortHelp:  "Show the public keys for the relay",
 				Exec: func(ctx context.Context, args []string) error {
-					relays := getRelayInfo(rpcClient, env, args[0])
+					relays := getRelayInfo(env, args[0])
 
 					if len(relays) == 0 {
 						handleRunTimeError(fmt.Sprintf("no relays matched the name '%s'\n", args[0]), 0)
@@ -969,9 +1192,11 @@ func main() {
 					var regexes []string
 					if len(args) > 0 {
 						regexes = args
+					} else {
+						handleRunTimeError(fmt.Sprintln("please provide at least one relay name or substring"), 1)
 					}
 
-					updateRelays(env, rpcClient, regexes, updateOpts)
+					updateRelays(env, regexes, updateOpts)
 
 					return nil
 				},
@@ -986,7 +1211,7 @@ func main() {
 						regexes = args
 					}
 
-					revertRelays(env, rpcClient, regexes)
+					revertRelays(env, regexes)
 
 					return nil
 				},
@@ -1001,7 +1226,7 @@ func main() {
 						regexes = args
 					}
 
-					enableRelays(env, rpcClient, regexes)
+					enableRelays(env, regexes)
 
 					return nil
 				},
@@ -1017,7 +1242,7 @@ func main() {
 						regexes = args
 					}
 
-					disableRelays(env, rpcClient, regexes, hardDisable, false)
+					disableRelays(env, regexes, hardDisable, false)
 
 					return nil
 				},
@@ -1033,7 +1258,7 @@ func main() {
 						regexes = args
 					}
 
-					disableRelays(env, rpcClient, regexes, hardDisable, true)
+					disableRelays(env, regexes, hardDisable, true)
 
 					return nil
 				},
@@ -1051,7 +1276,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("You need to supply a new name for the relay as well"), 0)
 					}
 
-					updateRelayName(rpcClient, env, args[0], args[1])
+					updateRelayName(env, args[0], args[1])
 
 					return nil
 				},
@@ -1071,7 +1296,7 @@ func main() {
 					}
 
 					// Add the Relay to storage
-					addRelay(rpcClient, env, relay)
+					addRelayJS(env, relay)
 					return nil
 				},
 			},
@@ -1084,20 +1309,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("Provide the relay name of the relay you wish to remove\nFor a list of relay, use next relay"), 0)
 					}
 
-					removeRelay(rpcClient, env, args[0])
-					return nil
-				},
-			},
-			{
-				Name:       "traffic",
-				ShortUsage: "next relay traffic [regex]",
-				ShortHelp:  "Display detailed traffic stats for the specified relays",
-				Exec: func(ctx context.Context, args []string) error {
-					if len(args) > 0 {
-						relayTraffic(rpcClient, env, args[0])
-					} else {
-						relayTraffic(rpcClient, env, "")
-					}
+					removeRelay(env, args[0])
 					return nil
 				},
 			},
@@ -1110,7 +1322,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("Must provide a relay name"), 0)
 					}
 
-					getDetailedRelayInfo(rpcClient, env, args[0])
+					getDetailedRelayInfo(env, args[0])
 					return nil
 				},
 			},
@@ -1124,7 +1336,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("Must provide a relay name, field name and a value."), 0)
 					}
 
-					modifyRelayField(rpcClient, env, args[0], args[1], args[2])
+					modifyRelayField(env, args[0], args[1], args[2])
 					return nil
 				},
 			},
@@ -1138,7 +1350,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("Must provide a relay name for the generated heatmap."), 0)
 					}
 
-					relayHeatmap(rpcClient, env, args[0])
+					relayHeatmap(env, args[0])
 					return nil
 				},
 			},
@@ -1152,11 +1364,11 @@ func main() {
 		Exec: func(_ context.Context, args []string) error {
 
 			if len(args) == 0 {
-				routes(rpcClient, env, []string{}, []string{}, 0, 0)
+				routes(env, []string{}, []string{}, 0, 0)
 				return nil
 			}
 
-			routes(rpcClient, env, []string{args[0]}, []string{args[1]}, 0, 0)
+			routes(env, []string{args[0]}, []string{args[1]}, 0, 0)
 			return nil
 		},
 		Subcommands: []*ffcli.Command{
@@ -1166,7 +1378,7 @@ func main() {
 				ShortHelp:  "Select routes between sets of relays",
 				FlagSet:    routesfs,
 				Exec: func(ctx context.Context, args []string) error {
-					routes(rpcClient, env, srcRelays, destRelays, routeRTT, routeHash)
+					routes(env, srcRelays, destRelays, routeRTT, routeHash)
 
 					return nil
 				},
@@ -1181,10 +1393,10 @@ func main() {
 		FlagSet:    datacentersfs,
 		Exec: func(_ context.Context, args []string) error {
 			if len(args) > 0 {
-				datacenters(rpcClient, env, args[0], datacenterIdSigned, datacentersCSV)
+				datacenters(env, args[0], datacenterIdSigned, datacentersCSV)
 				return nil
 			}
-			datacenters(rpcClient, env, "", datacenterIdSigned, datacentersCSV)
+			datacenters(env, "", datacenterIdSigned, datacentersCSV)
 			return nil
 		},
 	}
@@ -1194,7 +1406,7 @@ func main() {
 		ShortUsage: "next customers",
 		ShortHelp:  "List customers",
 		Exec: func(_ context.Context, args []string) error {
-			customers(rpcClient, env)
+			customers(env)
 			return nil
 		},
 	}
@@ -1204,7 +1416,7 @@ func main() {
 		ShortUsage: "next sellers",
 		ShortHelp:  "List sellers",
 		Exec: func(_ context.Context, args []string) error {
-			sellers(rpcClient, env)
+			sellers(env)
 			return nil
 		},
 	}
@@ -1232,7 +1444,7 @@ func main() {
 					}
 
 					// Add the Datacenter to storage
-					addDatacenter(rpcClient, env, dc)
+					addDatacenter(env, dc)
 					return nil
 				},
 			},
@@ -1246,7 +1458,7 @@ func main() {
 						return err
 					}
 
-					removeDatacenter(rpcClient, env, args[0])
+					removeDatacenter(env, args[0])
 					return nil
 				},
 			},
@@ -1261,7 +1473,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("Exactly zero or one datacenter ID or name must be provided."), 0)
 					}
 
-					listDatacenterMaps(rpcClient, env, args[0])
+					listDatacenterMaps(env, args[0])
 					return nil
 				},
 			},
@@ -1277,7 +1489,7 @@ func main() {
 			if len(args) != 0 {
 				fmt.Println("No arguments necessary, everything after 'buyers' is ignored.\n\nA list of all current buyers:")
 			}
-			buyers(rpcClient, env, buyersIdSigned)
+			buyers(env, buyersIdSigned)
 			return nil
 		},
 	}
@@ -1296,7 +1508,7 @@ func main() {
 				ShortUsage: "next buyer list",
 				ShortHelp:  "Return a list of all current buyers",
 				Exec: func(_ context.Context, args []string) error {
-					buyers(rpcClient, env, buyersIdSigned)
+					buyers(env, buyersIdSigned)
 					return nil
 				},
 			},
@@ -1309,7 +1521,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("Please provide the seller ID in hex, only."), 0)
 					}
 
-					getBuyerInfo(rpcClient, env, args[0])
+					getBuyerInfo(env, args[0])
 					return nil
 				},
 			},
@@ -1323,7 +1535,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("Please provide the buyer name, field and value."), 0)
 					}
 
-					updateBuyer(rpcClient, env, args[0], args[1], args[2])
+					updateBuyer(env, args[0], args[1], args[2])
 					return nil
 				},
 			},
@@ -1359,7 +1571,7 @@ func main() {
 					}
 
 					var reply localjsonrpc.JSAddBuyerReply
-					if err := rpcClient.CallFor(&reply, "OpsService.JSAddBuyer", buyerArgs); err != nil {
+					if err := makeRPCCall(env, &reply, "OpsService.JSAddBuyer", buyerArgs); err != nil {
 						handleJSONRPCError(env, err)
 					}
 
@@ -1376,7 +1588,7 @@ func main() {
 						handleRunTimeError(fmt.Sprintln("Provide the buyer ID of the buyer you wish to remove\nFor a list of buyers, use next buyers"), 0)
 					}
 
-					removeBuyer(rpcClient, env, args[0])
+					removeBuyer(env, args[0])
 					return nil
 				},
 			},
@@ -1387,11 +1599,11 @@ func main() {
 				FlagSet:    buyerfs,
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) != 1 {
-						datacenterMapsForBuyer(rpcClient, env, "", csvOutput, signedIDs)
+						datacenterMapsForBuyer(env, "", csvOutput, signedIDs)
 						return nil
 					}
 
-					datacenterMapsForBuyer(rpcClient, env, args[0], csvOutput, signedIDs)
+					datacenterMapsForBuyer(env, args[0], csvOutput, signedIDs)
 					return nil
 				},
 			},
@@ -1411,11 +1623,11 @@ func main() {
 						LongHelp:   "A buyer ID or name must be supplied. If the name includes spaces it must be enclosed in quotations marks.",
 						Exec: func(_ context.Context, args []string) error {
 							if len(args) != 1 {
-								datacenterMapsForBuyer(rpcClient, env, "", csvOutput, signedIDs)
+								datacenterMapsForBuyer(env, "", csvOutput, signedIDs)
 								return nil
 							}
 
-							datacenterMapsForBuyer(rpcClient, env, args[0], csvOutput, signedIDs)
+							datacenterMapsForBuyer(env, args[0], csvOutput, signedIDs)
 							return nil
 						},
 					},
@@ -1428,7 +1640,6 @@ the contents of the specified json file. The json file layout
 is as follows:
 
 {
-	"alias": "some.server.alias",
 	"datacenter": "2fe32c22450fb4c9",
 	"buyer_id": "bdbebdbf0f7be395"
 }
@@ -1453,7 +1664,7 @@ The buyer and datacenter must exist. Hex IDs are required for now.
 								handleRunTimeError(fmt.Sprintf("Could not unmarshal datacenter map: %v\n", err), 1)
 							}
 
-							err = addDatacenterMap(rpcClient, env, dcmStrings)
+							err = addDatacenterMap(env, dcmStrings)
 
 							if err != nil {
 								// error handled in sender
@@ -1469,18 +1680,17 @@ The buyer and datacenter must exist. Hex IDs are required for now.
 					{
 						Name:       "remove",
 						ShortUsage: "next buyer datacenter remove <json file>",
-						ShortHelp:  "Removes the datacenter alias described in the json file from the system (see -h for an example)",
+						ShortHelp:  "Removes the datacenter map described in the json file from the system (see -h for an example)",
 						LongHelp: `Reads the specifics for the datacenter alias to be removed from
 the contents of the specified json file. The json file layout
 is as follows:
 
 {
-	"alias": "some.server.alias",
 	"datacenter": "2fe32c22450fb4c9",
 	"buyer_id": "bdbebdbf0f7be395"
 }
 
-The alias is uniquely defined by all three entries, so they must be provided. Hex IDs and names are supported."
+The alias is uniquely defined by both entries, so they must be provided. Hex IDs and names are supported."
 						`,
 						Exec: func(_ context.Context, args []string) error {
 							var err error
@@ -1500,7 +1710,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not unmarshal datacenter map: %v\n", err), 1)
 							}
 
-							err = removeDatacenterMap(rpcClient, env, dcmStrings)
+							err = removeDatacenterMap(env, dcmStrings)
 
 							if err != nil {
 								return err
@@ -1524,7 +1734,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Please provide only the buyer name or a substring"), 0)
 					}
 
-					getInternalConfig(rpcClient, env, args[0])
+					getInternalConfig(env, args[0])
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -1547,23 +1757,24 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", ic.BuyerID, err), 0)
 							}
 
-							addInternalConfig(rpcClient, env, buyerID, localjsonrpc.JSInternalConfig{
-								RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
-								RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
-								MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
-								RTTVeto_Default:            int64(ic.RTTVeto_Default),
-								RTTVeto_PacketLoss:         int64(ic.RTTVeto_PacketLoss),
-								RTTVeto_Multipath:          int64(ic.RTTVeto_Multipath),
-								MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
-								TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-								ForceNext:                  ic.ForceNext,
-								LargeCustomer:              ic.LargeCustomer,
-								Uncommitted:                ic.Uncommitted,
-								HighFrequencyPings:         ic.HighFrequencyPings,
-								RouteDiversity:             int64(ic.RouteDiversity),
-								MultipathThreshold:         int64(ic.MultipathThreshold),
-								EnableVanityMetrics:        ic.EnableVanityMetrics,
-								MaxRTT:                     int64(ic.MaxRTT),
+							addInternalConfig(env, buyerID, localjsonrpc.JSInternalConfig{
+								RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
+								RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
+								MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
+								RTTVeto_Default:                int64(ic.RTTVeto_Default),
+								RTTVeto_PacketLoss:             int64(ic.RTTVeto_PacketLoss),
+								RTTVeto_Multipath:              int64(ic.RTTVeto_Multipath),
+								MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
+								TryBeforeYouBuy:                ic.TryBeforeYouBuy,
+								ForceNext:                      ic.ForceNext,
+								LargeCustomer:                  ic.LargeCustomer,
+								Uncommitted:                    ic.Uncommitted,
+								HighFrequencyPings:             ic.HighFrequencyPings,
+								RouteDiversity:                 int64(ic.RouteDiversity),
+								MultipathThreshold:             int64(ic.MultipathThreshold),
+								EnableVanityMetrics:            ic.EnableVanityMetrics,
+								MaxRTT:                         int64(ic.MaxRTT),
+								ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 							})
 							return nil
 						},
@@ -1574,7 +1785,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ShortHelp:  "Remove the internal config for the specified buyer.",
 						Exec: func(_ context.Context, args []string) error {
 
-							removeInternalConfig(rpcClient, env, args[0])
+							removeInternalConfig(env, args[0])
 							return nil
 						},
 					},
@@ -1588,7 +1799,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring, field name and value."), 0)
 							}
 
-							updateInternalConfig(rpcClient, env, args[0], args[1], args[2])
+							updateInternalConfig(env, args[0], args[1], args[2])
 							return nil
 						},
 					}},
@@ -1604,7 +1815,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Please provide only the buyer name or a substring"), 0)
 					}
 
-					getRouteShader(rpcClient, env, args[0])
+					getRouteShader(env, args[0])
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -1627,7 +1838,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal ID %s into a uint64: %v", rs.BuyerID, err), 0)
 							}
 
-							addRouteShader(rpcClient, env, buyerID, localjsonrpc.JSRouteShader{
+							addRouteShader(env, buyerID, localjsonrpc.JSRouteShader{
 								DisableNetworkNext:        rs.DisableNetworkNext,
 								SelectionPercent:          int64(rs.SelectionPercent),
 								ABTest:                    rs.ABTest,
@@ -1641,6 +1852,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
 								BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 								BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+								PacketLossSustained:       float64(100),
 							})
 
 							return nil
@@ -1652,7 +1864,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						ShortHelp:  "Remove the route shader for the specified buyer.",
 						Exec: func(_ context.Context, args []string) error {
 
-							removeRouteShader(rpcClient, env, args[0])
+							removeRouteShader(env, args[0])
 							return nil
 						},
 					},
@@ -1666,7 +1878,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintln("Please provide the buyer name or a substring, field name and value."), 0)
 							}
 
-							updateRouteShader(rpcClient, env, args[0], args[1], args[2])
+							updateRouteShader(env, args[0], args[1], args[2])
 							return nil
 						},
 					},
@@ -1683,7 +1895,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Please provide only the buyer name or a substring"), 0)
 					}
 
-					getBannedUsers(rpcClient, env, args[0])
+					getBannedUsers(env, args[0])
 					return nil
 				},
 				Subcommands: []*ffcli.Command{
@@ -1701,7 +1913,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal user ID %s into a uint64: %v", args[1], err), 0)
 							}
 
-							addBannedUser(rpcClient, env, args[0], userID)
+							addBannedUser(env, args[0], userID)
 							return nil
 						},
 					},
@@ -1722,7 +1934,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 								handleRunTimeError(fmt.Sprintf("Could not parse hexadecimal user ID %s into a uint64: %v", args[1], err), 0)
 							}
 
-							removeBannedUser(rpcClient, env, args[0], userID)
+							removeBannedUser(env, args[0], userID)
 							return nil
 						},
 					},
@@ -1777,23 +1989,17 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 
 					// Unmarshal the JSON and create the Seller struct
 					var sellerUSD struct {
-						Name            string
-						ShortName       string
-						CustomerCode    string
-						IngressPriceUSD string
-						EgressPriceUSD  string
-						Secret          bool
+						Name           string
+						ShortName      string
+						CustomerCode   string
+						EgressPriceUSD string
+						Secret         bool
 					}
 
 					if err := json.Unmarshal(jsonData, &sellerUSD); err != nil {
 						handleRunTimeError(fmt.Sprintf("Could not unmarshal seller: %v\n", err), 1)
 					}
 
-					ingressUSD, err := strconv.ParseFloat(sellerUSD.IngressPriceUSD, 64)
-					if err != nil {
-						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.IngressPriceUSD)
-						os.Exit(0)
-					}
 					egressUSD, err := strconv.ParseFloat(sellerUSD.EgressPriceUSD, 64)
 					if err != nil {
 						fmt.Printf("Unable to convert %s to a decimal number.", sellerUSD.EgressPriceUSD)
@@ -1801,22 +2007,20 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 					}
 
 					s := seller{
-						Name:                 sellerUSD.Name,
-						ShortName:            sellerUSD.CustomerCode,
-						CustomerCode:         sellerUSD.CustomerCode,
-						IngressPriceNibblins: routing.DollarsToNibblins(ingressUSD),
-						EgressPriceNibblins:  routing.DollarsToNibblins(egressUSD),
-						Secret:               sellerUSD.Secret,
+						Name:                sellerUSD.Name,
+						ShortName:           sellerUSD.CustomerCode,
+						CustomerCode:        sellerUSD.CustomerCode,
+						EgressPriceNibblins: routing.DollarsToNibblins(egressUSD),
+						Secret:              sellerUSD.Secret,
 					}
 
 					// Add the Seller to storage
-					addSeller(rpcClient, env, routing.Seller{
-						ID:                        s.Name,
-						Name:                      s.Name,
-						ShortName:                 s.ShortName,
-						CompanyCode:               s.CustomerCode,
-						IngressPriceNibblinsPerGB: s.IngressPriceNibblins,
-						EgressPriceNibblinsPerGB:  s.EgressPriceNibblins,
+					addSeller(env, routing.Seller{
+						ID:                       s.Name,
+						Name:                     s.Name,
+						ShortName:                s.ShortName,
+						CompanyCode:              s.CustomerCode,
+						EgressPriceNibblinsPerGB: s.EgressPriceNibblins,
 					})
 					return nil
 				},
@@ -1830,7 +2034,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Provide the seller ID of the seller you wish to remove\nFor a list of sellers, use next sellers"), 0)
 					}
 
-					removeSeller(rpcClient, env, args[0])
+					removeSeller(env, args[0])
 					return nil
 				},
 			},
@@ -1843,7 +2047,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Please provide the seller ID in hex, only."), 0)
 					}
 
-					getSellerInfo(rpcClient, env, args[0])
+					getSellerInfo(env, args[0])
 					return nil
 				},
 			},
@@ -1857,7 +2061,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Please provide the seller id, field and value."), 0)
 					}
 
-					updateSeller(rpcClient, env, args[0], args[1], args[2])
+					updateSeller(env, args[0], args[1], args[2])
 					return nil
 				},
 			},
@@ -1903,7 +2107,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						SellerRef:              nil,
 					}
 
-					addCustomer(rpcClient, env, c)
+					addCustomer(env, c)
 
 					return nil
 				},
@@ -1917,7 +2121,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Please provide the customer code, only."), 0)
 					}
 
-					getCustomerInfo(rpcClient, env, args[0])
+					getCustomerInfo(env, args[0])
 					return nil
 				},
 			},
@@ -1931,7 +2135,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Please provide the customer code, field and value."), 0)
 					}
 
-					updateCustomer(rpcClient, env, args[0], args[1], args[2])
+					updateCustomer(env, args[0], args[1], args[2])
 					return nil
 				},
 			},
@@ -1944,7 +2148,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 						handleRunTimeError(fmt.Sprintln("Please provide the customer code, only."), 0)
 					}
 
-					removeCustomer(rpcClient, env, args[0])
+					removeCustomer(env, args[0])
 					return nil
 				},
 			},
@@ -1960,7 +2164,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 				handleRunTimeError(fmt.Sprintln("You need to supply a device identifer"), 0)
 			}
 
-			SSHInto(env, rpcClient, args[0])
+			SSHInto(env, args[0])
 
 			return nil
 		},
@@ -1992,7 +2196,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 			if len(args) > 0 {
 				output = args[0]
 			}
-			saveCostMatrix(env, output)
+			getCostMatrix(env, output)
 			fmt.Printf("Cost matrix from %s saved to %s\n", env.Name, output)
 			return nil
 		},
@@ -2205,6 +2409,7 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		authCommand,
 		selectCommand,
 		envCommand,
+		usersCommand,
 		sessionCommand,
 		sessionsCommand,
 		relaysCommand,
@@ -2228,6 +2433,8 @@ The alias is uniquely defined by all three entries, so they must be provided. He
 		stagingCommand,
 		signedCommand,
 		unsignedCommand,
+		hashCommand,
+		databaseCommand,
 	}
 
 	root := &ffcli.Command{
@@ -2279,7 +2486,6 @@ provided by a JSON file of the form:
 {
   "Name": "Amazon.com, Inc.",
   "CustomerCode": "microzon",
-  "IngressPriceUSD": "0.01",
   "EgressPriceUSD": "0.1",
   "Secret": false
 }
@@ -2324,6 +2530,7 @@ must be in a json file of the form:
   "RouteDiversity": 0,
   "MultipathThreshold": 25,
   "EnableVanityMetrics": true,
+  "ReducePacketLossMinSliceNumber": 0,
   "BuyerID": "205cca7361c2ae96"
 }
 
@@ -2362,22 +2569,23 @@ var nextBuyerConfigUpdateJSONLongHelp = `
 Update one field in the internal config for the specified buyer. The field
 must be one of the following and is case-sensitive:
 
-  RouteSelectThreshold        integer
-  RouteSwitchThreshold        integer
-  MaxLatencyTradeOff          integer
-  RTTVeto_Default             integer
-  RTTVeto_PacketLoss          integer
-  RTTVeto_Multipath           integer
-  MultipathOverloadThreshold  integer
-  TryBeforeYouBuy             boolean
-  ForceNext                   boolean
-  LargeCustomer               boolean
-  Uncommitted                 boolean
-  MaxRTT                      integer
-  HighFrequencyPings          boolean 
-  RouteDiversity              integer
-  MultipathThreshold          integer
-  EnableVanityMetrics         boolean
+  RouteSelectThreshold           integer
+  RouteSwitchThreshold           integer
+  MaxLatencyTradeOff             integer
+  RTTVeto_Default                integer
+  RTTVeto_PacketLoss             integer
+  RTTVeto_Multipath              integer
+  MultipathOverloadThreshold     integer
+  TryBeforeYouBuy                boolean
+  ForceNext                      boolean
+  LargeCustomer                  boolean
+  Uncommitted                    boolean
+  MaxRTT                         integer
+  HighFrequencyPings             boolean 
+  RouteDiversity                 integer
+  MultipathThreshold             integer
+  EnableVanityMetrics            boolean
+  ReducePacketLossMinSliceNumber integer
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.
@@ -2401,6 +2609,7 @@ must be one of the following and is case-sensitive:
   BandwidthEnvelopeUpKbps   integer
   BandwidthEnvelopeDownKbps integer
   MaxRTT                    integer
+  PacketLossSustained       float
 
 The value should be whatever type is appropriate for the field
 as defined above. A valid BuyerID (in hex) is required.
@@ -2428,15 +2637,16 @@ must be one of the following and is case-sensitive:
   StartDate            string, of the format: "January 2, 2006"
   EndDate              string, of the format: "January 2, 2006"
   Type                 any valid relay server type (see below)
+  BillingSupplier      any valid seller (or and empty string "")
   Notes                any string up to 500 characters (optional)
+  Version              relay version number, e.g. "2.0.6"
+
 
 Valid relay states:
    enabled
-   maintenance
    disabled
-   quarantined (not currently in use)
-   decommissioned
-   offline
+   quarantined
+   removed
 
 Valid bandwidth rules:
    flat
@@ -2459,6 +2669,7 @@ must be of the form:
   "InternalAddr": "127.0.0.2:10009", // optional
   "PublicKey": "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14=",
   "DatacenterID": "c62a99140dd374fd",  // datacenter ID in hex
+  "BillingSupplier": "existing seller ID", // optional
   "NICSpeedMbps": 1000,
   "IncludedBandwidthGB": 10000,
   "ManagementAddr": "1.2.3.49",
@@ -2469,11 +2680,12 @@ must be of the form:
   "Overage": 100.00,  // US Dollars
   "BWRule": "flat",   // any valid bandwidth rule (see below)
   "ContractTerm": 12,
-  "StartDate": "December 15, 2020", // exactly this format (optional)
-  "EndDate": "December 15, 2020",   // exactly this format (optional)
-  "Type": "virtualmachine",         // any valid machine type (see below)
+  "StartDate": "2020-12-15", // December 15, 2020 - exactly this format (optional)
+  "EndDate": "2021-12-15",   // December 15, 2021 - exactly this format (optional)
+  "Type": "vm",              // any valid machine type (see below)
   "Seller": "colocrossing",
   "Notes": "any notes up to 500 characters" // optional
+  "Version": "2.0.6" // required
 }
 
 All fields are required except as noted (InternalAddr, Notes).
@@ -2531,8 +2743,6 @@ Update one field for the specified seller. The field
 must be one of the following and is case-sensitive:
 
   EgressPrice  US Dollars
-  IngressPrice US Dollars
-  ShortName    string
   Secret       boolean
 
 The value should be whatever type is appropriate for the field

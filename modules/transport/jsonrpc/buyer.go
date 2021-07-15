@@ -2,13 +2,19 @@ package jsonrpc
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
+	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,9 +24,11 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/bigtable"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/go-github/v36/github"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
@@ -28,6 +36,8 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/middleware"
+	"github.com/networknext/backend/modules/transport/notifications"
 
 	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )
@@ -35,6 +45,13 @@ import (
 const (
 	TopSessionsSize          = 1000
 	MapPointByteCacheVersion = uint8(1)
+	MaxHistoricalSessions    = 100
+	MaxBigTableDays          = 10
+	LOOKER_HOST              = "networknextexternal.cloud.looker.com"
+)
+
+var (
+	ErrInsufficientPrivileges = errors.New("insufficient privileges")
 )
 
 type BuyersService struct {
@@ -57,6 +74,9 @@ type BuyersService struct {
 
 	BqClient *bigquery.Client
 
+	GithubClient                   *github.Client
+	ReleaseNotesNotificationsCache []notifications.ReleaseNotesNotification
+
 	RedisPoolTopSessions   *redis.Pool
 	RedisPoolSessionMeta   *redis.Pool
 	RedisPoolSessionSlices *redis.Pool
@@ -66,6 +86,8 @@ type BuyersService struct {
 	Metrics *metrics.BuyerEndpointMetrics
 	Storage storage.Storer
 	Logger  log.Logger
+
+	LookerSecret string
 }
 
 type FlushSessionsArgs struct{}
@@ -73,7 +95,7 @@ type FlushSessionsArgs struct{}
 type FlushSessionsReply struct{}
 
 func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, reply *FlushSessionsReply) error {
-	if !VerifyAllRoles(r, OpsRole) {
+	if !middleware.VerifyAllRoles(r, middleware.OpsRole) {
 		return fmt.Errorf("FlushSessions(): %v", ErrInsufficientPrivileges)
 	}
 
@@ -106,11 +128,17 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 
 type UserSessionsArgs struct {
 	UserID string `json:"user_id"`
+	Page   int    `json:"page"`
 }
 
 type UserSessionsReply struct {
-	Sessions   []transport.SessionMeta `json:"sessions"`
-	TimeStamps []time.Time             `json:"time_stamps"`
+	Sessions []UserSession `json:"sessions"`
+	Page     int           `json:"page"`
+}
+
+type UserSession struct {
+	Meta      transport.SessionMeta `json:"meta"`
+	Timestamp time.Time             `json:"time_stamp"`
 }
 
 func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, reply *UserSessionsReply) error {
@@ -119,7 +147,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
-	reply.Sessions = make([]transport.SessionMeta, 0)
+	reply.Sessions = make([]UserSession, 0)
 	sessionIDs := make([]string, 0)
 
 	var sessionSlice transport.SessionSlice
@@ -147,126 +175,218 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	}
 	userHash := fmt.Sprintf("%016x", hash.Sum64())
 
-	// Fetch live sessions if there are any
-	liveSessions, err := s.FetchCurrentTopSessions(r, "")
-	if err != nil {
-		err = fmt.Errorf("UserSessions() failed to fetch live sessions")
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
+	// Only grab the live session on the first request
+	if args.Page == 0 {
+		// Fetch live sessions if there are any
+		liveSessions, err := s.FetchCurrentTopSessions(r, "")
+		if err != nil {
+			err = fmt.Errorf("UserSessions() failed to fetch live sessions")
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 
-	for _, session := range liveSessions {
-		// Check both the ID, hex of ID, and the hash just in case the ID is actually a hash from the top sessions table or decimal hash
-		if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) || hexUserID == fmt.Sprintf("%016x", session.UserHash) {
-			sessionSlicesClient := s.RedisPoolSessionSlices.Get()
-			defer sessionSlicesClient.Close()
+		for _, session := range liveSessions {
+			// Check both the ID, hex of ID, and the hash just in case the ID is actually a hash from the top sessions table or decimal hash
+			if userHash == fmt.Sprintf("%016x", session.UserHash) || userID == fmt.Sprintf("%016x", session.UserHash) || hexUserID == fmt.Sprintf("%016x", session.UserHash) {
+				sessionSlicesClient := s.RedisPoolSessionSlices.Get()
+				defer sessionSlicesClient.Close()
 
-			slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
-			if err != nil && err != redis.ErrNil {
-				err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			// If a slice exists, add the session and the timestamp
-			if len(slices) > 0 {
-				sliceString := strings.Split(slices[0], "|")
-				if err := sessionSlice.ParseRedisString(sliceString); err != nil {
-					err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
+				slices, err := redis.Strings(sessionSlicesClient.Do("LRANGE", fmt.Sprintf("ss-%016x", session.ID), "0", "0"))
+				if err != nil && err != redis.ErrNil {
+					err = fmt.Errorf("UserSessions() failed getting session slices: %v", err)
 					level.Error(s.Logger).Log("err", err)
+					err = fmt.Errorf("UserSessions() failed getting session slices")
 					return err
 				}
 
-				sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+				// If a slice exists, add the session and the timestamp
+				if len(slices) > 0 {
+					sliceString := strings.Split(slices[0], "|")
+					if err := sessionSlice.ParseRedisString(sliceString); err != nil {
+						err = fmt.Errorf("UserSessions() SessionSlice parsing error: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
 
-				buyer, err := s.Storage.Buyer(session.BuyerID)
-				if err != nil {
-					err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
-					level.Error(s.Logger).Log("err", err)
-					return err
+					sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
+
+					buyer, err := s.Storage.Buyer(session.BuyerID)
+					if err != nil {
+						err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
+						level.Error(s.Logger).Log("err", err)
+						return err
+					}
+
+					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
+						session.Anonymise()
+					} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+						// Don't show sessions where the company code does not match the request's
+						continue
+					}
+
+					reply.Sessions = append(reply.Sessions, UserSession{
+						Meta:      session,
+						Timestamp: sessionSlice.Timestamp.UTC(),
+					})
+				} else {
+					// Increment counter
+					s.Metrics.NoSlicesFailure.Add(1)
 				}
-
-				if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
-					session.Anonymise()
-				}
-
-				reply.Sessions = append(reply.Sessions, session)
-				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
-			} else {
-				// Increment counter
-				s.Metrics.NoSlicesFailure.Add(1)
 			}
 		}
 	}
 
 	if s.UseBigtable {
-		// Create the filters to use for reading rows
-		chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"),
-			bigtable.LatestNFilter(1),
-		)
+		var rowsByHash []bigtable.Row
+		var rowsByID []bigtable.Row
+		var rowsByHexID []bigtable.Row
+		searchType := -1
 
-		// Fetch historic sessions by user hash if there are any
-		rowsByHash, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userHash), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
+		// A page is equivalent to 1 full day (24 hours). We store 10 days worth of data so the maximum number of pages is 10
+		reply.Page = args.Page
+
+		// Calculate the start and end time
+		timeNow := time.Now()
+		location := timeNow.Location()
+
+		// Get todays date
+		year, month, day := timeNow.Date()
+		today := time.Date(year, month, day, 0, 0, 0, 0, location)
+
+		// current page date is today - page number * 1 day. Add 1 day to compensate for filter excluding end date
+		currentPageDate := today.Add(-time.Duration((reply.Page - 1) * 24 * int(time.Hour)))
+
+		// get next page date
+		nextPageDate := today.Add(-time.Duration(reply.Page * 24 * int(time.Hour)))
+
+		currentPage := reply.Page
+
+		// Fetch historic sessions by each identifier if there are any
+		rowsByHash, err = s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
 		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
 
-		// Fetch historic sessions by user ID if there are any
-		rowsByID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", userID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
-		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
-
-		// Fetch historic sessions by hex user ID if there are any
-		rowsByHexID, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", hexUserID), bigtable.RowFilter(chainFilter), bigtable.LimitRows(100))
-		if err != nil {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("UserSessions() failed to fetch historic user sessions: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
+		if len(rowsByHash) == 0 {
+			reply.Page = currentPage
+		} else {
+			searchType = 0
 		}
 
-		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+		if searchType == -1 {
+			rowsByID, err = s.GetHistoricalSessions(reply, userID, currentPageDate, nextPageDate)
+			if err != nil {
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+
+			if len(rowsByID) == 0 {
+				reply.Page = currentPage
+			} else {
+				searchType = 1
+			}
+		}
+
+		if searchType == -1 {
+			rowsByHexID, err = s.GetHistoricalSessions(reply, hexUserID, currentPageDate, nextPageDate)
+			if err != nil {
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+		}
 
 		liveIDString := strings.Join(sessionIDs, ",")
 
-		if len(rowsByHash) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByHash, liveIDString, sessionSlice); err != nil {
+		switch searchType {
+		case 0:
+			if err = s.GetHistoricalSlices(r, reply, liveIDString, rowsByHash, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-		} else if len(rowsByID) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByID, liveIDString, sessionSlice); err != nil {
+		case 1:
+			if err = s.GetHistoricalSlices(r, reply, liveIDString, rowsByID, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
-		} else if len(rowsByHexID) > 0 {
-			if err = s.GetHistoricalSlices(r, reply, rowsByHexID, liveIDString, sessionSlice); err != nil {
+		case 2:
+			if err = s.GetHistoricalSlices(r, reply, liveIDString, rowsByHexID, sessionSlice); err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
 			}
 		}
 	}
 
+	// Sort the sessions by timestamp
+	sort.Slice(reply.Sessions, func(i, j int) bool {
+		return reply.Sessions[i].Timestamp.After(reply.Sessions[j].Timestamp)
+	})
+	fmt.Println()
+
 	return nil
 }
 
-func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, rows []bigtable.Row, liveIDString string, sessionSlice transport.SessionSlice) error {
+func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifier string, currentPageDate time.Time, nextPageDate time.Time) ([]bigtable.Row, error) {
+	// Gets the rows within [nextPageDate, currentPageDate)
+	chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
+		bigtable.LatestNFilter(1),                                    // Gets the latest cell from the "meta" column
+		bigtable.TimestampRangeFilter(nextPageDate, currentPageDate), // Gets the rows within [startDate, endDate)
+	)
+
+	var btRows []bigtable.Row
+	for {
+		// Fetch historic sessions by the identifier if there are any
+		rows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", identifier), bigtable.RowFilter(chainFilter), bigtable.LimitRows(MaxHistoricalSessions))
+		if err != nil {
+			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
+			err = fmt.Errorf("GetHistoricalSessions() failed to fetch historic user sessions: %v", err)
+			return btRows, err
+		}
+		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
+
+		if reply.Page >= MaxBigTableDays {
+			// We are out of pages
+			break
+		}
+
+		reply.Page = reply.Page + 1
+
+		nextPageDate = nextPageDate.Add(-24 * time.Hour)
+		currentPageDate = currentPageDate.Add(-24 * time.Hour)
+
+		// Gets the rows within [nextPageDate, currentPageDate)
+		chainFilter = bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
+			bigtable.LatestNFilter(1),                                    // Gets the latest cell from the "meta" column
+			bigtable.TimestampRangeFilter(nextPageDate, currentPageDate), // Gets the rows within the start and end date, inclusive
+		)
+
+		// If we don't find anything for a day, go to the next day and try again
+		if len(rows) == 0 && reply.Page < MaxBigTableDays {
+			continue
+		}
+
+		btRows = append(btRows, rows...)
+
+		// if we found the full amount of sessions in one page, return that page number for next time
+		if len(btRows) == MaxHistoricalSessions {
+			fmt.Println("Hit max sessions for the day")
+			break
+		}
+	}
+
+	return btRows, nil
+}
+
+func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessionsReply, liveSessionIDString string, rows []bigtable.Row, sessionSlice transport.SessionSlice) error {
+	// Slice of SessionTimestamp structs to sort the sessions by timestamps at the end
 	var sessionMeta transport.SessionMeta
 
 	for _, row := range rows {
 		if err := sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
 			return err
 		}
-		if !strings.Contains(liveIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
+		// Make sure we aren't duplicating live sessions
+		if !strings.Contains(liveSessionIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 			sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 			if err != nil {
 				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
@@ -286,12 +406,14 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					return err
 				}
 
-				if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+				if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 					sessionMeta.Anonymise()
+				} else if !middleware.VerifyAnyRole(r, middleware.AdminRole) && !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+					// Don't show sessions where the company code does not match the request's
+					continue
 				}
 
-				reply.Sessions = append(reply.Sessions, sessionMeta)
-				reply.TimeStamps = append(reply.TimeStamps, sessionSlice.Timestamp.UTC())
+				reply.Sessions = append(reply.Sessions, UserSession{Meta: sessionMeta, Timestamp: sessionSlice.Timestamp.UTC()})
 			} else {
 				// Increment counter
 				s.Metrics.NoSlicesFailure.Add(1)
@@ -351,30 +473,36 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		redisClient.Flush()
 
 		for _, buyer := range buyers {
+
 			firstCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
-			firstNextCount += firstCount
 
 			secondCount, err := redis.Int(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed getting total session count next: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting total session count next")
 				return err
 			}
-			secondNextCount += secondCount
 
+			// If ghost army, scale the redis number and add that to the total otherwise just add the redis number to the total
 			if buyer.ID == ghostArmyBuyerID {
 				if firstCount > secondCount {
 					ghostArmyNextCount = firstCount * int(ghostArmyNextScaler)
 				} else {
 					ghostArmyNextCount = secondCount * int(ghostArmyNextScaler)
 				}
+
 				firstNextCount += ghostArmyNextCount
 				secondNextCount += ghostArmyNextCount
+			} else {
+				firstNextCount += firstCount
+				secondNextCount += secondCount
 			}
 		}
 		reply.Next = firstNextCount
@@ -393,10 +521,18 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		redisClient.Flush()
 
 		for _, buyer := range buyers {
+			// If ghost army, use the next counts in place of the direct counts (ghost army doesn't have direct sessions)
+			if buyer.ID == ghostArmyBuyerID {
+				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+				continue
+			}
+
 			firstCounts, err := redis.Strings(redisClient.Receive())
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive first session count: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed to receive first session count")
 				return err
 			}
 
@@ -415,6 +551,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			if err != nil {
 				err = fmt.Errorf("TotalSessions() failed to receive second session count: %v", err)
 				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed to receive second session count")
 				return err
 			}
 
@@ -427,13 +564,6 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 				}
 
 				secondTotalCount += int(secondCount)
-			}
-
-			if buyer.ID == ghostArmyBuyerID {
-				// scale by next values because ghost army data contains 0 direct
-				// if ghost army is turned off then this number will be 0 and have no effect
-				firstTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
-				secondTotalCount += ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
 			}
 		}
 
@@ -454,7 +584,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 			return err
 		}
 		buyerID := fmt.Sprintf("%016x", buyer.ID)
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("TotalSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -470,6 +600,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts")
 			return err
 		}
 
@@ -477,17 +608,19 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer session next counts")
 			return err
 		}
 
+		// If ghost army, scale the number coming from redis and use that
 		if buyer.ID == ghostArmyBuyerID {
 			if firstNextCount > secondNextCount {
 				ghostArmyNextCount = firstNextCount * int(ghostArmyNextScaler)
 			} else {
 				ghostArmyNextCount = secondNextCount * int(ghostArmyNextScaler)
 			}
-			firstNextCount += ghostArmyNextCount
-			secondNextCount += ghostArmyNextCount
+			firstNextCount = ghostArmyNextCount
+			secondNextCount = ghostArmyNextCount
 		}
 
 		reply.Next = firstNextCount
@@ -498,47 +631,48 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 		var firstTotalCount int
 		var secondTotalCount int
 
-		firstCounts, err := redis.Strings(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		for i := 0; i < len(firstCounts); i++ {
-			firstCount, err := strconv.ParseUint(firstCounts[i], 10, 32)
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			firstTotalCount += int(firstCount)
-		}
-
-		secondCounts, err := redis.Strings(redisClient.Receive())
-		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-		for i := 0; i < len(secondCounts); i++ {
-			secondCount, err := strconv.ParseUint(secondCounts[i], 10, 32)
-			if err != nil {
-				err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
-				level.Error(s.Logger).Log("err", err)
-				return err
-			}
-
-			secondTotalCount += int(secondCount)
-		}
-
 		if buyer.ID == ghostArmyBuyerID {
-			// scale by next values because ghost army data contains 0 direct
-			// if ghost army is turned off then this number will be 0 and have no effect
-			firstTotalCount += firstNextCount*int(ghostArmyScalar) + firstNextCount
-			secondTotalCount += secondNextCount*int(ghostArmyScalar) + secondNextCount
+			// If ghost army, use the next counts in place of the direct counts (ghost army doesn't have direct sessions)
+			firstTotalCount = ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+			secondTotalCount = ghostArmyNextCount*int(ghostArmyScalar) + ghostArmyNextCount
+		} else {
+			firstCounts, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting buyer first session total counts")
+				return err
+			}
+
+			for i := 0; i < len(firstCounts); i++ {
+				firstCount, err := strconv.ParseUint(firstCounts[i], 10, 32)
+				if err != nil {
+					err = fmt.Errorf("TotalSessions() failed to parse buyer first session count: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				firstTotalCount += int(firstCount)
+			}
+
+			secondCounts, err := redis.Strings(redisClient.Receive())
+			if err != nil {
+				err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				err = fmt.Errorf("TotalSessions() failed getting buyer second session total counts")
+				return err
+			}
+
+			for i := 0; i < len(secondCounts); i++ {
+				secondCount, err := strconv.ParseUint(secondCounts[i], 10, 32)
+				if err != nil {
+					err = fmt.Errorf("TotalSessions() failed to parse buyer second session count: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+
+				secondTotalCount += int(secondCount)
+			}
 		}
 
 		totalCount := firstTotalCount
@@ -636,7 +770,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		return err
 	}
 
-	if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+	if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 		reply.Meta.Anonymise()
 	}
 
@@ -651,6 +785,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionDetails() failed getting session slices: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("SessionDetails() failed getting session slices")
 			return err
 		}
 
@@ -739,10 +874,12 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	s.mapPointsCompactBuyerCache = make(map[string]json.RawMessage, 0)
 
 	for _, buyer := range buyers {
+		isLargeCustomer := buyer.InternalConfig.LargeCustomer
 		directPointStrings, nextPointStrings, err := s.getDirectAndNextMapPointStrings(&buyer)
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer %s: %v", buyer.CompanyCode, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("SessionMapPoints() failed getting map points for buyer")
 			return err
 		}
 
@@ -755,12 +892,14 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
+			sessionID := fmt.Sprintf("%016x", point.SessionID)
+
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, false})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, false})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, isLargeCustomer, sessionID})
 			}
 		}
 
@@ -772,12 +911,14 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 				return err
 			}
 
+			sessionID := fmt.Sprintf("%016x", point.SessionID)
+
 			if point.Latitude != 0 && point.Longitude != 0 {
 				mapPointsBuyers[buyer.CompanyCode] = append(mapPointsBuyers[buyer.CompanyCode], point)
 				mapPointsGlobal = append(mapPointsGlobal, point)
 
-				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true})
-				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true})
+				mapPointsBuyersCompact[buyer.CompanyCode] = append(mapPointsBuyersCompact[buyer.CompanyCode], []interface{}{point.Longitude, point.Latitude, true, sessionID})
+				mapPointsGlobalCompact = append(mapPointsGlobalCompact, []interface{}{point.Longitude, point.Latitude, true, sessionID})
 			}
 		}
 
@@ -895,12 +1036,14 @@ func (s *BuyersService) getDirectAndNextMapPointStrings(buyer *routing.Buyer) ([
 
 	directMap, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	directMapB, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	for k, v := range directMapB {
@@ -909,12 +1052,14 @@ func (s *BuyersService) getDirectAndNextMapPointStrings(buyer *routing.Buyer) ([
 
 	nextMap, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	nextMapB, err := redis.StringMap(redisClient.Receive())
 	if err != nil {
-		return nil, nil, err
+		// Redis is down - return empty values for map
+		return []string{}, []string{}, nil
 	}
 
 	for k, v := range nextMapB {
@@ -1038,7 +1183,7 @@ func (s *BuyersService) SessionMap(r *http.Request, args *MapPointsArgs, reply *
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCompactCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1058,7 +1203,7 @@ func (s *BuyersService) SessionMapPoints(r *http.Request, args *MapPointsArgs, r
 		// pull the local cache and reply with it
 		reply.Points = s.mapPointsCache
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1079,7 +1224,7 @@ func (s *BuyersService) SessionMapPointsByte(r *http.Request, args *MapPointsArg
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1099,7 +1244,7 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 		// pull the local cache and reply with it
 		ReadMapPointsCache(&reply.Points, s.mapPointsByteCache)
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(args.CompanyCode)) {
 			err := fmt.Errorf("SessionMap(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1126,7 +1271,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	var err error
 	var buyer routing.Buyer
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("GameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1139,7 +1284,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 		return err
 	}
 
-	if VerifyAnyRole(r, AnonymousRole, UnverifiedRole) {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
 		err = fmt.Errorf("GameConfiguration(): %v", ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1171,7 +1316,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 	var buyerID uint64
 	var buyer routing.Buyer
 
-	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err = fmt.Errorf("UpdateBuyerInformation(): %v", ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1179,7 +1324,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 
 	ctx := context.Background()
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateBuyerInformation(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1250,7 +1395,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	var buyerID uint64
 	var buyer routing.Buyer
 
-	if !VerifyAnyRole(r, AdminRole, OwnerRole) {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err = fmt.Errorf("UpdateGameConfiguration(): %v", ErrInsufficientPrivileges)
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1258,7 +1403,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := context.Background()
 
-	companyCode, ok := r.Context().Value(Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1318,8 +1463,19 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	live := buyer.Live
+	oldBuyerID := buyer.ID
 
-	if err = s.Storage.RemoveBuyer(ctx, buyer.ID); err != nil {
+	// Remove all dc Maps
+	dcMaps := s.Storage.GetDatacenterMapsForBuyer(oldBuyerID)
+	for _, dcMap := range dcMaps {
+		if err := s.Storage.RemoveDatacenterMap(ctx, dcMap); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to remove old datacenter map: %v, datacenter ID: %016x", err, dcMap.DatacenterID)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	}
+
+	if err = s.Storage.RemoveBuyer(ctx, oldBuyerID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1331,11 +1487,20 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		Live:        live,
 		PublicKey:   byteKey[8:],
 	})
-
 	if err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() buyer update failed: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
+	}
+
+	// Add back dc maps with new buyer ID
+	for _, dcMap := range dcMaps {
+		dcMap.BuyerID = buyerID
+		if err := s.Storage.AddDatacenterMap(ctx, dcMap); err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add new datacenter map: %v, datacenter ID: %016x, buyer ID: %016x", err, dcMap.DatacenterID, buyerID)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 	}
 
 	// Check if buyer is associated with the ID and everything worked
@@ -1366,7 +1531,7 @@ type buyerAccount struct {
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
 	reply.Buyers = make([]buyerAccount, 0)
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1384,7 +1549,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			ID:          id,
 			IsLive:      b.Live,
 		}
-		if VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
+		if middleware.VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
 		}
 	}
@@ -1402,7 +1567,6 @@ type DatacenterMapsArgs struct {
 }
 
 type DatacenterMapsFull struct {
-	Alias          string
 	DatacenterName string
 	DatacenterID   string
 	BuyerName      string
@@ -1415,7 +1579,7 @@ type DatacenterMapsReply struct {
 }
 
 func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *DatacenterMapsArgs, reply *DatacenterMapsReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1460,7 +1624,6 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 		}
 
 		dcmFull := DatacenterMapsFull{
-			Alias:          dcMap.Alias,
 			DatacenterName: datacenter.Name,
 			DatacenterID:   fmt.Sprintf("%016x", dcMap.DatacenterID),
 			BuyerName:      customer.Name,
@@ -1500,7 +1663,6 @@ func (s *BuyersService) JSRemoveDatacenterMap(r *http.Request, args *JSRemoveDat
 	}
 
 	dcMap := routing.DatacenterMap{
-		Alias:        args.Alias,
 		BuyerID:      buyerID,
 		DatacenterID: datacenterID,
 	}
@@ -1521,48 +1683,6 @@ func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacen
 
 	return s.Storage.RemoveDatacenterMap(ctx, args.DatacenterMap)
 
-}
-
-// UpdateDatacenterMapArgs: HexBuyerID and HexDatacenterID are the combined primary
-// key needed to look up the existing datacenter map
-type UpdateDatacenterMapArgs struct {
-	HexBuyerID      string `json:"hexBuyerID"`
-	HexDatacenterID string `json:"hexDatacenterID"`
-	Field           string `json:"field"`
-	Value           string `json:"value"`
-}
-
-type UpdateDatacenterMapReply struct{}
-
-func (s *BuyersService) UpdateDatacenterMap(r *http.Request, args *UpdateDatacenterMapArgs, reply *UpdateDatacenterMapReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
-		return nil
-	}
-
-	datacenterID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
-	if err != nil {
-		return fmt.Errorf("Value: %v is not a valid hex ID", args.Value)
-	}
-
-	buyerID, err := strconv.ParseUint(args.HexBuyerID, 16, 64)
-	if err != nil {
-		return fmt.Errorf("Value: %v is not a valid hex ID", args.Value)
-	}
-
-	switch args.Field {
-	case "HexDatacenterID", "Alias":
-		err = s.Storage.UpdateDatacenterMap(context.Background(), buyerID, datacenterID, args.Field, args.Value)
-		if err != nil {
-			err = fmt.Errorf("UpdateDatacenterMap() error updating datacenter map: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
-		}
-
-	default:
-		return fmt.Errorf("Field '%v' does not exist or is not editable on the DatacenterMap type", args.Field)
-	}
-
-	return nil
 }
 
 type JSAddDatacenterMapArgs struct {
@@ -1593,7 +1713,6 @@ func (s *BuyersService) JSAddDatacenterMap(r *http.Request, args *JSAddDatacente
 	dcMap := routing.DatacenterMap{
 		BuyerID:      buyerID,
 		DatacenterID: datacenterID,
-		Alias:        args.Alias,
 	}
 
 	return s.Storage.AddDatacenterMap(ctx, dcMap)
@@ -1616,27 +1735,22 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 }
 
 // SameBuyerRole checks the JWT for the correct passed in buyerID
-func (s *BuyersService) SameBuyerRole(companyCode string) RoleFunc {
+func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
 	return func(req *http.Request) (bool, error) {
-		if VerifyAnyRole(req, AdminRole, OpsRole) {
+		if middleware.VerifyAnyRole(req, middleware.AdminRole, middleware.OpsRole) {
 			return true, nil
 		}
-		if VerifyAllRoles(req, AnonymousRole) {
+		if middleware.VerifyAllRoles(req, middleware.AnonymousRole) {
 			return false, nil
 		}
 		if companyCode == "" {
 			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
 		}
-		requestCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
-		if !ok {
-			err := fmt.Errorf("SameBuyerRole(): user is not assigned to a company")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
-		}
-		if requestCompanyCode == "" {
-			err := fmt.Errorf("SameBuyerRole(): failed to parse company code")
-			level.Error(s.Logger).Log("err", err)
-			return false, err
+
+		// Grab the user's assigned company if it exists
+		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CompanyKey).(string)
+		if !ok || requestCompanyCode == "" {
+			return false, nil
 		}
 
 		return companyCode == requestCompanyCode, nil
@@ -1663,16 +1777,18 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A")
 			return sessions, err
 		}
 		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B")
 			return sessions, err
 		}
 	default:
-		if !VerifyAllRoles(r, s.SameBuyerRole(companyCodeFilter)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(companyCodeFilter)) {
 			err := fmt.Errorf("FetchCurrentTopSessions(): %v", ErrInsufficientPrivileges)
 			level.Error(s.Logger).Log("err", err)
 			return sessions, err
@@ -1690,12 +1806,14 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x", buyerID)
 			return sessions, err
 		}
 		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x", buyerID)
 			return sessions, err
 		}
 	}
@@ -1724,6 +1842,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		if err != nil && err != redis.ErrNil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
 			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta")
 			return sessions, err
 		}
 
@@ -1741,7 +1860,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			return sessions, err
 		}
 
-		if !VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
 			meta.Anonymise()
 		}
 
@@ -1776,22 +1895,23 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 }
 
 type JSInternalConfig struct {
-	RouteSelectThreshold       int64 `json:"routeSelectThreshold"`
-	RouteSwitchThreshold       int64 `json:"routeSwitchThreshold"`
-	MaxLatencyTradeOff         int64 `json:"maxLatencyTradeOff"`
-	RTTVeto_Default            int64 `json:"rttVeto_Default"`
-	RTTVeto_Multipath          int64 `json:"rttVeto_Multipath"`
-	RTTVeto_PacketLoss         int64 `json:"rttVeto_PacketLoss"`
-	MultipathOverloadThreshold int64 `json:"multipathOverloadThreshold"`
-	TryBeforeYouBuy            bool  `json:"tryBeforeYouBuy"`
-	ForceNext                  bool  `json:"forceNext"`
-	LargeCustomer              bool  `json:"largeCustomer"`
-	Uncommitted                bool  `json:"uncommitted"`
-	MaxRTT                     int64 `json:"maxRTT"`
-	HighFrequencyPings         bool  `json:"highFrequencyPings"`
-	RouteDiversity             int64 `json:"routeDiversity"`
-	MultipathThreshold         int64 `json:"multipathThreshold"`
-	EnableVanityMetrics        bool  `json:"enableVanityMetrics"`
+	RouteSelectThreshold           int64 `json:"routeSelectThreshold"`
+	RouteSwitchThreshold           int64 `json:"routeSwitchThreshold"`
+	MaxLatencyTradeOff             int64 `json:"maxLatencyTradeOff"`
+	RTTVeto_Default                int64 `json:"rttVeto_Default"`
+	RTTVeto_Multipath              int64 `json:"rttVeto_Multipath"`
+	RTTVeto_PacketLoss             int64 `json:"rttVeto_PacketLoss"`
+	MultipathOverloadThreshold     int64 `json:"multipathOverloadThreshold"`
+	TryBeforeYouBuy                bool  `json:"tryBeforeYouBuy"`
+	ForceNext                      bool  `json:"forceNext"`
+	LargeCustomer                  bool  `json:"largeCustomer"`
+	Uncommitted                    bool  `json:"uncommitted"`
+	MaxRTT                         int64 `json:"maxRTT"`
+	HighFrequencyPings             bool  `json:"highFrequencyPings"`
+	RouteDiversity                 int64 `json:"routeDiversity"`
+	MultipathThreshold             int64 `json:"multipathThreshold"`
+	EnableVanityMetrics            bool  `json:"enableVanityMetrics"`
+	ReducePacketLossMinSliceNumber int64 `json:"reducePacketLossMinSliceNumber"`
 }
 
 type InternalConfigArg struct {
@@ -1803,7 +1923,7 @@ type InternalConfigReply struct {
 }
 
 func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, reply *InternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1821,22 +1941,23 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 	}
 
 	jsonIC := JSInternalConfig{
-		RouteSelectThreshold:       int64(ic.RouteSelectThreshold),
-		RouteSwitchThreshold:       int64(ic.RouteSwitchThreshold),
-		MaxLatencyTradeOff:         int64(ic.MaxLatencyTradeOff),
-		RTTVeto_Default:            int64(ic.RTTVeto_Default),
-		RTTVeto_Multipath:          int64(ic.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:         int64(ic.RTTVeto_PacketLoss),
-		MultipathOverloadThreshold: int64(ic.MultipathOverloadThreshold),
-		TryBeforeYouBuy:            ic.TryBeforeYouBuy,
-		ForceNext:                  ic.ForceNext,
-		LargeCustomer:              ic.LargeCustomer,
-		Uncommitted:                ic.Uncommitted,
-		MaxRTT:                     int64(ic.MaxRTT),
-		HighFrequencyPings:         ic.HighFrequencyPings,
-		RouteDiversity:             int64(ic.RouteDiversity),
-		MultipathThreshold:         int64(ic.MultipathThreshold),
-		EnableVanityMetrics:        ic.EnableVanityMetrics,
+		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
+		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
+		RTTVeto_Default:                int64(ic.RTTVeto_Default),
+		RTTVeto_Multipath:              int64(ic.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:             int64(ic.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
+		ForceNext:                      ic.ForceNext,
+		LargeCustomer:                  ic.LargeCustomer,
+		Uncommitted:                    ic.Uncommitted,
+		MaxRTT:                         int64(ic.MaxRTT),
+		HighFrequencyPings:             ic.HighFrequencyPings,
+		RouteDiversity:                 int64(ic.RouteDiversity),
+		MultipathThreshold:             int64(ic.MultipathThreshold),
+		EnableVanityMetrics:            ic.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 	}
 
 	reply.InternalConfig = jsonIC
@@ -1851,7 +1972,7 @@ type JSAddInternalConfigArgs struct {
 type JSAddInternalConfigReply struct{}
 
 func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalConfigArgs, reply *JSAddInternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1862,22 +1983,23 @@ func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalC
 	}
 
 	ic := core.InternalConfig{
-		RouteSelectThreshold:       int32(arg.InternalConfig.RouteSelectThreshold),
-		RouteSwitchThreshold:       int32(arg.InternalConfig.RouteSwitchThreshold),
-		MaxLatencyTradeOff:         int32(arg.InternalConfig.MaxLatencyTradeOff),
-		RTTVeto_Default:            int32(arg.InternalConfig.RTTVeto_Default),
-		RTTVeto_Multipath:          int32(arg.InternalConfig.RTTVeto_Multipath),
-		RTTVeto_PacketLoss:         int32(arg.InternalConfig.RTTVeto_PacketLoss),
-		MultipathOverloadThreshold: int32(arg.InternalConfig.MultipathOverloadThreshold),
-		TryBeforeYouBuy:            arg.InternalConfig.TryBeforeYouBuy,
-		ForceNext:                  arg.InternalConfig.ForceNext,
-		LargeCustomer:              arg.InternalConfig.LargeCustomer,
-		Uncommitted:                arg.InternalConfig.Uncommitted,
-		MaxRTT:                     int32(arg.InternalConfig.MaxRTT),
-		HighFrequencyPings:         arg.InternalConfig.HighFrequencyPings,
-		RouteDiversity:             int32(arg.InternalConfig.RouteDiversity),
-		MultipathThreshold:         int32(arg.InternalConfig.MultipathThreshold),
-		EnableVanityMetrics:        arg.InternalConfig.EnableVanityMetrics,
+		RouteSelectThreshold:           int32(arg.InternalConfig.RouteSelectThreshold),
+		RouteSwitchThreshold:           int32(arg.InternalConfig.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int32(arg.InternalConfig.MaxLatencyTradeOff),
+		RTTVeto_Default:                int32(arg.InternalConfig.RTTVeto_Default),
+		RTTVeto_Multipath:              int32(arg.InternalConfig.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:             int32(arg.InternalConfig.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold:     int32(arg.InternalConfig.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                arg.InternalConfig.TryBeforeYouBuy,
+		ForceNext:                      arg.InternalConfig.ForceNext,
+		LargeCustomer:                  arg.InternalConfig.LargeCustomer,
+		Uncommitted:                    arg.InternalConfig.Uncommitted,
+		MaxRTT:                         int32(arg.InternalConfig.MaxRTT),
+		HighFrequencyPings:             arg.InternalConfig.HighFrequencyPings,
+		RouteDiversity:                 int32(arg.InternalConfig.RouteDiversity),
+		MultipathThreshold:             int32(arg.InternalConfig.MultipathThreshold),
+		EnableVanityMetrics:            arg.InternalConfig.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int32(arg.InternalConfig.ReducePacketLossMinSliceNumber),
 	}
 
 	err = s.Storage.AddInternalConfig(context.Background(), ic, buyerID)
@@ -1900,7 +2022,7 @@ type UpdateInternalConfigArgs struct {
 type UpdateInternalConfigReply struct{}
 
 func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateInternalConfigArgs, reply *UpdateInternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1920,7 +2042,8 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 	switch args.Field {
 	case "RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
 		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
-		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold":
+		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold",
+		"ReducePacketLossMinSliceNumber":
 		newInt, err := strconv.ParseInt(args.Value, 10, 32)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
@@ -1961,7 +2084,7 @@ type RemoveInternalConfigArg struct {
 type RemoveInternalConfigReply struct{}
 
 func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInternalConfigArg, reply *RemoveInternalConfigReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -1996,6 +2119,7 @@ type JSRouteShader struct {
 	BandwidthEnvelopeUpKbps   int64           `json:"bandwidthEnvelopeUpKbps"`
 	BandwidthEnvelopeDownKbps int64           `json:"bandwidthEnvelopeDownKbps"`
 	BannedUsers               map[string]bool `json:"bannedUsers"`
+	PacketLossSustained       float64         `json:"packetLossSustained"`
 }
 type RouteShaderArg struct {
 	BuyerID string `json:"buyerID"`
@@ -2006,7 +2130,7 @@ type RouteShaderReply struct {
 }
 
 func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply *RouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2037,6 +2161,7 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
 		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
 	}
 
 	reply.RouteShader = jsonRS
@@ -2051,7 +2176,7 @@ type JSAddRouteShaderArgs struct {
 type JSAddRouteShaderReply struct{}
 
 func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderArgs, reply *JSAddRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2075,6 +2200,7 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 		AcceptablePacketLoss:      float32(arg.RouteShader.AcceptablePacketLoss),
 		BandwidthEnvelopeUpKbps:   int32(arg.RouteShader.BandwidthEnvelopeUpKbps),
 		BandwidthEnvelopeDownKbps: int32(arg.RouteShader.BandwidthEnvelopeDownKbps),
+		PacketLossSustained:       float32(arg.RouteShader.PacketLossSustained),
 	}
 
 	err = s.Storage.AddRouteShader(context.Background(), rs, buyerID)
@@ -2094,7 +2220,7 @@ type RemoveRouteShaderArg struct {
 type RemoveRouteShaderReply struct{}
 
 func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShaderArg, reply *RemoveRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2124,7 +2250,7 @@ type UpdateRouteShaderArgs struct {
 type UpdateRouteShaderReply struct{}
 
 func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShaderArgs, reply *UpdateRouteShaderReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2169,7 +2295,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return err
 		}
 
-	case "AcceptablePacketLoss":
+	case "AcceptablePacketLoss", "PacketLossSustained":
 		newFloat, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid float type", args.Value)
@@ -2214,7 +2340,7 @@ type GetBannedUserReply struct {
 }
 
 func (s *BuyersService) GetBannedUsers(r *http.Request, arg *GetBannedUserArg, reply *GetBannedUserReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2243,7 +2369,7 @@ type BannedUserArgs struct {
 type BannedUserReply struct{}
 
 func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2258,7 +2384,7 @@ func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, repl
 }
 
 func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, reply *BannedUserReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2307,7 +2433,7 @@ type UpdateBuyerArgs struct {
 type UpdateBuyerReply struct{}
 
 func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, reply *UpdateBuyerReply) error {
-	if VerifyAllRoles(r, AnonymousRole) {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
 
@@ -2349,4 +2475,340 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 	}
 
 	return nil
+}
+
+type FetchNotificationsArgs struct {
+	CompanyCode string `json:"company_code"`
+}
+
+type FetchNotificationsReply struct {
+	SystemNotifications       []notifications.SystemNotification       `json:"system_notifications"`
+	AnalyticsNotifications    []notifications.AnalyticsNotification    `json:"analytics_notifications"`
+	ReleaseNotesNotifications []notifications.ReleaseNotesNotification `json:"release_notes_notifications"`
+	InvoiceNotifications      []notifications.InvoiceNotification      `json:"invoice_notifications"`
+}
+
+func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificationsArgs, reply *FetchNotificationsReply) error {
+	reply.AnalyticsNotifications = make([]notifications.AnalyticsNotification, 0)
+	reply.SystemNotifications = make([]notifications.SystemNotification, 0)
+	reply.InvoiceNotifications = make([]notifications.InvoiceNotification, 0)
+	reply.ReleaseNotesNotifications = make([]notifications.ReleaseNotesNotification, 0)
+
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) { // TODO: Add in roles for looker feature if necessary
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+		return &err
+	}
+
+	// Grab release notes notifications from cache
+	reply.ReleaseNotesNotifications = s.ReleaseNotesNotificationsCache
+
+	// Everything below here will be implemented at some point in the future. It is primarily waiting on storage and admin tool support
+
+	// TODO: bring these back for analytics notifications at some point
+	/* 	user := r.Context().Value(middleware.Keys.UserKey)
+	   	if user == nil {
+	   		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+	   		return &err
+	   	}
+
+	   	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	   	requestID, ok := claims["sub"].(string)
+	   	if !ok {
+	   		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
+	   		return &err
+	   	}
+
+	   	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	   	if !ok {
+	   		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+	   		return &err
+	   	}
+
+			// Admins can request access to the notifications of another company only
+			if args.CompanyCode != "" && args.CompanyCode != companyCode && middleware.VerifyAllRoles(r, middleware.AdminRole) {
+				err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+				return &err
+			}
+
+			if args.CompanyCode != "" {
+				companyCode = args.CompanyCode
+			}
+	*/
+
+	// TODO: Fetch all invoice, system, and looker notifications from storage
+
+	/*
+		notifications, err := s.Storage.Notifications(buyerID)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to fetch notifications", err.Error()))
+			return &err
+		}
+
+		for _, notification := range notifications {
+			switch notification.type {
+			case NOTIFICATION_SYSTEM:
+				systemNotification := notifications.NewSystemNotification
+				// TODO: figure out if anything else is needed here
+				reply.SystemNotifications = append(reply.SystemNotifications, systemNotification)
+			case NOTIFICATION_ANALYTICS:
+				analyticsNotification := notifications.NewAnalyticsNotification()
+
+				nonce, err := GenerateRandomString(16)
+				if err != nil {
+					err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+					s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+					return &err
+				}
+
+				// TODO: This data should come from a specific "looker" notification
+				urlOptions := LookerURLOptions{
+					Host:            LOOKER_HOST,
+					Secret:          s.LookerSecret,
+					ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+					FirstName:       "",
+					LastName:        "",
+					GroupsIds:       make([]int, 0),
+					ExternalGroupId: "",
+					Permissions:     notifications.data.permissions,
+					Models:          notification.data.models,
+					AccessFilters:   make(map[string]map[string]interface{}),
+					UserAttributes:  make(map[string]interface{}),
+					SessionLength:   3600,
+					EmbedURL:        "/login/embed/" + url.QueryEscape(notification.data.url),
+					ForceLogout:     true,
+					Nonce:           fmt.Sprintf("\"%s\"", nonce),
+					Time:            time.Now().Unix(),
+				}
+
+				urlOptions.UserAttributes["customer_code"] = companyCode
+
+				analyticsNotification.LookerURL = s.BuildLookerURL(urlOptions)
+				reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, analyticsNotification)
+			case NOTIFICATION_INVOICE:
+				invoiceNotification := notifications.NewInvoiceNotification
+				invoice, err := s.Storage.Invoice()
+				invoiceNotification.InvoiceID = fmt.Sprintf("%016x", notification.data.invoiceID)
+				reply.InvoiceNotification = append(reply.InvoiceNotification, invoiceNotification)
+			default:
+				err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Unknown notification type", err.Error()))
+				continue
+			}
+		}
+	*/
+	return nil
+}
+
+func (s *BuyersService) FetchReleaseNotes() error {
+	cacheList := make([]notifications.ReleaseNotesNotification, 0)
+
+	gistList, _, err := s.GithubClient.Gists.List(context.Background(), "", &github.GistListOptions{})
+	if err != nil {
+		err = fmt.Errorf("FetchReleaseNotes() error fetching gist list: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	for _, list := range gistList {
+		gistID := list.ID
+
+		resp, err := http.Get(fmt.Sprintf("https://gist.github.com/network-next-notifications/%s.js", *gistID))
+		if err != nil {
+			err = fmt.Errorf("FetchReleaseNotes() failed fetching embed data: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			continue
+		}
+
+		buffer, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			err = fmt.Errorf("FetchReleaseNotes() failed reading embed data: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			continue
+		}
+
+		fullEmbedOutput := string(buffer)
+
+		// Extract the actual css url and html that needs to be added to the notification
+		cssRegex := regexp.MustCompile(`https:\/\/github\.githubassets\.com\/assets\/gist-embed-[a-z0-9]+\.css`)
+		htmlRegex := regexp.MustCompile(`<div [a-z=\\"0-9\s>\-_A-Z</:.#&;]+`)
+
+		cssURL := cssRegex.FindString(fullEmbedOutput)
+		embedHTML := htmlRegex.FindString(fullEmbedOutput)
+		embedHTML = strings.ReplaceAll(embedHTML, "\\n", "")
+		embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
+
+		notification := notifications.NewReleaseNotesNotification()
+		notification.Title = fmt.Sprintf("Service updates for the month of %s", list.GetDescription())
+		notification.EmbedHTML = embedHTML
+		notification.CSSURL = cssURL
+
+		cacheList = append(cacheList, notification)
+	}
+
+	s.ReleaseNotesNotificationsCache = cacheList
+
+	return nil
+}
+
+type FetchLookerURLArgs struct{}
+
+type FetchLookerURLReply struct {
+	URL string `json:"url"`
+}
+
+func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs, reply *FetchLookerURLReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) { // TODO: Add in roles for looker feature if necessary
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
+	nonce, err := GenerateRandomString(16)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to generate nonce", err.Error()))
+		return &err
+	}
+
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	// TODO: Figure out what params are needed from frontend
+	urlOptions := LookerURLOptions{
+		Host:            LOOKER_HOST,
+		Secret:          s.LookerSecret,
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		FirstName:       "",
+		LastName:        "",
+		GroupsIds:       make([]int, 0),
+		ExternalGroupId: "",
+		Permissions:     []string{"access_data", "see_looks"},
+		Models:          []string{"networknext_pbl"},
+		AccessFilters:   make(map[string]map[string]interface{}),
+		UserAttributes:  make(map[string]interface{}),
+		SessionLength:   3600,
+		EmbedURL:        "/login/embed/" + url.QueryEscape( /* TODO: we want notification.data.path or something similar here */ "/embed/looks/1"),
+		ForceLogout:     true,
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Time:            time.Now().Unix(),
+	}
+
+	urlOptions.UserAttributes["customer_code"] = companyCode
+
+	reply.URL = s.BuildLookerURL(urlOptions)
+	return nil
+}
+
+type LookerURLOptions struct {
+	Secret          string                            //required
+	Host            string                            //required
+	EmbedURL        string                            //required
+	Nonce           string                            //required
+	Time            int64                             //required
+	SessionLength   int                               //required
+	ExternalUserId  string                            //required
+	Permissions     []string                          //required
+	Models          []string                          //required
+	ForceLogout     bool                              //required
+	GroupsIds       []int                             //optional
+	ExternalGroupId string                            //optional
+	UserAttributes  map[string]interface{}            //optional
+	AccessFilters   map[string]map[string]interface{} //required
+	FirstName       string                            //optional
+	LastName        string                            //optional
+}
+
+func (s *BuyersService) BuildLookerURL(urlOptions LookerURLOptions) string {
+	// TODO: Verify logic below, this came from here: https://github.com/looker/looker_embed_sso_examples/pull/36 and is NOT an official implementation. That being said, be careful changing it because it works :P
+	jsonPerms, _ := json.Marshal(urlOptions.Permissions)
+	jsonModels, _ := json.Marshal(urlOptions.Models)
+	jsonUserAttrs, _ := json.Marshal(urlOptions.UserAttributes)
+	jsonFilters, _ := json.Marshal(urlOptions.AccessFilters)
+	jsonGroupIds, _ := json.Marshal(urlOptions.GroupsIds)
+	strTime := strconv.Itoa(int(urlOptions.Time))
+	strSessionLen := strconv.Itoa(urlOptions.SessionLength)
+	strForceLogin := strconv.FormatBool(urlOptions.ForceLogout)
+
+	strToSign := strings.Join([]string{urlOptions.Host,
+		urlOptions.EmbedURL,
+		urlOptions.Nonce,
+		strTime,
+		strSessionLen,
+		urlOptions.ExternalUserId,
+		string(jsonPerms),
+		string(jsonModels)}, "\n")
+
+	strToSign = strToSign + "\n"
+
+	if len(urlOptions.GroupsIds) > 0 {
+		strToSign = strToSign + string(jsonGroupIds) + "\n"
+	}
+
+	if urlOptions.ExternalGroupId != "" {
+		strToSign = strToSign + urlOptions.ExternalGroupId + "\n"
+	}
+
+	if len(urlOptions.UserAttributes) > 0 {
+		strToSign = strToSign + string(jsonUserAttrs) + "\n"
+	}
+
+	strToSign = strToSign + string(jsonFilters)
+
+	h := hmac.New(sha1.New, []byte(urlOptions.Secret))
+	h.Write([]byte(strToSign))
+	encoded := base64.StdEncoding.EncodeToString(h.Sum(nil))
+
+	query := url.Values{}
+	query.Add("nonce", urlOptions.Nonce)
+	query.Add("time", strTime)
+	query.Add("session_length", strSessionLen)
+	query.Add("external_user_id", urlOptions.ExternalUserId)
+	query.Add("permissions", string(jsonPerms))
+	query.Add("models", string(jsonModels))
+	query.Add("access_filters", string(jsonFilters))
+	query.Add("first_name", urlOptions.FirstName)
+	query.Add("last_name", urlOptions.LastName)
+	query.Add("force_logout_login", strForceLogin)
+	query.Add("signature", encoded)
+
+	if len(urlOptions.GroupsIds) > 0 {
+		query.Add("group_ids", string(jsonGroupIds))
+	}
+
+	if urlOptions.ExternalGroupId != "" {
+		query.Add("external_group_id", urlOptions.ExternalGroupId)
+	}
+
+	if len(urlOptions.UserAttributes) > 0 {
+		query.Add("user_attributes", string(jsonUserAttrs))
+	}
+
+	finalUrl := fmt.Sprintf("https://%s%s?%s", urlOptions.Host, urlOptions.EmbedURL, query.Encode())
+
+	return finalUrl
 }

@@ -56,10 +56,22 @@ blocks:
           commands:
             - make build-portal-cruncher-artifacts-prod
             - make publish-portal-cruncher-artifacts-prod
+        - name: Relay Gateway
+          commands:
+            - make build-relay-gateway-artifacts-prod
+            - make publish-relay-gateway-artifacts-prod
         - name: Relay Backend
           commands:
             - make build-relay-backend-artifacts-prod
             - make publish-relay-backend-artifacts-prod
+        - name: Relay Frontend
+          commands:
+            - make build-relay-frontend-artifacts-prod
+            - make publish-relay-frontend-artifacts-prod
+        - name: Relay Forwarder
+          commands:
+            - make build-relay-forwarder-artifacts-prod
+            - make publish-relay-forwarder-artifacts-prod
         - name: Server Backend
           commands:
             - make build-server-backend-artifacts-prod
@@ -68,6 +80,10 @@ blocks:
           commands:
             - make build-debug-server-backend-artifacts-prod
             - make publish-debug-server-backend-artifacts-prod
+        - name: Debug Relay Backend
+          commands:
+            - make build-debug-relay-backend-artifacts-prod
+            - make publish-debug-relay-backend-artifacts-prod
         - name: Bootstrap Script
           commands:
             - make publish-bootstrap-script-prod
@@ -76,17 +92,9 @@ blocks:
             - make build-ghost-army-artifacts-prod
             - make publish-ghost-army-artifacts-prod
             - make publish-ghost-army-bootstrap-script-prod
-        - name: Relay Gateway
+        - name: Relay Pusher
           commands:
-            - make build-relay-gateway-artifacts-prod
-            - make publish-relay-gateway-artifacts-prod
-        - name: Optimizer
-          commands:
-            - make build-optimizer-artifacts-prod
-            - make publish-optimizer-artifacts-prod
-        - name: Route Matrix Selector
-          commands:
-            - make build-route-matrix-selector-artifacts-prod
-            - make publish-route-matrix-selector-artifacts-prod
+            - make build-relay-pusher-artifacts-prod
+            - make publish-relay-pusher-artifacts-prod
       secrets:
         - name: google-cloud-platform-prod

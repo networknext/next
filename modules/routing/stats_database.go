@@ -3,20 +3,19 @@ package routing
 import (
 	"math"
 	"sync"
+
+	"github.com/networknext/backend/modules/analytics"
 )
 
-// HistorySize is the limit to how big the history of the relay entries should be
 const (
 	HistoryInvalidValue = -1
 	HistorySize         = 300 // 5 minutes @ 1 relay update per-second
 )
 
-// TriMatrixLength returns the length of a triangular shaped matrix
 func TriMatrixLength(size int) int {
 	return (size * (size - 1)) / 2
 }
 
-// TriMatrixIndex returns the index of the ij coord for a triangular shaped matrix
 func TriMatrixIndex(i, j int) int {
 	if i <= j {
 		i, j = j, i
@@ -24,7 +23,6 @@ func TriMatrixIndex(i, j int) int {
 	return i*(i+1)/2 - i + j
 }
 
-// HistoryMax returns the max value in the history array
 func HistoryMax(history []float32) float32 {
 	var max float32
 	for i := 0; i < len(history); i++ {
@@ -35,7 +33,22 @@ func HistoryMax(history []float32) float32 {
 	return max
 }
 
-// HistoryNotSet returns a history array initialized with invalid history values
+func HistoryMean(history []float32) float32 {
+	var sum float64
+	var count int
+	for i := 0; i < len(history); i++ {
+		if history[i] >= 0 {
+			sum += float64(history[i])
+			count++
+		}
+	}
+	if count > 0 {
+		return float32(sum/float64(count))
+	} else {
+		return InvalidRouteValue		
+	}
+}
+
 func HistoryNotSet() [HistorySize]float32 {
 	var res [HistorySize]float32
 	for i := 0; i < HistorySize; i++ {
@@ -44,26 +57,8 @@ func HistoryNotSet() [HistorySize]float32 {
 	return res
 }
 
-// HistoryMean returns the average value of all the history entries
-func HistoryMean(history []float32) float32 {
-	var sum float32
-	var size int
-	for i := 0; i < len(history); i++ {
-		if history[i] != HistoryInvalidValue {
-			sum += history[i]
-			size++
-		}
-	}
-	if size == 0 {
-		return 0
-	}
-	return sum / float32(size)
-}
-
-// InvalidRouteValue ...
 const InvalidRouteValue = 10000.0
 
-// RelayStatsPing is the ping stats for a relay
 type RelayStatsPing struct {
 	RelayID    uint64  `json:"RelayId"`
 	RTT        float32 `json:"RTT"`
@@ -71,13 +66,11 @@ type RelayStatsPing struct {
 	PacketLoss float32 `json:"PacketLoss"`
 }
 
-// RelayStatsUpdate is a struct for updating relay stats
 type RelayStatsUpdate struct {
 	ID        uint64
 	PingStats []RelayStatsPing
 }
 
-// StatsEntryRelay is an entry for relay stats in the stats db
 type StatsEntryRelay struct {
 	RTT               float32
 	Jitter            float32
@@ -88,34 +81,27 @@ type StatsEntryRelay struct {
 	PacketLossHistory [HistorySize]float32
 }
 
-// StatsEntry is an entry in the stats db
 type StatsEntry struct {
 	Relays map[uint64]*StatsEntryRelay
 }
 
-// StatsDatabase is a relay statistics database.
-// Each entry contains data about the entry relay to other relays
 type StatsDatabase struct {
-	Entries map[uint64]StatsEntry
-
-	mu sync.Mutex
+	Entries map[uint64]*StatsEntry
+	mu      sync.Mutex
 }
 
-// NewStatsDatabase creates a new stats database
 func NewStatsDatabase() *StatsDatabase {
 	database := &StatsDatabase{}
-	database.Entries = make(map[uint64]StatsEntry)
+	database.Entries = make(map[uint64]*StatsEntry)
 	return database
 }
 
-// NewStatsEntry creates a new stats entry
 func NewStatsEntry() *StatsEntry {
 	entry := new(StatsEntry)
 	entry.Relays = make(map[uint64]*StatsEntryRelay)
 	return entry
 }
 
-// NewStatsEntryRelay creates a new stats entry relay
 func NewStatsEntryRelay() *StatsEntryRelay {
 	entry := new(StatsEntryRelay)
 	entry.RTTHistory = HistoryNotSet()
@@ -124,8 +110,62 @@ func NewStatsEntryRelay() *StatsEntryRelay {
 	return entry
 }
 
-// ProcessStats processes the stats update, creating the needed entries if they do not already exist
+func (database *StatsDatabase) ExtractPingStats(maxJitter float32, maxPacketLoss float32, instanceID string, isDebug bool) []analytics.PingStatsEntry {
+	database.mu.Lock()
+	length := TriMatrixLength(len(database.Entries))
+	entries := make([]analytics.PingStatsEntry, length)
+
+	ids := make([]uint64, len(database.Entries))
+
+	idx := 0
+	for k := range database.Entries {
+		ids[idx] = k
+		idx++
+	}
+	database.mu.Unlock()
+
+	if length == 0 {
+		return entries
+	}
+
+	for i := 1; i < len(ids); i++ {
+		for j := 0; j < i; j++ {
+			idA := ids[i]
+			idB := ids[j]
+
+			rtt, jitter, pl := database.GetSample(idA, idB)
+			routable := rtt != InvalidRouteValue && jitter != InvalidRouteValue && pl != InvalidRouteValue
+
+			if jitter > maxJitter {
+				routable = false
+			}
+
+			if pl > maxPacketLoss {
+				routable = false
+			}
+
+			entries[TriMatrixIndex(i, j)] = analytics.PingStatsEntry{
+				RelayA:     idA,
+				RelayB:     idB,
+				RTT:        rtt,
+				Jitter:     jitter,
+				PacketLoss: pl,
+				Routable:   routable,
+				InstanceID: instanceID,
+				Debug:      isDebug,
+			}
+		}
+	}
+
+	return entries
+}
+
+// Process ping stats stats coming up from a relay.
+// Stats are filtered and we take the worst values across the last 5 minutes
+// for latency, packet loss and jitter...
+
 func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
+
 	sourceRelayID := statsUpdate.ID
 
 	if statsUpdate.PingStats == nil {
@@ -137,7 +177,7 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 	database.mu.Unlock()
 
 	if !entryExists {
-		entry = *NewStatsEntry()
+		entry = NewStatsEntry()
 		database.mu.Lock()
 		database.Entries[sourceRelayID] = entry
 		database.mu.Unlock()
@@ -146,35 +186,38 @@ func (database *StatsDatabase) ProcessStats(statsUpdate *RelayStatsUpdate) {
 	for _, stats := range statsUpdate.PingStats {
 
 		destRelayID := stats.RelayID
+
 		database.mu.Lock()
 		relay, relayExists := entry.Relays[destRelayID]
 		database.mu.Unlock()
 
 		if !relayExists {
-			relay = NewStatsEntryRelay()
 
+			// new entries are set to invalid route value. it takes 5 minutes past this point before the route becomes valid
+
+			relay = NewStatsEntryRelay()
 			relay.RTTHistory[relay.Index] = InvalidRouteValue
 			relay.JitterHistory[relay.Index] = InvalidRouteValue
 			relay.PacketLossHistory[relay.Index] = InvalidRouteValue
 
 		} else {
-			// Make sure that relays with 100% packet loss do not have 0 RTT
-			// and will definitely be excluded during route optimization
-			if stats.PacketLoss > 99 {
-				relay.RTTHistory[relay.Index] = InvalidRouteValue
-				relay.JitterHistory[relay.Index] = InvalidRouteValue
-				relay.PacketLossHistory[relay.Index] = InvalidRouteValue
-			} else {
-				relay.RTTHistory[relay.Index] = stats.RTT
-				relay.JitterHistory[relay.Index] = stats.Jitter
-				relay.PacketLossHistory[relay.Index] = stats.PacketLoss
-			}
+
+			// stash the RTT, jitter and PL into the history buffer
+
+			relay.RTTHistory[relay.Index] = stats.RTT
+			relay.JitterHistory[relay.Index] = stats.Jitter
+			relay.PacketLossHistory[relay.Index] = stats.PacketLoss
+
 		}
 
 		relay.Index = (relay.Index + 1) % HistorySize
-		relay.RTT = HistoryMax(relay.RTTHistory[:])
-		relay.Jitter = HistoryMax(relay.JitterHistory[:])
-		relay.PacketLoss = HistoryMax(relay.PacketLossHistory[:])
+
+		// By taking the mean value seen across the last 5 minutes
+		// we plan routes conservatively, but not TOO conservatively.
+
+		relay.RTT = HistoryMean(relay.RTTHistory[:])
+		relay.Jitter = HistoryMean(relay.JitterHistory[:])
+		relay.PacketLoss = HistoryMean(relay.PacketLossHistory[:])
 
 		database.mu.Lock()
 		entry.Relays[destRelayID] = relay
@@ -188,7 +231,6 @@ func (database *StatsDatabase) DeleteEntry(relayID uint64) {
 	database.mu.Unlock()
 }
 
-// MakeCopy makes a exact copy of the stats db
 func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 	database.mu.Lock()
 	defer database.mu.Unlock()
@@ -199,26 +241,22 @@ func (database *StatsDatabase) MakeCopy() *StatsDatabase {
 			vCopy := *v2
 			newEntry.Relays[k2] = &vCopy
 		}
-		databaseCopy.Entries[k] = *newEntry
+		databaseCopy.Entries[k] = newEntry
 	}
 	return databaseCopy
 }
 
-// GetEntry retrieves the stats for the supplied relay id's, if either or both do not exist the function returns nil
 func (database *StatsDatabase) GetEntry(relay1, relay2 uint64) *StatsEntryRelay {
+	var relay *StatsEntryRelay
 	database.mu.Lock()
 	entry, entryExists := database.Entries[relay1]
-	relay, relayExists := entry.Relays[relay2]
-	database.mu.Unlock()
-
-	if entryExists && relayExists {
-		return relay
+	if entryExists {
+		relay = entry.Relays[relay2]
 	}
-
-	return nil
+	database.mu.Unlock()
+	return relay
 }
 
-// GetSample returns the max values of each stats field of the bidirectional entries in the database
 func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float32, float32) {
 	a := database.GetEntry(relay1, relay2)
 	b := database.GetEntry(relay2, relay1)
@@ -230,12 +268,21 @@ func (database *StatsDatabase) GetSample(relay1, relay2 uint64) (float32, float3
 	return InvalidRouteValue, InvalidRouteValue, InvalidRouteValue
 }
 
+// This function builds the cost matrix from the statistics values in the stats db
+// We exclude any routes between relays with jitter or packet loss above the max thresholds.
+// Inputs into this function are already filtered stats values across the last 5 minutes,
+// so the cost matrix generated is conservative.
+
 func (database *StatsDatabase) GetCosts(relayIDs []uint64, maxJitter float32, maxPacketLoss float32) []int32 {
+
 	numRelays := len(relayIDs)
+
 	costs := make([]int32, TriMatrixLength(numRelays))
 
 	for i := 0; i < numRelays; i++ {
+
 		for j := 0; j < i; j++ {
+
 			ijIndex := TriMatrixIndex(i, j)
 
 			idI := uint64(relayIDs[i])
@@ -247,6 +294,26 @@ func (database *StatsDatabase) GetCosts(relayIDs []uint64, maxJitter float32, ma
 			} else {
 				costs[ijIndex] = -1
 			}
+
+		}
+	}
+
+	return costs
+}
+
+// Hack function for getting a highly permissive local cost matrix
+// This version just assumes all routes between relays are valid
+
+func (database *StatsDatabase) GetCostsLocal(relayIDs []uint64, maxJitter float32, maxPacketLoss float32) []int32 {
+
+	numRelays := len(relayIDs)
+
+	costs := make([]int32, TriMatrixLength(numRelays))
+
+	for i := 0; i < numRelays; i++ {
+		for j := 0; j < i; j++ {
+			ijIndex := TriMatrixIndex(i, j)
+			costs[ijIndex] = 0
 		}
 	}
 

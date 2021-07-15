@@ -18,6 +18,9 @@ func (noop *NoOpBeaconer) Submit(ctx context.Context, entry *transport.NextBeaco
 	return nil
 }
 
+// Close does nothing
+func (noop *NoOpBeaconer) Close() {}
+
 func (noop *NoOpBeaconer) NumSubmitted() uint64 {
 	return atomic.LoadUint64(&noop.submitted)
 }

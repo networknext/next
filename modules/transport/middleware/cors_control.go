@@ -11,7 +11,11 @@ func CORSControlHandler(allowedOrigins []string, next http.Handler) http.Handler
 		AllowedOrigins:   allowedOrigins,
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
-		AllowedMethods:   []string{"POST", "GET", "OPTION"},
+		AllowedMethods: []string{
+			http.MethodPost,
+			http.MethodGet,
+			http.MethodOptions,
+		},
 	}).Handler(next)
 }
 
@@ -20,6 +24,10 @@ func CORSControlHandlerFunc(allowedOrigins []string, w http.ResponseWriter, r *h
 		AllowedOrigins:   allowedOrigins,
 		AllowCredentials: true,
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
-		AllowedMethods:   []string{"POST", "GET", "OPTION"},
+		AllowedMethods: []string{
+			http.MethodPost,
+			http.MethodGet,
+			http.MethodOptions,
+		},
 	}).HandlerFunc(w, r)
 }

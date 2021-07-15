@@ -81,6 +81,9 @@ var _ Storer = &StorerMock{}
 //             DatacentersFunc: func() []routing.Datacenter {
 // 	               panic("mock out the Datacenters method")
 //             },
+//             GetDatabaseBinFileMetaDataFunc: func() (routing.DatabaseBinFileMetaData, error) {
+// 	               panic("mock out the GetDatabaseBinFileMetaData method")
+//             },
 //             GetDatacenterMapsForBuyerFunc: func(buyerID uint64) map[uint64]routing.DatacenterMap {
 // 	               panic("mock out the GetDatacenterMapsForBuyer method")
 //             },
@@ -186,6 +189,9 @@ var _ Storer = &StorerMock{}
 //             UpdateCustomerFunc: func(ctx context.Context, customerID string, field string, value interface{}) error {
 // 	               panic("mock out the UpdateCustomer method")
 //             },
+//             UpdateDatabaseBinFileMetaDataFunc: func(in1 context.Context, in2 routing.DatabaseBinFileMetaData) error {
+// 	               panic("mock out the UpdateDatabaseBinFileMetaData method")
+//             },
 //             UpdateDatacenterFunc: func(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
 // 	               panic("mock out the UpdateDatacenter method")
 //             },
@@ -270,6 +276,9 @@ type StorerMock struct {
 
 	// DatacentersFunc mocks the Datacenters method.
 	DatacentersFunc func() []routing.Datacenter
+
+	// GetDatabaseBinFileMetaDataFunc mocks the GetDatabaseBinFileMetaData method.
+	GetDatabaseBinFileMetaDataFunc func() (routing.DatabaseBinFileMetaData, error)
 
 	// GetDatacenterMapsForBuyerFunc mocks the GetDatacenterMapsForBuyer method.
 	GetDatacenterMapsForBuyerFunc func(buyerID uint64) map[uint64]routing.DatacenterMap
@@ -375,6 +384,9 @@ type StorerMock struct {
 
 	// UpdateCustomerFunc mocks the UpdateCustomer method.
 	UpdateCustomerFunc func(ctx context.Context, customerID string, field string, value interface{}) error
+
+	// UpdateDatabaseBinFileMetaDataFunc mocks the UpdateDatabaseBinFileMetaData method.
+	UpdateDatabaseBinFileMetaDataFunc func(in1 context.Context, in2 routing.DatabaseBinFileMetaData) error
 
 	// UpdateDatacenterFunc mocks the UpdateDatacenter method.
 	UpdateDatacenterFunc func(ctx context.Context, datacenterID uint64, field string, value interface{}) error
@@ -515,6 +527,9 @@ type StorerMock struct {
 		}
 		// Datacenters holds details about calls to the Datacenters method.
 		Datacenters []struct {
+		}
+		// GetDatabaseBinFileMetaData holds details about calls to the GetDatabaseBinFileMetaData method.
+		GetDatabaseBinFileMetaData []struct {
 		}
 		// GetDatacenterMapsForBuyer holds details about calls to the GetDatacenterMapsForBuyer method.
 		GetDatacenterMapsForBuyer []struct {
@@ -747,6 +762,13 @@ type StorerMock struct {
 			// Value is the value argument value.
 			Value interface{}
 		}
+		// UpdateDatabaseBinFileMetaData holds details about calls to the UpdateDatabaseBinFileMetaData method.
+		UpdateDatabaseBinFileMetaData []struct {
+			// In1 is the in1 argument value.
+			In1 context.Context
+			// In2 is the in2 argument value.
+			In2 routing.DatabaseBinFileMetaData
+		}
 		// UpdateDatacenter holds details about calls to the UpdateDatacenter method.
 		UpdateDatacenter []struct {
 			// Ctx is the ctx argument value.
@@ -816,67 +838,69 @@ type StorerMock struct {
 			Value interface{}
 		}
 	}
-	lockAddBannedUser             sync.RWMutex
-	lockAddBuyer                  sync.RWMutex
-	lockAddCustomer               sync.RWMutex
-	lockAddDatacenter             sync.RWMutex
-	lockAddDatacenterMap          sync.RWMutex
-	lockAddInternalConfig         sync.RWMutex
-	lockAddRelay                  sync.RWMutex
-	lockAddRouteShader            sync.RWMutex
-	lockAddSeller                 sync.RWMutex
-	lockBannedUsers               sync.RWMutex
-	lockBuyer                     sync.RWMutex
-	lockBuyerIDFromCustomerName   sync.RWMutex
-	lockBuyerWithCompanyCode      sync.RWMutex
-	lockBuyers                    sync.RWMutex
-	lockCheckSequenceNumber       sync.RWMutex
-	lockCustomer                  sync.RWMutex
-	lockCustomerWithName          sync.RWMutex
-	lockCustomers                 sync.RWMutex
-	lockDatacenter                sync.RWMutex
-	lockDatacenters               sync.RWMutex
-	lockGetDatacenterMapsForBuyer sync.RWMutex
-	lockGetFeatureFlagByName      sync.RWMutex
-	lockGetFeatureFlags           sync.RWMutex
-	lockIncrementSequenceNumber   sync.RWMutex
-	lockInternalConfig            sync.RWMutex
-	lockListDatacenterMaps        sync.RWMutex
-	lockRelay                     sync.RWMutex
-	lockRelays                    sync.RWMutex
-	lockRemoveBannedUser          sync.RWMutex
-	lockRemoveBuyer               sync.RWMutex
-	lockRemoveCustomer            sync.RWMutex
-	lockRemoveDatacenter          sync.RWMutex
-	lockRemoveDatacenterMap       sync.RWMutex
-	lockRemoveFeatureFlagByName   sync.RWMutex
-	lockRemoveInternalConfig      sync.RWMutex
-	lockRemoveRelay               sync.RWMutex
-	lockRemoveRouteShader         sync.RWMutex
-	lockRemoveSeller              sync.RWMutex
-	lockRouteShader               sync.RWMutex
-	lockSeller                    sync.RWMutex
-	lockSellerIDFromCustomerName  sync.RWMutex
-	lockSellerWithCompanyCode     sync.RWMutex
-	lockSellers                   sync.RWMutex
-	lockSetBuyer                  sync.RWMutex
-	lockSetCustomer               sync.RWMutex
-	lockSetCustomerLink           sync.RWMutex
-	lockSetDatacenter             sync.RWMutex
-	lockSetFeatureFlagByName      sync.RWMutex
-	lockSetRelay                  sync.RWMutex
-	lockSetRelayMetadata          sync.RWMutex
-	lockSetSeller                 sync.RWMutex
-	lockSetSequenceNumber         sync.RWMutex
-	lockSyncLoop                  sync.RWMutex
-	lockUpdateBuyer               sync.RWMutex
-	lockUpdateCustomer            sync.RWMutex
-	lockUpdateDatacenter          sync.RWMutex
-	lockUpdateDatacenterMap       sync.RWMutex
-	lockUpdateInternalConfig      sync.RWMutex
-	lockUpdateRelay               sync.RWMutex
-	lockUpdateRouteShader         sync.RWMutex
-	lockUpdateSeller              sync.RWMutex
+	lockAddBannedUser                 sync.RWMutex
+	lockAddBuyer                      sync.RWMutex
+	lockAddCustomer                   sync.RWMutex
+	lockAddDatacenter                 sync.RWMutex
+	lockAddDatacenterMap              sync.RWMutex
+	lockAddInternalConfig             sync.RWMutex
+	lockAddRelay                      sync.RWMutex
+	lockAddRouteShader                sync.RWMutex
+	lockAddSeller                     sync.RWMutex
+	lockBannedUsers                   sync.RWMutex
+	lockBuyer                         sync.RWMutex
+	lockBuyerIDFromCustomerName       sync.RWMutex
+	lockBuyerWithCompanyCode          sync.RWMutex
+	lockBuyers                        sync.RWMutex
+	lockCheckSequenceNumber           sync.RWMutex
+	lockCustomer                      sync.RWMutex
+	lockCustomerWithName              sync.RWMutex
+	lockCustomers                     sync.RWMutex
+	lockDatacenter                    sync.RWMutex
+	lockDatacenters                   sync.RWMutex
+	lockGetDatabaseBinFileMetaData    sync.RWMutex
+	lockGetDatacenterMapsForBuyer     sync.RWMutex
+	lockGetFeatureFlagByName          sync.RWMutex
+	lockGetFeatureFlags               sync.RWMutex
+	lockIncrementSequenceNumber       sync.RWMutex
+	lockInternalConfig                sync.RWMutex
+	lockListDatacenterMaps            sync.RWMutex
+	lockRelay                         sync.RWMutex
+	lockRelays                        sync.RWMutex
+	lockRemoveBannedUser              sync.RWMutex
+	lockRemoveBuyer                   sync.RWMutex
+	lockRemoveCustomer                sync.RWMutex
+	lockRemoveDatacenter              sync.RWMutex
+	lockRemoveDatacenterMap           sync.RWMutex
+	lockRemoveFeatureFlagByName       sync.RWMutex
+	lockRemoveInternalConfig          sync.RWMutex
+	lockRemoveRelay                   sync.RWMutex
+	lockRemoveRouteShader             sync.RWMutex
+	lockRemoveSeller                  sync.RWMutex
+	lockRouteShader                   sync.RWMutex
+	lockSeller                        sync.RWMutex
+	lockSellerIDFromCustomerName      sync.RWMutex
+	lockSellerWithCompanyCode         sync.RWMutex
+	lockSellers                       sync.RWMutex
+	lockSetBuyer                      sync.RWMutex
+	lockSetCustomer                   sync.RWMutex
+	lockSetCustomerLink               sync.RWMutex
+	lockSetDatacenter                 sync.RWMutex
+	lockSetFeatureFlagByName          sync.RWMutex
+	lockSetRelay                      sync.RWMutex
+	lockSetRelayMetadata              sync.RWMutex
+	lockSetSeller                     sync.RWMutex
+	lockSetSequenceNumber             sync.RWMutex
+	lockSyncLoop                      sync.RWMutex
+	lockUpdateBuyer                   sync.RWMutex
+	lockUpdateCustomer                sync.RWMutex
+	lockUpdateDatabaseBinFileMetaData sync.RWMutex
+	lockUpdateDatacenter              sync.RWMutex
+	lockUpdateDatacenterMap           sync.RWMutex
+	lockUpdateInternalConfig          sync.RWMutex
+	lockUpdateRelay                   sync.RWMutex
+	lockUpdateRouteShader             sync.RWMutex
+	lockUpdateSeller                  sync.RWMutex
 }
 
 // AddBannedUser calls AddBannedUserFunc.
@@ -1533,6 +1557,32 @@ func (mock *StorerMock) DatacentersCalls() []struct {
 	mock.lockDatacenters.RLock()
 	calls = mock.calls.Datacenters
 	mock.lockDatacenters.RUnlock()
+	return calls
+}
+
+// GetDatabaseBinFileMetaData calls GetDatabaseBinFileMetaDataFunc.
+func (mock *StorerMock) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error) {
+	if mock.GetDatabaseBinFileMetaDataFunc == nil {
+		panic("StorerMock.GetDatabaseBinFileMetaDataFunc: method is nil but Storer.GetDatabaseBinFileMetaData was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockGetDatabaseBinFileMetaData.Lock()
+	mock.calls.GetDatabaseBinFileMetaData = append(mock.calls.GetDatabaseBinFileMetaData, callInfo)
+	mock.lockGetDatabaseBinFileMetaData.Unlock()
+	return mock.GetDatabaseBinFileMetaDataFunc()
+}
+
+// GetDatabaseBinFileMetaDataCalls gets all the calls that were made to GetDatabaseBinFileMetaData.
+// Check the length with:
+//     len(mockedStorer.GetDatabaseBinFileMetaDataCalls())
+func (mock *StorerMock) GetDatabaseBinFileMetaDataCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockGetDatabaseBinFileMetaData.RLock()
+	calls = mock.calls.GetDatabaseBinFileMetaData
+	mock.lockGetDatabaseBinFileMetaData.RUnlock()
 	return calls
 }
 
@@ -2727,6 +2777,41 @@ func (mock *StorerMock) UpdateCustomerCalls() []struct {
 	mock.lockUpdateCustomer.RLock()
 	calls = mock.calls.UpdateCustomer
 	mock.lockUpdateCustomer.RUnlock()
+	return calls
+}
+
+// UpdateDatabaseBinFileMetaData calls UpdateDatabaseBinFileMetaDataFunc.
+func (mock *StorerMock) UpdateDatabaseBinFileMetaData(in1 context.Context, in2 routing.DatabaseBinFileMetaData) error {
+	if mock.UpdateDatabaseBinFileMetaDataFunc == nil {
+		panic("StorerMock.UpdateDatabaseBinFileMetaDataFunc: method is nil but Storer.UpdateDatabaseBinFileMetaData was just called")
+	}
+	callInfo := struct {
+		In1 context.Context
+		In2 routing.DatabaseBinFileMetaData
+	}{
+		In1: in1,
+		In2: in2,
+	}
+	mock.lockUpdateDatabaseBinFileMetaData.Lock()
+	mock.calls.UpdateDatabaseBinFileMetaData = append(mock.calls.UpdateDatabaseBinFileMetaData, callInfo)
+	mock.lockUpdateDatabaseBinFileMetaData.Unlock()
+	return mock.UpdateDatabaseBinFileMetaDataFunc(in1, in2)
+}
+
+// UpdateDatabaseBinFileMetaDataCalls gets all the calls that were made to UpdateDatabaseBinFileMetaData.
+// Check the length with:
+//     len(mockedStorer.UpdateDatabaseBinFileMetaDataCalls())
+func (mock *StorerMock) UpdateDatabaseBinFileMetaDataCalls() []struct {
+	In1 context.Context
+	In2 routing.DatabaseBinFileMetaData
+} {
+	var calls []struct {
+		In1 context.Context
+		In2 routing.DatabaseBinFileMetaData
+	}
+	mock.lockUpdateDatabaseBinFileMetaData.RLock()
+	calls = mock.calls.UpdateDatabaseBinFileMetaData
+	mock.lockUpdateDatabaseBinFileMetaData.RUnlock()
 	return calls
 }
 

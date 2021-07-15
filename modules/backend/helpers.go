@@ -3,9 +3,13 @@ package backend
 import (
 	"context"
 	"encoding/binary"
+	"encoding/gob"
 	"errors"
 	"fmt"
+	"net"
 	"os"
+	"sort"
+	"strconv"
 	"time"
 
 	gcplogging "cloud.google.com/go/logging"
@@ -16,6 +20,7 @@ import (
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 )
 
@@ -227,24 +232,23 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 				return nil, fmt.Errorf("could not parse POSTGRESQL_PASSWORD string: %v", err)
 			}
 
-			level.Info(logger).Log("msg", "Setting up PostgreSQL storage")
 			db, err = storage.NewPostgreSQL(ctx, logger, pgsqlHostIP, pgsqlUserName, pgsqlPassword)
 			if err != nil {
 				err := fmt.Errorf("NewPostgreSQL() error loading PostgreSQL: %w", err)
 				return nil, err
 			}
+		} else if env == "staging" {
+			db, err = storage.NewSQLite3Staging(ctx, logger)
+			if err != nil {
+				err := fmt.Errorf("NewSQLLite3Staging() error loading sqlite3: %w", err)
+				return nil, err
+			}
 		} else {
-			level.Info(logger).Log("msg", "Setting up SQLite storage")
 			db, err = storage.NewSQLite3(ctx, logger)
 			if err != nil {
 				err := fmt.Errorf("NewSQLite3() error loading sqlite3: %w", err)
 				return nil, err
 			}
-		}
-
-		dbSyncInterval, err := envvar.GetDuration("GOOGLE_CLOUD_SQL_SYNC_INTERVAL", time.Second*10)
-		if err != nil {
-			return nil, err
 		}
 
 		if env == "local" {
@@ -268,11 +272,25 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 			storage.SeedSQLStorage(ctx, db, relayPublicKey, customerID, customerPublicKey)
 		}
 
-		// Start a goroutine to sync from Firestore
-		go func() {
-			ticker := time.NewTicker(dbSyncInterval)
-			db.SyncLoop(ctx, ticker.C)
-		}()
+		if env == "staging" && !pgsql {
+			filePath := envvar.Get("BIN_PATH", "./database.bin")
+			file, err := os.Open(filePath)
+			if err != nil {
+				return nil, fmt.Errorf("could not open database file: %v", err)
+			}
+			defer file.Close()
+
+			database := routing.CreateEmptyDatabaseBinWrapper()
+
+			if err = DecodeBinWrapper(file, database); err != nil {
+				return nil, fmt.Errorf("failed to read database: %v", err)
+			}
+
+			// Seed staging storer
+			if err = storage.SeedSQLStorageStaging(ctx, db, database); err != nil {
+				return nil, fmt.Errorf("failed to seed sql storage for staging: %v", err)
+			}
+		}
 
 		return db, nil
 	}
@@ -337,4 +355,46 @@ func GetStorer(ctx context.Context, logger log.Logger, gcpProjectID string, env 
 	}
 
 	return storer, nil
+}
+
+// Parses a string for a UDP address
+func ParseAddress(input string) *net.UDPAddr {
+	address := &net.UDPAddr{}
+	ip_string, port_string, err := net.SplitHostPort(input)
+	if err != nil {
+		address.IP = net.ParseIP(input)
+		address.Port = 0
+		return address
+	}
+	address.IP = net.ParseIP(ip_string)
+	address.Port, _ = strconv.Atoi(port_string)
+	return address
+}
+
+// Decodes a Database Bin Wrapper from GOB
+func DecodeBinWrapper(file *os.File, binWrapper *routing.DatabaseBinWrapper) error {
+	decoder := gob.NewDecoder(file)
+	err := decoder.Decode(binWrapper)
+	return err
+}
+
+// Sorts a relay array and hash via Name
+func SortAndHashRelayArray(relayArray []routing.Relay, relayHash map[uint64]routing.Relay) {
+	sort.SliceStable(relayArray, func(i, j int) bool {
+		return relayArray[i].Name < relayArray[j].Name
+	})
+
+	for i := range relayArray {
+		relayHash[relayArray[i].ID] = relayArray[i]
+	}
+}
+
+// Prints a list of relays in the relay array to console
+func DisplayLoadedRelays(relayArray []routing.Relay) {
+	fmt.Printf("\n=======================================\n")
+	fmt.Printf("\nLoaded %d relays:\n\n", len(relayArray))
+	for i := range relayArray {
+		fmt.Printf("\t%s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
+	}
+	fmt.Printf("\n=======================================\n")
 }

@@ -3,7 +3,6 @@ package storage
 
 import (
 	"context"
-	"time"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
@@ -11,9 +10,6 @@ import (
 
 type Storer interface {
 	Customer(code string) (routing.Customer, error)
-
-	// TODO: chopping block (unused)
-	CustomerWithName(name string) (routing.Customer, error)
 
 	Customers() []routing.Customer
 
@@ -43,10 +39,6 @@ type Storer interface {
 	// RemoveBuyer removes a buyer with the provided buyer ID from storage and returns an error if the buyer could not be removed.
 	RemoveBuyer(ctx context.Context, id uint64) error
 
-	// SetBuyer updates the buyer in storage with the provided copy and returns an error if the buyer could not be updated.
-	// TODO: chopping block (this is dangerous)
-	SetBuyer(ctx context.Context, buyer routing.Buyer) error
-
 	// UpdateBuyer modifies the givien field for the specified buyer
 	UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error
 
@@ -62,10 +54,6 @@ type Storer interface {
 
 	// RemoveSeller removes a seller with the provided seller ID from storage and returns an error if the seller could not be removed.
 	RemoveSeller(ctx context.Context, id string) error
-
-	// SetSeller updates the seller in storage with the provided copy and returns an error if the seller could not be updated.
-	// TODO: chopping block - this is dangerous
-	SetSeller(ctx context.Context, seller routing.Seller) error
 
 	// UpdateSeller modifies the givien field for the specified buyer
 	UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error
@@ -120,10 +108,6 @@ type Storer interface {
 	// RemoveDatacenter removes a datacenter with the provided datacenter ID from storage and returns an error if the datacenter could not be removed.
 	RemoveDatacenter(ctx context.Context, id uint64) error
 
-	// SetDatacenter updates the datacenter in storage with the provided copy and returns an error if the datacenter could not be updated.
-	// TODO: replace with UpdateDatacenter
-	SetDatacenter(ctx context.Context, datacenter routing.Datacenter) error
-
 	// GetDatacenterMapsForBuyer returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
 	// an empty []routing.DatacenterMap if there are no aliases for that buyerID.
 	GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap
@@ -131,32 +115,12 @@ type Storer interface {
 	// AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
 	AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
 
-	// UpdateDatacenterMap modifies the given map in storage. The full map is required as the
-	// primary key is the buyer ID and the datacenter ID, combined.
-	UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error
-
 	// ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 	// empty dcID returns a list of all maps.
 	ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap
 
 	// RemoveDatacenterMap removes an entry from the DatacenterMaps table
 	RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
-
-	// SetRelayMetadata provides write access to ops metadat (mrc, overage, etc)
-	// TODO: chopping block (obsoleted by UpdateRelay)
-	SetRelayMetadata(ctx context.Context, relay routing.Relay) error
-
-	// CheckSequenceNumber is called in the sync*() operations to see if a sync is required.
-	CheckSequenceNumber(ctx context.Context) (bool, int64, error)
-
-	// IncrementSequenceNumber is used by all methods that make changes to the db
-	IncrementSequenceNumber(ctx context.Context) error
-
-	// SetSequenceNumber is used to setup the db for unit testing
-	SetSequenceNumber(ctx context.Context, value int64) error
-
-	// SyncLoop sets up the ticker for database syncs
-	SyncLoop(ctx context.Context, c <-chan time.Time)
 
 	// New for ConfigService
 
@@ -205,4 +169,10 @@ type Storer interface {
 	// BannedUsers returns the set of banned users for the specified buyer ID. This method
 	// is designed to be used by syncRouteShaders() though it can be used by client code.
 	BannedUsers(buyerID uint64) (map[uint64]bool, error)
+
+	// GetDatabaseBinFileMetaData returns data from the database_bin_meta table
+	GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error)
+
+	// UpdateDatabaseBinFileMetaData updates the specified field in an database_bin_meta table
+	UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error
 }

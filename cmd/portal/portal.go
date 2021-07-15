@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -14,10 +13,12 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/go-github/v36/github"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
+	"golang.org/x/oauth2"
 	"gopkg.in/auth0.v4/management"
 
 	gcplogging "cloud.google.com/go/logging"
@@ -34,6 +35,8 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/middleware"
+	"github.com/networknext/backend/modules/transport/notifications"
 )
 
 var (
@@ -108,25 +111,39 @@ func main() {
 		os.Exit(1)
 	}
 
-	redisPoolTopSessions := storage.NewRedisPool(os.Getenv("REDIS_HOST_TOP_SESSIONS"), 5, 64)
+	// Get redis connections
+	redisHostname := envvar.Get("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisPassword := envvar.Get("REDIS_PASSWORD", "")
+	redisMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 5)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+
+	redisPoolTopSessions := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMap := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_MAP"), 5, 64)
+	redisPoolSessionMap := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionMap); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionMeta := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_META"), 5, 64)
+	redisPoolSessionMeta := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionMeta); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
 		os.Exit(1)
 	}
 
-	redisPoolSessionSlices := storage.NewRedisPool(os.Getenv("REDIS_HOST_SESSION_SLICES"), 5, 64)
+	redisPoolSessionSlices := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionSlices); err != nil {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 		os.Exit(1)
@@ -334,6 +351,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	lookerSecret, ok := os.LookupEnv("LOOKER_SECRET")
+	if !ok {
+		level.Error(logger).Log("err", "env var LOOKER_SECRET must be set")
+		os.Exit(1)
+	}
+
+	githubAccessToken, ok := os.LookupEnv("GITHUB_ACCESS_TOKEN")
+	if !ok {
+		level.Error(logger).Log("err", "env var GITHUB_ACCESS_TOKEN must be set")
+	}
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: githubAccessToken},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+
+	githubClient := github.NewClient(tc)
+
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -348,6 +382,8 @@ func main() {
 		Storage:                db,
 		Env:                    env,
 		Metrics:                serviceMetrics,
+		LookerSecret:           lookerSecret,
+		GithubClient:           githubClient,
 	}
 
 	configService := jsonrpc.ConfigService{
@@ -356,10 +392,9 @@ func main() {
 	}
 
 	go func() {
-		genmapinterval := os.Getenv("SESSION_MAP_INTERVAL")
-		syncInterval, err := time.ParseDuration(genmapinterval)
+		mapGenInterval, err := envvar.GetDuration("SESSION_MAP_INTERVAL", time.Second*1)
 		if err != nil {
-			level.Error(logger).Log("envvar", "SESSION_MAP_INTERVAL", "value", genmapinterval, "err", err)
+			level.Error(logger).Log("envvar", "SESSION_MAP_INTERVAL", "value", mapGenInterval, "err", err)
 			os.Exit(1)
 		}
 
@@ -368,7 +403,23 @@ func main() {
 				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
 				os.Exit(1)
 			}
-			time.Sleep(syncInterval)
+			time.Sleep(mapGenInterval)
+		}
+	}()
+
+	go func() {
+		fetchReleaseNotesInterval, err := envvar.GetDuration("RELEASE_NOTES_INTERVAL", time.Second*30)
+		if err != nil {
+			level.Error(logger).Log("envvar", "RELEASE_NOTES_INTERVAL", "value", fetchReleaseNotesInterval, "err", err)
+			os.Exit(1)
+		}
+
+		for {
+			if err := buyerService.FetchReleaseNotes(); err != nil {
+				level.Error(logger).Log("msg", "error fetching today's release notes", "err", err)
+				os.Exit(1)
+			}
+			time.Sleep(fetchReleaseNotesInterval)
 		}
 	}()
 
@@ -380,51 +431,54 @@ func main() {
 
 	relayMap := jsonrpc.NewRelayStatsMap()
 
-	go func() {
-		relayStatsURL := os.Getenv("RELAY_STATS_URI")
+	// TODO: b0rked, needs to process a csv file from /relays and this GET
+	//       needs to be auth'd...
+	// go func() {
+	// 	relayStatsURL := os.Getenv("RELAY_STATS_URI")
+	// 	fmt.Printf("RELAY_STATS_URI: %s\n", relayStatsURL)
 
-		sleepInterval := time.Second
-		if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
-			if si, err := time.ParseDuration(siStr); err == nil {
-				sleepInterval = si
-			} else {
-				level.Error(logger).Log("msg", "could not parse stats sync sleep interval", "err", err)
-			}
-		}
+	// 	sleepInterval := time.Second
+	// 	if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
+	// 		if si, err := time.ParseDuration(siStr); err == nil {
+	// 			sleepInterval = si
+	// 		} else {
+	// 			level.Error(logger).Log("msg", "could not parse stats sync sleep interval", "err", err)
+	// 		}
+	// 	}
 
-		for {
-			time.Sleep(sleepInterval)
+	// 	for {
+	// 		time.Sleep(sleepInterval)
 
-			res, err := http.Get(relayStatsURL)
-			if err != nil {
-				level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
-				continue
-			}
+	// 		res, err := http.Get(relayStatsURL)
+	// 		if err != nil {
+	// 			level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
+	// 			continue
+	// 		}
 
-			if res.StatusCode != http.StatusOK {
-				level.Error(logger).Log("msg", "bad relay_stats request")
-				continue
-			}
+	// 		if res.StatusCode != http.StatusOK {
+	// 			level.Error(logger).Log("msg", "bad relay_stats request")
+	// 			continue
+	// 		}
 
-			if res.ContentLength == -1 {
-				level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
-				res.Body.Close()
-				continue
-			}
+	// 		if res.ContentLength == -1 {
+	// 			level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
+	// 			res.Body.Close()
+	// 			continue
+	// 		}
 
-			data, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				level.Error(logger).Log("msg", "unable to read response body", "err", err)
-				res.Body.Close()
-				continue
-			}
-			res.Body.Close()
+	// 		data, err := ioutil.ReadAll(res.Body)
+	// 		if err != nil {
+	// 			level.Error(logger).Log("msg", "unable to read response body", "err", err)
+	// 			res.Body.Close()
+	// 			continue
+	// 		}
+	// 		res.Body.Close()
 
-			if err := relayMap.ReadAndSwap(data); err != nil {
-				level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
-			}
-		}
-	}()
+	// 		if err := relayMap.ReadAndSwap(data); err != nil {
+	// 			level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
+	// 		}
+	// 	}
+	// }()
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")
@@ -437,7 +491,7 @@ func main() {
 
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
-			user := i.Request.Context().Value(jsonrpc.Keys.UserKey)
+			user := i.Request.Context().Value(middleware.Keys.UserKey)
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
 
@@ -458,10 +512,10 @@ func main() {
 					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
 						newsletterConsent = consent.(bool)
 					}
-					return jsonrpc.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
+					return middleware.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
 				}
 			}
-			return jsonrpc.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
+			return middleware.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
 		})
 		s.RegisterCodec(json2.NewCodec(), "application/json")
 		s.RegisterService(&jsonrpc.OpsService{
@@ -473,22 +527,80 @@ func main() {
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&configService, "")
+
+		webHookUrl := envvar.Get("SLACK_WEBHOOK_URL", "")
+		if webHookUrl == "" {
+			level.Error(logger).Log("err", "env var SLACK_WEBHOOK_URL must be set")
+			os.Exit(1)
+		}
+
+		channel := envvar.Get("SLACK_CHANNEL", "")
+		if channel == "" {
+			level.Error(logger).Log("err", "env var SLACK_CHANNEL must be set")
+			os.Exit(1)
+		}
+
 		s.RegisterService(&jsonrpc.AuthService{
-			MailChimpManager: transport.MailChimpHandler{
+			MailChimpManager: notifications.MailChimpHandler{
 				HTTPHandler: *http.DefaultClient,
 				MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
 			},
 			Logger:      logger,
 			UserManager: userManager,
 			JobManager:  jobManager,
-			Storage:     db,
+			SlackClient: notifications.SlackClient{
+				WebHookUrl: webHookUrl,
+				UserName:   "PortalBot",
+				Channel:    channel,
+			},
+			Storage: db,
+		}, "")
+
+		relayFrontEnd, ok := os.LookupEnv("RELAY_FRONTEND")
+		if !ok {
+			level.Error(logger).Log("err", "RELAY_FRONTEND environment variable not set")
+			os.Exit(1)
+		}
+
+		relayGateway, ok := os.LookupEnv("RELAY_GATEWAY")
+		if !ok {
+			level.Error(logger).Log("err", "RELAY_GATEWAY environment variable not set")
+			os.Exit(1)
+		}
+
+		relayForwarder, ok := os.LookupEnv("RELAY_FORWARDER")
+		if !ok {
+			level.Error(logger).Log("err", "RELAY_FORWARDER environment variable not set")
+			os.Exit(1)
+		}
+
+		env, ok := os.LookupEnv("ENV")
+		if !ok {
+			level.Error(logger).Log("err", "ENV environment variable not set")
+			os.Exit(1)
+		}
+
+		mondayApiKey, ok := os.LookupEnv("MONDAY_API_KEY")
+		if !ok {
+			level.Error(logger).Log("err", "MONDAY_API_KEY environment variable not set")
+			os.Exit(1)
+		}
+
+		s.RegisterService(&jsonrpc.RelayFleetService{
+			RelayFrontendURI:  relayFrontEnd,
+			RelayGatewayURI:   relayGateway,
+			RelayForwarderURI: relayForwarder,
+			Logger:            logger,
+			Storage:           db,
+			Env:               env,
+			MondayApiKey:      mondayApiKey,
 		}, "")
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", jsonrpc.AuthMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 

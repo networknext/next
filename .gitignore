@@ -18,6 +18,7 @@ relay.env
 # next tool output
 cost.bin
 optimize.bin
+database.bin*
 
 # volatile sqlite3 db required for unit testing
 network_next.db

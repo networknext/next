@@ -1,5 +1,7 @@
 package optimizer
 
+// todo: not today
+/*
 import (
 	"context"
 	"fmt"
@@ -534,3 +536,4 @@ func (o *Optimizer) RelayPublishRunner(relayStatsPublisher analytics.RelayStatsP
 	}
 	return nil
 }
+*/

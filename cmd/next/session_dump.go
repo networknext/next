@@ -11,16 +11,15 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	localjsonrpc "github.com/networknext/backend/modules/transport/jsonrpc"
-	"github.com/ybbus/jsonrpc"
 	"google.golang.org/api/iterator"
 )
 
-func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64) {
+func dumpSession(env Environment, sessionID uint64) {
 
 	// make a call for all the relays (there is no relay "singular" endpoint)
 	var relaysReply localjsonrpc.RelaysReply
 	relaysArg := localjsonrpc.RelaysArgs{} // empty args returns all relays
-	if err := rpcClient.CallFor(&relaysReply, "OpsService.Relays", relaysArg); err != nil {
+	if err := makeRPCCall(env, &relaysReply, "OpsService.Relays", relaysArg); err != nil {
 		handleJSONRPCError(env, err)
 	}
 
@@ -32,7 +31,7 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 	// make a call for the datacenters
 	var dcsReply localjsonrpc.DatacentersReply
 	dcsArgs := localjsonrpc.DatacentersArgs{}
-	if err := rpcClient.CallFor(&dcsReply, "OpsService.Datacenters", dcsArgs); err != nil {
+	if err := makeRPCCall(env, &dcsReply, "OpsService.Datacenters", dcsArgs); err != nil {
 		handleJSONRPCError(env, err)
 	}
 	dcNames := make(map[int64]string)
@@ -119,9 +118,14 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"NearRelayRTTs",
 		"NearRelayJitters",
 		"NearRelayPacketLosses",
+		"LackOfDiversity",
+		"RouteDiversity",
+		"Pro",
+		"PacketLoss",
 		"Tags",
 		"ABTest",
 		"Next",
+		"Initial",
 		"Committed",
 		"Flagged",
 		"Multipath",
@@ -142,6 +146,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		"Debug String",
 		"ClientToServerPacketsSent",
 		"ServerToClientPacketsSent",
+		"UnknownDatacenter",
+		"DatacenterNotEnabled",
+		"BuyerNotLive",
+		"StaleRouteMatrix",
 	})
 
 	for _, billingEntry := range newRows {
@@ -184,7 +192,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 		// NextRelays
 		nextRelays := billingEntry.NextRelaysStrings
 		// TotalPrice
-		totalPrice := fmt.Sprintf("%d", billingEntry.TotalPrice)
+		totalPrice := ""
+		if billingEntry.TotalPrice.Valid {
+			totalPrice = fmt.Sprintf("%d", billingEntry.TotalPrice.Int64)
+		}
 		// ClientToServerPacketsLost
 		clientToServerPacketsLost := ""
 		if billingEntry.ClientToServerPacketsLost.Valid {
@@ -201,6 +212,11 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			if billingEntry.Next.Bool {
 				committed = "true"
 			}
+		}
+
+		initial := "false"
+		if billingEntry.Initial {
+			initial = "true"
 		}
 		// Flagged
 		flagged := ""
@@ -453,6 +469,51 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			serverToClientPacketsSent = fmt.Sprintf("%d", billingEntry.ServerToClientPacketsSent.Int64)
 		}
 
+		// LackOfDiversity,
+		lackOfDiversity := ""
+		if billingEntry.LackOfDiversity.Valid {
+			lackOfDiversity = fmt.Sprintf("%t", billingEntry.LackOfDiversity.Bool)
+		}
+		// PacketLoss
+		packetLoss := ""
+		if billingEntry.PacketLoss.Valid {
+			packetLoss = fmt.Sprintf("%5.5f", billingEntry.PacketLoss.Float64)
+		}
+		// Pro
+		pro := ""
+		if billingEntry.Pro.Valid {
+			pro = fmt.Sprintf("%t", billingEntry.Pro.Bool)
+		}
+		// RouteDiversity
+		routeDiversity := ""
+		if billingEntry.RouteDiversity.Valid {
+			routeDiversity = fmt.Sprintf("%d", billingEntry.RouteDiversity.Int64)
+		}
+
+		// UnknownDatacenter
+		unknownDatacenter := ""
+		if billingEntry.UnknownDatacenter.Valid {
+			unknownDatacenter = fmt.Sprintf("%t", billingEntry.UnknownDatacenter.Bool)
+		}
+
+		// DatacenterNotEnabled
+		datacenterNotEnabled := ""
+		if billingEntry.DatacenterNotEnabled.Valid {
+			datacenterNotEnabled = fmt.Sprintf("%t", billingEntry.DatacenterNotEnabled.Bool)
+		}
+
+		// BuyerNotLive
+		buyerNotLive := ""
+		if billingEntry.BuyerNotLive.Valid {
+			buyerNotLive = fmt.Sprintf("%t", billingEntry.BuyerNotLive.Bool)
+		}
+
+		// StaleRouteMatrix
+		staleRouteMatrix := ""
+		if billingEntry.StaleRouteMatrix.Valid {
+			staleRouteMatrix = fmt.Sprintf("%t", billingEntry.StaleRouteMatrix.Bool)
+		}
+
 		bqBillingDataEntryCSV = append(bqBillingDataEntryCSV, []string{
 			sliceNumber,
 			timeStamp,
@@ -493,9 +554,14 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			nearRelayRTTs,
 			nearRelayJitters,
 			nearRelayPacketLosses,
+			lackOfDiversity,
+			routeDiversity,
+			pro,
+			packetLoss,
 			tags,
 			abTest,
 			next,
+			initial,
 			committed,
 			flagged,
 			multipath,
@@ -516,6 +582,10 @@ func dumpSession(rpcClient jsonrpc.RPCClient, env Environment, sessionID uint64)
 			debug,
 			clientToServerPacketsSent,
 			serverToClientPacketsSent,
+			unknownDatacenter,
+			datacenterNotEnabled,
+			buyerNotLive,
+			staleRouteMatrix,
 		})
 	}
 
@@ -564,6 +634,7 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 	totalPrice,
 	clientToServerPacketsLost,
 	serverToClientPacketsLost,
+	initial,
 	committed,
 	flagged,
 	multipath,
@@ -612,7 +683,15 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 	routeChanged,
 	commitVeto,
 	clientToServerPacketsSent,
-	serverToClientPacketsSent
+	serverToClientPacketsSent,
+	lackOfDiversity,
+	packetLoss,
+	pro,
+	routeDiversity,
+	unknownDatacenter,
+	datacenterNotEnabled,
+	buyerNotLive,
+	staleRouteMatrix
     from `))
 
 	if env.Name != "prod" && env.Name != "dev" && env.Name != "staging" {
@@ -669,6 +748,7 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 
 		it, err := job.Read(ctx)
 		if err != nil {
+			handleRunTimeError(fmt.Sprintf("GetAllSessionBillingInfo() job.Read() error: %v", err), 1)
 			return nil, err
 		}
 
@@ -681,6 +761,7 @@ func GetAllSessionBillingInfo(sessionID int64, env Environment) ([]BigQueryBilli
 				break
 			}
 			if err != nil {
+				handleRunTimeError(fmt.Sprintf("GetAllSessionBillingInfo() BigQuery iterator error: %v", err), 1)
 				return nil, err
 			}
 			rows = append(rows, rec)

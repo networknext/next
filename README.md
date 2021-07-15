@@ -22,21 +22,44 @@ This is a monorepo that contains the Network Next backend.
 4. Once your pull request has been reviewed merge it into `master`
 5. To deploy to dev, merge either your branch or `master` into the `dev` branch
 6. Semaphore will build your PR and copy artifacts to the google cloud gs://dev_artifacts bucket automatically.
-7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. For dev there are managed instances for `analytics`, `billing`, `portal`, and `server_backend`.
-8. The relay backend must be deployed with the make tool via `make deploy-relay-backend-dev`.
+7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. For dev, there are managed instances for all services except the `relay_backend` and `portal_cruncher`.
+8. The relay backends are deployed with the make tool via `make deploy-relay-backend-dev-1` and `make deploy-relay-backend-dev-2`. Wait 5 - 10 minutes between each deploy to avoid sessions falling back to direct.
+9. The portal crunchers are deployed with the make tool via `make deploy-portal-cruncher-1` and `make deploy-portal-cruncher-2`.
 
 ### Production Release
 
 1. Ensure tests pass locally as a sanity check
 2. Create a PR to push your changes to the "prod" branch
-5. Semaphore will build your PR and copy artifacts to the google cloud gs://prod_artifacts bucket automatically.
-4. Manually trigger a deploy to the relay backend with the make tool via `make deploy-relay-backend-prod`.
-5. Manually trigger a deploy to the portal cruncher with the make tool via `make deploy-portal-cruncher-prod`.
-6. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code, in this order: 
-	1. portal
-	2. billing
-	3. analytics
-	3. server_backend
+3. Semaphore will build your PR and copy artifacts to the google cloud gs://prod_artifacts bucket automatically.
+4. Deploy the Server Backend half of the backend first, since it only relies on the route matrix. Deploy supporting services in order of consumer to producer, and roll the Server Backend MIG as the last step:
+	
+	----
+	1. Portal (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
+	2. Portal Cruncher (`make deploy-portal-cruncher-prod-#`)
+	3. Ghost Army (`make deploy-ghost-army-prod`)
+	----
+	1. Billing (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
+	----
+	1. API (Rolling Replace, Maximum Surge 2, Maximum Unavailable 0, Minimum Wait Time 0)
+	2. Vanity (`make deploy-vanity-prod-#`)
+	---- 
+	1. Server Backend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
+		- Note: there is a 1 hour connection drain on server backend instances to reduce fallbacks to direct.
+		- Once the new server backend instances are healthy and running, force the UDP load balancer to stop sending traffic to the old instance by setting the metadata field of each server backend instance. Use the template below to set the metadata value per old instance before the connection drain ends, and make sure you have the correct permissions by setting `GOOGLE_APPLICATION_CREDENTIALS` to the prod credentials.
+			- Example: `gcloud compute instances add-metadata server-backend-mig-6mr0 --metadata connection-drain=true --project=network-next-v3-prod`
+5. Deploy the Relay Backend half of the backend next because it provides the route matrix. If any changes were made to the route matrix, wait for the Server Backend connection drain to finish before proceeding.
+	1. Analytics (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
+	2. Relay Frontend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
+	3. Relay Backend (`make deploy-relay-backend-prod-1`, and after 10 minutes, `make deploy-relay-backend-prod-2`)
+		- Check the `/status` and `/relay_dashboard` of Relay Backend 1 to ensure routes are produced before deploying Relay Backend 2
+	4. Relay Gateway (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
+	5. Relay Forwarder (`make deploy-relay-forwarder-prod`)
+6. The following services can be deployed at any time:
+	1. Relay Pusher (`make deploy-relay-pusher-prod`)
+	----
+	1. Beacon Inserter (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
+	2. Beacon (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30)
+
 
 ## Development
 
@@ -166,9 +189,9 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	`sudo apt install google-cloud-sdk-pubsub-emulator`
 
 17. Install SQLite3
-	`sudo apt install sqlite3`  
+	`sudo apt install sqlite3`
 
-	With the sqlite3 package installed no other setup is required to use sqlite3 for unit testing. 
+	With the sqlite3 package installed no other setup is required to use sqlite3 for unit testing.
 
 18. Run tests to confirm everything is working properly
 	`make test`
@@ -178,24 +201,19 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 
 A good test to see if everything works and is installed is to run the "Happy Path". For this you will need to run the following commands **in separate terminal sessions**.
 
-1. `make BACKEND_LOG_LEVEL=info dev-relay-backend`: run the relay backend
-2. `make dev-multi-relays`: this will run 10 instances of a relay and each will register themselves with the relay backend
-	1. Issues with `pkg-config` not finding `libgtop-2.0` (Linux)
-		1. Install gtk, gtop2, and rsvg2 `sudo apt-get install libgtk-3-dev libgtop2-dev librsvg2-dev`
-		2. Find the path where libgtop-2.0 was placed `locate libgtop-2.0`
-		3. Add that path to your `PKG_CONFIG_PATH` environment variable `export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/bin/pkg-config`
-	2. Issues with boost `boost/beast.hpp: No such file or directory` (Linux)
-		1. Clone boost directly from its repo outside of this directory `git clone --recursive https://github.com/boostorg/boost.git`
-		2. Enter the directory `cd boost`
-		3. Use the bootstrap setup with the prefix for where the parent of the `include` directory for header files is located (_i.e._ `/usr/`) `./bootstrap.sh --prefix=/usr/`
-		4. Build boost `./b2`
-		5. Install boost `sudo ./b2 install`
-3. `redis-cli flushall &&make BACKEND_LOG_LEVEL=info dev-server-backend`: this will clear your local redis completely to start fresh and then run the server backend and start pulling route information from the relay backend every second
-4. `make dev-portal-cruncher`: this will run the portal cruncher service that takes portal data from the server backend and inserts it into redis for the portal to use
-5. `make dev-server`: this will run a fake game server and register itself with the server backend
-6. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-multi-clients` to create 20 client sessions.
-7. `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit http://127.0.0.1:20000 to view currently connected sessions.
-8. OPTIONAL - For the the Vue rewrite development run `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" CORS="false" dev-portal`. This will launch the backend to be used primarily for the RPC endpoints. You will then need to clone the portal repo, https://github.com/networknext/portal, and run `npm run serve`. This will launch the portal at http://127.0.0.1:8080
+1. `./next select local`: setup local environment
+2. `make dev-relay-gateway`: run the relay gateway
+3. `make dev-relay-backend-1`: run the relay backend 1 (require redis-server)
+4. `make dev-relay-backend-2`: run the relay backend 2 (require redis-server)
+5. `make dev-relay-frontend`: run the relay frontend (require redis-server)
+6. `make dev-relay`: this will run a reference relay that will talk to the relay gateway. You can also run `make dev-relays` to create 10 relays.
+7. `make dev-server-backend`: run the server backend
+8. `make dev-server`: this will run a fake game server and register itself with the server backend
+9. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-clients` to create 10 client sessions.
+10. `make dev-portal-cruncher-1`: run portal cruncher 1
+11. `make dev-portal-cruncher-2`: run portal cruncher 2
+12. `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" dev-portal`: this will run the Portal RPC API and Portal UI. You can visit http://localhost:20000 to view currently connected sessions.
+13. OPTIONAL - For the the Vue rewrite development run `make JWT_AUDIENCE="Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL" CORS="false" dev-portal`. This will launch the backend to be used primarily for the RPC endpoints. You will then need to clone the portal repo, https://github.com/networknext/portal, and run `npm run serve`. This will launch the portal at http://localhost:8080
 
 You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
 
@@ -225,28 +243,16 @@ nn=> \i hp-pgsql-seed.sql
 
 At this point your local PostgreSQL server is ready to go. Note: installing and setting up a local PostgreSQL server is beyond the scope of this document.  
 
-## Local Billing
+## Local Billing, Analytics, Beacon Inserter, 
 
-It is also possible to locally debug what data is being sent to the `billing` service. To verify that the data being sent to `billing` is correct:
+It is also possible to locally debug what data is being sent to the `billing`, `analytics`, or `beacon_inserter` services. To verify that the data being sent to the service is correct:
 
 1. Make sure you have the pubsub emulator installed (instructions are in [Recommended Setup](#Recommended-Setup))
 2. Define `PUBSUB_EMULATOR_HOST` in the makefile or in the command (ex. define it as `127.0.0.1:9000`)
 3. Along with the rest of the [Happy Path](#Running-the-"Happy-Path"), run the Google Pub/Sub Emulator with `gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000`
-3. run `make BACKEND_LOG_LEVEL=debug dev-billing`
+3. run `make BACKEND_LOG_LEVEL=debug dev-billing`, `make BACKEND_LOG_LEVEL=debug dev-analytics`, or `make BACKEND_LOG_LEVEL=debug dev-beacon-inserter`
 
-This will use a local billing implementation to print out the billing entry to the console window.
-
-## Backend
-
-All of these services are controlled and deployed by us.
-
-- [`cmd/portal`](cmd/portal)
-- [`cmd/relay`](cmd/relay)
-- [`cmd/relay_backend`](cmd/relay_backend)
-- [`cmd/server_backend`](cmd/server_backend)
-- [`cmd/portal_cruncher`](cmd/portal_cruncher)
-- [`cmd/billing`](cmd/billing)
-- [`cmd/analytics`](cmd/analytics)
+This will use a local implementation to print out the entry to the console window.
 
 ## SDK
 

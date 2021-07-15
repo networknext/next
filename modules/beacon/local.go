@@ -33,3 +33,5 @@ func (local *LocalBeaconer) Submit(ctx context.Context, entry *transport.NextBea
 
 	return nil
 }
+
+func (local *LocalBeaconer) Close() {}

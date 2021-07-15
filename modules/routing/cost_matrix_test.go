@@ -31,7 +31,8 @@ func getCostMatrix(t *testing.T) routing.CostMatrix {
 func TestCostMatrixSerialize(t *testing.T) {
 	expected := getCostMatrix(t)
 
-	ws, err := encoding.CreateWriteStream(10000)
+	buffer := make([]byte, 10000)
+	ws, err := encoding.CreateWriteStream(buffer)
 	assert.NoError(t, err)
 	err = expected.Serialize(ws)
 	assert.NoError(t, err)

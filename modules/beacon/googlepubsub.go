@@ -133,7 +133,7 @@ func (beaconer *GooglePubSubBeaconer) Submit(ctx context.Context, entry *transpo
 	return nil
 }
 
-func (beaconer *GooglePubSubBeaconer) Stop() {
+func (beaconer *GooglePubSubBeaconer) Close() {
 	for _, client := range beaconer.clients {
 		client.CancelContextFunc()
 	}

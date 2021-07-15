@@ -16,6 +16,8 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-kit/kit/log"
@@ -23,6 +25,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
@@ -44,7 +47,8 @@ func main() {
 
 	fmt.Printf("billing: Git Hash: %s - Commit: %s\n", sha, commitMessage)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
 
 	// Configure local logging
 	logger := log.NewLogfmtLogger(os.Stdout)
@@ -104,8 +108,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create a no-op biller
+	// Get billing feature config
+	var featureConfig config.Config
+	envVarConfig := config.NewEnvVarConfig([]config.Feature{
+		{
+			Name:        "FEATURE_BILLING",
+			Enum:        config.FEATURE_BILLING,
+			Value:       true,
+			Description: "Receives BillingEntry types from Google Pub/Sub and writes them to BigQuery",
+		},
+		{
+			Name:        "FEATURE_BILLING2",
+			Enum:        config.FEATURE_BILLING2,
+			Value:       false,
+			Description: "Receives BillingEntry2 types from Google Pub/Sub and writes them to BigQuery",
+		},
+	})
+	featureConfig = envVarConfig
+	featureBilling := featureConfig.FeatureEnabled(config.FEATURE_BILLING)
+	featureBilling2 := featureConfig.FeatureEnabled(config.FEATURE_BILLING2)
+
+	// Create no-op billers
 	var biller billing.Biller = &billing.NoOpBiller{}
+	var biller2 billing.Biller = &billing.NoOpBiller{}
 
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
@@ -189,7 +214,7 @@ func main() {
 
 	if gcpOK {
 		// Google BigQuery
-		{
+		if featureBilling {
 			if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
 				batchSize := billing.DefaultBigQueryBatchSize
 				if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
@@ -201,24 +226,64 @@ func main() {
 					batchSize = int(s)
 				}
 
-				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+				// Pass context without cancel to ensure writing continues even past reception of shutdown signal
+				bqClient, err := bigquery.NewClient(context.Background(), gcpProjectID)
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
 				}
 				b := billing.GoogleBigQueryClient{
-					Metrics:       &billingServiceMetrics.BillingMetrics,
-					Logger:        logger,
-					TableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-					BatchSize:     batchSize,
+					Metrics:        &billingServiceMetrics.BillingMetrics,
+					Logger:         logger,
+					TableInserter:  bqClient.Dataset(billingDataset).Table(os.Getenv("GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+					BatchSize:      batchSize,
+					FeatureBilling: featureBilling,
 				}
 
 				// Set the Biller to BigQuery
 				biller = &b
 
 				// Start the background WriteLoop to batch write to BigQuery
+				wg.Add(1)
 				go func() {
-					b.WriteLoop(ctx)
+					b.WriteLoop(ctx, wg)
+				}()
+			}
+		}
+
+		if featureBilling2 {
+			if billingDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_BILLING"); ok {
+				batchSize := billing.DefaultBigQueryBatchSize
+				if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_BATCH_SIZE"); ok {
+					s, err := strconv.ParseInt(size, 10, 64)
+					if err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1)
+					}
+					batchSize = int(s)
+				}
+
+				// Pass context without cancel to ensure writing continues even past reception of shutdown signal
+				bqClient, err := bigquery.NewClient(context.Background(), gcpProjectID)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+				b := billing.GoogleBigQueryClient{
+					Metrics:         &billingServiceMetrics.BillingMetrics,
+					Logger:          logger,
+					TableInserter:   bqClient.Dataset(billingDataset).Table(os.Getenv("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+					BatchSize:       batchSize,
+					FeatureBilling2: featureBilling2,
+				}
+
+				// Set the Biller to BigQuery
+				biller2 = &b
+
+				// Start the background WriteLoop to batch write to BigQuery
+				wg.Add(1)
+				go func() {
+					b.WriteLoop2(ctx, wg)
 				}()
 			}
 		}
@@ -234,25 +299,62 @@ func main() {
 			Metrics: &billingServiceMetrics.BillingMetrics,
 		}
 
+		biller2 = &billing.LocalBiller{
+			Logger:  logger,
+			Metrics: &billingServiceMetrics.BillingMetrics,
+		}
+
 		level.Info(logger).Log("msg", "Detected pubsub emulator")
 	}
 
 	if gcpOK || emulatorOK {
 		// Google pubsub forwarder
 		{
-			topicName := "billing"
-			subscriptionName := "billing"
-
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
-			defer cancelFunc()
-
-			pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName)
+			numRecvGoroutines, err := envvar.GetInt("NUM_RECEIVE_GOROUTINES", 10)
 			if err != nil {
 				level.Error(logger).Log("err", err)
 				os.Exit(1)
 			}
 
-			go pubsubForwarder.Forward(ctx)
+			if featureBilling {
+
+				level.Debug(logger).Log("msg", "Billing enabled")
+
+				topicName := envvar.Get("BILLING_TOPIC_NAME", "billing")
+				subscriptionName := envvar.Get("BILLING_SUBSCRIPTION_NAME", "billing")
+
+				pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+				defer cancelFunc()
+
+				pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+
+				wg.Add(1)
+				go pubsubForwarder.Forward(ctx, wg)
+			}
+
+			if featureBilling2 {
+
+				level.Debug(logger).Log("msg", "Billing2 enabled")
+
+				topicName := envvar.Get("FEATURE_BILLING2_TOPIC_NAME", "billing2")
+				subscriptionName := envvar.Get("FEATURE_BILLING2_SUBSCRIPTION_NAME", "billing2")
+
+				pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+				defer cancelFunc()
+
+				pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller2, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
+				if err != nil {
+					level.Error(logger).Log("err", err)
+					os.Exit(1)
+				}
+
+				wg.Add(1)
+				go pubsubForwarder.Forward2(ctx, wg)
+			}
 		}
 	}
 
@@ -280,6 +382,14 @@ func main() {
 				fmt.Printf("%d billing entries with NaN\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingEntriesWithNaN.Value()))
 				fmt.Printf("%d invalid billing entries\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingInvalidEntries.Value()))
 				fmt.Printf("%d billing entry write failures\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.BillingWriteFailure.Value()))
+				fmt.Printf("%d billing entry 2s received\n", int(billingServiceMetrics.BillingMetrics.Entries2Received.Value()))
+				fmt.Printf("%d billing entry 2s submitted\n", int(billingServiceMetrics.BillingMetrics.Entries2Submitted.Value()))
+				fmt.Printf("%d billing entry 2s queued\n", int(billingServiceMetrics.BillingMetrics.Entries2Queued.Value()))
+				fmt.Printf("%d billing entry 2s flushed\n", int(billingServiceMetrics.BillingMetrics.Entries2Flushed.Value()))
+				fmt.Printf("%d billing entry 2s with NaN\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2EntriesWithNaN.Value()))
+				fmt.Printf("%d invalid billing entry 2s\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2InvalidEntries.Value()))
+				fmt.Printf("%d billing entry 2 read failures\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2ReadFailure.Value()))
+				fmt.Printf("%d billing entry 2 write failures\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2WriteFailure.Value()))
 				fmt.Printf("-----------------------------\n")
 
 				time.Sleep(time.Second * 10)
@@ -319,10 +429,19 @@ func main() {
 		}()
 	}
 
-	// Wait for interrupt signal
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
+	<-termChan
+	level.Debug(logger).Log("msg", "Received shutdown signal")
+	fmt.Println("Received shutdown signal.")
+
+	cancel()
+	// Wait for essential goroutines to finish up
+	wg.Wait()
+
+	level.Debug(logger).Log("msg", "Successfully shutdown.")
+	fmt.Println("Successfully shutdown.")
 }
 
 func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
