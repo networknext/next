@@ -67,6 +67,7 @@ func main() {
 	bash("cp source/*.h %s/source", basedir)
 	bash("cp source/*.cpp %s/source", basedir)
 
+	/*
 	// copy across the debug win64 libraries
 	libdir := "lib/Win64/Debug"
 	bash("mkdir -p %s/%s", basedir, libdir)
@@ -186,6 +187,7 @@ func main() {
 	bash("cp %s/next-nx32-%s.nro %s/%s/next-nx32-%s.nro", libdir, version, basedir, libdir, version)
 	bash("cp %s/next-nx32-%s.nrr %s/%s/next-nx32-%s.nrr", libdir, version, basedir, libdir, version)
 	bash("cp %s/next-nx32-%s.nrs %s/%s/next-nx32-%s.nrs", libdir, version, basedir, libdir, version)
+	*/
 
 	// copy across the win64 build solution
 	bash("mkdir -p %s/build/win64", basedir)
@@ -281,6 +283,7 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_switch.h", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/source/next_switch.cpp", basedir))
 
+	/*
 	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Debug/next-win64-%s.lib", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Debug/next-win64-%s.pdb", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/Win64/Debug/next-win64-%s.dll", basedir, version))
@@ -342,6 +345,7 @@ func main() {
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX32/Release/next-nx32-%s.nro", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX32/Release/next-nx32-%s.nrr", basedir, version))
 	manifest = append(manifest, fmt.Sprintf("%s/lib/NintendoSwitch-NX32/Release/next-nx32-%s.nrs", basedir, version))
+	*/
 
 	manifest = append(manifest, fmt.Sprintf("%s/build/win64/build_win64.sln", basedir))
 	manifest = append(manifest, fmt.Sprintf("%s/build/win64/next.vcxproj", basedir))

@@ -10395,7 +10395,7 @@ bool next_autodetect_google( char * output )
 
     char zone[256];
     zone[0] = '\0';
-    file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null", "r" );
+    file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -10466,7 +10466,7 @@ bool next_autodetect_google( char * output )
     // look up google zone -> network next datacenter via mapping in google cloud storage "google.txt" file
 
     bool found = false;
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 5 -vs 2>/dev/null", "r" );
+    file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -10512,7 +10512,7 @@ bool next_autodetect_amazon( char * output )
 
     char azid[256];
     azid[0] = '\0';
-    file = popen( "curl \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 1 -vs 2>/dev/null", "r" );
+    file = popen( "curl \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -10552,7 +10552,7 @@ bool next_autodetect_amazon( char * output )
     // look up AZID -> network next datacenter via mapping in google cloud storage "amazon.txt" file
 
     bool found = false;
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/amazon.txt --max-time 5 -vs 2>/dev/null", "r" );
+    file = popen( "curl https://storage.googleapis.com/network-next-sdk/amazon.txt --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -10775,7 +10775,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     char multiplay_line[1024];
     char multiplay_buffer[64*1024];
     multiplay_buffer[0] = '\0';
-    file = popen( "curl https://storage.googleapis.com/network-next-sdk/multiplay.txt --max-time 5 -vs 2>/dev/null", "r" );
+    file = popen( "curl https://storage.googleapis.com/network-next-sdk/multiplay.txt --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
