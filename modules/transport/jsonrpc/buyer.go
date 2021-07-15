@@ -2644,7 +2644,7 @@ func (s *BuyersService) FetchReleaseNotes() error {
 		embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
 
 		notification := notifications.NewReleaseNotesNotification()
-		notification.Title = fmt.Sprintf("Service updates for the month of %s", list.GetDescription())
+		notification.Title = list.GetDescription()
 		notification.EmbedHTML = embedHTML
 		notification.CSSURL = cssURL
 
