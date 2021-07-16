@@ -2405,6 +2405,22 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 		},
 	}
 
+	var serversCommand = &ffcli.Command{
+		Name:       "servers",
+		ShortUsage: "next servers <serverBackendIP>...",
+		ShortHelp:  "Saves a JSON of all live servers connected to each server backend",
+		Exec: func(_ context.Context, args []string) error {
+
+			if len(args) == 0 {
+				return flag.ErrHelp
+			}
+
+			getLiveServers(env, args)
+
+			return nil
+		},
+	}
+
 	var commands = []*ffcli.Command{
 		authCommand,
 		selectCommand,
@@ -2435,6 +2451,7 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 		unsignedCommand,
 		hashCommand,
 		databaseCommand,
+		serversCommand,
 	}
 
 	root := &ffcli.Command{
