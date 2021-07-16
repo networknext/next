@@ -8,8 +8,9 @@ import (
 )
 
 type ServerInfo struct {
-	Timestamp    uint64
-	DatacenterID string
+	Timestamp      uint64
+	DatacenterID   string
+	DatacenterName string
 }
 
 type ServerTracker struct {
@@ -26,7 +27,7 @@ func NewServerTracker() *ServerTracker {
 	return tracker
 }
 
-func (t *ServerTracker) AddServer(buyerID uint64, datacenterID uint64, serverAddress net.UDPAddr) {
+func (t *ServerTracker) AddServer(buyerID uint64, datacenterID uint64, serverAddress net.UDPAddr, datacenterName string) {
 	var exists bool
 
 	t.TrackerMutex.RLock()
@@ -39,8 +40,9 @@ func (t *ServerTracker) AddServer(buyerID uint64, datacenterID uint64, serverAdd
 		// Add the new buyer to the top-level list
 		var addressList = make(map[string]ServerInfo)
 		addressList[serverAddress.String()] = ServerInfo{
-			Timestamp:    uint64(time.Now().Unix()),
-			DatacenterID: fmt.Sprintf("%016x", datacenterID),
+			Timestamp:      uint64(time.Now().Unix()),
+			DatacenterID:   fmt.Sprintf("%016x", datacenterID),
+			DatacenterName: datacenterName,
 		}
 
 		t.TrackerMutex.Lock()
@@ -51,11 +53,18 @@ func (t *ServerTracker) AddServer(buyerID uint64, datacenterID uint64, serverAdd
 
 	// Buyer already exists, add server to existing list
 
+	t.TrackerMutex.RLock()
+
+	prevInfo := t.Tracker[fmt.Sprintf("%016x", buyerID)][serverAddress.String()]
+
+	t.TrackerMutex.RUnlock()
+
 	t.TrackerMutex.Lock()
 
 	t.Tracker[fmt.Sprintf("%016x", buyerID)][serverAddress.String()] = ServerInfo{
-		Timestamp:    uint64(time.Now().Unix()),
-		DatacenterID: fmt.Sprintf("%016x", datacenterID),
+		Timestamp:      uint64(time.Now().Unix()),
+		DatacenterID:   fmt.Sprintf("%016x", datacenterID),
+		DatacenterName: prevInfo.DatacenterName,
 	}
 
 	t.TrackerMutex.Unlock()
