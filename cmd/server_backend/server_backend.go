@@ -759,7 +759,7 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, backendMetrics.ServerInitMetrics)
+	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, serverTracker, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, serverTracker, backendMetrics.ServerUpdateMetrics)
 	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
 
