@@ -13,6 +13,7 @@ type ServerInfo struct {
 	DatacenterName string
 }
 
+// Maps a buyerID to a map of Server Address to ServerInfo
 type ServerTracker struct {
 	Tracker      map[string]map[string]ServerInfo
 	TrackerMutex sync.RWMutex
@@ -30,23 +31,27 @@ func NewServerTracker() *ServerTracker {
 func (t *ServerTracker) AddServer(buyerID uint64, datacenterID uint64, serverAddress net.UDPAddr, datacenterName string) {
 	var exists bool
 
+	buyerHexID := fmt.Sprintf("%016x", buyerID)
+	datacenterHexID := fmt.Sprintf("%016x", datacenterID)
+	serverAddressStr := serverAddress.String()
+
 	t.TrackerMutex.RLock()
 
-	_, exists = t.Tracker[fmt.Sprintf("%016x", buyerID)]
+	_, exists = t.Tracker[buyerHexID]
 
 	t.TrackerMutex.RUnlock()
 
 	if !exists {
 		// Add the new buyer to the top-level list
 		var addressList = make(map[string]ServerInfo)
-		addressList[serverAddress.String()] = ServerInfo{
+		addressList[serverAddressStr] = ServerInfo{
 			Timestamp:      uint64(time.Now().Unix()),
-			DatacenterID:   fmt.Sprintf("%016x", datacenterID),
+			DatacenterID:   datacenterHexID,
 			DatacenterName: datacenterName,
 		}
 
 		t.TrackerMutex.Lock()
-		t.Tracker[fmt.Sprintf("%016x", buyerID)] = addressList
+		t.Tracker[buyerHexID] = addressList
 		t.TrackerMutex.Unlock()
 		return
 	}
@@ -55,15 +60,31 @@ func (t *ServerTracker) AddServer(buyerID uint64, datacenterID uint64, serverAdd
 
 	t.TrackerMutex.RLock()
 
-	prevInfo := t.Tracker[fmt.Sprintf("%016x", buyerID)][serverAddress.String()]
+	prevInfo, serverExists := t.Tracker[buyerHexID][serverAddressStr]
 
 	t.TrackerMutex.RUnlock()
 
+	if !serverExists {
+		// Add the new server to this buyer
+		t.TrackerMutex.Lock()
+
+		t.Tracker[buyerHexID][serverAddressStr] = ServerInfo{
+			Timestamp:      uint64(time.Now().Unix()),
+			DatacenterID:   datacenterHexID,
+			DatacenterName: datacenterName,
+		}
+
+		t.TrackerMutex.Unlock()
+
+		return
+	}
+
+	// Server already exists, update timestamp
 	t.TrackerMutex.Lock()
 
-	t.Tracker[fmt.Sprintf("%016x", buyerID)][serverAddress.String()] = ServerInfo{
+	t.Tracker[buyerHexID][serverAddressStr] = ServerInfo{
 		Timestamp:      uint64(time.Now().Unix()),
-		DatacenterID:   fmt.Sprintf("%016x", datacenterID),
+		DatacenterID:   prevInfo.DatacenterID,
 		DatacenterName: prevInfo.DatacenterName,
 	}
 
