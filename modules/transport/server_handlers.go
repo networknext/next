@@ -242,13 +242,17 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Pos
 		}
 		PostSessionHandler.SendPortalCounts(countData)
 
-		// Track which servers are sending updates
-		ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress, "")
-
 		if !datacenterExists(database, packet.DatacenterID) {
 			core.Debug("datacenter does not exist %x", packet.DatacenterID)
 			metrics.DatacenterNotFound.Add(1)
+			// Track this server with unknown datacenter name
+			ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress, "unknown_update")
 			return
+		}
+
+		// The server is a known datacenter, track it using the correct datacenter name from the bin file
+		if datacenter, exists := database.DatacenterMap[datacenterID]; exists {
+			ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress, datacenter.Name)
 		}
 
 		core.Debug("server is in datacenter %x", packet.DatacenterID)
