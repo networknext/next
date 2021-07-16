@@ -598,6 +598,10 @@ func main() {
 			MondayApiKey:      mondayApiKey,
 		}, "")
 
+		s.RegisterService(&jsonrpc.LiveServerService{
+			Logger: logger,
+		}, "")
+
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
 		r := mux.NewRouter()
