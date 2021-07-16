@@ -656,7 +656,7 @@ func mainReturnWithCode() int {
 	{
 		allowedOrigins := envvar.Get("ALLOWED_ORIGINS", "")
 		if allowedOrigins == "" {
-			core.Error("unable to parse ALLOWED_ORIGINS environment variable")
+			core.Debug("unable to parse ALLOWED_ORIGINS environment variable")
 		}
 
 		audience := envvar.Get("JWT_AUDIENCE", "")
