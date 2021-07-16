@@ -272,6 +272,82 @@ func TestServerInitHandlerFunc_Success(t *testing.T) {
 	assert.Equal(t, float64(0), metrics.ServerInitMetrics.DatacenterNotFound.Value())
 }
 
+func TestServerInitHandlerFunc_ServerTracker_DatacenterNotFound_WithoutName(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	datacenterName := ""
+	datacenterID := crypto.HashID(datacenterName)
+
+	serverTracker := storage.NewServerTracker()
+
+	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, privateKey)
+
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.ServerInitResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.ServerInitMetrics.DatacenterNotFound.Value())
+
+	assert.NotEmpty(t, serverTracker.Tracker)
+
+	buyerHexID := fmt.Sprintf("%016x", buyerID)
+	for _, serverInfo := range serverTracker.Tracker[buyerHexID] {
+		assert.Equal(t, serverInfo.DatacenterID, fmt.Sprintf("%016x", datacenterID))
+		assert.Equal(t, serverInfo.DatacenterName, "unknown_init")
+	}
+}
+
+func TestServerInitHandlerFunc_ServerTracker_DatacenterNotFound_WithName(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	datacenterName := "datacenter.name"
+	datacenterID := crypto.HashID(datacenterName)
+
+	serverTracker := storage.NewServerTracker()
+
+	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, privateKey)
+
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.ServerInitResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.ServerInitMetrics.DatacenterNotFound.Value())
+
+	assert.NotEmpty(t, serverTracker.Tracker)
+
+	buyerHexID := fmt.Sprintf("%016x", buyerID)
+	for _, serverInfo := range serverTracker.Tracker[buyerHexID] {
+		assert.Equal(t, serverInfo.DatacenterID, fmt.Sprintf("%016x", datacenterID))
+		assert.Equal(t, serverInfo.DatacenterName, datacenterName)
+	}
+}
+
 // Server update handler tests
 
 func TestServerUpdateHandlerFunc_BuyerNotFound(t *testing.T) {
@@ -440,6 +516,74 @@ func TestServerUpdateHandlerFunc_Success(t *testing.T) {
 	})
 
 	assert.Equal(t, float64(0), metrics.ServerUpdateMetrics.DatacenterNotFound.Value())
+}
+
+func TestServerUpdateHandlerFunc_ServerTracker_DatacenterNotFound(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	datacenterName := "datacenter.name"
+	datacenterID := crypto.HashID(datacenterName)
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, 10, "10.0.0.1", privateKey)
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
+
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	assert.Equal(t, float64(1), metrics.ServerUpdateMetrics.DatacenterNotFound.Value())
+
+	assert.NotEmpty(t, serverTracker.Tracker)
+
+	buyerHexID := fmt.Sprintf("%016x", buyerID)
+	for _, serverInfo := range serverTracker.Tracker[buyerHexID] {
+		assert.Equal(t, serverInfo.DatacenterID, fmt.Sprintf("%016x", datacenterID))
+		assert.Equal(t, serverInfo.DatacenterName, "unknown_update")
+	}
+}
+
+func TestServerUpdateHandlerFunc_ServerTracker_DatacenterFound(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+	datacenter := env.AddDatacenter("datacenter.name")
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, buyerID, datacenter.ID, datacenter.Name, 10, "10.0.0.1", privateKey)
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
+
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	assert.Equal(t, float64(0), metrics.ServerUpdateMetrics.DatacenterNotFound.Value())
+
+	assert.NotEmpty(t, serverTracker.Tracker)
+
+	buyerHexID := fmt.Sprintf("%016x", buyerID)
+	for _, serverInfo := range serverTracker.Tracker[buyerHexID] {
+		assert.Equal(t, serverInfo.DatacenterID, fmt.Sprintf("%016x", datacenter.ID))
+		assert.Equal(t, serverInfo.DatacenterName, datacenter.Name)
+	}
 }
 
 // Session update handler
