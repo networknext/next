@@ -251,7 +251,7 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Pos
 		}
 
 		// The server is a known datacenter, track it using the correct datacenter name from the bin file
-		if datacenter, exists := database.DatacenterMap[datacenterID]; exists {
+		if datacenter, exists := database.DatacenterMap[packet.DatacenterID]; exists {
 			ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress, datacenter.Name)
 		}
 
