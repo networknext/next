@@ -141,7 +141,11 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Serve
 
 		// Track which servers are initing
 		// This is where we get the datacenter name
-		ServerTracker.AddServer(packet.BuyerID, packet.DatacenterID, incoming.From, packet.DatacenterName)
+		if packet.DatacenterName == "" {
+			ServerTracker.AddServer(packet.BuyerID, packet.DatacenterID, incoming.From, "unknown_init")
+		} else {
+			ServerTracker.AddServer(packet.BuyerID, packet.DatacenterID, incoming.From, packet.DatacenterName)
+		}
 
 		/*
 			IMPORTANT: When the datacenter doesn't exist, we intentionally let the server init succeed anyway
