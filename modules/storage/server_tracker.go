@@ -8,7 +8,7 @@ import (
 )
 
 type ServerInfo struct {
-	Timestamp      uint64
+	Timestamp      int64
 	DatacenterID   string
 	DatacenterName string
 }
@@ -45,7 +45,7 @@ func (t *ServerTracker) AddServer(buyerID uint64, datacenterID uint64, serverAdd
 		// Add the new buyer to the top-level list
 		var addressList = make(map[string]ServerInfo)
 		addressList[serverAddressStr] = ServerInfo{
-			Timestamp:      uint64(time.Now().Unix()),
+			Timestamp:      time.Now().Unix(),
 			DatacenterID:   datacenterHexID,
 			DatacenterName: datacenterName,
 		}
@@ -69,7 +69,7 @@ func (t *ServerTracker) AddServer(buyerID uint64, datacenterID uint64, serverAdd
 		t.TrackerMutex.Lock()
 
 		t.Tracker[buyerHexID][serverAddressStr] = ServerInfo{
-			Timestamp:      uint64(time.Now().Unix()),
+			Timestamp:      time.Now().Unix(),
 			DatacenterID:   datacenterHexID,
 			DatacenterName: datacenterName,
 		}
@@ -83,7 +83,7 @@ func (t *ServerTracker) AddServer(buyerID uint64, datacenterID uint64, serverAdd
 	t.TrackerMutex.Lock()
 
 	t.Tracker[buyerHexID][serverAddressStr] = ServerInfo{
-		Timestamp:      uint64(time.Now().Unix()),
+		Timestamp:      time.Now().Unix(),
 		DatacenterID:   prevInfo.DatacenterID,
 		DatacenterName: prevInfo.DatacenterName,
 	}
