@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -41,6 +42,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/pubsub"
 
 	"golang.org/x/sys/unix"
@@ -652,11 +654,23 @@ func mainReturnWithCode() int {
 
 	// Start HTTP server
 	{
+		allowedOrigins := envvar.Get("ALLOWED_ORIGINS", "")
+		if allowedOrigins == "" {
+			core.Error("unable to parse ALLOWED_ORIGINS environment variable")
+		}
+
+		audience := envvar.Get("JWT_AUDIENCE", "")
+		if audience == "" {
+			core.Error("unable to parse JWT_AUDIENCE environment variable")
+		}
+
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-		router.HandleFunc("/servers", transport.ServerTrackerHandlerFunc(serverTracker))
 		router.Handle("/debug/vars", expvar.Handler())
+
+		serverTrackerHandler := http.HandlerFunc(transport.ServerTrackerHandlerFunc(serverTracker))
+		router.Handle("/servers", middleware.PlainHttpAuthMiddleware(audience, serverTrackerHandler, strings.Split(allowedOrigins, ",")))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
