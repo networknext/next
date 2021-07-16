@@ -107,9 +107,11 @@ func TestServerInitHandlerFunc_BuyerNotFound(t *testing.T) {
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, unknownBuyerID, datacenterID, datacenterName, unknownPrivateKey)
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -135,9 +137,11 @@ func TestServerInitHandlerFunc_BuyerNotLive(t *testing.T) {
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, privateKey)
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -163,9 +167,11 @@ func TestServerInitHandlerFunc_SigCheckFail(t *testing.T) {
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, privateKey[2:])
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -191,9 +197,11 @@ func TestServerInitHandlerFunc_SDKTooOld(t *testing.T) {
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersion{3, 0, 0}, buyerID, datacenterID, datacenterName, privateKey)
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -219,9 +227,11 @@ func TestServerInitHandlerFunc_Success_DatacenterNotFound(t *testing.T) {
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, privateKey)
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -245,9 +255,11 @@ func TestServerInitHandlerFunc_Success(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenter.ID, datacenter.Name, privateKey)
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
