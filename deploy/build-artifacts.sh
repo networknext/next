@@ -23,13 +23,9 @@ print_usage() {
 build-artifacts() {
   printf "Building ${ENV} artifact... \n"
   npm run build-${ENV}
-  if [ "$ENV" = "dev-test" ]; then
-    env=dev
-  else
-    env=$ENV
-  fi
-  tar -zcf ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${DIST_DIR} ${NGINX_DIR}/digicert* ${NGINX_DIR}/portal.nginx.${ENV}.conf
-  # gsutil cp ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}-dist.${env}.tar.gz
+  cp ${NGINX_DIR}/portal.nginx.${ENV}.conf ${NGINX_DIR}/portal.nginx.conf
+  tar -zcf ${DIST_DIR}/../${SERVICE}-dist.${ENV}.tar.gz ${DIST_DIR} ${NGINX_DIR}/digicert* ${NGINX_DIR}/portal.nginx.conf
+  gsutil cp ${DIST_DIR}/../${SERVICE}-dist.${ENV}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}-dist.${ENV}.tar.gz
   printf "Done building and artifact was published\n"
 }
 
