@@ -13,7 +13,7 @@
             "
     >
       <h1 class="h2">
-        Data Exploration
+        Explore
       </h1>
       <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
         <div class="mr-auto"></div>
