@@ -7,6 +7,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/networknext/backend/modules/billing"
@@ -71,7 +72,7 @@ func writeServerInitResponse(w io.Writer, packet *ServerInitRequestPacket, respo
 
 // ----------------------------------------------------------------------------
 
-func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, ServerTracker *storage.ServerTracker, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
@@ -137,6 +138,14 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metri
 			metrics.SDKTooOld.Add(1)
 			responseType = InitResponseOldSDKVersion
 			return
+		}
+
+		// Track which servers are initing
+		// This is where we get the datacenter name
+		if strings.TrimSpace(packet.DatacenterName) == "" {
+			ServerTracker.AddServer(packet.BuyerID, packet.DatacenterID, incoming.From, "unknown_init")
+		} else {
+			ServerTracker.AddServer(packet.BuyerID, packet.DatacenterID, incoming.From, packet.DatacenterName)
 		}
 
 		/*
@@ -238,13 +247,17 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Pos
 		}
 		PostSessionHandler.SendPortalCounts(countData)
 
-		// Track which servers are sending updates
-		ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress)
-
 		if !datacenterExists(database, packet.DatacenterID) {
 			core.Debug("datacenter does not exist %x", packet.DatacenterID)
 			metrics.DatacenterNotFound.Add(1)
+			// Track this server with unknown datacenter name
+			ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress, "unknown_update")
 			return
+		}
+
+		// The server is a known datacenter, track it using the correct datacenter name from the bin file
+		if datacenter, exists := database.DatacenterMap[packet.DatacenterID]; exists {
+			ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress, datacenter.Name)
 		}
 
 		core.Debug("server is in datacenter %x", packet.DatacenterID)
@@ -1519,7 +1532,7 @@ func BuildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 		NextBytesDown:                   nextBytesDown,
 		EnvelopeBytesUp:                 nextEnvelopeBytesUp,
 		EnvelopeBytesDown:               nextEnvelopeBytesDown,
-		DatacenterID:                    state.Datacenter.ID,
+		DatacenterID:                    state.Packet.DatacenterID,
 		RTTReduction:                    state.Input.RouteState.ReduceLatency,
 		PacketLossReduction:             state.Input.RouteState.ReducePacketLoss,
 		NextRelaysPrice:                 nextRelaysPrice,
@@ -1700,7 +1713,7 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		UseDebug:                        state.Buyer.Debug,
 		Debug:                           debugString,
 		RouteDiversity:                  int32(state.RouteDiversity),
-		DatacenterID:                    state.Datacenter.ID,
+		DatacenterID:                    state.Packet.DatacenterID,
 		BuyerID:                         state.Packet.BuyerID,
 		UserHash:                        state.Packet.UserHash,
 		EnvelopeBytesDown:               nextEnvelopeBytesDown,
