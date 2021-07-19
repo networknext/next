@@ -2636,7 +2636,7 @@ func (s *BuyersService) FetchReleaseNotes() error {
 
 		// Extract the actual css url and html that needs to be added to the notification
 		cssRegex := regexp.MustCompile(`https:\/\/github\.githubassets\.com\/assets\/gist-embed-[a-z0-9]+\.css`)
-		htmlRegex := regexp.MustCompile(`<div [a-z=\\"0-9\s>\-_A-Z</:.#&;]+`)
+		htmlRegex := regexp.MustCompile(`<div [a-z=\\"0-9\s>\-_A-Z</:.#&;,()']+div>`)
 
 		cssURL := cssRegex.FindString(fullEmbedOutput)
 		embedHTML := htmlRegex.FindString(fullEmbedOutput)
@@ -2644,7 +2644,7 @@ func (s *BuyersService) FetchReleaseNotes() error {
 		embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
 
 		notification := notifications.NewReleaseNotesNotification()
-		notification.Title = fmt.Sprintf("Service updates for the month of %s", list.GetDescription())
+		notification.Title = list.GetDescription()
 		notification.EmbedHTML = embedHTML
 		notification.CSSURL = cssURL
 
