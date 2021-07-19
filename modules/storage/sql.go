@@ -2575,7 +2575,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set route_select_threshold=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, routeSelectThreshold, ephemeralBuyerID)
+		args = append(args, routeSelectThreshold, int64(ephemeralBuyerID))
 	case "RouteSwitchThreshold":
 		routeSwitchThreshold, ok := value.(int32)
 		if !ok {
@@ -2583,7 +2583,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set route_switch_threshold=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, routeSwitchThreshold, ephemeralBuyerID)
+		args = append(args, routeSwitchThreshold, int64(ephemeralBuyerID))
 	case "MaxLatencyTradeOff":
 		maxLatencyTradeOff, ok := value.(int32)
 		if !ok {
@@ -2591,7 +2591,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set max_latency_tradeoff=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, maxLatencyTradeOff, ephemeralBuyerID)
+		args = append(args, maxLatencyTradeOff, int64(ephemeralBuyerID))
 	case "RTTVeto_Default":
 		rttVetoDefault, ok := value.(int32)
 		if !ok {
@@ -2599,7 +2599,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_default=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, rttVetoDefault, ephemeralBuyerID)
+		args = append(args, rttVetoDefault, int64(ephemeralBuyerID))
 	case "RTTVeto_PacketLoss":
 		rttVetoPacketLoss, ok := value.(int32)
 		if !ok {
@@ -2607,7 +2607,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_packetloss=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, rttVetoPacketLoss, ephemeralBuyerID)
+		args = append(args, rttVetoPacketLoss, int64(ephemeralBuyerID))
 	case "RTTVeto_Multipath":
 		rttVetoMultipath, ok := value.(int32)
 		if !ok {
@@ -2615,7 +2615,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_multipath=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, rttVetoMultipath, ephemeralBuyerID)
+		args = append(args, rttVetoMultipath, int64(ephemeralBuyerID))
 	case "MultipathOverloadThreshold":
 		multipathOverloadThreshold, ok := value.(int32)
 		if !ok {
@@ -2623,7 +2623,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set multipath_overload_threshold=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, multipathOverloadThreshold, ephemeralBuyerID)
+		args = append(args, multipathOverloadThreshold, int64(ephemeralBuyerID))
 	case "TryBeforeYouBuy":
 		tryBeforeYouBuy, ok := value.(bool)
 		if !ok {
@@ -2631,7 +2631,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set try_before_you_buy=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, tryBeforeYouBuy, ephemeralBuyerID)
+		args = append(args, tryBeforeYouBuy, int64(ephemeralBuyerID))
 	case "ForceNext":
 		forceNext, ok := value.(bool)
 		if !ok {
@@ -2639,7 +2639,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set force_next=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, forceNext, ephemeralBuyerID)
+		args = append(args, forceNext, int64(ephemeralBuyerID))
 	case "LargeCustomer":
 		largeCustomer, ok := value.(bool)
 		if !ok {
@@ -2647,7 +2647,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set large_customer=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, largeCustomer, ephemeralBuyerID)
+		args = append(args, largeCustomer, int64(ephemeralBuyerID))
 	case "Uncommitted":
 		uncommitted, ok := value.(bool)
 		if !ok {
@@ -2655,7 +2655,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set is_uncommitted=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, uncommitted, ephemeralBuyerID)
+		args = append(args, uncommitted, int64(ephemeralBuyerID))
 	case "HighFrequencyPings":
 		highFrequencyPings, ok := value.(bool)
 		if !ok {
@@ -2663,7 +2663,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set high_frequency_pings=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, highFrequencyPings, ephemeralBuyerID)
+		args = append(args, highFrequencyPings, int64(ephemeralBuyerID))
 	case "MaxRTT":
 		maxRTT, ok := value.(int32)
 		if !ok {
@@ -2671,7 +2671,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, maxRTT, ephemeralBuyerID)
+		args = append(args, maxRTT, int64(ephemeralBuyerID))
 	case "RouteDiversity":
 		routeDiversity, ok := value.(int32)
 		if !ok {
@@ -2679,7 +2679,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set route_diversity=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, routeDiversity, ephemeralBuyerID)
+		args = append(args, routeDiversity, int64(ephemeralBuyerID))
 	case "MultipathThreshold":
 		multipathThreshold, ok := value.(int32)
 		if !ok {
@@ -2687,7 +2687,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set multipath_threshold=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, multipathThreshold, ephemeralBuyerID)
+		args = append(args, multipathThreshold, int64(ephemeralBuyerID))
 	case "EnableVanityMetrics":
 		enableVanityMetrics, ok := value.(bool)
 		if !ok {
@@ -2695,7 +2695,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set enable_vanity_metrics=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, enableVanityMetrics, ephemeralBuyerID)
+		args = append(args, enableVanityMetrics, int64(ephemeralBuyerID))
 	case "ReducePacketLossMinSliceNumber":
 		reducePacketLossMinSliceNumber, ok := value.(int32)
 		if !ok {
@@ -2703,7 +2703,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set reduce_pl_min_slice_number=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, reducePacketLossMinSliceNumber, ephemeralBuyerID)
+		args = append(args, reducePacketLossMinSliceNumber, int64(ephemeralBuyerID))
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
@@ -2819,7 +2819,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set ab_test=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, abTest, ephemeralBuyerID)
+		args = append(args, abTest, int64(ephemeralBuyerID))
 	case "AcceptableLatency":
 		acceptableLatency, ok := value.(int32)
 		if !ok {
@@ -2827,7 +2827,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set acceptable_latency=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, acceptableLatency, ephemeralBuyerID)
+		args = append(args, acceptableLatency, int64(ephemeralBuyerID))
 	case "AcceptablePacketLoss":
 		acceptablePacketLoss, ok := value.(float32)
 		if !ok {
@@ -2835,7 +2835,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set acceptable_packet_loss=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, acceptablePacketLoss, ephemeralBuyerID)
+		args = append(args, acceptablePacketLoss, int64(ephemeralBuyerID))
 	case "BandwidthEnvelopeDownKbps":
 		bandwidthEnvelopeDownKbps, ok := value.(int32)
 		if !ok {
@@ -2843,7 +2843,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set bw_envelope_down_kbps=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, bandwidthEnvelopeDownKbps, ephemeralBuyerID)
+		args = append(args, bandwidthEnvelopeDownKbps, int64(ephemeralBuyerID))
 	case "BandwidthEnvelopeUpKbps":
 		bandwidthEnvelopeUpKbps, ok := value.(int32)
 		if !ok {
@@ -2851,7 +2851,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set bw_envelope_up_kbps=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, bandwidthEnvelopeUpKbps, ephemeralBuyerID)
+		args = append(args, bandwidthEnvelopeUpKbps, int64(ephemeralBuyerID))
 	case "DisableNetworkNext":
 		disableNetworkNext, ok := value.(bool)
 		if !ok {
@@ -2859,7 +2859,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set disable_network_next=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, disableNetworkNext, ephemeralBuyerID)
+		args = append(args, disableNetworkNext, int64(ephemeralBuyerID))
 	case "LatencyThreshold":
 		latencyThreshold, ok := value.(int32)
 		if !ok {
@@ -2867,7 +2867,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set latency_threshold=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, latencyThreshold, ephemeralBuyerID)
+		args = append(args, latencyThreshold, int64(ephemeralBuyerID))
 	case "Multipath":
 		multipath, ok := value.(bool)
 		if !ok {
@@ -2875,7 +2875,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set multipath=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, multipath, ephemeralBuyerID)
+		args = append(args, multipath, int64(ephemeralBuyerID))
 	case "ProMode":
 		proMode, ok := value.(bool)
 		if !ok {
@@ -2883,7 +2883,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set pro_mode=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, proMode, ephemeralBuyerID)
+		args = append(args, proMode, int64(ephemeralBuyerID))
 	case "ReduceLatency":
 		reduceLatency, ok := value.(bool)
 		if !ok {
@@ -2891,7 +2891,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set reduce_latency=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, reduceLatency, ephemeralBuyerID)
+		args = append(args, reduceLatency, int64(ephemeralBuyerID))
 	case "ReducePacketLoss":
 		reducePacketLoss, ok := value.(bool)
 		if !ok {
@@ -2899,7 +2899,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set reduce_packet_loss=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, reducePacketLoss, ephemeralBuyerID)
+		args = append(args, reducePacketLoss, int64(ephemeralBuyerID))
 	case "ReduceJitter":
 		reduceJitter, ok := value.(bool)
 		if !ok {
@@ -2907,7 +2907,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set reduce_jitter=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, reduceJitter, ephemeralBuyerID)
+		args = append(args, reduceJitter, int64(ephemeralBuyerID))
 	case "SelectionPercent":
 		selectionPercent, ok := value.(int)
 		if !ok {
@@ -2915,7 +2915,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, selectionPercent, ephemeralBuyerID)
+		args = append(args, selectionPercent, int64(ephemeralBuyerID))
 	case "PacketLossSustained":
 		packetLossSustained, ok := value.(float32)
 		if !ok {
@@ -2923,7 +2923,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set packet_loss_sustained=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, packetLossSustained, ephemeralBuyerID)
+		args = append(args, packetLossSustained, int64(ephemeralBuyerID))
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
 
@@ -3119,7 +3119,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		}
 		updateSQL.Write([]byte("update buyers set is_live_customer=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, live, ephemeralBuyerID)
+		args = append(args, live, int64(ephemeralBuyerID))
 	case "Debug":
 		debug, ok := value.(bool)
 		if !ok {
@@ -3127,7 +3127,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		}
 		updateSQL.Write([]byte("update buyers set debug=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, debug, ephemeralBuyerID)
+		args = append(args, debug, int64(ephemeralBuyerID))
 	case "ShortName":
 		shortName, ok := value.(string)
 		if !ok {
@@ -3135,7 +3135,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		}
 		updateSQL.Write([]byte("update buyers set short_name=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, shortName, ephemeralBuyerID)
+		args = append(args, shortName, int64(ephemeralBuyerID))
 	case "PublicKey":
 		pubKey, ok := value.(string)
 		if !ok {
@@ -3156,7 +3156,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		newBuyerID := binary.LittleEndian.Uint64(newPublicKey[:8])
 		updateSQL.Write([]byte("update buyers set public_key=$1, sdk_generated_id=$2 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $3)"))
-		args = append(args, newPublicKey[8:], int64(newBuyerID), ephemeralBuyerID)
+		args = append(args, newPublicKey[8:], int64(newBuyerID), int64(ephemeralBuyerID))
 
 		// TODO: datacenter maps for this buyer must be updated with the new buyer ID
 
