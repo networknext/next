@@ -16,6 +16,16 @@ export default class GistEmbed extends Vue {
     const gistContainer = document.getElementById('gist-embed')
     if (gistContainer) {
       gistContainer.insertAdjacentHTML('afterend', this.embedHTML)
+      const metaElements = document.getElementsByClassName('gist-meta')
+      const dataElements = document.getElementsByClassName('gist-data')
+
+      for (let i = dataElements.length - 1; i >= 0; --i) {
+        dataElements[i].classList.replace('gist-data', 'corners')
+      }
+
+      for (let i = metaElements.length - 1; i >= 0; --i) {
+        metaElements[i].remove()
+      }
     }
   }
 }
@@ -23,4 +33,10 @@ export default class GistEmbed extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  .corners {
+    border-radius: 6px;
+    word-wrap: normal;
+    background-color: var(--color-bg-primary);
+    overflow: auto;
+  }
 </style>
