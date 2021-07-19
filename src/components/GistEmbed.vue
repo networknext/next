@@ -33,9 +33,6 @@ export default class GistEmbed extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-  .hidden {
-    display: none;
-  }
   .corners {
     border-radius: 6px;
     word-wrap: normal;
