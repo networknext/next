@@ -28,8 +28,8 @@ build-artifacts() {
   else
     env=$ENV
   fi
-  tar -zcf ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${DIST_DIR} ${NGINX_DIR}
-  gsutil cp ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}-dist.${env}.tar.gz
+  tar -zcf ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${DIST_DIR} ${NGINX_DIR}/digicert* ${NGINX_DIR}/portal.nginx.${ENV}.conf
+  # gsutil cp ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}-dist.${env}.tar.gz
   printf "Done building and artifact was published\n"
 }
 
