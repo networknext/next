@@ -205,12 +205,6 @@ func mainReturnWithCode() int {
 				statusDataString += fmt.Sprintf("%d master select errors\n", int(frontendMetrics.ErrorMetrics.MasterSelectError.Value()))
 				statusDataString += fmt.Sprintf("%d cost matrix errors\n", int(frontendMetrics.CostMatrix.Error.Value()))
 				statusDataString += fmt.Sprintf("%d route matrix errors\n", int(frontendMetrics.RouteMatrix.Error.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats entries submitted\n", int(frontendMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats entries queued\n", int(frontendMetrics.PingStatsMetrics.EntriesQueued.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats entries flushed\n", int(frontendMetrics.PingStatsMetrics.EntriesFlushed.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries submitted\n", int(frontendMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries queued\n", int(frontendMetrics.RelayStatsMetrics.EntriesQueued.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries flushed\n", int(frontendMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
 
 				statusMutex.Lock()
 				statusData = []byte(statusDataString)
