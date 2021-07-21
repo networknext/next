@@ -28,6 +28,10 @@ blocks:
           commands:
             - make build-billing-artifacts-dev
             - make publish-billing-artifacts-dev
+        - name: Analytics Pusher
+          commands:
+            - make build-analytics-pusher-artifacts-dev
+            - make publish-analytics-pusher-artifacts-dev
         - name: Analytics
           commands:
             - make build-analytics-artifacts-dev

@@ -36,6 +36,10 @@ blocks:
           commands:
             - make build-beacon-inserter-artifacts-prod
             - make publish-beacon-inserter-artifacts-prod
+        - name: Analytics Pusher
+          commands:
+            - make build-analytics-pusher-artifacts-prod
+            - make publish-analytics-pusher-artifacts-prod
         - name: Analytics
           commands:
             - make build-analytics-artifacts-prod
