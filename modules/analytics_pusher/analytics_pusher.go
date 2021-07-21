@@ -65,22 +65,22 @@ func NewAnalyticsPusher(
 		httpClient:                httpClient,
 		routeMatrixURI:            routeMatrixURI,
 		staleDuration:             routeMatrixStaleDuration,
-        metrics:                   metrics,
+		metrics:                   metrics,
 	}
 
 	return analyticsPusher, nil
 }
 
 func (ap *AnalyticsPusher) Start(ctx context.Context, wg *sync.WaitGroup, errChan chan error) error {
-    defer wg.Done()
+	defer wg.Done()
 
 	// Start the relay stats publishing goroutine
 	wg.Add(1)
-	ap.StartRelayStatsPublisher(ctx, wg, errChan)
+	go ap.StartRelayStatsPublisher(ctx, wg, errChan)
 
 	// Start the ping stats publishing goroutine
 	wg.Add(1)
-	ap.StartPingStatsPublisher(ctx, wg, errChan)
+	go ap.StartPingStatsPublisher(ctx, wg, errChan)
 
 	return nil
 }
@@ -111,6 +111,7 @@ func (ap *AnalyticsPusher) StartRelayStatsPublisher(ctx context.Context, wg *syn
 				if err := ap.relayStatsPublisher.Publish(ctx, routeMatrix.RelayStats); err != nil {
 					core.Error("error publishing relay stats: %v", err)
 					errChan <- err
+					return
 				}
 			}
 		}
@@ -129,7 +130,7 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 		default:
 			routeMatrix, err := ap.getRouteMatrix()
 			if err != nil {
-                core.Error("error getting route matrix: %v", err)
+				core.Error("error getting route matrix: %v", err)
 				continue
 			}
 
@@ -143,6 +144,7 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 				if err := ap.pingStatsPublisher.Publish(ctx, routeMatrix.PingStats); err != nil {
 					core.Error("error publishing ping stats: %v", err)
 					errChan <- err
+					return
 				}
 			}
 		}
@@ -152,7 +154,6 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 func (ap *AnalyticsPusher) getRouteMatrix() (*routing.RouteMatrix, error) {
 	ap.metrics.RouteMatrixInvocations.Add(1)
 
-    var err error
 	var buffer []byte
 	start := time.Now()
 
@@ -167,11 +168,12 @@ func (ap *AnalyticsPusher) getRouteMatrix() (*routing.RouteMatrix, error) {
 	}
 
 	if routeMatrixReader == nil {
-		err = fmt.Errorf("route matrix reader is nil")
+		err := fmt.Errorf("route matrix reader is nil")
 		ap.metrics.ErrorMetrics.RouteMatrixReaderNil.Add(1)
 		return &routing.RouteMatrix{}, err
 	}
 
+	var err error
 	buffer, err = ioutil.ReadAll(routeMatrixReader)
 
 	routeMatrixReader.Close()

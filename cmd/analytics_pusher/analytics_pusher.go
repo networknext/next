@@ -125,12 +125,12 @@ func mainReturnWithCode() int {
 		emulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 		if gcpOK || emulatorOK {
 
-			pubsubCtx := context.Background()
+			pubsubCtx := ctx
 			if emulatorOK {
 				gcpProjectID = "local"
 
 				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(1*time.Minute))
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
 				defer cancelFunc()
 
 				core.Debug("Detected pubsub emulator")
@@ -178,7 +178,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-    wg.Add(1)
+	wg.Add(1)
 	go analyticsPusher.Start(ctx, &wg, errChan)
 
 	// Setup the status handler info
