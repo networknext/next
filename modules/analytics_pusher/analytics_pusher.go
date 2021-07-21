@@ -72,6 +72,7 @@ func NewAnalyticsPusher(
 }
 
 func (ap *AnalyticsPusher) Start(ctx context.Context, wg *sync.WaitGroup, errChan chan error) error {
+    defer wg.Done()
 
 	// Start the relay stats publishing goroutine
 	wg.Add(1)

@@ -178,7 +178,8 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	analyticsPusher.Start(ctx, &wg, errChan)
+    wg.Add(1)
+	go analyticsPusher.Start(ctx, &wg, errChan)
 
 	// Setup the status handler info
 	var statusData []byte
