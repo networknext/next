@@ -21,7 +21,7 @@ var EmptyAnalyticsPusherMetrics = &AnalyticsPusherMetrics{
 	RouteMatrixUpdateLongDuration: &EmptyCounter{},
 	PingStatsMetrics:              EmptyAnalyticsMetrics,
 	RelayStatsMetrics:             EmptyAnalyticsMetrics,
-	ErrorMetrics:                  *EmptyAnalyticsPusherErrorMetrics,
+	ErrorMetrics:                  EmptyAnalyticsPusherErrorMetrics,
 }
 
 type AnalyticsPusherErrorMetrics struct {
@@ -72,7 +72,7 @@ func NewAnalyticsPusherMetrics(ctx context.Context, metricsHandler Handler, serv
 		return nil, err
 	}
 
-	m.RouteMatrixInvocations, err = metricsHandler.NewGauge(ctx, &Descriptor{
+	m.RouteMatrixUpdateDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Route Matrix Update Duration",
 		ServiceName: serviceName,
 		ID:          serviceName + ".route_matrix.update_duration",

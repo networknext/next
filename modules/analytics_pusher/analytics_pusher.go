@@ -1,35 +1,21 @@
 package analytics_pusher
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"runtime"
-	"strings"
 	"sync"
 	"time"
 
-	"cloud.google.com/go/pubsub"
 	"github.com/networknext/backend/modules/analytics"
-	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
-	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/transport/middleware"
-
-	frontend "github.com/networknext/backend/modules/relay_frontend"
-	"github.com/networknext/backend/modules/storage"
-	"github.com/networknext/backend/modules/transport"
-
-	"github.com/go-kit/kit/log/level"
-	"github.com/gorilla/mux"
 )
 
 type AnalyticsPusher struct {
@@ -77,9 +63,9 @@ func NewAnalyticsPusher(
 		relayStatsPublishInterval: relayStatsPublishInterval,
 		pingStatsPublishInterval:  pingStatsPublishInterval,
 		httpClient:                httpClient,
-		routeMatrixPollFrequency:  routeMatrixPollFrequency,
 		routeMatrixURI:            routeMatrixURI,
 		staleDuration:             routeMatrixStaleDuration,
+        metrics:                   metrics,
 	}
 
 	return analyticsPusher, nil
@@ -89,11 +75,11 @@ func (ap *AnalyticsPusher) Start(ctx context.Context, wg *sync.WaitGroup, errCha
 
 	// Start the relay stats publishing goroutine
 	wg.Add(1)
-	ap.StartRelayStatsPublisher(ctx, &wg, errChan)
+	ap.StartRelayStatsPublisher(ctx, wg, errChan)
 
 	// Start the ping stats publishing goroutine
 	wg.Add(1)
-	ap.StartPingStatsPublisher(ctx, &wg, errChan)
+	ap.StartPingStatsPublisher(ctx, wg, errChan)
 
 	return nil
 }
@@ -105,12 +91,12 @@ func (ap *AnalyticsPusher) StartRelayStatsPublisher(ctx context.Context, wg *syn
 	for {
 		syncTimer.Run()
 		select {
-		case <-ctx.Done:
+		case <-ctx.Done():
 			return
 		default:
 			routeMatrix, err := ap.getRouteMatrix()
 			if err != nil {
-				core.Error(err)
+				core.Error("error getting route matrix: %v", err)
 				continue
 			}
 
@@ -119,9 +105,9 @@ func (ap *AnalyticsPusher) StartRelayStatsPublisher(ctx context.Context, wg *syn
 			core.Debug("Number of relay stats to be published: %d", len(routeMatrix.RelayStats))
 			if numRelayStats > 0 {
 
-				ap.metrics.RelayStatsMetrics.EntriesReceived.Add(numRelayStats)
+				ap.metrics.RelayStatsMetrics.EntriesReceived.Add(float64(numRelayStats))
 
-				if err := relayStatsPublisher.Publish(ctx, routeMatrix.RelayStats); err != nil {
+				if err := ap.relayStatsPublisher.Publish(ctx, routeMatrix.RelayStats); err != nil {
 					core.Error("error publishing relay stats: %v", err)
 					errChan <- err
 				}
@@ -137,12 +123,12 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 	for {
 		syncTimer.Run()
 		select {
-		case <-ctx.Done:
+		case <-ctx.Done():
 			return
 		default:
 			routeMatrix, err := ap.getRouteMatrix()
 			if err != nil {
-				core.Error(err)
+                core.Error("error getting route matrix: %v", err)
 				continue
 			}
 
@@ -151,9 +137,9 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 			core.Debug("Number of ping stats to be published: %d", numPingStats)
 			if numPingStats > 0 {
 
-				ap.metrics.PingStatsMetrics.EntriesReceived.Add(numPingStats)
+				ap.metrics.PingStatsMetrics.EntriesReceived.Add(float64(numPingStats))
 
-				if err := pingStatsPublisher.Publish(ctx, routeMatrix.PingStats); err != nil {
+				if err := ap.pingStatsPublisher.Publish(ctx, routeMatrix.PingStats); err != nil {
 					core.Error("error publishing ping stats: %v", err)
 					errChan <- err
 				}
@@ -165,12 +151,13 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 func (ap *AnalyticsPusher) getRouteMatrix() (*routing.RouteMatrix, error) {
 	ap.metrics.RouteMatrixInvocations.Add(1)
 
+    var err error
 	var buffer []byte
 	start := time.Now()
 
 	var routeMatrixReader io.ReadCloser
 
-	if f, err := os.Open(uri); err == nil {
+	if f, err := os.Open(ap.routeMatrixURI); err == nil {
 		routeMatrixReader = f
 	}
 
@@ -225,5 +212,5 @@ func (ap *AnalyticsPusher) getRouteMatrix() (*routing.RouteMatrix, error) {
 
 	ap.metrics.RouteMatrixSuccess.Add(1)
 
-	return newRouteMatrix, nil
+	return &newRouteMatrix, nil
 }

@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -19,16 +18,9 @@ import (
 	"github.com/networknext/backend/modules/analytics"
 	pusher "github.com/networknext/backend/modules/analytics_pusher"
 	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/routing"
-	"github.com/networknext/backend/modules/transport/middleware"
-
-	frontend "github.com/networknext/backend/modules/relay_frontend"
-	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 
 	"github.com/go-kit/kit/log/level"
@@ -78,7 +70,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Create analytics pusher metrics
-	analyticsPusherMetrics, err := metrics.NewAnalyticsPusherMetrics(ctx, metricsHandler)
+	analyticsPusherMetrics, err := metrics.NewAnalyticsPusherMetrics(ctx, metricsHandler, serviceName)
 	if err != nil {
 		core.Error("failed to create analytics pusher metrics: %v", err)
 		return 1
@@ -120,7 +112,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Get route matrix stale duration
-	routeMatrixStaleDuration := envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
+	routeMatrixStaleDuration, err := envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
 	if err != nil {
 		core.Error("error getting ROUTE_MATRIX_STALE_DURATION: %v", err)
 		return 1
@@ -186,7 +178,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	analyticsPusher.Start(ctx, errChan, &wg)
+	analyticsPusher.Start(ctx, &wg, errChan)
 
 	// Setup the status handler info
 	var statusData []byte
