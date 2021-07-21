@@ -15,15 +15,10 @@ import (
 	"syscall"
 	"time"
 
-	"cloud.google.com/go/pubsub"
-	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/common/helpers"
-	"github.com/networknext/backend/modules/core"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
-	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport/middleware"
 
 	frontend "github.com/networknext/backend/modules/relay_frontend"
@@ -100,6 +95,9 @@ func mainReturnWithCode() int {
 		_ = level.Error(logger).Log("err", err)
 		return 1
 	}
+
+	// Create an error chan for exiting from goroutines
+	errChan := make(chan error, 1)
 
 	// Start a goroutine for updating the master relay backend
 	go func() {
