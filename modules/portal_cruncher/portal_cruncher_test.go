@@ -30,6 +30,7 @@ import (
 
 func getTestCountData(serverID uint64, buyerID uint64) transport.SessionCountData {
 	return transport.SessionCountData{
+		Version: transport.SessionCountDataVersion,
 		ServerID:    serverID,
 		BuyerID:     buyerID,
 		NumSessions: rand.Uint32(),
@@ -90,15 +91,40 @@ func getTestSessionData(largeCustomer bool, sessionID uint64, userHash uint64, b
 			Version:   transport.SessionMapPointVersion,
 			Latitude:  45,
 			Longitude: 90,
+			SessionID: sessionID,
 		},
 		Slice: transport.SessionSlice{
 			Version:   transport.SessionSliceVersion,
 			Timestamp: timestamp.Truncate(time.Second),
+			Next: routing.Stats{
+				RTT: 50,
+				Jitter: 0.1,
+				PacketLoss: 0,	
+			},
+			Direct: routing.Stats{
+				RTT: 20,
+				Jitter: 0.2,
+				PacketLoss: 0.1,
+			},
+			Predicted: routing.Stats{
+				RTT: 55,
+			},
+			ClientToServerStats: routing.Stats{
+				RTT: 50,
+				Jitter: 0.1,
+			},
+			ServerToClientStats: routing.Stats{
+				RTT: 50,
+				Jitter: 0.1,
+			},
+			RouteDiversity: uint32(31),
 			Envelope: routing.Envelope{
 				Up:   100,
 				Down: 150,
 			},
 			OnNetworkNext: onNetworkNext,
+			IsMultiPath: false,
+			IsTryBeforeYouBuy: false,
 		},
 		LargeCustomer: largeCustomer,
 		EverOnNext:    everOnNetworkNext,

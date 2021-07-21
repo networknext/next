@@ -763,7 +763,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 
 				reply.Meta = transport.SessionMeta{}
 				if err = transport.ReadSessionMeta(&reply.Meta, row[0].Value); err != nil {
-					err = fmt.Errorf("SessionDetails() session meta serialization failed", "err", err)
+					err = fmt.Errorf("SessionDetails() session meta serialization failed: %v", err)
 					level.Error(s.Logger).Log("err", err)
 					return err
 				}

@@ -262,11 +262,13 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 
 		switch messageInfo.Topic {
 		case pubsub.TopicPortalCruncherSessionCounts:
+			// Try binary decoding first, and upon failure, try serialization
+			// TODO: after Bigtable stores only serialized data, remove binary decoding
 			var sessionCountData transport.SessionCountData
-			if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
-
+			if err := sessionCountData.UnmarshalBinary(messageInfo.Message); err != nil {
+				
 				sessionCountData = transport.SessionCountData{}
-				if err = sessionCountData.UnmarshalBinary(messageInfo.Message); err != nil {
+				if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
 					return &ErrUnmarshalMessage{err: err}
 				}
 			}
@@ -278,11 +280,13 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
 			}
 
 		case pubsub.TopicPortalCruncherSessionData:
+			// Try binary decoding first, and upon failure, try serialization
+			// TODO: after Bigtable stores only serialized data, remove binary decoding
 			var sessionPortalData transport.SessionPortalData
-			if err := transport.ReadSessionPortalData(&sessionPortalData, messageInfo.Message); err != nil {
+			if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
 
 				sessionPortalData = transport.SessionPortalData{}
-				if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
+				if err := transport.ReadSessionPortalData(&sessionPortalData, messageInfo.Message); err != nil {
 					return &ErrUnmarshalMessage{err: err}
 				}
 			}
