@@ -41,6 +41,7 @@ type AnalyticsPusher struct {
 
 	httpClient     http.Client
 	routeMatrixURI string
+	staleDuration  time.Duration
 
 	metrics *metrics.AnalyticsPusherMetrics
 }
@@ -52,6 +53,7 @@ func NewAnalyticsPusher(
 	pingStatsPublishInterval time.Duration,
 	httpTimeout time.Duration,
 	routeMatrixURI string,
+	routeMatrixStaleDuration time.Duration,
 	metrics *metrics.AnalyticsPusherMetrics,
 ) (*AnalyticsPusher, error) {
 
@@ -62,6 +64,8 @@ func NewAnalyticsPusher(
 		return nil, fmt.Errorf("ping stats publish interval is negative")
 	} else if httpTimeout < 0 {
 		return nil, fmt.Errorf("http timeout is negative")
+	} else if routeMatrixStaleDuration < 0 {
+		return nil, fmt.Errorf("route matrix stale duration is negative")
 	}
 
 	// Create HTTP client for getting route matrix
@@ -75,6 +79,7 @@ func NewAnalyticsPusher(
 		httpClient:                httpClient,
 		routeMatrixPollFrequency:  routeMatrixPollFrequency,
 		routeMatrixURI:            routeMatrixURI,
+		staleDuration:             routeMatrixStaleDuration,
 	}
 
 	return analyticsPusher, nil
@@ -113,10 +118,12 @@ func (ap *AnalyticsPusher) StartRelayStatsPublisher(ctx context.Context, wg *syn
 
 			core.Debug("Number of relay stats to be published: %d", len(routeMatrix.RelayStats))
 			if numRelayStats > 0 {
+
+				ap.metrics.RelayStatsMetrics.EntriesReceived.Add(numRelayStats)
+
 				if err := relayStatsPublisher.Publish(ctx, routeMatrix.RelayStats); err != nil {
 					core.Error("error publishing relay stats: %v", err)
 					errChan <- err
-					// TODO: metric
 				}
 			}
 		}
@@ -143,10 +150,12 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 
 			core.Debug("Number of ping stats to be published: %d", numPingStats)
 			if numPingStats > 0 {
+
+				ap.metrics.PingStatsMetrics.EntriesReceived.Add(numPingStats)
+
 				if err := pingStatsPublisher.Publish(ctx, routeMatrix.PingStats); err != nil {
 					core.Error("error publishing ping stats: %v", err)
 					errChan <- err
-					// TODO: metric
 				}
 			}
 		}
@@ -154,6 +163,8 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 }
 
 func (ap *AnalyticsPusher) getRouteMatrix() (*routing.RouteMatrix, error) {
+	ap.metrics.RouteMatrixInvocations.Add(1)
+
 	var buffer []byte
 	start := time.Now()
 
@@ -198,7 +209,7 @@ func (ap *AnalyticsPusher) getRouteMatrix() (*routing.RouteMatrix, error) {
 		return &routing.RouteMatrix{}, err
 	}
 
-	if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
+	if newRouteMatrix.CreatedAt+uint64(ap.staleDuration.Seconds()) < uint64(time.Now().Unix()) {
 		err = fmt.Errorf("route matrix is stale")
 		ap.metrics.ErrorMetrics.StaleRouteMatrix.Add(1)
 		return &routing.RouteMatrix{}, err
@@ -211,6 +222,8 @@ func (ap *AnalyticsPusher) getRouteMatrix() (*routing.RouteMatrix, error) {
 		core.Error("long route matrix duration %dms", int(duration))
 		ap.metrics.RouteMatrixUpdateLongDuration.Add(1)
 	}
+
+	ap.metrics.RouteMatrixSuccess.Add(1)
 
 	return newRouteMatrix, nil
 }

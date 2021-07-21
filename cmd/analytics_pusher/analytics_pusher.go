@@ -119,6 +119,13 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	// Get route matrix stale duration
+	routeMatrixStaleDuration := envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
+	if err != nil {
+		core.Error("error getting ROUTE_MATRIX_STALE_DURATION: %v", err)
+		return 1
+	}
+
 	// Setup ping stats and relay stats publishers
 	var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
 	var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
@@ -131,7 +138,7 @@ func mainReturnWithCode() int {
 				gcpProjectID = "local"
 
 				var cancelFunc context.CancelFunc
-				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
+				pubsubCtx, cancelFunc = context.WithDeadline(ctx, time.Now().Add(1*time.Minute))
 				defer cancelFunc()
 
 				core.Debug("Detected pubsub emulator")
@@ -173,7 +180,7 @@ func mainReturnWithCode() int {
 	var wg sync.WaitGroup
 
 	// Start the relay stats and ping stats goroutines
-	analyticsPusher, err := pusher.NewAnalyticsPusher(relayStatsPublisher, pingStatsPublisher, relayStatsPublishInterval, pingStatsPublishInterval, httpTimeout, routeMatrixURI, analyticsPusherMetrics)
+	analyticsPusher, err := pusher.NewAnalyticsPusher(relayStatsPublisher, pingStatsPublisher, relayStatsPublishInterval, pingStatsPublishInterval, httpTimeout, routeMatrixURI, routeMatrixStaleDuration, analyticsPusherMetrics)
 	if err != nil {
 		core.Error("could not create analytics pusher: %v", err)
 		return 1
@@ -194,24 +201,32 @@ func mainReturnWithCode() int {
 
 		go func() {
 			for {
-				analyticsPusherMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				analyticsPusherMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
+				analyticsPusherMetrics.AnalyticsPusherServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				analyticsPusherMetrics.AnalyticsPusherServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
 				statusDataString := fmt.Sprintf("%s\n", serviceName)
 				statusDataString += fmt.Sprintf("git hash %s\n", sha)
 				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
 				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
-				statusDataString += fmt.Sprintf("%d goroutines\n", int(analyticsPusherMetrics.FrontendServiceMetrics.Goroutines.Value()))
-				statusDataString += fmt.Sprintf("%.2f mb allocated\n", analyticsPusherMetrics.FrontendServiceMetrics.MemoryAllocated.Value())
-				statusDataString += fmt.Sprintf("%d route matrix invocations\n", int(analyticsPusherMetrics.RouteMatrix.Invocations.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix success count\n", int(analyticsPusherMetrics.RouteMatrix.Success.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix errors\n", int(analyticsPusherMetrics.RouteMatrix.Error.Value()))
+				statusDataString += fmt.Sprintf("%d goroutines\n", int(analyticsPusherMetrics.AnalyticsPusherServiceMetrics.Goroutines.Value()))
+				statusDataString += fmt.Sprintf("%.2f mb allocated\n", analyticsPusherMetrics.AnalyticsPusherServiceMetrics.MemoryAllocated.Value())
+				statusDataString += fmt.Sprintf("%d route matrix invocations\n", int(analyticsPusherMetrics.RouteMatrixInvocations.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix successes\n", int(analyticsPusherMetrics.RouteMatrixSuccess.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix duration\n", int(analyticsPusherMetrics.RouteMatrixUpdateDuration.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix long durations\n", int(analyticsPusherMetrics.RouteMatrixUpdateLongDuration.Value()))
+				statusDataString += fmt.Sprintf("%d ping stats entries received\n", int(analyticsPusherMetrics.PingStatsMetrics.EntriesReceived.Value()))
 				statusDataString += fmt.Sprintf("%d ping stats entries submitted\n", int(analyticsPusherMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats entries queued\n", int(analyticsPusherMetrics.PingStatsMetrics.EntriesQueued.Value()))
 				statusDataString += fmt.Sprintf("%d ping stats entries flushed\n", int(analyticsPusherMetrics.PingStatsMetrics.EntriesFlushed.Value()))
+				statusDataString += fmt.Sprintf("%d relay stats entries received\n", int(analyticsPusherMetrics.RelayStatsMetrics.EntriesReceived.Value()))
 				statusDataString += fmt.Sprintf("%d relay stats entries submitted\n", int(analyticsPusherMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries queued\n", int(analyticsPusherMetrics.RelayStatsMetrics.EntriesQueued.Value()))
 				statusDataString += fmt.Sprintf("%d relay stats entries flushed\n", int(analyticsPusherMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
+				statusDataString += fmt.Sprintf("%d ping stats publish failures\n", int(analyticsPusherMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure.Value()))
+				statusDataString += fmt.Sprintf("%d relay stats publish failures\n", int(analyticsPusherMetrics.RelayStatsMetrics.ErrorMetrics.PublishFailure.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix reader nil errors\n", int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixReaderNil.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix read errors\n", int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixReaderNil.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix buffer empty errors\n", int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix serialize errors\n", int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Value()))
+				statusDataString += fmt.Sprintf("%d route matrix stale errors\n", int(analyticsPusherMetrics.ErrorMetrics.StaleRouteMatrix.Value()))
 
 				statusMutex.Lock()
 				statusData = []byte(statusDataString)
@@ -248,7 +263,6 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-		router.HandleFunc("/route_matrix", frontendClient.GetRouteMatrixHandlerFunc()).Methods("GET")
 		router.Handle("/debug/vars", expvar.Handler())
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
