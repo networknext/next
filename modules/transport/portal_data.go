@@ -22,7 +22,18 @@ const (
 	SessionMapPointVersion     = 1
 	RelayHopVersion            = 1
 	NearRelayPortalDataVersion = 1
-	MaxSessionIDLength         = 1024
+
+	MaxSessionCountDataSize    = 48
+	MaxRelayHopSize            = 128
+	MaxNearRelayPortalDataSize = 256
+	MaxSessionMetaSize         = 6144
+	MaxSessionSliceSize        = 256
+	MaxSessionMapPointSize     = 64
+	MaxSessionPortalDataSize   = MaxSessionMetaSize + MaxSessionSliceSize + MaxSessionMapPointSize + 128
+
+	MaxSessionIDLength  = 1024
+	MaxAddressLength    = 256
+	MaxSDKVersionLength = 12
 )
 
 type SessionCountData struct {
@@ -70,8 +81,49 @@ func (s SessionCountData) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
+func (s *SessionCountData) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&s.Version)
+
+	stream.SerializeUint64(&s.ServerID)
+
+	stream.SerializeUint64(&s.BuyerID)
+
+	stream.SerializeUint32(&s.NumSessions)
+
+	return stream.Error()
+}
+
 func (s *SessionCountData) Size() uint64 {
 	return 4 + 8 + 8 + 4
+}
+
+func WriteSessionCountData(entry *SessionCountData) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionCountData packet entry write: %v\n", r)
+		}
+	}()
+
+	buffer := make([]byte, MaxSessionCountDataSize)
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadSessionCountData(entry *SessionCountData, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 type SessionPortalData struct {
@@ -186,8 +238,135 @@ func (s SessionPortalData) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
+func (s *SessionPortalData) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&s.Version)
+
+	var err error
+	var metaSize uint64
+	var meta []byte
+
+	if stream.IsWriting() {
+		meta, err = WriteSessionMeta(&s.Meta)
+		if err != nil {
+			return err
+		}
+
+		metaSize = s.Meta.Size()
+	}
+
+	stream.SerializeUint64(&metaSize)
+	if metaSize > 0 {
+		if stream.IsReading() {
+			meta = make([]byte, MaxSessionMetaSize)
+		}
+
+		meta = meta[:metaSize]
+		stream.SerializeBytes(meta)
+
+		if stream.IsReading() {
+			err = ReadSessionMeta(&s.Meta, meta)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	var sliceSize uint64
+	var slice []byte
+
+	if stream.IsWriting() {
+		slice, err = WriteSessionSlice(&s.Slice)
+		if err != nil {
+			return err
+		}
+
+		sliceSize = s.Slice.Size()
+	}
+
+	stream.SerializeUint64(&sliceSize)
+	if sliceSize > 0 {
+		if stream.IsReading() {
+			slice = make([]byte, MaxSessionSliceSize)
+		}
+
+		slice = slice[:sliceSize]
+		stream.SerializeBytes(slice)
+
+		if stream.IsReading() {
+			err = ReadSessionSlice(&s.Slice, slice)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	var pointSize uint64
+	var point []byte
+
+	if stream.IsWriting() {
+		point, err = WriteSessionMapPoint(&s.Point)
+		if err != nil {
+			return err
+		}
+
+		pointSize = s.Point.Size()
+	}
+
+	stream.SerializeUint64(&pointSize)
+	if pointSize > 0 {
+		if stream.IsReading() {
+			point = make([]byte, MaxSessionMapPointSize)
+		}
+
+		point = point[:pointSize]
+		stream.SerializeBytes(point)
+
+		if stream.IsReading() {
+			err = ReadSessionMapPoint(&s.Point, point)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	stream.SerializeBool(&s.LargeCustomer)
+
+	stream.SerializeBool(&s.EverOnNext)
+
+	return stream.Error()
+}
+
 func (s *SessionPortalData) Size() uint64 {
 	return 4 + 4 + s.Meta.Size() + 4 + s.Slice.Size() + 4 + s.Point.Size() + 1 + 1
+}
+
+func WriteSessionPortalData(entry *SessionPortalData) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionPortalData packet entry write: %v\n", r)
+		}
+	}()
+
+	buffer := make([]byte, MaxSessionPortalDataSize)
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadSessionPortalData(entry *SessionPortalData, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 type RelayHop struct {
@@ -225,6 +404,51 @@ func (h *RelayHop) ParseRedisString(values []string) error {
 	h.Name = values[index]
 	index++
 
+	return nil
+}
+
+func (h *RelayHop) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&h.Version)
+
+	stream.SerializeUint64(&h.ID)
+
+	stream.SerializeString(&h.Name, routing.MaxRelayNameLength)
+
+	return stream.Error()
+}
+
+func (h *RelayHop) Size() uint64 {
+	return 4 + // Version
+		8 + // ID
+		routing.MaxRelayNameLength + 1 // Name
+}
+
+func WriteRelayHop(entry *RelayHop) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during RelayHop packet entry write: %v\n", r)
+		}
+	}()
+
+	buffer := make([]byte, MaxRelayHopSize)
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadRelayHop(entry *RelayHop, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -269,6 +493,63 @@ func (n *NearRelayPortalData) ParseRedisString(values []string) error {
 	}
 	index += 3
 
+	return nil
+}
+
+func (n *NearRelayPortalData) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&n.Version)
+
+	stream.SerializeUint64(&n.ID)
+
+	stream.SerializeString(&n.Name, routing.MaxRelayNameLength)
+
+	if stream.IsReading() {
+		n.ClientStats = routing.Stats{}
+	}
+
+	stats := &n.ClientStats
+	stream.SerializeFloat64(&stats.RTT)
+	stream.SerializeFloat64(&stats.Jitter)
+	stream.SerializeFloat64(&stats.PacketLoss)
+
+	return stream.Error()
+}
+
+func (n *NearRelayPortalData) Size() uint64 {
+	return 4 + // Version
+		8 + // ID
+		routing.MaxRelayNameLength + 1 + // Name
+		8 + // Client Stats RTT
+		8 + // Client Stats Jitter
+		8 // Client Stats Packet Loss
+}
+
+func WriteNearRelayPortalData(entry *NearRelayPortalData) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during NearRelayPortalData packet entry write: %v\n", r)
+		}
+	}()
+
+	buffer := make([]byte, MaxNearRelayPortalDataSize)
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadNearRelayPortalData(entry *NearRelayPortalData, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -487,6 +768,125 @@ func (s SessionMeta) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
+func (s *SessionMeta) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&s.Version)
+
+	stream.SerializeUint64(&s.ID)
+
+	stream.SerializeUint64(&s.UserHash)
+
+	stream.SerializeString(&s.DatacenterName, MaxDatacenterNameLength)
+	stream.SerializeString(&s.DatacenterAlias, MaxDatacenterNameLength)
+
+	stream.SerializeBool(&s.OnNetworkNext)
+
+	stream.SerializeFloat64(&s.NextRTT)
+	stream.SerializeFloat64(&s.DirectRTT)
+	stream.SerializeFloat64(&s.DeltaRTT)
+
+	var err error
+	var locSize uint64
+	var loc []byte
+
+	if stream.IsWriting() {
+		loc, err = routing.WriteLocation(&s.Location)
+		if err != nil {
+			return err
+		}
+
+		locSize = s.Location.Size()
+	}
+
+	stream.SerializeUint64(&locSize)
+	if locSize > 0 {
+		if stream.IsReading() {
+			loc = make([]byte, routing.MaxLocationSize)
+		}
+
+		loc = loc[:locSize]
+		stream.SerializeBytes(loc)
+
+		if stream.IsReading() {
+			err = routing.ReadLocation(&s.Location, loc)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	stream.SerializeString(&s.ClientAddr, MaxAddressLength)
+	stream.SerializeString(&s.ServerAddr, MaxAddressLength)
+
+	numHops := uint32(len(s.Hops))
+	stream.SerializeUint32(&numHops)
+
+	if stream.IsReading() {
+		s.Hops = make([]RelayHop, numHops)
+	}
+
+	for i := uint32(0); i < numHops; i++ {
+		hop := &s.Hops[i]
+
+		if s.Version >= 2 {
+			stream.SerializeUint32(&hop.Version)
+		}
+
+		stream.SerializeUint64(&hop.ID)
+		stream.SerializeString(&hop.Name, routing.MaxRelayNameLength)
+	}
+
+	stream.SerializeString(&s.SDK, MaxSDKVersionLength)
+
+	var conn uint32
+	if stream.IsWriting() {
+		conn = uint32(s.Connection)
+	}
+	stream.SerializeBits(&conn, 8)
+	if stream.IsReading() {
+		s.Connection = uint8(conn)
+	}
+
+	numNearbyRelays := uint32(len(s.NearbyRelays))
+	stream.SerializeUint32(&numNearbyRelays)
+
+	if stream.IsReading() {
+		s.NearbyRelays = make([]NearRelayPortalData, numNearbyRelays)
+	}
+
+	for i := uint32(0); i < numNearbyRelays; i++ {
+		nearbyRelay := &s.NearbyRelays[i]
+
+		if s.Version >= 2 {
+			stream.SerializeUint32(&nearbyRelay.Version)
+		}
+
+		stream.SerializeUint64(&nearbyRelay.ID)
+		stream.SerializeString(&nearbyRelay.Name, routing.MaxRelayNameLength)
+
+		if stream.IsReading() {
+			nearbyRelay.ClientStats = routing.Stats{}
+		}
+
+		stats := &nearbyRelay.ClientStats
+		stream.SerializeFloat64(&stats.RTT)
+		stream.SerializeFloat64(&stats.Jitter)
+		stream.SerializeFloat64(&stats.PacketLoss)
+	}
+
+	var platform uint32
+	if stream.IsWriting() {
+		platform = uint32(s.Platform)
+	}
+	stream.SerializeBits(&platform, 8)
+	if stream.IsReading() {
+		s.Platform = uint8(platform)
+	}
+
+	stream.SerializeUint64(&s.BuyerID)
+
+	return stream.Error()
+}
+
 func (s SessionMeta) Size() uint64 {
 	var relayHopsSize uint64
 	for _, hop := range s.Hops {
@@ -500,6 +900,41 @@ func (s SessionMeta) Size() uint64 {
 
 	return 4 + 8 + 8 + 4 + uint64(len(s.DatacenterName)) + 4 + uint64(len(s.DatacenterAlias)) + 1 + 8 + 8 + 8 + 4 + s.Location.Size() +
 		4 + uint64(len(s.ClientAddr)) + 4 + uint64(len(s.ServerAddr)) + (4 + relayHopsSize) + 4 + uint64(len(s.SDK)) + 1 + (4 + nearbyRelaysSize) + 1 + 8
+}
+
+func WriteSessionMeta(entry *SessionMeta) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionMeta packet entry write: %v\n", r)
+		}
+	}()
+
+	buffer := make([]byte, MaxSessionMetaSize)
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadSessionMeta(entry *SessionMeta, data []byte) error {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionMeta packet entry read: %v\n", r)
+		}
+	}()
+
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *SessionMeta) UnmarshalJSON(data []byte) error {
@@ -896,8 +1331,119 @@ func (s SessionSlice) MarshalBinary() ([]byte, error) {
 	return data[:index], nil
 }
 
+func (s *SessionSlice) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&s.Version)
+
+	var unixTime uint64
+	if stream.IsWriting() {
+		unixTime = uint64(s.Timestamp.UnixNano())
+	}
+	stream.SerializeUint64(&unixTime)
+
+	if stream.IsReading() {
+		s.Timestamp = time.Unix(0, int64(unixTime))
+	}
+
+	if stream.IsReading() {
+		s.Next = routing.Stats{}
+		s.Direct = routing.Stats{}
+
+		if s.Version >= 1 {
+			s.Predicted = routing.Stats{}
+		}
+
+		if s.Version >= 2 {
+			s.ClientToServerStats = routing.Stats{}
+			s.ServerToClientStats = routing.Stats{}
+		}
+	}
+
+	nextStats := &s.Next
+	stream.SerializeFloat64(&nextStats.RTT)
+	stream.SerializeFloat64(&nextStats.Jitter)
+	stream.SerializeFloat64(&nextStats.PacketLoss)
+
+	directStats := &s.Direct
+	stream.SerializeFloat64(&directStats.RTT)
+	stream.SerializeFloat64(&directStats.Jitter)
+	stream.SerializeFloat64(&directStats.PacketLoss)
+
+	if s.Version >= 1 {
+		predictedStats := &s.Predicted
+		stream.SerializeFloat64(&predictedStats.RTT)
+	}
+
+	if s.Version >= 2 {
+		clientToServerStats := &s.ClientToServerStats
+		stream.SerializeFloat64(&clientToServerStats.Jitter)
+		stream.SerializeFloat64(&clientToServerStats.PacketLoss)
+
+		serverToClientStats := &s.ServerToClientStats
+		stream.SerializeFloat64(&serverToClientStats.Jitter)
+		stream.SerializeFloat64(&serverToClientStats.PacketLoss)
+
+		stream.SerializeUint32(&s.RouteDiversity)
+	}
+
+	if stream.IsReading() {
+		s.Envelope = routing.Envelope{}
+	}
+
+	var envelopeUp uint64
+	var envelopeDown uint64
+	if stream.IsWriting() {
+		envelopeUp = uint64(s.Envelope.Up)
+		envelopeDown = uint64(s.Envelope.Down)
+	}
+	stream.SerializeUint64(&envelopeUp)
+	stream.SerializeUint64(&envelopeDown)
+	if stream.IsReading() {
+		s.Envelope = routing.Envelope{
+			Up:   int64(envelopeUp),
+			Down: int64(envelopeDown),
+		}
+	}
+
+	stream.SerializeBool(&s.OnNetworkNext)
+
+	stream.SerializeBool(&s.IsMultiPath)
+
+	stream.SerializeBool(&s.IsTryBeforeYouBuy)
+
+	return stream.Error()
+}
+
 func (s SessionSlice) Size() uint64 {
 	return 4 + 8 + (3 * 8) + (3 * 8) + 8 + (2 * 8) + (2 * 8) + 4 + (2 * 8) + 1 + 1 + 1
+}
+
+func WriteSessionSlice(entry *SessionSlice) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionSlice packet entry write: %v\n", r)
+		}
+	}()
+
+	buffer := make([]byte, MaxSessionSliceSize)
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadSessionSlice(entry *SessionSlice, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s SessionSlice) RedisString() string {
@@ -1068,8 +1614,50 @@ func (s SessionMapPoint) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
+func (s *SessionMapPoint) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint32(&s.Version)
+
+	stream.SerializeFloat64(&s.Latitude)
+	stream.SerializeFloat64(&s.Longitude)
+
+	if s.Version >= 1 {
+		stream.SerializeUint64(&s.SessionID)
+	}
+
+	return stream.Error()
+}
+
 func (s SessionMapPoint) Size() uint64 {
 	return 4 + 8 + 8 + 8
+}
+
+func WriteSessionMapPoint(entry *SessionMapPoint) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during SessionMapPoint packet entry write: %v\n", r)
+		}
+	}()
+
+	buffer := make([]byte, MaxSessionMapPointSize)
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadSessionMapPoint(entry *SessionMapPoint, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s SessionMapPoint) RedisString() string {
