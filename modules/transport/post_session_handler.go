@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport/pubsub"
 	"github.com/networknext/backend/modules/vanity"
@@ -122,9 +123,9 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			for {
 				select {
 				case postSessionCountData := <-post.sessionPortalCountsChannel:
-					countBytes, err := postSessionCountData.MarshalBinary()
+					countBytes, err := WriteSessionCountData(postSessionCountData)
 					if err != nil {
-						level.Error(post.logger).Log("msg", "could not marshal count data", "err", err)
+						core.Debug("could not serialize count data: %v", err)
 						post.metrics.PortalFailure.Add(1)
 						continue
 					}
@@ -153,9 +154,9 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			for {
 				select {
 				case postSessionPortalData := <-post.sessionPortalDataChannel:
-					sessionBytes, err := postSessionPortalData.MarshalBinary()
+					sessionBytes, err := WriteSessionPortalData(postSessionPortalData)
 					if err != nil {
-						level.Error(post.logger).Log("msg", "could not marshal portal data", "err", err)
+						core.Debug("could not serialize portal data: %v", err)
 						post.metrics.PortalFailure.Add(1)
 						continue
 					}
