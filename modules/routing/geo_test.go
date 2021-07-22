@@ -5,10 +5,12 @@ import (
 	"compress/gzip"
 	"context"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/oschwald/geoip2-golang"
 	"github.com/stretchr/testify/assert"
@@ -24,12 +26,84 @@ func (mrt mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 	return mrt.Response, nil
 }
 
+// Helper function to create a random string of a specified length
+// Useful for testing constant string lengths
+// Adapted from: https://stackoverflow.com/a/22892986
+func generateRandomStringSequence(length int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	// Seed randomness
+	rand.Seed(time.Now().UnixNano())
+
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+
+	return string(b)
+}
+
 func TestLocation(t *testing.T) {
 	zeroloc := routing.Location{}
 	assert.True(t, zeroloc.IsZero())
 
 	loc := routing.Location{Latitude: 13, Longitude: 15}
 	assert.False(t, loc.IsZero())
+}
+
+func testLocation() routing.Location {
+	// Seed randomness
+	rand.Seed(time.Now().UnixNano())
+
+	data := routing.Location{
+		Continent:   generateRandomStringSequence(rand.Intn(routing.MaxContinentLength - 1)),
+		Country:     generateRandomStringSequence(rand.Intn(routing.MaxCountryLength - 1)),
+		CountryCode: generateRandomStringSequence(rand.Intn(routing.MaxCountryCodeLength - 1)),
+		Region:      generateRandomStringSequence(rand.Intn(routing.MaxRegionLength - 1)),
+		City:        generateRandomStringSequence(rand.Intn(routing.MaxCityLength - 1)),
+		Latitude:    rand.Float32(),
+		Longitude:   rand.Float32(),
+		ISP:         generateRandomStringSequence(rand.Intn(routing.MaxISPNameLength - 1)),
+		ASN:         rand.Int(),
+	}
+
+	// Zero out unused fields during serialization
+	data.Continent = ""
+	data.Country = ""
+	data.CountryCode = ""
+	data.Region = ""
+	data.City = ""
+
+	return data
+}
+
+func TestLocationSerialize(t *testing.T) {
+	t.Parallel()
+
+	t.Run("test serialize write", func(t *testing.T) {
+		locData := testLocation()
+
+		data, err := routing.WriteLocation(&locData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+	})
+
+	t.Run("test serialize read", func(t *testing.T) {
+		locData := testLocation()
+
+		data, err := routing.WriteLocation(&locData)
+
+		assert.NoError(t, err)
+		assert.NotEmpty(t, data)
+
+		var readLocData routing.Location
+
+		err = routing.ReadLocation(&readLocData, data)
+
+		assert.NoError(t, err)
+		assert.Equal(t, locData, readLocData)
+	})
 }
 
 func TestNewMaxmindDBReader(t *testing.T) {
