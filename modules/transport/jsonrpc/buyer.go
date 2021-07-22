@@ -48,6 +48,7 @@ const (
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
 	LOOKER_HOST              = "networknextexternal.cloud.looker.com"
+	EmbeddedUserGroupID      = 3
 )
 
 var (
@@ -2698,17 +2699,17 @@ func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs
 		return &err
 	}
 
-	// TODO: Figure out what params are needed from frontend
+	// TODO: This will need to be wrapped in some kind of switch based on dashboard type
 	urlOptions := LookerURLOptions{
 		Host:            LOOKER_HOST,
 		Secret:          s.LookerSecret,
 		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-		FirstName:       "",
-		LastName:        "",
-		GroupsIds:       make([]int, 0),
+		FirstName:       "", // TODO: Update this to first name coming from portal information
+		LastName:        "", // TODO: Update this to last name coming from portal information
+		GroupsIds:       []int{EmbeddedUserGroupID},
 		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks"},
-		Models:          []string{"networknext_pbl"},
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_pbl"},                                 // TODO: This may or may not need to change
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   3600,
