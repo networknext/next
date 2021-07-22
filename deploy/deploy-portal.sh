@@ -26,11 +26,11 @@ done
 
 # ssh into all the VMs under the specified MIG
 
-VMs=$(gcloud compute --project network-next-v3-dev instance-groups managed list-instances ${mig} --zone us-central1-a --format "value(instance)")
+VMs=$(gcloud compute --project network-next-v3-${env} instance-groups managed list-instances ${mig} --zone us-central1-a --format "value(instance)")
 COMMAND="cd /portal && sudo gsutil cp ${bucket}/portal-dist.${env}.tar.gz artifact.tar.gz && tar -xvf artifact.tar.gz"
 
 for i in "${VMs[@]}"; do
   printf "Deploying Frontend code to ${i}... \n"
-  gcloud compute --project network-next-v3-dev ssh ${i} -- ${COMMAND}
+  gcloud compute --project network-next-v3-${env} ssh ${i} -- ${COMMAND}
   printf "done\n"
 done

@@ -2,7 +2,7 @@ ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
 
-PORTAL_DEV_MIG = portal-site-mig
+PORTAL_DEV_MIG = portal-frontend-mig
 
 .PHONY: build-portal-artifacts-local
 build-portal-artifacts-local:
