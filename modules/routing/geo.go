@@ -16,8 +16,16 @@ import (
 )
 
 const (
-	LocationVersion  = 1
-	MaxISPNameLength = 64
+	LocationVersion = 1
+
+	MaxContinentLength   = 16
+	MaxCountryLength     = 64
+	MaxCountryCodeLength = 16
+	MaxRegionLength      = 64
+	MaxCityLength        = 128
+	MaxISPNameLength     = 64
+
+	MaxLocationSize = 128
 )
 
 // IPLocator defines anything that returns a routing.Location given an net.IP
@@ -124,6 +132,30 @@ func (l Location) MarshalBinary() ([]byte, error) {
 	return data, nil
 }
 
+func (l *Location) Serialize(stream encoding.Stream) error {
+	var version int32
+	if stream.IsWriting() {
+		version = int32(LocationVersion)
+	}
+	stream.SerializeInteger(&version, 0, LocationVersion)
+
+	stream.SerializeFloat32(&l.Latitude)
+	stream.SerializeFloat32(&l.Longitude)
+
+	stream.SerializeString(&l.ISP, MaxISPNameLength)
+
+	var asn uint64
+	if stream.IsWriting() {
+		asn = uint64(l.ASN)
+	}
+	stream.SerializeUint64(&asn)
+	if stream.IsReading() {
+		l.ASN = int(asn)
+	}
+
+	return stream.Error()
+}
+
 func (l Location) Size() uint64 {
 	ispLength := len(l.ISP)
 	if ispLength > MaxISPNameLength {
@@ -131,6 +163,35 @@ func (l Location) Size() uint64 {
 	}
 
 	return uint64(4 + 4 + 4 + 4 + ispLength + 4)
+}
+
+func WriteLocation(entry *Location) ([]byte, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("recovered from panic during Location packet entry write: %v\n", r)
+		}
+	}()
+
+	buffer := make([]byte, MaxLocationSize)
+
+	ws, err := encoding.CreateWriteStream(buffer[:])
+	if err != nil {
+		return nil, err
+	}
+
+	if err := entry.Serialize(ws); err != nil {
+		return nil, err
+	}
+	ws.Flush()
+
+	return buffer[:ws.GetBytesProcessed()], nil
+}
+
+func ReadLocation(entry *Location, data []byte) error {
+	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
+		return err
+	}
+	return nil
 }
 
 // IsZero reports whether l represents the zero location lat/long 0,0 similar to how Time.IsZero works.
