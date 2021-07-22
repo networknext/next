@@ -371,7 +371,7 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 		// Try binary decoding, and upon failure, try serialization
 		// TODO: after Bigtable stores only serialized data, remove binary decoding
 		if err := sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
-			level.Error(s.Logger).Log("msg", "GetHistoricalSlices() failed to binary decode sesion meta, attempting serialization", "err", err)
+			level.Warn(s.Logger).Log("msg", "GetHistoricalSlices() failed to binary decode sesion meta, attempting serialization", "err", err)
 
 			sessionMeta = transport.SessionMeta{}
 			if err := transport.ReadSessionMeta(&sessionMeta, row[s.BigTableCfName][0].Value); err != nil {
@@ -396,7 +396,7 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 				// Try binary decoding first, and upon failure, try serialization
 				// TODO: after Bigtable stores only serialized data, remove binary decoding
 				if err = sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value); err != nil {
-					level.Error(s.Logger).Log("msg", "GetHistoricalSlices() session slice binary decoding failed, using serialization", "err", err)
+					level.Warn(s.Logger).Log("msg", "GetHistoricalSlices() session slice binary decoding failed, using serialization", "err", err)
 
 					sessionSlice = transport.SessionSlice{}
 					if err = transport.ReadSessionSlice(&sessionSlice, sliceRows[0][s.BigTableCfName][0].Value); err != nil {
@@ -759,7 +759,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			// Try binary decoding first, and upon failure, try serialization
 			// TODO: after Bigtable stores only serialized data, remove binary decoding
 			if err = reply.Meta.UnmarshalBinary(row[0].Value); err != nil {
-				level.Error(s.Logger).Log("msg", "SessionDetails() session meta binary decoding failed, using serialization", "err", err)
+				level.Warn(s.Logger).Log("msg", "SessionDetails() session meta binary decoding failed, using serialization", "err", err)
 
 				reply.Meta = transport.SessionMeta{}
 				if err = transport.ReadSessionMeta(&reply.Meta, row[0].Value); err != nil {
@@ -836,7 +836,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			// Try binary decoding first, and upon failure, try serialization
 			// TODO: after Bigtable stores only serialized data, remove binary decoding
 			if err = slice.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
-				level.Error(s.Logger).Log("msg", "SessionDetails() session slice binary decoding failed, using serialization", "err", err)
+				level.Warn(s.Logger).Log("msg", "SessionDetails() session slice binary decoding failed, using serialization", "err", err)
 
 				slice = transport.SessionSlice{}
 				if err = transport.ReadSessionSlice(&slice, row[s.BigTableCfName][0].Value); err != nil {
