@@ -488,9 +488,24 @@ func TestReceiveMessage(t *testing.T) {
 		assert.Contains(t, err.Error(), "could not unmarshal message: ")
 	})
 
-	t.Run("count data channel full", func(t *testing.T) {
+	t.Run("count data channel full binary", func(t *testing.T) {
 		countData := getTestCountData(rand.Uint64(), rand.Uint64())
 		countDataBytes, err := countData.MarshalBinary()
+		assert.NoError(t, err)
+
+		subscriber := &SimpleMockSubscriber{countData: countDataBytes}
+		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisPool.Addr(), "", 1, 1, useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		assert.NoError(t, err)
+
+		err = portalCruncher.ReceiveMessage(ctx)
+		assert.Equal(t, err, &portalcruncher.ErrChannelFull{})
+	})
+
+	t.Run("count data channel full serialize", func(t *testing.T) {
+		countData := getTestCountData(rand.Uint64(), rand.Uint64())
+		countDataBytes, err := transport.WriteSessionCountData(&countData)
 		assert.NoError(t, err)
 
 		subscriber := &SimpleMockSubscriber{countData: countDataBytes}
@@ -529,7 +544,7 @@ func TestReceiveMessage(t *testing.T) {
 		assert.Contains(t, err.Error(), "could not unmarshal message: ")
 	})
 
-	t.Run("portal data channel full", func(t *testing.T) {
+	t.Run("portal data channel full binary", func(t *testing.T) {
 		sessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), rand.Uint64(), true, true, time.Now())
 		sessionDataBytes, err := sessionData.MarshalBinary()
 		assert.NoError(t, err)
@@ -544,9 +559,39 @@ func TestReceiveMessage(t *testing.T) {
 		assert.Equal(t, err, &portalcruncher.ErrChannelFull{})
 	})
 
-	t.Run("portal data success", func(t *testing.T) {
+	t.Run("portal data channel full serialize", func(t *testing.T) {
+		sessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), rand.Uint64(), true, true, time.Now())
+		sessionDataBytes, err := transport.WriteSessionPortalData(&sessionData)
+		assert.NoError(t, err)
+
+		subscriber := &SimpleMockSubscriber{sessionData: sessionDataBytes}
+		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisPool.Addr(), "", 1, 1, useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 0, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		assert.NoError(t, err)
+
+		err = portalCruncher.ReceiveMessage(ctx)
+		assert.Equal(t, err, &portalcruncher.ErrChannelFull{})
+	})
+
+	t.Run("portal data success binary", func(t *testing.T) {
 		sessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), rand.Uint64(), true, true, time.Now())
 		sessionDataBytes, err := sessionData.MarshalBinary()
+		assert.NoError(t, err)
+
+		subscriber := &SimpleMockSubscriber{sessionData: sessionDataBytes}
+		subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
+		portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, redisPool.Addr(), "", 1, 1, useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+		assert.NoError(t, err)
+
+		err = portalCruncher.ReceiveMessage(ctx)
+		assert.NoError(t, err)
+	})
+
+	t.Run("portal data success serialize", func(t *testing.T) {
+		sessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), rand.Uint64(), true, true, time.Now())
+		sessionDataBytes, err := transport.WriteSessionPortalData(&sessionData)
 		assert.NoError(t, err)
 
 		subscriber := &SimpleMockSubscriber{sessionData: sessionDataBytes}
@@ -675,7 +720,7 @@ func TestPingRedis(t *testing.T) {
 	})
 }
 
-func TestDirectSession(t *testing.T) {
+func TestDirectSession_Binary(t *testing.T) {
 	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
@@ -805,7 +850,137 @@ func TestDirectSession(t *testing.T) {
 	}
 }
 
-func TestNextSession(t *testing.T) {
+func TestDirectSession_Serialize(t *testing.T) {
+	logger := log.NewNopLogger()
+	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
+	defer ctxCancelFunc()
+
+	countData := getTestCountData(rand.Uint64(), rand.Uint64())
+	countDataBytes, err := transport.WriteSessionCountData(&countData)
+	assert.NoError(t, err)
+
+	sessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), rand.Uint64(), false, false, time.Now())
+	sessionDataBytes, err := transport.WriteSessionPortalData(&sessionData)
+	assert.NoError(t, err)
+
+	mockRedis, err := NewMockRedis()
+	assert.NoError(t, err)
+	// redisPool, err := miniredis.Run()
+	// assert.NoError(t, err)
+
+	subscriber := &MockSubscriber{countData: [][]byte{countDataBytes}, sessionData: [][]byte{sessionDataBytes}, maxMessages: 2}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
+	var useBigtable bool
+	{
+		var bigtableEnabled bool
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
+		bigtableEmulation := checkBigtableEmulation()
+
+		useBigtable = bigtableEnabled && bigtableEmulation
+	}
+
+	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
+
+	btMaxAgeDays := 1
+	if useBigtable {
+		// Create the bigtable table
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		assert.NoError(t, err)
+		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
+		assert.NoError(t, err)
+		defer func() {
+			err := btAdmin.DeleteTable(ctx, btTableName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
+	}
+
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedis.db.Addr(), "", 5, 5, useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	err = portalCruncher.PingRedis()
+	assert.NoError(t, err)
+
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
+	assert.EqualError(t, err, "context deadline exceeded")
+
+	minutes := time.Now().Unix() / 60
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		topSessionIDs, err := mockRedis.db.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.NoError(t, err)
+		assert.Len(t, topSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.ID, sessionID)
+
+		customerTopSessionIDs, err := mockRedis.db.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, customerTopSessionIDs, 1)
+
+		sessionID, err = strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.ID, sessionID)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		pointVal := mockRedis.db.HGet(fmt.Sprintf("d-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
+		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
+
+		fields, err := mockRedis.db.HKeys(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", countData.ServerID), fields[0])
+
+		countVal := mockRedis.db.HGet(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes), fmt.Sprintf("%016x", countData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", countData.NumSessions), countVal)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		metaVal, err := mockRedis.db.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		sliceVals, err := mockRedis.db.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
+		assert.NoError(t, err)
+		assert.Len(t, sliceVals, 1)
+
+		sliceVal := sliceVals[0]
+
+		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
+	}
+}
+
+func TestNextSession_Binary(t *testing.T) {
 	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
@@ -933,7 +1108,135 @@ func TestNextSession(t *testing.T) {
 	}
 }
 
-func TestNextSessionLargeCustomer(t *testing.T) {
+func TestNextSession_Serialize(t *testing.T) {
+	logger := log.NewNopLogger()
+	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
+	defer ctxCancelFunc()
+
+	countData := getTestCountData(rand.Uint64(), rand.Uint64())
+	countDataBytes, err := transport.WriteSessionCountData(&countData)
+	assert.NoError(t, err)
+
+	sessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), rand.Uint64(), true, false, time.Now())
+	sessionDataBytes, err := transport.WriteSessionPortalData(&sessionData)
+	assert.NoError(t, err)
+
+	mockRedis, err := NewMockRedis()
+	assert.NoError(t, err)
+
+	subscriber := &MockSubscriber{countData: [][]byte{countDataBytes}, sessionData: [][]byte{sessionDataBytes}, maxMessages: 2}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
+	var useBigtable bool
+	{
+		var bigtableEnabled bool
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
+		bigtableEmulation := checkBigtableEmulation()
+
+		useBigtable = bigtableEnabled && bigtableEmulation
+	}
+
+	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
+
+	btMaxAgeDays := 1
+	if useBigtable {
+		// Create the bigtable table
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		assert.NoError(t, err)
+		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
+		assert.NoError(t, err)
+		defer func() {
+			err := btAdmin.DeleteTable(ctx, btTableName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
+	}
+
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedis.db.Addr(), "", 5, 5, useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	err = portalCruncher.PingRedis()
+	assert.NoError(t, err)
+
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
+	assert.EqualError(t, err, "context deadline exceeded")
+
+	minutes := time.Now().Unix() / 60
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		topSessionIDs, err := mockRedis.db.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.NoError(t, err)
+		assert.Len(t, topSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.ID, sessionID)
+
+		customerTopSessionIDs, err := mockRedis.db.ZMembers(fmt.Sprintf("sc-%016x-%d", sessionData.Meta.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, customerTopSessionIDs, 1)
+
+		sessionID, err = strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.ID, sessionID)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		pointVal := mockRedis.db.HGet(fmt.Sprintf("n-%016x-%d", sessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", sessionData.Meta.ID))
+		assert.Equal(t, sessionData.Point.RedisString(), pointVal)
+
+		fields, err := mockRedis.db.HKeys(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", countData.ServerID), fields[0])
+
+		countVal := mockRedis.db.HGet(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes), fmt.Sprintf("%016x", countData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", countData.NumSessions), countVal)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		metaVal, err := mockRedis.db.Get(fmt.Sprintf("sm-%016x", sessionData.Meta.ID))
+		assert.NoError(t, err)
+
+		assert.Equal(t, sessionData.Meta.RedisString(), metaVal)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		sliceVals, err := mockRedis.db.List(fmt.Sprintf("ss-%016x", sessionData.Meta.ID))
+		assert.NoError(t, err)
+		assert.Len(t, sliceVals, 1)
+
+		sliceVal := sliceVals[0]
+
+		assert.Equal(t, sessionData.Slice.RedisString(), sliceVal)
+	}
+}
+
+func TestNextSessionLargeCustomer_Binary(t *testing.T) {
 	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
@@ -1015,7 +1318,89 @@ func TestNextSessionLargeCustomer(t *testing.T) {
 	}
 }
 
-func TestDirectToNextLargeCustomer(t *testing.T) {
+func TestNextSessionLargeCustomer_Serialize(t *testing.T) {
+	logger := log.NewNopLogger()
+	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
+	defer ctxCancelFunc()
+
+	countData := getTestCountData(rand.Uint64(), rand.Uint64())
+	countDataBytes, err := transport.WriteSessionCountData(&countData)
+	assert.NoError(t, err)
+
+	sessionData := getTestSessionData(true, rand.Uint64(), rand.Uint64(), rand.Uint64(), false, false, time.Now())
+	sessionDataBytes, err := transport.WriteSessionPortalData(&sessionData)
+	assert.NoError(t, err)
+
+	mockRedis, err := NewMockRedis()
+	assert.NoError(t, err)
+
+	subscriber := &MockSubscriber{countData: [][]byte{countDataBytes}, sessionData: [][]byte{sessionDataBytes}, maxMessages: 2}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
+	var useBigtable bool
+	{
+		var bigtableEnabled bool
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
+		bigtableEmulation := checkBigtableEmulation()
+
+		useBigtable = bigtableEnabled && bigtableEmulation
+	}
+
+	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
+
+	btMaxAgeDays := 1
+	if useBigtable {
+		// Create the bigtable table
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		assert.NoError(t, err)
+		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
+		assert.NoError(t, err)
+		defer func() {
+			err := btAdmin.DeleteTable(ctx, btTableName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
+	}
+
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedis.db.Addr(), "", 5, 5, useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	err = portalCruncher.PingRedis()
+	assert.NoError(t, err)
+
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
+	assert.EqualError(t, err, "context deadline exceeded")
+
+	minutes := time.Now().Unix() / 60
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 1)
+
+		fields, err := mockRedis.db.HKeys(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", countData.ServerID), fields[0])
+
+		countVal := mockRedis.db.HGet(fmt.Sprintf("c-%016x-%d", countData.BuyerID, minutes), fmt.Sprintf("%016x", countData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", countData.NumSessions), countVal)
+	}
+}
+
+func TestDirectToNextLargeCustomer_Binary(t *testing.T) {
 	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
@@ -1173,7 +1558,165 @@ func TestDirectToNextLargeCustomer(t *testing.T) {
 	}
 }
 
-func TestNextToDirectLargeCustomer(t *testing.T) {
+func TestDirectToNextLargeCustomer_Serialize(t *testing.T) {
+	logger := log.NewNopLogger()
+	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
+	defer ctxCancelFunc()
+
+	sessionID := rand.Uint64()
+	userHash := rand.Uint64()
+
+	flushTime := time.Now().Add(-time.Second * 10)
+
+	minutes := time.Now().Unix() / 60
+
+	var err error
+	mockRedis, err := NewMockRedis()
+	assert.NoError(t, err)
+
+	serverID := rand.Uint64()
+	buyerID := rand.Uint64()
+	oldCountData := getTestCountData(serverID, buyerID)
+
+	directSessionData := getTestSessionData(true, sessionID, userHash, buyerID, false, false, flushTime)
+
+	_, err = mockRedis.db.ZAdd(fmt.Sprintf("s-%d", minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
+	assert.NoError(t, err)
+
+	_, err = mockRedis.db.ZAdd(fmt.Sprintf("sc-%016x-%d", directSessionData.Meta.BuyerID, minutes), directSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", directSessionData.Meta.ID))
+	assert.NoError(t, err)
+
+	mockRedis.db.HSet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
+
+	mockRedis.db.HSet(fmt.Sprintf("c-%016x-%d", oldCountData.BuyerID, minutes), fmt.Sprintf("%016x", oldCountData.ServerID))
+
+	err = mockRedis.db.Set(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID), directSessionData.Meta.RedisString())
+	assert.NoError(t, err)
+
+	_, err = mockRedis.db.RPush(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID), directSessionData.Slice.RedisString())
+	assert.NoError(t, err)
+
+	newCountData := getTestCountData(serverID, buyerID)
+	countDataBytes, err := transport.WriteSessionCountData(&newCountData)
+	assert.NoError(t, err)
+
+	nextSessionData := getTestSessionData(true, sessionID, userHash, buyerID, true, false, flushTime)
+	sessionDataBytes, err := transport.WriteSessionPortalData(&nextSessionData)
+	assert.NoError(t, err)
+
+	subscriber := &MockSubscriber{countData: [][]byte{countDataBytes}, sessionData: [][]byte{sessionDataBytes}, maxMessages: 2}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
+	var useBigtable bool
+	{
+		var bigtableEnabled bool
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
+		bigtableEmulation := checkBigtableEmulation()
+
+		useBigtable = bigtableEnabled && bigtableEmulation
+	}
+
+	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
+
+	btMaxAgeDays := 1
+	if useBigtable {
+		// Create the bigtable table
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		assert.NoError(t, err)
+		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
+		assert.NoError(t, err)
+		defer func() {
+			err := btAdmin.DeleteTable(ctx, btTableName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
+	}
+
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedis.db.Addr(), "", 5, 5, useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	err = portalCruncher.PingRedis()
+	assert.NoError(t, err)
+
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
+	assert.EqualError(t, err, "context deadline exceeded")
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		topSessionIDs, err := mockRedis.db.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.NoError(t, err)
+		assert.Len(t, topSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, nextSessionData.Meta.ID, sessionID)
+
+		customerTopSessionIDs, err := mockRedis.db.ZMembers(fmt.Sprintf("sc-%016x-%d", nextSessionData.Meta.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, customerTopSessionIDs, 1)
+
+		sessionID, err = strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, nextSessionData.Meta.ID, sessionID)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		pointVal := mockRedis.db.HGet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+		assert.Equal(t, nextSessionData.Point.RedisString(), pointVal)
+
+		fields, err := mockRedis.db.HKeys(fmt.Sprintf("c-%016x-%d", newCountData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", newCountData.ServerID), fields[0])
+
+		countVal := mockRedis.db.HGet(fmt.Sprintf("c-%016x-%d", newCountData.BuyerID, minutes), fmt.Sprintf("%016x", newCountData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", newCountData.NumSessions), countVal)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		metaVal, err := mockRedis.db.Get(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID))
+		assert.NoError(t, err)
+
+		assert.Equal(t, nextSessionData.Meta.RedisString(), metaVal)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		sliceVals, err := mockRedis.db.List(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID))
+		assert.NoError(t, err)
+		assert.Len(t, sliceVals, 2)
+
+		directSliceVal := sliceVals[0]
+		nextSliceVal := sliceVals[1]
+
+		assert.Equal(t, directSessionData.Slice.RedisString(), directSliceVal)
+		assert.Equal(t, nextSessionData.Slice.RedisString(), nextSliceVal)
+	}
+}
+
+func TestNextToDirectLargeCustomer_Binary(t *testing.T) {
 	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
@@ -1331,7 +1874,165 @@ func TestNextToDirectLargeCustomer(t *testing.T) {
 	}
 }
 
-func TestNoReinsertion(t *testing.T) {
+func TestNextToDirectLargeCustomer_Serialize(t *testing.T) {
+	logger := log.NewNopLogger()
+	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
+	defer ctxCancelFunc()
+
+	sessionID := rand.Uint64()
+	userHash := rand.Uint64()
+
+	flushTime := time.Now().Add(-time.Second * 10)
+
+	minutes := time.Now().Unix() / 60
+
+	var err error
+	mockRedis, err := NewMockRedis()
+	assert.NoError(t, err)
+
+	serverID := rand.Uint64()
+	buyerID := rand.Uint64()
+	oldCountData := getTestCountData(serverID, buyerID)
+
+	nextSessionData := getTestSessionData(true, sessionID, userHash, buyerID, true, false, flushTime)
+
+	_, err = mockRedis.db.ZAdd(fmt.Sprintf("s-%d", minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+	assert.NoError(t, err)
+
+	_, err = mockRedis.db.ZAdd(fmt.Sprintf("sc-%016x-%d", nextSessionData.Meta.BuyerID, minutes), nextSessionData.Meta.DeltaRTT, fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+	assert.NoError(t, err)
+
+	mockRedis.db.HSet(fmt.Sprintf("n-%016x-%d", nextSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", nextSessionData.Meta.ID))
+
+	mockRedis.db.HSet(fmt.Sprintf("c-%016x-%d", oldCountData.BuyerID, minutes), fmt.Sprintf("%016x", oldCountData.ServerID))
+
+	err = mockRedis.db.Set(fmt.Sprintf("sm-%016x", nextSessionData.Meta.ID), nextSessionData.Meta.RedisString())
+	assert.NoError(t, err)
+
+	_, err = mockRedis.db.RPush(fmt.Sprintf("ss-%016x", nextSessionData.Meta.ID), nextSessionData.Slice.RedisString())
+	assert.NoError(t, err)
+
+	newCountData := getTestCountData(serverID, buyerID)
+	countDataBytes, err := transport.WriteSessionCountData(&newCountData)
+	assert.NoError(t, err)
+
+	directSessionData := getTestSessionData(true, sessionID, userHash, buyerID, false, true, flushTime)
+	sessionDataBytes, err := transport.WriteSessionPortalData(&directSessionData)
+	assert.NoError(t, err)
+
+	subscriber := &MockSubscriber{countData: [][]byte{countDataBytes}, sessionData: [][]byte{sessionDataBytes}, maxMessages: 2}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
+	var useBigtable bool
+	{
+		var bigtableEnabled bool
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
+		bigtableEmulation := checkBigtableEmulation()
+
+		useBigtable = bigtableEnabled && bigtableEmulation
+	}
+
+	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
+
+	btMaxAgeDays := 1
+	if useBigtable {
+		// Create the bigtable table
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		assert.NoError(t, err)
+		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
+		assert.NoError(t, err)
+		defer func() {
+			err := btAdmin.DeleteTable(ctx, btTableName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
+	}
+
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedis.db.Addr(), "", 5, 5, useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 1, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	err = portalCruncher.PingRedis()
+	assert.NoError(t, err)
+
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
+	assert.EqualError(t, err, "context deadline exceeded")
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		topSessionIDs, err := mockRedis.db.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.NoError(t, err)
+		assert.Len(t, topSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, directSessionData.Meta.ID, sessionID)
+
+		customerTopSessionIDs, err := mockRedis.db.ZMembers(fmt.Sprintf("sc-%016x-%d", directSessionData.Meta.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, customerTopSessionIDs, 1)
+
+		sessionID, err = strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, directSessionData.Meta.ID, sessionID)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		pointVal := mockRedis.db.HGet(fmt.Sprintf("d-%016x-%d", directSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", directSessionData.Meta.ID))
+		assert.Equal(t, directSessionData.Point.RedisString(), pointVal)
+
+		fields, err := mockRedis.db.HKeys(fmt.Sprintf("c-%016x-%d", newCountData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", newCountData.ServerID), fields[0])
+
+		countVal := mockRedis.db.HGet(fmt.Sprintf("c-%016x-%d", newCountData.BuyerID, minutes), fmt.Sprintf("%016x", newCountData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", newCountData.NumSessions), countVal)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		metaVal, err := mockRedis.db.Get(fmt.Sprintf("sm-%016x", directSessionData.Meta.ID))
+		assert.NoError(t, err)
+
+		assert.Equal(t, directSessionData.Meta.RedisString(), metaVal)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		sliceVals, err := mockRedis.db.List(fmt.Sprintf("ss-%016x", directSessionData.Meta.ID))
+		assert.NoError(t, err)
+		assert.Len(t, sliceVals, 2)
+
+		nextSliceVal := sliceVals[0]
+		directSliceVal := sliceVals[1]
+
+		assert.Equal(t, nextSessionData.Slice.RedisString(), nextSliceVal)
+		assert.Equal(t, directSessionData.Slice.RedisString(), directSliceVal)
+	}
+}
+
+func TestNoReinsertion_Binary(t *testing.T) {
 	logger := log.NewNopLogger()
 	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
 	defer ctxCancelFunc()
@@ -1350,6 +2051,142 @@ func TestNoReinsertion(t *testing.T) {
 
 	secondSessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), rand.Uint64(), false, false, time.Now())
 	secondSessionDataBytes, err := secondSessionData.MarshalBinary()
+	assert.NoError(t, err)
+
+	mockRedis, err := NewMockRedis()
+	assert.NoError(t, err)
+
+	subscriber := &MockSubscriber{countData: [][]byte{firstCountDataBytes, secondCountDataBytes}, sessionData: [][]byte{firstSessionDataBytes, secondSessionDataBytes}, maxMessages: 4, redises: mockRedis, expire: true}
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts)
+	subscriber.Subscribe(pubsub.TopicPortalCruncherSessionData)
+
+	var useBigtable bool
+	{
+		var bigtableEnabled bool
+		if os.Getenv("FEATURE_BIGTABLE") == "" {
+			bigtableEnabled = false
+		} else {
+			bigtableEnabled, err = strconv.ParseBool(os.Getenv("FEATURE_BIGTABLE"))
+			assert.NoError(t, err)
+		}
+		bigtableEmulation := checkBigtableEmulation()
+
+		useBigtable = bigtableEnabled && bigtableEmulation
+	}
+
+	gcpProjectID := os.Getenv("GOOGLE_PROJECT_ID")
+	btInstanceID := os.Getenv("BIGTABLE_INSTANCE_ID")
+	btTableName := os.Getenv("BIGTABLE_TABLE_NAME")
+	btCfName := os.Getenv("BIGTABLE_CF_NAME")
+
+	btMaxAgeDays := 1
+	if useBigtable {
+		// Create the bigtable table
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		assert.NoError(t, err)
+		err = CreateBigtableTable(ctx, btAdmin, btTableName, []string{btCfName}, btMaxAgeDays)
+		assert.NoError(t, err)
+		defer func() {
+			err := btAdmin.DeleteTable(ctx, btTableName)
+			assert.NoError(t, err)
+
+			err = btAdmin.Close()
+			assert.NoError(t, err)
+		}()
+	}
+
+	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx, subscriber, mockRedis.db.Addr(), "", 5, 5, useBigtable, gcpProjectID, btInstanceID, btTableName, btCfName, 4, logger, &metrics.EmptyPortalCruncherMetrics, &metrics.EmptyBigTableMetrics)
+	err = portalCruncher.PingRedis()
+	assert.NoError(t, err)
+
+	env := os.Getenv("ENV")
+	if env == "" {
+		env = "local"
+	}
+
+	err = portalCruncher.Start(ctx, 1, 1, 1, time.Millisecond*10, 0, env)
+	assert.EqualError(t, err, "context deadline exceeded")
+
+	minutes := time.Now().Unix() / 60
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		topSessionIDs, err := mockRedis.db.ZMembers(fmt.Sprintf("s-%d", minutes))
+		assert.NoError(t, err)
+		assert.Len(t, topSessionIDs, 1)
+
+		sessionID, err := strconv.ParseUint(topSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, secondSessionData.Meta.ID, sessionID)
+
+		customerTopSessionIDs, err := mockRedis.db.ZMembers(fmt.Sprintf("sc-%016x-%d", secondSessionData.Meta.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, customerTopSessionIDs, 1)
+
+		sessionID, err = strconv.ParseUint(customerTopSessionIDs[0], 16, 64)
+		assert.NoError(t, err)
+
+		assert.Equal(t, secondSessionData.Meta.ID, sessionID)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		pointVal := mockRedis.db.HGet(fmt.Sprintf("d-%016x-%d", secondSessionData.Meta.BuyerID, minutes), fmt.Sprintf("%016x", secondSessionData.Meta.ID))
+		assert.Equal(t, secondSessionData.Point.RedisString(), pointVal)
+
+		fields, err := mockRedis.db.HKeys(fmt.Sprintf("c-%016x-%d", secondCountData.BuyerID, minutes))
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, fmt.Sprintf("%016x", secondCountData.ServerID), fields[0])
+
+		countVal := mockRedis.db.HGet(fmt.Sprintf("c-%016x-%d", secondCountData.BuyerID, minutes), fmt.Sprintf("%016x", secondCountData.ServerID))
+		assert.Equal(t, fmt.Sprintf("%d", secondCountData.NumSessions), countVal)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		metaVal, err := mockRedis.db.Get(fmt.Sprintf("sm-%016x", secondSessionData.Meta.ID))
+		assert.NoError(t, err)
+
+		assert.Equal(t, secondSessionData.Meta.RedisString(), metaVal)
+	}
+
+	{
+		assert.Len(t, mockRedis.db.Keys(), 6)
+
+		sliceVals, err := mockRedis.db.List(fmt.Sprintf("ss-%016x", secondSessionData.Meta.ID))
+		assert.NoError(t, err)
+		assert.Len(t, sliceVals, 1)
+
+		sliceVal := sliceVals[0]
+
+		assert.Equal(t, secondSessionData.Slice.RedisString(), sliceVal)
+	}
+}
+
+func TestNoReinsertion_Serialize(t *testing.T) {
+	logger := log.NewNopLogger()
+	ctx, ctxCancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*100))
+	defer ctxCancelFunc()
+
+	firstCountData := getTestCountData(rand.Uint64(), rand.Uint64())
+	firstCountDataBytes, err := transport.WriteSessionCountData(&firstCountData)
+	assert.NoError(t, err)
+
+	firstSessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), rand.Uint64(), false, false, time.Now())
+	firstSessionDataBytes, err := transport.WriteSessionPortalData(&firstSessionData)
+	assert.NoError(t, err)
+
+	secondCountData := getTestCountData(rand.Uint64(), rand.Uint64())
+	secondCountDataBytes, err := transport.WriteSessionCountData(&secondCountData)
+	assert.NoError(t, err)
+
+	secondSessionData := getTestSessionData(false, rand.Uint64(), rand.Uint64(), rand.Uint64(), false, false, time.Now())
+	secondSessionDataBytes, err := transport.WriteSessionPortalData(&secondSessionData)
 	assert.NoError(t, err)
 
 	mockRedis, err := NewMockRedis()
