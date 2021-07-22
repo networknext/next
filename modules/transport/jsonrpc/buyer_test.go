@@ -97,8 +97,6 @@ func TestBuyersList(t *testing.T) {
 }
 
 func TestUserSessions_Binary(t *testing.T) {
-	t.Parallel()
-
 	checkBigtableEmulation(t)
 
 	var storer = storage.InMemory{}
@@ -476,8 +474,6 @@ func TestUserSessions_Binary(t *testing.T) {
 }
 
 func TestUserSessions_Serialize(t *testing.T) {
-	t.Parallel()
-
 	checkBigtableEmulation(t)
 
 	var storer = storage.InMemory{}
