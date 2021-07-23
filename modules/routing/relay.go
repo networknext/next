@@ -200,12 +200,14 @@ type Relay struct {
 
 	MaxSessions uint32 `json:"max_sessions"`
 
+	// EgressPriceOverride (nibblins/GB) is used to calculate route price instead of seller price when > 0
+	EgressPriceOverride Nibblin `json:"egressPriceOverride"`
 	// MRC is the monthly recurring cost for the relay
 	MRC Nibblin `json:"monthlyRecurringChargeNibblins"`
 	// Overage is the charge/penalty if we exceed the bandwidth alloted for the relay
 	Overage Nibblin       `json:"overage"`
 	BWRule  BandWidthRule `json:"bandwidthRule"`
-	//ContractTerm is the term in months
+	// ContractTerm is the term in months
 	ContractTerm int32 `json:"contractTerm"`
 	// StartDate is the date the contract term starts
 	StartDate time.Time `json:"startDate"`
@@ -302,6 +304,7 @@ func (r *Relay) String() string {
 	relay += "\tMaxSessions        : " + fmt.Sprintf("%d", r.MaxSessions) + "\n"
 	// relay += "\tCPUUsage           : " + fmt.Sprintf("%f", r.CPUUsage) + "\n"
 	// relay += "\tMemUsage           : " + fmt.Sprintf("%f", r.MemUsage) + "\n"
+	relay += "\tEgressPriceOverride: " + fmt.Sprintf("%v", r.EgressPriceOverride) + "\n"
 	relay += "\tMRC                : " + fmt.Sprintf("%v", r.MRC) + "\n"
 	relay += "\tOverage            : " + fmt.Sprintf("%v", r.Overage) + "\n"
 	relay += "\tBWRule             : " + fmt.Sprintf("%v", r.BWRule) + "\n"

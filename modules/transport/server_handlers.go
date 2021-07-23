@@ -276,7 +276,7 @@ func CalculateNextBytesUpAndDown(kbpsUp uint64, kbpsDown uint64, sliceDuration u
 	return bytesUp, bytesDown
 }
 
-func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
+func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
 
 	if routeNumRelays == 0 {
 		return 0
@@ -285,18 +285,22 @@ func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelay
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
-	sellerPriceNibblinsPerGB := routing.Nibblin(0)
-	for _, seller := range relaySellers {
-		sellerPriceNibblinsPerGB += seller.EgressPriceNibblinsPerGB
+	relayPriceNibblinsPerGB := routing.Nibblin(0)
+	for i, seller := range relaySellers {
+		if relayEgressPriceOverride[i] > 0 {
+			relayPriceNibblinsPerGB += relayEgressPriceOverride[i]
+		} else {
+			relayPriceNibblinsPerGB += seller.EgressPriceNibblinsPerGB
+		}
 	}
 
 	nextPriceNibblinsPerGB := routing.Nibblin(1e9)
-	totalPriceNibblins := float64(sellerPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+	totalPriceNibblins := float64(relayPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 
 	return routing.Nibblin(totalPriceNibblins)
 }
 
-func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) [core.MaxRelaysPerRoute]routing.Nibblin {
+func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin, envelopeBytesUp uint64, envelopeBytesDown uint64) [core.MaxRelaysPerRoute]routing.Nibblin {
 
 	relayPrices := [core.MaxRelaysPerRoute]routing.Nibblin{}
 
@@ -308,7 +312,15 @@ func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysP
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
 	for i := 0; i < len(relayPrices); i++ {
-		relayPriceNibblins := float64(relaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+		var basePrice float64
+
+		if relayEgressPriceOverride[i] > 0 {
+			basePrice = float64(relayEgressPriceOverride[i])
+		} else {
+			basePrice = float64(relaySellers[i].EgressPriceNibblinsPerGB)
+		}
+
+		relayPriceNibblins := basePrice * (envelopeUpGB + envelopeDownGB)
 		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
 	}
 
@@ -540,17 +552,18 @@ type SessionHandlerState struct {
 	DestRelays       []int32
 
 	// for session post (billing, portal etc...)
-	PostNearRelayCount               int
-	PostNearRelayIDs                 [core.MaxNearRelays]uint64
-	PostNearRelayNames               [core.MaxNearRelays]string
-	PostNearRelayAddresses           [core.MaxNearRelays]net.UDPAddr
-	PostNearRelayRTT                 [core.MaxNearRelays]float32
-	PostNearRelayJitter              [core.MaxNearRelays]float32
-	PostNearRelayPacketLoss          [core.MaxNearRelays]float32
-	PostRouteRelayNames              [core.MaxRelaysPerRoute]string
-	PostRouteRelaySellers            [core.MaxRelaysPerRoute]routing.Seller
-	PostRealPacketLossClientToServer float32
-	PostRealPacketLossServerToClient float32
+	PostNearRelayCount                int
+	PostNearRelayIDs                  [core.MaxNearRelays]uint64
+	PostNearRelayNames                [core.MaxNearRelays]string
+	PostNearRelayAddresses            [core.MaxNearRelays]net.UDPAddr
+	PostNearRelayRTT                  [core.MaxNearRelays]float32
+	PostNearRelayJitter               [core.MaxNearRelays]float32
+	PostNearRelayPacketLoss           [core.MaxNearRelays]float32
+	PostRouteRelayNames               [core.MaxRelaysPerRoute]string
+	PostRouteRelaySellers             [core.MaxRelaysPerRoute]routing.Seller
+	PostRouteRelayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+	PostRealPacketLossClientToServer  float32
+	PostRealPacketLossServerToClient  float32
 
 	// todo
 	/*
@@ -1368,6 +1381,7 @@ func BuildPostRouteRelayData(state *SessionHandlerState) {
 		if ok {
 			state.PostRouteRelayNames[i] = relay.Name
 			state.PostRouteRelaySellers[i] = relay.Seller
+			state.PostRouteRelayEgressPriceOverride[i] = relay.EgressPriceOverride
 		}
 	}
 }
@@ -1443,13 +1457,13 @@ func BuildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 		and the length of the session in seconds.
 	*/
 
-	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
 	/*
 		Calculate the per-relay hop price that sums up to the total price, minus our rake.
 	*/
 
-	routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+	routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
 	// todo: not really sure why we transform it like this? seems wasteful
 	nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
@@ -1624,13 +1638,13 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		and the length of the session in seconds.
 	*/
 
-	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
 	/*
 		Calculate the per-relay hop price that sums up to the total price, minus our rake.
 	*/
 
-	routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+	routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
 	// todo: not really sure why we transform it like this? seems wasteful
 	nextRelayPrice := [core.MaxRelaysPerRoute]uint64{}
