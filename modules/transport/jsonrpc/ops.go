@@ -644,7 +644,7 @@ type relay struct {
 	PublicKey           string                `json:"public_key"`
 	Version             string                `json:"relay_version"`
 	SellerName          string                `json:"seller_name"`
-	EgressPriceOverride routing.Nibblin       `json:"egress_price_override"`
+	EgressPriceOverride routing.Nibblin       `json:"egressPriceOverride"`
 	MRC                 routing.Nibblin       `json:"monthlyRecurringChargeNibblins"`
 	Overage             routing.Nibblin       `json:"overage"`
 	BWRule              routing.BandWidthRule `json:"bandwidthRule"`
@@ -776,7 +776,7 @@ type JSAddRelayArgs struct {
 	SSHUser             string `json:"ssh_user"`
 	SSHPort             int64  `json:"ssh_port"`
 	MaxSessions         int64  `json:"max_sessions"`
-	EgressPriceOverride int64  `json:"egress_price_override"`
+	EgressPriceOverride int64  `json:"egressPriceOverride"`
 	MRC                 int64  `json:"monthlyRecurringChargeNibblins"`
 	Overage             int64  `json:"overage"`
 	BWRule              int64  `json:"bandwidthRule"`
