@@ -1,5 +1,4 @@
 import { FeatureEnum, Flag } from '@/components/types/FeatureTypes'
-import { faMeteor } from '@fortawesome/free-solid-svg-icons'
 import { JSONRPCService } from './jsonrpc'
 
 export class FeatureFlagService {

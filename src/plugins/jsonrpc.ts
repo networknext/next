@@ -1,6 +1,6 @@
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import store from '@/store'
-
+import Vue from 'vue'
 export class JSONRPCService {
   private headers: any
 
@@ -20,6 +20,10 @@ export class JSONRPCService {
       const options = params || {}
       const id = 'id'
       let url = ''
+
+      if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_NGINX)) {
+        url = `${process.env.VUE_APP_API_URL_NGINX}`
+      }
 
       if (process.env.VUE_APP_MODE === 'local') {
         url = `${process.env.VUE_APP_API_URL}`

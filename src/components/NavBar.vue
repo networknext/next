@@ -292,8 +292,12 @@ export default class NavBar extends Vue {
   }
 
   private fetchPortalVersion (): void {
+    let url = ''
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_NGINX)) {
+      url = `${process.env.VUE_APP_API_URL_NGINX}`
+    }
     if (process.env.VUE_APP_MODE === 'dev') {
-      fetch('/version', {
+      fetch(`${url}/version`, {
         headers: {
           Accept: 'application/json',
           'Accept-Encoding': 'gzip',

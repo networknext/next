@@ -2,6 +2,6 @@ node_modules
 dist
 videos
 .env.local
-portal-*
+portal-dist*
 test_data
 portal.nginx.conf
