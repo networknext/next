@@ -3,10 +3,8 @@ ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
 
 PORTAL_DEV_MIG = portal-frontend-mig
-
-.PHONY: build-portal-artifacts-local
-build-portal-artifacts-local:
-	./deploy/build-artifacts.sh -e local -b $(ARTIFACT_BUCKET_PROD) -s portal
+PORTAL_STAGING_MIG = portal-frontend-mig
+PORTAL_PROD_MIG = portal-frontend-mig
 
 .PHONY: build-portal-artifacts-dev
 build-portal-artifacts-dev:
@@ -23,3 +21,11 @@ build-portal-artifacts-prod:
 .PHONY: deploy-portal-dev
 deploy-portal-dev: build-portal-artifacts-dev
 	./deploy/deploy-portal.sh -b $(ARTIFACT_BUCKET) -e dev -m $(PORTAL_DEV_MIG)
+
+.PHONY: deploy-portal-staging
+deploy-portal-staging: build-portal-artifacts-staging
+	./deploy/deploy-portal.sh -b $(ARTIFACT_BUCKET_STAGING) -e staging -m $(PORTAL_STAGING_MIG)
+
+.PHONY: deploy-portal-prod
+deploy-portal-prod: build-portal-artifacts-prod
+	./deploy/deploy-portal.sh -b $(ARTIFACT_BUCKET_PROD) -e prod -m $(PORTAL_PROD_MIG)
