@@ -29,7 +29,7 @@ build-artifacts() {
   rm -f ${NGINX_DIR}/portal.nginx.conf
 }
 
-if [ ! $# -eq 6 ]
+if [ ! $# -eq 4 ]
 then
   print_usage
   exit 1
