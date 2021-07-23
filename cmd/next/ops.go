@@ -81,6 +81,7 @@ func getDetailedRelayInfo(
 	relay += "  SSHUser            : " + reply.Relay.SSHUser + "\n"
 	relay += "  SSHPort            : " + fmt.Sprintf("%d", reply.Relay.SSHPort) + "\n"
 	relay += "  MaxSessions        : " + fmt.Sprintf("%d", reply.Relay.MaxSessionCount) + "\n"
+	relay += "  EgressPriceOverride: " + fmt.Sprintf("%4.2f", reply.Relay.EgressPriceOverride.ToDollars()) + "\n"
 	relay += "  MRC                : " + fmt.Sprintf("%4.2f", reply.Relay.MRC.ToDollars()) + "\n"
 	relay += "  Overage            : " + fmt.Sprintf("%4.2f", reply.Relay.Overage.ToDollars()) + "\n"
 	relay += "  BWRule             : " + fmt.Sprintf("%s", bwRule) + "\n"
