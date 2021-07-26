@@ -1225,11 +1225,11 @@ type BillingEntry2 struct {
 	NearRelayRTTs                   [BillingEntryMaxNearRelays]int32
 	NearRelayJitters                [BillingEntryMaxNearRelays]int32
 	NearRelayPacketLosses           [BillingEntryMaxNearRelays]int32
+	EverOnNext                      bool
+	SessionDuration                 uint32
 	TotalPriceSum                   uint64
 	EnvelopeBytesUpSum              uint64
 	EnvelopeBytesDownSum            uint64
-	SessionDuration                 uint32
-	EverOnNext                      bool
 
 	// network next only
 
@@ -1457,14 +1457,18 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	if entry.Version >= uint32(2) {
 		if entry.Summary {
 
-			stream.SerializeUint64(&entry.TotalPriceSum)
-
-			stream.SerializeUint64(&entry.EnvelopeBytesUpSum)
-			stream.SerializeUint64(&entry.EnvelopeBytesDownSum)
+			stream.SerializeBool(&entry.EverOnNext)
 
 			stream.SerializeUint32(&entry.SessionDuration)
 
-			stream.SerializeBool(&entry.EverOnNext)
+			if entry.EverOnNext {
+
+				stream.SerializeUint64(&entry.TotalPriceSum)
+
+				stream.SerializeUint64(&entry.EnvelopeBytesUpSum)
+				stream.SerializeUint64(&entry.EnvelopeBytesDownSum)
+
+			}
 
 		}
 	}
@@ -2037,11 +2041,15 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 		}
 
-		e["totalPriceSum"] = int(entry.TotalPriceSum)
-		e["envelopeBytesUpSum"] = int(entry.EnvelopeBytesUpSum)
-		e["envelopeBytesDownSum"] = int(entry.EnvelopeBytesDownSum)
-		e["sessionDuration"] = int(entry.SessionDuration)
 		e["everOnNext"] = entry.EverOnNext
+
+		e["sessionDuration"] = int(entry.SessionDuration)
+
+		if entry.EverOnNext {
+			e["totalPriceSum"] = int(entry.TotalPriceSum)
+			e["envelopeBytesUpSum"] = int(entry.EnvelopeBytesUpSum)
+			e["envelopeBytesDownSum"] = int(entry.EnvelopeBytesDownSum)
+		}
 
 	}
 
