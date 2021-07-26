@@ -22,8 +22,8 @@ build-artifacts() {
   printf "Building ${ENV} artifact... \n"
   npm run build-${ENV}
   cp ${NGINX_DIR}/portal.nginx.${ENV}.conf ${NGINX_DIR}/portal.nginx.conf
-  tar -zcf ${DIST_DIR}/../${SERVICE}-dist.${ENV}.tar.gz ${DIST_DIR} ${NGINX_DIR}/digicert* ${NGINX_DIR}/portal.nginx.conf
-  gsutil cp ${DIST_DIR}/../${SERVICE}-dist.${ENV}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}-dist.${ENV}.tar.gz
+  tar -zcf ${DIST_DIR}/../portal-dist.${ENV}.tar.gz ${DIST_DIR} ${NGINX_DIR}/digicert* ${NGINX_DIR}/portal.nginx.conf
+  gsutil cp ${DIST_DIR}/../portal-dist.${ENV}.tar.gz ${ARTIFACT_BUCKET}/portal-dist.${ENV}.tar.gz
   printf "Done building and artifact was published\n"
 
   rm -f ${NGINX_DIR}/portal.nginx.conf
@@ -35,7 +35,7 @@ then
   exit 1
 fi
 
-while getopts 'e:b:c:h' flag; do
+while getopts 'e:b:h' flag; do
   case "${flag}" in
     e) ENV="${OPTARG}" ;;
     b) ARTIFACT_BUCKET="${OPTARG}" ;;
