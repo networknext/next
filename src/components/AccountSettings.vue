@@ -6,8 +6,8 @@
     <p class="card-text">
       Update user account profile.
     </p>
-    <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
-    <form @submit.prevent="updateCompanyInformation()">
+    <Alert ref="responseAlert"/>
+    <form @submit.prevent="updateAccountSettings()">
       <div class="form-group">
         <label for="companyName">
           Company Name
@@ -27,20 +27,28 @@
         </label>
         <input type="text" class="form-control form-control-sm" id="companyCode" v-model="companyCode" placeholder="Enter your company code" @change="checkCompanyCode()"/>
         <small class="form-text text-muted">
-          This is the unique string associated to your company account and to be used in your company subdomain. Examples: my-test-company, testcompany, test-company
+          This is the unique string associated to your company account and to be used in your company subdomain. Examples: mycompany, my-company, my-company-name
         </small>
         <small v-for="(error, index) in companyCodeErrors" :key="index" class="text-danger">
           {{ error }}
           <br/>
         </small>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validCompanyInfo">
+      <div class="form-group">
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent"/>
+          <small>
+            I would like to receive the Network Next newsletter
+          </small>
+        </div>
+      </div>
+      <button id="account-settings-button" type="submit" class="btn btn-primary btn-sm">
         Update Company Settings
       </button>
       <p class="text-muted text-small mt-2"></p>
     </form>
-    <form @submit.prevent="updateAccountSettings()">
-      <div class="form-group" v-if="false">
+    <form v-if="false">
+      <div class="form-group">
         <label for="newPassword">
           Update Password
         </label>
@@ -63,13 +71,7 @@
           <br/>
         </small>
       </div>
-      <div class="form-check">
-        <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent" @change="checkConfirmPassword()"/>
-        <small>
-          I would like to receive the Network Next newsletter
-        </small>
-      </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;">
+      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;" v-if="false">
         Save
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -80,8 +82,8 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from './Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
-import { UserProfile } from './types/AuthTypes'
+import { AlertType } from './types/AlertTypes'
+import { cloneDeep } from 'lodash'
 
 /**
  * This component displays all of the necessary information for the user management tab
@@ -99,17 +101,19 @@ import { UserProfile } from './types/AuthTypes'
   }
 })
 export default class AccountSettings extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    responseAlert: Alert;
+  }
+
   get validCompanyInfo (): boolean {
     return this.validCompanyName && this.validCompanyCode
   }
 
-  private message: any
-  private alertType: any
   private companyName: string
   private companyCode: string
   private newPassword: string
   private confirmPassword: string
-  private unwatch: any
   private validPassword: boolean
   private validPasswordForm: boolean
   private validCompanyCode: boolean
@@ -119,11 +123,10 @@ export default class AccountSettings extends Vue {
   private companyCodeErrors: Array<string>
   private confirmPasswordErrors: Array<string>
   private newsletterConsent: boolean
+  private AlertType: any
 
   constructor () {
     super()
-    this.message = ''
-    this.alertType = AlertTypes.DEFAULT
     this.companyName = ''
     this.companyCode = ''
     this.newPassword = ''
@@ -139,44 +142,22 @@ export default class AccountSettings extends Vue {
     this.companyCodeErrors = []
     this.confirmPasswordErrors = []
     this.newsletterConsent = false
+    this.AlertType = AlertType
   }
 
   private mounted () {
-    if (!this.$store.getters.userProfile) {
-      this.unwatch = this.$store.watch(
-        (_, getters: any) => getters.userProfile,
-        (userProfile: any) => {
-          this.checkUserProfile(userProfile)
-        }
-      )
-    } else {
-      this.checkUserProfile(this.$store.getters.userProfile)
-    }
-  }
-
-  private checkUserProfile (userProfile: UserProfile) {
-    if (this.companyName === '') {
-      this.companyName = userProfile.companyName || ''
-    }
-    if (this.companyCode === '') {
-      this.companyCode = userProfile.companyCode || ''
-    }
+    const userProfile = cloneDeep(this.$store.getters.userProfile)
+    this.companyName = userProfile.companyName || ''
+    this.companyCode = userProfile.companyCode || ''
     this.newsletterConsent = userProfile.newsletterConsent || false
     this.checkCompanyName()
     this.checkCompanyCode()
     this.checkConfirmPassword()
   }
 
-  private destory () {
-    this.unwatch()
-  }
-
   private checkCompanyName () {
     this.companyNameErrors = []
     this.validCompanyName = false
-    if (this.companyName.length === 0) {
-      return
-    }
     if (this.companyName.length > 256) {
       this.companyNameErrors.push('Please choose a company name that is at most 256 characters')
     }
@@ -251,49 +232,48 @@ export default class AccountSettings extends Vue {
     }
   }
 
-  private updateCompanyInformation () {
-    this.$apiService
-      .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
-      .then((response: any) => {
-        this.$authService.refreshToken()
-        this.message = 'Company name updated successfully'
-        this.alertType = AlertTypes.SUCCESS
-        setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
-        }, 5000)
-      })
-      .catch((error: Error) => {
-        console.log('Something went wrong updating the account settings')
-        console.log(error)
-        this.message = 'Failed to update company name'
-        this.alertType = AlertTypes.ERROR
-        setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
-        }, 5000)
-      })
-  }
-
   private updateAccountSettings () {
-    this.$apiService
-      .updateAccountSettings({ newPassword: this.newPassword, newsletter: this.newsletterConsent })
-      .then((response: any) => {
-        this.message = 'Account settings updated successfully'
-        this.alertType = AlertTypes.SUCCESS
+    const promises = []
+    // Check for a valid company info form that is not equal to what is currently there. IE someone assigned to a company wants to update their newsletter settings but not change their company info
+    if (this.validCompanyInfo && this.$store.getters.userProfile.companyName !== this.companyName && this.$store.getters.userProfile.companyCode !== this.companyCode) {
+      promises.push(
+        this.$apiService
+          .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
+      )
+    }
+    if (this.$store.getters.userProfile.newsletterConsent !== this.newsletterConsent) {
+      promises.push(this.$apiService
+        .updateAccountSettings({ newsletter: this.newsletterConsent }))
+    }
+
+    if (promises.length === 0) {
+      return
+    }
+
+    Promise.all(promises)
+      .then(() => {
+        // TODO: refreshToken returns a promise that should be used to optimize the loading of new tabs
+        this.$authService.refreshToken()
+        this.$refs.responseAlert.setMessage('Account settings updated successfully')
+        this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the account settings')
         console.log(error)
-        this.message = 'Failed to update account settings'
-        this.alertType = AlertTypes.ERROR
+        this.companyName = this.$store.getters.userProfile.companyName
+        this.companyCode = this.$store.getters.userProfile.companyCode
+        this.newsletterConsent = this.$store.getters.userProfile.newsletterConsent
+        this.$refs.responseAlert.setMessage('Failed to update account settings')
+        this.$refs.responseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
       })
   }
@@ -303,4 +283,12 @@ export default class AccountSettings extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+  #account-settings-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #account-settings-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
 </style>

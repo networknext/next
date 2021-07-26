@@ -1,18 +1,26 @@
 <template>
-  <div v-bind:class="{
-    'map-container-no-offset': !$store.getters.isAnonymousPlus,
-    'map-container-offset': $store.getters.isAnonymousPlus,
-  }">
+  <div class="map-container-no-offset">
     <div class="map" id="map"></div>
-    <canvas id="deck-canvas"></canvas>
+    <canvas style="cursor: grab;" id="deck-canvas" data-intercom="map"></canvas>
   </div>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { Deck } from '@deck.gl/core'
-import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
-import mapboxgl from 'mapbox-gl'
+import CustomScreenGridLayer from './CustomScreenGridLayer'
+
+/* import data1 from '../../test_data/ghost-army-map-points-1.json'
+import data2 from '../../test_data/ghost-army-map-points-2.json'
+import data3 from '../../test_data/ghost-army-map-points-3.json'
+import data4 from '../../test_data/ghost-army-map-points-4.json'
+import data5 from '../../test_data/ghost-army-map-points-5.json'
+import data6 from '../../test_data/ghost-army-map-points-6.json'
+import data7 from '../../test_data/ghost-army-map-points-7.json'
+import data8 from '../../test_data/ghost-army-map-points-8.json'
+import data9 from '../../test_data/ghost-army-map-points-9.json'
+import data10 from '../../test_data/ghost-army-map-points-10.json'
+import data11 from '../../test_data/ghost-army-map-points-11.json'
+import data12 from '../../test_data/ghost-army-map-points-12.json' */
 
 /**
  * This component displays the map that is visible in the map workspace
@@ -27,28 +35,57 @@ import mapboxgl from 'mapbox-gl'
   name: 'SessionMap'
 })
 export default class SessionMap extends Vue {
+  get offsetMap () {
+    return this.$store.getters.isAnonymousPlus
+  }
+
   private deckGlInstance: any
   private mapInstance: any
   private mapLoop: any
   private viewState: any
-  private unwatch: any
+  private unwatchFilter: any
+
+  // private sessions: Array<any>
 
   constructor () {
     super()
-    this.viewState = {
-      latitude: 0,
-      longitude: 0,
-      zoom: 2,
-      pitch: 0,
-      bearing: 0,
-      minZoom: 2,
-      maxZoom: 16
+
+    // If there is not stored viewport, add the default one and use that
+    if (!this.$store.getters.currentViewport) {
+      this.$store.commit(
+        'UPDATE_CURRENT_VIEWPORT',
+        {
+          latitude: 0,
+          longitude: 0,
+          zoom: 2,
+          pitch: 0,
+          bearing: 0,
+          minZoom: 2,
+          maxZoom: 16
+        }
+      )
     }
+
+    this.viewState = this.$store.getters.currentViewport
+
+    // Use this to test using the canned json files
+    /* this.sessions = (data1 as any).result.map_points
+    this.sessions = this.sessions.concat((data2 as any).result.map_points)
+    this.sessions = this.sessions.concat((data3 as any).result.map_points)
+    this.sessions = this.sessions.concat((data4 as any).result.map_points)
+    this.sessions = this.sessions.concat((data5 as any).result.map_points)
+    this.sessions = this.sessions.concat((data6 as any).result.map_points)
+    this.sessions = this.sessions.concat((data7 as any).result.map_points)
+    this.sessions = this.sessions.concat((data8 as any).result.map_points)
+    this.sessions = this.sessions.concat((data9 as any).result.map_points)
+    this.sessions = this.sessions.concat((data10 as any).result.map_points)
+    this.sessions = this.sessions.concat((data11 as any).result.map_points)
+    this.sessions = this.sessions.concat((data12 as any).result.map_points) */
   }
 
   private mounted () {
     this.restartLoop()
-    this.unwatch = this.$store.watch(
+    this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
         return getters.currentFilter
       },
@@ -61,7 +98,7 @@ export default class SessionMap extends Vue {
 
   private beforeDestroy () {
     clearInterval(this.mapLoop)
-    this.unwatch()
+    this.unwatchFilter()
   }
 
   private fetchMapSessions () {
@@ -70,31 +107,42 @@ export default class SessionMap extends Vue {
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
+        // check if mapbox exists - primarily for tests
+        if (!(window as any).mapboxgl || !(window as any).deck) {
+          return
+        }
+
         if (!this.mapInstance) {
-          this.mapInstance = new mapboxgl.Map({
+          // Init the mapbox instance using the shared viewport values
+          this.mapInstance = new (window as any).mapboxgl.Map({
             accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
             style: 'mapbox://styles/mapbox/dark-v10',
-            center: [0, 0],
-            zoom: 2,
-            pitch: 0,
-            bearing: 0,
-            container: 'map'
+            center: [
+              this.viewState.longitude,
+              this.viewState.latitude
+            ],
+            zoom: this.viewState.zoom,
+            pitch: this.viewState.pitch,
+            bearing: this.viewState.bearing,
+            container: 'map',
+            minZoom: 1.9
           })
           // this.mapInstance.setRenderWorldCopies(status === 'false')
         }
 
         const sessions = response.map_points || []
-        let onNN = []
-        let direct = []
+        let onNN: Array<any> = []
+        const direct: Array<any> = []
 
         if (this.$store.getters.isAnonymous || this.$store.getters.isAnonymousPlus || this.$store.getters.currentFilter.companyCode === '') {
           onNN = sessions
         } else {
-          onNN = sessions.filter((point: any) => {
-            return (point[2] === true)
-          })
-          direct = sessions.filter((point: any) => {
-            return (point[2] === false)
+          sessions.forEach((session: any) => {
+            if (session[2] === true) {
+              onNN.push(session)
+            } else {
+              direct.push(session)
+            }
           })
         }
 
@@ -102,36 +150,64 @@ export default class SessionMap extends Vue {
         const aggregation = 'MEAN'
         const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
 
-        const nnLayer = new ScreenGridLayer({
-          id: 'nn-layer',
-          data: onNN,
-          opacity: 0.8,
-          getPosition: (d: Array<number>) => [d[0], d[1]],
-          getWeight: () => 1,
-          cellSizePixels: cellSize,
-          colorRange: [[40, 167, 69]],
-          gpuAggregation,
-          aggregation
-        })
+        const layers: Array<any> = []
 
-        const directLayer = new ScreenGridLayer({
-          id: 'direct-layer',
-          data: direct,
-          opacity: 0.8,
-          getPosition: (d: Array<number>) => [d[0], d[1]],
-          getWeight: () => 1,
-          cellSizePixels: cellSize,
-          colorRange: [[49, 130, 189]],
-          gpuAggregation,
-          aggregation
-        })
+        if (direct.length > 0) {
+          const directLayer = new CustomScreenGridLayer({
+            id: 'direct-layer',
+            data: direct,
+            opacity: 0.8,
+            getPosition: (d: Array<number>) => [d[0], d[1]],
+            pickable: true,
+            getWeight: () => 1,
+            cellSizePixels: cellSize,
+            colorRange: [[49, 130, 189]],
+            gpuAggregation,
+            aggregation,
+            onClick: this.mapPointClickHandler
+          })
+          layers.push(directLayer)
+        }
 
-        const layers =
-          onNN.length > 0 || direct.length > 0 ? [directLayer, nnLayer] : []
+        // const MAX_SESSIONS = this.sessions.length
+
+        if (onNN.length > 0) {
+        /* let slice = []
+          for (let i = 0; i < this.sessions.length; i++) {
+            slice.push(this.sessions[i])
+            if ((i !== 0 && i % MAX_SESSIONS === 0) || i + 1 === this.sessions.length) {
+              const nnLayer = new (window as any).deck.ScreenGridLayer({
+                id: 'nn-layer-' + i,
+                data: slice,
+                opacity: 0.8,
+                getPosition: (d: Array<number>) => [d[0], d[1]],
+                getWeight: () => 1,
+                cellSizePixels: cellSize,
+                colorRange: [[40, 167, 69]],
+                gpuAggregation,
+                aggregation
+              })
+              layers.push(nnLayer)
+              slice = []
+            }
+          } */
+          const nnLayer = new CustomScreenGridLayer({
+            id: 'nn-layer',
+            data: onNN,
+            getPosition: (d: Array<number>) => [d[0], d[1]],
+            pickable: true,
+            cellSizePixels: cellSize,
+            colorRange: [[40, 167, 69]],
+            aggregation,
+            gpuAggregation,
+            onClick: this.mapPointClickHandler
+          })
+          layers.push(nnLayer)
+        }
 
         if (!this.deckGlInstance) {
           // creating the deck.gl instance
-          this.deckGlInstance = new Deck({
+          this.deckGlInstance = new (window as any).deck.Deck({
             canvas: document.getElementById('deck-canvas'),
             width: '100%',
             height: '100%',
@@ -142,6 +218,7 @@ export default class SessionMap extends Vue {
             },
             // change the map's viewstate whenever the view state of deck.gl changes
             onViewStateChange: ({ viewState }: any) => {
+              // Whenever the viewport changes, update the mapbox instance and the stored version of the viewport
               this.mapInstance.jumpTo({
                 center: [viewState.longitude, viewState.latitude],
                 zoom: viewState.zoom,
@@ -150,8 +227,30 @@ export default class SessionMap extends Vue {
                 minZoom: 2,
                 maxZoom: 16
               })
+
+              this.$store.commit(
+                'UPDATE_CURRENT_VIEWPORT',
+                {
+                  latitude: viewState.latitude,
+                  longitude: viewState.longitude,
+                  zoom: viewState.zoom,
+                  pitch: viewState.pitch,
+                  bearing: viewState.bearing,
+                  minZoom: 2,
+                  maxZoom: 16
+                }
+              )
             },
-            layers: layers
+            layers: layers,
+            getCursor: ({ isHovering, isDragging }: any) => {
+              if (isHovering) {
+                return 'pointer'
+              }
+              if (isDragging) {
+                return 'grabbing'
+              }
+              return 'grab'
+            }
           })
         } else {
           this.deckGlInstance.setProps({ layers: [] })
@@ -168,6 +267,19 @@ export default class SessionMap extends Vue {
     this.mapLoop = setInterval(() => {
       this.fetchMapSessions()
     }, 10000)
+  }
+
+  private mapPointClickHandler (info: any) {
+    const points: any = info.object.points || []
+    if (points.length === 0) {
+      this.$root.$emit('failedMapPointLookup')
+      return
+    }
+    if (points.length === 1 && points[0].source[3]) {
+      this.$router.push(`/session-tool/${points[0].source[3]}`)
+      return
+    }
+    this.$root.$emit('showModal', points)
   }
 }
 </script>

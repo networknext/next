@@ -3,7 +3,7 @@
     <h5 class="card-title">
         Route Shader
     </h5>
-    <Alert :alertType="alertType" :message="message" v-if="message !== ''"/>
+    <Alert ref="responseAlert"/>
     <form v-on:submit.prevent="updateRouteShader()">
         <div class="form-group row">
             <div class="col-sm-2">Enable Network Next</div>
@@ -98,9 +98,9 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import _ from 'lodash'
+import { cloneDeep } from 'lodash'
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
+import { AlertType } from './types/AlertTypes'
 import { UserProfile } from '@/components/types/AuthTypes.ts'
 
 /**
@@ -119,17 +119,18 @@ import { UserProfile } from '@/components/types/AuthTypes.ts'
   }
 })
 export default class RouteShader extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    responseAlert: Alert;
+  }
+
   private routeShader: any
-  private message: string
-  private alertType: string
   private userProfile: UserProfile
 
   constructor () {
     super()
-    this.userProfile = _.cloneDeep(this.$store.getters.userProfile)
+    this.userProfile = cloneDeep(this.$store.getters.userProfile)
     this.routeShader = this.userProfile.routeShader
-    this.message = ''
-    this.alertType = ''
   }
 
   public updateRouteShader () {
@@ -138,19 +139,23 @@ export default class RouteShader extends Vue {
       .then((response: any) => {
         this.userProfile.routeShader = this.routeShader
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.alertType = AlertTypes.SUCCESS
-        this.message = 'Updated route shader successfully'
+        this.$refs.responseAlert.setMessage('Updated route shader successfully')
+        this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.message = ''
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the route shader')
         console.log(error)
-        this.alertType = AlertTypes.ERROR
-        this.message = 'Failed to update router shader'
+        this.$refs.responseAlert.setMessage('Failed to update router shader')
+        this.$refs.responseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.message = ''
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
       })
   }

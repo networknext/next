@@ -2,9 +2,13 @@ import Vue from 'vue'
 import VueRouter, { RouteConfig, Route, NavigationGuardNext } from 'vue-router'
 import store from '@/store'
 
+import Invoicing from '@/components/Invoicing.vue'
+import Analytics from '@/components/Analytics.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
+import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
+import Notifications from '@/components/Notifications.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
@@ -14,13 +18,14 @@ import RouteShader from '@/components/RouteShader.vue'
 import AccountSettings from '@/components/AccountSettings.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
 import UserSessions from '@/components/UserSessions.vue'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 Vue.use(VueRouter)
 
 // All navigable routes for the Portal
 const routes: Array<RouteConfig> = [
   {
-    path: '/',
+    path: '/map',
     name: 'map',
     component: MapWorkspace
   },
@@ -77,12 +82,38 @@ const routes: Array<RouteConfig> = [
         path: 'users',
         name: 'users',
         component: UserManagement
-      }/* ,
+      },
       {
         path: 'route-shader',
         name: 'shader',
         component: RouteShader
-      } */
+      }
+    ]
+  },
+  {
+    path: '/get-access',
+    name: 'get-access'
+  },
+  {
+    path: '/explore',
+    name: 'explore',
+    component: ExplorationWorkspace,
+    children: [
+      {
+        path: 'notifications',
+        name: 'notifications',
+        component: Notifications
+      },
+      {
+        path: 'analytics',
+        name: 'analytics',
+        component: Analytics
+      },
+      {
+        path: 'invoicing',
+        name: 'invoicing',
+        component: Invoicing
+      }
     ]
   },
   {
@@ -98,20 +129,72 @@ const router = new VueRouter({
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  // TODO: Make sure these are doing what we want them to do.
-  // TODO: store.getters.isAdmin doesn't work here. store.getters shows that everything is initialized correctly but accessing any of the members within getters, doesn't work?!
-  // BUG: Re-routes valid users to the map when it should just refresh the page...
+  // TODO: Make sure all edge cases for illegal routing are caught here
+  // TODO: Clean this up. Figure out a better way of handling user role and legal route relationships
+  if (!store.getters.isAdmin && to.name === 'explore') {
+    next('/map')
+    return
+  }
   if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
-    next('/')
     store.commit('UPDATE_CURRENT_PAGE', 'map')
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
+    next('/map')
+    return
+  }
+  if (store.getters.isAnonymous && (to.name === 'user-sessions' || to.name === 'user-tool' || to.name === 'account-settings' || to.name === 'downloads')) {
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
+    next('/map')
+    return
+  }
+  if (!store.getters.isAdmin && (to.name === 'notifications' || to.name === 'analytics' || to.name === 'invoicing')) {
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
+    next('/map')
+    return
+  }
+  // TODO: Add in checks for different parts of the explore page with new roles TBD
+  if (to.name === 'explore') {
+    store.commit('UPDATE_CURRENT_PAGE', 'notifications')
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
+    next('/explore/notifications')
     return
   }
   if (to.name === 'settings') {
     store.commit('UPDATE_CURRENT_PAGE', 'account-settings')
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
     next('/settings/account')
     return
   }
+  // Email is verified
+  if (to.query.message === 'Your email was verified. You can continue using the application.') {
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
+    // TODO: refreshToken returns a promise that should be used to optimize page loads. Look into how this effects routing
+    Vue.prototype.$authService.refreshToken()
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    next('/map')
+    return
+  }
+  // Close modal if open on map page
+  if (to.name === 'session-details' && from.name === 'map') {
+    router.app.$root.$emit('hideModal')
+  }
   store.commit('UPDATE_CURRENT_PAGE', to.name)
+  if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+    (window as any).Intercom('update')
+  }
   next()
 })
 
