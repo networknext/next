@@ -1459,8 +1459,8 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 			stream.SerializeUint64(&entry.TotalPriceSum)
 
-			stream.SerializeUint64(&entry.EnvelopeBytesUp)
-			stream.SerializeUint64(&entry.EnvelopeBytesDown)
+			stream.SerializeUint64(&entry.EnvelopeBytesUpSum)
+			stream.SerializeUint64(&entry.EnvelopeBytesDownSum)
 
 			stream.SerializeUint32(&entry.SessionDuration)
 
