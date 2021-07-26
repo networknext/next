@@ -2,7 +2,7 @@
   <div class="card-body" id="config-page">
     <h5 class="card-title">Game Configuration</h5>
     <p class="card-text">Manage how your game connects to Network Next.</p>
-    <Alert :message="message" :alertType="alertType" v-if="message || '' !== ''" />
+    <Alert ref="responseAlert" />
     <form v-on:submit.prevent="updatePubKey()">
       <div class="form-group" id="pubKey">
         <label>Company Name</label>
@@ -24,6 +24,7 @@
         ></textarea>
       </div>
       <button
+        id="game-config-button"
         type="submit"
         class="btn btn-primary btn-sm"
         v-if="$store.getters.isOwner || $store.getters.isAdmin"
@@ -36,9 +37,9 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from '@/components/types/AlertTypes'
-import { UserProfile } from '@/components/types/AuthTypes.ts'
-import _, { cloneDeep } from 'lodash'
+import { AlertType } from '@/components/types/AlertTypes'
+import { UserProfile } from '@/components/types/AuthTypes'
+import { cloneDeep } from 'lodash'
 
 /**
  * This component displays all of the necessary information for the game configuration tab
@@ -56,47 +57,30 @@ import _, { cloneDeep } from 'lodash'
   }
 })
 export default class GameConfiguration extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    responseAlert: Alert;
+  }
+
   private companyName: string
   private pubKey: string
-  private message: string
-  private alertType: string
   private userProfile: UserProfile
-  private unwatch: any
 
   constructor () {
     super()
     this.companyName = ''
     this.pubKey = ''
-    this.message = ''
-    this.alertType = ''
     this.userProfile = {} as UserProfile
   }
 
-  private destroy () {
-    this.unwatch()
-  }
-
   private mounted () {
-    if (!this.$store.getters.userProfile) {
-      this.unwatch = this.$store.watch(
-        (_, getters: any) => getters.userProfile,
-        (userProfile: any) => {
-          this.checkUserProfile(userProfile)
-        }
-      )
-    } else {
-      this.checkUserProfile(this.$store.getters.userProfile)
-    }
-  }
-
-  private checkUserProfile (userProfile: UserProfile) {
+    this.userProfile = cloneDeep(this.$store.getters.userProfile)
     if (this.companyName === '') {
-      this.companyName = userProfile.companyName || ''
+      this.companyName = this.userProfile.companyName || ''
     }
     if (this.pubKey === '') {
-      this.pubKey = userProfile.pubKey || ''
+      this.pubKey = this.userProfile.pubKey || ''
     }
-    this.userProfile = cloneDeep(this.$store.getters.userProfile)
   }
 
   private updatePubKey () {
@@ -105,26 +89,31 @@ export default class GameConfiguration extends Vue {
         new_public_key: this.pubKey
       })
       .then((response: any) => {
-        this.userProfile.pubKey = response.game_config.public_key
+        this.userProfile.pubKey = response.public_key
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.alertType = AlertTypes.SUCCESS
-        this.message = 'Updated public key successfully'
+        this.$refs.responseAlert.setMessage('Updated public key successfully')
+        this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.message = ''
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
         this.$apiService.fetchAllBuyers()
           .then((response: any) => {
             const allBuyers = response.buyers
             this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
           })
+        this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
         console.log(error)
-        this.alertType = AlertTypes.ERROR
-        this.message = 'Failed to update public key'
+        this.$refs.responseAlert.setMessage('Failed to update public key')
+        this.$refs.responseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.message = ''
+          if (this.$refs.responseAlert) {
+            this.$refs.responseAlert.resetAlert()
+          }
         }, 5000)
       })
   }
@@ -133,4 +122,12 @@ export default class GameConfiguration extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  #game-config-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #game-config-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
 </style>

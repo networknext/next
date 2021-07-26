@@ -1,6 +1,6 @@
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 import store from '@/store'
-import _ from 'lodash'
-
+import Vue from 'vue'
 export class JSONRPCService {
   private headers: any
 
@@ -10,49 +10,6 @@ export class JSONRPCService {
       'Accept-Encoding': 'gzip',
       'Content-Type': 'application/json'
     }
-
-    store.watch(
-      (_, getters: any) => getters.idToken,
-      () => {
-        this.processAuthChange()
-      }
-    )
-  }
-
-  private processAuthChange (): void {
-    const userProfile = _.cloneDeep(store.getters.userProfile)
-    let promises = []
-    if (store.getters.registeredToCompany) {
-      promises = [
-        this.fetchUserAccount({ user_id: userProfile.auth0ID }),
-        this.fetchGameConfiguration(),
-        this.fetchAllBuyers()
-      ]
-    } else {
-      promises = [
-        this.fetchUserAccount({ user_id: userProfile.auth0ID }),
-        this.fetchAllBuyers()
-      ]
-    }
-    Promise.all(promises)
-      .then((responses: any) => {
-        let allBuyers = []
-        if (store.getters.registeredToCompany) {
-          allBuyers = responses[2].buyers
-          userProfile.pubKey = responses[1].game_config.public_key
-        } else {
-          allBuyers = responses[1].buyers
-        }
-        userProfile.buyerID = responses[0].account.id
-        userProfile.companyName = responses[0].account.company_name || ''
-        userProfile.domains = responses[0].domains || []
-        store.commit('UPDATE_USER_PROFILE', userProfile)
-        store.commit('UPDATE_ALL_BUYERS', allBuyers)
-      })
-      .catch((error: Error) => {
-        console.log('Something went wrong fetching user details')
-        console.log(error.message)
-      })
   }
 
   private call (method: string, params: any): Promise<any> {
@@ -63,9 +20,11 @@ export class JSONRPCService {
       const options = params || {}
       const id = 'id'
       let url = ''
+
       if (process.env.VUE_APP_MODE === 'local') {
         url = `${process.env.VUE_APP_API_URL}`
       }
+
       fetch(`${url}/rpc`, {
         method: 'POST',
         headers: this.headers,
@@ -75,13 +34,16 @@ export class JSONRPCService {
           params: options,
           id
         })
-      }).then((response: any) => {
-        response.json().then((json: any) => {
-          if (json.error) {
-            reject(new Error(json.error))
-          }
-          resolve(json.result)
-        })
+      }).then((response: Response) => {
+        return response.json()
+      }).then((json: any) => {
+        if (json.error) {
+          reject(json.error)
+          return
+        }
+        resolve(json.result)
+      }).catch((error: Error) => {
+        reject(error)
       })
     })
   }
@@ -163,11 +125,43 @@ export class JSONRPCService {
   }
 
   public updateGameConfiguration (args: any): Promise<any> {
-    return this.call('BuyersService.UpdateGameConfiguration', args)
+    return this.call('BuyersService.UpdateBuyerInformation', args)
   }
 
   public resendVerificationEmail (args: any): Promise<any> {
     return this.call('AuthService.ResendVerificationEmail', args)
+  }
+
+  public fetchFeatureFlags (): Promise<any> {
+    return this.call('ConfigService.AllFeatureFlags', {})
+  }
+
+  public sendSignUpSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerSignedUpSlackNotification', args)
+  }
+
+  public sendDocsViewSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerViewedTheDocsSlackNotification', args)
+  }
+
+  public sendSDKDownloadSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloadedSDKSlackNotification', args)
+  }
+
+  public sendPublicKeyEnteredSlackNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerEnteredPublicKeySlackNotification', args)
+  }
+
+  public sendUE4DownloadNotifications (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloadedUE4PluginNotifications', args)
+  }
+
+  public fetchNotifications (): Promise<any> {
+    return this.call('BuyersService.FetchNotifications', {})
+  }
+
+  public fetchLookerURL (): Promise<any> {
+    return this.call('BuyersService.FetchLookerURL', {})
   }
 }
 

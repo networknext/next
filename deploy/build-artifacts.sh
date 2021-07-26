@@ -3,46 +3,42 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 DIST_DIR="${DIR}/../dist"
+NGINX_DIR="${DIR}/../nginx"
 
 ENV=
 ARTIFACT_BUCKET=
-SERVICE=
 
 print_usage() {
-  printf "Usage: build-artifacts.sh -e environment -b artifact bucket -s service\n\n"
+  printf "Usage: build-artifacts.sh -e environment -b artifact bucket\n\n"
   printf "e [string]\Building environment [dev, staging, prod]\n"
   printf "b [string]\Bucket for portal dist folder\n"
-  printf "s [string]\Service being built [portal, admin]\n"
 
   printf "Example:\n\n"
-  printf "> build-artifacts.sh -e dev -b gs://development_artifacts\n -s portal"
+  printf "> build-artifacts.sh -e dev -b gs://development_artifacts\n"
 }
 
 
 build-artifacts() {
   printf "Building ${ENV} artifact... \n"
   npm run build-${ENV}
-  if [ "$ENV" = "dev-test" ]; then
-    env=dev
-  else
-    env=$ENV
-  fi
-  tar -zcf ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${DIST_DIR}
-  gsutil cp ${DIST_DIR}/../${SERVICE}-dist.${env}.tar.gz ${ARTIFACT_BUCKET}/${SERVICE}-dist.${env}.tar.gz
+  cp ${NGINX_DIR}/portal.nginx.${ENV}.conf ${NGINX_DIR}/portal.nginx.conf
+  tar -zcf ${DIST_DIR}/../portal-dist.${ENV}.tar.gz ${DIST_DIR} ${NGINX_DIR}/digicert* ${NGINX_DIR}/portal.nginx.conf
+  gsutil cp ${DIST_DIR}/../portal-dist.${ENV}.tar.gz ${ARTIFACT_BUCKET}/portal-dist.${ENV}.tar.gz
   printf "Done building and artifact was published\n"
+
+  rm -f ${NGINX_DIR}/portal.nginx.conf
 }
 
-if [ ! $# -eq 6 ]
+if [ ! $# -eq 4 ]
 then
   print_usage
   exit 1
 fi
 
-while getopts 'e:b:s:c:h' flag; do
+while getopts 'e:b:h' flag; do
   case "${flag}" in
     e) ENV="${OPTARG}" ;;
     b) ARTIFACT_BUCKET="${OPTARG}" ;;
-    s) SERVICE="${OPTARG}" ;;
     h) print_usage
        exit 1 ;;
     *) print_usage

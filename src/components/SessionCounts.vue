@@ -7,36 +7,31 @@
       <span
         class="badge badge-dark"
         data-test="totalSessions"
-      >{{ this.totalSessions }} Total Sessions</span>&nbsp;
+      >{{ totalSessions.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} Total Sessions</span>&nbsp;
       <span
         class="badge badge-success"
         data-test="nnSessions"
-      >{{ this.totalSessionsReply.onNN }} on Network Next</span>
+      >{{ totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
     </h1>
-    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1">
+    <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
+      <Alert ref="sessionCountAlert">
+        <a href="#" @click="$refs.sessionCountAlert.resendVerificationEmail()">
+          Resend email
+        </a>
+      </Alert>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="!$store.getters.isAnonymousPlus" style="max-width: 300px;">
       <div class="mr-auto"></div>
-      <div class="px-2" v-if="$store.getters.isBuyer || $store.getters.isAdmin">
-        <select class="form-control" v-on:change="updateFilter($event.target.value)">
-          <option
-            :value="getBuyerCode()"
-            v-if="!$store.getters.isAdmin && $store.getters.isBuyer"
-            :selected="getBuyerCode() == $store.getters.currentFilter"
-          >{{ getBuyerName() }}</option>
-          <option :value="''" :selected="'' == $store.getters.currentFilter">All</option>
-          <option
-            :value="buyer.company_code"
-            v-for="buyer in allBuyers"
-            v-bind:key="buyer.company_code"
-            :selected="buyer.company_code == $store.getters.currentFilter"
-          >{{ buyer.company_name }}</option>
-        </select>
-      </div>
+      <BuyerFilter />
     </div>
   </div>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { AlertType } from './types/AlertTypes'
+import Alert from '@/components/Alert.vue'
+import BuyerFilter from '@/components/BuyerFilter.vue'
 
 /**
  * This component displays the total session counts and has all of the associated logic and api calls
@@ -54,24 +49,28 @@ interface TotalSessionsReply {
   onNN: number;
 }
 
-@Component
+@Component({
+  components: {
+    Alert,
+    BuyerFilter
+  }
+})
 export default class SessionCounts extends Vue {
-  private totalSessionsReply: TotalSessionsReply
-  private showCount: boolean
-  private countLoop: any
-
   get totalSessions () {
     return this.totalSessionsReply.direct + this.totalSessionsReply.onNN
   }
 
-  get allBuyers () {
-    if (!this.$store.getters.isAdmin) {
-      return []
-    }
-    return this.$store.getters.allBuyers.filter((buyer: any) => {
-      return buyer.is_live || this.$store.getters.isAdmin
-    })
+  // Register the alert component to access its set methods
+  $refs!: {
+    sessionCountAlert: Alert;
   }
+
+  private totalSessionsReply: TotalSessionsReply
+  private showCount: boolean
+  private countLoop: any
+  private alertToggle: boolean
+
+  private unwatchFilter: any
 
   constructor () {
     super()
@@ -80,55 +79,51 @@ export default class SessionCounts extends Vue {
       onNN: 0
     }
     this.showCount = false
+    this.alertToggle = false
   }
 
   private mounted () {
     this.restartLoop()
+    this.unwatchFilter = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.currentFilter
+      },
+      () => {
+        clearInterval(this.countLoop)
+        this.restartLoop()
+      }
+    )
+    if (this.$store.getters.isAnonymousPlus) {
+      this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+      this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
+    }
+
+    this.$root.$on('failedMapPointLookup', this.failedMapPointLookupCallback)
   }
 
   private beforeDestroy () {
     clearInterval(this.countLoop)
+    this.unwatchFilter()
+    this.$root.$off('failedMapPointLookup')
   }
 
   private fetchSessionCounts () {
-    this.$apiService.fetchTotalSessionCounts({ company_code: this.$store.getters.currentFilter.companyCode || '' })
+    this.$apiService.fetchTotalSessionCounts({ company_code: this.$store.getters.currentFilter.companyCode })
       .then((response: any) => {
         this.totalSessionsReply.direct = response.direct
         this.totalSessionsReply.onNN = response.next
+      })
+      .catch((error: Error) => {
+        this.totalSessionsReply.direct = 0
+        this.totalSessionsReply.onNN = 0
+        console.log('Something went wrong fetching session counts')
+        console.log(error)
+      })
+      .finally(() => {
         if (!this.showCount) {
           this.showCount = true
         }
       })
-      .catch((error: Error) => {
-        console.log(error)
-      })
-  }
-
-  private getBuyerCode () {
-    const allBuyers = this.$store.getters.allBuyers
-    let i = 0
-    for (i; i < allBuyers.length; i++) {
-      if (allBuyers[i].company_code === this.$store.getters.userProfile.companyCode) {
-        return allBuyers[i].company_code
-      }
-    }
-    return 'Private'
-  }
-
-  private getBuyerName () {
-    const allBuyers = this.$store.getters.allBuyers
-    let i = 0
-    for (i; i < allBuyers.length; i++) {
-      if (allBuyers[i].company_code === this.$store.getters.userProfile.companyCode) {
-        return allBuyers[i].company_name
-      }
-    }
-    return 'Private'
-  }
-
-  private updateFilter (companyCode: string) {
-    this.$store.commit('UPDATE_CURRENT_FILTER', { companyCode: companyCode })
-    this.restartLoop()
   }
 
   private restartLoop () {
@@ -139,6 +134,25 @@ export default class SessionCounts extends Vue {
     this.countLoop = setInterval(() => {
       this.fetchSessionCounts()
     }, 1000)
+  }
+
+  private failedMapPointLookupCallback () {
+    if (!this.alertToggle) {
+      this.alertToggle = true
+      this.$refs.sessionCountAlert.toggleSlots(false)
+      this.$refs.sessionCountAlert.setMessage('Map point lookup was unsuccessful. Please zoom in closer and try again')
+      this.$refs.sessionCountAlert.setAlertType(AlertType.WARNING)
+      setTimeout(() => {
+        if (this.$store.getters.isAnonymousPlus) {
+          this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+          this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
+        } else {
+          this.$refs.sessionCountAlert.resetAlert()
+        }
+        this.$refs.sessionCountAlert.toggleSlots(true)
+        this.alertToggle = false
+      }, 10000)
+    }
   }
 }
 </script>

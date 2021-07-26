@@ -4,6 +4,7 @@ declare module '*.vue' {
   export default _Vue
 
   export interface VueJSONRPCService {
+    addMailChimpContact (args: any): Promise<any>;
     impersonate (args: any): Promise<any>;
     updateAccountSettings (args: any): Promise<any>;
     updateAutoSignupDomains (args: any): Promise<any>;
@@ -21,10 +22,17 @@ declare module '*.vue' {
     deleteUserAccount (args: any): Promise<any>;
     addNewUserAccounts (args: any): Promise<any>;
     fetchUserAccount (args: any): Promise<any>;
+    fetchNotifications (): Promise<any>;
+    fetchLookerURL (): Promise<any>;
     fetchGameConfiguration (): Promise<any>;
     updateRouteShader (args: any): Promise<any>;
     updateGameConfiguration (args: any): Promise<any>;
     resendVerificationEmail (args: any): Promise<any>;
+    sendSignUpSlackNotification (args: any): Promise<any>;
+    sendDocsViewSlackNotification (args: any): Promise<any>;
+    sendSDKDownloadSlackNotification (args: any): Promise<any>;
+    sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
+    sendUE4DownloadNotifications (args: any): Promise<any>;
   }
 
   export class VueJSONRPCServicePlugin {
@@ -37,7 +45,7 @@ declare module '*.vue' {
     logout (): void;
     login (): void;
     signUp (): void;
-    refreshToken (): void;
+    refreshToken (): Promise<any>;
   }
 
   export class VueAuthServicePlugin {
@@ -46,10 +54,24 @@ declare module '*.vue' {
     ): void
   }
 
+  export interface VueFlagService {
+    fetchEnvVarFeatureFlags (): Promise<any>;
+    fetchAllRemoteFeatureFlags (): void;
+    isEnabled (name: string): boolean;
+  }
+
+  export class VueFlagServicePlugin {
+    static install(
+      Vue: typeof _Vue,
+      options: any,
+    ): void
+  }
+
   module 'vue/types/vue' {
     interface Vue {
       $apiService: VueJSONRPCService;
       $authService: VueAuthService;
+      $flagService: VueFlagService;
     }
   }
 }

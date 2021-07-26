@@ -1,15 +1,16 @@
 <template>
   <div>
+    <v-tour name="sessionsTour" :steps="sessionsTourSteps" :options="sessionsTourOptions" :callbacks="sessionsTourCallbacks"></v-tour>
     <div
       class="spinner-border"
       role="status"
       id="sessions-spinner"
-      v-show="!$store.getters.showTable"
+      v-show="!showTable"
     >
       <span class="sr-only">Loading...</span>
     </div>
-    <div class="table-responsive table-no-top-line" v-show="$store.getters.showTable">
-      <table class="table table-sm table-striped table-hover">
+    <div class="table-responsive table-no-top-line" v-show="showTable">
+      <table class="table table-sm" :class="{'table-striped': sessions.length > 0, 'table-hover': sessions.length > 0}">
         <thead>
           <tr>
             <th>
@@ -18,33 +19,71 @@
               </span>
             </th>
             <th>
-              <span>Session ID</span>
+              <span
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Unique ID of the session">Session ID</span>
             </th>
             <th v-if="!$store.getters.isAnonymous">
-              <span>User Hash</span>
+              <span
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Hash of the unique user ID">User Hash</span>
             </th>
             <th>
-              <span>ISP</span>
+              <span
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Internet service provider">
+                  ISP
+              </span>
             </th>
-            <th v-if="$store.getters.isAdmin">Customer</th>
+            <th v-if="$store.getters.isAdmin">
+              <span
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Customer name">
+                Customer
+              </span>
+            </th>
             <th>
-              <span>Datacenter</span>
+              <span
+                data-toggle="tooltip"
+                data-placement="right"
+                title="The datacenter of the game server this session is connected to">Datacenter</span>
             </th>
             <th class="text-right">
-              <span>Direct RTT</span>
+              <span
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Round trip time of the session over the public internet">Direct RTT</span>
             </th>
             <th class="text-right">
-              <span>Next RTT</span>
+              <span
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Round trip time of the session over Network Next">Next RTT</span>
             </th>
             <th class="text-right">
-              <span>Improvement</span>
+              <span
+                data-toggle="tooltip"
+                data-placement="right"
+                title="Difference in round trip time between the public internet and Network Next (Direct - Next)">Improvement</span>
             </th>
           </tr>
         </thead>
+        <tbody v-if="sessions.length === 0">
+          <tr>
+            <td colspan="7" class="text-muted">
+                There are no top sessions at this time.
+            </td>
+          </tr>
+        </tbody>
         <tbody>
           <tr v-for="(session, index) in sessions" v-bind:key="index">
             <td>
               <font-awesome-icon
+                id="status"
                 icon="circle"
                 class="fa-w-16 fa-fw"
                 v-bind:class="{
@@ -57,6 +96,8 @@
               <router-link
                 v-bind:to="`/session-tool/${session.id}`"
                 class="text-dark fixed-width"
+                v-bind:data-intercom="index"
+                v-bind:data-tour="index"
               >{{ session.id }}</router-link>
             </td>
             <td v-if="!$store.getters.isAnonymous">
@@ -65,12 +106,12 @@
                 class="text-dark fixed-width"
               >{{ session.user_hash }}</router-link>
             </td>
-            <td>{{ session.location.isp != "" ? session.location.isp : "Unknown" }}</td>
+            <td>{{ session.location.isp !== "" ? session.location.isp : "Unknown" }}</td>
             <td v-if="$store.getters.isAdmin">{{ getCustomerName(session.customer_id) }}</td>
             <td>
               <span
                 class="text-dark"
-              >{{ session.datacenter_alias != "" ? session.datacenter_alias : session.datacenter_name }}</span>
+              >{{ session.datacenter_alias !== "" ? session.datacenter_alias : session.datacenter_name }}</span>
             </td>
             <td
               class="text-right"
@@ -103,6 +144,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import SessionCounts from '@/components/SessionCounts.vue'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 /**
  * This component holds the workspace elements related to the top sessions page in the Portal
@@ -124,10 +166,49 @@ export default class SessionsWorkspace extends Vue {
   private showTable: boolean
   private unwatch: any
 
+  private sessionsTourSteps: Array<any>
+  private sessionsTourOptions: any
+  private sessionsTourCallbacks: any
+
   constructor () {
     super()
     this.sessions = []
     this.showTable = false
+
+    this.sessionsTourSteps = [
+      {
+        target: '[data-tour="0"]',
+        header: {
+          title: 'Top Sessions'
+        },
+        content: 'Click on this <strong>Session ID</strong> to view more stats (such as latency, packet loss and jitter improvements).',
+        params: {
+          placement: 'bottom',
+          enableScrolling: false
+        }
+      }
+    ]
+
+    this.sessionsTourOptions = {
+      labels: {
+        buttonSkip: 'OK',
+        buttonPrevious: 'BACK',
+        buttonNext: 'NEXT',
+        buttonStop: 'OK'
+      }
+    }
+
+    this.sessionsTourCallbacks = {
+      onFinish: () => {
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'sessions')
+
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Sessions tour finished', {
+            event_category: 'Tours'
+          })
+        }
+      }
+    }
   }
 
   private mounted () {
@@ -144,8 +225,6 @@ export default class SessionsWorkspace extends Vue {
   }
 
   private beforeDestroy (): void {
-    // TODO: This really shouldn't be in a store
-    this.$store.commit('TOGGLE_SESSION_TABLE', false)
     clearInterval(this.sessionsLoop)
     this.unwatch()
   }
@@ -156,11 +235,20 @@ export default class SessionsWorkspace extends Vue {
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
-        this.sessions = response.sessions
-        this.$store.commit('TOGGLE_SESSION_TABLE', true)
+        this.sessions = response.sessions || []
+        if (this.$store.getters.isTour && this.$tours.sessionsTour && !this.$tours.sessionsTour.isRunning && !this.$store.getters.finishedTours.includes('sessions')) {
+          this.$tours.sessionsTour.start()
+        }
       })
       .catch((error: any) => {
+        this.sessions = []
+        console.log('Something went wrong fetching the top sessions list')
         console.log(error)
+      })
+      .finally(() => {
+        if (!this.showTable) {
+          this.showTable = true
+        }
       })
   }
 
@@ -190,11 +278,11 @@ export default class SessionsWorkspace extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-.fixed-width {
-  font-family: monospace;
-  font-size: 120%;
-}
-div.table-no-top-line th {
-  border-top: none !important;
-}
+  .fixed-width {
+    font-family: monospace;
+    font-size: 120%;
+  }
+  div.table-no-top-line th {
+    border-top: none !important;
+  }
 </style>

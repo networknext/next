@@ -1,6 +1,7 @@
 <template>
   <div>
-    <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
+    <v-tour name="sessionDetailsTour" :steps="sessionDetailsTourSteps" :options="sessionDetailsTourOptions" :callbacks="sessionDetailsTourCallbacks"></v-tour>
+    <Alert ref="inputAlert"/>
     <div class="row" v-if="showDetails">
       <div class="col-12 col-lg-8">
         <div class="card mb-2">
@@ -21,7 +22,7 @@
               <span></span>
             </div>
           </div>
-          <div class="card-body">
+          <div class="card-body" data-tour="latencyGraph">
             <div id="latency-chart-1"></div>
           </div>
         </div>
@@ -108,95 +109,64 @@
             <div class="card-text">
               <dl>
                 <dt>
+                  Datacenter
+                </dt>
+                <dd>
+                  <em>
+                    {{ meta.datacenter_alias !== "" ? meta.datacenter_alias : meta.datacenter_name }}
+                  </em>
+                </dd>
+                <dt>
                   ISP
                 </dt>
                 <dd>
                   <em>
-                    {{ this.meta.location.isp != '' ? this.meta.location.isp : 'Unknown' }}
+                    {{ meta.location.isp != '' ? meta.location.isp : 'Unknown' }}
                   </em>
                 </dd>
-                <div v-if="!$store.getters.isAnonymous">
+                <div v-if="(!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus && getCustomerCode(meta.customer_id) === $store.getters.userProfile.companyCode) || $store.getters.isAdmin">
                   <dt>
                     User Hash
                   </dt>
                   <dd>
-                    <router-link v-bind:to="`/user-tool/${this.meta.user_hash}`" class="text-dark">{{ this.meta.user_hash }}</router-link>
+                    <router-link v-bind:to="`/user-tool/${meta.user_hash}`" class="text-dark">{{ meta.user_hash }}</router-link>
                   </dd>
                 </div>
-                <dt>
-                    User IP Address
-                </dt>
-                <dd>
-                    {{ this.meta.client_addr }}
-                </dd>
+                <div v-if="(!$store.getters.isAnonymous && meta.buyer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
+                  <dt>
+                      IP Address
+                  </dt>
+                  <dd>
+                      {{ meta.client_addr }}
+                  </dd>
+                </div>
                 <dt>
                     Platform
                 </dt>
                 <dd>
-                    {{ this.meta.platform }}
+                    {{ meta.platform }}
                 </dd>
                 <dt v-if="!$store.getters.isAnonymous">
                     Customer
                 </dt>
                 <dd v-if="!$store.getters.isAnonymous">
                     {{
-                        getCustomerName(this.meta.customer_id)
+                        getCustomerName(meta.customer_id)
                     }}
                 </dd>
                 <dt>
                   SDK Version
                 </dt>
                 <dd>
-                  {{ this.meta.sdk }}
+                  {{ meta.sdk }}
                 </dd>
                 <dt>
                   Connection Type
                 </dt>
                 <dd>
-                  {{ this.meta.connection }}
+                  {{ meta.connection }}
                 </dd>
-                <!-- TODO: Combine this so that we only check is Admin once -->
-                <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
-                    Nearby Relays
-                </dt>
-                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0">
-                    No Nearby Relays
-                </dd>
-                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
-                  <thead>
-                    <tr>
-                      <th style="width: 50%;">
-                        Name
-                      </th>
-                      <th style="width: 16.66%;">
-                        RTT
-                      </th>
-                      <th style="width: 16.66%;">
-                        Jitter
-                      </th>
-                      <th style="width: 16.66%;">
-                        Packet Loss
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                      <tr v-for="(relay, index) in this.meta.nearby_relays" :key="index">
-                        <td>
-                          <a class="text-dark">{{relay.name}}</a>&nbsp;
-                        </td>
-                        <td>
-                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) }}
-                        </td>
-                        <td>
-                          {{ parseFloat(relay.client_stats.jitter).toFixed(2) }}
-                        </td>
-                        <td>
-                          {{ parseFloat(relay.client_stats.packet_loss).toFixed(2) }}%
-                        </td>
-                      </tr>
-                  </tbody>
-                </table>
-                <dt  v-if="$store.getters.isAdmin">
+                <dt v-if="$store.getters.isAdmin" style="padding-top: 20px;">
                     Route
                 </dt>
                 <table class="table table-sm mt-1" v-if="$store.getters.isAdmin">
@@ -239,6 +209,50 @@
                     </tr>
                   </tbody>
                 </table>
+                <!-- TODO: Combine this so that we only check is Admin once -->
+                <dt v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
+                    Nearby Relays
+                </dt>
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && getBuyerIsLive(meta.customer_id)">
+                    No Near Relays
+                </dd>
+                <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && !getBuyerIsLive(meta.customer_id)">
+                    Customer is not live
+                </dd>
+                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
+                  <thead>
+                    <tr>
+                      <th style="width: 50%;">
+                        Name
+                      </th>
+                      <th style="width: 16.66%;">
+                        RTT
+                      </th>
+                      <th style="width: 16.66%;">
+                        Jitter
+                      </th>
+                      <th style="width: 16.66%;">
+                        Packet Loss
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                      <tr v-for="(relay, index) in meta.nearby_relays" :key="index">
+                        <td>
+                          <a class="text-dark">{{relay.name}}</a>&nbsp;
+                        </td>
+                        <td>
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) >= 255 ? '-' : parseFloat(relay.client_stats.rtt).toFixed(2) }}
+                        </td>
+                        <td>
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) >= 255 ? '-' : parseFloat(relay.client_stats.jitter).toFixed(2) }}
+                        </td>
+                        <td>
+                          {{ parseFloat(relay.client_stats.rtt).toFixed(2) >= 255 ? '-' : parseFloat(relay.client_stats.packet_loss).toFixed(2) + '%' }}
+                        </td>
+                      </tr>
+                  </tbody>
+                </table>
               </dl>
             </div>
           </div>
@@ -250,18 +264,18 @@
 
 <script lang="ts">
 
-import mapboxgl from 'mapbox-gl'
 import uPlot from 'uplot'
 
-import { Deck } from '@deck.gl/core'
-import { ScreenGridLayer } from '@deck.gl/aggregation-layers'
 import { Route, NavigationGuardNext } from 'vue-router'
 import { Component, Vue } from 'vue-property-decorator'
 
 import 'uplot/dist/uPlot.min.css'
 
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
+import { AlertType } from './types/AlertTypes'
+import { FeatureEnum } from './types/FeatureTypes'
+
+// import data1 from '../../test_data/session_details.json'
 
 /**
  * This component displays all of the information related to the session
@@ -279,6 +293,11 @@ import { AlertTypes } from './types/AlertTypes'
   }
 })
 export default class SessionDetails extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    inputAlert: Alert;
+  }
+
   private showDetails = false
 
   private searchID: string
@@ -307,23 +326,55 @@ export default class SessionDetails extends Vue {
     minZoom: 0
   }
 
-  private message: string
-  private alertType: string
+  private sessionDetailsTourSteps: Array<any>
+  private sessionDetailsTourOptions: any
+  private sessionDetailsTourCallbacks: any
 
   constructor () {
     super()
     this.searchID = ''
-    this.message = ''
-    this.alertType = AlertTypes.ERROR
+    // this.slices = (data1 as any).result.slices
+    // this.meta = (data1 as any).result.meta
+
+    this.sessionDetailsTourSteps = [
+      {
+        target: '[data-tour="latencyGraph"]',
+        header: {
+          title: 'Session Details'
+        },
+        content: 'Stats about a specific session can be viewed in this <strong>Session Tool</strong>. These are real-time improvements to latency, jitter, and packet loss.',
+        params: {
+          placement: 'right',
+          enableScrolling: false
+        }
+      }
+    ]
+
+    this.sessionDetailsTourOptions = {
+      labels: {
+        buttonSkip: 'OK',
+        buttonPrevious: 'BACK',
+        buttonNext: 'NEXT',
+        buttonStop: 'OK'
+      }
+    }
+
+    this.sessionDetailsTourCallbacks = {
+      onFinish: () => {
+        this.$store.commit('UPDATE_FINISHED_TOURS', 'session-details')
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+          Vue.prototype.$gtag.event('Session details tour finished', {
+            event_category: 'Tours'
+          })
+        }
+      }
+    }
   }
 
   private mounted () {
     this.searchID = this.$route.params.pathMatch || ''
     if (this.searchID !== '') {
-      this.fetchSessionDetails()
-      this.detailsLoop = setInterval(() => {
-        this.fetchSessionDetails()
-      }, 10000)
+      this.restartLoop()
     }
   }
 
@@ -340,15 +391,37 @@ export default class SessionDetails extends Vue {
   }
 
   // TODO: Move this somewhere with other helper functions
-  private getCustomerName (buyerId: string) {
+  private getCustomerName (buyerID: string) {
     const allBuyers = this.$store.getters.allBuyers
     let i = 0
     for (i; i < allBuyers.length; i++) {
-      if (allBuyers[i].id === buyerId) {
+      if (allBuyers[i].id === buyerID) {
         return allBuyers[i].company_name
       }
     }
     return 'Private'
+  }
+
+  private getCustomerCode (buyerID: string) {
+    const allBuyers = this.$store.getters.allBuyers
+    let i = 0
+    for (i; i < allBuyers.length; i++) {
+      if (allBuyers[i].id === buyerID) {
+        return allBuyers[i].company_code
+      }
+    }
+    return ''
+  }
+
+  private getBuyerIsLive (buyerID: string) {
+    const allBuyers = this.$store.getters.allBuyers
+    let i = 0
+    for (i; i < allBuyers.length; i++) {
+      if (allBuyers[i].id === buyerID) {
+        return allBuyers[i].is_live
+      }
+    }
+    return false
   }
 
   private fetchSessionDetails () {
@@ -357,7 +430,7 @@ export default class SessionDetails extends Vue {
         this.meta = response.meta
         this.slices = response.slices
 
-        this.meta.connection = this.meta.connection === 'wifi' ? 'Wifi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
+        this.meta.connection = this.meta.connection === 'wifi' ? 'Wi-Fi' : this.meta.connection.charAt(0).toUpperCase() + this.meta.connection.slice(1)
 
         if (!this.showDetails) {
           this.showDetails = true
@@ -376,7 +449,7 @@ export default class SessionDetails extends Vue {
           this.viewState.longitude = this.meta.location.longitude
 
           if (!this.mapInstance) {
-            this.mapInstance = new mapboxgl.Map({
+            this.mapInstance = new (window as any).mapboxgl.Map({
               accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
               style: 'mapbox://styles/mapbox/dark-v10',
               center: [
@@ -389,7 +462,7 @@ export default class SessionDetails extends Vue {
               container: 'session-tool-map'
             })
           }
-          const sessionLocationLayer = new ScreenGridLayer({
+          const sessionLocationLayer = new (window as any).deck.ScreenGridLayer({
             id: 'session-location-layer',
             data: [this.meta],
             opacity: 0.8,
@@ -403,7 +476,7 @@ export default class SessionDetails extends Vue {
 
           if (!this.deckGlInstance) {
             // creating the deck.gl instance
-            this.deckGlInstance = new Deck({
+            this.deckGlInstance = new (window as any).deck.Deck({
               canvas: document.getElementById('session-tool-deck-canvas'),
               width: '100%',
               height: '100%',
@@ -429,6 +502,9 @@ export default class SessionDetails extends Vue {
             this.deckGlInstance.setProps({ layers: [] })
             this.deckGlInstance.setProps({ layers: [sessionLocationLayer] })
           }
+          if (this.$store.getters.isTour && this.$tours.sessionDetailsTour && !this.$tours.sessionDetailsTour.isRunning && !this.$store.getters.finishedTours.includes('session-details')) {
+            this.$tours.sessionDetailsTour.start()
+          }
         })
       })
       .catch((error: any) => {
@@ -436,15 +512,27 @@ export default class SessionDetails extends Vue {
           clearInterval(this.detailsLoop)
         }
         if (this.slices.length === 0) {
-          this.message = 'Failed to fetch session details'
           console.log(`Something went wrong fetching sessions details for: ${this.searchID}`)
           console.log(error)
+          this.$refs.inputAlert.setMessage('Failed to fetch session details')
+          this.$refs.inputAlert.setAlertType(AlertType.ERROR)
         }
       })
   }
 
+  private restartLoop () {
+    if (this.detailsLoop) {
+      clearInterval(this.detailsLoop)
+    }
+    this.fetchSessionDetails()
+    this.detailsLoop = setInterval(() => {
+      this.fetchSessionDetails()
+    }, 10000)
+  }
+
   private generateCharts () {
     const latencyData: Array<Array<number>> = [
+      [],
       [],
       [],
       []
@@ -473,11 +561,9 @@ export default class SessionDetails extends Vue {
 
     const bandwidthChartElement: HTMLElement | null = document.getElementById('bandwidth-chart-1')
 
-    let lastEntryNN = false
-    let countNN = 0
     let directOnly = true
 
-    this.slices.map((slice: any) => {
+    this.slices.map((slice: any, index: number) => {
       const timestamp = new Date(slice.timestamp).getTime() / 1000
       const onNN = slice.on_network_next
 
@@ -485,42 +571,35 @@ export default class SessionDetails extends Vue {
         directOnly = false
       }
 
-      let nextRTT = parseFloat(slice.next.rtt)
+      const nextRTT = parseFloat(slice.next.rtt)
       const directRTT = parseFloat(slice.direct.rtt)
 
-      let nextJitter = parseFloat(slice.next.jitter)
+      const nextJitter = parseFloat(slice.next.jitter)
       const directJitter = parseFloat(slice.direct.jitter)
 
-      let nextPL = parseFloat(slice.next.packet_loss)
+      const nextPL = parseFloat(slice.next.packet_loss)
       const directPL = parseFloat(slice.direct.packet_loss)
 
-      if (lastEntryNN && !onNN) {
-        countNN = 0
-      }
-
-      if (onNN && countNN < 3) {
-        nextRTT = nextRTT >= directRTT ? directRTT : nextRTT
-        nextJitter = nextJitter >= directJitter ? directJitter : nextJitter
-        nextPL = 0
-        countNN++
-      }
-
       // Latency
-      let next = (slice.is_multipath && nextRTT >= directRTT) ? directRTT : nextRTT
+      let next = (slice.is_multipath && nextRTT >= directRTT && !this.$store.getters.isAdmin) ? directRTT : nextRTT
+      next = (!this.$store.getters.isAdmin && slice.is_try_before_you_buy) ? 0 : next
       let direct = directRTT
       latencyData[0].push(timestamp)
       latencyData[1].push(next)
       latencyData[2].push(direct)
+      latencyData[3].push(slice.predicted.rtt)
 
       // Jitter
-      next = (slice.is_multipath && nextJitter >= directJitter) ? directJitter : nextJitter
+      next = (slice.is_multipath && nextJitter >= directJitter && !this.$store.getters.isAdmin) ? directJitter : nextJitter
+      next = (!this.$store.getters.isAdmin && slice.is_try_before_you_buy) ? 0 : next
       direct = directJitter
       jitterData[0].push(timestamp)
       jitterData[1].push(next)
       jitterData[2].push(direct)
 
       // Packetloss
-      next = (slice.is_multipath && nextPL >= directPL) ? directPL : nextPL
+      next = (slice.is_multipath && nextPL >= directPL && !this.$store.getters.isAdmin) ? directPL : nextPL
+      next = (!this.$store.getters.isAdmin && slice.is_try_before_you_buy) ? 0 : next
       direct = directPL
       packetLossData[0].push(timestamp)
       packetLossData[1].push(next)
@@ -530,8 +609,6 @@ export default class SessionDetails extends Vue {
       bandwidthData[0].push(timestamp)
       bandwidthData[1].push(slice.envelope.up)
       bandwidthData[2].push(slice.envelope.down)
-
-      lastEntryNN = onNN
     })
 
     if (directOnly) {
@@ -560,6 +637,14 @@ export default class SessionDetails extends Vue {
       value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
     })
 
+    if (this.$store.getters.isAdmin) {
+      series.push({
+        stroke: 'rgb(255, 103, 0)',
+        label: 'Predicted',
+        value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
+      })
+    }
+
     let chartWidth = 0
 
     if (latencyChartElement) {
@@ -576,14 +661,70 @@ export default class SessionDetails extends Vue {
         }
       },
       scales: {
-        ms: {
+        // This causing the axis to not render correctly....
+        /* ms: {
           from: 'y',
           auto: false,
           range: (self: uPlot, min: number, max: number): uPlot.MinMax => [
             0,
             max
           ]
+        } */
+      },
+      series: series,
+      axes: [
+        {
+          show: false
+        },
+        {
+          scale: 'ms',
+          show: true,
+          gap: 5,
+          size: 70,
+          values: (self: uPlot, ticks: Array<number>) => ticks.map((rawValue: number) => rawValue + 'ms')
         }
+      ]
+    }
+
+    series = [
+      {}
+    ]
+
+    if (!directOnly) {
+      series.push({
+        stroke: 'rgb(0, 109, 44)',
+        fill: 'rgba(0, 109, 44, 0.1)',
+        label: 'Network Next',
+        value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
+      })
+    }
+
+    series.push({
+      stroke: 'rgb(49, 130, 189)',
+      fill: 'rgba(49, 130, 189, 0.1)',
+      label: 'Direct',
+      value: (self: uPlot, rawValue: number) => rawValue.toFixed(2)
+    })
+
+    const jitterComparisonOpts: uPlot.Options = {
+      width: chartWidth,
+      height: 260,
+      cursor: {
+        drag: {
+          x: false,
+          y: false
+        }
+      },
+      scales: {
+        // This causing the axis to not render correctly....
+        /* ms: {
+          from: 'y',
+          auto: false,
+          range: (self: uPlot, min: number, max: number): uPlot.MinMax => [
+            0,
+            max
+          ]
+        } */
       },
       series: series,
       axes: [
@@ -661,25 +802,26 @@ export default class SessionDetails extends Vue {
         }
       },
       scales: {
-        kbps: {
+        // This causing the axis to not render correctly....
+        /* kbps: {
           from: 'y',
           auto: false,
           range: (self: uPlot, min: number, max: number): uPlot.MinMax => [
             0,
             max
           ]
-        }
+        } */
       },
       series: [
         {},
         {
-          stroke: 'blue',
-          fill: 'rgba(0,0,255,0.1)',
+          stroke: 'orange',
+          fill: 'rgba(255,165,0,0.1)',
           label: 'Up'
         },
         {
-          stroke: 'orange',
-          fill: 'rgba(255,165,0,0.1)',
+          stroke: 'blue',
+          fill: 'rgba(0,0,255,0.1)',
           label: 'Down'
         }
       ],
@@ -713,7 +855,7 @@ export default class SessionDetails extends Vue {
     }
 
     if (jitterChartElement) {
-      this.jitterComparisonChart = new uPlot(latencyComparisonOpts, jitterData, jitterChartElement)
+      this.jitterComparisonChart = new uPlot(jitterComparisonOpts, jitterData, jitterChartElement)
     }
 
     if (this.packetLossComparisonChart) {
