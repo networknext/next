@@ -17,7 +17,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 13
+	SessionDataVersion = 14
 
 	MaxSessionDataSize = 511
 
@@ -610,6 +610,9 @@ type SessionData struct {
 	HoldNearRelays                bool
 	HoldNearRelayRTT              [core.MaxNearRelays]int32
 	WroteSummary                  bool
+	TotalPriceSum                 uint64
+	NextEnvelopeBytesUpSum        uint64
+	NextEnvelopeBytesDownSum      uint64
 }
 
 func UnmarshalSessionData(sessionData *SessionData, data []byte) error {
@@ -779,6 +782,13 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 	if sessionData.Version >= 13 {
 		stream.SerializeBool(&sessionData.WroteSummary)
+	}
+
+	if sessionData.Version >= 14 {
+		stream.SerializeUint64(&sessionData.TotalPriceSum)
+
+		stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
+		stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
 	}
 
 	// IMPORTANT: ADD NEW FIELDS BELOW HERE ONLY.
