@@ -44,6 +44,7 @@ var (
 	commitMessage string
 	sha           string
 	tag           string
+	keys          middleware.JWKS
 )
 
 const (
@@ -391,6 +392,30 @@ func main() {
 		Storage: db,
 	}
 
+	newKeys, err := middleware.FetchAuth0Cert()
+	if err != nil {
+		level.Error(logger).Log("msg", "error fetching auth0 cert", "err", err)
+		os.Exit(1)
+	}
+	keys = newKeys
+
+	go func() {
+		fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+		if err != nil {
+			level.Error(logger).Log("envvar", "AUTH_CERT_INTERVAL", "value", fetchAuthCertInterval, "err", err)
+			os.Exit(1)
+		}
+
+		for {
+			newKeys, err := middleware.FetchAuth0Cert()
+			if err != nil {
+				continue
+			}
+			keys = newKeys
+			time.Sleep(fetchAuthCertInterval)
+		}
+	}()
+
 	go func() {
 		mapGenInterval, err := envvar.GetDuration("SESSION_MAP_INTERVAL", time.Second*1)
 		if err != nil {
@@ -417,7 +442,6 @@ func main() {
 		for {
 			if err := buyerService.FetchReleaseNotes(); err != nil {
 				level.Error(logger).Log("msg", "error fetching today's release notes", "err", err)
-				os.Exit(1)
 			}
 			time.Sleep(fetchReleaseNotesInterval)
 		}
@@ -604,7 +628,7 @@ func main() {
 
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", middleware.JSONRPCMiddleware(os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", middleware.JSONRPCMiddleware(keys, os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 
