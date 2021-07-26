@@ -39,6 +39,7 @@ var (
 	commitMessage string
 	sha           string
 	tag           string
+	keys          middleware.JWKS
 )
 
 func main() {
@@ -100,6 +101,30 @@ func mainReturnWithCode() int {
 		_ = level.Error(logger).Log("err", err)
 		return 1
 	}
+
+	newKeys, err := middleware.FetchAuth0Cert()
+	if err != nil {
+		core.Error("faild to fetch auth0 cert: %v", err)
+		os.Exit(1)
+	}
+	keys = newKeys
+
+	go func() {
+		fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+		if err != nil {
+			core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
+			os.Exit(1)
+		}
+
+		for {
+			newKeys, err := middleware.FetchAuth0Cert()
+			if err != nil {
+				continue
+			}
+			keys = newKeys
+			time.Sleep(fetchAuthCertInterval)
+		}
+	}()
 
 	// Start a goroutine for updating the master relay backend
 	go func() {
@@ -377,16 +402,16 @@ func mainReturnWithCode() int {
 	// Wrap the following endpoints in auth and CORS middleware
 	// NOTE: the next tool is unaware of CORS and its requests simply pass through
 	costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
-	router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
+	router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(keys, audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
 
 	relaysCsvHandler := http.HandlerFunc(frontendClient.GetRelayBackendHandlerFunc("/relays"))
-	router.Handle("/relays", middleware.PlainHttpAuthMiddleware(audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
+	router.Handle("/relays", middleware.PlainHttpAuthMiddleware(keys, audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
 
 	jsonDashboardHandler := http.HandlerFunc(frontendClient.GetRelayDashboardDataHandlerFunc())
-	router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(audience, jsonDashboardHandler, strings.Split(allowedOrigins, ",")))
+	router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(keys, audience, jsonDashboardHandler, strings.Split(allowedOrigins, ",")))
 
 	jsonDashboardAnalysisHandler := http.HandlerFunc(frontendClient.GetRelayDashboardAnalysisHandlerFunc())
-	router.Handle("/relay_dashboard_analysis", middleware.PlainHttpAuthMiddleware(audience, jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ",")))
+	router.Handle("/relay_dashboard_analysis", middleware.PlainHttpAuthMiddleware(keys, audience, jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ",")))
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
