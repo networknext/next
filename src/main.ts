@@ -50,11 +50,6 @@ const flags: Array<Flag> = [
     value: false
   },
   {
-    name: FeatureEnum.FEATURE_NGINX,
-    description: 'Break the portal free from the backend with NGINX',
-    value: false
-  },
-  {
     name: FeatureEnum.FEATURE_TOUR,
     description: 'New product tour to replace intercom',
     value: false
