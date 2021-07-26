@@ -1168,7 +1168,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 // ------------------------------------------------------------------------
 
 const (
-	BillingEntryVersion2 = uint32(1)
+	BillingEntryVersion2 = uint32(2)
 
 	MaxBillingEntry2Bytes = 4096
 )
@@ -1225,6 +1225,11 @@ type BillingEntry2 struct {
 	NearRelayRTTs                   [BillingEntryMaxNearRelays]int32
 	NearRelayJitters                [BillingEntryMaxNearRelays]int32
 	NearRelayPacketLosses           [BillingEntryMaxNearRelays]int32
+	EverOnNext                      bool
+	SessionDuration                 uint32
+	TotalPriceSum                   uint64
+	EnvelopeBytesUpSum              uint64
+	EnvelopeBytesDownSum            uint64
 
 	// network next only
 
@@ -1435,6 +1440,35 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 
 			stream.SerializeUint64(&entry.NextBytesUp)
 			stream.SerializeUint64(&entry.NextBytesDown)
+
+		}
+	}
+
+	/*
+		Version 2
+
+		Includes the following in the summary slice:
+			- Sum of TotalPrice
+			- Sum of EnvelopeBytesUp
+			- Sum of EnvelopeBytesDown
+			- Duration of the session (in seconds)
+			- EverOnNext
+	*/
+	if entry.Version >= uint32(2) {
+		if entry.Summary {
+
+			stream.SerializeBool(&entry.EverOnNext)
+
+			stream.SerializeUint32(&entry.SessionDuration)
+
+			if entry.EverOnNext {
+
+				stream.SerializeUint64(&entry.TotalPriceSum)
+
+				stream.SerializeUint64(&entry.EnvelopeBytesUpSum)
+				stream.SerializeUint64(&entry.EnvelopeBytesDownSum)
+
+			}
 
 		}
 	}
@@ -2005,6 +2039,16 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 			e["nearRelayJitters"] = nearRelayJitters
 			e["nearRelayPacketLosses"] = nearRelayPacketLosses
 
+		}
+
+		e["everOnNext"] = entry.EverOnNext
+
+		e["sessionDuration"] = int(entry.SessionDuration)
+
+		if entry.EverOnNext {
+			e["totalPriceSum"] = int(entry.TotalPriceSum)
+			e["envelopeBytesUpSum"] = int(entry.EnvelopeBytesUpSum)
+			e["envelopeBytesDownSum"] = int(entry.EnvelopeBytesDownSum)
 		}
 
 	}
