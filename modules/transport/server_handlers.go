@@ -1289,7 +1289,7 @@ func SessionPost(state *SessionHandlerState) {
 		This saves datascience some work when analyzing sessions across days.
 	*/
 
-	if !state.Output.WroteSummary {
+	if !state.Output.WroteSummary && state.Packet.Next {
 		state.Output.TotalPriceSum = state.Input.TotalPriceSum + uint64(totalPrice)
 		state.Output.NextEnvelopeBytesUpSum = state.Input.NextEnvelopeBytesUpSum + nextEnvelopeBytesUp
 		state.Output.NextEnvelopeBytesDownSum = state.Input.NextEnvelopeBytesDownSum + nextEnvelopeBytesDown
