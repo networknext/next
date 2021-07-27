@@ -1168,7 +1168,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 // ------------------------------------------------------------------------
 
 const (
-	BillingEntryVersion2 = uint32(2)
+	BillingEntryVersion2 = uint32(3)
 
 	MaxBillingEntry2Bytes = 4096
 )
@@ -1194,7 +1194,7 @@ type BillingEntry2 struct {
 	Debug               string
 	RouteDiversity      int32
 
-	// first slice only
+	// first slice and summary slice only
 
 	DatacenterID      uint64
 	BuyerID           uint64
@@ -1307,31 +1307,57 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	stream.SerializeInteger(&entry.RouteDiversity, 0, 32)
 
 	/*
-		2. First slice only
+		2. First slice and summary slice only
 
-		These values are serialized only for slice 0.
+		These values are serialized only for slice 0 and summary slice.
+
+		NOTE: Prior to version 3, these fields were only serialized for slice 0.
 	*/
 
-	if entry.SliceNumber == 0 {
+	if entry.Version >= 3 {
+		if entry.SliceNumber == 0 || entry.Summary {
 
-		stream.SerializeUint64(&entry.DatacenterID)
-		stream.SerializeUint64(&entry.BuyerID)
-		stream.SerializeUint64(&entry.UserHash)
-		stream.SerializeUint64(&entry.EnvelopeBytesUp)
-		stream.SerializeUint64(&entry.EnvelopeBytesDown)
-		stream.SerializeFloat32(&entry.Latitude)
-		stream.SerializeFloat32(&entry.Longitude)
-		stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
-		stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
-		stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
-		stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
-		stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
-		for i := 0; i < int(entry.NumTags); i++ {
-			stream.SerializeUint64(&entry.Tags[i])
+			stream.SerializeUint64(&entry.DatacenterID)
+			stream.SerializeUint64(&entry.BuyerID)
+			stream.SerializeUint64(&entry.UserHash)
+			stream.SerializeUint64(&entry.EnvelopeBytesUp)
+			stream.SerializeUint64(&entry.EnvelopeBytesDown)
+			stream.SerializeFloat32(&entry.Latitude)
+			stream.SerializeFloat32(&entry.Longitude)
+			stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
+			stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
+			stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+			stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
+			stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
+			for i := 0; i < int(entry.NumTags); i++ {
+				stream.SerializeUint64(&entry.Tags[i])
+			}
+			stream.SerializeBool(&entry.ABTest)
+			stream.SerializeBool(&entry.Pro)
+
 		}
-		stream.SerializeBool(&entry.ABTest)
-		stream.SerializeBool(&entry.Pro)
+	} else {
+		if entry.SliceNumber == 0 {
 
+			stream.SerializeUint64(&entry.DatacenterID)
+			stream.SerializeUint64(&entry.BuyerID)
+			stream.SerializeUint64(&entry.UserHash)
+			stream.SerializeUint64(&entry.EnvelopeBytesUp)
+			stream.SerializeUint64(&entry.EnvelopeBytesDown)
+			stream.SerializeFloat32(&entry.Latitude)
+			stream.SerializeFloat32(&entry.Longitude)
+			stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
+			stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
+			stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+			stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
+			stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
+			for i := 0; i < int(entry.NumTags); i++ {
+				stream.SerializeUint64(&entry.Tags[i])
+			}
+			stream.SerializeBool(&entry.ABTest)
+			stream.SerializeBool(&entry.Pro)
+
+		}
 	}
 
 	/*
@@ -1502,6 +1528,7 @@ func ReadBillingEntry2(entry *BillingEntry2, data []byte) error {
 	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1769,9 +1796,9 @@ func (entry *BillingEntry2) ClampEntry() {
 		entry.RouteDiversity = 32
 	}
 
-	// first slice only
+	// first slice and summary slice only
 
-	if entry.SliceNumber == 0 {
+	if entry.SliceNumber == 0 || entry.Summary {
 
 		if len(entry.ISP) >= BillingEntryMaxISPLength {
 			core.Debug("BillingEntry2 ISP length (%d) >= BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength - 1(%d)", len(entry.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength-1)
@@ -1969,12 +1996,12 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 	}
 
 	/*
-		2. First slice only
+		2. First slice and summary slice only
 
-		These values are serialized only for slice 0.
+		These values are serialized only for slice 0 and the summary slice.
 	*/
 
-	if entry.SliceNumber == 0 {
+	if entry.SliceNumber == 0 || entry.Summary {
 
 		e["datacenterID"] = int(entry.DatacenterID)
 		e["buyerID"] = int(entry.BuyerID)
