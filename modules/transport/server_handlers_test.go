@@ -2073,3 +2073,139 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	assert.True(t, sessionData.RouteState.Next)
 	assert.False(t, sessionData.Initial)
 }
+
+func TestCalculateTotalPriceNibblins_SellerPrice(t *testing.T) {
+	t.Parallel()
+
+	routeNumRelays := 2
+
+	seller := routing.Seller{
+		ID:                       "test-seller",
+		Name:                     "test-seller",
+		CompanyCode:              "test-seller",
+		ShortName:                "test-seller",
+		Secret:                   false,
+		EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
+		DatabaseID:               0,
+		CustomerID:               0,
+	}
+
+	var relaySellers [core.MaxRelaysPerRoute]routing.Seller
+	var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+
+	assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
+	for i := 0; i < routeNumRelays; i++ {
+		relaySellers[i] = seller
+		relayEgressPriceOverride[i] = routing.Nibblin(0)
+	}
+
+	envelopeBytesDown := uint64(1)
+	envelopeBytesUp := uint64(1)
+
+	totalPrice := transport.CalculateTotalPriceNibblins(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+
+	assert.Equal(t, routing.Nibblin(40002), totalPrice)
+}
+
+func TestCalculateTotalPriceNibblins_EgressPriceOverride(t *testing.T) {
+	t.Parallel()
+
+	routeNumRelays := 2
+
+	seller := routing.Seller{
+		ID:                       "test-seller",
+		Name:                     "test-seller",
+		CompanyCode:              "test-seller",
+		ShortName:                "test-seller",
+		Secret:                   false,
+		EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
+		DatabaseID:               0,
+		CustomerID:               0,
+	}
+
+	var relaySellers [core.MaxRelaysPerRoute]routing.Seller
+	var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+
+	assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
+	for i := 0; i < routeNumRelays; i++ {
+		relaySellers[i] = seller
+		relayEgressPriceOverride[i] = routing.Nibblin(20000000000000)
+	}
+
+	envelopeBytesDown := uint64(1)
+	envelopeBytesUp := uint64(1)
+
+	totalPrice := transport.CalculateTotalPriceNibblins(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+
+	assert.Equal(t, routing.Nibblin(80002), totalPrice)
+}
+
+func TestCalculateRouteRelaysPrice_SellerPrice(t *testing.T) {
+	t.Parallel()
+
+	routeNumRelays := 2
+
+	seller := routing.Seller{
+		ID:                       "test-seller",
+		Name:                     "test-seller",
+		CompanyCode:              "test-seller",
+		ShortName:                "test-seller",
+		Secret:                   false,
+		EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
+		DatabaseID:               0,
+		CustomerID:               0,
+	}
+
+	var relaySellers [core.MaxRelaysPerRoute]routing.Seller
+	var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+
+	assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
+	for i := 0; i < routeNumRelays; i++ {
+		relaySellers[i] = seller
+		relayEgressPriceOverride[i] = routing.Nibblin(0)
+	}
+
+	envelopeBytesDown := uint64(1)
+	envelopeBytesUp := uint64(1)
+
+	routeRelaysPrice := transport.CalculateRouteRelaysPrice(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+
+	expectedRouteRelaysPrice := [core.MaxRelaysPerRoute]routing.Nibblin{routing.Nibblin(20000), routing.Nibblin(20000), routing.Nibblin(0), routing.Nibblin(0), routing.Nibblin(0)}
+
+	assert.Equal(t, expectedRouteRelaysPrice, routeRelaysPrice)
+}
+
+func TestCalculateRouteRelaysPrice_EgressPriceOverride(t *testing.T) {
+	t.Parallel()
+
+	routeNumRelays := 2
+
+	seller := routing.Seller{
+		ID:                       "test-seller",
+		Name:                     "test-seller",
+		CompanyCode:              "test-seller",
+		ShortName:                "test-seller",
+		Secret:                   false,
+		EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
+		DatabaseID:               0,
+		CustomerID:               0,
+	}
+
+	var relaySellers [core.MaxRelaysPerRoute]routing.Seller
+	var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+
+	assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
+	for i := 0; i < routeNumRelays; i++ {
+		relaySellers[i] = seller
+		relayEgressPriceOverride[i] = routing.Nibblin(20000000000000)
+	}
+
+	envelopeBytesDown := uint64(1)
+	envelopeBytesUp := uint64(1)
+
+	routeRelaysPrice := transport.CalculateRouteRelaysPrice(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+
+	expectedRouteRelaysPrice := [core.MaxRelaysPerRoute]routing.Nibblin{routing.Nibblin(40000), routing.Nibblin(40000), routing.Nibblin(0), routing.Nibblin(0), routing.Nibblin(0)}
+
+	assert.Equal(t, expectedRouteRelaysPrice, routeRelaysPrice)
+}
