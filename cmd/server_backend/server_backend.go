@@ -59,6 +59,7 @@ var (
 	commitMessage string
 	sha           string
 	tag           string
+	keys          middleware.JWKS
 )
 
 // A mock locator used in staging to set each session to a random, unique lat/long
@@ -652,6 +653,30 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	newKeys, err := middleware.FetchAuth0Cert()
+	if err != nil {
+		core.Error("faild to fetch auth0 cert: %v", err)
+		os.Exit(1)
+	}
+	keys = newKeys
+
+	go func() {
+		fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+		if err != nil {
+			core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
+			os.Exit(1)
+		}
+
+		for {
+			newKeys, err := middleware.FetchAuth0Cert()
+			if err != nil {
+				continue
+			}
+			keys = newKeys
+			time.Sleep(fetchAuthCertInterval)
+		}
+	}()
+
 	// Start HTTP server
 	{
 		allowedOrigins := envvar.Get("ALLOWED_ORIGINS", "")
@@ -670,7 +695,7 @@ func mainReturnWithCode() int {
 		router.Handle("/debug/vars", expvar.Handler())
 
 		serverTrackerHandler := http.HandlerFunc(transport.ServerTrackerHandlerFunc(serverTracker))
-		router.Handle("/servers", middleware.PlainHttpAuthMiddleware(audience, serverTrackerHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/servers", middleware.PlainHttpAuthMiddleware(keys, audience, serverTrackerHandler, strings.Split(allowedOrigins, ",")))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
