@@ -1168,7 +1168,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 // ------------------------------------------------------------------------
 
 const (
-	BillingEntryVersion2 = uint32(1)
+	BillingEntryVersion2 = uint32(3)
 
 	MaxBillingEntry2Bytes = 4096
 )
@@ -1194,7 +1194,7 @@ type BillingEntry2 struct {
 	Debug               string
 	RouteDiversity      int32
 
-	// first slice only
+	// first slice and summary slice only
 
 	DatacenterID      uint64
 	BuyerID           uint64
@@ -1225,6 +1225,11 @@ type BillingEntry2 struct {
 	NearRelayRTTs                   [BillingEntryMaxNearRelays]int32
 	NearRelayJitters                [BillingEntryMaxNearRelays]int32
 	NearRelayPacketLosses           [BillingEntryMaxNearRelays]int32
+	EverOnNext                      bool
+	SessionDuration                 uint32
+	TotalPriceSum                   uint64
+	EnvelopeBytesUpSum              uint64
+	EnvelopeBytesDownSum            uint64
 
 	// network next only
 
@@ -1302,31 +1307,57 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	stream.SerializeInteger(&entry.RouteDiversity, 0, 32)
 
 	/*
-		2. First slice only
+		2. First slice and summary slice only
 
-		These values are serialized only for slice 0.
+		These values are serialized only for slice 0 and summary slice.
+
+		NOTE: Prior to version 3, these fields were only serialized for slice 0.
 	*/
 
-	if entry.SliceNumber == 0 {
+	if entry.Version >= 3 {
+		if entry.SliceNumber == 0 || entry.Summary {
 
-		stream.SerializeUint64(&entry.DatacenterID)
-		stream.SerializeUint64(&entry.BuyerID)
-		stream.SerializeUint64(&entry.UserHash)
-		stream.SerializeUint64(&entry.EnvelopeBytesUp)
-		stream.SerializeUint64(&entry.EnvelopeBytesDown)
-		stream.SerializeFloat32(&entry.Latitude)
-		stream.SerializeFloat32(&entry.Longitude)
-		stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
-		stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
-		stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
-		stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
-		stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
-		for i := 0; i < int(entry.NumTags); i++ {
-			stream.SerializeUint64(&entry.Tags[i])
+			stream.SerializeUint64(&entry.DatacenterID)
+			stream.SerializeUint64(&entry.BuyerID)
+			stream.SerializeUint64(&entry.UserHash)
+			stream.SerializeUint64(&entry.EnvelopeBytesUp)
+			stream.SerializeUint64(&entry.EnvelopeBytesDown)
+			stream.SerializeFloat32(&entry.Latitude)
+			stream.SerializeFloat32(&entry.Longitude)
+			stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
+			stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
+			stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+			stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
+			stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
+			for i := 0; i < int(entry.NumTags); i++ {
+				stream.SerializeUint64(&entry.Tags[i])
+			}
+			stream.SerializeBool(&entry.ABTest)
+			stream.SerializeBool(&entry.Pro)
+
 		}
-		stream.SerializeBool(&entry.ABTest)
-		stream.SerializeBool(&entry.Pro)
+	} else {
+		if entry.SliceNumber == 0 {
 
+			stream.SerializeUint64(&entry.DatacenterID)
+			stream.SerializeUint64(&entry.BuyerID)
+			stream.SerializeUint64(&entry.UserHash)
+			stream.SerializeUint64(&entry.EnvelopeBytesUp)
+			stream.SerializeUint64(&entry.EnvelopeBytesDown)
+			stream.SerializeFloat32(&entry.Latitude)
+			stream.SerializeFloat32(&entry.Longitude)
+			stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
+			stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
+			stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+			stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
+			stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
+			for i := 0; i < int(entry.NumTags); i++ {
+				stream.SerializeUint64(&entry.Tags[i])
+			}
+			stream.SerializeBool(&entry.ABTest)
+			stream.SerializeBool(&entry.Pro)
+
+		}
 	}
 
 	/*
@@ -1439,6 +1470,35 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		}
 	}
 
+	/*
+		Version 2
+
+		Includes the following in the summary slice:
+			- Sum of TotalPrice
+			- Sum of EnvelopeBytesUp
+			- Sum of EnvelopeBytesDown
+			- Duration of the session (in seconds)
+			- EverOnNext
+	*/
+	if entry.Version >= uint32(2) {
+		if entry.Summary {
+
+			stream.SerializeBool(&entry.EverOnNext)
+
+			stream.SerializeUint32(&entry.SessionDuration)
+
+			if entry.EverOnNext {
+
+				stream.SerializeUint64(&entry.TotalPriceSum)
+
+				stream.SerializeUint64(&entry.EnvelopeBytesUpSum)
+				stream.SerializeUint64(&entry.EnvelopeBytesDownSum)
+
+			}
+
+		}
+	}
+
 	return stream.Error()
 }
 
@@ -1468,6 +1528,7 @@ func ReadBillingEntry2(entry *BillingEntry2, data []byte) error {
 	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1735,9 +1796,9 @@ func (entry *BillingEntry2) ClampEntry() {
 		entry.RouteDiversity = 32
 	}
 
-	// first slice only
+	// first slice and summary slice only
 
-	if entry.SliceNumber == 0 {
+	if entry.SliceNumber == 0 || entry.Summary {
 
 		if len(entry.ISP) >= BillingEntryMaxISPLength {
 			core.Debug("BillingEntry2 ISP length (%d) >= BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength - 1(%d)", len(entry.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength-1)
@@ -1935,12 +1996,12 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 	}
 
 	/*
-		2. First slice only
+		2. First slice and summary slice only
 
-		These values are serialized only for slice 0.
+		These values are serialized only for slice 0 and the summary slice.
 	*/
 
-	if entry.SliceNumber == 0 {
+	if entry.SliceNumber == 0 || entry.Summary {
 
 		e["datacenterID"] = int(entry.DatacenterID)
 		e["buyerID"] = int(entry.BuyerID)
@@ -2005,6 +2066,16 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 			e["nearRelayJitters"] = nearRelayJitters
 			e["nearRelayPacketLosses"] = nearRelayPacketLosses
 
+		}
+
+		e["everOnNext"] = entry.EverOnNext
+
+		e["sessionDuration"] = int(entry.SessionDuration)
+
+		if entry.EverOnNext {
+			e["totalPriceSum"] = int(entry.TotalPriceSum)
+			e["envelopeBytesUpSum"] = int(entry.EnvelopeBytesUpSum)
+			e["envelopeBytesDownSum"] = int(entry.EnvelopeBytesDownSum)
 		}
 
 	}
