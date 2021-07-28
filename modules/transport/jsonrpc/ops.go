@@ -1601,6 +1601,41 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 	return nil
 }
 
+type ResetSellerEgressPriceOverrideArgs struct {
+	SellerID string `json:"shortName"`
+	Field    string `json:"field"`
+}
+
+type ResetSellerEgressPriceOverrideReply struct{}
+
+func (s *OpsService) ResetSellerEgressPriceOverride(r *http.Request, args *ResetSellerEgressPriceOverrideArgs, reply *ResetSellerEgressPriceOverrideReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+		return nil
+	}
+
+	// Iterate through relays and reset egress price override for this seller's relays
+	relays := s.Storage.Relays()
+
+	for _, relay := range relays {
+
+		switch args.Field {
+		case "EgressPriceOverride":
+			if relay.Seller.ShortName == args.SellerID {
+				err := s.Storage.UpdateRelay(context.Background(), relay.ID, args.Field, float64(0))
+				if err != nil {
+					err = fmt.Errorf("ResetSellerEgressPriceOverride() error updating %s for seller %s: %v", args.Field, args.SellerID, err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+			}
+		default:
+			return fmt.Errorf("Field '%s' does not exist (or is not editable) on the Relay type", args.Field)
+		}
+	}
+
+	return nil
+}
+
 type UpdateDatacenterArgs struct {
 	HexDatacenterID string      `json:"hexDatacenterID"`
 	Field           string      `json:"field"`
