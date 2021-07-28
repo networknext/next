@@ -792,7 +792,7 @@ func TestPostSessionHandlerStartProcessingPortalCountSuccess(t *testing.T) {
 	}()
 
 	countData := testCountData()
-	countDataBytes, err := countData.MarshalBinary()
+	countDataBytes, err := transport.WriteSessionCountData(countData)
 	assert.NoError(t, err)
 
 	postSessionHandler.SendPortalCounts(countData)
@@ -867,7 +867,7 @@ func TestPostSessionHandlerStartProcessingPortalDataSuccess(t *testing.T) {
 	}()
 
 	portalData := testPortalData()
-	portalDataBytes, err := portalData.MarshalBinary()
+	portalDataBytes, err := transport.WriteSessionPortalData(portalData)
 	assert.NoError(t, err)
 
 	postSessionHandler.SendPortalData(portalData)

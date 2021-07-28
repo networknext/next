@@ -48,6 +48,7 @@ const (
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
 	LOOKER_HOST              = "networknextexternal.cloud.looker.com"
+	EmbeddedUserGroupID      = 3
 )
 
 var (
@@ -382,9 +383,18 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 	var sessionMeta transport.SessionMeta
 
 	for _, row := range rows {
+		// Try binary decoding, and upon failure, try serialization
+		// TODO: after Bigtable stores only serialized data, remove binary decoding
 		if err := sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
-			return err
+			level.Warn(s.Logger).Log("msg", "GetHistoricalSlices() failed to binary decode sesion meta, attempting serialization", "err", err)
+
+			sessionMeta = transport.SessionMeta{}
+			if err := transport.ReadSessionMeta(&sessionMeta, row[s.BigTableCfName][0].Value); err != nil {
+				level.Error(s.Logger).Log("msg", "GetHistoricalSlices() session meta serialization failed, attempting binary decoding", "err", err)
+				return err
+			}
 		}
+
 		// Make sure we aren't duplicating live sessions
 		if !strings.Contains(liveSessionIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
 			sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
@@ -397,7 +407,18 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 
 			// If a slice exists, add the session and the timestamp
 			if len(sliceRows) > 0 {
-				sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
+
+				// Try binary decoding first, and upon failure, try serialization
+				// TODO: after Bigtable stores only serialized data, remove binary decoding
+				if err = sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value); err != nil {
+					level.Warn(s.Logger).Log("msg", "GetHistoricalSlices() session slice binary decoding failed, using serialization", "err", err)
+
+					sessionSlice = transport.SessionSlice{}
+					if err = transport.ReadSessionSlice(&sessionSlice, sliceRows[0][s.BigTableCfName][0].Value); err != nil {
+						level.Error(s.Logger).Log("msg", "GetHistoricalSlices() session slice serialization failed", "err", err)
+						return err
+					}
+				}
 
 				buyer, err := s.Storage.Buyer(sessionMeta.BuyerID)
 				if err != nil {
@@ -750,7 +771,18 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		historic = true
 
 		for _, row := range metaRows {
-			reply.Meta.UnmarshalBinary(row[0].Value)
+			// Try binary decoding first, and upon failure, try serialization
+			// TODO: after Bigtable stores only serialized data, remove binary decoding
+			if err = reply.Meta.UnmarshalBinary(row[0].Value); err != nil {
+				level.Warn(s.Logger).Log("msg", "SessionDetails() session meta binary decoding failed, using serialization", "err", err)
+
+				reply.Meta = transport.SessionMeta{}
+				if err = transport.ReadSessionMeta(&reply.Meta, row[0].Value); err != nil {
+					err = fmt.Errorf("SessionDetails() session meta serialization failed: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+			}
 		}
 	}
 
@@ -816,7 +848,19 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
 		for _, row := range sliceRows {
-			slice.UnmarshalBinary(row[s.BigTableCfName][0].Value)
+			// Try binary decoding first, and upon failure, try serialization
+			// TODO: after Bigtable stores only serialized data, remove binary decoding
+			if err = slice.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
+				level.Warn(s.Logger).Log("msg", "SessionDetails() session slice binary decoding failed, using serialization", "err", err)
+
+				slice = transport.SessionSlice{}
+				if err = transport.ReadSessionSlice(&slice, row[s.BigTableCfName][0].Value); err != nil {
+					err = fmt.Errorf("SessionDetails() session slice serialization failed: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+			}
+
 			reply.Slices = append(reply.Slices, slice)
 		}
 	}
@@ -2698,17 +2742,17 @@ func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs
 		return &err
 	}
 
-	// TODO: Figure out what params are needed from frontend
+	// TODO: This will need to be wrapped in some kind of switch based on dashboard type
 	urlOptions := LookerURLOptions{
 		Host:            LOOKER_HOST,
 		Secret:          s.LookerSecret,
 		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-		FirstName:       "",
-		LastName:        "",
-		GroupsIds:       make([]int, 0),
+		FirstName:       "", // TODO: Update this to first name coming from portal information
+		LastName:        "", // TODO: Update this to last name coming from portal information
+		GroupsIds:       []int{EmbeddedUserGroupID},
 		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks"},
-		Models:          []string{"networknext_pbl"},
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_pbl"},                                 // TODO: This may or may not need to change
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   3600,

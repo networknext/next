@@ -1250,6 +1250,34 @@ func SessionPost(state *SessionHandlerState) {
 	}
 
 	/*
+		Each slice is 10 seconds long except for the first slice with a given network next route,
+		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
+		that we pre-bought at the start of the previous route.
+	*/
+
+	sliceDuration := uint64(billing.BillingSliceSeconds)
+	if state.Input.Initial {
+		sliceDuration *= 2
+	}
+
+	/*
+		Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
+
+		This is what we bill on.
+	*/
+
+	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
+
+	/*
+		Calculate the total price for this slice of bandwidth envelope.
+
+		This is the sum of all relay hop prices, plus our rake, multiplied by the envelope up/down
+		and the length of the session in seconds.
+	*/
+
+	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+
+	/*
 		Determine if we should write the summary slice. Should only happen
 		when the session is finished.
 
@@ -1262,6 +1290,22 @@ func SessionPost(state *SessionHandlerState) {
 
 	if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut {
 		state.Output.WroteSummary = true
+	}
+
+	/*
+		Store the cumulative sum of totalPrice, nextEnvelopeBytesUp, and nextEnvelopeBytesDown in
+		the output session data. Used in the summary slice.
+
+		If this is the summary slice, then we do NOT want to include this slice's values in the
+		cumulative sum since this session is finished.
+
+		This saves datascience some work when analyzing sessions across days.
+	*/
+
+	if !state.Output.WroteSummary && state.Packet.Next {
+		state.Output.TotalPriceSum = state.Input.TotalPriceSum + uint64(totalPrice)
+		state.Output.NextEnvelopeBytesUpSum = state.Input.NextEnvelopeBytesUpSum + nextEnvelopeBytesUp
+		state.Output.NextEnvelopeBytesDownSum = state.Input.NextEnvelopeBytesDownSum + nextEnvelopeBytesDown
 	}
 
 	/*
@@ -1321,7 +1365,7 @@ func SessionPost(state *SessionHandlerState) {
 	*/
 
 	if state.PostSessionHandler.featureBilling2 && !state.Input.WroteSummary {
-		billingEntry2 := BuildBillingEntry2(state)
+		billingEntry2 := BuildBillingEntry2(state, sliceDuration, nextEnvelopeBytesUp, nextEnvelopeBytesDown, totalPrice)
 
 		state.PostSessionHandler.SendBillingEntry2(billingEntry2)
 	}
@@ -1342,7 +1386,7 @@ func SessionPost(state *SessionHandlerState) {
 	*/
 
 	if state.PostSessionHandler.featureBilling {
-		billingEntry := BuildBillingEntry(state)
+		billingEntry := BuildBillingEntry(state, sliceDuration, nextEnvelopeBytesUp, nextEnvelopeBytesDown, totalPrice)
 
 		state.PostSessionHandler.SendBillingEntry(billingEntry)
 
@@ -1420,18 +1464,7 @@ func BuildPostNearRelayData(state *SessionHandlerState) {
 	}
 }
 
-func BuildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
-
-	/*
-		Each slice is 10 seconds long except for the first slice with a given network next route,
-		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
-		that we pre-bought at the start of the previous route.
-	*/
-
-	sliceDuration := uint64(billing.BillingSliceSeconds)
-	if state.Input.Initial {
-		sliceDuration *= 2
-	}
+func BuildBillingEntry(state *SessionHandlerState, sliceDuration uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin) *billing.BillingEntry {
 
 	/*
 		Calculate the actual amounts of bytes sent up and down along the network next route
@@ -1441,23 +1474,6 @@ func BuildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 	*/
 
 	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.Packet.NextKbpsUp), uint64(state.Packet.NextKbpsDown), sliceDuration)
-
-	/*
-		Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
-
-		This is what we bill on.
-	*/
-
-	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
-
-	/*
-		Calculate the total price for this slice of bandwidth envelope.
-
-		This is the sum of all relay hop prices, plus our rake, multiplied by the envelope up/down
-		and the length of the session in seconds.
-	*/
-
-	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
 	/*
 		Calculate the per-relay hop price that sums up to the total price, minus our rake.
@@ -1602,18 +1618,7 @@ func BuildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 	return &billingEntry
 }
 
-func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
-	/*
-		Each slice is 10 seconds long except for the first slice with a given network next route,
-		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
-		that we pre-bought at the start of the previous route.
-	*/
-
-	sliceDuration := uint64(billing.BillingSliceSeconds)
-	if state.Input.Initial {
-		sliceDuration *= 2
-	}
-
+func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin) *billing.BillingEntry2 {
 	/*
 		Calculate the actual amounts of bytes sent up and down along the network next route
 		for the duration of the previous slice (just being reported up from the SDK).
@@ -1622,23 +1627,6 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 	*/
 
 	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.Packet.NextKbpsUp), uint64(state.Packet.NextKbpsDown), sliceDuration)
-
-	/*
-		Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
-
-		This is what we bill on.
-	*/
-
-	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
-
-	/*
-		Calculate the total price for this slice of bandwidth envelope.
-
-		This is the sum of all relay hop prices, plus our rake, multiplied by the envelope up/down
-		and the length of the session in seconds.
-	*/
-
-	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
 	/*
 		Calculate the per-relay hop price that sums up to the total price, minus our rake.
@@ -1707,6 +1695,14 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 	}
 
 	/*
+		Calculate the session duration in seconds to include in the summary slice.
+	*/
+	var sessionDuration uint32
+	if state.Output.WroteSummary && state.Packet.SliceNumber != 0 {
+		sessionDuration = (state.Packet.SliceNumber - 1) * billing.BillingSliceSeconds
+	}
+
+	/*
 		Create the billing entry 2 and return it to the caller.
 	*/
 
@@ -1753,6 +1749,11 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		NearRelayRTTs:                   NearRelayRTTs,
 		NearRelayJitters:                NearRelayJitters,
 		NearRelayPacketLosses:           nearRelayPacketLosses,
+		EverOnNext:                      state.Input.EverOnNext,
+		SessionDuration:                 sessionDuration,
+		TotalPriceSum:                   state.Input.TotalPriceSum,
+		EnvelopeBytesUpSum:              state.Input.NextEnvelopeBytesUpSum,
+		EnvelopeBytesDownSum:            state.Input.NextEnvelopeBytesDownSum,
 		NextRTT:                         int32(state.Packet.NextRTT),
 		NextJitter:                      int32(state.Packet.NextJitter),
 		NextPacketLoss:                  int32(state.Packet.NextPacketLoss),
