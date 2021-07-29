@@ -264,7 +264,7 @@ func (post *PostSessionHandler) SendPortalData(sessionPortalData *SessionPortalD
 
 }
 
-func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEntry) {
+func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEntry2) {
 	select {
 	case post.vanityMetricChannel <- post.ExtractVanityMetrics(billingEntry):
 		post.metrics.VanityMetricsSent.Add(1)
@@ -384,7 +384,7 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 	return byteCount, nil
 }
 
-func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.BillingEntry) vanity.VanityMetrics {
+func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.BillingEntry2) vanity.VanityMetrics {
 	if billingEntry.Next {
 		latencyReduced := 0
 		if billingEntry.RTTReduction {
@@ -405,7 +405,7 @@ func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.Billi
 			BuyerID:                 billingEntry.BuyerID,
 			UserHash:                billingEntry.UserHash,
 			SessionID:               billingEntry.SessionID,
-			Timestamp:               billingEntry.Timestamp,
+			Timestamp:               uint64(billingEntry.Timestamp),
 			SlicesAccelerated:       uint64(1),
 			SlicesLatencyReduced:    uint64(latencyReduced),
 			SlicesPacketLossReduced: uint64(packetLossReduced),

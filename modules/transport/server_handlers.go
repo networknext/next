@@ -1355,6 +1355,15 @@ func SessionPost(state *SessionHandlerState) {
 		billingEntry2 := BuildBillingEntry2(state, sliceDuration, nextEnvelopeBytesUp, nextEnvelopeBytesDown, totalPrice)
 
 		state.PostSessionHandler.SendBillingEntry2(billingEntry2)
+
+		/*
+			Send the billing entry to the vanity metrics system (real-time path)
+			except for the summary slice.
+		*/
+
+		if state.PostSessionHandler.useVanityMetrics && !state.Output.WroteSummary {
+			state.PostSessionHandler.SendVanityMetric(billingEntry2)
+		}
 	}
 
 	/*
@@ -1376,16 +1385,6 @@ func SessionPost(state *SessionHandlerState) {
 		billingEntry := BuildBillingEntry(state, sliceDuration, nextEnvelopeBytesUp, nextEnvelopeBytesDown, totalPrice)
 
 		state.PostSessionHandler.SendBillingEntry(billingEntry)
-
-		/*
-			Send the billing entry to the vanity metrics system (real-time path)
-
-			TODO: once buildBillingEntry() is deprecated, modify vanity metrics to use BillingEntry2
-		*/
-
-		if state.PostSessionHandler.useVanityMetrics {
-			state.PostSessionHandler.SendVanityMetric(billingEntry)
-		}
 	}
 
 	/*
