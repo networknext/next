@@ -29,5 +29,5 @@ deploy-portal-staging:
 # only use if 100% necessary - this will be linked to semaphore at some point
 
 # .PHONY: deploy-portal-prod
-#deploy-portal-prod: build-portal-artifacts-prod
+#deploy-portal-prod:
 #	./deploy/deploy-portal.sh -b $(ARTIFACT_BUCKET_PROD) -e prod -m $(PORTAL_PROD_MIG)
