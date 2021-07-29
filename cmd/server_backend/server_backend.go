@@ -415,13 +415,13 @@ func mainReturnWithCode() int {
 		{
 			Name:        "FEATURE_BILLING",
 			Enum:        config.FEATURE_BILLING,
-			Value:       true,
+			Value:       false,
 			Description: "Inserts BillingEntry types to Google Pub/Sub",
 		},
 		{
 			Name:        "FEATURE_BILLING2",
 			Enum:        config.FEATURE_BILLING2,
-			Value:       false,
+			Value:       true,
 			Description: "Inserts BillingEntry2 types to Google Pub/Sub",
 		},
 		{

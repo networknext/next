@@ -1250,6 +1250,15 @@ func SessionPost(state *SessionHandlerState) {
 	}
 
 	/*
+		Build route relay data (for portal, billing etc...).
+
+		This is done here to get the post route relay sellers egress price override for 
+		calculating total price and route relay price when building the billing entry.
+	*/
+
+	BuildPostRouteRelayData(state)
+
+	/*
 		Each slice is 10 seconds long except for the first slice with a given network next route,
 		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
 		that we pre-bought at the start of the previous route.
@@ -1341,12 +1350,6 @@ func SessionPost(state *SessionHandlerState) {
 	*/
 
 	/*
-		Build route relay data (for portal, billing etc...)
-	*/
-
-	BuildPostRouteRelayData(state)
-
-	/*
 		Build post near relay data (for portal, billing etc...)
 	*/
 
@@ -1368,6 +1371,15 @@ func SessionPost(state *SessionHandlerState) {
 		billingEntry2 := BuildBillingEntry2(state, sliceDuration, nextEnvelopeBytesUp, nextEnvelopeBytesDown, totalPrice)
 
 		state.PostSessionHandler.SendBillingEntry2(billingEntry2)
+
+		/*
+			Send the billing entry to the vanity metrics system (real-time path)
+			except for the summary slice.
+		*/
+
+		if state.PostSessionHandler.useVanityMetrics && !state.Output.WroteSummary {
+			state.PostSessionHandler.SendVanityMetric(billingEntry2)
+		}
 	}
 
 	/*
@@ -1389,16 +1401,6 @@ func SessionPost(state *SessionHandlerState) {
 		billingEntry := BuildBillingEntry(state, sliceDuration, nextEnvelopeBytesUp, nextEnvelopeBytesDown, totalPrice)
 
 		state.PostSessionHandler.SendBillingEntry(billingEntry)
-
-		/*
-			Send the billing entry to the vanity metrics system (real-time path)
-
-			TODO: once buildBillingEntry() is deprecated, modify vanity metrics to use BillingEntry2
-		*/
-
-		if state.PostSessionHandler.useVanityMetrics {
-			state.PostSessionHandler.SendVanityMetric(billingEntry)
-		}
 	}
 
 	/*
