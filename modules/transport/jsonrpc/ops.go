@@ -644,6 +644,7 @@ type relay struct {
 	PublicKey           string                `json:"public_key"`
 	Version             string                `json:"relay_version"`
 	SellerName          string                `json:"seller_name"`
+	EgressPriceOverride routing.Nibblin       `json:"egressPriceOverride"`
 	MRC                 routing.Nibblin       `json:"monthlyRecurringChargeNibblins"`
 	Overage             routing.Nibblin       `json:"overage"`
 	BWRule              routing.BandWidthRule `json:"bandwidthRule"`
@@ -678,6 +679,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
 			MaxSessionCount:     r.MaxSessions,
 			SellerName:          r.Seller.Name,
+			EgressPriceOverride: r.EgressPriceOverride,
 			MRC:                 r.MRC,
 			Overage:             r.Overage,
 			BWRule:              r.BWRule,
@@ -774,6 +776,7 @@ type JSAddRelayArgs struct {
 	SSHUser             string `json:"ssh_user"`
 	SSHPort             int64  `json:"ssh_port"`
 	MaxSessions         int64  `json:"max_sessions"`
+	EgressPriceOverride int64  `json:"egressPriceOverride"`
 	MRC                 int64  `json:"monthlyRecurringChargeNibblins"`
 	Overage             int64  `json:"overage"`
 	BWRule              int64  `json:"bandwidthRule"`
@@ -832,6 +835,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		SSHUser:             args.SSHUser,
 		SSHPort:             args.SSHPort,
 		MaxSessions:         uint32(args.MaxSessions),
+		EgressPriceOverride: routing.Nibblin(args.EgressPriceOverride),
 		MRC:                 routing.Nibblin(args.MRC),
 		Overage:             routing.Nibblin(args.Overage),
 		BWRule:              routing.BandWidthRule(args.BWRule),
@@ -1354,6 +1358,7 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		PublicKey:           base64.StdEncoding.EncodeToString(routingRelay.PublicKey),
 		MaxSessionCount:     routingRelay.MaxSessions,
 		SellerName:          routingRelay.Seller.Name,
+		EgressPriceOverride: routingRelay.EgressPriceOverride,
 		MRC:                 routingRelay.MRC,
 		Overage:             routingRelay.Overage,
 		BWRule:              routingRelay.BWRule,
@@ -1438,7 +1443,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		}
 
 	// nibblins (received as USD, sent to storer as float64)
-	case "MRC", "Overage":
+	case "EgressPriceOverride", "MRC", "Overage":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			err = fmt.Errorf("value '%s' is not a valid float64 port number: %v", args.Value, err)
@@ -1591,6 +1596,41 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Seller type", args.Field)
+	}
+
+	return nil
+}
+
+type ResetSellerEgressPriceOverrideArgs struct {
+	SellerID string `json:"shortName"`
+	Field    string `json:"field"`
+}
+
+type ResetSellerEgressPriceOverrideReply struct{}
+
+func (s *OpsService) ResetSellerEgressPriceOverride(r *http.Request, args *ResetSellerEgressPriceOverrideArgs, reply *ResetSellerEgressPriceOverrideReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		return nil
+	}
+
+	// Iterate through relays and reset egress price override for this seller's relays
+	relays := s.Storage.Relays()
+
+	for _, relay := range relays {
+
+		switch args.Field {
+		case "EgressPriceOverride":
+			if relay.Seller.ShortName == args.SellerID {
+				err := s.Storage.UpdateRelay(context.Background(), relay.ID, args.Field, float64(0))
+				if err != nil {
+					err = fmt.Errorf("ResetSellerEgressPriceOverride() error updating %s for seller %s: %v", args.Field, args.SellerID, err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+			}
+		default:
+			return fmt.Errorf("Field '%s' is not a valid Relay type for resetting seller egress price override", args.Field)
+		}
 	}
 
 	return nil

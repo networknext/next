@@ -878,7 +878,7 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 
 	sqlQuery.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
-	sqlQuery.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
+	sqlQuery.Write([]byte("relays.max_sessions, relays.egress_price_override, relays.mrc, relays.overage, relays.port_speed, "))
 	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
@@ -894,6 +894,7 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 		&relay.IncludedBandwithGB,
 		&relay.ManagementIP,
 		&relay.MaxSessions,
+		&relay.EgressPriceOverride,
 		&relay.MRC,
 		&relay.Overage,
 		&relay.NICSpeedMbps,
@@ -963,6 +964,7 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 			SSHUser:             relay.SSHUser,
 			SSHPort:             relay.SSHPort,
 			MaxSessions:         uint32(relay.MaxSessions),
+			EgressPriceOverride: routing.Nibblin(relay.EgressPriceOverride),
 			MRC:                 routing.Nibblin(relay.MRC),
 			Overage:             routing.Nibblin(relay.Overage),
 			BWRule:              bwRule,
@@ -1040,7 +1042,7 @@ func (db *SQL) Relays() []routing.Relay {
 
 	sqlQuery.Write([]byte("select relays.id, relays.hex_id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
-	sqlQuery.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
+	sqlQuery.Write([]byte("relays.max_sessions, relays.egress_price_override, relays.mrc, relays.overage, relays.port_speed, "))
 	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
@@ -1064,6 +1066,7 @@ func (db *SQL) Relays() []routing.Relay {
 			&relay.IncludedBandwithGB,
 			&relay.ManagementIP,
 			&relay.MaxSessions,
+			&relay.EgressPriceOverride,
 			&relay.MRC,
 			&relay.Overage,
 			&relay.NICSpeedMbps,
@@ -1132,6 +1135,7 @@ func (db *SQL) Relays() []routing.Relay {
 			SSHUser:             relay.SSHUser,
 			SSHPort:             relay.SSHPort,
 			MaxSessions:         uint32(relay.MaxSessions),
+			EgressPriceOverride: routing.Nibblin(relay.EgressPriceOverride),
 			MRC:                 routing.Nibblin(relay.MRC),
 			Overage:             routing.Nibblin(relay.Overage),
 			BWRule:              bwRule,
@@ -1199,14 +1203,15 @@ func (db *SQL) Relays() []routing.Relay {
 // UpdateRelay updates one field (2 for addr) in a relay record - field names
 // are those provided by routing.Relay.
 // value:
-//	addr           : ipaddress:port (string)
-//  bw_billing_rule: float64 (json number)
-//  machine_type   : float64 (json number)
-//  relay_state    : float64 (json number)
-//  MRC            : USD float64 (json number)
-//  Overage        : USD float64 (json number)
-//  StartDate      : string ('January 2, 2006')
-//  EndDate        : string ('January 2, 2006')
+//	addr               : ipaddress:port (string)
+//  bw_billing_rule    : float64 (json number)
+//  machine_type       : float64 (json number)
+//  relay_state        : float64 (json number)
+//  EgressPriceOverride: USD float64 (json number)
+//  MRC                : USD float64 (json number)
+//  Overage            : USD float64 (json number)
+//  StartDate          : string ('January 2, 2006')
+//  EndDate            : string ('January 2, 2006')
 //  all others are bool, float64 or string, based on field type
 func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
 
@@ -1348,6 +1353,15 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set max_sessions=$1 where id=$2"))
 		args = append(args, int64(maxSessions), relay.DatabaseID)
+
+	case "EgressPriceOverride":
+		egressPriceOverrideUSD, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		egressPriceOverride := routing.DollarsToNibblins(egressPriceOverrideUSD)
+		updateSQL.Write([]byte("update relays set egress_price_override=$1 where id=$2"))
+		args = append(args, int64(egressPriceOverride), relay.DatabaseID)
 
 	case "MRC":
 		mrcUSD, ok := value.(float64)
@@ -1523,33 +1537,34 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 }
 
 type sqlRelay struct {
-	ID                 uint64
-	HexID              string
-	Name               string
-	PublicIP           sql.NullString
-	PublicIPPort       sql.NullInt64
-	InternalIP         sql.NullString
-	InternalIPPort     sql.NullInt64
-	BillingSupplier    sql.NullInt64
-	PublicKey          []byte
-	NICSpeedMbps       int64
-	IncludedBandwithGB int64
-	DatacenterID       int64
-	ManagementIP       string
-	SSHUser            string
-	SSHPort            int64
-	State              int64
-	MaxSessions        int64
-	MRC                int64
-	Overage            int64
-	BWRule             int64
-	ContractTerm       int64
-	Notes              sql.NullString
-	StartDate          sql.NullTime
-	EndDate            sql.NullTime
-	MachineType        int64
-	Version            string
-	DatabaseID         int64
+	ID                  uint64
+	HexID               string
+	Name                string
+	PublicIP            sql.NullString
+	PublicIPPort        sql.NullInt64
+	InternalIP          sql.NullString
+	InternalIPPort      sql.NullInt64
+	BillingSupplier     sql.NullInt64
+	PublicKey           []byte
+	NICSpeedMbps        int64
+	IncludedBandwithGB  int64
+	DatacenterID        int64
+	ManagementIP        string
+	SSHUser             string
+	SSHPort             int64
+	State               int64
+	MaxSessions         int64
+	EgressPriceOverride int64
+	MRC                 int64
+	Overage             int64
+	BWRule              int64
+	ContractTerm        int64
+	Notes               sql.NullString
+	StartDate           sql.NullTime
+	EndDate             sql.NullTime
+	MachineType         int64
+	Version             string
+	DatabaseID          int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
@@ -1635,41 +1650,42 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	relay := sqlRelay{
-		Name:               r.Name,
-		HexID:              fmt.Sprintf("%016x", rid),
-		PublicIP:           nullablePublicIP,
-		PublicIPPort:       nullablePublicIPPort,
-		InternalIP:         internalIP,
-		InternalIPPort:     internalIPPort,
-		PublicKey:          r.PublicKey,
-		NICSpeedMbps:       int64(r.NICSpeedMbps),
-		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
-		DatacenterID:       r.Datacenter.DatabaseID,
-		ManagementIP:       r.ManagementAddr,
-		BillingSupplier:    billingSupplier,
-		SSHUser:            r.SSHUser,
-		SSHPort:            r.SSHPort,
-		State:              int64(r.State),
-		MaxSessions:        int64(r.MaxSessions),
-		MRC:                int64(r.MRC),
-		Overage:            int64(r.Overage),
-		BWRule:             int64(r.BWRule),
-		ContractTerm:       int64(r.ContractTerm),
-		StartDate:          startDate,
-		EndDate:            endDate,
-		MachineType:        int64(r.Type),
-		Notes:              nullableNotes,
-		Version:            r.Version,
+		Name:                r.Name,
+		HexID:               fmt.Sprintf("%016x", rid),
+		PublicIP:            nullablePublicIP,
+		PublicIPPort:        nullablePublicIPPort,
+		InternalIP:          internalIP,
+		InternalIPPort:      internalIPPort,
+		PublicKey:           r.PublicKey,
+		NICSpeedMbps:        int64(r.NICSpeedMbps),
+		IncludedBandwithGB:  int64(r.IncludedBandwidthGB),
+		DatacenterID:        r.Datacenter.DatabaseID,
+		ManagementIP:        r.ManagementAddr,
+		BillingSupplier:     billingSupplier,
+		SSHUser:             r.SSHUser,
+		SSHPort:             r.SSHPort,
+		State:               int64(r.State),
+		MaxSessions:         int64(r.MaxSessions),
+		EgressPriceOverride: int64(r.EgressPriceOverride),
+		MRC:                 int64(r.MRC),
+		Overage:             int64(r.Overage),
+		BWRule:              int64(r.BWRule),
+		ContractTerm:        int64(r.ContractTerm),
+		StartDate:           startDate,
+		EndDate:             endDate,
+		MachineType:         int64(r.Type),
+		Notes:               nullableNotes,
+		Version:             r.Version,
 	}
 
 	sqlQuery.Write([]byte("insert into relays ("))
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
-	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
+	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
 	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version "))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
@@ -1685,6 +1701,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
+		relay.EgressPriceOverride,
 		relay.MRC,
 		relay.Overage,
 		relay.NICSpeedMbps,
@@ -1825,37 +1842,38 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	relay := sqlRelay{
-		Name:               r.Name,
-		PublicIP:           publicIP,
-		PublicIPPort:       publicIPPort,
-		InternalIP:         internalIP,
-		InternalIPPort:     internalIPPort,
-		PublicKey:          r.PublicKey,
-		NICSpeedMbps:       int64(r.NICSpeedMbps),
-		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
-		DatacenterID:       r.Datacenter.DatabaseID,
-		ManagementIP:       r.ManagementAddr,
-		SSHUser:            r.SSHUser,
-		SSHPort:            r.SSHPort,
-		State:              int64(r.State),
-		MaxSessions:        int64(r.MaxSessions),
-		MRC:                int64(r.MRC),
-		Overage:            int64(r.Overage),
-		BWRule:             int64(r.BWRule),
-		ContractTerm:       int64(r.ContractTerm),
-		StartDate:          startDate,
-		EndDate:            endDate,
-		MachineType:        int64(r.Type),
-		HexID:              hexID,
+		Name:                r.Name,
+		PublicIP:            publicIP,
+		PublicIPPort:        publicIPPort,
+		InternalIP:          internalIP,
+		InternalIPPort:      internalIPPort,
+		PublicKey:           r.PublicKey,
+		NICSpeedMbps:        int64(r.NICSpeedMbps),
+		IncludedBandwithGB:  int64(r.IncludedBandwidthGB),
+		DatacenterID:        r.Datacenter.DatabaseID,
+		ManagementIP:        r.ManagementAddr,
+		SSHUser:             r.SSHUser,
+		SSHPort:             r.SSHPort,
+		State:               int64(r.State),
+		MaxSessions:         int64(r.MaxSessions),
+		EgressPriceOverride: int64(r.EgressPriceOverride),
+		MRC:                 int64(r.MRC),
+		Overage:             int64(r.Overage),
+		BWRule:              int64(r.BWRule),
+		ContractTerm:        int64(r.ContractTerm),
+		StartDate:           startDate,
+		EndDate:             endDate,
+		MachineType:         int64(r.Type),
+		HexID:               hexID,
 	}
 
 	sqlQuery.Write([]byte("update relays set ("))
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
-	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
+	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
 	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) where id = $23"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23) where id = $24"))
 
 	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
 	if err != nil {
@@ -1871,6 +1889,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
+		relay.EgressPriceOverride,
 		relay.MRC,
 		relay.Overage,
 		relay.NICSpeedMbps,

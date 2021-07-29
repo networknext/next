@@ -174,6 +174,7 @@ func TestInsertSQL(t *testing.T) {
 			PublicKey:       publicKey,
 			BillingSupplier: outerSeller.ShortName,
 			// Datacenter:     outerDatacenter,
+			EgressPriceOverride: 10000000000000,
 			MRC:                 19700000000000,
 			Overage:             26000000000000,
 			BWRule:              routing.BWRuleBurst,
@@ -210,6 +211,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.MaxSessions, checkRelay.MaxSessions)
 		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
 		assert.Equal(t, relay.Datacenter.DatabaseID, checkRelay.Datacenter.DatabaseID)
+		assert.Equal(t, relay.EgressPriceOverride, checkRelay.EgressPriceOverride)
 		assert.Equal(t, relay.MRC, checkRelay.MRC)
 		assert.Equal(t, relay.Overage, checkRelay.Overage)
 		assert.Equal(t, relay.BWRule, checkRelay.BWRule)
@@ -243,6 +245,7 @@ func TestInsertSQL(t *testing.T) {
 		relayMod.MaxSessions = checkRelay.MaxSessions
 		relayMod.PublicKey = checkRelay.PublicKey
 		relayMod.Datacenter = checkRelay.Datacenter
+		relayMod.EgressPriceOverride = checkRelay.EgressPriceOverride
 		relayMod.MRC = checkRelay.MRC
 		relayMod.Overage = checkRelay.Overage
 		relayMod.BWRule = checkRelay.BWRule
@@ -273,6 +276,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relayMod.MaxSessions, checkRelayMod.MaxSessions)
 		assert.Equal(t, relayMod.PublicKey, checkRelayMod.PublicKey)
 		assert.Equal(t, relayMod.Datacenter.DatabaseID, checkRelayMod.Datacenter.DatabaseID)
+		assert.Equal(t, relayMod.EgressPriceOverride, checkRelayMod.EgressPriceOverride)
 		assert.Equal(t, relayMod.MRC, checkRelayMod.MRC)
 		assert.Equal(t, relayMod.Overage, checkRelayMod.Overage)
 		assert.Equal(t, relayMod.BWRule, checkRelayMod.BWRule)
@@ -307,16 +311,17 @@ func TestInsertSQL(t *testing.T) {
 			Name: "test.3",
 			Addr: *addr2,
 			// InternalAddr:   *internalAddr, <-- nullable
-			ManagementAddr: "1.2.3.4",
-			SSHPort:        22,
-			SSHUser:        "fred",
-			MaxSessions:    1000,
-			PublicKey:      publicKey,
-			Datacenter:     outerDatacenter,
-			MRC:            19700000000000,
-			Overage:        26000000000000,
-			BWRule:         routing.BWRuleBurst,
-			ContractTerm:   12,
+			ManagementAddr:      "1.2.3.4",
+			SSHPort:             22,
+			SSHUser:             "fred",
+			MaxSessions:         1000,
+			PublicKey:           publicKey,
+			Datacenter:          outerDatacenter,
+			EgressPriceOverride: 10000000000000,
+			MRC:                 19700000000000,
+			Overage:             26000000000000,
+			BWRule:              routing.BWRuleBurst,
+			ContractTerm:        12,
 			// StartDate:           time.Now(), <-- nullable
 			// EndDate:             time.Now(), <-- nullable
 			Type:                routing.BareMetal,
@@ -363,10 +368,11 @@ func TestInsertSQL(t *testing.T) {
 			MaxSessions:    1000,
 			PublicKey:      publicKey,
 			// Datacenter:     outerDatacenter,
-			MRC:          19700000000000,
-			Overage:      26000000000000,
-			BWRule:       routing.BWRuleBurst,
-			ContractTerm: 12,
+			EgressPriceOverride: 10000000000000,
+			MRC:                 19700000000000,
+			Overage:             26000000000000,
+			BWRule:              routing.BWRuleBurst,
+			ContractTerm:        12,
 			// StartDate:           time.Now(),
 			// EndDate:             time.Now(),
 			Type:                routing.BareMetal,
@@ -399,6 +405,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.MaxSessions, checkRelay.MaxSessions)
 		assert.Equal(t, relay.PublicKey, checkRelay.PublicKey)
 		assert.Equal(t, relay.Datacenter.DatabaseID, checkRelay.Datacenter.DatabaseID)
+		assert.Equal(t, relay.EgressPriceOverride, checkRelay.EgressPriceOverride)
 		assert.Equal(t, relay.MRC, checkRelay.MRC)
 		assert.Equal(t, relay.Overage, checkRelay.Overage)
 		assert.Equal(t, relay.BWRule, checkRelay.BWRule)
@@ -551,26 +558,27 @@ func TestDeleteSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		relay := routing.Relay{
-			ID:             rid,
-			Name:           "test.1",
-			Addr:           *addr,
-			InternalAddr:   *internalAddr,
-			ManagementAddr: "1.2.3.4",
-			SSHPort:        22,
-			SSHUser:        "fred",
-			MaxSessions:    1000,
-			PublicKey:      relayPublicKey,
-			Datacenter:     outerDatacenter,
-			MRC:            19700000000000,
-			Overage:        26000000000000,
-			BWRule:         routing.BWRuleBurst,
-			ContractTerm:   12,
-			StartDate:      time.Now(),
-			EndDate:        time.Now(),
-			Type:           routing.BareMetal,
-			State:          routing.RelayStateMaintenance,
-			Notes:          "the original notes",
-			Version:        "2.0.6",
+			ID:                  rid,
+			Name:                "test.1",
+			Addr:                *addr,
+			InternalAddr:        *internalAddr,
+			ManagementAddr:      "1.2.3.4",
+			SSHPort:             22,
+			SSHUser:             "fred",
+			MaxSessions:         1000,
+			PublicKey:           relayPublicKey,
+			Datacenter:          outerDatacenter,
+			EgressPriceOverride: 10000000000000,
+			MRC:                 19700000000000,
+			Overage:             26000000000000,
+			BWRule:              routing.BWRuleBurst,
+			ContractTerm:        12,
+			StartDate:           time.Now(),
+			EndDate:             time.Now(),
+			Type:                routing.BareMetal,
+			State:               routing.RelayStateMaintenance,
+			Notes:               "the original notes",
+			Version:             "2.0.6",
 		}
 
 		err = db.AddRelay(ctx, relay)
@@ -916,6 +924,7 @@ func TestUpdateSQL(t *testing.T) {
 			MaxSessions:         1000,
 			PublicKey:           publicKey,
 			Datacenter:          datacenterWithID,
+			EgressPriceOverride: 10000000000000,
 			MRC:                 19700000000000,
 			Overage:             26000000000000,
 			BWRule:              routing.BWRuleBurst,
@@ -1014,6 +1023,13 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, newPublicKey, checkRelay.PublicKey)
 
 		// relay.Datacenter = only one datacenter available...
+
+		// relay.EgressPriceOverride
+		err = db.UpdateRelay(ctx, rid, "EgressPriceOverride", float64(200))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(rid)
+		assert.NoError(t, err)
+		assert.Equal(t, routing.Nibblin(20000000000000), checkRelay.EgressPriceOverride)
 
 		// relay.MRC
 		err = db.UpdateRelay(ctx, rid, "MRC", float64(397))
