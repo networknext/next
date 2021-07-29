@@ -1250,6 +1250,15 @@ func SessionPost(state *SessionHandlerState) {
 	}
 
 	/*
+		Build route relay data (for portal, billing etc...).
+
+		This is done here to get the post route relay sellers egress price override for 
+		calculating total price and route relay price when building the billing entry.
+	*/
+
+	BuildPostRouteRelayData(state)
+
+	/*
 		Each slice is 10 seconds long except for the first slice with a given network next route,
 		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
 		that we pre-bought at the start of the previous route.
@@ -1339,12 +1348,6 @@ func SessionPost(state *SessionHandlerState) {
 			}
 		}
 	*/
-
-	/*
-		Build route relay data (for portal, billing etc...)
-	*/
-
-	BuildPostRouteRelayData(state)
 
 	/*
 		Build post near relay data (for portal, billing etc...)
