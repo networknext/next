@@ -347,7 +347,7 @@ func TestPostSessionHandlerSendVanityMetricsFull(t *testing.T) {
 	assert.NoError(t, err)
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
-	postSessionHandler.SendVanityMetric(testBillingEntry())
+	postSessionHandler.SendVanityMetric(testBillingEntry2())
 
 	assert.Equal(t, postSessionHandler.VanityBufferSize(), uint64(0))
 	assert.Equal(t, 1.0, metrics.VanityBufferFull.Value())
@@ -359,7 +359,7 @@ func TestPostSessionHandlerSendVanityMetricSuccess(t *testing.T) {
 	assert.NoError(t, err)
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
-	postSessionHandler.SendVanityMetric(testBillingEntry())
+	postSessionHandler.SendVanityMetric(testBillingEntry2())
 
 	assert.Equal(t, postSessionHandler.VanityBufferSize(), uint64(1))
 	assert.Equal(t, 1.0, metrics.VanityMetricsSent.Value())
@@ -689,7 +689,7 @@ func TestPostSessionHandlerStartProcessingVanityTransmitFailure(t *testing.T) {
 		wg.Done()
 	}()
 
-	postSessionHandler.SendVanityMetric(testBillingEntry())
+	postSessionHandler.SendVanityMetric(testBillingEntry2())
 	<-vanityPublisher.calledChan
 
 	ctxCancelFunc()
@@ -724,7 +724,7 @@ func TestPostSessionHandlerStartProcessingVanitySuccess(t *testing.T) {
 		wg.Done()
 	}()
 
-	postSessionHandler.SendVanityMetric(testBillingEntry())
+	postSessionHandler.SendVanityMetric(testBillingEntry2())
 	<-vanityPublisher.calledChan
 
 	ctxCancelFunc()
