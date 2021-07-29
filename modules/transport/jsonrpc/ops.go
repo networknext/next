@@ -1609,7 +1609,7 @@ type ResetSellerEgressPriceOverrideArgs struct {
 type ResetSellerEgressPriceOverrideReply struct{}
 
 func (s *OpsService) ResetSellerEgressPriceOverride(r *http.Request, args *ResetSellerEgressPriceOverrideArgs, reply *ResetSellerEgressPriceOverrideReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		return nil
 	}
 
@@ -1629,7 +1629,7 @@ func (s *OpsService) ResetSellerEgressPriceOverride(r *http.Request, args *Reset
 				}
 			}
 		default:
-			return fmt.Errorf("Field '%s' does not exist (or is not editable) on the Relay type", args.Field)
+			return fmt.Errorf("Field '%s' is not a valid Relay type for resetting seller egress price override", args.Field)
 		}
 	}
 
