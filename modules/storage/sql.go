@@ -1052,7 +1052,7 @@ func (db *SQL) Relays() []routing.Relay {
 
 	rows, err := db.Client.QueryContext(context.Background(), sqlQuery.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "syncRelays(): QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "Relays(): QueryContext returned an error", "err", err)
 		return []routing.Relay{}
 	}
 	defer rows.Close()
@@ -1089,7 +1089,7 @@ func (db *SQL) Relays() []routing.Relay {
 			&relay.Version,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays(): error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "Relays(): error parsing returned row", "err", err)
 			return []routing.Relay{}
 		}
 
@@ -1110,17 +1110,17 @@ func (db *SQL) Relays() []routing.Relay {
 
 		datacenter, err := db.DatacenterByDbId(relay.DatacenterID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
+			level.Error(db.Logger).Log("during", "Relays error dereferencing datacenter", "err", err)
 		}
 
 		seller, err := db.SellerByDbId(datacenter.SellerID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
+			level.Error(db.Logger).Log("during", "Relays error dereferencing seller", "err", err)
 		}
 
 		internalID, err := strconv.ParseUint(relay.HexID, 16, 64)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays error parsing hex_id", "err", err)
+			level.Error(db.Logger).Log("during", "Relays error parsing hex_id", "err", err)
 		}
 
 		r := routing.Relay{
@@ -1176,7 +1176,7 @@ func (db *SQL) Relays() []routing.Relay {
 			}
 
 			if !found {
-				errString := fmt.Sprintf("syncRelays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
+				errString := fmt.Sprintf("Relays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
 				level.Error(db.Logger).Log("during", errString, "err", err)
 			}
 
@@ -1310,9 +1310,9 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		args = append(args, includedBW, relay.DatabaseID)
 
 	case "State":
-		state, ok := value.(float64)
+		state, ok := value.(int64)
 		if !ok {
-			return fmt.Errorf("%v is not a valid float64 type", value)
+			return fmt.Errorf("%v is not a valid int64 type", value)
 		}
 		if state < 0 || state > 5 {
 			return fmt.Errorf("%d is not a valid RelayState value", int64(state))
@@ -1581,6 +1581,21 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 	rid := crypto.HashID(r.Addr.String())
+
+	relays := db.Relays()
+
+	existingRelay := false
+	for _, relay := range relays {
+		if relay.ID == rid && relay.State != routing.RelayStateDecommissioned {
+			existingRelay = true
+			break
+		}
+	}
+
+	// If a relay with this IP exists already and isn't removed, throw an error
+	if existingRelay {
+		return fmt.Errorf("a relay already exists with this IP address. please remove the existing relay before adding a new one under the same IP")
+	}
 
 	var internalIP sql.NullString
 	var internalIPPort sql.NullInt64
@@ -1989,7 +2004,7 @@ func (db *SQL) DatacenterByDbId(databaseID int64) (routing.Datacenter, error) {
 	case nil:
 		datacenterID, err := strconv.ParseUint(dc.HexID, 16, 64)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "DatacenterByDbId()error parsing hex ID")
+			level.Error(db.Logger).Log("during", "DatacenterByDbId() error parsing hex ID")
 			return routing.Datacenter{}, &HexStringConversionError{hexString: dc.HexID}
 		}
 		d := routing.Datacenter{
