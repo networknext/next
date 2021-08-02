@@ -9,6 +9,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/billing"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport/pubsub"
 	"github.com/networknext/backend/modules/vanity"
@@ -122,9 +123,9 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			for {
 				select {
 				case postSessionCountData := <-post.sessionPortalCountsChannel:
-					countBytes, err := postSessionCountData.MarshalBinary()
+					countBytes, err := WriteSessionCountData(postSessionCountData)
 					if err != nil {
-						level.Error(post.logger).Log("msg", "could not marshal count data", "err", err)
+						core.Debug("could not serialize count data: %v", err)
 						post.metrics.PortalFailure.Add(1)
 						continue
 					}
@@ -153,9 +154,9 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			for {
 				select {
 				case postSessionPortalData := <-post.sessionPortalDataChannel:
-					sessionBytes, err := postSessionPortalData.MarshalBinary()
+					sessionBytes, err := WriteSessionPortalData(postSessionPortalData)
 					if err != nil {
-						level.Error(post.logger).Log("msg", "could not marshal portal data", "err", err)
+						core.Debug("could not serialize portal data: %v", err)
 						post.metrics.PortalFailure.Add(1)
 						continue
 					}
@@ -263,7 +264,7 @@ func (post *PostSessionHandler) SendPortalData(sessionPortalData *SessionPortalD
 
 }
 
-func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEntry) {
+func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEntry2) {
 	select {
 	case post.vanityMetricChannel <- post.ExtractVanityMetrics(billingEntry):
 		post.metrics.VanityMetricsSent.Add(1)
@@ -383,7 +384,7 @@ func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic
 	return byteCount, nil
 }
 
-func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.BillingEntry) vanity.VanityMetrics {
+func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.BillingEntry2) vanity.VanityMetrics {
 	if billingEntry.Next {
 		latencyReduced := 0
 		if billingEntry.RTTReduction {
@@ -404,7 +405,7 @@ func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.Billi
 			BuyerID:                 billingEntry.BuyerID,
 			UserHash:                billingEntry.UserHash,
 			SessionID:               billingEntry.SessionID,
-			Timestamp:               billingEntry.Timestamp,
+			Timestamp:               uint64(billingEntry.Timestamp),
 			SlicesAccelerated:       uint64(1),
 			SlicesLatencyReduced:    uint64(latencyReduced),
 			SlicesPacketLossReduced: uint64(packetLossReduced),
