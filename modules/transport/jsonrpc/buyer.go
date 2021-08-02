@@ -761,8 +761,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 		if len(metaRows) == 0 {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() no rows were returned from bigtable: %v", err)
-			level.Error(s.Logger).Log("err", err)
+			level.Warn(s.Logger).Log("msg", "SessionDetails() no rows were returned from bigtable")
 			return err
 		}
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
