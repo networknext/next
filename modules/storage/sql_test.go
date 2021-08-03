@@ -343,6 +343,45 @@ func TestInsertSQL(t *testing.T) {
 		assert.True(t, checkRelay2.StartDate.IsZero())
 		assert.True(t, checkRelay2.EndDate.IsZero())
 
+		relay4 := routing.Relay{
+			ID:   rid2,
+			Name: "test.3.a",
+			Addr: *addr2,
+			// InternalAddr:   *internalAddr, <-- nullable
+			ManagementAddr:      "1.2.3.4",
+			SSHPort:             22,
+			SSHUser:             "fred",
+			MaxSessions:         1000,
+			PublicKey:           publicKey,
+			Datacenter:          outerDatacenter,
+			EgressPriceOverride: 10000000000000,
+			MRC:                 19700000000000,
+			Overage:             26000000000000,
+			BWRule:              routing.BWRuleBurst,
+			ContractTerm:        12,
+			// StartDate:           time.Now(), <-- nullable
+			// EndDate:             time.Now(), <-- nullable
+			Type:                routing.BareMetal,
+			State:               routing.RelayStateMaintenance,
+			IncludedBandwidthGB: 10000,
+			NICSpeedMbps:        1000,
+			Notes:               "the original notes",
+			Version:             initialRelayVersion,
+		}
+
+		err = db.AddRelay(ctx, relay4)
+		assert.Error(t, err)
+
+		relayMod = relay3
+
+		relayMod.State = routing.RelayStateDecommissioned
+
+		err = db.UpdateRelay(ctx, rid2, "State", int64(routing.RelayStateDecommissioned))
+		assert.NoError(t, err)
+
+		err = db.AddRelay(ctx, relay4)
+		assert.NoError(t, err)
+
 	})
 
 	t.Run("AddRelayWithNullables", func(t *testing.T) {
@@ -1104,7 +1143,7 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, routing.VirtualMachine, checkRelay.Type)
 
 		// relay.State
-		err = db.UpdateRelay(ctx, rid, "State", float64(0))
+		err = db.UpdateRelay(ctx, rid, "State", int64(0))
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
