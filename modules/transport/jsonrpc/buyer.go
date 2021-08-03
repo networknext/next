@@ -760,9 +760,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			return err
 		}
 		if len(metaRows) == 0 {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information: %v", err)
-			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("SessionDetails() no rows were returned from bigtable")
+			level.Warn(s.Logger).Log("msg", err)
 			return err
 		}
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
