@@ -29,9 +29,11 @@ import (
 
 	"github.com/networknext/backend/modules/backend" // todo: not a good name for a module
 	"github.com/networknext/backend/modules/config"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
+	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
@@ -167,16 +169,30 @@ func main() {
 
 	db, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to create storer: %v", err)
 		os.Exit(1)
 	}
 
-	// switch db.(type) {
-	// case *storage.SQL:
-	// 	if env == "local" {
-	// 		err = storage.SeedSQLStorage(ctx, db)
-	// 	}
-	// }
+	binWrapper := routing.CreateEmptyDatabaseBinWrapper()
+
+	filePath := envvar.Get("BIN_PATH", "./database.bin")
+	file, err := os.Open(filePath)
+	if err != nil {
+		err := fmt.Errorf("could not load db binary: %s", filePath)
+		core.Error("failed to read database: %v", err)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	if err = backend.DecodeBinWrapper(file, binWrapper); err != nil {
+		core.Error("failed to decode wrapper: %v", err)
+		os.Exit(1)
+	}
+
+	customers := db.Customers()
+	for _, customer := range customers {
+		binWrapper.CustomerMap[customer.Code] = customer
+	}
 
 	// Setup feature config for bigtable
 	var featureConfig config.Config

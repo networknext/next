@@ -532,6 +532,14 @@ func (rfs *RelayFleetService) NextBinFileCommitTimeStamp(
 }
 
 func (rfs *RelayFleetService) BinFileGenerator(userEmail string) (routing.DatabaseBinWrapper, error) {
+	// If we are in an environment that requires PG and it is down, don't allow for a bin file to be created under any circumstance
+	switch rfs.Storage.(type) {
+	case *storage.SQL:
+		if err := rfs.Storage.(*storage.SQL).Client.Ping(); err != nil {
+			err := fmt.Errorf("Storage is unavailable. Please try again later")
+			return routing.DatabaseBinWrapper{}, err
+		}
+	}
 
 	var dbWrapper routing.DatabaseBinWrapper
 	var enabledRelays []routing.Relay

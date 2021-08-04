@@ -16,6 +16,7 @@ type DatabaseBinWrapper struct {
 	DatacenterMap  map[uint64]Datacenter
 	DatacenterMaps map[uint64]map[uint64]DatacenterMap
 	//                 ^ Buyer.ID   ^ DatacenterMap map index
+	CustomerMap map[string]Customer // only use this in portal.go
 }
 
 func CreateEmptyDatabaseBinWrapper() *DatabaseBinWrapper {
