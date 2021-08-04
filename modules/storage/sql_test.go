@@ -376,7 +376,7 @@ func TestInsertSQL(t *testing.T) {
 
 		relayMod.State = routing.RelayStateDecommissioned
 
-		err = db.UpdateRelay(ctx, rid2, "State", int64(routing.RelayStateDecommissioned))
+		err = db.UpdateRelay(ctx, rid2, "State", float64(routing.RelayStateDecommissioned))
 		assert.NoError(t, err)
 
 		err = db.AddRelay(ctx, relay4)
@@ -1143,7 +1143,7 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, routing.VirtualMachine, checkRelay.Type)
 
 		// relay.State
-		err = db.UpdateRelay(ctx, rid, "State", int64(0))
+		err = db.UpdateRelay(ctx, rid, "State", float64(0))
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(rid)
 		assert.NoError(t, err)
