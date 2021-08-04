@@ -31,8 +31,9 @@ import (
 //
 // The PK is required to enforce business rules in the DB.
 type SQL struct {
-	Client *sql.DB
-	Logger log.Logger
+	BinWrapper routing.DatabaseBinWrapper
+	Client     *sql.DB
+	Logger     log.Logger
 }
 
 type sqlBuyer struct {
@@ -92,8 +93,22 @@ type sqlRouteShader struct {
 	PacketLossSustained       float64
 }
 
+func IsStorageAvailable(db *SQL) bool {
+	return db.Client.Ping() == nil
+}
+
 // Customer retrieves a Customer record using the company code
 func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Customer() %v", err))
+
+		customer, ok := db.BinWrapper.CustomerMap[customerCode]
+		if !ok {
+			return routing.Customer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: customerCode}
+		}
+		return customer, nil
+	}
 
 	var querySQL bytes.Buffer
 	var customer sqlCustomer
@@ -119,7 +134,7 @@ func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 		}
 		return c, nil
 	default:
-		level.Error(db.Logger).Log("during", "Customer() QueryRow returned an error: %v", err)
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Customer() QueryRow returned an error: %v", err))
 		return routing.Customer{}, err
 	}
 
@@ -128,6 +143,19 @@ func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 // Customers retrieves the full list
 // TODO: not covered by sql_test.go
 func (db *SQL) Customers() []routing.Customer {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Customers() %v", err))
+
+		index := 0
+		customers := make([]routing.Customer, len(db.BinWrapper.CustomerMap))
+		for _, customer := range db.BinWrapper.CustomerMap {
+			customers[index] = customer
+			index = index + 1
+		}
+		return customers
+	}
+
 	var sql bytes.Buffer
 	var customer sqlCustomer
 
@@ -183,6 +211,12 @@ type sqlCustomer struct {
 }
 
 func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("AddCustomer() %v", err))
+		return err
+	}
+
 	var sql bytes.Buffer
 
 	customer := sqlCustomer{
@@ -231,6 +265,11 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 //
 // #2 is not checked here - it is enforced by the database
 func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("RemoveCustomer() %v", err))
+		return err
+	}
 
 	var sql bytes.Buffer
 
@@ -270,6 +309,11 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 // TODO: remove - need to modify AuthService.UpdateAutoSignupDomains to
 //       use UpdateCustomer() and then drop this method
 func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("SetCustomer() %v", err))
+		return err
+	}
 
 	var sql bytes.Buffer
 
@@ -303,6 +347,16 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 // Buyer gets a copy of a buyer with the specified buyer ID,
 // and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
 func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Buyer() %v", err))
+
+		buyer, ok := db.BinWrapper.BuyerMap[ephemeralBuyerID]
+		if !ok {
+			return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
+		}
+		return buyer, nil
+	}
 
 	sqlBuyerID := int64(ephemeralBuyerID)
 
@@ -323,7 +377,7 @@ func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
 	)
 	switch err {
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "Customer() no rows were returned!")
+		level.Error(db.Logger).Log("during", "Buyer() no rows were returned!")
 		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	case nil:
 
@@ -359,7 +413,26 @@ func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
 }
 
 // BuyerWithCompanyCode gets the Buyer with the matching company code
-func (db *SQL) BuyerWithCompanyCode(companCode string) (routing.Buyer, error) {
+func (db *SQL) BuyerWithCompanyCode(companyCode string) (routing.Buyer, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() %v", err)
+
+		found := false
+		foundBuyer := routing.Buyer{}
+		for _, buyer := range db.BinWrapper.BuyerMap {
+			if buyer.CompanyCode == companyCode {
+				found = true
+				foundBuyer = buyer
+				break
+			}
+		}
+
+		if !found {
+			return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: companyCode}
+		}
+		return foundBuyer, nil
+	}
 
 	var querySQL bytes.Buffer
 	var buyer sqlBuyer
@@ -367,7 +440,7 @@ func (db *SQL) BuyerWithCompanyCode(companCode string) (routing.Buyer, error) {
 	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where short_name = $1"))
 
-	row := db.Client.QueryRow(querySQL.String(), companCode)
+	row := db.Client.QueryRow(querySQL.String(), companyCode)
 	err := row.Scan(
 		&buyer.DatabaseID,
 		&buyer.SdkID,
@@ -378,7 +451,7 @@ func (db *SQL) BuyerWithCompanyCode(companCode string) (routing.Buyer, error) {
 	)
 	switch err {
 	case sql.ErrNoRows:
-		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: fmt.Sprintf("%016x", companCode)}
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: fmt.Sprintf("%016x", companyCode)}
 	case nil:
 		buyer.ID = uint64(buyer.SdkID)
 		ic, err := db.InternalConfig(buyer.ID)
@@ -413,6 +486,19 @@ func (db *SQL) BuyerWithCompanyCode(companCode string) (routing.Buyer, error) {
 
 // Buyers returns a copy of all stored buyers.
 func (db *SQL) Buyers() []routing.Buyer {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Buyers() %v", err))
+
+		index := 0
+		buyers := make([]routing.Buyer, len(db.BinWrapper.BuyerMap))
+		for _, buyer := range db.BinWrapper.BuyerMap {
+			buyers[index] = buyer
+			index = index + 1
+		}
+		return buyers
+	}
+
 	var sql bytes.Buffer
 	var buyer sqlBuyer
 
@@ -482,6 +568,12 @@ func (db *SQL) Buyers() []routing.Buyer {
 
 // AddBuyer adds the provided buyer to storage and returns an error if the buyer could not be added.
 func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("AddBuyer() %v", err))
+		return err
+	}
+
 	var sql bytes.Buffer
 
 	c, err := db.Customer(b.CompanyCode)
@@ -544,6 +636,12 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 //  2. Removing the buyer would break the foreigh key relationship (datacenter_maps)
 //  3. Any other error returned from the database
 func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("RemoveBuyer() %v", err))
+		return err
+	}
+
 	var sql bytes.Buffer
 
 	sql.Write([]byte("delete from buyers where sdk_generated_id = $1"))
@@ -573,9 +671,19 @@ func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 	return nil
 }
 
-// Seller gets a copy of a seller with the specified seller ID,
+// Seller gets a copy of a seller with the specified seller ID (customer short name),
 // and returns an empty seller and an error if a seller with that ID doesn't exist in storage.
 func (db *SQL) Seller(id string) (routing.Seller, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Seller() %v", err))
+
+		seller, ok := db.BinWrapper.SellerMap[id]
+		if !ok {
+			return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
+		}
+		return seller, nil
+	}
 
 	var querySQL bytes.Buffer
 	var seller sqlSeller
@@ -618,6 +726,25 @@ func (db *SQL) Seller(id string) (routing.Seller, error) {
 // SellerByDbId returns the sellers table entry for the given ID
 // TODO: add to storer interface?
 func (db *SQL) SellerByDbId(id int64) (routing.Seller, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("SellerByDbId() %v", err))
+
+		found := false
+		foundSeller := routing.Seller{}
+		for _, seller := range db.BinWrapper.SellerMap {
+			if seller.DatabaseID == id {
+				found = true
+				foundSeller = seller
+				break
+			}
+		}
+
+		if !found {
+			return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
+		}
+		return foundSeller, nil
+	}
 
 	var querySQL bytes.Buffer
 	var seller sqlSeller
@@ -659,6 +786,18 @@ func (db *SQL) SellerByDbId(id int64) (routing.Seller, error) {
 
 // Sellers returns a copy of all stored sellers.
 func (db *SQL) Sellers() []routing.Seller {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Sellers() %v", err))
+
+		index := 0
+		sellers := make([]routing.Seller, len(db.BinWrapper.SellerMap))
+		for _, seller := range db.BinWrapper.SellerMap {
+			sellers[index] = seller
+			index = index + 1
+		}
+		return sellers
+	}
 
 	var sql bytes.Buffer
 	var seller sqlSeller
@@ -723,6 +862,12 @@ type sqlSeller struct {
 // The seller_id is required by the schema. The client interface must already have a
 // seller defined.
 func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("AddSeller() %v", err))
+		return err
+	}
+
 	var sql bytes.Buffer
 
 	// This check only pertains to the next tool. Stateful clients would already
@@ -782,6 +927,12 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 //  2. Removing the seller would break the foreigh key relationship (datacenters)
 //  3. Any other error returned from the database
 func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("RemoveSeller() %v", err))
+		return err
+	}
+
 	var sql bytes.Buffer
 
 	sql.Write([]byte("delete from sellers where short_name = $1"))
@@ -823,6 +974,26 @@ func (db *SQL) SellerIDFromCustomerName(ctx context.Context, customerName string
 }
 
 func (db *SQL) SellerWithCompanyCode(code string) (routing.Seller, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", "SellerWithCompanyCode() %v", err)
+
+		found := false
+		foundSeller := routing.Seller{}
+		for _, seller := range db.BinWrapper.SellerMap {
+			if seller.CompanyCode == code {
+				found = true
+				foundSeller = seller
+				break
+			}
+		}
+
+		if !found {
+			return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: code}
+		}
+		return foundSeller, nil
+	}
+
 	var querySQL bytes.Buffer
 	var seller sqlSeller
 
@@ -871,6 +1042,17 @@ func (db *SQL) SetCustomerLink(ctx context.Context, customerName string, buyerID
 // Relay gets a copy of a relay with the specified relay ID
 // and returns an empty relay and an error if a relay with that ID doesn't exist in storage.
 func (db *SQL) Relay(id uint64) (routing.Relay, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Relay() %v", err))
+
+		relay, ok := db.BinWrapper.RelayMap[id]
+		if !ok {
+			return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: id}
+		}
+		return relay, nil
+	}
+
 	hexID := fmt.Sprintf("%016x", id)
 
 	var sqlQuery bytes.Buffer
@@ -1034,6 +1216,18 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 
 // Relays returns a copy of all stored relays.
 func (db *SQL) Relays() []routing.Relay {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Relays() %v", err))
+
+		index := 0
+		relays := make([]routing.Relay, len(db.BinWrapper.RelayMap))
+		for _, relay := range db.BinWrapper.RelayMap {
+			relays[index] = relay
+			index = index + 1
+		}
+		return relays
+	}
 
 	var sqlQuery bytes.Buffer
 	var relay sqlRelay
@@ -1214,6 +1408,11 @@ func (db *SQL) Relays() []routing.Relay {
 //  EndDate            : string ('January 2, 2006')
 //  all others are bool, float64 or string, based on field type
 func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("UpdateRelay() %v", err))
+		return err
+	}
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
@@ -1569,6 +1768,11 @@ type sqlRelay struct {
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
 func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("AddRelay() %v", err))
+		return err
+	}
 
 	var sqlQuery bytes.Buffer
 	var err error
@@ -1759,6 +1963,12 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 // RemoveRelay removes a relay with the provided relay ID from storage and
 // returns any database errors to the caller
 func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("RemoveRelay() %v", err))
+		return err
+	}
+
 	var sql bytes.Buffer
 
 	hexID := fmt.Sprintf("%016x", id)
@@ -1803,6 +2013,11 @@ func NewNullString(s string) sql.NullString {
 // error if the relay could not be updated.
 // TODO: chopping block, used in OpsService
 func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("SetRelay() %v", err))
+		return err
+	}
 
 	var sqlQuery bytes.Buffer
 	var err error
@@ -1945,6 +2160,16 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 // Datacenter gets a copy of a datacenter with the specified datacenter ID
 // and returns an empty datacenter and an error if a datacenter with that ID doesn't exist in storage.
 func (db *SQL) Datacenter(datacenterID uint64) (routing.Datacenter, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Datacenter() %v", err))
+
+		datacenter, ok := db.BinWrapper.DatacenterMap[datacenterID]
+		if !ok {
+			return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%016x", datacenterID)}
+		}
+		return datacenter, nil
+	}
 
 	hexID := fmt.Sprintf("%016x", datacenterID)
 	var querySQL bytes.Buffer
@@ -1983,6 +2208,25 @@ func (db *SQL) Datacenter(datacenterID uint64) (routing.Datacenter, error) {
 // DatacenterByDbId retrives the entry in the datacenters table for the provided ID
 // TODO: add to storer interface?
 func (db *SQL) DatacenterByDbId(databaseID int64) (routing.Datacenter, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("DatacenterByDbId() %v", err))
+
+		found := false
+		foundDatacenter := routing.Datacenter{}
+		for _, datacenter := range db.BinWrapper.DatacenterMap {
+			if datacenter.DatabaseID == databaseID {
+				found = true
+				foundDatacenter = datacenter
+				break
+			}
+		}
+
+		if !found {
+			return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: databaseID}
+		}
+		return foundDatacenter, nil
+	}
 
 	var querySQL bytes.Buffer
 	var dc sqlDatacenter
@@ -2026,6 +2270,18 @@ func (db *SQL) DatacenterByDbId(databaseID int64) (routing.Datacenter, error) {
 
 // Datacenters returns a copy of all stored datacenters.
 func (db *SQL) Datacenters() []routing.Datacenter {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Datacenters() %v", err))
+
+		index := 0
+		datacenters := make([]routing.Datacenter, len(db.BinWrapper.DatacenterMap))
+		for _, datacenter := range db.BinWrapper.DatacenterMap {
+			datacenters[index] = datacenter
+			index = index + 1
+		}
+		return datacenters
+	}
 
 	var sql bytes.Buffer
 	var dc sqlDatacenter
@@ -2081,6 +2337,11 @@ func (db *SQL) Datacenters() []routing.Datacenter {
 //  2. Removing the datacenter would break foreigh key relationships (datacenter_maps, relays)
 //  3. Any other error returned from the database
 func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("RemoveDatacenter() %v", err))
+		return err
+	}
 
 	var sql bytes.Buffer
 
@@ -2116,6 +2377,12 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 // (internally generated) buyerID. The map is indexed by the datacenter ID. Returns
 // an empty map if there are no aliases for that buyerID.
 func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]routing.DatacenterMap {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("GetDatacenterMapsForBuyer() %v", err))
+
+		return db.BinWrapper.DatacenterMaps[ephemeralBuyerID]
+	}
 
 	var querySQL bytes.Buffer
 	var dcMaps = make(map[uint64]routing.DatacenterMap)
@@ -2162,6 +2429,11 @@ func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]rou
 
 // AddDatacenterMap adds a new datacenter map for the given buyer and datacenter IDs
 func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("AddDatacenterMap() %v", err))
+		return err
+	}
 
 	var sql bytes.Buffer
 
@@ -2211,6 +2483,18 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 // ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 // empty dcID returns a list of all maps.
 func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("ListDatacenterMaps() %v", err))
+
+		dcMapList := make(map[uint64]routing.DatacenterMap)
+		for buyerID, dcMaps := range db.BinWrapper.DatacenterMaps {
+			for _, dcMap := range dcMaps {
+				id := crypto.HashID(fmt.Sprintf("%016x", buyerID) + fmt.Sprintf("%016x", dcMap.DatacenterID))
+				dcMapList[id] = dcMap
+			}
+		}
+	}
 
 	var querySQL bytes.Buffer
 	var dcMaps = make(map[uint64]routing.DatacenterMap)
@@ -2250,6 +2534,12 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 
 // RemoveDatacenterMap removes an entry from the DatacenterMaps table
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("RemoveDatacenterMap() %v", err))
+		return err
+	}
+
 	var sql bytes.Buffer
 
 	sql.Write([]byte("delete from datacenter_maps where buyer_id = "))
@@ -2296,6 +2586,11 @@ type sqlDatacenter struct {
 // The seller_id is reqired by the schema. The client interface must already have a
 // seller defined.
 func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("AddDatacenter() %v", err))
+		return err
+	}
 
 	var sql bytes.Buffer
 
@@ -2345,6 +2640,11 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 
 // RouteShaders returns a slice of route shaders for the given buyer ID
 func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("RouteShader() %v", err))
+		return core.RouteShader{}, err
+	}
 
 	var querySQL bytes.Buffer
 	var sqlRS sqlRouteShader
@@ -2414,6 +2714,11 @@ func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
 
 // InternalConfig returns the InternalConfig entry for the specified buyer
 func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("InternalConfig() %v", err))
+		return core.InternalConfig{}, err
+	}
 
 	var querySQL bytes.Buffer
 	var sqlIC sqlInternalConfig
@@ -2485,6 +2790,11 @@ func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, err
 
 // AddInternalConfig adds an InternalConfig for the specified buyer
 func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ephemeralBuyerID uint64) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("AddInternalConfig() %v", err))
+		return err
+	}
 
 	var sql bytes.Buffer
 
@@ -2563,6 +2873,12 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 }
 
 func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("RemoveInternalConfig() %v", err))
+		return err
+	}
+
 	var sql bytes.Buffer
 
 	buyerID := int64(ephemeralBuyerID)
@@ -2595,6 +2911,11 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 }
 
 func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("UpdateInternalConfig() %v", err))
+		return err
+	}
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
@@ -2769,6 +3090,11 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 }
 
 func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemeralBuyerID uint64) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("AddRouteShader() %v", err))
+		return err
+	}
 
 	var sql bytes.Buffer
 
@@ -2839,6 +3165,11 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 }
 
 func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("UpdateRouteShader() %v", err))
+		return err
+	}
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
@@ -2990,6 +3321,12 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 }
 
 func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("RemoveRouteShader() %v", err))
+		return err
+	}
+
 	var sql bytes.Buffer
 
 	sql.Write([]byte("delete from route_shaders where buyer_id = "))
@@ -3022,6 +3359,11 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) e
 
 // AddBannedUser adds a user to the banned_user table
 func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userID uint64) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("AddBannedUser() %v", err))
+		return err
+	}
 
 	var sql bytes.Buffer
 
@@ -3054,6 +3396,11 @@ func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userI
 
 // RemoveBannedUser removes a user from the banned_user table
 func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, userID uint64) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("RemoveBannedUser() %v", err))
+		return err
+	}
 
 	var sql bytes.Buffer
 
@@ -3087,6 +3434,11 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, us
 
 // BannedUsers returns the set of banned users for the specified buyer ID.
 func (db *SQL) BannedUsers(ephemeralBuyerID uint64) (map[uint64]bool, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("BannedUsers() %v", err))
+		return make(map[uint64]bool), err
+	}
 
 	var sql bytes.Buffer
 	bannedUserList := make(map[uint64]bool)
@@ -3139,6 +3491,11 @@ func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) err
 }
 
 func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("UpdateBuyer() %v", err))
+		return err
+	}
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
@@ -3225,6 +3582,11 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 }
 
 func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("UpdateCustomer() %v", err))
+		return err
+	}
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
@@ -3284,6 +3646,11 @@ func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field stri
 }
 
 func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("UpdateSeller() %v", err))
+		return err
+	}
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
@@ -3353,6 +3720,11 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 }
 
 func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("UpdateDatacenter() %v", err))
+		return err
+	}
 
 	var updateSQL bytes.Buffer
 	var args []interface{}
@@ -3411,6 +3783,13 @@ func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field 
 }
 
 func (db *SQL) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error) {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Using old bin file")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("GetDatabaseBinFileMetaData() %v", err))
+
+		return routing.DatabaseBinFileMetaData{}, err
+	}
+
 	var querySQL bytes.Buffer
 	var dashboardData routing.DatabaseBinFileMetaData
 
@@ -3432,6 +3811,12 @@ func (db *SQL) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, er
 }
 
 func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routing.DatabaseBinFileMetaData) error {
+	if !IsStorageAvailable(db) {
+		err := fmt.Errorf("Storage is unavailable. Please try again later")
+		level.Error(db.Logger).Log("during", fmt.Sprintf("GetDatabaseBinFileMetaData() %v", err))
+
+		return err
+	}
 
 	var sql bytes.Buffer
 
