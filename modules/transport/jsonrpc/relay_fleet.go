@@ -571,6 +571,11 @@ func (rfs *RelayFleetService) BinFileGenerator(userEmail string) (routing.Databa
 		}
 	}
 
+	customers := rfs.Storage.Customers()
+	for _, customer := range customers {
+		dbWrapper.CustomerMap[customer.Code] = customer
+	}
+
 	dbWrapper.Relays = enabledRelays
 	dbWrapper.RelayMap = relayMap
 	dbWrapper.BuyerMap = buyerMap

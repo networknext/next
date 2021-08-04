@@ -189,11 +189,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	customers := db.Customers()
-	for _, customer := range customers {
-		binWrapper.CustomerMap[customer.Code] = customer
-	}
-
 	// Setup feature config for bigtable
 	var featureConfig config.Config
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
