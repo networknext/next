@@ -1310,9 +1310,9 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		args = append(args, includedBW, relay.DatabaseID)
 
 	case "State":
-		state, ok := value.(int64)
+		state, ok := value.(float64)
 		if !ok {
-			return fmt.Errorf("%v is not a valid int64 type", value)
+			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
 		if state < 0 || state > 5 {
 			return fmt.Errorf("%d is not a valid RelayState value", int64(state))
