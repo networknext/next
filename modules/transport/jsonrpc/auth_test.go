@@ -1339,7 +1339,7 @@ func TestUpdateCompanyInformation(t *testing.T) {
 		assert.Equal(t, roleNames[1], *userRoles.Roles[1].Name)
 		assert.Equal(t, roleIDs[1], *userRoles.Roles[1].ID)
 		assert.Equal(t, roleDescriptions[1], *userRoles.Roles[1].Description)
-		customers := storer.Customers()
+		customers := storer.Customers(req.Context())
 		assert.Equal(t, 2, len(customers))
 		assert.Equal(t, "testing", customers[1].Code)
 		assert.Equal(t, "Testing", customers[1].Name)

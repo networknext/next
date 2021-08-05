@@ -178,7 +178,7 @@ func TestFirestore(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			customer, err := fs.Customer("test")
+			customer, err := fs.Customer(ctx, "test")
 			assert.Empty(t, customer)
 			assert.EqualError(t, err, "customer with reference test not found")
 		})
@@ -200,7 +200,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddCustomer(ctx, expectedCustomer)
 			assert.NoError(t, err)
 
-			actual, err := fs.Customer(expectedCustomer.Code)
+			actual, err := fs.Customer(ctx, expectedCustomer.Code)
 			assert.NoError(t, err)
 
 			assert.Equal(t, expectedCustomer, actual)
@@ -232,7 +232,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		actual := fs.Customers()
+		actual := fs.Customers(ctx)
 		assert.Equal(t, expectedCustomers, actual)
 	})
 
@@ -255,7 +255,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddCustomer(ctx, expectedCustomer)
 			assert.NoError(t, err)
 
-			actual, err := fs.Customer(expectedCustomer.Code)
+			actual, err := fs.Customer(ctx, expectedCustomer.Code)
 			assert.NoError(t, err)
 
 			assert.Equal(t, expectedCustomer, actual)
@@ -297,7 +297,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddCustomer(ctx, expectedCustomer)
 			assert.NoError(t, err)
 
-			actual, err := fs.Customer(expectedCustomer.Code)
+			actual, err := fs.Customer(ctx, expectedCustomer.Code)
 			assert.NoError(t, err)
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
@@ -448,7 +448,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.SetCustomer(ctx, actual)
 			assert.NoError(t, err)
 
-			actual, err = fs.Customer(actualCustomer.Code)
+			actual, err = fs.Customer(ctx, actualCustomer.Code)
 			assert.NoError(t, err)
 
 			assert.Equal(t, actualCustomer, actual)
@@ -465,7 +465,7 @@ func TestFirestore(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			buyer, err := fs.Buyer(0)
+			buyer, err := fs.Buyer(ctx, 0)
 			assert.Empty(t, buyer)
 			assert.EqualError(t, err, "buyer with reference 0 not found")
 		})
@@ -497,7 +497,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddBuyer(ctx, expected)
 			assert.NoError(t, err)
 
-			actual, err := fs.Buyer(expected.ID)
+			actual, err := fs.Buyer(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			expected.RouteShader = core.NewRouteShader()
@@ -556,7 +556,7 @@ func TestFirestore(t *testing.T) {
 			expected[i].InternalConfig = core.NewInternalConfig()
 		}
 
-		actual := fs.Buyers()
+		actual := fs.Buyers(ctx)
 
 		assert.Equal(t, expected, actual)
 	})
@@ -589,7 +589,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddBuyer(ctx, expected)
 			assert.NoError(t, err)
 
-			actual, err := fs.Buyer(expected.ID)
+			actual, err := fs.Buyer(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			expected.RouteShader = core.NewRouteShader()
@@ -654,7 +654,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddBuyer(ctx, expected)
 			assert.NoError(t, err)
 
-			actual, err := fs.Buyer(expected.ID)
+			actual, err := fs.Buyer(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			err = fs.AddCustomer(ctx, expectedCustomer)
@@ -859,7 +859,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.SetBuyer(ctx, actual)
 			assert.NoError(t, err)
 
-			actual, err = fs.Buyer(expected.ID)
+			actual, err = fs.Buyer(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			assert.NotEqual(t, expected, actual)
@@ -879,7 +879,7 @@ func TestFirestore(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			seller, err := fs.Seller("id")
+			seller, err := fs.Seller(ctx, "id")
 			assert.Empty(t, seller)
 			assert.EqualError(t, err, "seller with reference id not found")
 		})
@@ -910,7 +910,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddSeller(ctx, expected)
 			assert.NoError(t, err)
 
-			actual, err := fs.Seller(expected.ID)
+			actual, err := fs.Seller(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			assert.Equal(t, expected, actual)
@@ -962,7 +962,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		actual := fs.Sellers()
+		actual := fs.Sellers(ctx)
 		assert.Equal(t, expected, actual)
 	})
 
@@ -1042,7 +1042,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddSeller(ctx, expected)
 			assert.NoError(t, err)
 
-			actual, err := fs.Seller(expected.ID)
+			actual, err := fs.Seller(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			assert.Equal(t, expected, actual)
@@ -1101,7 +1101,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddSeller(ctx, expected)
 			assert.NoError(t, err)
 
-			actual, err := fs.Seller(expected.ID)
+			actual, err := fs.Seller(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			assert.Equal(t, expected, actual)
@@ -1285,7 +1285,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.SetSeller(ctx, actual)
 			assert.NoError(t, err)
 
-			actual, err = fs.Seller(expected.ID)
+			actual, err = fs.Seller(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			assert.NotEqual(t, expected, actual)
@@ -1540,7 +1540,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddBuyer(ctx, buyer)
 			assert.NoError(t, err)
 
-			buyer, err = fs.BuyerWithCompanyCode("local")
+			buyer, err = fs.BuyerWithCompanyCode(ctx, "local")
 			assert.NoError(t, err)
 			assert.Equal(t, buyer.ID, buyer.ID)
 		})
@@ -1603,7 +1603,7 @@ func TestFirestore(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			relay, err := fs.Relay(0)
+			relay, err := fs.Relay(ctx, 0)
 			assert.Empty(t, relay)
 			assert.EqualError(t, err, "relay with reference 0 not found")
 		})
@@ -1669,7 +1669,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddRelay(ctx, expected)
 			assert.NoError(t, err)
 
-			actual, err := fs.Relay(expected.ID)
+			actual, err := fs.Relay(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			assert.Equal(t, expected, actual)
@@ -1759,7 +1759,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		actual := fs.Relays()
+		actual := fs.Relays(ctx)
 		assert.Equal(t, expected, actual)
 	})
 
@@ -1904,7 +1904,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddRelay(ctx, expected)
 			assert.NoError(t, err)
 
-			actual, err := fs.Relay(expected.ID)
+			actual, err := fs.Relay(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			assert.Equal(t, expected, actual)
@@ -2083,7 +2083,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.SetRelay(ctx, actual)
 			assert.NoError(t, err)
 
-			actual, err = fs.Relay(expected.ID)
+			actual, err = fs.Relay(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			assert.NotEqual(t, expected, actual)
@@ -2108,7 +2108,7 @@ func TestFirestore(t *testing.T) {
 				assert.NoError(t, err)
 			}()
 
-			datacenter, err := fs.Datacenter(0)
+			datacenter, err := fs.Datacenter(ctx, 0)
 			assert.Empty(t, datacenter)
 			assert.EqualError(t, err, "datacenter with reference 0 not found")
 		})
@@ -2134,7 +2134,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.AddDatacenter(ctx, expected)
 			assert.NoError(t, err)
 
-			actual, err := fs.Datacenter(expected.ID)
+			actual, err := fs.Datacenter(ctx, expected.ID)
 			assert.NoError(t, err)
 
 			assert.Equal(t, expected, actual)
@@ -2174,7 +2174,7 @@ func TestFirestore(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		actual := fs.Datacenters()
+		actual := fs.Datacenters(ctx)
 		assert.Equal(t, expected, actual)
 	})
 
@@ -2199,7 +2199,7 @@ func TestFirestore(t *testing.T) {
 		err = fs.AddDatacenter(ctx, expected)
 		assert.NoError(t, err)
 
-		actual, err := fs.Datacenter(expected.ID)
+		actual, err := fs.Datacenter(ctx, expected.ID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, expected, actual)
@@ -2294,7 +2294,7 @@ func TestFirestore(t *testing.T) {
 			err = fs.SetDatacenter(ctx, actual)
 			assert.NoError(t, err)
 
-			actual, err = fs.Datacenter(expected.ID)
+			actual, err = fs.Datacenter(ctx, expected.ID)
 			assert.NoError(t, err)
 		})
 	})
@@ -2346,7 +2346,7 @@ func TestFirestore(t *testing.T) {
 		err = fs.AddDatacenterMap(ctx, expected)
 		assert.NoError(t, err)
 
-		actual := fs.GetDatacenterMapsForBuyer(buyer.ID)
+		actual := fs.GetDatacenterMapsForBuyer(ctx, buyer.ID)
 		assert.Equal(t, expected, actual[id])
 	})
 
@@ -2422,7 +2422,7 @@ func TestFirestore(t *testing.T) {
 		err = fs.AddDatacenterMap(ctx, expected2)
 		assert.NoError(t, err)
 
-		actual := fs.ListDatacenterMaps(0)
+		actual := fs.ListDatacenterMaps(ctx, 0)
 		assert.Equal(t, expected1, actual[id1])
 		assert.Equal(t, expected2, actual[id2])
 	})
@@ -2476,7 +2476,7 @@ func TestFirestore(t *testing.T) {
 		assert.NoError(t, err)
 
 		var dcMapsEmpty = make(map[uint64]routing.DatacenterMap)
-		dcMapsEmpty = fs.GetDatacenterMapsForBuyer(buyer.ID)
+		dcMapsEmpty = fs.GetDatacenterMapsForBuyer(ctx, buyer.ID)
 		assert.Equal(t, 0, len(dcMapsEmpty))
 
 	})
@@ -2570,16 +2570,16 @@ func TestFirestore(t *testing.T) {
 		err = fs.Sync(ctx)
 		assert.NoError(t, err)
 
-		actualBuyer, err := fs.Buyer(expectedBuyer.ID)
+		actualBuyer, err := fs.Buyer(ctx, expectedBuyer.ID)
 		assert.NoError(t, err)
 
-		actualSeller, err := fs.Seller(expectedSeller.ID)
+		actualSeller, err := fs.Seller(ctx, expectedSeller.ID)
 		assert.NoError(t, err)
 
-		actualDatacenter, err := fs.Datacenter(expectedDatacenter.ID)
+		actualDatacenter, err := fs.Datacenter(ctx, expectedDatacenter.ID)
 		assert.NoError(t, err)
 
-		actualRelay, err := fs.Relay(expectedRelay.ID)
+		actualRelay, err := fs.Relay(ctx, expectedRelay.ID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, expectedBuyer, actualBuyer)
@@ -2643,7 +2643,7 @@ func TestFirestore(t *testing.T) {
 				err = fs.Sync(ctx)
 				assert.NoError(t, err)
 
-				actualBuyer, err := fs.Buyer(expectedBuyer.ID)
+				actualBuyer, err := fs.Buyer(ctx, expectedBuyer.ID)
 				assert.NoError(t, err)
 
 				assert.Equal(t, expectedBuyer, actualBuyer)
@@ -2689,7 +2689,7 @@ func TestFirestore(t *testing.T) {
 				err = fs.Sync(ctx)
 				assert.NoError(t, err)
 
-				actualBuyer, err := fs.Buyer(1)
+				actualBuyer, err := fs.Buyer(ctx, 1)
 				assert.NoError(t, err)
 
 				assert.Equal(t, core.NewRouteShader(), actualBuyer.RouteShader)
@@ -2785,7 +2785,7 @@ func TestFirestore(t *testing.T) {
 				err = fs.Sync(ctx)
 				assert.NoError(t, err)
 
-				actualBuyer, err := fs.Buyer(expectedBuyer.ID)
+				actualBuyer, err := fs.Buyer(ctx, expectedBuyer.ID)
 				assert.NoError(t, err)
 
 				assert.Equal(t, expectedRouteShader, actualBuyer.RouteShader)
@@ -2827,7 +2827,7 @@ func TestFirestore(t *testing.T) {
 				err = fs.Sync(ctx)
 				assert.NoError(t, err)
 
-				actualBuyer, err := fs.Buyer(expectedBuyer.ID)
+				actualBuyer, err := fs.Buyer(ctx, expectedBuyer.ID)
 				assert.NoError(t, err)
 
 				assert.Equal(t, core.NewRouteShader(), actualBuyer.RouteShader)

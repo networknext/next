@@ -362,7 +362,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 	}
 
-	binFileMetaData, err := rfs.Storage.GetDatabaseBinFileMetaData()
+	binFileMetaData, err := rfs.Storage.GetDatabaseBinFileMetaData(r.Context())
 	if err != nil {
 		reply.BinFileAuthor = "Arthur Dent"
 		reply.BinFileCreationTime = time.Now()
@@ -409,7 +409,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 
 	var buffer bytes.Buffer
 
-	dbWrapper, err := rfs.BinFileGenerator(requestEmail)
+	dbWrapper, err := rfs.BinFileGenerator(r.Context(), requestEmail)
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error generating database.bin file: %v", err)
 		rfs.Logger.Log("err", err)
@@ -470,7 +470,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 		DatabaseBinFileCreationTime: time.Now(),
 	}
 
-	err = rfs.Storage.UpdateDatabaseBinFileMetaData(context.Background(), metaData)
+	err = rfs.Storage.UpdateDatabaseBinFileMetaData(r.Context(), metaData)
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error writing bin file metadata to db: %v", err)
 		rfs.Logger.Log("err", err)
@@ -494,7 +494,7 @@ func (rfs *RelayFleetService) NextBinFileHandler(
 	reply *NextBinFileHandlerReply,
 ) error {
 
-	dbWrapper, err := rfs.BinFileGenerator("next")
+	dbWrapper, err := rfs.BinFileGenerator(r.Context(), "next")
 	if err != nil {
 		err := fmt.Errorf("BinFileHandler() error generating database.bin file: %v", err)
 		rfs.Logger.Log("err", err)
@@ -520,7 +520,7 @@ func (rfs *RelayFleetService) NextBinFileCommitTimeStamp(
 		DatabaseBinFileCreationTime: time.Now(),
 	}
 
-	err := rfs.Storage.UpdateDatabaseBinFileMetaData(context.Background(), metaData)
+	err := rfs.Storage.UpdateDatabaseBinFileMetaData(r.Context(), metaData)
 	if err != nil {
 		err := fmt.Errorf("NextBinFileCommitTimeStamp() error writing bin file metadata to db: %v", err)
 		rfs.Logger.Log("err", err)
@@ -531,7 +531,7 @@ func (rfs *RelayFleetService) NextBinFileCommitTimeStamp(
 
 }
 
-func (rfs *RelayFleetService) BinFileGenerator(userEmail string) (routing.DatabaseBinWrapper, error) {
+func (rfs *RelayFleetService) BinFileGenerator(ctx context.Context, userEmail string) (routing.DatabaseBinWrapper, error) {
 
 	var dbWrapper routing.DatabaseBinWrapper
 	var enabledRelays []routing.Relay
@@ -541,22 +541,22 @@ func (rfs *RelayFleetService) BinFileGenerator(userEmail string) (routing.Databa
 	datacenterMap := make(map[uint64]routing.Datacenter)
 	datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
 
-	buyers := rfs.Storage.Buyers()
+	buyers := rfs.Storage.Buyers(ctx)
 	for _, buyer := range buyers {
 		buyerMap[buyer.ID] = buyer
-		dcMapsForBuyer := rfs.Storage.GetDatacenterMapsForBuyer(buyer.ID)
+		dcMapsForBuyer := rfs.Storage.GetDatacenterMapsForBuyer(ctx, buyer.ID)
 		datacenterMaps[buyer.ID] = dcMapsForBuyer
 	}
 
-	for _, seller := range rfs.Storage.Sellers() {
+	for _, seller := range rfs.Storage.Sellers(ctx) {
 		sellerMap[seller.ShortName] = seller
 	}
 
-	for _, datacenter := range rfs.Storage.Datacenters() {
+	for _, datacenter := range rfs.Storage.Datacenters(ctx) {
 		datacenterMap[datacenter.ID] = datacenter
 	}
 
-	for _, localRelay := range rfs.Storage.Relays() {
+	for _, localRelay := range rfs.Storage.Relays(ctx) {
 		if localRelay.State == routing.RelayStateEnabled {
 			enabledRelays = append(enabledRelays, localRelay)
 			relayMap[localRelay.ID] = localRelay
