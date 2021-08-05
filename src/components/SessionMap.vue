@@ -31,6 +31,8 @@ import data12 from '../../test_data/ghost-army-map-points-12.json' */
  * TODO: Cleanup component logic
  */
 
+const MAX_RETRIES = 4
+
 @Component({
   name: 'SessionMap'
 })
@@ -44,11 +46,14 @@ export default class SessionMap extends Vue {
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
+  private retryCount: number
 
   // private sessions: Array<any>
 
   constructor () {
     super()
+
+    this.retryCount = 0
 
     // If there is not stored viewport, add the default one and use that
     if (!this.$store.getters.currentViewport) {
@@ -257,16 +262,36 @@ export default class SessionMap extends Vue {
           this.deckGlInstance.setProps({ layers: layers })
         }
       })
+      .catch((error: Error) => {
+        console.log('Something went wrong fetching map points')
+        console.log(error)
+
+        this.stopLoop()
+        this.retryCount = this.retryCount + 1
+        if (this.retryCount < MAX_RETRIES) {
+          setTimeout(() => {
+            this.restartLoop()
+          }, 3000 * this.retryCount)
+        }
+
+        if (this.retryCount >= MAX_RETRIES) {
+          console.log('We hit max retries, display an error!')
+        }
+      })
   }
 
   private restartLoop () {
-    if (this.mapLoop) {
-      clearInterval(this.mapLoop)
-    }
+    this.stopLoop()
     this.fetchMapSessions()
     this.mapLoop = setInterval(() => {
       this.fetchMapSessions()
     }, 10000)
+  }
+
+  private stopLoop () {
+    if (this.mapLoop) {
+      clearInterval(this.mapLoop)
+    }
   }
 
   private mapPointClickHandler (info: any) {

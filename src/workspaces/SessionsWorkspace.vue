@@ -155,6 +155,8 @@ import { FeatureEnum } from '@/components/types/FeatureTypes'
  * TODO: Make this a View
  */
 
+const MAX_RETRIES = 4
+
 @Component({
   components: {
     SessionCounts
@@ -170,10 +172,13 @@ export default class SessionsWorkspace extends Vue {
   private sessionsTourOptions: any
   private sessionsTourCallbacks: any
 
+  private retryCount: number
+
   constructor () {
     super()
     this.sessions = []
     this.showTable = false
+    this.retryCount = 0
 
     this.sessionsTourSteps = [
       {
@@ -244,6 +249,18 @@ export default class SessionsWorkspace extends Vue {
         this.sessions = []
         console.log('Something went wrong fetching the top sessions list')
         console.log(error)
+
+        this.stopLoop()
+        this.retryCount = this.retryCount + 1
+        if (this.retryCount < MAX_RETRIES) {
+          setTimeout(() => {
+            this.restartLoop()
+          }, 3000 * this.retryCount)
+        }
+
+        if (this.retryCount >= MAX_RETRIES) {
+          console.log('We hit max retries, display an error!')
+        }
       })
       .finally(() => {
         if (!this.showTable) {
@@ -265,13 +282,17 @@ export default class SessionsWorkspace extends Vue {
   }
 
   private restartLoop () {
-    if (this.sessionsLoop) {
-      clearInterval(this.sessionsLoop)
-    }
+    this.stopLoop()
     this.fetchSessions()
     this.sessionsLoop = setInterval(() => {
       this.fetchSessions()
     }, 10000)
+  }
+
+  private stopLoop () {
+    if (this.sessionsLoop) {
+      clearInterval(this.sessionsLoop)
+    }
   }
 }
 </script>

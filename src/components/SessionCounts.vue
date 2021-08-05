@@ -49,6 +49,8 @@ interface TotalSessionsReply {
   onNN: number;
 }
 
+const MAX_RETRIES = 4
+
 @Component({
   components: {
     Alert,
@@ -69,6 +71,7 @@ export default class SessionCounts extends Vue {
   private showCount: boolean
   private countLoop: any
   private alertToggle: boolean
+  private retryCount: number
 
   private unwatchFilter: any
 
@@ -80,6 +83,7 @@ export default class SessionCounts extends Vue {
     }
     this.showCount = false
     this.alertToggle = false
+    this.retryCount = 0
   }
 
   private mounted () {
@@ -114,10 +118,20 @@ export default class SessionCounts extends Vue {
         this.totalSessionsReply.onNN = response.next
       })
       .catch((error: Error) => {
-        this.totalSessionsReply.direct = 0
-        this.totalSessionsReply.onNN = 0
         console.log('Something went wrong fetching session counts')
         console.log(error)
+
+        this.stopLoop()
+        this.retryCount = this.retryCount + 1
+        if (this.retryCount < MAX_RETRIES) {
+          setTimeout(() => {
+            this.restartLoop()
+          }, 3000 * this.retryCount)
+        }
+
+        if (this.retryCount >= MAX_RETRIES) {
+          console.log('We hit max retries, display an error!')
+        }
       })
       .finally(() => {
         if (!this.showCount) {
@@ -127,13 +141,17 @@ export default class SessionCounts extends Vue {
   }
 
   private restartLoop () {
-    if (this.countLoop) {
-      clearInterval(this.countLoop)
-    }
+    this.stopLoop()
     this.fetchSessionCounts()
     this.countLoop = setInterval(() => {
       this.fetchSessionCounts()
     }, 1000)
+  }
+
+  private stopLoop () {
+    if (this.countLoop) {
+      clearInterval(this.countLoop)
+    }
   }
 
   private failedMapPointLookupCallback () {
