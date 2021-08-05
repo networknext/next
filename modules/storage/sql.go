@@ -55,7 +55,7 @@ func QueryMultipleRowsRetry(ctx context.Context, db *SQL, queryString bytes.Buff
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 	return sqlRows, err
@@ -78,7 +78,7 @@ func ExecRetry(ctx context.Context, db *SQL, queryString bytes.Buffer, queryArgs
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -168,7 +168,7 @@ func (db *SQL) Customer(ctx context.Context, customerCode string) (routing.Custo
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -401,7 +401,7 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -469,7 +469,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -704,7 +704,7 @@ func (db *SQL) Seller(ctx context.Context, id string) (routing.Seller, error) {
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -764,7 +764,7 @@ func (db *SQL) SellerByDbId(ctx context.Context, id int64) (routing.Seller, erro
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -991,7 +991,7 @@ func (db *SQL) SellerWithCompanyCode(ctx context.Context, code string) (routing.
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -1090,7 +1090,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -2146,7 +2146,7 @@ func (db *SQL) Datacenter(ctx context.Context, datacenterID uint64) (routing.Dat
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -2203,7 +2203,7 @@ func (db *SQL) DatacenterByDbId(ctx context.Context, databaseID int64) (routing.
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -2601,7 +2601,7 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -2693,7 +2693,7 @@ func (db *SQL) InternalConfig(ctx context.Context, ephemeralBuyerID uint64) (cor
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
@@ -3669,7 +3669,7 @@ func (db *SQL) GetDatabaseBinFileMetaData(ctx context.Context) (routing.Database
 		case context.Canceled:
 			retryCount = retryCount + 1
 		default:
-			retryCount = 4
+			retryCount = MAX_RETRIES
 		}
 	}
 
