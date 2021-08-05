@@ -9,9 +9,9 @@ import (
 )
 
 type Storer interface {
-	Customer(code string) (routing.Customer, error)
+	Customer(ctx context.Context, code string) (routing.Customer, error)
 
-	Customers() []routing.Customer
+	Customers(ctx context.Context) []routing.Customer
 
 	AddCustomer(ctx context.Context, customer routing.Customer) error
 
@@ -25,13 +25,13 @@ type Storer interface {
 
 	// Buyer gets a copy of a buyer with the specified buyer ID,
 	// and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
-	Buyer(id uint64) (routing.Buyer, error)
+	Buyer(ctx context.Context, id uint64) (routing.Buyer, error)
 
 	// BuyerWithCompanyCode gets the Buyer with the matching company code
-	BuyerWithCompanyCode(code string) (routing.Buyer, error)
+	BuyerWithCompanyCode(ctx context.Context, code string) (routing.Buyer, error)
 
 	// Buyers returns a copy of all stored buyers.
-	Buyers() []routing.Buyer
+	Buyers(ctx context.Context) []routing.Buyer
 
 	// AddBuyer adds the provided buyer to storage and returns an error if the buyer could not be added.
 	AddBuyer(ctx context.Context, buyer routing.Buyer) error
@@ -44,10 +44,10 @@ type Storer interface {
 
 	// Seller gets a copy of a seller with the specified seller ID,
 	// and returns an empty seller and an error if a seller with that ID doesn't exist in storage.
-	Seller(id string) (routing.Seller, error)
+	Seller(ctx context.Context, id string) (routing.Seller, error)
 
 	// Sellers returns a copy of all stored sellers.
-	Sellers() []routing.Seller
+	Sellers(ctx context.Context) []routing.Seller
 
 	// AddSeller adds the provided seller to storage and returns an error if the seller could not be added.
 	AddSeller(ctx context.Context, seller routing.Seller) error
@@ -66,7 +66,7 @@ type Storer interface {
 	// If the customer has no seller linked, then it will return an empty seller ID and no error.
 	SellerIDFromCustomerName(ctx context.Context, customerName string) (string, error)
 
-	SellerWithCompanyCode(code string) (routing.Seller, error)
+	SellerWithCompanyCode(ctx context.Context, code string) (routing.Seller, error)
 
 	// SetCustomerLink update the customer's buyer and seller references.
 	// TODO: chopping block (handled/required by database)
@@ -74,10 +74,10 @@ type Storer interface {
 
 	// Relay gets a copy of a relay with the specified relay ID
 	// and returns an empty relay and an error if a relay with that ID doesn't exist in storage.
-	Relay(id uint64) (routing.Relay, error)
+	Relay(ctx context.Context, id uint64) (routing.Relay, error)
 
 	// Relays returns a copy of all stored relays.
-	Relays() []routing.Relay
+	Relays(ctx context.Context) []routing.Relay
 
 	// AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
 	AddRelay(ctx context.Context, relay routing.Relay) error
@@ -94,10 +94,10 @@ type Storer interface {
 
 	// Datacenter gets a copy of a datacenter with the specified datacenter ID
 	// and returns an empty datacenter and an error if a datacenter with that ID doesn't exist in storage.
-	Datacenter(datacenterID uint64) (routing.Datacenter, error)
+	Datacenter(ctx context.Context, datacenterID uint64) (routing.Datacenter, error)
 
 	// Datacenters returns a copy of all stored datacenters.
-	Datacenters() []routing.Datacenter
+	Datacenters(ctx context.Context) []routing.Datacenter
 
 	// AddDatacenter adds the provided datacenter to storage and returns an error if the datacenter could not be added.
 	AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error
@@ -110,14 +110,14 @@ type Storer interface {
 
 	// GetDatacenterMapsForBuyer returns the list of datacenter aliases in use for a given (internally generated) buyerID. Returns
 	// an empty []routing.DatacenterMap if there are no aliases for that buyerID.
-	GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap
+	GetDatacenterMapsForBuyer(ctx context.Context, buyerID uint64) map[uint64]routing.DatacenterMap
 
 	// AddDatacenterMap adds a new datacenter alias for the given buyer and datacenter IDs
 	AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
 
 	// ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 	// empty dcID returns a list of all maps.
-	ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap
+	ListDatacenterMaps(ctx context.Context, dcID uint64) map[uint64]routing.DatacenterMap
 
 	// RemoveDatacenterMap removes an entry from the DatacenterMaps table
 	RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error
@@ -125,10 +125,10 @@ type Storer interface {
 	// New for ConfigService
 
 	// GetFeatureFlags returns all feature flags currently in the database
-	GetFeatureFlags() map[string]bool
+	GetFeatureFlags(ctx context.Context) map[string]bool
 
 	// GetFeatureFlagByName returns a specific flag or an error if it does not exist
-	GetFeatureFlagByName(flagName string) (map[string]bool, error)
+	GetFeatureFlagByName(ctx context.Context, flagName string) (map[string]bool, error)
 
 	// SetFeatureFlagByName adds a new feature or updates the value of an existing feature
 	SetFeatureFlagByName(ctx context.Context, flagName string, flagVal bool) error
@@ -137,7 +137,7 @@ type Storer interface {
 	RemoveFeatureFlagByName(ctx context.Context, flagName string) error
 
 	// InternalConfig returns the internal config for the given buyer ID
-	InternalConfig(buyerID uint64) (core.InternalConfig, error)
+	InternalConfig(ctx context.Context, buyerID uint64) (core.InternalConfig, error)
 
 	// AddInternalConfig adds the provided InternalConfig to the database
 	AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error
@@ -149,7 +149,7 @@ type Storer interface {
 	RemoveInternalConfig(ctx context.Context, buyerID uint64) error
 
 	// RouteShader returns a slice of route shaders for the given buyer ID
-	RouteShader(buyerID uint64) (core.RouteShader, error)
+	RouteShader(ctx context.Context, buyerID uint64) (core.RouteShader, error)
 
 	// AddRouteShader adds the provided RouteShader to the database
 	AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error
@@ -168,10 +168,10 @@ type Storer interface {
 
 	// BannedUsers returns the set of banned users for the specified buyer ID. This method
 	// is designed to be used by syncRouteShaders() though it can be used by client code.
-	BannedUsers(buyerID uint64) (map[uint64]bool, error)
+	BannedUsers(ctx context.Context, buyerID uint64) (map[uint64]bool, error)
 
 	// GetDatabaseBinFileMetaData returns data from the database_bin_meta table
-	GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error)
+	GetDatabaseBinFileMetaData(ctx context.Context) (routing.DatabaseBinFileMetaData, error)
 
 	// UpdateDatabaseBinFileMetaData updates the specified field in an database_bin_meta table
 	UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error
