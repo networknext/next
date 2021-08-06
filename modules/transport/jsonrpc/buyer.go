@@ -211,7 +211,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 					sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
 
-					buyer, err := s.Storage.Buyer(session.BuyerID)
+					buyer, err := s.Storage.Buyer(r.Context(), session.BuyerID)
 					if err != nil {
 						err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
 						level.Error(s.Logger).Log("err", err)
@@ -263,7 +263,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		currentPage := reply.Page
 
 		// Fetch historic sessions by each identifier if there are any
-		rowsByHash, err = s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
+		rowsByHash, err = s.GetHistoricalSessions(r.Context(), reply, userHash, currentPageDate, nextPageDate)
 		if err != nil {
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -276,7 +276,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 
 		if searchType == -1 {
-			rowsByID, err = s.GetHistoricalSessions(reply, userID, currentPageDate, nextPageDate)
+			rowsByID, err = s.GetHistoricalSessions(r.Context(), reply, userID, currentPageDate, nextPageDate)
 			if err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
@@ -290,7 +290,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 
 		if searchType == -1 {
-			rowsByHexID, err = s.GetHistoricalSessions(reply, hexUserID, currentPageDate, nextPageDate)
+			rowsByHexID, err = s.GetHistoricalSessions(r.Context(), reply, hexUserID, currentPageDate, nextPageDate)
 			if err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
@@ -322,12 +322,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	sort.Slice(reply.Sessions, func(i, j int) bool {
 		return reply.Sessions[i].Timestamp.After(reply.Sessions[j].Timestamp)
 	})
-	fmt.Println()
 
 	return nil
 }
 
-func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifier string, currentPageDate time.Time, nextPageDate time.Time) ([]bigtable.Row, error) {
+func (s *BuyersService) GetHistoricalSessions(ctx context.Context, reply *UserSessionsReply, identifier string, currentPageDate time.Time, nextPageDate time.Time) ([]bigtable.Row, error) {
 	// Gets the rows within [nextPageDate, currentPageDate)
 	chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
 		bigtable.LatestNFilter(1),                                    // Gets the latest cell from the "meta" column
@@ -337,7 +336,7 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 	var btRows []bigtable.Row
 	for {
 		// Fetch historic sessions by the identifier if there are any
-		rows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", identifier), bigtable.RowFilter(chainFilter), bigtable.LimitRows(MaxHistoricalSessions))
+		rows, err := s.BigTable.GetRowsWithPrefix(ctx, fmt.Sprintf("%s#", identifier), bigtable.RowFilter(chainFilter), bigtable.LimitRows(MaxHistoricalSessions))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("GetHistoricalSessions() failed to fetch historic user sessions: %v", err)
@@ -370,7 +369,6 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 
 		// if we found the full amount of sessions in one page, return that page number for next time
 		if len(btRows) == MaxHistoricalSessions {
-			fmt.Println("Hit max sessions for the day")
 			break
 		}
 	}
@@ -397,7 +395,7 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 
 		// Make sure we aren't duplicating live sessions
 		if !strings.Contains(liveSessionIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
-			sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+			sliceRows, err := s.BigTable.GetRowsWithPrefix(r.Context(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 			if err != nil {
 				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
 				err = fmt.Errorf("GetHistoricalSlices() failed to fetch historic slice information: %v", err)
@@ -420,7 +418,7 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 					}
 				}
 
-				buyer, err := s.Storage.Buyer(sessionMeta.BuyerID)
+				buyer, err := s.Storage.Buyer(r.Context(), sessionMeta.BuyerID)
 				if err != nil {
 					err = fmt.Errorf("GetHistoricalSlices() failed to fetch buyer: %v", err)
 					level.Error(s.Logger).Log("err", err)
@@ -480,7 +478,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 	switch args.CompanyCode {
 	case "":
-		buyers := s.Storage.Buyers()
+		buyers := s.Storage.Buyers(r.Context())
 
 		var firstNextCount int
 		var secondNextCount int
@@ -598,7 +596,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	default:
 		var ghostArmyNextCount int
 
-		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), args.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("TotalSessions() failed getting company with code: %v", err)
 			level.Error(s.Logger).Log("err", err)
@@ -752,7 +750,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
 	// Use bigtable if error from redis or requesting historic information
 	if s.UseBigtable && (err != nil || metaString == "") {
-		metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+		metaRows, err := s.BigTable.GetRowWithRowKey(r.Context(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information from bigtable: %v", err)
@@ -794,7 +792,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 	}
 
-	buyer, err := s.Storage.Buyer(reply.Meta.BuyerID)
+	buyer, err := s.Storage.Buyer(r.Context(), reply.Meta.BuyerID)
 	if err != nil {
 		err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
 		level.Error(s.Logger).Log("err", err)
@@ -831,7 +829,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			reply.Slices = append(reply.Slices, slice)
 		}
 	} else {
-		sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+		sliceRows, err := s.BigTable.GetRowsWithPrefix(r.Context(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 		if err != nil {
 			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information from bigtable: %v", err)
@@ -899,13 +897,13 @@ type point struct {
 	OnNetworkNext bool    `json:"on_network_next"`
 }
 
-func (s *BuyersService) GenerateMapPointsPerBuyer() error {
+func (s *BuyersService) GenerateMapPointsPerBuyer(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	var err error
 
-	buyers := s.Storage.Buyers()
+	buyers := s.Storage.Buyers(ctx)
 
 	// slices to hold all the final map points
 	mapPointsBuyers := make(map[string][]transport.SessionMapPoint, 0)
@@ -989,7 +987,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	return nil
 }
 
-func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
+func (s *BuyersService) GenerateMapPointsPerBuyerBytes(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -999,7 +997,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 	s.mapPointsBuyerByteCache = make(map[string][]byte, 0)
 	s.mapPointsByteCache = make([]byte, 0)
 
-	buyers := s.Storage.Buyers()
+	buyers := s.Storage.Buyers(ctx)
 
 	for _, buyer := range buyers {
 		stringID := fmt.Sprintf("%016x", buyer.ID)
@@ -1335,7 +1333,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 
 	reply.GameConfiguration.PublicKey = ""
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
+	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
 	// Buyer not found
 	if err != nil {
 		return nil
@@ -1365,7 +1363,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 		return err
 	}
 
-	ctx := context.Background()
+	ctx := r.Context()
 
 	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
@@ -1385,7 +1383,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 		return err
 	}
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
+	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
 
 	// Buyer found
 	if buyer.ID != 0 {
@@ -1419,7 +1417,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 		}
 
 		// Check if buyer is associated with the ID and everything worked
-		buyer, err = s.Storage.Buyer(buyerID)
+		buyer, err = s.Storage.Buyer(r.Context(), buyerID)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyerInformation() buyer creation failed: %v", err)
 			level.Error(s.Logger).Log("err", err)
@@ -1444,7 +1442,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	ctx := context.Background()
+	ctx := r.Context()
 
 	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
@@ -1464,7 +1462,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
+	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
 
 	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
 	if err != nil {
@@ -1493,7 +1491,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		}
 
 		// Check if buyer is associated with the ID and everything worked
-		if buyer, err = s.Storage.Buyer(buyerID); err != nil {
+		if buyer, err = s.Storage.Buyer(r.Context(), buyerID); err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() buyer creation failed: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1509,7 +1507,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	oldBuyerID := buyer.ID
 
 	// Remove all dc Maps
-	dcMaps := s.Storage.GetDatacenterMapsForBuyer(oldBuyerID)
+	dcMaps := s.Storage.GetDatacenterMapsForBuyer(r.Context(), oldBuyerID)
 	for _, dcMap := range dcMaps {
 		if err := s.Storage.RemoveDatacenterMap(ctx, dcMap); err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() failed to remove old datacenter map: %v, datacenter ID: %016x", err, dcMap.DatacenterID)
@@ -1547,7 +1545,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	// Check if buyer is associated with the ID and everything worked
-	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
+	if buyer, err = s.Storage.Buyer(r.Context(), buyerID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() buyer update check failed: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1578,9 +1576,9 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 		return nil
 	}
 
-	for _, b := range s.Storage.Buyers() {
+	for _, b := range s.Storage.Buyers(r.Context()) {
 		id := fmt.Sprintf("%016x", b.ID)
-		customer, err := s.Storage.Customer(b.CompanyCode)
+		customer, err := s.Storage.Customer(r.Context(), b.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("Buyers() buyer is not assigned to customer: %v", b.ID)
 			level.Error(s.Logger).Log("err", err)
@@ -1642,24 +1640,24 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 
 	var dcm map[uint64]routing.DatacenterMap
 
-	dcm = s.Storage.GetDatacenterMapsForBuyer(buyerID)
+	dcm = s.Storage.GetDatacenterMapsForBuyer(r.Context(), buyerID)
 
 	var replySlice []DatacenterMapsFull
 	for _, dcMap := range dcm {
-		buyer, err := s.Storage.Buyer(dcMap.BuyerID)
+		buyer, err := s.Storage.Buyer(r.Context(), dcMap.BuyerID)
 		if err != nil {
 			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse buyer")
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		datacenter, err := s.Storage.Datacenter(dcMap.DatacenterID)
+		datacenter, err := s.Storage.Datacenter(r.Context(), dcMap.DatacenterID)
 		if err != nil {
 			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		customer, err := s.Storage.Customer(buyer.CompanyCode)
+		customer, err := s.Storage.Customer(r.Context(), buyer.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("DatacenterMapsForBuyer() buyer is not associated with a company")
 			level.Error(s.Logger).Log("err", err)
@@ -1692,7 +1690,7 @@ type JSRemoveDatacenterMapReply struct {
 }
 
 func (s *BuyersService) JSRemoveDatacenterMap(r *http.Request, args *JSRemoveDatacenterMapArgs, reply *JSRemoveDatacenterMapReply) error {
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	buyerID, err := strconv.ParseUint(args.BuyerHexID, 16, 64)
@@ -1721,7 +1719,7 @@ type RemoveDatacenterMapArgs struct {
 type RemoveDatacenterMapReply struct{}
 
 func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacenterMapArgs, reply *RemoveDatacenterMapReply) error {
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	return s.Storage.RemoveDatacenterMap(ctx, args.DatacenterMap)
@@ -1738,7 +1736,7 @@ type JSAddDatacenterMapReply struct{}
 
 func (s *BuyersService) JSAddDatacenterMap(r *http.Request, args *JSAddDatacenterMapArgs, reply *JSAddDatacenterMapReply) error {
 
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	buyerID, err := strconv.ParseUint(args.HexBuyerID, 16, 64)
@@ -1770,7 +1768,7 @@ type AddDatacenterMapReply struct{}
 
 func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMapArgs, reply *AddDatacenterMapReply) error {
 
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	return s.Storage.AddDatacenterMap(ctx, args.DatacenterMap)
@@ -1837,7 +1835,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			return sessions, err
 		}
 
-		buyer, err := s.Storage.BuyerWithCompanyCode(companyCodeFilter)
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCodeFilter)
 		if err != nil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting buyer with code: %v", err)
 			level.Error(s.Logger).Log("err", err)
@@ -1896,7 +1894,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			continue
 		}
 
-		buyer, err := s.Storage.Buyer(meta.BuyerID)
+		buyer, err := s.Storage.Buyer(r.Context(), meta.BuyerID)
 		if err != nil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
 			level.Error(s.Logger).Log("err", err)
@@ -1976,7 +1974,7 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 		return err
 	}
 
-	ic, err := s.Storage.InternalConfig(buyerID)
+	ic, err := s.Storage.InternalConfig(r.Context(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("InternalConfig() no InternalConfig stored for buyer %s", arg.BuyerID)
 		level.Error(s.Logger).Log("err", err)
@@ -2045,7 +2043,7 @@ func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalC
 		ReducePacketLossMinSliceNumber: int32(arg.InternalConfig.ReducePacketLossMinSliceNumber),
 	}
 
-	err = s.Storage.AddInternalConfig(context.Background(), ic, buyerID)
+	err = s.Storage.AddInternalConfig(r.Context(), ic, buyerID)
 	if err != nil {
 		err = fmt.Errorf("JSAddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2092,7 +2090,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
 		}
 		newInt32 := int32(newInt)
-		err = s.Storage.UpdateInternalConfig(context.Background(), buyerID, args.Field, newInt32)
+		err = s.Storage.UpdateInternalConfig(r.Context(), buyerID, args.Field, newInt32)
 		if err != nil {
 			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2106,7 +2104,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
 		}
 
-		err = s.Storage.UpdateInternalConfig(context.Background(), buyerID, args.Field, newValue)
+		err = s.Storage.UpdateInternalConfig(r.Context(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2137,7 +2135,7 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 		return err
 	}
 
-	err = s.Storage.RemoveInternalConfig(context.Background(), buyerID)
+	err = s.Storage.RemoveInternalConfig(r.Context(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveInternalConfig() error removing internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2183,7 +2181,7 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		return err
 	}
 
-	rs, err := s.Storage.RouteShader(buyerID)
+	rs, err := s.Storage.RouteShader(r.Context(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RouteShader() error retrieving route shader for buyer %s: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2246,7 +2244,7 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 		PacketLossSustained:       float32(arg.RouteShader.PacketLossSustained),
 	}
 
-	err = s.Storage.AddRouteShader(context.Background(), rs, buyerID)
+	err = s.Storage.AddRouteShader(r.Context(), rs, buyerID)
 	if err != nil {
 		err = fmt.Errorf("AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2273,7 +2271,7 @@ func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShade
 		return err
 	}
 
-	err = s.Storage.RemoveRouteShader(context.Background(), buyerID)
+	err = s.Storage.RemoveRouteShader(r.Context(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveRouteShader() error removing route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2318,7 +2316,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid integer type", args.Value)
 		}
 		newInt32 := int32(newInt)
-		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newInt32)
+		err = s.Storage.UpdateRouteShader(r.Context(), buyerID, args.Field, newInt32)
 		if err != nil {
 			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2331,7 +2329,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid integer type", args.Value)
 		}
 		newInteger := int(newInt)
-		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newInteger)
+		err = s.Storage.UpdateRouteShader(r.Context(), buyerID, args.Field, newInteger)
 		if err != nil {
 			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2344,7 +2342,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid float type", args.Value)
 		}
 		newFloat32 := float32(newFloat)
-		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newFloat32)
+		err = s.Storage.UpdateRouteShader(r.Context(), buyerID, args.Field, newFloat32)
 		if err != nil {
 			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2358,8 +2356,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid boolean type", args.Value)
 		}
 
-		fmt.Printf("newValue: %T\n", newValue)
-		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newValue)
+		err = s.Storage.UpdateRouteShader(r.Context(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2389,7 +2386,7 @@ func (s *BuyersService) GetBannedUsers(r *http.Request, arg *GetBannedUserArg, r
 
 	var userList []string
 
-	bannedUsers, err := s.Storage.BannedUsers(arg.BuyerID)
+	bannedUsers, err := s.Storage.BannedUsers(r.Context(), arg.BuyerID)
 	if err != nil {
 		err = fmt.Errorf("GetBannedUsers() error retrieving banned users for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2416,7 +2413,7 @@ func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, repl
 		return nil
 	}
 
-	err := s.Storage.AddBannedUser(context.Background(), arg.BuyerID, arg.UserID)
+	err := s.Storage.AddBannedUser(r.Context(), arg.BuyerID, arg.UserID)
 	if err != nil {
 		err = fmt.Errorf("AddBannedUser() error adding banned user for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2431,7 +2428,7 @@ func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, r
 		return nil
 	}
 
-	err := s.Storage.RemoveBannedUser(context.Background(), arg.BuyerID, arg.UserID)
+	err := s.Storage.RemoveBannedUser(r.Context(), arg.BuyerID, arg.UserID)
 	if err != nil {
 		err = fmt.Errorf("RemoveBannedUser() error removing banned user for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2454,7 +2451,7 @@ func (s *BuyersService) Buyer(r *http.Request, arg *BuyerArg, reply *BuyerReply)
 	var b routing.Buyer
 	var err error
 
-	b, err = s.Storage.Buyer(arg.BuyerID)
+	b, err = s.Storage.Buyer(r.Context(), arg.BuyerID)
 	if err != nil {
 		err = fmt.Errorf("Buyer() error retrieving buyer for ID %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2499,14 +2496,14 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", args.Value)
 		}
 
-		err = s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, newValue)
+		err = s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 	case "ShortName", "PublicKey":
-		err := s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, args.Value)
+		err := s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2648,10 +2645,10 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	return nil
 }
 
-func (s *BuyersService) FetchReleaseNotes() error {
+func (s *BuyersService) FetchReleaseNotes(ctx context.Context) error {
 	cacheList := make([]notifications.ReleaseNotesNotification, 0)
 
-	gistList, _, err := s.GithubClient.Gists.List(context.Background(), "", &github.GistListOptions{})
+	gistList, _, err := s.GithubClient.Gists.List(ctx, "", &github.GistListOptions{})
 	if err != nil {
 		err = fmt.Errorf("FetchReleaseNotes() error fetching gist list: %v", err)
 		level.Error(s.Logger).Log("err", err)
