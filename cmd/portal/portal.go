@@ -424,7 +424,7 @@ func main() {
 		}
 
 		for {
-			if err := buyerService.GenerateMapPointsPerBuyer(); err != nil {
+			if err := buyerService.GenerateMapPointsPerBuyer(ctx); err != nil {
 				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
 				os.Exit(1)
 			}
@@ -440,7 +440,7 @@ func main() {
 		}
 
 		for {
-			if err := buyerService.FetchReleaseNotes(); err != nil {
+			if err := buyerService.FetchReleaseNotes(ctx); err != nil {
 				level.Error(logger).Log("msg", "error fetching today's release notes", "err", err)
 			}
 			time.Sleep(fetchReleaseNotesInterval)

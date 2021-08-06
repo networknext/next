@@ -125,8 +125,8 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 			return &err
 		}
 
-		buyer, _ := s.Storage.BuyerWithCompanyCode(companyCode)
-		company, err := s.Storage.Customer(companyCode)
+		buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+		company, err := s.Storage.Customer(r.Context(), companyCode)
 		if err != nil {
 			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
@@ -179,14 +179,14 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 	}
 	var company routing.Customer
 	if companyCode != "" {
-		company, err = s.Storage.Customer(companyCode)
+		company, err = s.Storage.Customer(r.Context(), companyCode)
 		if err != nil {
 			s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Could not find customer account for customer code: %v", err.Error(), companyCode))
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
 	}
-	buyer, err := s.Storage.BuyerWithCompanyCode(companyCode)
+	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
 	userRoles, err := s.UserManager.Roles(*userAccount.ID)
 	if err != nil {
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Failed to get user account roles", err.Error()))
@@ -248,19 +248,19 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 	return nil
 }
 
-func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, reply *AccountsReply) error {
+func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var adminString string = "Admin"
 	var accounts []account
 
-	if !middleware.VerifyAnyRole(req, middleware.AdminRole, middleware.OwnerRole) {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
 		return &err
 	}
 
 	// Check if non admin is assigning admin role
-	for _, r := range args.Roles {
-		if r.Name == &adminString && !middleware.VerifyAllRoles(req, middleware.AdminRole) {
+	for _, role := range args.Roles {
+		if role.Name == &adminString && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 			s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
 			return &err
@@ -268,7 +268,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	}
 
 	// Gather request user information
-	userCompanyCode, ok := req.Context().Value(middleware.Keys.CompanyKey).(string)
+	userCompanyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok || userCompanyCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
@@ -279,7 +279,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 	emails := args.Emails
 	falseValue := false
 
-	buyer, _ := s.Storage.BuyerWithCompanyCode(userCompanyCode)
+	buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), userCompanyCode)
 
 	registered := make(map[string]*management.User)
 
@@ -380,7 +380,7 @@ func (s *AuthService) AddUserAccount(req *http.Request, args *AccountsArgs, repl
 			}
 		}
 
-		company, err := s.Storage.Customer(userCompanyCode)
+		company, err := s.Storage.Customer(r.Context(), userCompanyCode)
 		if err != nil {
 			s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
@@ -508,7 +508,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 			CreationTime: account.CreatedAt.String(),
 		}
 
-		buyer, _ := s.Storage.BuyerWithCompanyCode(companyCode)
+		buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
 
 		if buyer.ID != 0 {
 			entry.BuyerID = fmt.Sprintf("%016x", buyer.ID)
@@ -732,7 +732,7 @@ func (s *AuthService) UpdateCompanyInformation(r *http.Request, args *CompanyNam
 
 	ctx := context.Background()
 
-	company, err := s.Storage.Customer(newCompanyCode)
+	company, err := s.Storage.Customer(r.Context(), newCompanyCode)
 	roles := []*management.Role{}
 	if err != nil {
 		// New Company
@@ -970,7 +970,7 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 	}
 	ctx := context.Background()
 
-	company, err := s.Storage.Customer(customerCode)
+	company, err := s.Storage.Customer(r.Context(), customerCode)
 	if err != nil {
 		s.Logger.Log("err", fmt.Errorf("UpdateAutoSignupDomains(): %v", err.Error()))
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
