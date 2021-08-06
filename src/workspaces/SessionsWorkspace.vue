@@ -227,11 +227,13 @@ export default class SessionsWorkspace extends Vue {
         this.restartLoop()
       }
     )
+    this.$root.$on('killLoops', this.stopLoop)
   }
 
   private beforeDestroy (): void {
     clearInterval(this.sessionsLoop)
     this.unwatch()
+    this.$root.$off('killLoops')
   }
 
   private fetchSessions (): void {
@@ -240,6 +242,7 @@ export default class SessionsWorkspace extends Vue {
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
+        this.retryCount = 0
         this.sessions = response.sessions || []
         if (this.$store.getters.isTour && this.$tours.sessionsTour && !this.$tours.sessionsTour.isRunning && !this.$store.getters.finishedTours.includes('sessions')) {
           this.$tours.sessionsTour.start()
@@ -259,7 +262,7 @@ export default class SessionsWorkspace extends Vue {
         }
 
         if (this.retryCount >= MAX_RETRIES) {
-          console.log('We hit max retries, display an error!')
+          this.$root.$emit('killLoops')
         }
       })
       .finally(() => {

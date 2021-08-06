@@ -99,11 +99,13 @@ export default class SessionMap extends Vue {
         this.restartLoop()
       }
     )
+    this.$root.$on('killLoops', this.stopLoop)
   }
 
   private beforeDestroy () {
     clearInterval(this.mapLoop)
     this.unwatchFilter()
+    this.$root.$off('killLoops')
   }
 
   private fetchMapSessions () {
@@ -112,6 +114,8 @@ export default class SessionMap extends Vue {
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
+        this.retryCount = 0
+
         // check if mapbox exists - primarily for tests
         if (!(window as any).mapboxgl || !(window as any).deck) {
           return
@@ -275,7 +279,7 @@ export default class SessionMap extends Vue {
         }
 
         if (this.retryCount >= MAX_RETRIES) {
-          console.log('We hit max retries, display an error!')
+          this.$root.$emit('killLoops')
         }
       })
   }

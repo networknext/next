@@ -103,17 +103,20 @@ export default class SessionCounts extends Vue {
     }
 
     this.$root.$on('failedMapPointLookup', this.failedMapPointLookupCallback)
+    this.$root.$on('killLoops', this.showReloadAlert)
   }
 
   private beforeDestroy () {
     clearInterval(this.countLoop)
     this.unwatchFilter()
     this.$root.$off('failedMapPointLookup')
+    this.$root.$off('killLoops')
   }
 
   private fetchSessionCounts () {
     this.$apiService.fetchTotalSessionCounts({ company_code: this.$store.getters.currentFilter.companyCode })
       .then((response: any) => {
+        this.retryCount = 0
         this.totalSessionsReply.direct = response.direct
         this.totalSessionsReply.onNN = response.next
       })
@@ -130,7 +133,7 @@ export default class SessionCounts extends Vue {
         }
 
         if (this.retryCount >= MAX_RETRIES) {
-          console.log('We hit max retries, display an error!')
+          this.$root.$emit('killLoops')
         }
       })
       .finally(() => {
@@ -138,6 +141,17 @@ export default class SessionCounts extends Vue {
           this.showCount = true
         }
       })
+  }
+
+  private showReloadAlert () {
+    this.stopLoop()
+    if (this.$refs.sessionCountAlert.className === AlertType.ERROR) {
+      return
+    }
+
+    this.$refs.sessionCountAlert.toggleSlots(false)
+    this.$refs.sessionCountAlert.setMessage('We’re sorry. Something went wrong. Please reload the page')
+    this.$refs.sessionCountAlert.setAlertType(AlertType.ERROR)
   }
 
   private restartLoop () {
