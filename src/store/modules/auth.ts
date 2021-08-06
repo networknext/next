@@ -82,6 +82,9 @@ const actions = {
       .catch((error: Error) => {
         console.log('Something went wrong fetching user details')
         console.log(error.message)
+
+        // The portal is basically useless with out this info so don't bother trying to load any other data
+        dispatch('toggleKillLoops', true)
       })
   },
   updateUserProfile ({ commit }: any, userProfile: any) {

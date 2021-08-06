@@ -32,6 +32,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import { AlertType } from './types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import BuyerFilter from '@/components/BuyerFilter.vue'
+import { RELOAD_MESSAGE } from '@/components/types/Constants'
 
 /**
  * This component displays the total session counts and has all of the associated logic and api calls
@@ -74,6 +75,7 @@ export default class SessionCounts extends Vue {
   private retryCount: number
 
   private unwatchFilter: any
+  private unwatchKillLoops: any
 
   constructor () {
     super()
@@ -87,7 +89,6 @@ export default class SessionCounts extends Vue {
   }
 
   private mounted () {
-    this.restartLoop()
     this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
         return getters.currentFilter
@@ -97,20 +98,36 @@ export default class SessionCounts extends Vue {
         this.restartLoop()
       }
     )
+    this.unwatchKillLoops = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.killLoops
+      },
+      () => {
+        this.showReloadAlert()
+      }
+    )
     if (this.$store.getters.isAnonymousPlus) {
       this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
       this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
     }
 
     this.$root.$on('failedMapPointLookup', this.failedMapPointLookupCallback)
-    this.$root.$on('killLoops', this.showReloadAlert)
+
+    // If the network isn't available/working show an alert and skip starting the polling loop
+    if (this.$store.getters.killLoops) {
+      this.showCount = true
+      this.showReloadAlert()
+      return
+    }
+
+    this.restartLoop()
   }
 
   private beforeDestroy () {
     clearInterval(this.countLoop)
     this.unwatchFilter()
+    this.unwatchKillLoops()
     this.$root.$off('failedMapPointLookup')
-    this.$root.$off('killLoops')
   }
 
   private fetchSessionCounts () {
@@ -133,7 +150,7 @@ export default class SessionCounts extends Vue {
         }
 
         if (this.retryCount >= MAX_RETRIES) {
-          this.$root.$emit('killLoops')
+          this.$store.dispatch('toggleKillLoops', true)
         }
       })
       .finally(() => {
@@ -150,7 +167,7 @@ export default class SessionCounts extends Vue {
     }
 
     this.$refs.sessionCountAlert.toggleSlots(false)
-    this.$refs.sessionCountAlert.setMessage('We’re sorry. Something went wrong. Please reload the page')
+    this.$refs.sessionCountAlert.setMessage(RELOAD_MESSAGE)
     this.$refs.sessionCountAlert.setAlertType(AlertType.ERROR)
   }
 

@@ -46,6 +46,7 @@ export default class SessionMap extends Vue {
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
+  private unwatchKillLoops: any
   private retryCount: number
 
   // private sessions: Array<any>
@@ -89,7 +90,6 @@ export default class SessionMap extends Vue {
   }
 
   private mounted () {
-    this.restartLoop()
     this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
         return getters.currentFilter
@@ -99,13 +99,91 @@ export default class SessionMap extends Vue {
         this.restartLoop()
       }
     )
-    this.$root.$on('killLoops', this.stopLoop)
+
+    this.unwatchKillLoops = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.killLoops
+      },
+      () => {
+        this.stopLoop()
+      }
+    )
+
+    // Only start the polling loop if the network is available/working
+    if (!this.$store.getters.killLoops) {
+      this.restartLoop()
+    }
+
+    if (!(window as any).mapboxgl || !(window as any).deck) {
+      return
+    }
+
+    // Init the mapbox instance using the shared viewport values
+    this.mapInstance = new (window as any).mapboxgl.Map({
+      accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
+      style: 'mapbox://styles/mapbox/dark-v10',
+      center: [
+        this.viewState.longitude,
+        this.viewState.latitude
+      ],
+      zoom: this.viewState.zoom,
+      pitch: this.viewState.pitch,
+      bearing: this.viewState.bearing,
+      container: 'map',
+      minZoom: 1.9
+    })
+
+    this.deckGlInstance = new (window as any).deck.Deck({
+      canvas: document.getElementById('deck-canvas'),
+      width: '100%',
+      height: '100%',
+      initialViewState: this.viewState,
+      controller: {
+        dragRotate: false,
+        dragTilt: false
+      },
+      // change the map's viewstate whenever the view state of deck.gl changes
+      onViewStateChange: ({ viewState }: any) => {
+        // Whenever the viewport changes, update the mapbox instance and the stored version of the viewport
+        this.mapInstance.jumpTo({
+          center: [viewState.longitude, viewState.latitude],
+          zoom: viewState.zoom,
+          bearing: viewState.bearing,
+          pitch: viewState.pitch,
+          minZoom: 2,
+          maxZoom: 16
+        })
+
+        this.$store.commit(
+          'UPDATE_CURRENT_VIEWPORT',
+          {
+            latitude: viewState.latitude,
+            longitude: viewState.longitude,
+            zoom: viewState.zoom,
+            pitch: viewState.pitch,
+            bearing: viewState.bearing,
+            minZoom: 2,
+            maxZoom: 16
+          }
+        )
+      },
+      layers: [],
+      getCursor: ({ isHovering, isDragging }: any) => {
+        if (isHovering) {
+          return 'pointer'
+        }
+        if (isDragging) {
+          return 'grabbing'
+        }
+        return 'grab'
+      }
+    })
   }
 
   private beforeDestroy () {
     clearInterval(this.mapLoop)
     this.unwatchFilter()
-    this.$root.$off('killLoops')
+    this.unwatchKillLoops()
   }
 
   private fetchMapSessions () {
@@ -115,29 +193,6 @@ export default class SessionMap extends Vue {
       })
       .then((response: any) => {
         this.retryCount = 0
-
-        // check if mapbox exists - primarily for tests
-        if (!(window as any).mapboxgl || !(window as any).deck) {
-          return
-        }
-
-        if (!this.mapInstance) {
-          // Init the mapbox instance using the shared viewport values
-          this.mapInstance = new (window as any).mapboxgl.Map({
-            accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
-            style: 'mapbox://styles/mapbox/dark-v10',
-            center: [
-              this.viewState.longitude,
-              this.viewState.latitude
-            ],
-            zoom: this.viewState.zoom,
-            pitch: this.viewState.pitch,
-            bearing: this.viewState.bearing,
-            container: 'map',
-            minZoom: 1.9
-          })
-          // this.mapInstance.setRenderWorldCopies(status === 'false')
-        }
 
         const sessions = response.map_points || []
         let onNN: Array<any> = []
@@ -214,57 +269,8 @@ export default class SessionMap extends Vue {
           layers.push(nnLayer)
         }
 
-        if (!this.deckGlInstance) {
-          // creating the deck.gl instance
-          this.deckGlInstance = new (window as any).deck.Deck({
-            canvas: document.getElementById('deck-canvas'),
-            width: '100%',
-            height: '100%',
-            initialViewState: this.viewState,
-            controller: {
-              dragRotate: false,
-              dragTilt: false
-            },
-            // change the map's viewstate whenever the view state of deck.gl changes
-            onViewStateChange: ({ viewState }: any) => {
-              // Whenever the viewport changes, update the mapbox instance and the stored version of the viewport
-              this.mapInstance.jumpTo({
-                center: [viewState.longitude, viewState.latitude],
-                zoom: viewState.zoom,
-                bearing: viewState.bearing,
-                pitch: viewState.pitch,
-                minZoom: 2,
-                maxZoom: 16
-              })
-
-              this.$store.commit(
-                'UPDATE_CURRENT_VIEWPORT',
-                {
-                  latitude: viewState.latitude,
-                  longitude: viewState.longitude,
-                  zoom: viewState.zoom,
-                  pitch: viewState.pitch,
-                  bearing: viewState.bearing,
-                  minZoom: 2,
-                  maxZoom: 16
-                }
-              )
-            },
-            layers: layers,
-            getCursor: ({ isHovering, isDragging }: any) => {
-              if (isHovering) {
-                return 'pointer'
-              }
-              if (isDragging) {
-                return 'grabbing'
-              }
-              return 'grab'
-            }
-          })
-        } else {
-          this.deckGlInstance.setProps({ layers: [] })
-          this.deckGlInstance.setProps({ layers: layers })
-        }
+        this.deckGlInstance.setProps({ layers: [] })
+        this.deckGlInstance.setProps({ layers: layers })
       })
       .catch((error: Error) => {
         console.log('Something went wrong fetching map points')
@@ -278,8 +284,9 @@ export default class SessionMap extends Vue {
           }, 3000 * this.retryCount)
         }
 
+        // If the retry count exceeds the max amount of retries we can assume the network is down. Kill all polling loops and display an error message
         if (this.retryCount >= MAX_RETRIES) {
-          this.$root.$emit('killLoops')
+          this.$store.dispatch('toggleKillLoops', true)
         }
       })
   }

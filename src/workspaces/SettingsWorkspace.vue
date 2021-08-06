@@ -47,6 +47,7 @@
 <script lang="ts">
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
+import { RELOAD_MESSAGE } from '@/components/types/Constants'
 import { Component, Vue } from 'vue-property-decorator'
 import { FeatureEnum } from '../components/types/FeatureTypes'
 
@@ -79,6 +80,17 @@ export default class SettingsWorkspace extends Vue {
       this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
       this.$refs.verifyAlert.setAlertType(AlertType.INFO)
     }
+
+    // If the network is down, show an error
+    if (this.$store.getters.killLoops) {
+      this.showErrorAlert()
+    }
+  }
+
+  private showErrorAlert () {
+    this.$refs.verifyAlert.toggleSlots(false)
+    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
   }
 }
 </script>

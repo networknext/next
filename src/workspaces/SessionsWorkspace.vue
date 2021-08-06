@@ -166,7 +166,8 @@ export default class SessionsWorkspace extends Vue {
   private sessions: Array<any>
   private sessionsLoop: any
   private showTable: boolean
-  private unwatch: any
+  private unwatchFilter: any
+  private unwatchKillLoops: any
 
   private sessionsTourSteps: Array<any>
   private sessionsTourOptions: any
@@ -217,8 +218,7 @@ export default class SessionsWorkspace extends Vue {
   }
 
   private mounted () {
-    this.restartLoop()
-    this.unwatch = this.$store.watch(
+    this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
         return getters.currentFilter
       },
@@ -227,13 +227,29 @@ export default class SessionsWorkspace extends Vue {
         this.restartLoop()
       }
     )
-    this.$root.$on('killLoops', this.stopLoop)
+
+    this.unwatchKillLoops = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.killLoops
+      },
+      () => {
+        this.stopLoop()
+      }
+    )
+
+    // If the network isn't available/working show an alert and skip starting the polling loop
+    if (this.$store.getters.killLoops) {
+      this.showTable = true
+      return
+    }
+
+    this.restartLoop()
   }
 
   private beforeDestroy (): void {
     clearInterval(this.sessionsLoop)
-    this.unwatch()
-    this.$root.$off('killLoops')
+    this.unwatchFilter()
+    this.unwatchKillLoops()
   }
 
   private fetchSessions (): void {
@@ -262,7 +278,7 @@ export default class SessionsWorkspace extends Vue {
         }
 
         if (this.retryCount >= MAX_RETRIES) {
-          this.$root.$emit('killLoops')
+          this.$store.dispatch('toggleKillLoops', true)
         }
       })
       .finally(() => {
