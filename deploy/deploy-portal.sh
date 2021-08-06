@@ -29,8 +29,8 @@ done
 VMs=$(gcloud compute --project network-next-v3-${env} instance-groups managed list-instances ${mig} --zone us-central1-a --format "value(instance)")
 COMMAND="cd /portal && sudo gsutil cp ${bucket}/portal-dist.${env}.tar.gz artifact.tar.gz && tar -xvf artifact.tar.gz"
 
-for i in "${VMs[@]}"; do
-  printf "Deploying Frontend code to ${i}... \n"
-  gcloud compute --project network-next-v3-${env} ssh ${i} -- ${COMMAND}
+while IFS= read -r vm; do
+  printf "Deploying Frontend code to ${vm}... \n"
+  gcloud compute --project network-next-v3-${env} ssh --zone us-central1-a ${vm} -- ${COMMAND}
   printf "done\n"
-done
+done <<< "$VMs"

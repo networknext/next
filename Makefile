@@ -19,15 +19,15 @@ build-portal-artifacts-prod:
 	./deploy/build-artifacts.sh -e prod -b $(ARTIFACT_BUCKET_PROD)
 
 .PHONY: deploy-portal-dev
-deploy-portal-dev: build-portal-artifacts-dev
+deploy-portal-dev:
 	./deploy/deploy-portal.sh -b $(ARTIFACT_BUCKET) -e dev -m $(PORTAL_DEV_MIG)
 
 .PHONY: deploy-portal-staging
-deploy-portal-staging: build-portal-artifacts-staging
+deploy-portal-staging:
 	./deploy/deploy-portal.sh -b $(ARTIFACT_BUCKET_STAGING) -e staging -m $(PORTAL_STAGING_MIG)
 
 # only use if 100% necessary - this will be linked to semaphore at some point
 
 # .PHONY: deploy-portal-prod
-#deploy-portal-prod: build-portal-artifacts-prod
+#deploy-portal-prod:
 #	./deploy/deploy-portal.sh -b $(ARTIFACT_BUCKET_PROD) -e prod -m $(PORTAL_PROD_MIG)

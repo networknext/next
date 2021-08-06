@@ -13,10 +13,10 @@
             "
     >
       <h1 class="h2">
-        Explore
+        Exploration
       </h1>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
-        <div class="mr-auto"></div>
+      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
+        <Alert ref="verifyAlert"></Alert>
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
@@ -40,6 +40,9 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import Alert from '@/components/Alert.vue'
+import { AlertType } from '@/components/types/AlertTypes'
+import { RELOAD_MESSAGE } from '@/components/types/Constants'
 
 /**
  * This component holds the workspace elements related to the downloads page in the Portal
@@ -49,8 +52,30 @@ import { Component, Vue } from 'vue-property-decorator'
  * TODO: Make this a View
  */
 
-@Component
-export default class ExplorationWorkspace extends Vue {}
+@Component({
+  components: {
+    Alert
+  }
+})
+export default class ExplorationWorkspace extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    verifyAlert: Alert;
+  }
+
+  private mounted () {
+    // If the network is down, show an error
+    if (this.$store.getters.killLoops) {
+      this.showErrorAlert()
+    }
+  }
+
+  private showErrorAlert () {
+    this.$refs.verifyAlert.toggleSlots(false)
+    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
+  }
+}
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->

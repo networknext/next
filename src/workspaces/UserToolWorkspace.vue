@@ -56,6 +56,7 @@ import UserSessions from '@/components/UserSessions.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import { NavigationGuardNext, Route } from 'vue-router'
+import { RELOAD_MESSAGE } from '@/components/types/Constants'
 
 /**
  * This component holds the workspace elements related to the user tool page in the Portal
@@ -94,6 +95,11 @@ export default class UserToolWorkspace extends Vue {
       this.$refs.inputAlert.setMessage('Please enter a User ID to view their sessions.')
       this.$refs.inputAlert.setAlertType(AlertType.INFO)
     }
+
+    // If the network is down, show an error
+    if (this.$store.getters.killLoops) {
+      this.showErrorAlert()
+    }
   }
 
   private created () {
@@ -126,6 +132,12 @@ export default class UserToolWorkspace extends Vue {
     if (this.$route.path !== newRoute) {
       this.$router.push({ path: newRoute })
     }
+  }
+
+  private showErrorAlert () {
+    this.$refs.verifyAlert.toggleSlots(false)
+    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
   }
 }
 </script>
