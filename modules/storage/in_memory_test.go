@@ -18,7 +18,7 @@ func TestInMemoryGetBuyer(t *testing.T) {
 	t.Run("buyer not found", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
-		actual, err := inMemory.Buyer(0)
+		actual, err := inMemory.Buyer(ctx, 0)
 		assert.Empty(t, actual)
 		assert.EqualError(t, err, "buyer with reference 0 not found")
 	})
@@ -33,7 +33,7 @@ func TestInMemoryGetBuyer(t *testing.T) {
 		err := inMemory.AddBuyer(ctx, expected)
 		assert.NoError(t, err)
 
-		actual, err := inMemory.Buyer(expected.ID)
+		actual, err := inMemory.Buyer(ctx, expected.ID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, expected, actual)
@@ -48,7 +48,7 @@ func TestInMemoryGetBuyers(t *testing.T) {
 	t.Run("no buyers", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
-		buyers := inMemory.Buyers()
+		buyers := inMemory.Buyers(ctx)
 		assert.NotNil(t, buyers)
 		assert.Len(t, buyers, 0)
 	})
@@ -63,7 +63,7 @@ func TestInMemoryGetBuyers(t *testing.T) {
 		err := inMemory.AddBuyer(ctx, expected)
 		assert.NoError(t, err)
 
-		actual := inMemory.Buyers()
+		actual := inMemory.Buyers(ctx)
 		assert.Equal(t, []routing.Buyer{expected}, actual)
 	})
 }
@@ -97,7 +97,7 @@ func TestInMemoryAddBuyer(t *testing.T) {
 		err := inMemory.AddBuyer(ctx, buyer)
 		assert.NoError(t, err)
 
-		buyer, err = inMemory.Buyer(buyer.ID)
+		buyer, err = inMemory.Buyer(ctx, buyer.ID)
 		assert.NotEmpty(t, buyer)
 		assert.NoError(t, err)
 	})
@@ -136,7 +136,7 @@ func TestInMemoryRemoveBuyer(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := []routing.Buyer{buyers[0]}
-		actual := inMemory.Buyers()
+		actual := inMemory.Buyers(ctx)
 		assert.Equal(t, expected, actual)
 	})
 
@@ -161,7 +161,7 @@ func TestInMemoryRemoveBuyer(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := []routing.Buyer{buyers[1]}
-		actual := inMemory.Buyers()
+		actual := inMemory.Buyers(ctx)
 		assert.Equal(t, expected, actual)
 	})
 }
@@ -195,7 +195,7 @@ func TestInMemorySetBuyer(t *testing.T) {
 		err = inMemory.SetBuyer(ctx, buyer)
 		assert.NoError(t, err)
 
-		buyerInStorage, err := inMemory.Buyer(buyer.ID)
+		buyerInStorage, err := inMemory.Buyer(ctx, buyer.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, buyer, buyerInStorage)
 	})
@@ -209,7 +209,7 @@ func TestInMemoryGetSeller(t *testing.T) {
 	t.Run("seller not found", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
-		actual, err := inMemory.Seller("id")
+		actual, err := inMemory.Seller(ctx, "id")
 		assert.Empty(t, actual)
 		assert.EqualError(t, err, "seller with reference id not found")
 	})
@@ -225,7 +225,7 @@ func TestInMemoryGetSeller(t *testing.T) {
 		err := inMemory.AddSeller(ctx, expected)
 		assert.NoError(t, err)
 
-		actual, err := inMemory.Seller(expected.ID)
+		actual, err := inMemory.Seller(ctx, expected.ID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, expected, actual)
@@ -240,7 +240,7 @@ func TestInMemoryGetSellers(t *testing.T) {
 	t.Run("no sellers", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
-		sellers := inMemory.Sellers()
+		sellers := inMemory.Sellers(ctx)
 		assert.NotNil(t, sellers)
 		assert.Len(t, sellers, 0)
 	})
@@ -256,7 +256,7 @@ func TestInMemoryGetSellers(t *testing.T) {
 		err := inMemory.AddSeller(ctx, expected)
 		assert.NoError(t, err)
 
-		actual := inMemory.Sellers()
+		actual := inMemory.Sellers(ctx)
 		assert.Equal(t, []routing.Seller{expected}, actual)
 	})
 }
@@ -292,7 +292,7 @@ func TestInMemoryAddSeller(t *testing.T) {
 		err := inMemory.AddSeller(ctx, seller)
 		assert.NoError(t, err)
 
-		seller, err = inMemory.Seller(seller.ID)
+		seller, err = inMemory.Seller(ctx, seller.ID)
 		assert.NotEmpty(t, seller)
 		assert.NoError(t, err)
 	})
@@ -333,7 +333,7 @@ func TestInMemoryRemoveSeller(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := []routing.Seller{sellers[0]}
-		actual := inMemory.Sellers()
+		actual := inMemory.Sellers(ctx)
 		assert.Equal(t, expected, actual)
 	})
 
@@ -360,7 +360,7 @@ func TestInMemoryRemoveSeller(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := []routing.Seller{sellers[1]}
-		actual := inMemory.Sellers()
+		actual := inMemory.Sellers(ctx)
 		assert.Equal(t, expected, actual)
 	})
 }
@@ -398,7 +398,7 @@ func TestInMemorySetSeller(t *testing.T) {
 		err = inMemory.SetSeller(ctx, seller)
 		assert.NoError(t, err)
 
-		sellerInStorage, err := inMemory.Seller(seller.ID)
+		sellerInStorage, err := inMemory.Seller(ctx, seller.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, seller, sellerInStorage)
 	})
@@ -412,7 +412,7 @@ func TestInMemoryGetRelay(t *testing.T) {
 	t.Run("relay not found", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
-		actual, err := inMemory.Relay(0)
+		actual, err := inMemory.Relay(ctx, 0)
 		assert.Empty(t, actual)
 		assert.EqualError(t, err, "relay with reference 0 not found")
 	})
@@ -442,7 +442,7 @@ func TestInMemoryGetRelay(t *testing.T) {
 		err = inMemory.AddRelay(ctx, expected)
 		assert.NoError(t, err)
 
-		actual, err := inMemory.Relay(expected.ID)
+		actual, err := inMemory.Relay(ctx, expected.ID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, expected, actual)
@@ -457,7 +457,7 @@ func TestInMemoryGetRelays(t *testing.T) {
 	t.Run("no relays", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
-		relays := inMemory.Relays()
+		relays := inMemory.Relays(ctx)
 		assert.NotNil(t, relays)
 		assert.Len(t, relays, 0)
 	})
@@ -487,7 +487,7 @@ func TestInMemoryGetRelays(t *testing.T) {
 		err = inMemory.AddRelay(ctx, expected)
 		assert.NoError(t, err)
 
-		actual := inMemory.Relays()
+		actual := inMemory.Relays(ctx)
 		assert.Equal(t, []routing.Relay{expected}, actual)
 	})
 }
@@ -582,7 +582,7 @@ func TestInMemoryAddRelay(t *testing.T) {
 		err = inMemory.AddRelay(ctx, relay)
 		assert.NoError(t, err)
 
-		relay, err = inMemory.Relay(relay.ID)
+		relay, err = inMemory.Relay(ctx, relay.ID)
 		assert.NotEmpty(t, relay)
 		assert.NoError(t, err)
 	})
@@ -645,7 +645,7 @@ func TestInMemoryRemoveRelay(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := []routing.Relay{relays[0]}
-		actual := inMemory.Relays()
+		actual := inMemory.Relays(ctx)
 		assert.Equal(t, expected, actual)
 	})
 
@@ -694,7 +694,7 @@ func TestInMemoryRemoveRelay(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := []routing.Relay{relays[1]}
-		actual := inMemory.Relays()
+		actual := inMemory.Relays(ctx)
 		assert.Equal(t, expected, actual)
 	})
 }
@@ -746,7 +746,7 @@ func TestInMemorySetRelay(t *testing.T) {
 		err = inMemory.SetRelay(ctx, relay)
 		assert.NoError(t, err)
 
-		relayInStorage, err := inMemory.Relay(relay.ID)
+		relayInStorage, err := inMemory.Relay(ctx, relay.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, relay, relayInStorage)
 	})
@@ -760,7 +760,7 @@ func TestInMemoryGetDatacenter(t *testing.T) {
 	t.Run("datacenter not found", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
-		actual, err := inMemory.Datacenter(0)
+		actual, err := inMemory.Datacenter(ctx, 0)
 		assert.Empty(t, actual)
 		assert.EqualError(t, err, "datacenter with reference 0 not found")
 	})
@@ -776,7 +776,7 @@ func TestInMemoryGetDatacenter(t *testing.T) {
 		err := inMemory.AddDatacenter(ctx, expected)
 		assert.NoError(t, err)
 
-		actual, err := inMemory.Datacenter(expected.ID)
+		actual, err := inMemory.Datacenter(ctx, expected.ID)
 		assert.NoError(t, err)
 
 		assert.Equal(t, expected, actual)
@@ -791,7 +791,7 @@ func TestInMemoryGetDatacenters(t *testing.T) {
 	t.Run("no datacenters", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
-		datacenters := inMemory.Datacenters()
+		datacenters := inMemory.Datacenters(ctx)
 		assert.NotNil(t, datacenters)
 		assert.Len(t, datacenters, 0)
 	})
@@ -807,7 +807,7 @@ func TestInMemoryGetDatacenters(t *testing.T) {
 		err := inMemory.AddDatacenter(ctx, expected)
 		assert.NoError(t, err)
 
-		actual := inMemory.Datacenters()
+		actual := inMemory.Datacenters(ctx)
 		assert.Equal(t, []routing.Datacenter{expected}, actual)
 	})
 }
@@ -843,7 +843,7 @@ func TestInMemoryAddDatacenter(t *testing.T) {
 		err := inMemory.AddDatacenter(ctx, datacenter)
 		assert.NoError(t, err)
 
-		datacenter, err = inMemory.Datacenter(datacenter.ID)
+		datacenter, err = inMemory.Datacenter(ctx, datacenter.ID)
 		assert.NotEmpty(t, datacenter)
 		assert.NoError(t, err)
 	})
@@ -884,7 +884,7 @@ func TestInMemoryRemoveDatacenter(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := []routing.Datacenter{datacenters[0]}
-		actual := inMemory.Datacenters()
+		actual := inMemory.Datacenters(ctx)
 		assert.Equal(t, expected, actual)
 	})
 
@@ -911,7 +911,7 @@ func TestInMemoryRemoveDatacenter(t *testing.T) {
 		assert.NoError(t, err)
 
 		expected := []routing.Datacenter{datacenters[1]}
-		actual := inMemory.Datacenters()
+		actual := inMemory.Datacenters(ctx)
 		assert.Equal(t, expected, actual)
 	})
 }
@@ -949,7 +949,7 @@ func TestInMemorySetDatacenter(t *testing.T) {
 		err = inMemory.SetDatacenter(ctx, datacenter)
 		assert.NoError(t, err)
 
-		datacenterInStorage, err := inMemory.Datacenter(datacenter.ID)
+		datacenterInStorage, err := inMemory.Datacenter(ctx, datacenter.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, datacenter, datacenterInStorage)
 	})

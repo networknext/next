@@ -43,22 +43,22 @@ func getLocalDatabaseBin() {
 	datacenterMap := make(map[uint64]routing.Datacenter)
 	datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
 
-	buyers := db.Buyers()
+	buyers := db.Buyers(ctx)
 	for _, buyer := range buyers {
 		buyerMap[buyer.ID] = buyer
-		dcMapsForBuyer := db.GetDatacenterMapsForBuyer(buyer.ID)
+		dcMapsForBuyer := db.GetDatacenterMapsForBuyer(ctx, buyer.ID)
 		datacenterMaps[buyer.ID] = dcMapsForBuyer
 	}
 
-	for _, seller := range db.Sellers() {
+	for _, seller := range db.Sellers(ctx) {
 		sellerMap[seller.ShortName] = seller
 	}
 
-	for _, datacenter := range db.Datacenters() {
+	for _, datacenter := range db.Datacenters(ctx) {
 		datacenterMap[datacenter.ID] = datacenter
 	}
 
-	for _, localRelay := range db.Relays() {
+	for _, localRelay := range db.Relays(ctx) {
 		if localRelay.State == routing.RelayStateEnabled {
 			enabledRelays = append(enabledRelays, localRelay)
 			relayMap[localRelay.ID] = localRelay
