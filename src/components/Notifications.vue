@@ -275,6 +275,10 @@ export default class Notifications extends Vue {
       .then((response: any) => {
         this.releaseNotesNotifications = response.release_notes_notifications
       })
+      .catch((error: Error) => {
+        console.log('Something went wrong fetching notifications')
+        console.log(error)
+      })
   }
 }
 </script>

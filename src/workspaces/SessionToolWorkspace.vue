@@ -56,6 +56,7 @@ import { Route, NavigationGuardNext } from 'vue-router'
 
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
+import { RELOAD_MESSAGE } from '@/components/types/Constants'
 /**
  * This component holds the workspace elements related to the session tool in the Portal
  */
@@ -92,6 +93,11 @@ export default class SessionToolWorkspace extends Vue {
       this.$refs.inputAlert.setMessage('Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.')
       this.$refs.inputAlert.setAlertType(AlertType.INFO)
     }
+
+    // If the network is down, show an error
+    if (this.$store.getters.killLoops) {
+      this.showErrorAlert()
+    }
   }
 
   private created () {
@@ -127,6 +133,12 @@ export default class SessionToolWorkspace extends Vue {
     if (this.$route.path !== newRoute) {
       this.$router.push({ path: newRoute })
     }
+  }
+
+  private showErrorAlert () {
+    this.$refs.verifyAlert.toggleSlots(false)
+    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
   }
 }
 </script>
