@@ -14,7 +14,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/go-github/v36/github"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
@@ -626,9 +625,15 @@ func main() {
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
+		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second*10)
+		if err != nil {
+			level.Error(logger).Log("envvar", "HTTP_TIMEOUT", "value", httpTimeout, "err", err)
+			os.Exit(1)
+		}
+
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", middleware.JSONRPCMiddleware(keys, os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", middleware.JSONRPCMiddleware(keys, os.Getenv("JWT_AUDIENCE"), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 
