@@ -942,7 +942,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 		}
 		// Debug
 		debug := ""
-		if billingEntry.Debug.Valid && billingEntry.Debug.Valid {
+		if billingEntry.Debug.Valid {
 			debug = billingEntry.Debug.StringVal
 		}
 		// Datacenter
@@ -1015,7 +1015,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 		}
 		// Pro
 		pro := ""
-		if billingEntry.Pro.Valid && billingEntry.Pro.Valid {
+		if billingEntry.Pro.Valid && billingEntry.Pro.Bool {
 			pro = fmt.Sprintf("%t", billingEntry.Pro.Bool)
 		}
 		// ClientToServerPacketsSent
@@ -1127,7 +1127,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 		}
 		// Uncommitted
 		uncommitted := ""
-		if billingEntry.Uncommitted.Valid && billingEntry.Uncommitted.Valid {
+		if billingEntry.Uncommitted.Valid && billingEntry.Uncommitted.Bool {
 			uncommitted = "true"
 		}
 		// Multipath
