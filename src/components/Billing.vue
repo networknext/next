@@ -1,0 +1,93 @@
+<template>
+  <div class="card-body" id="billing-page">
+    <h5 class="card-title">Billing Dashboard</h5>
+    <iframe
+      id="billingDash"
+      :src="billingDashURL"
+      v-if="showSummary"
+      frameborder="0"
+    >
+    </iframe>
+  </div>
+</template>
+
+<script lang="ts">
+import { Component, Vue } from 'vue-property-decorator'
+import { DateFilterType } from './types/FilterTypes'
+
+@Component
+export default class Billing extends Vue {
+  private billingDashURL: string
+  private showSummary: boolean
+
+  private unwatchFilter: any
+
+  private startDate: string
+  private endDate: string
+
+  constructor () {
+    super()
+    this.billingDashURL = ''
+    this.showSummary = false
+
+    this.startDate = ''
+    this.endDate = ''
+  }
+
+  private mounted () {
+    this.unwatchFilter = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.currentFilter
+      },
+      () => {
+        this.fetchBillingSummary()
+      }
+    )
+
+    this.fetchBillingSummary()
+  }
+
+  private beforeDestroy () {
+    this.unwatchFilter()
+  }
+
+  private fetchBillingSummary () {
+    switch (this.$store.getters.currentFilter.dateRange) {
+      case DateFilterType.CURRENT_MONTH:
+        break
+      case DateFilterType.LAST_MONTH:
+        break
+      case DateFilterType.LAST_30:
+        break
+      case DateFilterType.LAST_90:
+        break
+      case DateFilterType.YEAR_TO_DATE:
+        this.startDate = ''
+        this.endDate = Date() // TODO: replace this with same date lib as admin tool
+        break
+      case DateFilterType.CUSTOM:
+        break
+    }
+
+    this.$apiService.fetchBillingSummary({
+      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      start_date: this.startDate,
+      end_date: this.endDate
+    })
+      .then((response: any) => {
+        this.billingDashURL = response.url || ''
+        if (this.billingDashURL !== '') {
+          this.showSummary = true
+        }
+      })
+      .catch((error: Error) => {
+        console.log('There was an issue fetching the billing summary dashboard')
+        console.log(error)
+      })
+  }
+}
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="scss">
+</style>

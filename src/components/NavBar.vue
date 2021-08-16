@@ -69,7 +69,7 @@
               active:
                 $store.getters.currentPage == 'notifications' ||
                 $store.getters.currentPage == 'analytics' ||
-                $store.getters.currentPage == 'invoicing'
+                $store.getters.currentPage == 'billing'
             }"
             v-if="$store.getters.isAdmin"
           >Explore</router-link>

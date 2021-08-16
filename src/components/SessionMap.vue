@@ -109,11 +109,6 @@ export default class SessionMap extends Vue {
       }
     )
 
-    // Only start the polling loop if the network is available/working
-    if (!this.$store.getters.killLoops) {
-      this.restartLoop()
-    }
-
     if (!(window as any).mapboxgl || !(window as any).deck) {
       return
     }
@@ -178,6 +173,11 @@ export default class SessionMap extends Vue {
         return 'grab'
       }
     })
+
+    // Only start the polling loop if the network is available/working
+    if (!this.$store.getters.killLoops) {
+      this.restartLoop()
+    }
   }
 
   private beforeDestroy () {

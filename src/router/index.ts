@@ -2,7 +2,7 @@ import Vue from 'vue'
 import VueRouter, { RouteConfig, Route, NavigationGuardNext } from 'vue-router'
 import store from '@/store'
 
-import Invoicing from '@/components/Invoicing.vue'
+import Billing from '@/components/Billing.vue'
 import Analytics from '@/components/Analytics.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
 import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
@@ -110,9 +110,9 @@ const routes: Array<RouteConfig> = [
         component: Analytics
       },
       {
-        path: 'invoicing',
-        name: 'invoicing',
-        component: Invoicing
+        path: 'billing',
+        name: 'billing',
+        component: Billing
       }
     ]
   },

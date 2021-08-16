@@ -18,6 +18,12 @@
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
       </div>
+      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="$store.getters.currentPage === 'billing'" style="max-width: 400px;">
+        <div class="mr-auto"></div>
+        <DateFilter :includeCustom="false" />
+        <div class="mr-auto"></div>
+        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" />
+      </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
       <div class="card-header">
@@ -28,8 +34,8 @@
           <li class="nav-item" v-if="false">
             <router-link to="/explore/analytics" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
           </li>
-          <li class="nav-item" v-if="false">
-            <router-link to="/explore/invoicing" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'invoicing'}">Invoicing</router-link>
+          <li class="nav-item" v-if="$store.getters.isAdmin">
+            <router-link to="/explore/billing" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'billing'}">Billing</router-link>
           </li>
         </ul>
       </div>
@@ -42,6 +48,8 @@
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
+import BuyerFilter from '@/components/BuyerFilter.vue'
+import DateFilter from '@/components/DateFilter.vue'
 import { RELOAD_MESSAGE } from '@/components/types/Constants'
 
 /**
@@ -54,7 +62,9 @@ import { RELOAD_MESSAGE } from '@/components/types/Constants'
 
 @Component({
   components: {
-    Alert
+    Alert,
+    BuyerFilter,
+    DateFilter
   }
 })
 export default class ExplorationWorkspace extends Vue {

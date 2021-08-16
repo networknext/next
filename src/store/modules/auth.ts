@@ -1,4 +1,5 @@
 import { UserProfile } from '@/components/types/AuthTypes'
+import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 import { cloneDeep } from 'lodash'
 import Vue from 'vue'
 
@@ -77,7 +78,11 @@ const actions = {
         userProfile.domains = responses[0].domains || []
         dispatch('updateUserProfile', userProfile)
         dispatch('updateAllBuyers', allBuyers)
-        dispatch('updateCurrentFilter', { companyCode: (userProfile.buyerID === '' || getters.isAdmin) ? '' : userProfile.companyCode })
+        const defaultFilter: Filter = {
+          companyCode: (userProfile.buyerID === '' || getters.isAdmin) ? '' : userProfile.companyCode,
+          dateRange: DateFilterType.CURRENT_MONTH
+        }
+        dispatch('updateCurrentFilter', defaultFilter)
       })
       .catch((error: Error) => {
         console.log('Something went wrong fetching user details')
