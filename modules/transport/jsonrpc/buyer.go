@@ -2645,6 +2645,95 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	return nil
 }
 
+type FetchBillingSummaryArgs struct {
+	CompanyCode string `json:"company_code"`
+	StartDate   string `json:"start_date"`
+	EndDate     string `json:"end_date"`
+}
+
+type FetchBillingSummaryReply struct {
+	URL string `json:"url"`
+}
+
+/* func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *FetchBillingSummaryArgs, reply *FetchBillingSummaryReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+
+	// TODO: this will always be the same for billing summary dashboards so find a better way to store this information
+	const URI = "/embed/dashboards-next/7"
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
+	nonce, err := GenerateRandomString(16)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to generate nonce", err.Error()))
+		return &err
+	}
+
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	if !isAdmin && (companyCode != "esl" && companyCode != "velan") { // TODO: replace this with a better system (beta feature buyer flag or something????)
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	// Admin's will be able to search any company's billing info
+	if isAdmin {
+		companyCode = args.CompanyCode
+	}
+
+	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
+	urlOptions := LookerURLOptions{
+		Host:            LOOKER_HOST,
+		Secret:          s.LookerSecret,
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		FirstName:       "", // TODO: Update this to first name coming from portal information
+		LastName:        "", // TODO: Update this to last name coming from portal information
+		GroupsIds:       []int{EmbeddedUserGroupID},
+		ExternalGroupId: "",
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_pbl"},                                 // TODO: This may or may not need to change
+		AccessFilters:   make(map[string]map[string]interface{}),
+		UserAttributes:  make(map[string]interface{}),
+		SessionLength:   3600,
+		EmbedURL:        "/login/embed/" + url.QueryEscape(URI),
+		ForceLogout:     true,
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Time:            time.Now().Unix(),
+	}
+
+	urlOptions.UserAttributes["customer_code"] = "velan"
+	// TODO: Add time range options here?
+
+	reply.URL = s.BuildLookerURL(urlOptions)
+	return nil
+} */
+
 func (s *BuyersService) FetchReleaseNotes(ctx context.Context) error {
 	cacheList := make([]notifications.ReleaseNotesNotification, 0)
 
