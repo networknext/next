@@ -92,6 +92,7 @@ type sqlBuyer struct {
 	Debug          bool
 	Analytics      bool
 	Billing        bool
+	Trial          bool
 	Name           string
 	PublicKey      []byte
 	ShortName      string
@@ -617,6 +618,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		Debug:          b.Debug,
 		Analytics:      b.Analytics,
 		Billing:        b.Billing,
+		Trial:          b.Trial,
 		PublicKey:      b.PublicKey,
 		CustomerID:     c.DatabaseID,
 	}

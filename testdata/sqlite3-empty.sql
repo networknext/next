@@ -38,6 +38,7 @@ create table buyers (
   debug boolean not null default false,
   analytics boolean not null default false,
   billing boolean not null default false,
+  trial boolean not null default true,
   public_key bytea not null,
   short_name varchar unique,
   customer_id integer not null,

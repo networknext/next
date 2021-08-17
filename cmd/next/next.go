@@ -2505,6 +2505,7 @@ provided by a JSON file of the form:
   "Debug": false // optional
   "Analytics": false // optional
   "Billing": false // optional
+  "Trial": true // optional
   "PublicKey": "IQl4JmtP5T8wyqc6EpNk0ymD3iVfvDx3teXZ98ghFqQ1leO6GmKNrQ=="
 }
 
@@ -2751,6 +2752,9 @@ must be one of the following and is case-sensitive:
 
   Live      bool
   Debug     bool
+  Analytics bool
+  Billing   bool
+  Trial     bool
   ShortName string
   PublicKey string
 

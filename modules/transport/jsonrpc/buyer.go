@@ -2,8 +2,6 @@ package jsonrpc
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -12,7 +10,6 @@ import (
 	"hash/fnv"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -47,7 +44,6 @@ const (
 	MapPointByteCacheVersion = uint8(1)
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
-	LOOKER_HOST              = "networknextexternal.cloud.looker.com"
 	EmbeddedUserGroupID      = 3
 )
 
@@ -598,7 +594,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), args.CompanyCode)
 		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting company with code: %v", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer with code: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -1410,6 +1406,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 			Live:        false,
 			Analytics:   false,
 			Billing:     false,
+			Trial:       true,
 			Debug:       false,
 			PublicKey:   byteKey[8:],
 		})
@@ -1486,6 +1483,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			Live:        false,
 			Analytics:   false,
 			Billing:     false,
+			Trial:       true,
 			PublicKey:   byteKey[8:],
 		})
 
@@ -1508,11 +1506,12 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return nil
 	}
 
-	live := buyer.Live
 	analytics := buyer.Analytics
 	billing := buyer.Billing
 	debug := buyer.Debug
+	live := buyer.Live
 	oldBuyerID := buyer.ID
+	trial := buyer.Trial
 
 	// Remove all dc Maps
 	dcMaps := s.Storage.GetDatacenterMapsForBuyer(r.Context(), oldBuyerID)
@@ -1537,6 +1536,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		Debug:       debug,
 		Analytics:   analytics,
 		Billing:     billing,
+		Trial:       trial,
 		PublicKey:   byteKey[8:],
 	})
 	if err != nil {
@@ -2505,7 +2505,7 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
 	switch args.Field {
-	case "Live", "Debug", "Analytics", "Billing":
+	case "Live", "Debug", "Analytics", "Billing", "Trial":
 		newValue, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", args.Value)
@@ -2557,6 +2557,47 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 
 	// Grab release notes notifications from cache
 	reply.ReleaseNotesNotifications = s.ReleaseNotesNotificationsCache
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+	if err != nil {
+		err = fmt.Errorf("FetchNotifications() failed getting buyer with code: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	// TODO: Not sure if this is the best place for this - Add a teaser notification to get someone to trial analytics
+	if buyer.Trial && !buyer.Analytics {
+		nonce, err := GenerateRandomString(16)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+			return &err
+		}
+
+		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerSecret, nonce, requestID))
+	}
 
 	// Everything below here will be implemented at some point in the future. It is primarily waiting on storage and admin tool support
 
@@ -2660,6 +2701,49 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	return nil
 }
 
+type StartAnalyticsTrialArgs struct{}
+type StartAnalyticsTrialReply struct{}
+
+func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalyticsTrialArgs, reply *StartAnalyticsTrialReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v", err.Error()))
+		return &err
+	}
+
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+		s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v", err.Error()))
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+	if err != nil {
+		err = fmt.Errorf("StartAnalyticsTrial() failed getting buyer with code: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	// Buyer has a trial still and isn't currently signed up for analytics, remove trial and flip analytics
+	if buyer.Trial && !buyer.Analytics {
+		buyer.Trial = false
+		buyer.Analytics = true
+		if err := s.Storage.UpdateBuyer(r.Context(), buyer.ID, "Trial", false); err != nil {
+			err = fmt.Errorf("StartAnalyticsTrial() failed to flip Trial bit: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		if err := s.Storage.UpdateBuyer(r.Context(), buyer.ID, "Analytics", true); err != nil {
+			err = fmt.Errorf("StartAnalyticsTrial() failed to flip Analytics bit: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 type FetchBillingSummaryArgs struct {
 	CompanyCode string `json:"company_code"`
 	StartDate   string `json:"start_date"`
@@ -2670,6 +2754,7 @@ type FetchBillingSummaryReply struct {
 	URL string `json:"url"`
 }
 
+// TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
 /* func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *FetchBillingSummaryArgs, reply *FetchBillingSummaryReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
@@ -2798,161 +2883,4 @@ func (s *BuyersService) FetchReleaseNotes(ctx context.Context) error {
 	s.ReleaseNotesNotificationsCache = cacheList
 
 	return nil
-}
-
-type FetchLookerURLArgs struct{}
-
-type FetchLookerURLReply struct {
-	URL string `json:"url"`
-}
-
-func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs, reply *FetchLookerURLReply) error {
-	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) { // TODO: Add in roles for looker feature if necessary
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
-		return &err
-	}
-
-	user := r.Context().Value(middleware.Keys.UserKey)
-	if user == nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
-		return &err
-	}
-
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	requestID, ok := claims["sub"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to parse user ID", err.Error()))
-		return &err
-	}
-
-	nonce, err := GenerateRandomString(16)
-	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to generate nonce", err.Error()))
-		return &err
-	}
-
-	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
-		return &err
-	}
-
-	// TODO: This will need to be wrapped in some kind of switch based on dashboard type
-	urlOptions := LookerURLOptions{
-		Host:            LOOKER_HOST,
-		Secret:          s.LookerSecret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-		FirstName:       "", // TODO: Update this to first name coming from portal information
-		LastName:        "", // TODO: Update this to last name coming from portal information
-		GroupsIds:       []int{EmbeddedUserGroupID},
-		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-		Models:          []string{"networknext_pbl"},                                 // TODO: This may or may not need to change
-		AccessFilters:   make(map[string]map[string]interface{}),
-		UserAttributes:  make(map[string]interface{}),
-		SessionLength:   3600,
-		EmbedURL:        "/login/embed/" + url.QueryEscape( /* TODO: we want notification.data.path or something similar here */ "/embed/looks/1"),
-		ForceLogout:     true,
-		Nonce:           fmt.Sprintf("\"%s\"", nonce),
-		Time:            time.Now().Unix(),
-	}
-
-	urlOptions.UserAttributes["customer_code"] = companyCode
-
-	reply.URL = s.BuildLookerURL(urlOptions)
-	return nil
-}
-
-type LookerURLOptions struct {
-	Secret          string                            //required
-	Host            string                            //required
-	EmbedURL        string                            //required
-	Nonce           string                            //required
-	Time            int64                             //required
-	SessionLength   int                               //required
-	ExternalUserId  string                            //required
-	Permissions     []string                          //required
-	Models          []string                          //required
-	ForceLogout     bool                              //required
-	GroupsIds       []int                             //optional
-	ExternalGroupId string                            //optional
-	UserAttributes  map[string]interface{}            //optional
-	AccessFilters   map[string]map[string]interface{} //required
-	FirstName       string                            //optional
-	LastName        string                            //optional
-}
-
-func (s *BuyersService) BuildLookerURL(urlOptions LookerURLOptions) string {
-	// TODO: Verify logic below, this came from here: https://github.com/looker/looker_embed_sso_examples/pull/36 and is NOT an official implementation. That being said, be careful changing it because it works :P
-	jsonPerms, _ := json.Marshal(urlOptions.Permissions)
-	jsonModels, _ := json.Marshal(urlOptions.Models)
-	jsonUserAttrs, _ := json.Marshal(urlOptions.UserAttributes)
-	jsonFilters, _ := json.Marshal(urlOptions.AccessFilters)
-	jsonGroupIds, _ := json.Marshal(urlOptions.GroupsIds)
-	strTime := strconv.Itoa(int(urlOptions.Time))
-	strSessionLen := strconv.Itoa(urlOptions.SessionLength)
-	strForceLogin := strconv.FormatBool(urlOptions.ForceLogout)
-
-	strToSign := strings.Join([]string{urlOptions.Host,
-		urlOptions.EmbedURL,
-		urlOptions.Nonce,
-		strTime,
-		strSessionLen,
-		urlOptions.ExternalUserId,
-		string(jsonPerms),
-		string(jsonModels)}, "\n")
-
-	strToSign = strToSign + "\n"
-
-	if len(urlOptions.GroupsIds) > 0 {
-		strToSign = strToSign + string(jsonGroupIds) + "\n"
-	}
-
-	if urlOptions.ExternalGroupId != "" {
-		strToSign = strToSign + urlOptions.ExternalGroupId + "\n"
-	}
-
-	if len(urlOptions.UserAttributes) > 0 {
-		strToSign = strToSign + string(jsonUserAttrs) + "\n"
-	}
-
-	strToSign = strToSign + string(jsonFilters)
-
-	h := hmac.New(sha1.New, []byte(urlOptions.Secret))
-	h.Write([]byte(strToSign))
-	encoded := base64.StdEncoding.EncodeToString(h.Sum(nil))
-
-	query := url.Values{}
-	query.Add("nonce", urlOptions.Nonce)
-	query.Add("time", strTime)
-	query.Add("session_length", strSessionLen)
-	query.Add("external_user_id", urlOptions.ExternalUserId)
-	query.Add("permissions", string(jsonPerms))
-	query.Add("models", string(jsonModels))
-	query.Add("access_filters", string(jsonFilters))
-	query.Add("first_name", urlOptions.FirstName)
-	query.Add("last_name", urlOptions.LastName)
-	query.Add("force_logout_login", strForceLogin)
-	query.Add("signature", encoded)
-
-	if len(urlOptions.GroupsIds) > 0 {
-		query.Add("group_ids", string(jsonGroupIds))
-	}
-
-	if urlOptions.ExternalGroupId != "" {
-		query.Add("external_group_id", urlOptions.ExternalGroupId)
-	}
-
-	if len(urlOptions.UserAttributes) > 0 {
-		query.Add("user_attributes", string(jsonUserAttrs))
-	}
-
-	finalUrl := fmt.Sprintf("https://%s%s?%s", urlOptions.Host, urlOptions.EmbedURL, query.Encode())
-
-	return finalUrl
 }
