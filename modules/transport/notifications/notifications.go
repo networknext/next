@@ -17,7 +17,8 @@ type NotificationType int32
 
 const (
 	LOOKER_HOST             = "networknextexternal.cloud.looker.com"
-	ANALYTICS_TRIAL_MESSAGE = "Check out what is possible with an analytics subscription!"
+	ANALYTICS_TRIAL_TITLE   = "Data analytics trial opportunity"
+	ANALYTICS_TRIAL_MESSAGE = "Super awesome marketing message that explains this is a no strings attached trial. Clicking the link will give you free trial access to our analytics service"
 
 	// TODO: Move these somewhere else like the jsonrpc error codes and use them for something
 	DEFAULT_PRIORITY NotificationPriorty = 0
@@ -191,6 +192,7 @@ func NewTrialAnalyticsNotification(lookerSecret string, nonce string, requestID 
 		Time:            time.Now().Unix(),
 	}
 
+	notification.Title = ANALYTICS_TRIAL_TITLE
 	notification.Message = ANALYTICS_TRIAL_MESSAGE
 	notification.LookerURL = BuildLookerURL(options)
 

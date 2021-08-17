@@ -95,10 +95,10 @@ func SeedSQLStorage(
 			Live:        true,
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
-			Analytics:   true,
-			Billing:     true,
+			Analytics:   false,
+			Billing:     false,
 			Debug:       true,
-			Trial:       false,
+			Trial:       true,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -132,7 +132,7 @@ func SeedSQLStorage(
 
 		ghostBuyer, err := db.Buyer(ctx, internalBuyerIDGhost)
 		if err != nil {
-			return fmt.Errorf("Error getting local buyer: %v", err)
+			return fmt.Errorf("Error getting ghost army buyer: %v", err)
 		}
 
 		// fmt.Println("Adding sellers")

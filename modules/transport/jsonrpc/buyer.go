@@ -1581,6 +1581,7 @@ type buyerAccount struct {
 	IsLive      bool   `json:"is_live"`
 	Analytics   bool   `json:"analytics"`
 	Billing     bool   `json:"billing"`
+	Trial       bool   `json:"trial"`
 }
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
@@ -1604,6 +1605,7 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			IsLive:      b.Live,
 			Analytics:   b.Analytics,
 			Billing:     b.Billing,
+			Trial:       b.Trial,
 		}
 		if middleware.VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
@@ -2599,105 +2601,6 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerSecret, nonce, requestID))
 	}
 
-	// Everything below here will be implemented at some point in the future. It is primarily waiting on storage and admin tool support
-
-	// TODO: bring these back for analytics notifications at some point
-	/* 	user := r.Context().Value(middleware.Keys.UserKey)
-	   	if user == nil {
-	   		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-	   		return &err
-	   	}
-
-	   	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	   	requestID, ok := claims["sub"].(string)
-	   	if !ok {
-	   		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
-	   		return &err
-	   	}
-
-	   	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-	   	if !ok {
-	   		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
-	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-	   		return &err
-	   	}
-
-			// Admins can request access to the notifications of another company only
-			if args.CompanyCode != "" && args.CompanyCode != companyCode && middleware.VerifyAllRoles(r, middleware.AdminRole) {
-				err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-				return &err
-			}
-
-			if args.CompanyCode != "" {
-				companyCode = args.CompanyCode
-			}
-	*/
-
-	// TODO: Fetch all invoice, system, and looker notifications from storage
-
-	/*
-		notifications, err := s.Storage.Notifications(buyerID)
-		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
-			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to fetch notifications", err.Error()))
-			return &err
-		}
-
-		for _, notification := range notifications {
-			switch notification.type {
-			case NOTIFICATION_SYSTEM:
-				systemNotification := notifications.NewSystemNotification
-				// TODO: figure out if anything else is needed here
-				reply.SystemNotifications = append(reply.SystemNotifications, systemNotification)
-			case NOTIFICATION_ANALYTICS:
-				analyticsNotification := notifications.NewAnalyticsNotification()
-
-				nonce, err := GenerateRandomString(16)
-				if err != nil {
-					err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-					s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
-					return &err
-				}
-
-				// TODO: This data should come from a specific "looker" notification
-				urlOptions := LookerURLOptions{
-					Host:            LOOKER_HOST,
-					Secret:          s.LookerSecret,
-					ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-					FirstName:       "",
-					LastName:        "",
-					GroupsIds:       make([]int, 0),
-					ExternalGroupId: "",
-					Permissions:     notifications.data.permissions,
-					Models:          notification.data.models,
-					AccessFilters:   make(map[string]map[string]interface{}),
-					UserAttributes:  make(map[string]interface{}),
-					SessionLength:   3600,
-					EmbedURL:        "/login/embed/" + url.QueryEscape(notification.data.url),
-					ForceLogout:     true,
-					Nonce:           fmt.Sprintf("\"%s\"", nonce),
-					Time:            time.Now().Unix(),
-				}
-
-				urlOptions.UserAttributes["customer_code"] = companyCode
-
-				analyticsNotification.LookerURL = s.BuildLookerURL(urlOptions)
-				reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, analyticsNotification)
-			case NOTIFICATION_INVOICE:
-				invoiceNotification := notifications.NewInvoiceNotification
-				invoice, err := s.Storage.Invoice()
-				invoiceNotification.InvoiceID = fmt.Sprintf("%016x", notification.data.invoiceID)
-				reply.InvoiceNotification = append(reply.InvoiceNotification, invoiceNotification)
-			default:
-				err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
-				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Unknown notification type", err.Error()))
-				continue
-			}
-		}
-	*/
 	return nil
 }
 
