@@ -1408,6 +1408,9 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 			CompanyCode: companyCode,
 			ID:          buyerID,
 			Live:        false,
+			Analytics:   false,
+			Billing:     false,
+			Debug:       false,
 			PublicKey:   byteKey[8:],
 		})
 		if err != nil {
@@ -1481,6 +1484,8 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			CompanyCode: companyCode,
 			ID:          buyerID,
 			Live:        false,
+			Analytics:   false,
+			Billing:     false,
 			PublicKey:   byteKey[8:],
 		})
 
@@ -1504,6 +1509,9 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	live := buyer.Live
+	analytics := buyer.Analytics
+	billing := buyer.Billing
+	debug := buyer.Debug
 	oldBuyerID := buyer.ID
 
 	// Remove all dc Maps
@@ -1526,6 +1534,9 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		CompanyCode: companyCode,
 		ID:          buyerID,
 		Live:        live,
+		Debug:       debug,
+		Analytics:   analytics,
+		Billing:     billing,
 		PublicKey:   byteKey[8:],
 	})
 	if err != nil {
@@ -1568,6 +1579,8 @@ type buyerAccount struct {
 	CompanyCode string `json:"company_code"`
 	ID          string `json:"id"`
 	IsLive      bool   `json:"is_live"`
+	Analytics   bool   `json:"analytics"`
+	Billing     bool   `json:"billing"`
 }
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
@@ -1589,6 +1602,8 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			CompanyCode: b.CompanyCode,
 			ID:          id,
 			IsLive:      b.Live,
+			Analytics:   b.Analytics,
+			Billing:     b.Billing,
 		}
 		if middleware.VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
@@ -2490,7 +2505,7 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
 	switch args.Field {
-	case "Live", "Debug":
+	case "Live", "Debug", "Analytics", "Billing":
 		newValue, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", args.Value)

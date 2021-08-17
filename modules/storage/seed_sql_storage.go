@@ -96,6 +96,8 @@ func SeedSQLStorage(
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
 			Debug:       true,
+			Analytics:   true,
+			Billing:     true,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -112,6 +114,9 @@ func SeedSQLStorage(
 			ShortName:   "ghost-army",
 			CompanyCode: ghostCust.Code,
 			Live:        true,
+			Analytics:   false,
+			Billing:     false,
+			Debug:       false,
 			PublicKey:   publicKey,
 			CustomerID:  ghostCust.DatabaseID,
 		}); err != nil {

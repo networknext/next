@@ -90,6 +90,8 @@ type sqlBuyer struct {
 	ID             uint64
 	IsLiveCustomer bool
 	Debug          bool
+	Analytics      bool
+	Billing        bool
 	Name           string
 	PublicKey      []byte
 	ShortName      string
@@ -379,12 +381,12 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 	var err error
 	retryCount := 0
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
 	sqlBuyerID := int64(ephemeralBuyerID)
 
-	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, public_key, customer_id "))
+	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, analytics, billing, public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where sdk_generated_id = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -394,6 +396,8 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			&buyer.ShortName,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
+			&buyer.Analytics,
+			&buyer.Billing,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -430,6 +434,8 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			CompanyCode:    buyer.ShortName,
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
+			Analytics:      buyer.Analytics,
+			Billing:        buyer.Billing,
 			PublicKey:      buyer.PublicKey,
 			RouteShader:    rs,
 			InternalConfig: ic,
@@ -452,7 +458,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 	var err error
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, public_key, customer_id "))
+	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where short_name = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -462,6 +468,8 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			&buyer.SdkID,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
+			&buyer.Analytics,
+			&buyer.Billing,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -498,6 +506,8 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			CompanyCode:    buyer.ShortName,
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
+			Analytics:      buyer.Analytics,
+			Billing:        buyer.Billing,
 			PublicKey:      buyer.PublicKey,
 			RouteShader:    rs,
 			InternalConfig: ic,
@@ -519,7 +529,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 	buyers := []routing.Buyer{}
 	buyerIDs := make(map[uint64]int64)
 
-	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, public_key, customer_id "))
+	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, analytics, billing, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -539,6 +549,8 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			&buyer.ShortName,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
+			&buyer.Analytics,
+			&buyer.Billing,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -568,6 +580,8 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			CompanyCode:    buyer.ShortName,
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
+			Analytics:      buyer.Analytics,
+			Billing:        buyer.Billing,
 			PublicKey:      buyer.PublicKey,
 			RouteShader:    rs,
 			InternalConfig: ic,
@@ -601,14 +615,16 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		ShortName:      b.CompanyCode,
 		IsLiveCustomer: b.Live,
 		Debug:          b.Debug,
+		Analytics:      b.Analytics,
+		Billing:        b.Billing,
 		PublicKey:      b.PublicKey,
 		CustomerID:     c.DatabaseID,
 	}
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, public_key, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6)"))
+	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, analytics, billing, public_key, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -618,6 +634,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		buyer.ShortName,
 		buyer.IsLiveCustomer,
 		buyer.Debug,
+		buyer.Analytics,
+		buyer.Billing,
 		buyer.PublicKey,
 		buyer.CustomerID,
 	)

@@ -16,6 +16,8 @@ type Buyer struct {
 	HexID          string // needed by external (non-go) clients
 	Live           bool
 	Debug          bool
+	Analytics      bool
+	Billing        bool
 	PublicKey      []byte
 	RouteShader    core.RouteShader
 	InternalConfig core.InternalConfig
@@ -32,6 +34,8 @@ func (b *Buyer) String() string {
 	buyer += "\tCompanyCode   : '" + b.CompanyCode + "'\n"
 	buyer += "\tLive          : " + strconv.FormatBool(b.Live) + "\n"
 	buyer += "\tDebug         : " + strconv.FormatBool(b.Debug) + "\n"
+	buyer += "\tAnalytics     : " + strconv.FormatBool(b.Analytics) + "\n"
+	buyer += "\tBilling       : " + strconv.FormatBool(b.Billing) + "\n"
 	buyer += "\tPublicKey     : " + string(b.PublicKey) + "\n"
 	buyer += "\tRouteShader   : TBD\n"
 	buyer += "\tInternalConfig: TBD\n"
