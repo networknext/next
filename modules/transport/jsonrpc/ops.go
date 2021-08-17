@@ -229,6 +229,8 @@ type JSAddBuyerArgs struct {
 	ShortName string `json:"shortName"`
 	Live      bool   `json:"live"`
 	Debug     bool   `json:"debug"`
+	Analytics bool   `json:"analytics"`
+	Billing   bool   `json:"billing"`
 	PublicKey string `json:"publicKey"`
 }
 
@@ -256,6 +258,8 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		ID:          binary.LittleEndian.Uint64(publicKey[:8]),
 		Live:        args.Live,
 		Debug:       args.Debug,
+		Analytics:   args.Analytics,
+		Billing:     args.Billing,
 		PublicKey:   publicKey[8:],
 	}
 

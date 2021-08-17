@@ -439,6 +439,8 @@ type buyer struct {
 	CustomerCode string
 	Live         bool
 	Debug        bool
+	Analytics    bool
+	Billing      bool
 	PublicKey    string
 }
 
@@ -1576,6 +1578,8 @@ func main() {
 						ShortName: b.CustomerCode,
 						Live:      b.Live,
 						Debug:     b.Debug,
+						Analytics: b.Analytics,
+						Billing:   b.Billing,
 						PublicKey: b.PublicKey,
 					}
 
@@ -2499,6 +2503,8 @@ provided by a JSON file of the form:
   "CustomerCode": "microzon",
   "Live": true,
   "Debug": false // optional
+  "Analytics": false // optional
+  "Billing": false // optional
   "PublicKey": "IQl4JmtP5T8wyqc6EpNk0ymD3iVfvDx3teXZ98ghFqQ1leO6GmKNrQ=="
 }
 
