@@ -12,7 +12,7 @@
                 style="font-size: 1rem;min-width:300px;"
                 data-toggle="tooltip"
                 data-placement="right"
-                v-if="analyticsNotifications.length + systemNotifications.length + invoiceNotifications.length > 0"
+                v-if="analyticsNotifications.length + systemNotifications.length + invoiceNotifications.length > 0 && false"
                 title="All Notifications">New Notifications: {{ analyticsNotifications.length + systemNotifications.length + invoiceNotifications.length }}</span>
         </div>
         <div class="pr-5">
@@ -117,11 +117,11 @@
     <div class="card" v-for="(notification, index) in analyticsNotifications" :key="index" style="margin-top: 20px;text-align: center;">
       <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center" >
         <div class="mb-2 mb-md-0 flex-grow-1"></div>
-        <div>
+        <div class="pr-5">
           {{ notification.title }}
         </div>
         <div class="mb-2 mb-md-0 flex-grow-1"></div>
-        <div>
+        <div class="pr-5">
           <font-awesome-icon
             aria-expanded="false"
             id="status"
@@ -145,17 +145,11 @@
       <div class="collapse collapse-analytics" :id="`analytics-notification-${index}`">
         <div class="card-body">
           <div class="row">
-            <div class="col" style="max-width:500px;height:300px;">
-              <iframe
-                style="padding-top:10px;padding-bottom:10px;"
-                v-if="notification.analytics_url !== ''"
-                v-bind:src="notification.analytics_url"
-                width="300"
-                height="300"
-                frameborder="0">
-              </iframe>
+            <div class="col-2">
+              Super cool analytics look :)
             </div>
             <div class="col">
+              {{ notification.message }}
             </div>
           </div>
         </div>
@@ -273,10 +267,27 @@ export default class Notifications extends Vue {
     this.$apiService
       .fetchNotifications()
       .then((response: any) => {
-        this.releaseNotesNotifications = response.release_notes_notifications
+        this.releaseNotesNotifications = response.release_notes_notifications || []
+        this.analyticsNotifications = response.analytics_notifications || []
+        this.invoiceNotifications = response.invoice_notifications || []
+        this.systemNotifications = response.system_notifications || []
       })
       .catch((error: Error) => {
         console.log('Something went wrong fetching notifications')
+        console.log(error)
+      })
+  }
+
+  private startAnalyticsTrial () {
+    this.$apiService
+      .startAnalyticsTrial()
+      .then(() => {
+        console.log('Congratulations you are now signed up for the analytics trial!')
+        // refresh auth token to get trial and analytics bits
+        // navigate to the analytics page
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong setting up analytics trial')
         console.log(error)
       })
   }

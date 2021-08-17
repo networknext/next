@@ -11,7 +11,7 @@ import Vue from 'vue'
  * TODO: Namespace these
  */
 
-const defaultProfile = {
+const defaultProfile: UserProfile = {
   auth0ID: '',
   companyCode: '',
   companyName: '',
@@ -24,8 +24,11 @@ const defaultProfile = {
   routeShader: null,
   pubKey: '',
   newsletterConsent: false,
-  roles: []
-} as UserProfile
+  roles: [],
+  hasAnalytics: false,
+  hasBilling: false,
+  hasTrial: false
+}
 
 const state = {
   userProfile: defaultProfile,
@@ -40,6 +43,9 @@ const getters = {
   isAnonymous: (state: any, getters: any) => getters.idToken === '',
   isAnonymousPlus: (state: any, getters: any) => !getters.isAnonymous ? !state.userProfile.verified : false,
   isBuyer: (state: any) => (state.userProfile.pubKey !== ''),
+  hasAnalytics: (state: any) => state.userProfile.hasAnalytics,
+  hasBilling: (state: any) => state.userProfile.hasBilling,
+  hasTrial: (state: any) => state.userProfile.hasTrial,
   userProfile: (state: any) => state.userProfile,
   allBuyers: (state: any) => state.allBuyers,
   registeredToCompany: (state: any) => (state.userProfile.companyCode !== '')

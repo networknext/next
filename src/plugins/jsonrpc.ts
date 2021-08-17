@@ -160,6 +160,10 @@ export class JSONRPCService {
     return this.call('AuthService.CustomerDownloadedUE4PluginNotifications', args)
   }
 
+  public startAnalyticsTrial (): Promise<any> {
+    return this.call('BuyersService.StartAnalyticsTrial', {})
+  }
+
   public fetchNotifications (): Promise<any> {
     return this.call('BuyersService.FetchNotifications', {})
   }
