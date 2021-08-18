@@ -4,9 +4,10 @@ export interface UserProfile {
   companyCode: string;
   companyName: string;
   domains: Array<string>;
+  firstName: string;
+  lastName: string;
   email: string;
   idToken: string;
-  name: string;
   roles: Array<string>;
   verified: boolean;
   routeShader: any;

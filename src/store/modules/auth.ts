@@ -10,21 +10,22 @@ import Vue from 'vue'
  * TODO: Namespace these
  */
 
-const defaultProfile = {
+const defaultProfile: UserProfile = {
   auth0ID: '',
   companyCode: '',
   companyName: '',
   buyerID: '',
   domains: [],
+  firstName: '',
+  lastName: '',
   email: '',
   idToken: '',
-  name: '',
   verified: false,
   routeShader: null,
   pubKey: '',
   newsletterConsent: false,
   roles: []
-} as UserProfile
+}
 
 const state = {
   userProfile: defaultProfile,
@@ -73,6 +74,8 @@ const actions = {
           allBuyers = responses[1].buyers
         }
         userProfile.buyerID = responses[0].account.id
+        userProfile.firstName = responses[0].account.first_name || ''
+        userProfile.lastName = responses[0].account.last_name || ''
         userProfile.companyName = responses[0].account.company_name || ''
         userProfile.domains = responses[0].domains || []
         dispatch('updateUserProfile', userProfile)

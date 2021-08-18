@@ -60,8 +60,8 @@ export class JSONRPCService {
     return this.call('AuthService.UpdateAutoSignupDomains', args)
   }
 
-  public updateCompanyInformation (args: any): Promise<any> {
-    return this.call('AuthService.UpdateCompanyInformation', args)
+  public createCompanyAccount (args: any): Promise<any> {
+    return this.call('AuthService.CreateCompanyAccount', args)
   }
 
   public upgradeAccount (args: any): Promise<any> {
@@ -118,6 +118,10 @@ export class JSONRPCService {
 
   public fetchGameConfiguration (): Promise<any> {
     return this.call('BuyersService.GameConfiguration', {})
+  }
+
+  public updateAccountDetails (args: any): Promise<any> {
+    return this.call('AuthService.UpdateAccountDetails', args)
   }
 
   public updateRouteShader (args: any): Promise<any> {
