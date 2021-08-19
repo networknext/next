@@ -451,6 +451,8 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 }
 
 type databaseEntry struct {
+	FirstName    string
+	LastName     string
 	Email        string
 	CompanyCode  string
 	BuyerID      string
@@ -516,6 +518,8 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 		}
 
 		entry := databaseEntry{
+			FirstName:    account.GetGivenName(),
+			LastName:     account.GetFamilyName(),
 			Email:        account.GetEmail(),
 			CompanyCode:  companyCode,
 			IsOwner:      isOwner,
