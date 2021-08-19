@@ -125,7 +125,8 @@ func TestAllAccounts(t *testing.T) {
 				UserID: &IDs[0],
 			},
 		},
-		Name:       &names[0],
+		Name:       &emails[0],
+		GivenName:  &names[0],
 		FamilyName: &names[0],
 		CreatedAt:  &currentTime,
 	})
@@ -141,7 +142,8 @@ func TestAllAccounts(t *testing.T) {
 				UserID: &IDs[1],
 			},
 		},
-		Name:       &names[1],
+		Name:       &emails[1],
+		GivenName:  &names[1],
 		FamilyName: &names[1],
 		CreatedAt:  &currentTime,
 	})
@@ -162,7 +164,8 @@ func TestAllAccounts(t *testing.T) {
 				UserID: &IDs[2],
 			},
 		},
-		Name:       &names[2],
+		Name:       &emails[2],
+		GivenName:  &names[2],
 		FamilyName: &names[2],
 		CreatedAt:  &currentTime,
 	})
@@ -213,7 +216,7 @@ func TestAllAccounts(t *testing.T) {
 		assert.Equal(t, names[0], reply.UserAccounts[0].FirstName)
 		assert.Equal(t, emails[0], reply.UserAccounts[0].Email)
 		assert.Equal(t, IDs[0], reply.UserAccounts[0].UserID)
-		assert.Equal(t, fmt.Sprintf("%016x", 123), reply.UserAccounts[0].ID)
+		assert.Equal(t, fmt.Sprintf("%016x", 123), reply.UserAccounts[0].BuyerID)
 	})
 
 	t.Run("all - success", func(t *testing.T) {
@@ -238,7 +241,7 @@ func TestAllAccounts(t *testing.T) {
 		assert.Equal(t, "test-test", reply.UserAccounts[0].CompanyCode)
 		assert.Equal(t, "Test Test", reply.UserAccounts[0].CompanyName)
 		assert.Equal(t, IDs[1], reply.UserAccounts[0].UserID)
-		assert.Equal(t, fmt.Sprintf("%016x", 456), reply.UserAccounts[0].ID)
+		assert.Equal(t, fmt.Sprintf("%016x", 456), reply.UserAccounts[0].BuyerID)
 		assert.Equal(t, roleNames[0], *reply.UserAccounts[0].Roles[0].Name)
 		assert.Equal(t, roleIDs[0], *reply.UserAccounts[0].Roles[0].ID)
 		assert.Equal(t, roleDescriptions[0], *reply.UserAccounts[0].Roles[0].Description)
@@ -307,7 +310,8 @@ func TestUserAccount(t *testing.T) {
 				UserID: &IDs[0],
 			},
 		},
-		Name:       &names[0],
+		Name:       &emails[0],
+		GivenName:  &names[0],
 		FamilyName: &names[0],
 		CreatedAt:  &currentTime,
 	})
@@ -331,7 +335,8 @@ func TestUserAccount(t *testing.T) {
 				UserID: &IDs[1],
 			},
 		},
-		Name:       &names[1],
+		Name:       &emails[1],
+		GivenName:  &names[1],
 		FamilyName: &names[1],
 		CreatedAt:  &currentTime,
 	})
@@ -352,7 +357,8 @@ func TestUserAccount(t *testing.T) {
 				UserID: &IDs[2],
 			},
 		},
-		Name:       &names[2],
+		Name:       &emails[2],
+		GivenName:  &names[2],
 		FamilyName: &names[2],
 		CreatedAt:  &currentTime,
 	})
@@ -401,7 +407,7 @@ func TestUserAccount(t *testing.T) {
 
 		assert.Nil(t, reply.Domains)
 		assert.Equal(t, "123", reply.UserAccount.UserID)
-		assert.Equal(t, fmt.Sprintf("%016x", 123), reply.UserAccount.ID)
+		assert.Equal(t, fmt.Sprintf("%016x", 123), reply.UserAccount.BuyerID)
 		assert.Equal(t, "test", reply.UserAccount.CompanyCode)
 		assert.Equal(t, "Test", reply.UserAccount.CompanyName)
 		assert.Equal(t, "Frank", reply.UserAccount.FirstName)
@@ -467,7 +473,7 @@ func TestUserAccount(t *testing.T) {
 
 		assert.Equal(t, 0, len(reply.Domains))
 		assert.Equal(t, "456", reply.UserAccount.UserID)
-		assert.Equal(t, fmt.Sprintf("%016x", 456), reply.UserAccount.ID)
+		assert.Equal(t, fmt.Sprintf("%016x", 456), reply.UserAccount.BuyerID)
 		assert.Equal(t, "test-test", reply.UserAccount.CompanyCode)
 		assert.Equal(t, "Test Test", reply.UserAccount.CompanyName)
 		assert.Equal(t, "George", reply.UserAccount.FirstName)
@@ -493,7 +499,7 @@ func TestUserAccount(t *testing.T) {
 
 		assert.Equal(t, 0, len(reply.Domains))
 		assert.Equal(t, "789", reply.UserAccount.UserID)
-		assert.Equal(t, "", reply.UserAccount.ID)
+		assert.Equal(t, "", reply.UserAccount.BuyerID)
 		assert.Equal(t, "", reply.UserAccount.CompanyCode)
 		assert.Equal(t, "", reply.UserAccount.CompanyName)
 		assert.Equal(t, "Lenny", reply.UserAccount.FirstName)

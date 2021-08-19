@@ -47,7 +47,8 @@ type AccountReply struct {
 
 type account struct {
 	UserID      string             `json:"user_id"`
-	ID          string             `json:"id"`
+	BuyerID     string             `json:"buyer_id"`
+	Seller      bool               `json:"seller"`
 	CompanyName string             `json:"company_name"`
 	CompanyCode string             `json:"company_code"`
 	FirstName   string             `json:"first_name"`
@@ -127,6 +128,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		}
 
 		buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+		seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), companyCode)
 		company, err := s.Storage.Customer(r.Context(), companyCode)
 		if err != nil {
 			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
@@ -134,7 +136,7 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 			return &err
 		}
 
-		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, company.Name, company.Code))
+		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, company.Name, company.Code, seller.Name != ""))
 	}
 
 	return nil
@@ -187,7 +189,9 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 			return &err
 		}
 	}
-	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+	buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+	seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), companyCode)
+
 	userRoles, err := s.UserManager.Roles(*userAccount.ID)
 	if err != nil {
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Failed to get user account roles", err.Error()))
@@ -199,7 +203,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		reply.Domains = strings.Split(company.AutomaticSignInDomains, ",")
 	}
 
-	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code)
+	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code, seller.Name != "")
 
 	return nil
 }
@@ -281,6 +285,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	falseValue := false
 
 	buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), userCompanyCode)
+	seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), userCompanyCode)
 
 	registered := make(map[string]*management.User)
 
@@ -393,7 +398,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
-		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, company.Name, company.Code))
+		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, company.Name, company.Code, seller.Name != ""))
 	}
 	reply.UserAccounts = accounts
 	return nil
@@ -424,7 +429,7 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string, companyCode string) account {
+func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string, companyCode string, isSeller bool) account {
 	buyerID := ""
 	if buyer.ID != 0 {
 		buyerID = fmt.Sprintf("%016x", buyer.ID)
@@ -432,7 +437,8 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 
 	account := account{
 		UserID:      *u.Identities[0].UserID,
-		ID:          buyerID,
+		BuyerID:     buyerID,
+		Seller:      isSeller,
 		CompanyCode: companyCode,
 		CompanyName: companyName,
 		FirstName:   u.GetGivenName(),
