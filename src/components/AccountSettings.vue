@@ -384,7 +384,7 @@ export default class AccountSettings extends Vue {
   private setupCompanyAccount () {
     // Check for a valid company info form that is not equal to what is currently there. IE someone assigned to a company wants to update their newsletter settings but not change their company info
     if (!this.validCompanyInfo || (this.$store.getters.userProfile.firstName === '' && this.$store.getters.userProfile.lastName === '')) {
-      this.$refs.companyResponseAlert.setMessage('Please update your first and last name before creating a company account')
+      this.$refs.companyResponseAlert.setMessage('Please update your first and last name before setting up a company account')
       this.$refs.companyResponseAlert.setAlertType(AlertType.ERROR)
       setTimeout(() => {
         if (this.$refs.companyResponseAlert) {
