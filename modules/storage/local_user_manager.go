@@ -31,6 +31,7 @@ func (lum *LocalUserManager) Create(user *management.User) error {
 			},
 		}
 		user.Name = &emptyName
+		user.FamilyName = &emptyName
 	}
 	for _, u := range lum.localUsers {
 		if u.ID == user.ID {
@@ -140,8 +141,11 @@ func (lum *LocalUserManager) Update(id string, u *management.User) error {
 					},
 				}
 			}
-			if u.Name == nil {
-				u.Name = lum.localUsers[i].Name
+			if u.GivenName == nil {
+				u.GivenName = lum.localUsers[i].GivenName
+			}
+			if u.FamilyName == nil {
+				u.FamilyName = lum.localUsers[i].FamilyName
 			}
 			if u.Email == nil {
 				u.Email = lum.localUsers[i].Email
