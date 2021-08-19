@@ -125,8 +125,9 @@ func TestAllAccounts(t *testing.T) {
 				UserID: &IDs[0],
 			},
 		},
-		Name:      &names[0],
-		CreatedAt: &currentTime,
+		Name:       &names[0],
+		FamilyName: &names[0],
+		CreatedAt:  &currentTime,
 	})
 
 	userManager.Create(&management.User{
@@ -140,8 +141,9 @@ func TestAllAccounts(t *testing.T) {
 				UserID: &IDs[1],
 			},
 		},
-		Name:      &names[1],
-		CreatedAt: &currentTime,
+		Name:       &names[1],
+		FamilyName: &names[1],
+		CreatedAt:  &currentTime,
 	})
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
@@ -160,8 +162,9 @@ func TestAllAccounts(t *testing.T) {
 				UserID: &IDs[2],
 			},
 		},
-		Name:      &names[2],
-		CreatedAt: &currentTime,
+		Name:       &names[2],
+		FamilyName: &names[2],
+		CreatedAt:  &currentTime,
 	})
 
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "test", Name: "Test"})
@@ -207,7 +210,7 @@ func TestAllAccounts(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(reply.UserAccounts))
-		assert.Equal(t, names[0], reply.UserAccounts[0].Name)
+		assert.Equal(t, names[0], reply.UserAccounts[0].FirstName)
 		assert.Equal(t, emails[0], reply.UserAccounts[0].Email)
 		assert.Equal(t, IDs[0], reply.UserAccounts[0].UserID)
 		assert.Equal(t, fmt.Sprintf("%016x", 123), reply.UserAccounts[0].ID)
@@ -230,7 +233,7 @@ func TestAllAccounts(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(reply.UserAccounts))
-		assert.Equal(t, "George", reply.UserAccounts[0].Name)
+		assert.Equal(t, "George", reply.UserAccounts[0].FirstName)
 		assert.Equal(t, "test@test1.com", reply.UserAccounts[0].Email)
 		assert.Equal(t, "test-test", reply.UserAccounts[0].CompanyCode)
 		assert.Equal(t, "Test Test", reply.UserAccounts[0].CompanyName)
@@ -304,8 +307,9 @@ func TestUserAccount(t *testing.T) {
 				UserID: &IDs[0],
 			},
 		},
-		Name:      &names[0],
-		CreatedAt: &currentTime,
+		Name:       &names[0],
+		FamilyName: &names[0],
+		CreatedAt:  &currentTime,
 	})
 
 	userManager.AssignRoles(IDs[0], []*management.Role{
@@ -327,8 +331,9 @@ func TestUserAccount(t *testing.T) {
 				UserID: &IDs[1],
 			},
 		},
-		Name:      &names[1],
-		CreatedAt: &currentTime,
+		Name:       &names[1],
+		FamilyName: &names[1],
+		CreatedAt:  &currentTime,
 	})
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
@@ -347,8 +352,9 @@ func TestUserAccount(t *testing.T) {
 				UserID: &IDs[2],
 			},
 		},
-		Name:      &names[2],
-		CreatedAt: &currentTime,
+		Name:       &names[2],
+		FamilyName: &names[2],
+		CreatedAt:  &currentTime,
 	})
 
 	userManager.AssignRoles(IDs[2], []*management.Role{
@@ -398,7 +404,7 @@ func TestUserAccount(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%016x", 123), reply.UserAccount.ID)
 		assert.Equal(t, "test", reply.UserAccount.CompanyCode)
 		assert.Equal(t, "Test", reply.UserAccount.CompanyName)
-		assert.Equal(t, "Frank", reply.UserAccount.Name)
+		assert.Equal(t, "Frank", reply.UserAccount.FirstName)
 		assert.Equal(t, "test@test.com", reply.UserAccount.Email)
 	})
 
@@ -464,7 +470,7 @@ func TestUserAccount(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("%016x", 456), reply.UserAccount.ID)
 		assert.Equal(t, "test-test", reply.UserAccount.CompanyCode)
 		assert.Equal(t, "Test Test", reply.UserAccount.CompanyName)
-		assert.Equal(t, "George", reply.UserAccount.Name)
+		assert.Equal(t, "George", reply.UserAccount.FirstName)
 		assert.Equal(t, "test@test1.com", reply.UserAccount.Email)
 	})
 
@@ -490,7 +496,7 @@ func TestUserAccount(t *testing.T) {
 		assert.Equal(t, "", reply.UserAccount.ID)
 		assert.Equal(t, "", reply.UserAccount.CompanyCode)
 		assert.Equal(t, "", reply.UserAccount.CompanyName)
-		assert.Equal(t, "Lenny", reply.UserAccount.Name)
+		assert.Equal(t, "Lenny", reply.UserAccount.FirstName)
 		assert.Equal(t, "test@test2.com", reply.UserAccount.Email)
 	})
 }
@@ -1190,7 +1196,7 @@ func TestUpdateUserRoles(t *testing.T) {
 	})
 }
 
-func TestUpdateCompanyInformation(t *testing.T) {
+func TestSetupCompanyAccount(t *testing.T) {
 	t.Parallel()
 	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
@@ -1242,8 +1248,8 @@ func TestUpdateCompanyInformation(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	t.Run("failure - insufficient privileges", func(t *testing.T) {
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{}, &reply)
+		var reply jsonrpc.SetupCompanyAccountReply
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{}, &reply)
 		assert.Error(t, err)
 	})
 
@@ -1255,21 +1261,21 @@ func TestUpdateCompanyInformation(t *testing.T) {
 			},
 		})
 		req = req.WithContext(reqContext)
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{}, &reply)
+		var reply jsonrpc.SetupCompanyAccountReply
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{}, &reply)
 		assert.Error(t, err)
 	})
 
 	t.Run("failure - malformed user", func(t *testing.T) {
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
+		var reply jsonrpc.SetupCompanyAccountReply
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
 		assert.Error(t, err)
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
 			Claims: jwt.MapClaims{},
 		})
 		req = req.WithContext(reqContext)
-		err = svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
+		err = svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
 		assert.Error(t, err)
 		reqContext = req.Context()
 		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
@@ -1278,12 +1284,12 @@ func TestUpdateCompanyInformation(t *testing.T) {
 			},
 		})
 		req = req.WithContext(reqContext)
-		err = svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
+		err = svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
 		assert.Error(t, err)
 	})
 
 	t.Run("failure - no company name", func(t *testing.T) {
-		var reply jsonrpc.CompanyNameReply
+		var reply jsonrpc.SetupCompanyAccountReply
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
 			Claims: jwt.MapClaims{
@@ -1292,7 +1298,7 @@ func TestUpdateCompanyInformation(t *testing.T) {
 			},
 		})
 		req = req.WithContext(reqContext)
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test"}, &reply)
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test"}, &reply)
 		assert.Error(t, err)
 	})
 
@@ -1319,17 +1325,10 @@ func TestUpdateCompanyInformation(t *testing.T) {
 	}...)
 
 	t.Run("success - unassigned - new company", func(t *testing.T) {
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "testing", CompanyName: "Testing"}, &reply)
+		var reply jsonrpc.SetupCompanyAccountReply
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "testing", CompanyName: "Testing"}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, 2, len(reply.NewRoles))
-		assert.Equal(t, roleNames[0], *reply.NewRoles[0].Name)
-		assert.Equal(t, roleIDs[0], *reply.NewRoles[0].ID)
-		assert.Equal(t, roleDescriptions[0], *reply.NewRoles[0].Description)
-		assert.Equal(t, roleNames[1], *reply.NewRoles[1].Name)
-		assert.Equal(t, roleIDs[1], *reply.NewRoles[1].ID)
-		assert.Equal(t, roleDescriptions[1], *reply.NewRoles[1].Description)
 		userRoles, err := userManager.Roles("123")
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(userRoles.Roles))
@@ -1349,74 +1348,22 @@ func TestUpdateCompanyInformation(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test-test", ID: 123})
 
 	t.Run("failure - unassigned - old company - wrong domain", func(t *testing.T) {
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test"}, &reply)
+		var reply jsonrpc.SetupCompanyAccountReply
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test-test"}, &reply)
 		assert.Error(t, err)
 	})
 
-	t.Run("failure - assigned - different code - insufficient privileges", func(t *testing.T) {
+	t.Run("failure - assigned", func(t *testing.T) {
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test-test")
 		req = req.WithContext(reqContext)
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test"}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("failure - assigned - different code - company exists", func(t *testing.T) {
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test"}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("failure - assigned - different code - no company name", func(t *testing.T) {
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test"}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("failure - assigned - different code", func(t *testing.T) {
-		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
-			"Owner",
-		})
-		req = req.WithContext(reqContext)
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test", CompanyName: "Test Test Test"}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("failure - assigned - same code - insufficient privileges", func(t *testing.T) {
-		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
-		req = req.WithContext(reqContext)
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test"}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("failure - assigned - same code - no name", func(t *testing.T) {
-		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
-			"Owner",
-		})
-		req = req.WithContext(reqContext)
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test"}, &reply)
-		assert.Error(t, err)
-	})
-
-	t.Run("failure - assigned - same code", func(t *testing.T) {
-		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test-test-test")
-		req = req.WithContext(reqContext)
-		var reply jsonrpc.CompanyNameReply
-		err := svc.UpdateCompanyInformation(req, &jsonrpc.CompanyNameArgs{CompanyCode: "test-test-test", CompanyName: "Test 3"}, &reply)
+		var reply jsonrpc.SetupCompanyAccountReply
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test-test-test"}, &reply)
 		assert.Error(t, err)
 	})
 }
 
-func TestUpdateAccountInformation(t *testing.T) {
+func TestUpdateAccountDetails(t *testing.T) {
 	t.Parallel()
 	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
@@ -1466,8 +1413,8 @@ func TestUpdateAccountInformation(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	t.Run("failure - insufficient privileges", func(t *testing.T) {
-		var reply jsonrpc.AccountSettingsReply
-		err := svc.UpdateAccountSettings(req, &jsonrpc.AccountSettingsArgs{}, &reply)
+		var reply jsonrpc.UpdateAccountDetailsReply
+		err := svc.UpdateAccountDetails(req, &jsonrpc.UpdateAccountDetailsArgs{}, &reply)
 		assert.Error(t, err)
 	})
 
@@ -1481,13 +1428,13 @@ func TestUpdateAccountInformation(t *testing.T) {
 		})
 		req = req.WithContext(reqContext)
 
-		var reply jsonrpc.AccountSettingsReply
-		err := svc.UpdateAccountSettings(req, &jsonrpc.AccountSettingsArgs{}, &reply)
+		var reply jsonrpc.UpdateAccountDetailsReply
+		err := svc.UpdateAccountDetails(req, &jsonrpc.UpdateAccountDetailsArgs{}, &reply)
 		assert.Error(t, err)
 	})
 
 	t.Run("success - no newsletter", func(t *testing.T) {
-		var reply jsonrpc.AccountSettingsReply
+		var reply jsonrpc.UpdateAccountDetailsReply
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
 			Claims: jwt.MapClaims{
@@ -1496,7 +1443,7 @@ func TestUpdateAccountInformation(t *testing.T) {
 			},
 		})
 		req = req.WithContext(reqContext)
-		err := svc.UpdateAccountSettings(req, &jsonrpc.AccountSettingsArgs{NewsLetterConsent: false}, &reply)
+		err := svc.UpdateAccountDetails(req, &jsonrpc.UpdateAccountDetailsArgs{Newsletter: false}, &reply)
 		assert.NoError(t, err)
 		userAccount, err := userManager.Read("123")
 		assert.NoError(t, err)
@@ -1504,7 +1451,7 @@ func TestUpdateAccountInformation(t *testing.T) {
 	})
 
 	t.Run("success - yes newsletter", func(t *testing.T) {
-		var reply jsonrpc.AccountSettingsReply
+		var reply jsonrpc.UpdateAccountDetailsReply
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
 			Claims: jwt.MapClaims{
@@ -1512,11 +1459,107 @@ func TestUpdateAccountInformation(t *testing.T) {
 			},
 		})
 		req = req.WithContext(reqContext)
-		err := svc.UpdateAccountSettings(req, &jsonrpc.AccountSettingsArgs{NewsLetterConsent: true}, &reply)
+		err := svc.UpdateAccountDetails(req, &jsonrpc.UpdateAccountDetailsArgs{Newsletter: true}, &reply)
 		assert.NoError(t, err)
 		userAccount, err := userManager.Read("123")
 		assert.NoError(t, err)
 		assert.True(t, userAccount.AppMetadata["newsletter"].(bool))
+	})
+
+	t.Run("success - no first name", func(t *testing.T) {
+		var reply jsonrpc.UpdateAccountDetailsReply
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"sub": "123",
+			},
+		})
+		req = req.WithContext(reqContext)
+		err := svc.UpdateAccountDetails(req, &jsonrpc.UpdateAccountDetailsArgs{FirstName: names[0]}, &reply)
+		assert.NoError(t, err)
+		userAccount, err := userManager.Read("123")
+		assert.NoError(t, err)
+		assert.Equal(t, names[0], userAccount.GetGivenName())
+	})
+
+	t.Run("success - same first name", func(t *testing.T) {
+		var reply jsonrpc.UpdateAccountDetailsReply
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"sub": "123",
+			},
+		})
+		req = req.WithContext(reqContext)
+		err := svc.UpdateAccountDetails(req, &jsonrpc.UpdateAccountDetailsArgs{FirstName: names[0]}, &reply)
+		assert.NoError(t, err)
+		userAccount, err := userManager.Read("123")
+		assert.NoError(t, err)
+		assert.Equal(t, names[0], userAccount.GetGivenName())
+	})
+
+	t.Run("success - different first name", func(t *testing.T) {
+		var reply jsonrpc.UpdateAccountDetailsReply
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"sub": "123",
+			},
+		})
+		req = req.WithContext(reqContext)
+		err := svc.UpdateAccountDetails(req, &jsonrpc.UpdateAccountDetailsArgs{FirstName: names[1]}, &reply)
+		assert.NoError(t, err)
+		userAccount, err := userManager.Read("123")
+		assert.NoError(t, err)
+		assert.Equal(t, names[1], userAccount.GetGivenName())
+	})
+
+	t.Run("success - no last name", func(t *testing.T) {
+		var reply jsonrpc.UpdateAccountDetailsReply
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"sub": "123",
+			},
+		})
+		req = req.WithContext(reqContext)
+		err := svc.UpdateAccountDetails(req, &jsonrpc.UpdateAccountDetailsArgs{LastName: names[0]}, &reply)
+		assert.NoError(t, err)
+		userAccount, err := userManager.Read("123")
+		assert.NoError(t, err)
+		assert.Equal(t, names[0], userAccount.GetFamilyName())
+	})
+
+	t.Run("success - same last name", func(t *testing.T) {
+		var reply jsonrpc.UpdateAccountDetailsReply
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"sub": "123",
+			},
+		})
+		req = req.WithContext(reqContext)
+		err := svc.UpdateAccountDetails(req, &jsonrpc.UpdateAccountDetailsArgs{LastName: names[0]}, &reply)
+		assert.NoError(t, err)
+		userAccount, err := userManager.Read("123")
+		assert.NoError(t, err)
+		assert.Equal(t, names[0], userAccount.GetFamilyName())
+	})
+
+	t.Run("success - different last name", func(t *testing.T) {
+		var reply jsonrpc.UpdateAccountDetailsReply
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"sub": "123",
+			},
+		})
+		req = req.WithContext(reqContext)
+		err := svc.UpdateAccountDetails(req, &jsonrpc.UpdateAccountDetailsArgs{LastName: names[1]}, &reply)
+		assert.NoError(t, err)
+		userAccount, err := userManager.Read("123")
+		assert.NoError(t, err)
+		assert.Equal(t, names[1], userAccount.GetFamilyName())
 	})
 }
 
