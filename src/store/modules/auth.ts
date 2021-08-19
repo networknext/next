@@ -15,6 +15,7 @@ const defaultProfile: UserProfile = {
   companyCode: '',
   companyName: '',
   buyerID: '',
+  seller: false,
   domains: [],
   firstName: '',
   lastName: '',
@@ -40,6 +41,7 @@ const getters = {
   isAnonymous: (state: any, getters: any) => getters.idToken === '',
   isAnonymousPlus: (state: any, getters: any) => !getters.isAnonymous ? !state.userProfile.verified : false,
   isBuyer: (state: any) => (state.userProfile.pubKey !== ''),
+  isSeller: (state: any) => (state.userProfile.seller),
   userProfile: (state: any) => state.userProfile,
   allBuyers: (state: any) => state.allBuyers,
   registeredToCompany: (state: any) => (state.userProfile.companyCode !== '')
@@ -73,7 +75,8 @@ const actions = {
         } else {
           allBuyers = responses[1].buyers
         }
-        userProfile.buyerID = responses[0].account.id
+        userProfile.buyerID = responses[0].account.id || responses[0].account.buyer_id || '' // TODO: remove the ".id" case after deploy
+        userProfile.seller = responses[0].account.seller || false
         userProfile.firstName = responses[0].account.first_name || ''
         userProfile.lastName = responses[0].account.last_name || ''
         userProfile.companyName = responses[0].account.company_name || ''

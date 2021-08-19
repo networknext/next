@@ -78,6 +78,7 @@ export class AuthService {
       const userProfile: UserProfile = {
         auth0ID: '',
         buyerID: '',
+        seller: false,
         companyCode: '',
         companyName: '',
         firstName: '',

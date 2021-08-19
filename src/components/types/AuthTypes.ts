@@ -1,6 +1,7 @@
 export interface UserProfile {
   auth0ID: string;
   buyerID: string;
+  seller: boolean;
   companyCode: string;
   companyName: string;
   domains: Array<string>;
