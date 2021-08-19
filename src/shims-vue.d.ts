@@ -8,7 +8,7 @@ declare module '*.vue' {
     impersonate (args: any): Promise<any>;
     updateAccountSettings (args: any): Promise<any>;
     updateAutoSignupDomains (args: any): Promise<any>;
-    createCompanyAccount (args: any): Promise<any>;
+    setupCompanyAccount (args: any): Promise<any>;
     upgradeAccount (args: any): Promise<any>;
     fetchTotalSessionCounts (args: any): Promise<any>;
     fetchMapSessions (args: any): Promise<any>;

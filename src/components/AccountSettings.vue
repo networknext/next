@@ -49,17 +49,17 @@
       Company Details
     </h5>
     <p class="card-text">
-      Assign a name and code to your company account
+      Create or assign yourself to a company account.
     </p>
     <Alert ref="companyResponseAlert"/>
-    <form @submit.prevent="createCompanyAccount()">
+    <form @submit.prevent="setupCompanyAccount()">
       <div class="form-group">
         <label for="companyName">
           Company Name
         </label>
         <input :disabled="$store.getters.userProfile.companyName !== ''" type="text" class="form-control form-control-sm" id="companyName" v-model="companyName" placeholder="Enter your company name" @change="checkCompanyName()"/>
         <small class="form-text text-muted">
-          This is the company that you would like your account to be assigned to. Case and white space sensitive.
+          This is the name of the company that you would like your account to be assigned to. This is not necessary for existing company assignment and is case and white space sensitive.
         </small>
         <small v-for="(error, index) in companyNameErrors" :key="index" class="text-danger">
           {{ error }}
@@ -72,7 +72,7 @@
         </label>
         <input :disabled="$store.getters.userProfile.companyCode !== ''" type="text" class="form-control form-control-sm" id="companyCode" v-model="companyCode" placeholder="Enter your company code" @change="checkCompanyCode()"/>
         <small class="form-text text-muted">
-          This is the unique string associated to your company account and to be used in your company subdomain. Examples: mycompany, my-company, my-company-name
+          This is the unique string associated to your company account and to be used in your company's subdomain. To assign this user account to an existing company, type in your companies existing code. Examples: mycompany, my-company, my-company-name
         </small>
         <small v-for="(error, index) in companyCodeErrors" :key="index" class="text-danger">
           {{ error }}
@@ -80,7 +80,7 @@
         </small>
       </div>
       <button v-if="$store.getters.userProfile.companyCode === '' && $store.getters.userProfile.companyName === ''" id="account-settings-button" type="submit" class="btn btn-primary btn-sm">
-        Create Company Account
+        Setup Company Account
       </button>
       <p class="text-muted text-small mt-2"></p>
     </form>
@@ -178,6 +178,8 @@ export default class AccountSettings extends Vue {
   private confirmPassword: string
   private confirmPasswordErrors: Array<string>
 
+  private unwatchProfile: any
+
   constructor () {
     super()
     this.companyName = ''
@@ -204,6 +206,23 @@ export default class AccountSettings extends Vue {
   }
 
   private mounted () {
+    this.unwatchProfile = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.userProfile
+      },
+      () => {
+        const storedFirstName: string = this.$store.getters.userProfile.firstName
+        const storedLastName: string = this.$store.getters.userProfile.lastName
+        const storedCompanyName: string = this.$store.getters.userProfile.companyName
+        const storedCompanyCode: string = this.$store.getters.userProfile.companyCode
+
+        this.firstName = this.firstName !== storedFirstName && storedFirstName !== '' ? storedFirstName : this.firstName
+        this.lastName = this.lastName !== storedLastName && storedLastName !== '' ? storedLastName : this.lastName
+        this.companyName = this.companyName !== storedCompanyName && storedCompanyName !== '' ? storedCompanyName : this.companyName
+        this.companyCode = this.companyCode !== storedCompanyCode && storedCompanyCode !== '' ? storedCompanyCode : this.companyCode
+      }
+    )
+
     const userProfile = cloneDeep(this.$store.getters.userProfile)
     this.firstName = userProfile.firstName || ''
     this.lastName = userProfile.lastName || ''
@@ -214,6 +233,10 @@ export default class AccountSettings extends Vue {
     this.checkCompanyName()
     this.checkCompanyCode()
     // this.checkConfirmPassword()
+  }
+
+  private beforeDestroy () {
+    this.unwatchProfile()
   }
 
   private checkFirstName () {
@@ -358,7 +381,7 @@ export default class AccountSettings extends Vue {
       })
   }
 
-  private createCompanyAccount () {
+  private setupCompanyAccount () {
     // Check for a valid company info form that is not equal to what is currently there. IE someone assigned to a company wants to update their newsletter settings but not change their company info
     if (!this.validCompanyInfo || (this.$store.getters.userProfile.firstName === '' && this.$store.getters.userProfile.lastName === '')) {
       this.$refs.companyResponseAlert.setMessage('Please update your first and last name before creating a company account')
@@ -372,7 +395,7 @@ export default class AccountSettings extends Vue {
     }
 
     this.$apiService
-      .createCompanyAccount({ company_name: this.companyName, company_code: this.companyCode })
+      .setupCompanyAccount({ company_name: this.companyName, company_code: this.companyCode })
       .then(() => {
         // TODO: refreshToken returns a promise that should be used to optimize the loading of new tabs
         this.$authService.refreshToken()

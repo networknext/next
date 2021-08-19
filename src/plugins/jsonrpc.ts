@@ -60,8 +60,8 @@ export class JSONRPCService {
     return this.call('AuthService.UpdateAutoSignupDomains', args)
   }
 
-  public createCompanyAccount (args: any): Promise<any> {
-    return this.call('AuthService.CreateCompanyAccount', args)
+  public setupCompanyAccount (args: any): Promise<any> {
+    return this.call('AuthService.SetupCompanyAccount', args)
   }
 
   public upgradeAccount (args: any): Promise<any> {
