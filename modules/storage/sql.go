@@ -90,6 +90,9 @@ type sqlBuyer struct {
 	ID             uint64
 	IsLiveCustomer bool
 	Debug          bool
+	Analytics      bool
+	Billing        bool
+	Trial          bool
 	Name           string
 	PublicKey      []byte
 	ShortName      string
@@ -379,12 +382,12 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 	var err error
 	retryCount := 0
 
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
 	sqlBuyerID := int64(ephemeralBuyerID)
 
-	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, public_key, customer_id "))
+	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, analytics, billing, public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where sdk_generated_id = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -394,6 +397,8 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			&buyer.ShortName,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
+			&buyer.Analytics,
+			&buyer.Billing,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -430,6 +435,8 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			CompanyCode:    buyer.ShortName,
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
+			Analytics:      buyer.Analytics,
+			Billing:        buyer.Billing,
 			PublicKey:      buyer.PublicKey,
 			RouteShader:    rs,
 			InternalConfig: ic,
@@ -452,7 +459,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 	var err error
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, public_key, customer_id "))
+	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing, trial, public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where short_name = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -462,6 +469,9 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			&buyer.SdkID,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
+			&buyer.Analytics,
+			&buyer.Billing,
+			&buyer.Trial,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -494,10 +504,13 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 		b := routing.Buyer{
 			ID:             buyer.ID,
 			HexID:          fmt.Sprintf("%016x", buyer.ID),
-			ShortName:      buyer.ShortName,
-			CompanyCode:    buyer.ShortName,
+			ShortName:      companyCode,
+			CompanyCode:    companyCode,
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
+			Analytics:      buyer.Analytics,
+			Billing:        buyer.Billing,
+			Trial:          buyer.Trial,
 			PublicKey:      buyer.PublicKey,
 			RouteShader:    rs,
 			InternalConfig: ic,
@@ -506,7 +519,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 		}
 		return b, nil
 	default:
-		level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() QueryRow returned an error: %v", err)
+		level.Error(db.Logger).Log("during", fmt.Sprintf("BuyerWithCompanyCode() QueryRow returned an error: %v", err))
 		return routing.Buyer{}, err
 	}
 }
@@ -519,7 +532,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 	buyers := []routing.Buyer{}
 	buyerIDs := make(map[uint64]int64)
 
-	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, public_key, customer_id "))
+	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, analytics, billing, trial, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -539,6 +552,9 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			&buyer.ShortName,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
+			&buyer.Analytics,
+			&buyer.Billing,
+			&buyer.Trial,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -568,6 +584,9 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			CompanyCode:    buyer.ShortName,
 			Live:           buyer.IsLiveCustomer,
 			Debug:          buyer.Debug,
+			Analytics:      buyer.Analytics,
+			Billing:        buyer.Billing,
+			Trial:          buyer.Trial,
 			PublicKey:      buyer.PublicKey,
 			RouteShader:    rs,
 			InternalConfig: ic,
@@ -601,14 +620,17 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		ShortName:      b.CompanyCode,
 		IsLiveCustomer: b.Live,
 		Debug:          b.Debug,
+		Analytics:      b.Analytics,
+		Billing:        b.Billing,
+		Trial:          b.Trial,
 		PublicKey:      b.PublicKey,
 		CustomerID:     c.DatabaseID,
 	}
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, public_key, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6)"))
+	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, analytics, billing, public_key, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -618,6 +640,8 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		buyer.ShortName,
 		buyer.IsLiveCustomer,
 		buyer.Debug,
+		buyer.Analytics,
+		buyer.Billing,
 		buyer.PublicKey,
 		buyer.CustomerID,
 	)
@@ -3421,6 +3445,30 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		updateSQL.Write([]byte("update buyers set debug=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 		args = append(args, debug, int64(ephemeralBuyerID))
+	case "Analytics":
+		analytics, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Analytics: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set analytics=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, analytics, int64(ephemeralBuyerID))
+	case "Billing":
+		billing, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Billing: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set billing=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, billing, int64(ephemeralBuyerID))
+	case "Trial":
+		trial, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Trial: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set trial=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, trial, int64(ephemeralBuyerID))
 	case "ShortName":
 		shortName, ok := value.(string)
 		if !ok {

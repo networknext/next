@@ -53,6 +53,9 @@ type account struct {
 	Name        string             `json:"name"`
 	Email       string             `json:"email"`
 	Roles       []*management.Role `json:"roles"`
+	Analytics   bool               `json:"analytics"`
+	Billing     bool               `json:"billing"`
+	Trial       bool               `json:"trial"`
 }
 
 var roleIDs []string = []string{
@@ -187,6 +190,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		}
 	}
 	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+
 	userRoles, err := s.UserManager.Roles(*userAccount.ID)
 	if err != nil {
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Failed to get user account roles", err.Error()))
@@ -431,6 +435,9 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		Name:        *u.Name,
 		Email:       *u.Email,
 		Roles:       r,
+		Analytics:   buyer.Analytics,
+		Billing:     buyer.Billing,
+		Trial:       buyer.Trial,
 	}
 
 	return account

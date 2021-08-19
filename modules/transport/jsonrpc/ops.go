@@ -197,6 +197,9 @@ type buyer struct {
 	HexID       string `json:"hexID"`
 	Live        bool   `json:"live"`
 	Debug       bool   `json:"debug"`
+	Analytics   bool   `json:"analytics"`
+	Billing     bool   `json:"billing"`
+	Trial       bool   `json:"trial"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
@@ -215,6 +218,9 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			ShortName:   b.ShortName,
 			Live:        b.Live,
 			Debug:       b.Debug,
+			Analytics:   b.Analytics,
+			Billing:     b.Billing,
+			Trial:       b.Trial,
 		})
 	}
 
@@ -229,6 +235,9 @@ type JSAddBuyerArgs struct {
 	ShortName string `json:"shortName"`
 	Live      bool   `json:"live"`
 	Debug     bool   `json:"debug"`
+	Analytics bool   `json:"analytics"`
+	Billing   bool   `json:"billing"`
+	Trial     bool   `json:"trial"`
 	PublicKey string `json:"publicKey"`
 }
 
@@ -256,6 +265,9 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		ID:          binary.LittleEndian.Uint64(publicKey[:8]),
 		Live:        args.Live,
 		Debug:       args.Debug,
+		Analytics:   args.Analytics,
+		Billing:     args.Billing,
+		Trial:       args.Trial,
 		PublicKey:   publicKey[8:],
 	}
 
