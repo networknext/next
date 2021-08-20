@@ -248,6 +248,11 @@ export default class AccountSettings extends Vue {
     if (this.firstName.length > 2048) {
       this.firstNameErrors.push('First name is to long, please enter a name that is less that 2048 characters')
     }
+
+    const regex = new RegExp('[A-Za-z]')
+    if (!regex.test(this.firstName)) {
+      this.firstNameErrors.push('A valid first name must include at least one letter')
+    }
   }
 
   private checkLastName () {
@@ -258,6 +263,11 @@ export default class AccountSettings extends Vue {
 
     if (this.lastName.length > 2048) {
       this.lastNameErrors.push('Last name is to long, please enter a name that is less that 2048 characters')
+    }
+
+    const regex = new RegExp('[A-Za-z]')
+    if (!regex.test(this.lastName)) {
+      this.firstNameErrors.push('A valid last name must include at least one letter')
     }
   }
 
