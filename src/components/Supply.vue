@@ -1,0 +1,19 @@
+<template>
+  <div class="card-body" id="supply-page">
+    <!-- TODO: Add a container here for the title information and floated right button to refresh notifications -->
+    <h5 class="card-title">Supply</h5>
+    <p class="card-text">One stop shop for supply related analytics</p>
+  </div>
+</template>
+
+<script lang="ts">
+import { Component, Vue } from 'vue-property-decorator'
+
+@Component
+export default class Supply extends Vue {
+}
+</script>
+
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="scss">
+</style>

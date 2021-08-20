@@ -28,6 +28,9 @@
           <li class="nav-item" v-if="false">
             <router-link to="/explore/analytics" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
           </li>
+          <li class="nav-item" v-if="false && $store.getters.isSeller">
+            <router-link to="/explore/supply" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'supply'}">Supply</router-link>
+          </li>
           <li class="nav-item" v-if="false">
             <router-link to="/explore/invoicing" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'invoicing'}">Invoicing</router-link>
           </li>
