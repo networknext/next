@@ -17,6 +17,7 @@ import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 import RouteShader from '@/components/RouteShader.vue'
 import AccountSettings from '@/components/AccountSettings.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
+import Supply from '@/components/Supply.vue'
 import UserSessions from '@/components/UserSessions.vue'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 
@@ -110,6 +111,11 @@ const routes: Array<RouteConfig> = [
         component: Analytics
       },
       {
+        path: 'supply',
+        name: 'supply',
+        component: Supply
+      },
+      {
         path: 'invoicing',
         name: 'invoicing',
         component: Invoicing
@@ -131,7 +137,7 @@ const router = new VueRouter({
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // TODO: Make sure all edge cases for illegal routing are caught here
   // TODO: Clean this up. Figure out a better way of handling user role and legal route relationships
-  if (!store.getters.isAdmin && to.name === 'explore') {
+  if (!store.getters.isAdmin && (to.name === 'supply' || to.name === 'invoicing' || to.name === 'analytics')) {
     next('/map')
     return
   }
@@ -151,7 +157,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
-  if (!store.getters.isAdmin && (to.name === 'notifications' || to.name === 'analytics' || to.name === 'invoicing')) {
+  if ((!store.getters.isAdmin && !store.getters.isOwner) && (to.name === 'explore' || to.name === 'notifications' || to.name === 'analytics' || to.name === 'supply' || to.name === 'invoicing')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
