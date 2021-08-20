@@ -635,6 +635,10 @@ func main() {
 	var sessionDumpSignedInt bool
 	sessionDumpfs.BoolVar(&sessionDumpSignedInt, "signed", false, "Accept session ID as a signed int (next session dump)")
 
+	// Query billing1 instead of billing2 (next session dump)
+	var sessionDumpUseBilling1 bool
+	sessionDumpfs.BoolVar(&sessionDumpUseBilling1, "billing1", false, "Query billing1 instead of billing2 (next session dump)")
+
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
 		ShortUsage: "next auth",
@@ -735,11 +739,13 @@ func main() {
 				usersCSV := [][]string{{}}
 
 				usersCSV = append(usersCSV, []string{
-					"Email", "Company Code", "Buyer ID", "Is Owner?", "Time Created"})
+					"First Name", "Last Name", "Email", "Company Code", "Buyer ID", "Is Owner?", "Time Created"})
 
 				for _, entry := range reply.Entries {
-					fmt.Printf("Email: %s - Company Code: %s - Buyer ID: %s - Is Owner: %s - Time Created: %s\n\n", entry.Email, entry.CompanyCode, entry.BuyerID, strconv.FormatBool(entry.IsOwner), entry.CreationTime)
+					fmt.Printf("First Name: %s - Last Name: %s - Email: %s - Company Code: %s - Buyer ID: %s - Is Owner: %s - Time Created: %s\n\n", entry.FirstName, entry.LastName, entry.Email, entry.CompanyCode, entry.BuyerID, strconv.FormatBool(entry.IsOwner), entry.CreationTime)
 					usersCSV = append(usersCSV, []string{
+						entry.FirstName,
+						entry.LastName,
 						entry.Email,
 						entry.CompanyCode,
 						entry.BuyerID,
@@ -880,17 +886,17 @@ func main() {
 		Subcommands: []*ffcli.Command{
 			{
 				Name:       "dump",
-				ShortUsage: "next session dump <session id>",
+				ShortUsage: "next session dump <session id> <use_billing1>",
 				ShortHelp:  "Write all billing data for the given ID to a CSV file",
 				FlagSet:    sessionDumpfs,
 				Exec: func(ctx context.Context, args []string) error {
-					if len(args) != 1 {
+					if len(args) < 1 {
 						handleRunTimeError(fmt.Sprintln("you must supply the session ID in hex format"), 0)
 					}
 
 					var sessionID uint64
 					var err error
-					if sessionDumpfs.NFlag() == 1 && sessionDumpSignedInt {
+					if sessionDumpfs.NFlag() >= 1 && sessionDumpSignedInt {
 						signed, err := strconv.ParseInt(args[0], 10, 64)
 						if err != nil {
 							handleRunTimeError(fmt.Sprintf("could not convert %s to int64", args[0]), 0)
@@ -903,7 +909,12 @@ func main() {
 						}
 					}
 
-					dumpSession(env, sessionID)
+					// By default, use billing2 for next session dump, unless second param is given
+					if len(args) <= 1 {
+						dumpSession2(env, sessionID)
+					} else {
+						dumpSession(env, sessionID)
+					}
 
 					return nil
 				},
