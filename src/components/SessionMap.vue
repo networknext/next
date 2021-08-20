@@ -1,5 +1,5 @@
 <template>
-  <div class="map-container-no-offset">
+  <div class="map-container">
     <div class="map" id="map"></div>
     <canvas style="cursor: grab;" id="deck-canvas" data-intercom="map"></canvas>
   </div>
@@ -37,10 +37,6 @@ const MAX_RETRIES = 4
   name: 'SessionMap'
 })
 export default class SessionMap extends Vue {
-  get offsetMap () {
-    return this.$store.getters.isAnonymousPlus
-  }
-
   private deckGlInstance: any
   private mapInstance: any
   private mapLoop: any
@@ -322,14 +318,7 @@ export default class SessionMap extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-.map-container-offset {
-  width: 100%;
-  height: calc(-160px + 95vh);
-  position: relative;
-  overflow: hidden;
-  max-height: 1000px;
-}
-.map-container-no-offset {
+.map-container {
   width: 100%;
   height: calc(-160px + 100vh);
   position: relative;
