@@ -1,6 +1,9 @@
 <template>
   <div class="card-body" id="billing-page">
     <h5 class="card-title">Billing Dashboard</h5>
+    <p class="card-text">
+      One stop shop for billing information
+    </p>
     <iframe
       id="billingDash"
       :src="billingDashURL"
@@ -13,7 +16,6 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { DateFilterType } from './types/FilterTypes'
 
 @Component
 export default class Billing extends Vue {
@@ -52,27 +54,8 @@ export default class Billing extends Vue {
   }
 
   private fetchBillingSummary () {
-    switch (this.$store.getters.currentFilter.dateRange) {
-      case DateFilterType.CURRENT_MONTH:
-        break
-      case DateFilterType.LAST_MONTH:
-        break
-      case DateFilterType.LAST_30:
-        break
-      case DateFilterType.LAST_90:
-        break
-      case DateFilterType.YEAR_TO_DATE:
-        this.startDate = ''
-        this.endDate = Date() // TODO: replace this with same date lib as admin tool
-        break
-      case DateFilterType.CUSTOM:
-        break
-    }
-
     this.$apiService.fetchBillingSummary({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
-      start_date: this.startDate,
-      end_date: this.endDate
+      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
         this.billingDashURL = response.url || ''

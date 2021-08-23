@@ -16,6 +16,7 @@ declare module '*.vue' {
     fetchTopSessions (args: any): Promise<any>;
     fetchAllBuyers (): Promise<any>;
     fetchBillingSummary(args: any): Promise<any>;
+    fetchAnalyticsSummary(args: any): Promise<any>;
     fetchUserSessions (args: any): Promise<any>;
     fetchAllRoles (): Promise<any>;
     fetchAllAccounts (): Promise<any>;

@@ -78,7 +78,7 @@
         </div>
       </div>
     </div>
-    <div class="card" v-for="(notification, index) in releaseNotesNotifications" :key="index" style="margin-top: 20px;text-align: center;">
+    <div class="card" v-for="(notification, index) in releaseNotesNotifications" :key="`release-notes-notification-${index}`" style="margin-top: 20px;text-align: center;">
       <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center" >
         <div class="mb-2 mb-md-0 flex-grow-1"></div>
         <div class="pr-5">
@@ -114,7 +114,7 @@
       </div>
     <!-- TODO: It may be a good idea to break out these collapsable cards to be used elsewhere potentially -->
     <!-- TODO TODO: Yes please do this for notifications. Use prop to determine type -->
-    <div class="card" v-for="(notification, index) in analyticsNotifications" :key="index" style="margin-top: 20px;text-align: center;">
+    <div class="card" v-for="(notification, index) in analyticsNotifications" :key="`analytics-notification-${index}`" style="margin-top: 20px;text-align: center;">
       <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center" >
         <div class="mb-2 mb-md-0 flex-grow-1"></div>
         <div class="pr-5">
@@ -150,6 +150,11 @@
             </div>
             <div class="col">
               {{ notification.message }}
+            </div>
+            <div class="col-2">
+              <button id="analytics-demo-signup" class="btn btn-success btn-sm" @click="startAnalyticsTrial()">
+                Start Free Trial
+              </button>
             </div>
           </div>
         </div>
@@ -282,13 +287,16 @@ export default class Notifications extends Vue {
     this.$apiService
       .startAnalyticsTrial()
       .then(() => {
-        console.log('Congratulations you are now signed up for the analytics trial!')
-        // refresh auth token to get trial and analytics bits
-        // navigate to the analytics page
+        return this.$authService.refreshToken()
       })
       .catch((error: Error) => {
         console.log('Something went wrong setting up analytics trial')
         console.log(error)
+      })
+      .then(() => {
+        this.$root.$emit('showAnalyticsTrialResponse')
+        // TODO: Start a tour for analytics here?
+        this.fetchNotifications()
       })
   }
 }

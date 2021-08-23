@@ -82,11 +82,15 @@ const actions = {
         } else {
           allBuyers = responses[1].buyers
         }
+
         userProfile.buyerID = responses[0].account.id || responses[0].account.buyer_id || '' // TODO: remove the ".id" case after deploy
         userProfile.seller = responses[0].account.seller || false
         userProfile.firstName = responses[0].account.first_name || ''
         userProfile.lastName = responses[0].account.last_name || ''
         userProfile.companyName = responses[0].account.company_name || ''
+        userProfile.hasAnalytics = responses[0].account.analytics || false
+        userProfile.hasBilling = responses[0].account.billing || false
+        userProfile.hasTrial = responses[0].account.trial || true
         userProfile.domains = responses[0].domains || []
         dispatch('updateUserProfile', userProfile)
         dispatch('updateAllBuyers', allBuyers)

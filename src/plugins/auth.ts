@@ -114,9 +114,6 @@ export class AuthService {
       const token = authResult.__raw
 
       userProfile.roles = roles
-      userProfile.hasAnalytics = authResult.analytics || false
-      userProfile.hasBilling = authResult.billing || false
-      userProfile.hasTrial = authResult.trial || true
       userProfile.email = email
       userProfile.idToken = token
       userProfile.auth0ID = authResult.sub

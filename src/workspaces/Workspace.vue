@@ -120,6 +120,11 @@ export default class Workspace extends Vue {
     this.$root.$on('hideModal', this.hideModalCallback)
   }
 
+  private beforeDestroy () {
+    this.$root.$off('showModal')
+    this.$root.$off('hideModal')
+  }
+
   private showModalCallback (points: Array<any>) {
     if (!this.showModal) {
       this.modalPoints = points
