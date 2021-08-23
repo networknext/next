@@ -10,39 +10,43 @@ import (
 )
 
 type Buyer struct {
-	CompanyCode    string // TODO: chopping block - defined by the parent customer
-	ShortName      string // TBD: same as above
-	ID             uint64
-	HexID          string // needed by external (non-go) clients
-	Live           bool
-	Debug          bool
-	Analytics      bool
-	Billing        bool
-	Trial          bool
-	PublicKey      []byte
-	RouteShader    core.RouteShader
-	InternalConfig core.InternalConfig
-	DatabaseID     int64 // sql PK
-	CustomerID     int64 // sql FK
+	CompanyCode         string // TODO: chopping block - defined by the parent customer
+	ShortName           string // TBD: same as above
+	ID                  uint64
+	HexID               string // needed by external (non-go) clients
+	Live                bool
+	Debug               bool
+	Analytics           bool
+	Billing             bool
+	Trial               bool
+	ExoticLocationFee   float64
+	StandardLocationFee float64
+	PublicKey           []byte
+	RouteShader         core.RouteShader
+	InternalConfig      core.InternalConfig
+	DatabaseID          int64 // sql PK
+	CustomerID          int64 // sql FK
 }
 
 func (b *Buyer) String() string {
 
 	buyer := "\nrouting.Buyer:\n"
-	buyer += "\tID (hex)      : " + fmt.Sprintf("%16x", b.ID) + "\n"
-	buyer += "\tID            : " + fmt.Sprintf("%d", b.ID) + "\n"
-	buyer += "\tShortName     : '" + b.ShortName + "'\n"
-	buyer += "\tCompanyCode   : '" + b.CompanyCode + "'\n"
-	buyer += "\tLive          : " + strconv.FormatBool(b.Live) + "\n"
-	buyer += "\tDebug         : " + strconv.FormatBool(b.Debug) + "\n"
-	buyer += "\tAnalytics     : " + strconv.FormatBool(b.Analytics) + "\n"
-	buyer += "\tBilling       : " + strconv.FormatBool(b.Billing) + "\n"
-	buyer += "\tTrial         : " + strconv.FormatBool(b.Trial) + "\n"
-	buyer += "\tPublicKey     : " + string(b.PublicKey) + "\n"
-	buyer += "\tRouteShader   : TBD\n"
-	buyer += "\tInternalConfig: TBD\n"
-	buyer += "\tDatabaseID    : " + fmt.Sprintf("%d", b.DatabaseID) + "\n"
-	buyer += "\tCustomerID    : " + fmt.Sprintf("%d", b.CustomerID) + "\n"
+	buyer += "\tID (hex)              : " + fmt.Sprintf("%16x", b.ID) + "\n"
+	buyer += "\tID                    : " + fmt.Sprintf("%d", b.ID) + "\n"
+	buyer += "\tShortName             : '" + b.ShortName + "'\n"
+	buyer += "\tCompanyCode           : '" + b.CompanyCode + "'\n"
+	buyer += "\tLive                  : " + strconv.FormatBool(b.Live) + "\n"
+	buyer += "\tDebug                 : " + strconv.FormatBool(b.Debug) + "\n"
+	buyer += "\tAnalytics             : " + strconv.FormatBool(b.Analytics) + "\n"
+	buyer += "\tBilling               : " + strconv.FormatBool(b.Billing) + "\n"
+	buyer += "\tTrial                 : " + strconv.FormatBool(b.Trial) + "\n"
+	buyer += "\tExotic Location Fee   : " + fmt.Sprintf("%f", b.ExoticLocationFee) + "\n"
+	buyer += "\tStandard Location Fee : " + fmt.Sprintf("%f", b.StandardLocationFee) + "\n"
+	buyer += "\tPublicKey             : " + string(b.PublicKey) + "\n"
+	buyer += "\tRouteShader           : TBD\n"
+	buyer += "\tInternalConfig        : TBD\n"
+	buyer += "\tDatabaseID            : " + fmt.Sprintf("%d", b.DatabaseID) + "\n"
+	buyer += "\tCustomerID            : " + fmt.Sprintf("%d", b.CustomerID) + "\n"
 
 	return buyer
 }

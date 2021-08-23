@@ -39,6 +39,8 @@ create table buyers (
   analytics boolean not null default false,
   billing boolean not null default false,
   trial boolean not null default true,
+  exotic_location_fee numeric not null default 300,
+  standard_location_fee numeric not null default 300,
   public_key bytea not null,
   short_name varchar unique,
   customer_id integer not null,

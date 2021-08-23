@@ -86,19 +86,21 @@ func ExecRetry(ctx context.Context, db *SQL, queryString bytes.Buffer, queryArgs
 }
 
 type sqlBuyer struct {
-	SdkID          int64
-	ID             uint64
-	IsLiveCustomer bool
-	Debug          bool
-	Analytics      bool
-	Billing        bool
-	Trial          bool
-	Name           string
-	PublicKey      []byte
-	ShortName      string
-	CompanyCode    string // should not be needed
-	DatabaseID     int64  // sql PK
-	CustomerID     int64  // sql PK
+	SdkID               int64
+	ID                  uint64
+	IsLiveCustomer      bool
+	Debug               bool
+	Analytics           bool
+	Billing             bool
+	Trial               bool
+	ExoticLocationFee   float64
+	StandardLocationFee float64
+	Name                string
+	PublicKey           []byte
+	ShortName           string
+	CompanyCode         string // should not be needed
+	DatabaseID          int64  // sql PK
+	CustomerID          int64  // sql PK
 }
 
 type sqlDatacenterMap struct {
@@ -387,7 +389,7 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 
 	sqlBuyerID := int64(ephemeralBuyerID)
 
-	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, analytics, billing, public_key, customer_id "))
+	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where sdk_generated_id = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -399,6 +401,9 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			&buyer.Debug,
 			&buyer.Analytics,
 			&buyer.Billing,
+			&buyer.Trial,
+			&buyer.ExoticLocationFee,
+			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -429,19 +434,22 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 		}
 
 		b := routing.Buyer{
-			ID:             ephemeralBuyerID,
-			HexID:          fmt.Sprintf("%016x", buyer.ID),
-			ShortName:      buyer.ShortName,
-			CompanyCode:    buyer.ShortName,
-			Live:           buyer.IsLiveCustomer,
-			Debug:          buyer.Debug,
-			Analytics:      buyer.Analytics,
-			Billing:        buyer.Billing,
-			PublicKey:      buyer.PublicKey,
-			RouteShader:    rs,
-			InternalConfig: ic,
-			CustomerID:     buyer.CustomerID,
-			DatabaseID:     buyer.DatabaseID,
+			ID:                  ephemeralBuyerID,
+			HexID:               fmt.Sprintf("%016x", buyer.ID),
+			ShortName:           buyer.ShortName,
+			CompanyCode:         buyer.ShortName,
+			Live:                buyer.IsLiveCustomer,
+			Debug:               buyer.Debug,
+			Analytics:           buyer.Analytics,
+			Billing:             buyer.Billing,
+			Trial:               buyer.Trial,
+			ExoticLocationFee:   buyer.ExoticLocationFee,
+			StandardLocationFee: buyer.StandardLocationFee,
+			PublicKey:           buyer.PublicKey,
+			RouteShader:         rs,
+			InternalConfig:      ic,
+			CustomerID:          buyer.CustomerID,
+			DatabaseID:          buyer.DatabaseID,
 		}
 		return b, nil
 	default:
@@ -459,7 +467,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 	var err error
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing, trial, public_key, customer_id "))
+	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where short_name = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -472,6 +480,8 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			&buyer.Analytics,
 			&buyer.Billing,
 			&buyer.Trial,
+			&buyer.ExoticLocationFee,
+			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -502,20 +512,22 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 		}
 
 		b := routing.Buyer{
-			ID:             buyer.ID,
-			HexID:          fmt.Sprintf("%016x", buyer.ID),
-			ShortName:      companyCode,
-			CompanyCode:    companyCode,
-			Live:           buyer.IsLiveCustomer,
-			Debug:          buyer.Debug,
-			Analytics:      buyer.Analytics,
-			Billing:        buyer.Billing,
-			Trial:          buyer.Trial,
-			PublicKey:      buyer.PublicKey,
-			RouteShader:    rs,
-			InternalConfig: ic,
-			CustomerID:     buyer.CustomerID,
-			DatabaseID:     buyer.DatabaseID,
+			ID:                  buyer.ID,
+			HexID:               fmt.Sprintf("%016x", buyer.ID),
+			ShortName:           companyCode,
+			CompanyCode:         companyCode,
+			Live:                buyer.IsLiveCustomer,
+			Debug:               buyer.Debug,
+			Analytics:           buyer.Analytics,
+			Billing:             buyer.Billing,
+			Trial:               buyer.Trial,
+			ExoticLocationFee:   buyer.ExoticLocationFee,
+			StandardLocationFee: buyer.StandardLocationFee,
+			PublicKey:           buyer.PublicKey,
+			RouteShader:         rs,
+			InternalConfig:      ic,
+			CustomerID:          buyer.CustomerID,
+			DatabaseID:          buyer.DatabaseID,
 		}
 		return b, nil
 	default:
@@ -532,7 +544,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 	buyers := []routing.Buyer{}
 	buyerIDs := make(map[uint64]int64)
 
-	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, analytics, billing, trial, public_key, customer_id "))
+	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -555,6 +567,8 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			&buyer.Analytics,
 			&buyer.Billing,
 			&buyer.Trial,
+			&buyer.ExoticLocationFee,
+			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -578,20 +592,22 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 		}
 
 		b := routing.Buyer{
-			ID:             buyer.ID,
-			HexID:          fmt.Sprintf("%016x", buyer.ID),
-			ShortName:      buyer.ShortName,
-			CompanyCode:    buyer.ShortName,
-			Live:           buyer.IsLiveCustomer,
-			Debug:          buyer.Debug,
-			Analytics:      buyer.Analytics,
-			Billing:        buyer.Billing,
-			Trial:          buyer.Trial,
-			PublicKey:      buyer.PublicKey,
-			RouteShader:    rs,
-			InternalConfig: ic,
-			CustomerID:     buyer.CustomerID,
-			DatabaseID:     buyer.DatabaseID,
+			ID:                  buyer.ID,
+			HexID:               fmt.Sprintf("%016x", buyer.ID),
+			ShortName:           buyer.ShortName,
+			CompanyCode:         buyer.ShortName,
+			Live:                buyer.IsLiveCustomer,
+			Debug:               buyer.Debug,
+			Analytics:           buyer.Analytics,
+			Billing:             buyer.Billing,
+			Trial:               buyer.Trial,
+			ExoticLocationFee:   buyer.ExoticLocationFee,
+			StandardLocationFee: buyer.StandardLocationFee,
+			PublicKey:           buyer.PublicKey,
+			RouteShader:         rs,
+			InternalConfig:      ic,
+			CustomerID:          buyer.CustomerID,
+			DatabaseID:          buyer.DatabaseID,
 		}
 
 		buyers = append(buyers, b)
@@ -615,22 +631,24 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	}
 
 	buyer := sqlBuyer{
-		ID:             b.ID,
-		CompanyCode:    b.CompanyCode,
-		ShortName:      b.CompanyCode,
-		IsLiveCustomer: b.Live,
-		Debug:          b.Debug,
-		Analytics:      b.Analytics,
-		Billing:        b.Billing,
-		Trial:          b.Trial,
-		PublicKey:      b.PublicKey,
-		CustomerID:     c.DatabaseID,
+		ID:                  b.ID,
+		CompanyCode:         b.CompanyCode,
+		ShortName:           b.CompanyCode,
+		IsLiveCustomer:      b.Live,
+		Debug:               b.Debug,
+		Analytics:           b.Analytics,
+		Billing:             b.Billing,
+		Trial:               b.Trial,
+		ExoticLocationFee:   b.ExoticLocationFee,
+		StandardLocationFee: b.StandardLocationFee,
+		PublicKey:           b.PublicKey,
+		CustomerID:          c.DatabaseID,
 	}
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, analytics, billing, public_key, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8)"))
+	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -642,6 +660,9 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		buyer.Debug,
 		buyer.Analytics,
 		buyer.Billing,
+		buyer.Trial,
+		buyer.ExoticLocationFee,
+		buyer.StandardLocationFee,
 		buyer.PublicKey,
 		buyer.CustomerID,
 	)
@@ -3469,6 +3490,22 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		updateSQL.Write([]byte("update buyers set trial=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 		args = append(args, trial, int64(ephemeralBuyerID))
+	case "ExoticLocationFee":
+		exoticLocationFee, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("ExoticLocationFee: %v is not a valid float64 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set exotic_location_fee=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, exoticLocationFee, int64(ephemeralBuyerID))
+	case "StandardLocationFee":
+		standardLocationFee, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("StandardLocationFee: %v is not a valid float64 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set standard_location_fee=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, standardLocationFee, int64(ephemeralBuyerID))
 	case "ShortName":
 		shortName, ok := value.(string)
 		if !ok {
