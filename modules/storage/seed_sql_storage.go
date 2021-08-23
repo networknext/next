@@ -95,7 +95,10 @@ func SeedSQLStorage(
 			Live:        true,
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
+			Analytics:   false,
+			Billing:     false,
 			Debug:       true,
+			Trial:       true,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -112,6 +115,10 @@ func SeedSQLStorage(
 			ShortName:   "ghost-army",
 			CompanyCode: ghostCust.Code,
 			Live:        true,
+			Analytics:   false,
+			Billing:     false,
+			Debug:       false,
+			Trial:       true,
 			PublicKey:   publicKey,
 			CustomerID:  ghostCust.DatabaseID,
 		}); err != nil {
@@ -125,7 +132,7 @@ func SeedSQLStorage(
 
 		ghostBuyer, err := db.Buyer(ctx, internalBuyerIDGhost)
 		if err != nil {
-			return fmt.Errorf("Error getting local buyer: %v", err)
+			return fmt.Errorf("Error getting ghost army buyer: %v", err)
 		}
 
 		// fmt.Println("Adding sellers")
