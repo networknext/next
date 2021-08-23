@@ -368,6 +368,24 @@ func main() {
 
 	githubClient := github.NewClient(tc)
 
+	webHookUrl := envvar.Get("SLACK_WEBHOOK_URL", "")
+	if webHookUrl == "" {
+		level.Error(logger).Log("err", "env var SLACK_WEBHOOK_URL must be set")
+		os.Exit(1)
+	}
+
+	channel := envvar.Get("SLACK_CHANNEL", "")
+	if channel == "" {
+		level.Error(logger).Log("err", "env var SLACK_CHANNEL must be set")
+		os.Exit(1)
+	}
+
+	slackClient := notifications.SlackClient{
+		WebHookUrl: webHookUrl,
+		UserName:   "PortalBot",
+		Channel:    channel,
+	}
+
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -384,6 +402,7 @@ func main() {
 		Metrics:                serviceMetrics,
 		LookerSecret:           lookerSecret,
 		GithubClient:           githubClient,
+		SlackClient:            slackClient,
 	}
 
 	configService := jsonrpc.ConfigService{
@@ -562,18 +581,6 @@ func main() {
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&configService, "")
 
-		webHookUrl := envvar.Get("SLACK_WEBHOOK_URL", "")
-		if webHookUrl == "" {
-			level.Error(logger).Log("err", "env var SLACK_WEBHOOK_URL must be set")
-			os.Exit(1)
-		}
-
-		channel := envvar.Get("SLACK_CHANNEL", "")
-		if channel == "" {
-			level.Error(logger).Log("err", "env var SLACK_CHANNEL must be set")
-			os.Exit(1)
-		}
-
 		s.RegisterService(&jsonrpc.AuthService{
 			MailChimpManager: notifications.MailChimpHandler{
 				HTTPHandler: *http.DefaultClient,
@@ -582,12 +589,8 @@ func main() {
 			Logger:      logger,
 			UserManager: userManager,
 			JobManager:  jobManager,
-			SlackClient: notifications.SlackClient{
-				WebHookUrl: webHookUrl,
-				UserName:   "PortalBot",
-				Channel:    channel,
-			},
-			Storage: db,
+			SlackClient: slackClient,
+			Storage:     db,
 		}, "")
 
 		relayFrontEnd, ok := os.LookupEnv("RELAY_FRONTEND")

@@ -96,7 +96,7 @@ func SeedSQLStorage(
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
 			Analytics:   false,
-			Billing:     false,
+			Billing:     true,
 			Debug:       true,
 			Trial:       true,
 		}); err != nil {

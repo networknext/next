@@ -85,6 +85,8 @@ type BuyersService struct {
 	Logger  log.Logger
 
 	LookerSecret string
+
+	SlackClient notifications.SlackClient
 }
 
 type FlushSessionsArgs struct{}
@@ -2626,6 +2628,21 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 		return &err
 	}
 
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	email, ok := claims["email"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
 	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
@@ -2640,10 +2657,15 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 		return err
 	}
 
+	company, err := s.Storage.Customer(r.Context(), companyCode)
+	if err != nil {
+		err = fmt.Errorf("StartAnalyticsTrial() failed getting customer with code: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
 	// Buyer has a trial still and isn't currently signed up for analytics, remove trial and flip analytics
 	if buyer.Trial && !buyer.Analytics {
-		buyer.Trial = false
-		buyer.Analytics = true
 		if err := s.Storage.UpdateBuyer(r.Context(), buyer.ID, "Trial", false); err != nil {
 			err = fmt.Errorf("StartAnalyticsTrial() failed to flip Trial bit: %v", err)
 			level.Error(s.Logger).Log("err", err)
@@ -2653,6 +2675,12 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 			err = fmt.Errorf("StartAnalyticsTrial() failed to flip Analytics bit: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
+		}
+
+		if err := s.SlackClient.SendInfo(fmt.Sprintf("%s signed from %s up for an analytics trial! :money_mouth_face:", email, company.Name)); err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v: Email is required", err.Error()))
+			return &err
 		}
 	}
 
