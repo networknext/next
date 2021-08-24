@@ -10,6 +10,7 @@ import (
 	"hash/fnv"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -2698,7 +2699,7 @@ type FetchBillingSummaryReply struct {
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
-/* func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *FetchBillingSummaryArgs, reply *FetchBillingSummaryReply) error {
+func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *FetchBillingSummaryArgs, reply *FetchBillingSummaryReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
@@ -2708,7 +2709,7 @@ type FetchBillingSummaryReply struct {
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
 	// TODO: this will always be the same for billing summary dashboards so find a better way to store this information
-	const URI = "/embed/dashboards-next/7"
+	const URI = "/embed/dashboards-next/11"
 
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
@@ -2739,11 +2740,7 @@ type FetchBillingSummaryReply struct {
 		return &err
 	}
 
-	if !isAdmin && (companyCode != "esl" && companyCode != "velan") { // TODO: replace this with a better system (beta feature buyer flag or something????)
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
-		return &err
-	}
+	fmt.Println(companyCode)
 
 	// Admin's will be able to search any company's billing info
 	if isAdmin {
@@ -2751,8 +2748,8 @@ type FetchBillingSummaryReply struct {
 	}
 
 	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
-	urlOptions := LookerURLOptions{
-		Host:            LOOKER_HOST,
+	urlOptions := notifications.LookerURLOptions{
+		Host:            notifications.LOOKER_HOST,
 		Secret:          s.LookerSecret,
 		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		FirstName:       "", // TODO: Update this to first name coming from portal information
@@ -2760,7 +2757,7 @@ type FetchBillingSummaryReply struct {
 		GroupsIds:       []int{EmbeddedUserGroupID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-		Models:          []string{"networknext_pbl"},                                 // TODO: This may or may not need to change
+		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   3600,
@@ -2770,12 +2767,12 @@ type FetchBillingSummaryReply struct {
 		Time:            time.Now().Unix(),
 	}
 
-	urlOptions.UserAttributes["customer_code"] = "velan"
+	urlOptions.UserAttributes["customer_code"] = "esl"
 	// TODO: Add time range options here?
 
-	reply.URL = s.BuildLookerURL(urlOptions)
+	reply.URL = notifications.BuildLookerURL(urlOptions)
 	return nil
-} */
+}
 
 func (s *BuyersService) FetchReleaseNotes(ctx context.Context) error {
 	cacheList := make([]notifications.ReleaseNotesNotification, 0)
