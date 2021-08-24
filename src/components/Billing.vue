@@ -8,6 +8,8 @@
       id="billingDash"
       :src="billingDashURL"
       v-if="showSummary"
+      width="1200"
+      height="1600"
       frameborder="0"
     >
     </iframe>
