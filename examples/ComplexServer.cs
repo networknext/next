@@ -374,446 +374,446 @@ namespace Server {
 		// Delegate functions
 
 		// Define custom logging function to output to Unity console
-	    [MonoPInvokeCallback(typeof(NextLogFunction))]
-	    static void UnityLogger(int level, IntPtr formatPtr, IntPtr argsPtr)
-	    {
-	  		// Unmarshal the log message into a string
-	        string argsStr = Marshal.PtrToStringAnsi(argsPtr);
+		[MonoPInvokeCallback(typeof(NextLogFunction))]
+		static void UnityLogger(int level, IntPtr formatPtr, IntPtr argsPtr)
+		{
+			// Unmarshal the log message into a string
+			string argsStr = Marshal.PtrToStringAnsi(argsPtr);
 
-	        // Choose a colour for the log depending on the log level
-	        Color c;
-	        if (level == Next.NEXT_LOG_LEVEL_ERROR) {
-	            c = Color.red;
-	        } else if (level == Next.NEXT_LOG_LEVEL_INFO) {
-	            c = Color.green;
-	        } else if (level == Next.NEXT_LOG_LEVEL_WARN) {
-	            c = Color.yellow;
-	        } else if (level == Next.NEXT_LOG_LEVEL_DEBUG) {
-	            c = Color.orange;
-	        } else {
-	            c = Color.white;
-	        }
+			// Choose a colour for the log depending on the log level
+			Color c;
+			if (level == Next.NEXT_LOG_LEVEL_ERROR) {
+				c = Color.red;
+			} else if (level == Next.NEXT_LOG_LEVEL_INFO) {
+				c = Color.green;
+			} else if (level == Next.NEXT_LOG_LEVEL_WARN) {
+				c = Color.yellow;
+			} else if (level == Next.NEXT_LOG_LEVEL_DEBUG) {
+				c = Color.orange;
+			} else {
+				c = Color.white;
+			}
 
-	        if (level != Next.NEXT_LOG_LEVEL_NONE)
-	        {
-	        	// Log to Unity console
-	        	Debug.Log(String.Format("<color={0}>{1}: {2}: {3}</color>", 
-	        		c.ToString(), Next.NextTime().ToString("F2"), LogLevelString(level), argsStr)
-	        	);
-	        }
-	    }
+			if (level != Next.NEXT_LOG_LEVEL_NONE)
+			{
+				// Log to Unity console
+				Debug.Log(String.Format("<color={0}>{1}: {2}: {3}</color>", 
+					c.ToString(), Next.NextTime().ToString("F2"), LogLevelString(level), argsStr)
+				);
+			}
+		}
 
-	    // Define custom assert function
-	    [MonoPInvokeCallback(typeof(NextAssertFunction))]
-	    static void AssertFunction(bool condition, string function, string file, int line)
-	    {
-	    	#if UNITY_EDITOR
-	            // Stops the editor cleanly
-	            Debug.LogError(String.Format("assert failed: ({0}), function {1}, file {2}, line {3}", condition, function, file, line));
-	            Assert.IsFalse(condition, String.Format("assert failed: ({0}), function {1}, file {2}, line {3}", condition, function, file, line));
+		// Define custom assert function
+		[MonoPInvokeCallback(typeof(NextAssertFunction))]
+		static void AssertFunction(bool condition, string function, string file, int line)
+		{
+			#if UNITY_EDITOR
+				// Stops the editor cleanly
+				Debug.LogError(String.Format("assert failed: ({0}), function {1}, file {2}, line {3}", condition, function, file, line));
+				Assert.IsFalse(condition, String.Format("assert failed: ({0}), function {1}, file {2}, line {3}", condition, function, file, line));
 
-	        	UnityEditor.EditorApplication.isPlaying = false;
-	        #else
-	            Application.Quit();
-	        #endif // #if UNITY_EDITOR 
-	    }
+				UnityEditor.EditorApplication.isPlaying = false;
+			#else
+				Application.Quit();
+			#endif // #if UNITY_EDITOR 
+		}
 
-	    // Define custom malloc function
-	    [MonoPInvokeCallback(typeof(NextMallocFunction))]
-	    static IntPtr MallocFunction(IntPtr ctxPtr, ulong bytes)
-	    {    
-	    	Context ctx = (Context)Marshal.PtrToStructure(ctxPtr, typeof(Context));
+		// Define custom malloc function
+		[MonoPInvokeCallback(typeof(NextMallocFunction))]
+		static IntPtr MallocFunction(IntPtr ctxPtr, ulong bytes)
+		{    
+			Context ctx = (Context)Marshal.PtrToStructure(ctxPtr, typeof(Context));
 
-	    	Next.NextAssert(!ctx.Equals(default(Context)));
+			Next.NextAssert(!ctx.Equals(default(Context)));
 
-	    	GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-	    	Allocator allocator = (Allocator)allocatorGCH.Target; 
+			GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
+			Allocator allocator = (Allocator)allocatorGCH.Target; 
 
-	    	Next.NextAssert(allocator != null);
+			Next.NextAssert(allocator != null);
 
-	    	return allocator.Alloc((int)bytes);
-	    }
+			return allocator.Alloc((int)bytes);
+		}
 
-	    // Define custom free function
-	    [MonoPInvokeCallback(typeof(NextFreeFunction))]
-	    static void FreeFunction(IntPtr ctxPtr, IntPtr p)
-	    {
-	    	Context ctx = (Context)Marshal.PtrToStructure(ctxPtr, typeof(Context));
+		// Define custom free function
+		[MonoPInvokeCallback(typeof(NextFreeFunction))]
+		static void FreeFunction(IntPtr ctxPtr, IntPtr p)
+		{
+			Context ctx = (Context)Marshal.PtrToStructure(ctxPtr, typeof(Context));
 
-	    	Next.NextAssert(!ctx.Equals(default(Context)));
+			Next.NextAssert(!ctx.Equals(default(Context)));
 
-	    	GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-	    	Allocator allocator = (Allocator)allocatorGCH.Target; 
+			GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
+			Allocator allocator = (Allocator)allocatorGCH.Target; 
 
-	    	Next.NextAssert(allocator != null);
+			Next.NextAssert(allocator != null);
 
-	    	allocator.Free(p);	
-	    }
+			allocator.Free(p);	
+		}
 
-	    // Define packet receive callback function
-	    [MonoPInvokeCallback(typeof(NextServerPacketReceivedCallback))]
-	    public void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr, IntPtr packetDataPtr, int packetBytes)
-	    {
-	    	// Unmarshal the context pointer into the client context to access its fields
-	    	ServerContext ctx = (ServerContext)Marshal.PtrToStructure(ctxPtr, typeof(ServerContext));
+		// Define packet receive callback function
+		[MonoPInvokeCallback(typeof(NextServerPacketReceivedCallback))]
+		public void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr, IntPtr packetDataPtr, int packetBytes)
+		{
+			// Unmarshal the context pointer into the client context to access its fields
+			ServerContext ctx = (ServerContext)Marshal.PtrToStructure(ctxPtr, typeof(ServerContext));
 
-	    	Next.NextAssert(!ctx.Equals(default(ServerContext)));
-	    	
-	    	GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
-	    	Allocator allocator = (Allocator)allocatorGCH.Target; 
+			Next.NextAssert(!ctx.Equals(default(ServerContext)));
+			
+			GCHandle allocatorGCH = GCHandle.FromIntPtr(ctx.AllocatorGCH);
+			Allocator allocator = (Allocator)allocatorGCH.Target; 
 
-	    	Next.NextAssert(allocator != null);
-	    	Next.NextAssert(ctx.ServerData == 0x12345678);
+			Next.NextAssert(allocator != null);
+			Next.NextAssert(ctx.ServerData == 0x12345678);
 
-	    	// Unmarshal the packet data into byte[]
-	    	byte[] packetData = new byte[packetBytes];
-	    	Marshal.Copy(packetDataPtr, packetData, 0, packetBytes);
+			// Unmarshal the packet data into byte[]
+			byte[] packetData = new byte[packetBytes];
+			Marshal.Copy(packetDataPtr, packetData, 0, packetBytes);
 
-	    	Next.NextServerSendPacket(serverPtr, fromPtr, packetData, packetBytes);
+			Next.NextServerSendPacket(serverPtr, fromPtr, packetData, packetBytes);
 
-	    	Next.NextAddress fromAddress = Next.GetNextAddressFromPointer(fromPtr);
-	    	
-	    	GCHandle clientDataMapGCH = GCHandle.FromIntPtr(ctx.ClientDataMapGCH);
-	    	ClientDataMap clientDataMap = (ClientDataMap)clientDataMapGCH.Target;
+			Next.NextAddress fromAddress = Next.GetNextAddressFromPointer(fromPtr);
+			
+			GCHandle clientDataMapGCH = GCHandle.FromIntPtr(ctx.ClientDataMapGCH);
+			ClientDataMap clientDataMap = (ClientDataMap)clientDataMapGCH.Target;
 
-	    	if (clientDataMap.IsExistingSession(ref fromAddress))
-	    	{
-	    		// Update last packet receive time
-	    		clientDataMap.UpdateLastPacketReceiveTime(ref fromAddress, Next.NextTime());
-	    	}
-	    	else
-	    	{
-	    		// Create the client data for the new session
-	    		string userID = "user id can be any id that is unique across all users. we hash it before sending up to our backend";
-	    		ulong sessionID = Next.NextServerUpgradeSession(serverPtr, fromPtr, userID);
+			if (clientDataMap.IsExistingSession(ref fromAddress))
+			{
+				// Update last packet receive time
+				clientDataMap.UpdateLastPacketReceiveTime(ref fromAddress, Next.NextTime());
+			}
+			else
+			{
+				// Create the client data for the new session
+				string userID = "user id can be any id that is unique across all users. we hash it before sending up to our backend";
+				ulong sessionID = Next.NextServerUpgradeSession(serverPtr, fromPtr, userID);
 
-	    		ClientData clientData = new ClientData();
-	    		clientData.Address = fromAddress;
-	    		clientData.SessionID = sessionID;
-	    		clientData.LastPacketReceiveTime = Next.NextTime();
+				ClientData clientData = new ClientData();
+				clientData.Address = fromAddress;
+				clientData.SessionID = sessionID;
+				clientData.LastPacketReceiveTime = Next.NextTime();
 
-	    		if (clientDataMap.AddNewSession(clientData))
-	    		{
-	    			Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("client connected {0} [{1}]", Next.NextAddressToString(ref fromAddress), sessionID.ToString()));
+				if (clientDataMap.AddNewSession(clientData))
+				{
+					Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("client connected {0} [{1}]", Next.NextAddressToString(ref fromAddress), sessionID.ToString()));
 
 					if (sessionID != 0)
 					{
 						string[] tags = new string[]{"pro", "streamer"};
-		    			int numTags = 2;
-		    			Next.NextServerTagSessionMultiple(serverPtr, fromPtr, tags, numTags);
+						int numTags = 2;
+						Next.NextServerTagSessionMultiple(serverPtr, fromPtr, tags, numTags);
 					}	    			
-	    		}
-	    	}
-	    }
+				}
+			}
+		}
 
-	    // ----------------------------------------------------------
+		// ----------------------------------------------------------
 
-	    // Utility functions
+		// Utility functions
 
-	    // Determines the log type from the level 
-	    static string LogLevelString(int level)
-	    {
-	    	if (level == Next.NEXT_LOG_LEVEL_ERROR) {
-	    	    return "error";
-	    	} else if (level == Next.NEXT_LOG_LEVEL_INFO) {
-	    	    return "info";
-	    	} else if (level == Next.NEXT_LOG_LEVEL_WARN) {
-	    	    return "warn";
-	    	} else if (level == Next.NEXT_LOG_LEVEL_DEBUG) {
-	    	    return "debug";
-	    	} else {
-	    	    return "???";
-	    	}
-	    }
+		// Determines the log type from the level 
+		static string LogLevelString(int level)
+		{
+			if (level == Next.NEXT_LOG_LEVEL_ERROR) {
+				return "error";
+			} else if (level == Next.NEXT_LOG_LEVEL_INFO) {
+				return "info";
+			} else if (level == Next.NEXT_LOG_LEVEL_WARN) {
+				return "warn";
+			} else if (level == Next.NEXT_LOG_LEVEL_DEBUG) {
+				return "debug";
+			} else {
+				return "???";
+			}
+		}
 
-	    static void PrintServerStats(IntPtr serverPtr, ClientDataMap clientDataMap)
-	    {
-	    	Next.NextAssert(serverPtr != IntPtr.Zero);
-	    	Next.NextAssert(clientDataMap != null);
+		static void PrintServerStats(IntPtr serverPtr, ClientDataMap clientDataMap)
+		{
+			Next.NextAssert(serverPtr != IntPtr.Zero);
+			Next.NextAssert(clientDataMap != null);
 
-	    	Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("{0} connected clients", clientDataMap.GetNumClients()));
+			Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("{0} connected clients", clientDataMap.GetNumClients()));
 
-	    	bool showDetailedStats = true;
+			bool showDetailedStats = true;
 
-	    	if (!showDetailedStats)
-	    	{
-	    		return;
-	    	}
+			if (!showDetailedStats)
+			{
+				return;
+			}
 
-	    	StringBuilder sb = new StringBuilder();
+			StringBuilder sb = new StringBuilder();
 
-	    	Next.NextAddress[] addresses = clientDataMap.GetClientAddresses();
+			Next.NextAddress[] addresses = clientDataMap.GetClientAddresses();
 
-	    	for (int i = 0; i < addresses.Length; i++)
-	    	{
-	    		Next.NextAddress address = addresses[i];
+			for (int i = 0; i < addresses.Length; i++)
+			{
+				Next.NextAddress address = addresses[i];
 
-	    		// Create IntPtr for each address
-	    		IntPtr addrPtr = Marshal.AllocHGlobal(Marshal.SizeOf(address));
-	    		Marshal.StructureToPtr(address, addrPtr, false);
+				// Create IntPtr for each address
+				IntPtr addrPtr = Marshal.AllocHGlobal(Marshal.SizeOf(address));
+				Marshal.StructureToPtr(address, addrPtr, false);
 
-	    		// Get the stats for this address
-	    		Next.ServerStats stats;
-	    		Next.NextServerStats(serverPtr, addrPtr, out stats);
+				// Get the stats for this address
+				Next.ServerStats stats;
+				Next.NextServerStats(serverPtr, addrPtr, out stats);
 
-	    		// Release memory for the address pointer
-	    		Marshal.FreeHGlobal(addrPtr);
+				// Release memory for the address pointer
+				Marshal.FreeHGlobal(addrPtr);
 
-	    		sb.Append("================================================================\n");
-	    		sb.AppendFormat("address = {0}\n", Next.NextAddressToString(ref address));
+				sb.Append("================================================================\n");
+				sb.AppendFormat("address = {0}\n", Next.NextAddressToString(ref address));
 
-		    	string platform = "unknown";
-		    	switch (stats.PlatformID)
-		    	{
-		    		case Next.NEXT_PLATFORM_WINDOWS:
-			            platform = "windows";
-			            break;
+				string platform = "unknown";
+				switch (stats.PlatformID)
+				{
+					case Next.NEXT_PLATFORM_WINDOWS:
+						platform = "windows";
+						break;
 
-			        case Next.NEXT_PLATFORM_MAC:
-			            platform = "mac";
-			            break;
+					case Next.NEXT_PLATFORM_MAC:
+						platform = "mac";
+						break;
 
-			        case Next.NEXT_PLATFORM_LINUX:
-			            platform = "linux";
-			            break;
+					case Next.NEXT_PLATFORM_LINUX:
+						platform = "linux";
+						break;
 
-			        case Next.NEXT_PLATFORM_SWITCH:
-			            platform = "nintendo switch";
-			            break;
+					case Next.NEXT_PLATFORM_SWITCH:
+						platform = "nintendo switch";
+						break;
 
-			        case Next.NEXT_PLATFORM_PS4:
-			            platform = "ps4";
-			            break;
+					case Next.NEXT_PLATFORM_PS4:
+						platform = "ps4";
+						break;
 
-			        case Next.NEXT_PLATFORM_PS5:
-			            platform = "ps5";
-			            break;
+					case Next.NEXT_PLATFORM_PS5:
+						platform = "ps5";
+						break;
 
-			        case Next.NEXT_PLATFORM_IOS:
-			            platform = "ios";
-			            break;
+					case Next.NEXT_PLATFORM_IOS:
+						platform = "ios";
+						break;
 
-			        case Next.NEXT_PLATFORM_XBOX_ONE:
-			            platform = "xbox one";
-			            break;
+					case Next.NEXT_PLATFORM_XBOX_ONE:
+						platform = "xbox one";
+						break;
 
-			        case Next.NEXT_PLATFORM_XBOX_SERIES_X:
-			            platform = "xbox series x";
-			            break;
+					case Next.NEXT_PLATFORM_XBOX_SERIES_X:
+						platform = "xbox series x";
+						break;
 
-			        default:
-			            break;
-		    	}
+					default:
+						break;
+				}
 
-		    	sb.AppendFormat("session id = {0}\n", stats.SessionID.ToString());
-		    	sb.AppendFormat("platform id = {0} ({1})\n", platform, stats.PlatformID);
+				sb.AppendFormat("session id = {0}\n", stats.SessionID.ToString());
+				sb.AppendFormat("platform id = {0} ({1})\n", platform, stats.PlatformID);
 
-		    	string connection = "unknown";
-		    	switch (stats.ConnectionType)
-		    	{
-		    		case Next.NEXT_CONNECTION_TYPE_WIRED:
-		    		    connection = "wired";
-		    		    break;
+				string connection = "unknown";
+				switch (stats.ConnectionType)
+				{
+					case Next.NEXT_CONNECTION_TYPE_WIRED:
+						connection = "wired";
+						break;
 
-		    		case Next.NEXT_CONNECTION_TYPE_WIFI:
-		    		    connection = "wifi";
-		    		    break;
+					case Next.NEXT_CONNECTION_TYPE_WIFI:
+						connection = "wifi";
+						break;
 
-		    		case Next.NEXT_CONNECTION_TYPE_CELLULAR:
-		    		    connection = "cellular";
-		    		    break;
+					case Next.NEXT_CONNECTION_TYPE_CELLULAR:
+						connection = "cellular";
+						break;
 
-		    		default:
-		    		    break;
-		    	}
+					default:
+						break;
+				}
 
-		    	sb.AppendFormat("connection type = {0} ({1})\n", connection, stats.ConnectionType);
+				sb.AppendFormat("connection type = {0} ({1})\n", connection, stats.ConnectionType);
 
-		    	if (!stats.FallbackToDirect)
-		    	{
-		    		sb.AppendFormat("committed = {0}\n", stats.Committed.ToString());
-		    		sb.AppendFormat("multipath = {0}\n", stats.Multipath.ToString());
-		    		sb.AppendFormat("reported = {0}\n", stats.Reported.ToString());
-		    	}
+				if (!stats.FallbackToDirect)
+				{
+					sb.AppendFormat("committed = {0}\n", stats.Committed.ToString());
+					sb.AppendFormat("multipath = {0}\n", stats.Multipath.ToString());
+					sb.AppendFormat("reported = {0}\n", stats.Reported.ToString());
+				}
 
-		    	sb.AppendFormat("fallback to direct = {0}\n", stats.FallbackToDirect.ToString());
+				sb.AppendFormat("fallback to direct = {0}\n", stats.FallbackToDirect.ToString());
 
-		    	sb.AppendFormat("direct rtt = {0}ms\n", stats.DirectRTT.ToString("F"));
-		    	sb.AppendFormat("direct jitter = {0}ms\n", stats.DirectJitter.ToString("F"));
-		    	sb.AppendFormat("direct packet loss = {0}%\n", stats.DirectPacketLoss.ToString("F1"));
+				sb.AppendFormat("direct rtt = {0}ms\n", stats.DirectRTT.ToString("F"));
+				sb.AppendFormat("direct jitter = {0}ms\n", stats.DirectJitter.ToString("F"));
+				sb.AppendFormat("direct packet loss = {0}%\n", stats.DirectPacketLoss.ToString("F1"));
 
-		    	if (stats.Next)
-		    	{
-		    		sb.AppendFormat("next rtt = {0}ms\n", stats.NextRTT.ToString("F"));
-		    		sb.AppendFormat("next jitter = {0}ms\n", stats.NextJitter.ToString("F"));
-		    		sb.AppendFormat("next packet loss = {0}%\n", stats.NextPacketLoss.ToString("F1"));
-		    		sb.AppendFormat("next bandwidth up = {0}kbps\n", stats.NextKbpsUp.ToString("F1"));
-		    		sb.AppendFormat("next bandwidth down = {0}kbps\n", stats.NextKbpsDown.ToString("F1"));
-		    	}
+				if (stats.Next)
+				{
+					sb.AppendFormat("next rtt = {0}ms\n", stats.NextRTT.ToString("F"));
+					sb.AppendFormat("next jitter = {0}ms\n", stats.NextJitter.ToString("F"));
+					sb.AppendFormat("next packet loss = {0}%\n", stats.NextPacketLoss.ToString("F1"));
+					sb.AppendFormat("next bandwidth up = {0}kbps\n", stats.NextKbpsUp.ToString("F1"));
+					sb.AppendFormat("next bandwidth down = {0}kbps\n", stats.NextKbpsDown.ToString("F1"));
+				}
 
-		    	if (!stats.FallbackToDirect)
-		    	{
-		    		sb.AppendFormat("packets sent client to server = {0}\n", stats.PacketsSentClientToServer);
-		    		sb.AppendFormat("packets sent server to client = {0}\n", stats.PacketsSentServerToClient);
-		    		sb.AppendFormat("packets lost client to server = {0}\n", stats.PacketsLostClientToServer);
-		    		sb.AppendFormat("packets lost server to client = {0}\n", stats.PacketsLostServerToClient);
-		    		sb.AppendFormat("packets out of order client to server = {0}\n", stats.PacketsOutOfOrderClientToServer);
-		    		sb.AppendFormat("packets out of order server to client = {0}\n", stats.PacketsOutOfOrderServerToClient);
-		    		sb.AppendFormat("jitter client to server = {0}\n", stats.JitterClientToServer.ToString("F"));
-		    		sb.AppendFormat("jitter server to client = {0}\n", stats.JitterServerToClient.ToString("F"));
-		    	}
-		    	
-		    	if (stats.NumTags > 0)
-		    	{
-		    		sb.Append("tags = [");
-		    		for (int j = 0; j < stats.NumTags; j++)
-		    		{
-		    			if (j < stats.NumTags - 1)
-		    			{
-		    				sb.AppendFormat("{0},", stats.Tags[j].ToString());
-		    			}
-		    			else
-		    			{
-		    				sb.AppendFormat("{0}", stats.Tags[j].ToString());
-		    			}
-		    		}
-		    		sb.Append("]\n");
-		    	}
+				if (!stats.FallbackToDirect)
+				{
+					sb.AppendFormat("packets sent client to server = {0}\n", stats.PacketsSentClientToServer);
+					sb.AppendFormat("packets sent server to client = {0}\n", stats.PacketsSentServerToClient);
+					sb.AppendFormat("packets lost client to server = {0}\n", stats.PacketsLostClientToServer);
+					sb.AppendFormat("packets lost server to client = {0}\n", stats.PacketsLostServerToClient);
+					sb.AppendFormat("packets out of order client to server = {0}\n", stats.PacketsOutOfOrderClientToServer);
+					sb.AppendFormat("packets out of order server to client = {0}\n", stats.PacketsOutOfOrderServerToClient);
+					sb.AppendFormat("jitter client to server = {0}\n", stats.JitterClientToServer.ToString("F"));
+					sb.AppendFormat("jitter server to client = {0}\n", stats.JitterServerToClient.ToString("F"));
+				}
+				
+				if (stats.NumTags > 0)
+				{
+					sb.Append("tags = [");
+					for (int j = 0; j < stats.NumTags; j++)
+					{
+						if (j < stats.NumTags - 1)
+						{
+							sb.AppendFormat("{0},", stats.Tags[j].ToString());
+						}
+						else
+						{
+							sb.AppendFormat("{0}", stats.Tags[j].ToString());
+						}
+					}
+					sb.Append("]\n");
+				}
 
-		    	sb.Append("================================================================\n");
-	    	}
+				sb.Append("================================================================\n");
+			}
 
-	    	if (sb.Length > 0)
-	    	{
-	    		Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, sb.ToString());
-	    	}
-	    }
+			if (sb.Length > 0)
+			{
+				Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, sb.ToString());
+			}
+		}
 
-	    // ----------------------------------------------------------
+		// ----------------------------------------------------------
 
-	    // Start is called before the first frame update
-	    void Start()
-	    {
+		// Start is called before the first frame update
+		void Start()
+		{
 			// Allow all logging messages to be displayed
-		    Next.NextLogLevel(Next.NEXT_LOG_LEVEL_DEBUG);
+			Next.NextLogLevel(Next.NEXT_LOG_LEVEL_DEBUG);
 
-	        // Assign our custom logging function
-	        Next.NextLogFunction(UnityLogger);
+			// Assign our custom logging function
+			Next.NextLogFunction(UnityLogger);
 
-	        // Assign our custom assert function
-	        Next.NextAssertFunction(AssertFunction);
+			// Assign our custom assert function
+			Next.NextAssertFunction(AssertFunction);
 
-	        // Assign our custom allocation functions
-	        Next.NextAllocator(MallocFunction, FreeFunction);
+			// Assign our custom allocation functions
+			Next.NextAllocator(MallocFunction, FreeFunction);
 
-	        // Get the default configuration
-	        Next.NextConfig config;
-	        Next.NextDefaultConfig(out config);
+			// Get the default configuration
+			Next.NextConfig config;
+			Next.NextDefaultConfig(out config);
 
-	        // Assign our private key and the server backend hostname to the configuration
-	        config.CustomerPrivateKey = customerPrivateKey;
-	        config.ServerBackendHostname = serverBackendHostname;
+			// Assign our private key and the server backend hostname to the configuration
+			config.CustomerPrivateKey = customerPrivateKey;
+			config.ServerBackendHostname = serverBackendHostname;
 
-	        // Create a global context for any global allocations, using GCHandle for read/write fields
-	        Context globalCtx = new Context();
-	        Allocator globalCtxAllocator = new Allocator();
-	        GCHandle globalCtxAllocatorGCH = GCHandle.Alloc(globalCtxAllocator);
-	        globalCtx.AllocatorGCH = GCHandle.ToIntPtr(globalCtxAllocatorGCH);  
+			// Create a global context for any global allocations, using GCHandle for read/write fields
+			Context globalCtx = new Context();
+			Allocator globalCtxAllocator = new Allocator();
+			GCHandle globalCtxAllocatorGCH = GCHandle.Alloc(globalCtxAllocator);
+			globalCtx.AllocatorGCH = GCHandle.ToIntPtr(globalCtxAllocatorGCH);  
 
-	        // Marshal the global context into a pointer
-	        globalCtxPtr = Marshal.AllocHGlobal(Marshal.SizeOf(globalCtx));
-	        Marshal.StructureToPtr(globalCtx, globalCtxPtr, false);
+			// Marshal the global context into a pointer
+			globalCtxPtr = Marshal.AllocHGlobal(Marshal.SizeOf(globalCtx));
+			Marshal.StructureToPtr(globalCtx, globalCtxPtr, false);
 
-	        // Initialize Network Next
-	        if (Next.NextInit(globalCtxPtr, ref config) != Next.NEXT_OK)
-	        {
-	        	Debug.LogError("error: could not initialize network next");
-	        	this.gameObject.SetActive(false);
-	        	return;
-	        }
+			// Initialize Network Next
+			if (Next.NextInit(globalCtxPtr, ref config) != Next.NEXT_OK)
+			{
+				Debug.LogError("error: could not initialize network next");
+				this.gameObject.SetActive(false);
+				return;
+			}
 
-	        // Create server context, using GCHandle for read/write fields
-	        ServerContext serverCtx = new ServerContext();
+			// Create server context, using GCHandle for read/write fields
+			ServerContext serverCtx = new ServerContext();
 
-	        Allocator serverCtxAllocator = new Allocator();
-	        GCHandle serverCtxAllocatorGCH = GCHandle.Alloc(serverCtxAllocator);
-	        serverCtx.AllocatorGCH = GCHandle.ToIntPtr(serverCtxAllocatorGCH);
-	        
-	        serverCtx.ServerData = 0x12345678;
+			Allocator serverCtxAllocator = new Allocator();
+			GCHandle serverCtxAllocatorGCH = GCHandle.Alloc(serverCtxAllocator);
+			serverCtx.AllocatorGCH = GCHandle.ToIntPtr(serverCtxAllocatorGCH);
+			
+			serverCtx.ServerData = 0x12345678;
 
-	        ClientDataMap serverCtxClientDataMap = new ClientDataMap();
-	        GCHandle serverCtxClientDataMapGCH = GCHandle.Alloc(serverCtxClientDataMap);
-	        serverCtx.ClientDataMapGCH = GCHandle.ToIntPtr(serverCtxClientDataMapGCH);
+			ClientDataMap serverCtxClientDataMap = new ClientDataMap();
+			GCHandle serverCtxClientDataMapGCH = GCHandle.Alloc(serverCtxClientDataMap);
+			serverCtx.ClientDataMapGCH = GCHandle.ToIntPtr(serverCtxClientDataMapGCH);
 
-	        // Marshal the server context into a pointer
-	        serverCtxPtr = Marshal.AllocHGlobal(Marshal.SizeOf(serverCtx));
-	        Marshal.StructureToPtr(serverCtx, serverCtxPtr, false);
+			// Marshal the server context into a pointer
+			serverCtxPtr = Marshal.AllocHGlobal(Marshal.SizeOf(serverCtx));
+			Marshal.StructureToPtr(serverCtx, serverCtxPtr, false);
 
-	        // Create the packet received callback
-	        NextServerPacketReceivedCallback recvCallBack = new NextServerPacketReceivedCallback(ServerPacketReceived);
+			// Create the packet received callback
+			NextServerPacketReceivedCallback recvCallBack = new NextServerPacketReceivedCallback(ServerPacketReceived);
 
-	        // Create a pointer to the server (store as global var)
-	        server = Next.NextServerCreate(serverCtxPtr, serverAddress, bindAddress, serverDatacenter, recvCallBack, null);
-	        if (server == IntPtr.Zero)
-	        {
-	        	Debug.LogError("error: failed to create server");
-	        	this.gameObject.SetActive(false);
-	        	return;
-	        }
+			// Create a pointer to the server (store as global var)
+			server = Next.NextServerCreate(serverCtxPtr, serverAddress, bindAddress, serverDatacenter, recvCallBack, null);
+			if (server == IntPtr.Zero)
+			{
+				Debug.LogError("error: failed to create server");
+				this.gameObject.SetActive(false);
+				return;
+			}
 
-	        ushort serverPort = Next.NextServerPort(server);
+			ushort serverPort = Next.NextServerPort(server);
 
-	        Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("server port is {0}", serverPort.ToString()));
-	    }
+			Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("server port is {0}", serverPort.ToString()));
+		}
 
-	    // Update is called once per frame
-	    void Update()
-	    {
-	        Next.NextServerUpdate(server);
+		// Update is called once per frame
+		void Update()
+		{
+			Next.NextServerUpdate(server);
 
-	        // Unmarshal the context pointer into the client context to access client data map
-	        ServerContext ctx = (ServerContext)Marshal.PtrToStructure(serverCtxPtr, typeof(ServerContext));
+			// Unmarshal the context pointer into the client context to access client data map
+			ServerContext ctx = (ServerContext)Marshal.PtrToStructure(serverCtxPtr, typeof(ServerContext));
 
-	        Next.NextAssert(!ctx.Equals(default(ServerContext)));
-	        
-	        GCHandle clientDataMapGCH = GCHandle.FromIntPtr(ctx.ClientDataMapGCH);
-	        ClientDataMap clientDataMap = (ClientDataMap)clientDataMapGCH.Target;
-	    	
-	    	clientDataMap.UpdateClientTimeouts(Next.NextTime());
+			Next.NextAssert(!ctx.Equals(default(ServerContext)));
+			
+			GCHandle clientDataMapGCH = GCHandle.FromIntPtr(ctx.ClientDataMapGCH);
+			ClientDataMap clientDataMap = (ClientDataMap)clientDataMapGCH.Target;
+			
+			clientDataMap.UpdateClientTimeouts(Next.NextTime());
 
-	    	accumulator += deltaTime;
+			accumulator += deltaTime;
 
-	    	if (accumulator > 10.0)
-	    	{
-	    		PrintServerStats(server, clientDataMap);
-	    		accumulator = 0.0;
-	    	}
+			if (accumulator > 10.0)
+			{
+				PrintServerStats(server, clientDataMap);
+				accumulator = 0.0;
+			}
 
-	    	Next.NextSleep(deltaTime);
-	    }
+			Next.NextSleep(deltaTime);
+		}
 
-	    // OnApplicationQuit is called when the application quits or when playmode is stopped in the editor
-	    // These actions should be done in Destroy() rather than when the application quits
-	    void OnApplicationQuit()
-	    {
-	    	// Destroy the server
-	    	Next.NextServerDestroy(server);
+		// OnApplicationQuit is called when the application quits or when playmode is stopped in the editor
+		// These actions should be done in Destroy() rather than when the application quits
+		void OnApplicationQuit()
+		{
+			// Destroy the server
+			Next.NextServerDestroy(server);
 
-	    	// Free the unmanaged memory from the context's fields and context iteself
-	    	ServerContext serverCtx = (ServerContext)Marshal.PtrToStructure(serverCtxPtr, typeof(ServerContext));
-	    	GCHandle clientDataMapGCH = GCHandle.FromIntPtr(serverCtx.ClientDataMapGCH);
-	    	clientDataMapGCH.Free();
-	    	GCHandle serverCtxAllocatorGCH = GCHandle.FromIntPtr(serverCtx.AllocatorGCH);
-	    	serverCtxAllocatorGCH.Free();
-	    	Marshal.FreeHGlobal(serverCtxPtr);
+			// Free the unmanaged memory from the context's fields and context iteself
+			ServerContext serverCtx = (ServerContext)Marshal.PtrToStructure(serverCtxPtr, typeof(ServerContext));
+			GCHandle clientDataMapGCH = GCHandle.FromIntPtr(serverCtx.ClientDataMapGCH);
+			clientDataMapGCH.Free();
+			GCHandle serverCtxAllocatorGCH = GCHandle.FromIntPtr(serverCtx.AllocatorGCH);
+			serverCtxAllocatorGCH.Free();
+			Marshal.FreeHGlobal(serverCtxPtr);
 
-	    	Context globalCtx = (Context)Marshal.PtrToStructure(globalCtxPtr, typeof(Context));
-	    	GCHandle globalCtxAllocatorGCH = GCHandle.FromIntPtr(globalCtx.AllocatorGCH);
-	    	globalCtxAllocatorGCH.Free();
-	    	Marshal.FreeHGlobal(globalCtxPtr);
+			Context globalCtx = (Context)Marshal.PtrToStructure(globalCtxPtr, typeof(Context));
+			GCHandle globalCtxAllocatorGCH = GCHandle.FromIntPtr(globalCtx.AllocatorGCH);
+			globalCtxAllocatorGCH.Free();
+			Marshal.FreeHGlobal(globalCtxPtr);
 
-	    	// Shut down the SDK
-	    	Next.NextTerm();
-	    }
+			// Shut down the SDK
+			Next.NextTerm();
+		}
 	}
 }
