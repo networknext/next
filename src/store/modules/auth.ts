@@ -45,10 +45,10 @@ const getters = {
   isAnonymous: (state: any, getters: any) => getters.idToken === '',
   isAnonymousPlus: (state: any, getters: any) => !getters.isAnonymous ? !state.userProfile.verified : false,
   isBuyer: (state: any) => (state.userProfile.pubKey !== ''),
-  hasAnalytics: (state: any) => state.userProfile.hasAnalytics,
-  hasBilling: (state: any) => state.userProfile.hasBilling,
+  hasAnalytics: (state: any, getters: any) => (state.userProfile.hasAnalytics || getters.isAdmin),
+  hasBilling: (state: any, getters: any) => (state.userProfile.hasBilling || getters.isAdmin),
   hasTrial: (state: any) => state.userProfile.hasTrial,
-  isSeller: (state: any) => (state.userProfile.seller),
+  isSeller: (state: any, getters: any) => (state.userProfile.seller || getters.isAdmin),
   userProfile: (state: any) => state.userProfile,
   allBuyers: (state: any) => state.allBuyers,
   registeredToCompany: (state: any) => (state.userProfile.companyCode !== '')

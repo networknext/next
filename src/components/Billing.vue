@@ -4,13 +4,17 @@
     <p class="card-text">
       One stop shop for billing information
     </p>
-    <iframe
-      id="billingDash"
-      :src="billingDashURL"
-      v-if="showSummary"
-      frameborder="0"
-    >
-    </iframe>
+    <div class="row">
+      <iframe
+        class="col"
+        id="billingDash"
+        :src="billingDashURL"
+        style="min-height: 1600px;"
+        v-if="billingDashURL !== ''"
+        frameborder="0"
+      >
+      </iframe>
+    </div>
   </div>
 </template>
 
@@ -20,7 +24,6 @@ import { Component, Vue } from 'vue-property-decorator'
 @Component
 export default class Billing extends Vue {
   private billingDashURL: string
-  private showSummary: boolean
 
   private unwatchFilter: any
 
@@ -30,13 +33,13 @@ export default class Billing extends Vue {
   constructor () {
     super()
     this.billingDashURL = ''
-    this.showSummary = false
 
     this.startDate = ''
     this.endDate = ''
   }
 
   private mounted () {
+    // This is only necessary for admins - when the filter changes, grab the new billing URL
     this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
         return getters.currentFilter
@@ -59,9 +62,6 @@ export default class Billing extends Vue {
     })
       .then((response: any) => {
         this.billingDashURL = response.url || ''
-        if (this.billingDashURL !== '') {
-          this.showSummary = true
-        }
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the billing summary dashboard')

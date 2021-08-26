@@ -10,15 +10,15 @@ import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 
 export default {
   state: {
-    isTour: false,
-    isSignUpTour: false,
-    finishedTours: [],
-    finishedSignUpTours: [],
     currentPage: 'map',
     filter: {
       companyCode: '',
       dateRange: DateFilterType.CURRENT_MONTH
     },
+    finishedTours: [],
+    finishedSignUpTours: [],
+    isTour: false,
+    isSignUpTour: false,
     killLoops: false,
     sessionCountAlertRef: null,
     viewport: null
