@@ -744,6 +744,73 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 	return nil
 }
 
+type RelayEgressPriceOverrideArgs struct {
+	SellerShortName string `json:"sellerShortName"`
+}
+
+type RelayEgressPriceOverrideReply struct {
+	Relays []relay `json:"relays"`
+}
+
+func (s *OpsService) RelaysWithEgressPriceOverride(r *http.Request, args *RelayEgressPriceOverrideArgs, reply *RelayEgressPriceOverrideReply) error {
+
+	for _, r := range s.Storage.Relays(r.Context()) {
+
+		if r.Seller.ShortName != args.SellerShortName {
+			continue
+		}
+		if r.EgressPriceOverride <= 0 {
+			continue
+		}
+
+		relay := relay{
+			ID:                  r.ID,
+			HexID:               fmt.Sprintf("%016x", r.ID),
+			DatacenterHexID:     fmt.Sprintf("%016x", r.Datacenter.ID),
+			BillingSupplier:     r.BillingSupplier,
+			SignedID:            r.SignedID,
+			Name:                r.Name,
+			Addr:                r.Addr.String(),
+			Latitude:            float64(r.Datacenter.Location.Latitude),
+			Longitude:           float64(r.Datacenter.Location.Longitude),
+			NICSpeedMbps:        r.NICSpeedMbps,
+			IncludedBandwidthGB: r.IncludedBandwidthGB,
+			ManagementAddr:      r.ManagementAddr,
+			SSHUser:             r.SSHUser,
+			SSHPort:             r.SSHPort,
+			State:               r.State.String(),
+			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
+			MaxSessionCount:     r.MaxSessions,
+			SellerName:          r.Seller.Name,
+			EgressPriceOverride: r.EgressPriceOverride,
+			MRC:                 r.MRC,
+			Overage:             r.Overage,
+			BWRule:              r.BWRule,
+			ContractTerm:        r.ContractTerm,
+			StartDate:           r.StartDate,
+			EndDate:             r.EndDate,
+			Type:                r.Type,
+			Notes:               r.Notes,
+			Version:             r.Version,
+			DatabaseID:          r.DatabaseID,
+		}
+
+		if addrStr := r.InternalAddr.String(); addrStr != ":0" {
+			relay.InternalAddr = addrStr
+		}
+
+		reply.Relays = append(reply.Relays, relay)
+	}
+
+	sort.Slice(reply.Relays, func(i int, j int) bool {
+		return reply.Relays[i].Name < reply.Relays[j].Name
+	})
+
+	fmt.Printf("final set of relays for seller %s with egress price override: %+v\n\n", args.SellerShortName, reply.Relays)
+
+	return nil
+}
+
 type AddRelayArgs struct {
 	Relay routing.Relay `json:"Relay"`
 }
