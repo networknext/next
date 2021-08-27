@@ -806,8 +806,6 @@ func (s *OpsService) RelaysWithEgressPriceOverride(r *http.Request, args *RelayE
 		return reply.Relays[i].Name < reply.Relays[j].Name
 	})
 
-	fmt.Printf("final set of relays for seller %s with egress price override: %+v\n\n", args.SellerShortName, reply.Relays)
-
 	return nil
 }
 
