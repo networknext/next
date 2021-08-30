@@ -10,6 +10,9 @@ export interface UserProfile {
   email: string;
   idToken: string;
   roles: Array<string>;
+  hasAnalytics: boolean;
+  hasBilling: boolean;
+  hasTrial: boolean;
   verified: boolean;
   routeShader: any;
   pubKey: string;
