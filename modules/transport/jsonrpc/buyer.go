@@ -46,6 +46,7 @@ const (
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
 	EmbeddedUserGroupID      = 3
+	BillingDashURI           = "/embed/dashboards-next/11"
 )
 
 var (
@@ -2709,9 +2710,6 @@ func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *Fetc
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
-	// TODO: this will always be the same for billing summary dashboards so find a better way to store this information
-	const URI = "/embed/dashboards-next/11"
-
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
@@ -2762,7 +2760,7 @@ func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *Fetc
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   3600,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(URI),
+		EmbedURL:        "/login/embed/" + url.QueryEscape(BillingDashURI),
 		ForceLogout:     true,
 		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
