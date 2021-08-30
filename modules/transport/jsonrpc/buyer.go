@@ -2748,7 +2748,7 @@ func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *Fetc
 		companyCode = args.CompanyCode
 	}
 
-	if s.Env == "local" || s.Env == "dev" {
+	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
 		companyCode = "esl"
 	}
 
