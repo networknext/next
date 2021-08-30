@@ -2575,46 +2575,49 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	// Grab release notes notifications from cache
 	reply.ReleaseNotesNotifications = s.ReleaseNotesNotificationsCache
 
-	user := r.Context().Value(middleware.Keys.UserKey)
-	if user == nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-		return &err
-	}
-
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	requestID, ok := claims["sub"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
-		return &err
-	}
-
-	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
-		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-		return &err
-	}
-
-	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
-	if err != nil {
-		err = fmt.Errorf("FetchNotifications() failed getting buyer with code: %v", err)
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	// TODO: Not sure if this is the best place for this - Add a teaser notification to get someone to trial analytics
-	if buyer.Trial && !buyer.Analytics {
-		nonce, err := GenerateRandomString(16)
-		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+	// TODO: Add this back in when we get analytics up and running
+	/*
+		user := r.Context().Value(middleware.Keys.UserKey)
+		if user == nil {
+			err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
 			return &err
 		}
 
-		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerSecret, nonce, requestID))
-	}
+		claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+		requestID, ok := claims["sub"].(string)
+		if !ok {
+			err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
+			return &err
+		}
+
+		companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+		if !ok {
+			err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+			return &err
+		}
+
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+		if err != nil {
+			err = fmt.Errorf("FetchNotifications() failed getting buyer with code: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+
+		if buyer.Trial && !buyer.Analytics {
+			nonce, err := GenerateRandomString(16)
+			if err != nil {
+				err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+				return &err
+			}
+
+			reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerSecret, nonce, requestID))
+		}
+	*/
 
 	return nil
 }
@@ -2740,11 +2743,13 @@ func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *Fetc
 		return &err
 	}
 
-	fmt.Println(companyCode)
-
 	// Admin's will be able to search any company's billing info
 	if isAdmin {
 		companyCode = args.CompanyCode
+	}
+
+	if s.Env == "local" || s.Env == "dev" {
+		companyCode = "esl"
 	}
 
 	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
@@ -2767,8 +2772,7 @@ func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *Fetc
 		Time:            time.Now().Unix(),
 	}
 
-	urlOptions.UserAttributes["customer_code"] = "esl"
-	// TODO: Add time range options here?
+	urlOptions.UserAttributes["customer_code"] = companyCode
 
 	reply.URL = notifications.BuildLookerURL(urlOptions)
 	return nil
