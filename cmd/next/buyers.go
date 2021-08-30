@@ -791,12 +791,17 @@ func getBuyerInfo(env Environment, buyerRegex string) {
 	}
 
 	buyerInfo := "Buyer " + reply.Buyer.ShortName + " info:\n"
-	buyerInfo += "  CompanyCode: " + reply.Buyer.CompanyCode + "\n"
-	buyerInfo += "  ShortName  : " + reply.Buyer.ShortName + "\n"
-	buyerInfo += "  Live       : " + fmt.Sprintf("%t", reply.Buyer.Live) + "\n"
-	buyerInfo += "  Debug      : " + fmt.Sprintf("%t", reply.Buyer.Debug) + "\n"
-	buyerInfo += "  ID         : " + fmt.Sprintf("%016x", uint64(reply.Buyer.ID)) + "\n"
-	buyerInfo += "  Public Key : " + reply.Buyer.EncodedPublicKey() + "\n"
+	buyerInfo += "  CompanyCode           : " + reply.Buyer.CompanyCode + "\n"
+	buyerInfo += "  ShortName             : " + reply.Buyer.ShortName + "\n"
+	buyerInfo += "  Live                  : " + fmt.Sprintf("%t", reply.Buyer.Live) + "\n"
+	buyerInfo += "  Debug                 : " + fmt.Sprintf("%t", reply.Buyer.Debug) + "\n"
+	buyerInfo += "  Analytics             : " + fmt.Sprintf("%t", reply.Buyer.Analytics) + "\n"
+	buyerInfo += "  Billing               : " + fmt.Sprintf("%t", reply.Buyer.Billing) + "\n"
+	buyerInfo += "  Trial                 : " + fmt.Sprintf("%t", reply.Buyer.Trial) + "\n"
+	buyerInfo += "  Exotic Location Fee   : " + fmt.Sprintf("%f", reply.Buyer.ExoticLocationFee) + "\n"
+	buyerInfo += "  Standard Location Fee : " + fmt.Sprintf("%f", reply.Buyer.StandardLocationFee) + "\n"
+	buyerInfo += "  ID                    : " + fmt.Sprintf("%016x", uint64(reply.Buyer.ID)) + "\n"
+	buyerInfo += "  Public Key            : " + reply.Buyer.EncodedPublicKey() + "\n"
 
 	fmt.Println(buyerInfo)
 	os.Exit(0)
