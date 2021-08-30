@@ -190,13 +190,18 @@ type BuyersReply struct {
 }
 
 type buyer struct {
-	CompanyName string `json:"company_name"`
-	CompanyCode string `json:"company_code"`
-	ShortName   string `json:"short_name"`
-	ID          uint64 `json:"id"`
-	HexID       string `json:"hexID"`
-	Live        bool   `json:"live"`
-	Debug       bool   `json:"debug"`
+	CompanyName         string `json:"company_name"`
+	CompanyCode         string `json:"company_code"`
+	ShortName           string `json:"short_name"`
+	ID                  uint64 `json:"id"`
+	HexID               string `json:"hexID"`
+	Live                bool   `json:"live"`
+	Debug               bool   `json:"debug"`
+	Analytics           bool   `json:"analytics"`
+	Billing             bool   `json:"billing"`
+	Trial               bool   `json:"trial"`
+	ExoticLocationFee   string `json:"exotic_location_fee"`
+	StandardLocationFee string `json:"standard_location_fee"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
@@ -207,14 +212,20 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			s.Logger.Log("err", err)
 			return err
 		}
+
 		reply.Buyers = append(reply.Buyers, buyer{
-			ID:          b.ID,
-			HexID:       b.HexID,
-			CompanyName: c.Name,
-			CompanyCode: b.CompanyCode,
-			ShortName:   b.ShortName,
-			Live:        b.Live,
-			Debug:       b.Debug,
+			ID:                  b.ID,
+			HexID:               b.HexID,
+			CompanyName:         c.Name,
+			CompanyCode:         b.CompanyCode,
+			ShortName:           b.ShortName,
+			Live:                b.Live,
+			Debug:               b.Debug,
+			Analytics:           b.Analytics,
+			Billing:             b.Billing,
+			Trial:               b.Trial,
+			ExoticLocationFee:   fmt.Sprintf("%f", b.ExoticLocationFee),
+			StandardLocationFee: fmt.Sprintf("%f", b.StandardLocationFee),
 		})
 	}
 
@@ -226,10 +237,15 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 }
 
 type JSAddBuyerArgs struct {
-	ShortName string `json:"shortName"`
-	Live      bool   `json:"live"`
-	Debug     bool   `json:"debug"`
-	PublicKey string `json:"publicKey"`
+	ShortName           string `json:"shortName"`
+	Live                bool   `json:"live"`
+	Debug               bool   `json:"debug"`
+	Analytics           bool   `json:"analytics"`
+	Billing             bool   `json:"billing"`
+	Trial               bool   `json:"trial"`
+	ExoticLocationFee   string `json:"exoticLocationFee"`
+	StandardLocationFee string `json:"standardLocationFee"`
+	PublicKey           string `json:"publicKey"`
 }
 
 type JSAddBuyerReply struct{}
@@ -249,14 +265,31 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		return err
 	}
 
+	exoticLocationFee, err := strconv.ParseFloat(args.ExoticLocationFee, 64)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
+	standardLocationFee, err := strconv.ParseFloat(args.StandardLocationFee, 64)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
 	// slice the public key here instead of in the clients
 	buyer := routing.Buyer{
-		CompanyCode: args.ShortName,
-		ShortName:   args.ShortName,
-		ID:          binary.LittleEndian.Uint64(publicKey[:8]),
-		Live:        args.Live,
-		Debug:       args.Debug,
-		PublicKey:   publicKey[8:],
+		CompanyCode:         args.ShortName,
+		ShortName:           args.ShortName,
+		ID:                  binary.LittleEndian.Uint64(publicKey[:8]),
+		Live:                args.Live,
+		Debug:               args.Debug,
+		Analytics:           args.Analytics,
+		Billing:             args.Billing,
+		Trial:               args.Trial,
+		ExoticLocationFee:   exoticLocationFee,
+		StandardLocationFee: standardLocationFee,
+		PublicKey:           publicKey[8:],
 	}
 
 	return s.Storage.AddBuyer(ctx, buyer)
