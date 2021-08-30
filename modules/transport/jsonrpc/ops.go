@@ -254,8 +254,6 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
-	fmt.Println(args)
-
 	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
 	if err != nil {
 		s.Logger.Log("err", err)
