@@ -2693,8 +2693,6 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 
 type FetchBillingSummaryArgs struct {
 	CompanyCode string `json:"company_code"`
-	FirstName   string `json:"first_name"`
-	LastName    string `json:"last_name"`
 }
 
 type FetchBillingSummaryReply struct {
@@ -2757,8 +2755,6 @@ func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *Fetc
 		Host:            notifications.LOOKER_HOST,
 		Secret:          s.LookerSecret,
 		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-		FirstName:       args.FirstName,
-		LastName:        args.LastName,
 		GroupsIds:       []int{EmbeddedUserGroupID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
