@@ -1,15 +1,17 @@
 <template>
   <div class="card-body" id="billing-page">
-    <h5 class="card-title">Billing Dashboard</h5>
-    <p class="card-text">
-      One stop shop for billing information
-    </p>
+    <!--
+      <h5 class="card-title">Billing Dashboard</h5>
+      <p class="card-text">
+        One stop shop for billing information
+      </p>
+    -->
     <div class="row">
       <iframe
         class="col"
         id="billingDash"
         :src="billingDashURL"
-        style="min-height: 1600px;"
+        style="min-height: 2325px;"
         v-if="billingDashURL !== ''"
         frameborder="0"
       >
@@ -27,15 +29,9 @@ export default class Billing extends Vue {
 
   private unwatchFilter: any
 
-  private startDate: string
-  private endDate: string
-
   constructor () {
     super()
     this.billingDashURL = ''
-
-    this.startDate = ''
-    this.endDate = ''
   }
 
   private mounted () {
