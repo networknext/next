@@ -756,10 +756,7 @@ func (s *OpsService) RelaysWithEgressPriceOverride(r *http.Request, args *RelayE
 
 	for _, r := range s.Storage.Relays(r.Context()) {
 
-		if r.Seller.ShortName != args.SellerShortName {
-			continue
-		}
-		if r.EgressPriceOverride <= 0 {
+		if !(r.Seller.ShortName == args.SellerShortName && r.EgressPriceOverride > 0) {
 			continue
 		}
 
