@@ -1,4 +1,5 @@
 import { UserProfile } from '@/components/types/AuthTypes'
+import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 import { cloneDeep } from 'lodash'
 import Vue from 'vue'
 
@@ -25,7 +26,10 @@ const defaultProfile: UserProfile = {
   routeShader: null,
   pubKey: '',
   newsletterConsent: false,
-  roles: []
+  roles: [],
+  hasAnalytics: false,
+  hasBilling: false,
+  hasTrial: false
 }
 
 const state = {
@@ -41,7 +45,10 @@ const getters = {
   isAnonymous: (state: any, getters: any) => getters.idToken === '',
   isAnonymousPlus: (state: any, getters: any) => !getters.isAnonymous ? !state.userProfile.verified : false,
   isBuyer: (state: any) => (state.userProfile.pubKey !== ''),
-  isSeller: (state: any) => (state.userProfile.seller),
+  hasAnalytics: (state: any, getters: any) => (state.userProfile.hasAnalytics || getters.isAdmin),
+  hasBilling: (state: any, getters: any) => (state.userProfile.hasBilling || getters.isAdmin),
+  hasTrial: (state: any) => state.userProfile.hasTrial,
+  isSeller: (state: any, getters: any) => (state.userProfile.seller || getters.isAdmin),
   userProfile: (state: any) => state.userProfile,
   allBuyers: (state: any) => state.allBuyers,
   registeredToCompany: (state: any) => (state.userProfile.companyCode !== '')
@@ -75,15 +82,23 @@ const actions = {
         } else {
           allBuyers = responses[1].buyers
         }
+
         userProfile.buyerID = responses[0].account.id || responses[0].account.buyer_id || '' // TODO: remove the ".id" case after deploy
         userProfile.seller = responses[0].account.seller || false
         userProfile.firstName = responses[0].account.first_name || ''
         userProfile.lastName = responses[0].account.last_name || ''
         userProfile.companyName = responses[0].account.company_name || ''
+        userProfile.hasAnalytics = responses[0].account.analytics || false
+        userProfile.hasBilling = responses[0].account.billing || false
+        userProfile.hasTrial = responses[0].account.trial || true
         userProfile.domains = responses[0].domains || []
         dispatch('updateUserProfile', userProfile)
         dispatch('updateAllBuyers', allBuyers)
-        dispatch('updateCurrentFilter', { companyCode: (userProfile.buyerID === '' || getters.isAdmin) ? '' : userProfile.companyCode })
+        const defaultFilter: Filter = {
+          companyCode: (userProfile.buyerID === '' || getters.isAdmin) ? '' : userProfile.companyCode,
+          dateRange: DateFilterType.CURRENT_MONTH
+        }
+        dispatch('updateCurrentFilter', defaultFilter)
       })
       .catch((error: Error) => {
         console.log('Something went wrong fetching user details')

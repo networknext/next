@@ -9,7 +9,8 @@
 </template>
 
 <script lang="ts">
-import { Component, Vue } from 'vue-property-decorator'
+import { Component, Prop, Vue } from 'vue-property-decorator'
+import { Filter } from './types/FilterTypes'
 
 /**
  * This component is a reusable filter component
@@ -18,6 +19,8 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class BuyerFilter extends Vue {
+  @Prop({ default: true }) readonly includeAll!: boolean
+
   private filterOptions: Array<any>
 
   constructor () {
@@ -26,10 +29,12 @@ export default class BuyerFilter extends Vue {
   }
 
   private mounted () {
-    this.filterOptions.push({
-      name: 'All',
-      value: ''
-    })
+    if (this.includeAll) {
+      this.filterOptions.push({
+        name: 'All',
+        value: ''
+      })
+    }
 
     this.$store.getters.allBuyers.forEach((buyer: any) => {
       if (!this.$store.getters.isAdmin || (this.$store.getters.isAdmin && buyer.is_live)) {
@@ -39,6 +44,16 @@ export default class BuyerFilter extends Vue {
         })
       }
     })
+
+    // If we aren't showing all (Admin filter) then we want to just pick the first option in the list
+    if (!this.includeAll && this.$store.getters.currentFilter.companyCode === '') {
+      const newFilter: Filter = {
+        companyCode: this.filterOptions[0].value,
+        dateRange: this.$store.getters.currentFilter.dateRange
+      }
+
+      this.$store.commit('UPDATE_CURRENT_FILTER', newFilter)
+    }
   }
 
   private getBuyerName () {
@@ -53,7 +68,12 @@ export default class BuyerFilter extends Vue {
   }
 
   private updateFilter (companyCode: string) {
-    this.$store.commit('UPDATE_CURRENT_FILTER', { companyCode: companyCode })
+    const newFilter: Filter = {
+      companyCode: companyCode,
+      dateRange: this.$store.getters.currentFilter.dateRange
+    }
+
+    this.$store.commit('UPDATE_CURRENT_FILTER', newFilter)
   }
 }
 

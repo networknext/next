@@ -2,7 +2,7 @@ import Vue from 'vue'
 import VueRouter, { RouteConfig, Route, NavigationGuardNext } from 'vue-router'
 import store from '@/store'
 
-import Invoicing from '@/components/Invoicing.vue'
+import Billing from '@/components/Billing.vue'
 import Analytics from '@/components/Analytics.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
 import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
@@ -111,14 +111,14 @@ const routes: Array<RouteConfig> = [
         component: Analytics
       },
       {
+        path: 'billing',
+        name: 'billing',
+        component: Billing
+      },
+      {
         path: 'supply',
         name: 'supply',
         component: Supply
-      },
-      {
-        path: 'invoicing',
-        name: 'invoicing',
-        component: Invoicing
       }
     ]
   },
@@ -137,7 +137,7 @@ const router = new VueRouter({
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // TODO: Make sure all edge cases for illegal routing are caught here
   // TODO: Clean this up. Figure out a better way of handling user role and legal route relationships
-  if (!store.getters.isAdmin && (to.name === 'supply' || to.name === 'invoicing' || to.name === 'analytics')) {
+  if (!store.getters.isAdmin && (to.name === 'supply')) {
     next('/map')
     return
   }
@@ -157,7 +157,23 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
-  if ((!store.getters.isAdmin && !store.getters.isOwner) && (to.name === 'explore' || to.name === 'notifications' || to.name === 'analytics' || to.name === 'supply' || to.name === 'invoicing')) {
+  if (!store.getters.isSeller && (to.name === 'supply')) {
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
+    next('/map')
+    return
+  }
+  if (!store.getters.hasAnalytics && (to.name === 'analytics')) {
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
+    next('/map')
+    return
+  }
+  if (!store.getters.hasBilling && (to.name === 'billing')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')

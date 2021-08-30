@@ -15,6 +15,8 @@ declare module '*.vue' {
     fetchSessionDetails (args: any): Promise<any>;
     fetchTopSessions (args: any): Promise<any>;
     fetchAllBuyers (): Promise<any>;
+    fetchBillingSummary(args: any): Promise<any>;
+    fetchAnalyticsSummary(args: any): Promise<any>;
     fetchUserSessions (args: any): Promise<any>;
     fetchAllRoles (): Promise<any>;
     fetchAllAccounts (): Promise<any>;
@@ -34,6 +36,7 @@ declare module '*.vue' {
     sendSDKDownloadSlackNotification (args: any): Promise<any>;
     sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
     sendUE4DownloadNotifications (args: any): Promise<any>;
+    startAnalyticsTrial (): Promise<any>;
   }
 
   export class VueJSONRPCServicePlugin {

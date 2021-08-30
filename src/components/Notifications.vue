@@ -12,7 +12,7 @@
                 style="font-size: 1rem;min-width:300px;"
                 data-toggle="tooltip"
                 data-placement="right"
-                v-if="analyticsNotifications.length + systemNotifications.length + invoiceNotifications.length > 0"
+                v-if="analyticsNotifications.length + systemNotifications.length + invoiceNotifications.length > 0 && false"
                 title="All Notifications">New Notifications: {{ analyticsNotifications.length + systemNotifications.length + invoiceNotifications.length }}</span>
         </div>
         <div class="pr-5">
@@ -78,7 +78,7 @@
         </div>
       </div>
     </div>
-    <div class="card" v-for="(notification, index) in releaseNotesNotifications" :key="index" style="margin-top: 20px;text-align: center;">
+    <div class="card" v-for="(notification, index) in releaseNotesNotifications" :key="`release-notes-notification-${index}`" style="margin-top: 20px;text-align: center;">
       <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center" >
         <div class="mb-2 mb-md-0 flex-grow-1"></div>
         <div class="pr-5">
@@ -114,14 +114,14 @@
       </div>
     <!-- TODO: It may be a good idea to break out these collapsable cards to be used elsewhere potentially -->
     <!-- TODO TODO: Yes please do this for notifications. Use prop to determine type -->
-    <div class="card" v-for="(notification, index) in analyticsNotifications" :key="index" style="margin-top: 20px;text-align: center;">
+    <div class="card" v-for="(notification, index) in analyticsNotifications" :key="`analytics-notification-${index}`" style="margin-top: 20px;text-align: center;">
       <div class="card-header d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center" >
         <div class="mb-2 mb-md-0 flex-grow-1"></div>
-        <div>
+        <div class="pr-5">
           {{ notification.title }}
         </div>
         <div class="mb-2 mb-md-0 flex-grow-1"></div>
-        <div>
+        <div class="pr-5">
           <font-awesome-icon
             aria-expanded="false"
             id="status"
@@ -145,17 +145,16 @@
       <div class="collapse collapse-analytics" :id="`analytics-notification-${index}`">
         <div class="card-body">
           <div class="row">
-            <div class="col" style="max-width:500px;height:300px;">
-              <iframe
-                style="padding-top:10px;padding-bottom:10px;"
-                v-if="notification.analytics_url !== ''"
-                v-bind:src="notification.analytics_url"
-                width="300"
-                height="300"
-                frameborder="0">
-              </iframe>
+            <div class="col-2">
+              Super cool analytics look :)
             </div>
             <div class="col">
+              {{ notification.message }}
+            </div>
+            <div class="col-2">
+              <button id="analytics-demo-signup" class="btn btn-success btn-sm" @click="startAnalyticsTrial()">
+                Start Free Trial
+              </button>
             </div>
           </div>
         </div>
@@ -273,11 +272,31 @@ export default class Notifications extends Vue {
     this.$apiService
       .fetchNotifications()
       .then((response: any) => {
-        this.releaseNotesNotifications = response.release_notes_notifications
+        this.releaseNotesNotifications = response.release_notes_notifications || []
+        this.analyticsNotifications = response.analytics_notifications || []
+        this.invoiceNotifications = response.invoice_notifications || []
+        this.systemNotifications = response.system_notifications || []
       })
       .catch((error: Error) => {
         console.log('Something went wrong fetching notifications')
         console.log(error)
+      })
+  }
+
+  private startAnalyticsTrial () {
+    this.$apiService
+      .startAnalyticsTrial()
+      .then(() => {
+        return this.$authService.refreshToken()
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong setting up analytics trial')
+        console.log(error)
+      })
+      .then(() => {
+        this.$root.$emit('showAnalyticsTrialResponse')
+        // TODO: Start a tour for analytics here?
+        this.fetchNotifications()
       })
   }
 }
