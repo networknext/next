@@ -551,16 +551,6 @@ func main() {
 						companyCode = companyCodeInterface.(string)
 					}
 
-					// If testing in the happy path as an admin user, switch the user's company code to local to make things easier
-					if env == "local" && companyCode == "next" {
-						companyCode = "local"
-					}
-
-					// If testing in dev as an admin user, switch the user's company code to pi to make things easier
-					if env == "dev" && companyCode == "next" {
-						companyCode = "pi"
-					}
-
 					var newsletterConsent bool
 					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
 						newsletterConsent = consent.(bool)
