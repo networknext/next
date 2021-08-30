@@ -441,6 +441,7 @@ type buyer struct {
 	Debug        bool
 	Analytics    bool
 	Billing      bool
+	Trial        bool
 	PublicKey    string
 }
 
@@ -1582,6 +1583,7 @@ func main() {
 						Debug:     b.Debug,
 						Analytics: b.Analytics,
 						Billing:   b.Billing,
+						Trial:     b.Trial,
 						PublicKey: b.PublicKey,
 					}
 
