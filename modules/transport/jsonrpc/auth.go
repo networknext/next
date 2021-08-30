@@ -55,6 +55,9 @@ type account struct {
 	LastName    string             `json:"last_name"`
 	Email       string             `json:"email"`
 	Roles       []*management.Role `json:"roles"`
+	Analytics   bool               `json:"analytics"`
+	Billing     bool               `json:"billing"`
+	Trial       bool               `json:"trial"`
 }
 
 var roleIDs []string = []string{
@@ -445,6 +448,9 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		LastName:    u.GetFamilyName(),
 		Email:       u.GetEmail(),
 		Roles:       r,
+		Analytics:   buyer.Analytics,
+		Billing:     buyer.Billing,
+		Trial:       buyer.Trial,
 	}
 
 	return account
