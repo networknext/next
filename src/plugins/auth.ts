@@ -101,14 +101,7 @@ export class AuthService {
         'https://networknext.com/userData'
       ]
       const roles: Array<any> = nnScope.roles || { roles: [] }
-      let companyCode: string = nnScope.company_code || ''
-      // If local or dev, override the company code
-      if (process.env.VUE_APP_MODE === 'local' && companyCode === 'next') {
-        companyCode = 'local'
-      }
-      if (process.env.VUE_APP_MODE === 'dev' && companyCode === 'next') {
-        companyCode = 'pi'
-      }
+      const companyCode: string = nnScope.company_code || ''
       const newsletterConsent: boolean = nnScope.newsletter || false
       const email = authResult.email || ''
       const token = authResult.__raw
