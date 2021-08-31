@@ -109,6 +109,7 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		EnvelopeBytesDownSum:            rand.Uint64(),
 		SessionDuration:                 5 * billing.BillingSliceSeconds,
 		EverOnNext:                      false,
+		DurationOnNext:                  4 * billing.BillingSliceSeconds,
 		NextRTT:                         int32(rand.Intn(255)),
 		NextJitter:                      int32(rand.Intn(255)),
 		NextPacketLoss:                  int32(rand.Intn(100)),
