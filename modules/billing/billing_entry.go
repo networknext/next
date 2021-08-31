@@ -1168,7 +1168,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 // ------------------------------------------------------------------------
 
 const (
-	BillingEntryVersion2 = uint32(3)
+	BillingEntryVersion2 = uint32(4)
 
 	MaxBillingEntry2Bytes = 4096
 )
@@ -1230,6 +1230,7 @@ type BillingEntry2 struct {
 	TotalPriceSum                   uint64
 	EnvelopeBytesUpSum              uint64
 	EnvelopeBytesDownSum            uint64
+	DurationOnNext                  uint32
 
 	// network next only
 
@@ -1499,6 +1500,17 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		}
 	}
 
+	/*
+		Version 4
+
+		Includes the following in the summary slice:
+			- Duration of the session on next (in seconds)
+	*/
+	if entry.Version >= uint32(4) {
+		if entry.Summary && entry.EverOnNext {
+			stream.SerializeUint32(&entry.DurationOnNext)
+		}
+	}
 	return stream.Error()
 }
 
@@ -2076,6 +2088,7 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 			e["totalPriceSum"] = int(entry.TotalPriceSum)
 			e["envelopeBytesUpSum"] = int(entry.EnvelopeBytesUpSum)
 			e["envelopeBytesDownSum"] = int(entry.EnvelopeBytesDownSum)
+			e["durationOnNext"] = int(entry.DurationOnNext)
 		}
 
 	}
