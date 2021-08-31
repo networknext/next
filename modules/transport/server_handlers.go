@@ -1325,6 +1325,7 @@ func SessionPost(state *SessionHandlerState) {
 		state.Output.TotalPriceSum = state.Input.TotalPriceSum + uint64(totalPrice)
 		state.Output.NextEnvelopeBytesUpSum = state.Input.NextEnvelopeBytesUpSum + nextEnvelopeBytesUp
 		state.Output.NextEnvelopeBytesDownSum = state.Input.NextEnvelopeBytesDownSum + nextEnvelopeBytesDown
+		state.Output.DurationOnNext = state.Input.DurationOnNext + billing.BillingSliceSeconds
 	}
 
 	/*
@@ -1766,6 +1767,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		TotalPriceSum:                   state.Input.TotalPriceSum,
 		EnvelopeBytesUpSum:              state.Input.NextEnvelopeBytesUpSum,
 		EnvelopeBytesDownSum:            state.Input.NextEnvelopeBytesDownSum,
+		DurationOnNext:                  state.Input.DurationOnNext,
 		NextRTT:                         int32(state.Packet.NextRTT),
 		NextJitter:                      int32(state.Packet.NextJitter),
 		NextPacketLoss:                  int32(state.Packet.NextPacketLoss),
