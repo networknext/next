@@ -114,13 +114,13 @@ func main() {
 		{
 			Name:        "FEATURE_BILLING",
 			Enum:        config.FEATURE_BILLING,
-			Value:       true,
+			Value:       false,
 			Description: "Receives BillingEntry types from Google Pub/Sub and writes them to BigQuery",
 		},
 		{
 			Name:        "FEATURE_BILLING2",
 			Enum:        config.FEATURE_BILLING2,
-			Value:       false,
+			Value:       true,
 			Description: "Receives BillingEntry2 types from Google Pub/Sub and writes them to BigQuery",
 		},
 	})
