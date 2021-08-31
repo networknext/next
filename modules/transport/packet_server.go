@@ -17,7 +17,7 @@ const (
 	MaxDatacenterNameLength = 256
 	MaxSessionUpdateRetries = 10
 
-	SessionDataVersion = 14
+	SessionDataVersion = 15
 
 	MaxSessionDataSize = 511
 
@@ -613,6 +613,7 @@ type SessionData struct {
 	TotalPriceSum                 uint64
 	NextEnvelopeBytesUpSum        uint64
 	NextEnvelopeBytesDownSum      uint64
+	DurationOnNext                uint32
 }
 
 func UnmarshalSessionData(sessionData *SessionData, data []byte) error {
@@ -789,6 +790,10 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 
 		stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
 		stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
+	}
+
+	if sessionData.Version >= 15 {
+		stream.SerializeUint32(&sessionData.DurationOnNext)
 	}
 
 	// IMPORTANT: ADD NEW FIELDS BELOW HERE ONLY.
