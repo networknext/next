@@ -1222,10 +1222,20 @@ func SessionPost(state *SessionHandlerState) {
 	if state.Response.RouteType != routing.RouteTypeDirect {
 		core.Debug("session takes network next")
 		state.Metrics.NextSlices.Add(1)
-		state.Output.EverOnNext = true
 	} else {
 		core.Debug("session goes direct")
 		state.Metrics.DirectSlices.Add(1)
+	}
+
+	/*
+		Decide if the session was ever on next.
+
+		We avoid using route type to verify if a session was ever on next
+		in case the route decision to take next was made on the final slice.
+	*/
+
+	if state.Packet.Next {
+		state.Output.EverOnNext = true
 	}
 
 	/*
@@ -1252,7 +1262,7 @@ func SessionPost(state *SessionHandlerState) {
 	/*
 		Build route relay data (for portal, billing etc...).
 
-		This is done here to get the post route relay sellers egress price override for 
+		This is done here to get the post route relay sellers egress price override for
 		calculating total price and route relay price when building the billing entry.
 	*/
 
@@ -1315,6 +1325,7 @@ func SessionPost(state *SessionHandlerState) {
 		state.Output.TotalPriceSum = state.Input.TotalPriceSum + uint64(totalPrice)
 		state.Output.NextEnvelopeBytesUpSum = state.Input.NextEnvelopeBytesUpSum + nextEnvelopeBytesUp
 		state.Output.NextEnvelopeBytesDownSum = state.Input.NextEnvelopeBytesDownSum + nextEnvelopeBytesDown
+		state.Output.DurationOnNext = state.Input.DurationOnNext + billing.BillingSliceSeconds
 	}
 
 	/*
@@ -1756,6 +1767,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		TotalPriceSum:                   state.Input.TotalPriceSum,
 		EnvelopeBytesUpSum:              state.Input.NextEnvelopeBytesUpSum,
 		EnvelopeBytesDownSum:            state.Input.NextEnvelopeBytesDownSum,
+		DurationOnNext:                  state.Input.DurationOnNext,
 		NextRTT:                         int32(state.Packet.NextRTT),
 		NextJitter:                      int32(state.Packet.NextJitter),
 		NextPacketLoss:                  int32(state.Packet.NextPacketLoss),
