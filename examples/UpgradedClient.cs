@@ -78,9 +78,6 @@ public class UpgradedClient : MonoBehaviour
 	// Start is called before the first frame update
 	void Start()
 	{
-		// Allow all logging messages to be displayed
-		Next.NextLogLevel(Next.NEXT_LOG_LEVEL_DEBUG);
-
 		// Assign our custom logging function
 		Next.NextLogFunction(UnityLogger);
 
