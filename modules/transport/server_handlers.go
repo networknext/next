@@ -565,6 +565,9 @@ type SessionHandlerState struct {
 	PostRealPacketLossClientToServer  float32
 	PostRealPacketLossServerToClient  float32
 
+	// for convenience
+	UnmarshaledSessionData bool
+
 	// todo
 	/*
 		multipathVetoHandler storage.MultipathVetoHandler
@@ -610,6 +613,8 @@ func SessionPre(state *SessionHandlerState) bool {
 				state.Metrics.ReadSessionDataFailure.Add(1)
 				return true
 			}
+
+			state.UnmarshaledSessionData = true
 		}
 
 		state.Metrics.ClientPingTimedOut.Add(1)
@@ -620,15 +625,38 @@ func SessionPre(state *SessionHandlerState) bool {
 		state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP)
 
 		if err != nil || state.Output.Location == routing.LocationNullIsland {
-			core.Debug("location veto")
+			core.Debug("location veto: %s\n", err)
 			state.Metrics.ClientLocateFailure.Add(1)
 			state.Output.RouteState.LocationVeto = true
 			return true
 		}
 
-		// Always assign location no matter the outcome of SessionPre
+		// Always assign location no matter the outcome of SessionPre() on the first slice
 		defer func() {
 			state.Input.Location = state.Output.Location
+		}()
+	} else {
+
+		/*
+			For existing sessions, read in the input state from the session data.
+
+			This is the state.Output from the previous slice.
+
+			We do this in SessionPre() rather than SessionUpdateExistingSession()
+			in case we early out later on in SessionPre() to ensure location is
+			written back to the SDK.
+		*/
+
+		defer func() {
+			err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
+
+			if err != nil {
+				core.Debug("could not read session data:\n\n%s\n", err)
+				state.Metrics.ReadSessionDataFailure.Add(1)
+			} else {
+				state.Output.Location = state.Input.Location
+				state.UnmarshaledSessionData = true
+			}
 		}()
 	}
 
@@ -697,18 +725,20 @@ func SessionUpdateExistingSession(state *SessionHandlerState) {
 
 	core.Debug("existing session")
 
-	/*
-		Read in the input state from the session data
+	if !state.UnmarshaledSessionData {
 
-		This is the state.Output from the previous slice.
-	*/
+		/*
+			If for some reason we did not unmarshal the SessionData
+			already, we must do it here for existing sessions.
+		*/
 
-	err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
+		err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
 
-	if err != nil {
-		core.Debug("could not read session data:\n\n%s\n", err)
-		state.Metrics.ReadSessionDataFailure.Add(1)
-		return
+		if err != nil {
+			core.Debug("could not read session data:\n\n%s\n", err)
+			state.Metrics.ReadSessionDataFailure.Add(1)
+			return
+		}
 	}
 
 	/*
