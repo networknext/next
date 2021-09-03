@@ -574,6 +574,8 @@ type SessionHandlerState struct {
 func SessionPre(state *SessionHandlerState) bool {
 
 	var exists bool
+	var err error
+
 	state.Buyer, exists = state.Database.BuyerMap[state.Packet.BuyerID]
 	if !exists {
 		core.Debug("buyer not found")
@@ -611,6 +613,15 @@ func SessionPre(state *SessionHandlerState) bool {
 		}
 
 		state.Metrics.ClientPingTimedOut.Add(1)
+		return true
+	}
+
+	state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP)
+
+	if err != nil || state.Output.Location == routing.LocationNullIsland {
+		core.Debug("location veto")
+		state.Metrics.ClientLocateFailure.Add(1)
+		state.Output.RouteState.LocationVeto = true
 		return true
 	}
 
@@ -664,17 +675,6 @@ func SessionPre(state *SessionHandlerState) bool {
 func SessionUpdateNewSession(state *SessionHandlerState) {
 
 	core.Debug("new session")
-
-	var err error
-
-	state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP)
-
-	if err != nil || state.Output.Location == routing.LocationNullIsland {
-		core.Debug("location veto")
-		state.Metrics.ClientLocateFailure.Add(1)
-		state.Output.RouteState.LocationVeto = true
-		return
-	}
 
 	state.Output.Version = SessionDataVersion
 	state.Output.SessionID = state.Packet.SessionID
