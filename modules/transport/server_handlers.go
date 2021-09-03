@@ -616,13 +616,15 @@ func SessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
-	state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP)
+	if state.Input.Initial {
+		state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP)
 
-	if err != nil || state.Output.Location == routing.LocationNullIsland {
-		core.Debug("location veto")
-		state.Metrics.ClientLocateFailure.Add(1)
-		state.Output.RouteState.LocationVeto = true
-		return true
+		if err != nil || state.Output.Location == routing.LocationNullIsland {
+			core.Debug("location veto")
+			state.Metrics.ClientLocateFailure.Add(1)
+			state.Output.RouteState.LocationVeto = true
+			return true
+		}
 	}
 
 	if !datacenterExists(state.Database, state.Packet.DatacenterID) {
