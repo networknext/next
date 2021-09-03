@@ -74,7 +74,7 @@ Note that `Next.NextClientCreate()` returns an `IntPtr`. This is intentional, si
 
 We recommend keeping the client pointer as a global variable so that it is accessible from various Unity functions, like `Update()` and `Destroy()`.
 
-With a client ready to go, open a session betwen the client and the server:
+With a client ready to go, open a session between the client and the server:
 ```csharp
 // Open a session to the server
 Next.NextClientOpenSession(client, "127.0.0.1:50000");
