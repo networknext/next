@@ -2,7 +2,18 @@
 
 In this example we setup a server in Unity for monitoring and acceleration by Network Next.
 
-LIke the simple server example, start by setting up a custom logging function to view the output of the Network Next SDK in the Unity console:
+First, define configuration values for the server:
+```csharp
+const string bindAddress = "0.0.0.0:50000";
+const string serverAddress = "127.0.0.1:50000";
+const string serverDatacenter = "local";
+const string serverBackendHostname = "prod.spacecats.net";
+const string customerPrivateKey = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+```
+
+This includes the test customer private key we're using in this example. A customer private key is required on the server to enable acceleration by Network Next.
+
+LIke in the simple server example, set up a custom logging function to view the output of the Network Next SDK in the Unity console:
 ```csharp
 // Create custom logging function to output to Unity console
 [MonoPInvokeCallback(typeof(NextLogFunction))]
@@ -25,18 +36,7 @@ Assign the logging function in `Start()`:
 Next.NextLogFunction(UnityLogger);
 ```
 
-Now, define configuration values for the server:
-```csharp
-const string bindAddress = "0.0.0.0:50000";
-const string serverAddress = "127.0.0.1:50000";
-const string serverDatacenter = "local";
-const string serverBackendHostname = "prod.spacecats.net";
-const string customerPrivateKey = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
-```
-
-This includes the test customer private key we're using in this example. A customer private key is required on the server to enable acceleration by Network Next.
-
-Initialize a configuration struct to defaults, then copy the hostname and the customer private key on top:
+Next, initialize a configuration struct to defaults, then copy the hostname and the customer private key on top:
 ```csharp
 // Get the default configuration
 Next.NextConfig config;
@@ -49,7 +49,7 @@ config.ServerBackendHostname = serverBackendHostname;
 
 IMPORTANT: Generally speaking it's bad form to include a private key in your codebase like this, it's done here only to make this example easy to use. In production environments, we strongly recommend passing in "" for your customer private key, and setting it via the environment variable: *NEXT_CUSTOMER_PRIVATE_KEY* which overrides the value specified in code. In Unity, you can set environment variables in the project settings (see [here](https://support.unity.com/hc/en-us/articles/360044824951-I-need-to-start-Unity-with-an-environment-variable-s-set-how-can-I-do-that-)), or use [`System.Environment.ExpandEnvironment`](https://docs.microsoft.com/en-us/dotnet/api/system.environment.expandenvironmentvariables?view=net-5.0).
 
-Next we initialize the SDK, this time passing in the configuration struct:
+Initialize the SDK, this time passing in the configuration struct:
 ```csharp
 // Initialize Network Next
 if (Next.NextInit(IntPtr.Zero, ref config) != Next.NEXT_OK)
@@ -82,7 +82,6 @@ public void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr
     }
 }
 ```
-
 Generally you would *not* want to upgrade every client session you receive a packet from. This is just done to make this example easy to implement.
 
 Instead, you should only upgrade sessions that have passed whatever security and protocol level checks you have in your game so you are 100% confident this is a real player joining your game.
@@ -91,7 +90,7 @@ Also notice that you can pass in a user ID as a string to the upgrade call:
 ```csharp
 Next.NextServerUpgradeSession(serverPtr, fromPtr, userIDString);
 ```
-This user id is very important because it allows you to look up users by that ID in our portal. Please make sure you set the user ID to however you uniquely identify users in your game. For example, PSN IDs, Steam IDs and so on. For privacy reasons, this user ID is hashed before sending to our backend.
+This user ID is very important because it allows you to look up users by that ID in our portal. Please make sure you set the user ID to however you uniquely identify users in your game. For example, PSN IDs, Steam IDs and so on. For privacy reasons, this user ID is hashed before sending to our backend.
 
 Now, create the server:
 ```csharp

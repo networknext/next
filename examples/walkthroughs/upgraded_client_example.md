@@ -2,7 +2,16 @@
 
 In this example we setup a client in Unity for monitoring and acceleration by Network Next.
 
-LIke the simple client example, start by setting up a custom logging function to view the output of the Network Next SDK in the Unity console:
+First, define configuration values for the client:
+```csharp
+const string bindAddress = "0.0.0.0:0";
+const string serverAddress = "127.0.0.1:50000";
+const string customerPublicKey = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+```
+
+These include the bind address for the client socket, the server address to connect to, and the test customer public key we're using in this example. A customer public key is required to enable acceleration by Network Next.
+
+LIke in the simple client example, set up a custom logging function to view the output of the Network Next SDK in the Unity console:
 ```csharp
 // Create custom logging function to output to Unity console
 [MonoPInvokeCallback(typeof(NextLogFunction))]
@@ -24,15 +33,6 @@ Assign the logging function in `Start()`:
 // Assign our custom logging function
 Next.NextLogFunction(UnityLogger);
 ```
-
-Now, define configuration values for the client:
-```csharp
-const string bindAddress = "0.0.0.0:0";
-const string serverAddress = "127.0.0.1:50000";
-const string customerPublicKey = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
-```
-
-These include the bind address for the client socket, the server address to connect to, and the test customer public key we're using in this example. A customer public key is required to enable acceleration by Network Next.
 
 Next, initialize a configuration struct to defaults, then copy the customer public key on top:
 ```csharp
