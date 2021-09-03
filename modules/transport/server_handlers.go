@@ -625,6 +625,11 @@ func SessionPre(state *SessionHandlerState) bool {
 			state.Output.RouteState.LocationVeto = true
 			return true
 		}
+
+		// Always assign location no matter the outcome of SessionPre
+		defer func() {
+			state.Input.Location = state.Output.Location
+		}()
 	}
 
 	if !datacenterExists(state.Database, state.Packet.DatacenterID) {
