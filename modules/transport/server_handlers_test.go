@@ -732,8 +732,6 @@ func TestSessionUpdateHandlerFunc_Pre_LocationVeto(t *testing.T) {
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
 
-	state.Input.Initial = true
-
 	state.IpLocator = &errLocator{}
 
 	transport.SessionPre(&state)
