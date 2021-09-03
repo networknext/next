@@ -616,7 +616,7 @@ func SessionPre(state *SessionHandlerState) bool {
 		return true
 	}
 
-	if state.Input.Initial {
+	if state.Packet.SliceNumber == 0 {
 		state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP)
 
 		if err != nil || state.Output.Location == routing.LocationNullIsland {
