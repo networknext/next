@@ -132,6 +132,9 @@ public class UpgradedClient : MonoBehaviour
 	// These actions should be done in Destroy() rather than when the application quits
 	void OnApplicationQuit()
 	{
+		// Close the session
+		Next.NextClientCloseSession(client);
+		
 		// Destroy the client
 		Next.NextClientDestroy(client);
 
