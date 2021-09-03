@@ -587,6 +587,29 @@ func TestServerUpdateHandlerFunc_ServerTracker_DatacenterFound(t *testing.T) {
 }
 
 // Session update handler
+
+type errLocator struct{}
+
+func (locator *errLocator) LocateIP(ip net.IP) (routing.Location, error) {
+	return routing.Location{}, fmt.Errorf("failed")
+}
+
+type successLocator struct{}
+
+func (locator *successLocator) LocateIP(ip net.IP) (routing.Location, error) {
+	return routing.Location{
+		Continent:   "North America",
+		Country:     "United States",
+		CountryCode: "USA",
+		Region:      "New York",
+		City:        "Albany",
+		Latitude:    float32(42.652580),
+		Longitude:   float32(-73.756233),
+		ISP:         "Spectrum",
+		ASN:         10,
+	}, nil
+}
+
 func TestSessionUpdateHandlerFunc_Pre_BuyerNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -689,6 +712,44 @@ func TestSessionUpdateHandlerFunc_Pre_ClientTimedOut(t *testing.T) {
 	assert.Equal(t, float64(1), state.Metrics.ClientPingTimedOut.Value())
 }
 
+func TestSessionUpdateHandlerFunc_Pre_LocationVeto(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	state := transport.SessionHandlerState{}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+
+	state.Metrics = metrics.SessionUpdateMetrics
+	state.Database = env.GetDatabaseWrapper()
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
+	state.Packet.BuyerID = buyerID
+	state.Packet.ClientPingTimedOut = false
+
+	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
+	state.PacketData = requestData
+
+	state.Input.Initial = true
+
+	state.IpLocator = &errLocator{}
+
+	transport.SessionPre(&state)
+
+	assert.True(t, state.Output.RouteState.LocationVeto)
+	assert.Equal(t, float64(1), state.Metrics.ClientLocateFailure.Value())
+
+	state.IpLocator = routing.NullIsland
+	state.Metrics.ClientLocateFailure.ValueReset()
+
+	transport.SessionPre(&state)
+
+	assert.True(t, state.Output.RouteState.LocationVeto)
+	assert.Equal(t, float64(1), state.Metrics.ClientLocateFailure.Value())
+}
+
 func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -708,6 +769,8 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
+
+	state.IpLocator = &successLocator{}
 
 	assert.True(t, transport.SessionPre(&state))
 
@@ -735,6 +798,8 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
+
+	state.IpLocator = &successLocator{}
 
 	assert.True(t, transport.SessionPre(&state))
 
@@ -764,6 +829,8 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
+
+	state.IpLocator = &successLocator{}
 
 	assert.True(t, transport.SessionPre(&state))
 
@@ -798,6 +865,8 @@ func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
 
+	state.IpLocator = &successLocator{}
+
 	assert.True(t, transport.SessionPre(&state))
 	assert.True(t, state.StaleRouteMatrix)
 	assert.Equal(t, float64(1), state.Metrics.StaleRouteMatrix.Value())
@@ -827,55 +896,9 @@ func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
+	state.IpLocator = &successLocator{}
 
 	assert.False(t, transport.SessionPre(&state))
-}
-
-type errLocator struct{}
-
-func (locator *errLocator) LocateIP(ip net.IP) (routing.Location, error) {
-	return routing.Location{}, fmt.Errorf("failed")
-}
-
-type successLoccator struct{}
-
-func (locator *successLoccator) LocateIP(ip net.IP) (routing.Location, error) {
-	return routing.Location{
-		Continent:   "North America",
-		Country:     "United States",
-		CountryCode: "USA",
-		Region:      "New York",
-		City:        "Albany",
-		Latitude:    float32(42.652580),
-		Longitude:   float32(-73.756233),
-		ISP:         "Spectrum",
-		ASN:         10,
-	}, nil
-}
-
-func TestSessionUpdateHandlerFunc_NewSession_LocationVeto(t *testing.T) {
-	t.Parallel()
-
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-
-	state := transport.SessionHandlerState{
-		IpLocator: &errLocator{},
-		Metrics:   metrics.SessionUpdateMetrics,
-	}
-	transport.SessionUpdateNewSession(&state)
-
-	assert.True(t, state.Output.RouteState.LocationVeto)
-	assert.Equal(t, float64(1), state.Metrics.ClientLocateFailure.Value())
-
-	state.IpLocator = routing.NullIsland
-	state.Metrics.ClientLocateFailure.ValueReset()
-
-	transport.SessionUpdateNewSession(&state)
-
-	assert.True(t, state.Output.RouteState.LocationVeto)
-	assert.Equal(t, float64(1), state.Metrics.ClientLocateFailure.Value())
 }
 
 func TestSessionUpdateHandlerFunc_NewSession_Success(t *testing.T) {
@@ -886,8 +909,7 @@ func TestSessionUpdateHandlerFunc_NewSession_Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	state := transport.SessionHandlerState{
-		IpLocator: &successLoccator{},
-		Metrics:   metrics.SessionUpdateMetrics,
+		Metrics: metrics.SessionUpdateMetrics,
 		Output: transport.SessionData{
 			SliceNumber: 0,
 		},
