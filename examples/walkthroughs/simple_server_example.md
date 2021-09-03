@@ -21,9 +21,6 @@ static void UnityLogger(int level, IntPtr formatPtr, IntPtr argsPtr)
 
 Next, in the server's `Start()` function, allow for all logging statements and assign the custom logging function:
 ```csharp
-// Allow all logging messages to be displayed (default is NEXT_LOG_LEVEL_INFO)
-Next.NextLogLevel(Next.NEXT_LOG_LEVEL_DEBUG);
-
 // Assign our custom logging function
 Next.NextLogFunction(UnityLogger);
 ```

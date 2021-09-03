@@ -21,20 +21,17 @@ static void UnityLogger(int level, IntPtr formatPtr, IntPtr argsPtr)
 
 Assign the logging function in `Start()`:
 ```csharp
-// Allow all logging messages to be displayed (default is NEXT_LOG_LEVEL_INFO)
-Next.NextLogLevel(Next.NEXT_LOG_LEVEL_DEBUG);
-
 // Assign our custom logging function
 Next.NextLogFunction(UnityLogger);
 ```
 
 Now, define configuration values for the server:
 ```csharp
-string bindAddress = "0.0.0.0:50000";
-string serverAddress = "127.0.0.1:50000";
-string serverDatacenter = "local";
-string serverBackendHostname = "prod.spacecats.net";
-string customerPrivateKey = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+const string bindAddress = "0.0.0.0:50000";
+const string serverAddress = "127.0.0.1:50000";
+const string serverDatacenter = "local";
+const string serverBackendHostname = "prod.spacecats.net";
+const string customerPrivateKey = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
 ```
 
 This includes the test customer private key we're using in this example. A customer private key is required on the server to enable acceleration by Network Next.

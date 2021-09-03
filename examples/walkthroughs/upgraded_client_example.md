@@ -21,18 +21,15 @@ static void UnityLogger(int level, IntPtr formatPtr, IntPtr argsPtr)
 
 Assign the logging function in `Start()`:
 ```csharp
-// Allow all logging messages to be displayed (default is NEXT_LOG_LEVEL_INFO)
-Next.NextLogLevel(Next.NEXT_LOG_LEVEL_DEBUG);
-
 // Assign our custom logging function
 Next.NextLogFunction(UnityLogger);
 ```
 
 Now, define configuration values for the client:
 ```csharp
-string bindAddress = "0.0.0.0:0";
-string serverAddress = "127.0.0.1:50000";
-string customerPublicKey = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+const string bindAddress = "0.0.0.0:0";
+const string serverAddress = "127.0.0.1:50000";
+const string customerPublicKey = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 ```
 
 These include the bind address for the client socket, the server address to connect to, and the test customer public key we're using in this example. A customer public key is required to enable acceleration by Network Next.
