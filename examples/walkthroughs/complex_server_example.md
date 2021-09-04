@@ -377,3 +377,28 @@ public void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr
     }
 }
 ```        
+
+When you have finished using your server, destroy it and free the memory allocated for all contexts (Unity's `Destroy()` function is a good place to do this):
+```csharp
+// Destroy the server
+Next.NextServerDestroy(server);
+
+// Free the unmanaged memory from the context's fields and context iteself
+ServerContext serverCtx = (ServerContext)Marshal.PtrToStructure(serverCtxPtr, typeof(ServerContext));
+GCHandle clientDataMapGCH = GCHandle.FromIntPtr(serverCtx.ClientDataMapGCH);
+clientDataMapGCH.Free();
+GCHandle serverCtxAllocatorGCH = GCHandle.FromIntPtr(serverCtx.AllocatorGCH);
+serverCtxAllocatorGCH.Free();
+Marshal.FreeHGlobal(serverCtxPtr);
+
+Context globalCtx = (Context)Marshal.PtrToStructure(globalCtxPtr, typeof(Context));
+GCHandle globalCtxAllocatorGCH = GCHandle.FromIntPtr(globalCtx.AllocatorGCH);
+globalCtxAllocatorGCH.Free();
+Marshal.FreeHGlobal(globalCtxPtr);
+```
+Notice how we free the server context before the global context, and that the allocator is always freed prior to the contexts themselves.
+
+Finally, before your application terminates, please shut down the SDK (Unity's `OnApplicationQuit()` is an appropriate place to do this):
+```csharp
+Next.NextTerm();
+```

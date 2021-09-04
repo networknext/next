@@ -561,3 +561,34 @@ static void PrintClientStats(IntPtr client)
     Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, sb.ToString());
 }
 ```
+
+When you have finished your session with the server, close it:
+```csharp
+// Close the session
+Next.NextClientCloseSession(client);
+```
+
+When you have finished using your client, destroy it and free the memory allocated for all contexts (Unity's `Destroy()` function is a good place to do this):
+```csharp
+// Destroy the client
+Next.NextClientDestroy(client);
+
+// Free the unmanaged memory from the context's allocators and context itself
+ClientContext clientCtx = (ClientContext)Marshal.PtrToStructure(clientCtxPtr, typeof(ClientContext));
+GCHandle clientCtxAllocatorGCH = GCHandle.FromIntPtr(clientCtx.AllocatorGCH);
+clientCtxAllocatorGCH.Free();
+GCHandle lastPacketReceiveTimeGCH = GCHandle.FromIntPtr(clientCtx.LastPacketReceiveTimeGCH);
+lastPacketReceiveTimeGCH.Free();
+Marshal.FreeHGlobal(clientCtxPtr);
+
+Context globalCtx = (Context)Marshal.PtrToStructure(globalCtxPtr, typeof(Context));
+GCHandle globalCtxAllocatorGCH = GCHandle.FromIntPtr(globalCtx.AllocatorGCH);
+globalCtxAllocatorGCH.Free();
+Marshal.FreeHGlobal(globalCtxPtr);
+```
+Notice how we free the client context before the global context, and that the allocator is always freed prior to the contexts themselves.
+
+Finally, before your application terminates, please shut down the SDK (Unity's `OnApplicationQuit()` is an appropriate place to do this):
+```csharp
+Next.NextTerm();
+```
