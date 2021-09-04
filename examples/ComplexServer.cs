@@ -771,7 +771,7 @@ namespace Server {
 		{
 			Next.NextServerUpdate(server);
 
-			// Unmarshal the context pointer into the client context to access client data map
+			// Unmarshal the context pointer into the server context to access client data map
 			ServerContext ctx = (ServerContext)Marshal.PtrToStructure(serverCtxPtr, typeof(ServerContext));
 
 			Next.NextAssert(!ctx.Equals(default(ServerContext)));

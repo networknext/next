@@ -325,7 +325,7 @@ And the packet received callback with the server context, allowing you to get a 
 [MonoPInvokeCallback(typeof(NextServerPacketReceivedCallback))]
 public void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr, IntPtr packetDataPtr, int packetBytes)
 {
-    // Unmarshal the context pointer into the client context to access its fields
+    // Unmarshal the context pointer into the server context to access its fields
     ServerContext ctx = (ServerContext)Marshal.PtrToStructure(ctxPtr, typeof(ServerContext));
 
     Next.NextAssert(!ctx.Equals(default(ServerContext)));
