@@ -14,7 +14,6 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/go-github/v36/github"
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
@@ -369,6 +368,24 @@ func main() {
 
 	githubClient := github.NewClient(tc)
 
+	webHookUrl := envvar.Get("SLACK_WEBHOOK_URL", "")
+	if webHookUrl == "" {
+		level.Error(logger).Log("err", "env var SLACK_WEBHOOK_URL must be set")
+		os.Exit(1)
+	}
+
+	channel := envvar.Get("SLACK_CHANNEL", "")
+	if channel == "" {
+		level.Error(logger).Log("err", "env var SLACK_CHANNEL must be set")
+		os.Exit(1)
+	}
+
+	slackClient := notifications.SlackClient{
+		WebHookUrl: webHookUrl,
+		UserName:   "PortalBot",
+		Channel:    channel,
+	}
+
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -385,6 +402,7 @@ func main() {
 		Metrics:                serviceMetrics,
 		LookerSecret:           lookerSecret,
 		GithubClient:           githubClient,
+		SlackClient:            slackClient,
 	}
 
 	configService := jsonrpc.ConfigService{
@@ -424,7 +442,7 @@ func main() {
 		}
 
 		for {
-			if err := buyerService.GenerateMapPointsPerBuyer(); err != nil {
+			if err := buyerService.GenerateMapPointsPerBuyer(ctx); err != nil {
 				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
 				os.Exit(1)
 			}
@@ -440,7 +458,7 @@ func main() {
 		}
 
 		for {
-			if err := buyerService.FetchReleaseNotes(); err != nil {
+			if err := buyerService.FetchReleaseNotes(ctx); err != nil {
 				level.Error(logger).Log("msg", "error fetching today's release notes", "err", err)
 			}
 			time.Sleep(fetchReleaseNotesInterval)
@@ -532,6 +550,7 @@ func main() {
 					if companyCodeInterface, ok := requestData.(map[string]interface{})["company_code"]; ok {
 						companyCode = companyCodeInterface.(string)
 					}
+
 					var newsletterConsent bool
 					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
 						newsletterConsent = consent.(bool)
@@ -552,18 +571,6 @@ func main() {
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&configService, "")
 
-		webHookUrl := envvar.Get("SLACK_WEBHOOK_URL", "")
-		if webHookUrl == "" {
-			level.Error(logger).Log("err", "env var SLACK_WEBHOOK_URL must be set")
-			os.Exit(1)
-		}
-
-		channel := envvar.Get("SLACK_CHANNEL", "")
-		if channel == "" {
-			level.Error(logger).Log("err", "env var SLACK_CHANNEL must be set")
-			os.Exit(1)
-		}
-
 		s.RegisterService(&jsonrpc.AuthService{
 			MailChimpManager: notifications.MailChimpHandler{
 				HTTPHandler: *http.DefaultClient,
@@ -572,12 +579,8 @@ func main() {
 			Logger:      logger,
 			UserManager: userManager,
 			JobManager:  jobManager,
-			SlackClient: notifications.SlackClient{
-				WebHookUrl: webHookUrl,
-				UserName:   "PortalBot",
-				Channel:    channel,
-			},
-			Storage: db,
+			SlackClient: slackClient,
+			Storage:     db,
 		}, "")
 
 		relayFrontEnd, ok := os.LookupEnv("RELAY_FRONTEND")
@@ -626,9 +629,15 @@ func main() {
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
+		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second*10)
+		if err != nil {
+			level.Error(logger).Log("envvar", "HTTP_TIMEOUT", "value", httpTimeout, "err", err)
+			os.Exit(1)
+		}
+
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", middleware.JSONRPCMiddleware(keys, os.Getenv("JWT_AUDIENCE"), handlers.CompressHandler(s), strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", middleware.JSONRPCMiddleware(keys, os.Getenv("JWT_AUDIENCE"), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 

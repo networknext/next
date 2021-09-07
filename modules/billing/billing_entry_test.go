@@ -85,6 +85,7 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		EnvelopeBytesUp:                 rand.Uint64(),
 		Latitude:                        rand.Float32(),
 		Longitude:                       rand.Float32(),
+		ClientAddress:                   generateRandomStringSequence(billing.BillingEntryMaxAddressLength - 1),
 		ISP:                             generateRandomStringSequence(billing.BillingEntryMaxISPLength - 1),
 		ConnectionType:                  int32(rand.Intn(3)),
 		PlatformType:                    int32(rand.Intn(10)),
@@ -807,6 +808,20 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 	})
 
 	t.Run("test first slice", func(t *testing.T) {
+
+		t.Run("client IP address length", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.SliceNumber = 0
+			clientAddrStr := generateRandomStringSequence(billing.BillingEntryMaxAddressLength + 1)
+			assert.Equal(t, billing.BillingEntryMaxAddressLength+1, len(clientAddrStr))
+			entry.ClientAddress = clientAddrStr
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, clientAddrStr[:billing.BillingEntryMaxAddressLength-1], readEntry.ClientAddress)
+		})
 
 		t.Run("isp length", func(t *testing.T) {
 			entry = getTestBillingEntry2()

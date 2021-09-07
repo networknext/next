@@ -71,17 +71,17 @@ func SeedSQLStorage(
 		}
 
 		// retrieve entities so we can get the database-assigned keys
-		localCust, err := db.Customer("local")
+		localCust, err := db.Customer(ctx, "local")
 		if err != nil {
 			return fmt.Errorf("Error getting local customer: %v", err)
 		}
 
-		hpCust, err := db.Customer("happypath")
+		hpCust, err := db.Customer(ctx, "happypath")
 		if err != nil {
 			return fmt.Errorf("Error getting happypath customer: %v", err)
 		}
 
-		ghostCust, err := db.Customer("ghost-army")
+		ghostCust, err := db.Customer(ctx, "ghost-army")
 		if err != nil {
 			return fmt.Errorf("Error getting ghost customer: %v", err)
 		}
@@ -95,7 +95,10 @@ func SeedSQLStorage(
 			Live:        true,
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
+			Analytics:   false,
+			Billing:     true,
 			Debug:       true,
+			Trial:       true,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -112,20 +115,24 @@ func SeedSQLStorage(
 			ShortName:   "ghost-army",
 			CompanyCode: ghostCust.Code,
 			Live:        true,
+			Analytics:   false,
+			Billing:     false,
+			Debug:       false,
+			Trial:       true,
 			PublicKey:   publicKey,
 			CustomerID:  ghostCust.DatabaseID,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
 
-		localBuyer, err := db.Buyer(customerID)
+		localBuyer, err := db.Buyer(ctx, customerID)
 		if err != nil {
 			return fmt.Errorf("Error getting local buyer: %v", err)
 		}
 
-		ghostBuyer, err := db.Buyer(internalBuyerIDGhost)
+		ghostBuyer, err := db.Buyer(ctx, internalBuyerIDGhost)
 		if err != nil {
-			return fmt.Errorf("Error getting local buyer: %v", err)
+			return fmt.Errorf("Error getting ghost army buyer: %v", err)
 		}
 
 		// fmt.Println("Adding sellers")
@@ -171,17 +178,17 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddSeller() err adding hpSeller: %w", err)
 		}
 
-		localSeller, err = db.Seller("local")
+		localSeller, err = db.Seller(ctx, "local")
 		if err != nil {
 			return fmt.Errorf("Error getting local seller: %v", err)
 		}
 
-		ghostSeller, err = db.Seller("ghost-army")
+		ghostSeller, err = db.Seller(ctx, "ghost-army")
 		if err != nil {
 			return fmt.Errorf("Error getting ghost seller: %v", err)
 		}
 
-		hpSeller, err = db.Seller("happypath")
+		hpSeller, err = db.Seller(ctx, "happypath")
 		if err != nil {
 			return fmt.Errorf("Error getting happypath seller: %v", err)
 		}
@@ -234,12 +241,12 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddDatacenter() error adding ghost datacenter: %w", err)
 		}
 
-		localDatacenter, err = db.Datacenter(localDCID)
+		localDatacenter, err = db.Datacenter(ctx, localDCID)
 		if err != nil {
 			return fmt.Errorf("Error getting local datacenter: %v", err)
 		}
 
-		ghostDatacenter, err = db.Datacenter(ghostDCID)
+		ghostDatacenter, err = db.Datacenter(ctx, ghostDCID)
 		if err != nil {
 			return fmt.Errorf("Error getting local datacenter: %v", err)
 		}

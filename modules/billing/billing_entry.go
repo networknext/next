@@ -14,6 +14,7 @@ const (
 	BillingEntryVersion = uint8(27)
 
 	BillingEntryMaxRelays           = 5
+	BillingEntryMaxAddressLength    = 256
 	BillingEntryMaxISPLength        = 64
 	BillingEntryMaxSDKVersionLength = 11
 	BillingEntryMaxDebugLength      = 2048
@@ -1168,7 +1169,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 // ------------------------------------------------------------------------
 
 const (
-	BillingEntryVersion2 = uint32(4)
+	BillingEntryVersion2 = uint32(5)
 
 	MaxBillingEntry2Bytes = 4096
 )
@@ -1203,6 +1204,7 @@ type BillingEntry2 struct {
 	EnvelopeBytesDown uint64
 	Latitude          float32
 	Longitude         float32
+	ClientAddress     string
 	ISP               string
 	ConnectionType    int32
 	PlatformType      int32
@@ -1511,6 +1513,17 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 			stream.SerializeUint32(&entry.DurationOnNext)
 		}
 	}
+
+	/*
+		Version 5
+
+		Includes client IP address in first and summary slice
+	*/
+	if entry.Version >= uint32(5) {
+		if entry.SliceNumber == 0 || entry.Summary {
+			stream.SerializeString(&entry.ClientAddress, BillingEntryMaxAddressLength)
+		}
+	}
 	return stream.Error()
 }
 
@@ -1812,8 +1825,13 @@ func (entry *BillingEntry2) ClampEntry() {
 
 	if entry.SliceNumber == 0 || entry.Summary {
 
+		if len(entry.ClientAddress) >= BillingEntryMaxAddressLength {
+			core.Debug("BillingEntry2 Client IP Address length (%d) >= BillingEntryMaxAddressLength (%d). Clamping to BillingEntryMaxAddressLength - 1 (%d)", len(entry.ClientAddress), BillingEntryMaxAddressLength, BillingEntryMaxAddressLength-1)
+			entry.ClientAddress = entry.ClientAddress[:BillingEntryMaxAddressLength-1]
+		}
+
 		if len(entry.ISP) >= BillingEntryMaxISPLength {
-			core.Debug("BillingEntry2 ISP length (%d) >= BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength - 1(%d)", len(entry.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength-1)
+			core.Debug("BillingEntry2 ISP length (%d) >= BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength - 1 (%d)", len(entry.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength-1)
 			entry.ISP = entry.ISP[:BillingEntryMaxISPLength-1]
 		}
 
@@ -2022,6 +2040,7 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
 		e["latitude"] = entry.Latitude
 		e["longitude"] = entry.Longitude
+		e["clientAddress"] = entry.ClientAddress
 		e["isp"] = entry.ISP
 		e["connectionType"] = int(entry.ConnectionType)
 		e["platformType"] = int(entry.PlatformType)

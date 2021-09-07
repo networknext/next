@@ -1836,7 +1836,7 @@ func TestSessionMapPoints(t *testing.T) {
 		Logger:                 logger,
 	}
 
-	err := svc.GenerateMapPointsPerBuyer()
+	err := svc.GenerateMapPointsPerBuyer(context.Background())
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1945,7 +1945,7 @@ func TestSessionMap(t *testing.T) {
 		Logger:                 logger,
 	}
 
-	err := svc.GenerateMapPointsPerBuyer()
+	err := svc.GenerateMapPointsPerBuyer(context.Background())
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -2120,7 +2120,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
 		assert.NoError(t, err)
 
-		newBuyer, err := storer.BuyerWithCompanyCode("local-local")
+		newBuyer, err := storer.BuyerWithCompanyCode(reqContext, "local-local")
 		assert.NoError(t, err)
 
 		assert.Equal(t, "local-local", newBuyer.CompanyCode)
@@ -2138,7 +2138,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "45Q+5CKzGkcf3mh8cD43UM8L6Wn81tVwmmlT3Xvs9HWSJp5Zyh5xZg=="}, &reply)
 		assert.NoError(t, err)
 
-		oldBuyer, err := storer.BuyerWithCompanyCode("local")
+		oldBuyer, err := storer.BuyerWithCompanyCode(reqContext, "local")
 		assert.NoError(t, err)
 
 		assert.Equal(t, "local", oldBuyer.CompanyCode)
