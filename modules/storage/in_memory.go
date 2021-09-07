@@ -21,7 +21,7 @@ type InMemory struct {
 	LocalMode bool
 }
 
-func (m *InMemory) Buyer(id uint64) (routing.Buyer, error) {
+func (m *InMemory) Buyer(ctx context.Context, id uint64) (routing.Buyer, error) {
 	for _, buyer := range m.localBuyers {
 		if buyer.ID == id {
 			return buyer, nil
@@ -31,7 +31,7 @@ func (m *InMemory) Buyer(id uint64) (routing.Buyer, error) {
 	return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: id}
 }
 
-func (m *InMemory) Buyers() []routing.Buyer {
+func (m *InMemory) Buyers(ctx context.Context) []routing.Buyer {
 	buyers := make([]routing.Buyer, len(m.localBuyers))
 	for i := range buyers {
 		buyers[i] = m.localBuyers[i]
@@ -40,7 +40,7 @@ func (m *InMemory) Buyers() []routing.Buyer {
 	return buyers
 }
 
-func (m *InMemory) BuyerWithCompanyCode(code string) (routing.Buyer, error) {
+func (m *InMemory) BuyerWithCompanyCode(ctx context.Context, code string) (routing.Buyer, error) {
 	for _, buyer := range m.localBuyers {
 		if buyer.CompanyCode == code {
 			return buyer, nil
@@ -95,7 +95,7 @@ func (m *InMemory) SetBuyer(ctx context.Context, buyer routing.Buyer) error {
 	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyer.ID}
 }
 
-func (m *InMemory) Seller(id string) (routing.Seller, error) {
+func (m *InMemory) Seller(ctx context.Context, id string) (routing.Seller, error) {
 	for _, seller := range m.localSellers {
 		if seller.ID == id {
 			return seller, nil
@@ -105,7 +105,7 @@ func (m *InMemory) Seller(id string) (routing.Seller, error) {
 	return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
 }
 
-func (m *InMemory) Sellers() []routing.Seller {
+func (m *InMemory) Sellers(ctx context.Context) []routing.Seller {
 	sellers := make([]routing.Seller, len(m.localSellers))
 	for i := range sellers {
 		sellers[i] = m.localSellers[i]
@@ -114,7 +114,7 @@ func (m *InMemory) Sellers() []routing.Seller {
 	return sellers
 }
 
-func (m *InMemory) SellerWithCompanyCode(code string) (routing.Seller, error) {
+func (m *InMemory) SellerWithCompanyCode(ctx context.Context, code string) (routing.Seller, error) {
 	for _, seller := range m.localSellers {
 		if seller.CompanyCode == code {
 			return seller, nil
@@ -169,7 +169,7 @@ func (m *InMemory) SetSeller(ctx context.Context, seller routing.Seller) error {
 	return &DoesNotExistError{resourceType: "seller", resourceRef: seller.ID}
 }
 
-func (m *InMemory) Customer(code string) (routing.Customer, error) {
+func (m *InMemory) Customer(ctx context.Context, code string) (routing.Customer, error) {
 	for _, customer := range m.localCustomers {
 		if customer.Code == code {
 			return customer, nil
@@ -179,7 +179,7 @@ func (m *InMemory) Customer(code string) (routing.Customer, error) {
 	return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: code}
 }
 
-func (m *InMemory) Customers() []routing.Customer {
+func (m *InMemory) Customers(ctx context.Context) []routing.Customer {
 	customers := make([]routing.Customer, len(m.localCustomers))
 	for i := range customers {
 		customers[i] = m.localCustomers[i]
@@ -188,7 +188,7 @@ func (m *InMemory) Customers() []routing.Customer {
 	return customers
 }
 
-func (m *InMemory) CustomerWithName(name string) (routing.Customer, error) {
+func (m *InMemory) CustomerWithName(ctx context.Context, name string) (routing.Customer, error) {
 	for _, customer := range m.localCustomers {
 		if customer.Name == name {
 			return customer, nil
@@ -258,7 +258,7 @@ func (m *InMemory) SellerIDFromCustomerName(ctx context.Context, customerName st
 	return "", nil
 }
 
-func (m *InMemory) Relay(id uint64) (routing.Relay, error) {
+func (m *InMemory) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 	for _, relay := range m.localRelays {
 		if relay.ID == id {
 			return relay, nil
@@ -273,7 +273,7 @@ func (m *InMemory) Relay(id uint64) (routing.Relay, error) {
 	return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: id}
 }
 
-func (m *InMemory) Relays() []routing.Relay {
+func (m *InMemory) Relays(ctx context.Context) []routing.Relay {
 	relays := make([]routing.Relay, len(m.localRelays))
 	for i := range relays {
 		relays[i] = m.localRelays[i]
@@ -387,7 +387,7 @@ func (m *InMemory) AddDatacenterMap(ctx context.Context, dcMap routing.Datacente
 
 }
 
-func (m *InMemory) GetDatacenterMapsForBuyer(id uint64) map[uint64]routing.DatacenterMap {
+func (m *InMemory) GetDatacenterMapsForBuyer(ctx context.Context, id uint64) map[uint64]routing.DatacenterMap {
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
@@ -399,7 +399,7 @@ func (m *InMemory) GetDatacenterMapsForBuyer(id uint64) map[uint64]routing.Datac
 	return dcs
 }
 
-func (m *InMemory) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
+func (m *InMemory) ListDatacenterMaps(ctx context.Context, dcID uint64) map[uint64]routing.DatacenterMap {
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.DatacenterID == dcID || dcID == 0 {
@@ -434,7 +434,7 @@ func (m *InMemory) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datace
 
 }
 
-func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {
+func (m *InMemory) Datacenter(ctx context.Context, id uint64) (routing.Datacenter, error) {
 	for _, datacenter := range m.localDatacenters {
 		if datacenter.ID == id {
 			return datacenter, nil
@@ -444,7 +444,7 @@ func (m *InMemory) Datacenter(id uint64) (routing.Datacenter, error) {
 	return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: id}
 }
 
-func (m *InMemory) Datacenters() []routing.Datacenter {
+func (m *InMemory) Datacenters(ctx context.Context) []routing.Datacenter {
 	datacenters := make([]routing.Datacenter, len(m.localDatacenters))
 	for i := range datacenters {
 		datacenters[i] = m.localDatacenters[i]
@@ -512,11 +512,11 @@ func (m *InMemory) SyncLoop(ctx context.Context, c <-chan time.Time) {
 	// no-op - fulfilling Storer interface
 }
 
-func (m *InMemory) GetFeatureFlags() map[string]bool {
+func (m *InMemory) GetFeatureFlags(ctx context.Context) map[string]bool {
 	return map[string]bool{}
 }
 
-func (m *InMemory) GetFeatureFlagByName(flagName string) (map[string]bool, error) {
+func (m *InMemory) GetFeatureFlagByName(ctx context.Context, flagName string) (map[string]bool, error) {
 	return map[string]bool{}, fmt.Errorf(("GetFeatureFlagByName not impemented in InMemory"))
 }
 
@@ -532,11 +532,11 @@ func (m *InMemory) SetSequenceNumber(ctx context.Context, value int64) error {
 	return nil
 }
 
-func (m *InMemory) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
+func (m *InMemory) InternalConfig(ctx context.Context, buyerID uint64) (core.InternalConfig, error) {
 	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not impemented in InMemory storer"))
 }
 
-func (m *InMemory) RouteShader(buyerID uint64) (core.RouteShader, error) {
+func (m *InMemory) RouteShader(ctx context.Context, buyerID uint64) (core.RouteShader, error) {
 	return core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in InMemory storer"))
 }
 
@@ -576,7 +576,7 @@ func (m *InMemory) RemoveBannedUser(ctx context.Context, buyerID uint64, userID 
 	return fmt.Errorf(("RemoveBannedUser not yet impemented in InMemory storer"))
 }
 
-func (m *InMemory) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
+func (m *InMemory) BannedUsers(ctx context.Context, buyerID uint64) (map[uint64]bool, error) {
 	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not yet impemented in InMemory storer"))
 }
 
@@ -600,10 +600,10 @@ func (m *InMemory) UpdateDatacenterMap(ctx context.Context, buyerID uint64, data
 	return fmt.Errorf("UpdateDatacenterMap not implemented in InMemory storer")
 }
 
-func (m *InMemory) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error) {
+func (m *InMemory) GetDatabaseBinFileMetaData(ctx context.Context) (routing.DatabaseBinFileMetaData, error) {
 	return routing.DatabaseBinFileMetaData{}, fmt.Errorf("GetDatabaseBinFileMetaData not implemented in InMemory storer")
 }
 
-func (m *InMemory) UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error {
+func (m *InMemory) UpdateDatabaseBinFileMetaData(ctx context.Context, fileMeta routing.DatabaseBinFileMetaData) error {
 	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in InMemory storer")
 }

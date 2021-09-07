@@ -248,7 +248,7 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, int64, erro
 	return false, num.Value, nil
 }
 
-func (fs *Firestore) Customer(code string) (routing.Customer, error) {
+func (fs *Firestore) Customer(ctx context.Context, code string) (routing.Customer, error) {
 	fs.customerMutex.RLock()
 	defer fs.customerMutex.RUnlock()
 
@@ -260,7 +260,7 @@ func (fs *Firestore) Customer(code string) (routing.Customer, error) {
 	return c, nil
 }
 
-func (fs *Firestore) Customers() []routing.Customer {
+func (fs *Firestore) Customers(ctx context.Context) []routing.Customer {
 	var customers []routing.Customer
 	for _, customer := range fs.customers {
 		customers = append(customers, customer)
@@ -270,7 +270,7 @@ func (fs *Firestore) Customers() []routing.Customer {
 	return customers
 }
 
-func (fs *Firestore) CustomerWithName(name string) (routing.Customer, error) {
+func (fs *Firestore) CustomerWithName(ctx context.Context, name string) (routing.Customer, error) {
 	fs.customerMutex.RLock()
 	defer fs.customerMutex.RUnlock()
 
@@ -346,12 +346,12 @@ func (fs *Firestore) RemoveCustomer(ctx context.Context, code string) error {
 		}
 
 		if customerInRemoteStorage.Code == code {
-			companyBuyer, err := fs.BuyerWithCompanyCode(customerInRemoteStorage.Code)
+			companyBuyer, err := fs.BuyerWithCompanyCode(ctx, customerInRemoteStorage.Code)
 			if err == nil {
 				fs.RemoveBuyer(ctx, companyBuyer.ID)
 			}
 
-			companySeller, err := fs.SellerWithCompanyCode(customerInRemoteStorage.Code)
+			companySeller, err := fs.SellerWithCompanyCode(ctx, customerInRemoteStorage.Code)
 			if err == nil {
 				fs.RemoveSeller(ctx, companySeller.ID)
 			}
@@ -436,7 +436,7 @@ func (fs *Firestore) SetCustomer(ctx context.Context, c routing.Customer) error 
 	return &DoesNotExistError{resourceType: "customer", resourceRef: c.Code}
 }
 
-func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
+func (fs *Firestore) Buyer(ctx context.Context, id uint64) (routing.Buyer, error) {
 	fs.buyerMutex.RLock()
 	defer fs.buyerMutex.RUnlock()
 
@@ -448,7 +448,7 @@ func (fs *Firestore) Buyer(id uint64) (routing.Buyer, error) {
 	return b, nil
 }
 
-func (fs *Firestore) Buyers() []routing.Buyer {
+func (fs *Firestore) Buyers(ctx context.Context) []routing.Buyer {
 	fs.buyerMutex.RLock()
 	defer fs.buyerMutex.RUnlock()
 
@@ -461,7 +461,7 @@ func (fs *Firestore) Buyers() []routing.Buyer {
 	return buyers
 }
 
-func (fs *Firestore) BuyerWithCompanyCode(code string) (routing.Buyer, error) {
+func (fs *Firestore) BuyerWithCompanyCode(ctx context.Context, code string) (routing.Buyer, error) {
 	fs.buyerMutex.RLock()
 	defer fs.buyerMutex.RUnlock()
 
@@ -595,7 +595,7 @@ func (fs *Firestore) RemoveBuyer(ctx context.Context, id uint64) error {
 			if _, err := bdoc.Ref.Delete(ctx); err != nil {
 				return &FirestoreError{err: err}
 			}
-			associatedCustomer, err := fs.Customer(buyerInRemoteStorage.CompanyCode)
+			associatedCustomer, err := fs.Customer(ctx, buyerInRemoteStorage.CompanyCode)
 			if err != nil {
 				err = fmt.Errorf("RemoveBuyer() failed to fetch customer")
 				return err
@@ -702,7 +702,7 @@ func (fs *Firestore) SetBuyer(ctx context.Context, b routing.Buyer) error {
 	return &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%x", b.ID)}
 }
 
-func (fs *Firestore) Seller(id string) (routing.Seller, error) {
+func (fs *Firestore) Seller(ctx context.Context, id string) (routing.Seller, error) {
 	fs.sellerMutex.RLock()
 	defer fs.sellerMutex.RUnlock()
 
@@ -714,7 +714,7 @@ func (fs *Firestore) Seller(id string) (routing.Seller, error) {
 	return s, nil
 }
 
-func (fs *Firestore) Sellers() []routing.Seller {
+func (fs *Firestore) Sellers(ctx context.Context) []routing.Seller {
 	fs.sellerMutex.RLock()
 	defer fs.sellerMutex.RUnlock()
 
@@ -727,7 +727,7 @@ func (fs *Firestore) Sellers() []routing.Seller {
 	return sellers
 }
 
-func (fs *Firestore) SellerWithCompanyCode(code string) (routing.Seller, error) {
+func (fs *Firestore) SellerWithCompanyCode(ctx context.Context, code string) (routing.Seller, error) {
 	fs.sellerMutex.RLock()
 	defer fs.sellerMutex.RUnlock()
 
@@ -824,7 +824,7 @@ func (fs *Firestore) RemoveSeller(ctx context.Context, id string) error {
 		}
 
 		if sellerInRemoteStorage.ID == id {
-			associatedCustomer, err := fs.Customer(sellerInRemoteStorage.CompanyCode)
+			associatedCustomer, err := fs.Customer(ctx, sellerInRemoteStorage.CompanyCode)
 			if err != nil {
 				err = fmt.Errorf("RemoveSeller() failed to fetch customer")
 				return err
@@ -1054,7 +1054,7 @@ func (fs *Firestore) SellerIDFromCustomerName(ctx context.Context, customerName 
 	return "", &DoesNotExistError{resourceType: "customer", resourceRef: customerName}
 }
 
-func (fs *Firestore) Relay(id uint64) (routing.Relay, error) {
+func (fs *Firestore) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 	fs.relayMutex.RLock()
 	defer fs.relayMutex.RUnlock()
 
@@ -1066,7 +1066,7 @@ func (fs *Firestore) Relay(id uint64) (routing.Relay, error) {
 	return relay, nil
 }
 
-func (fs *Firestore) Relays() []routing.Relay {
+func (fs *Firestore) Relays(ctx context.Context) []routing.Relay {
 	fs.relayMutex.RLock()
 	defer fs.relayMutex.RUnlock()
 
@@ -1309,7 +1309,7 @@ func (fs *Firestore) SetRelay(ctx context.Context, r routing.Relay) error {
 	return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%x", r.ID)}
 }
 
-func (fs *Firestore) GetDatacenterMapsForBuyer(buyerID uint64) map[uint64]routing.DatacenterMap {
+func (fs *Firestore) GetDatacenterMapsForBuyer(ctx context.Context, buyerID uint64) map[uint64]routing.DatacenterMap {
 	fs.datacenterMapMutex.RLock()
 	defer fs.datacenterMapMutex.RUnlock()
 
@@ -1340,7 +1340,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 		return &DoesNotExistError{resourceType: "Datacenter", resourceRef: dcMap.DatacenterID}
 	}
 
-	dcMaps := fs.GetDatacenterMapsForBuyer(dcMap.BuyerID)
+	dcMaps := fs.GetDatacenterMapsForBuyer(ctx, dcMap.BuyerID)
 	if len(dcMaps) != 0 {
 		for _, dc := range dcMaps {
 			if dc.DatacenterID == dcMap.DatacenterID {
@@ -1370,7 +1370,7 @@ func (fs *Firestore) AddDatacenterMap(ctx context.Context, dcMap routing.Datacen
 
 }
 
-func (fs *Firestore) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
+func (fs *Firestore) ListDatacenterMaps(ctx context.Context, dcID uint64) map[uint64]routing.DatacenterMap {
 	fs.datacenterMapMutex.RLock()
 	defer fs.datacenterMapMutex.RUnlock()
 
@@ -1484,7 +1484,7 @@ func (fs *Firestore) SetRelayMetadata(ctx context.Context, modifiedRelay routing
 
 }
 
-func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
+func (fs *Firestore) Datacenter(ctx context.Context, id uint64) (routing.Datacenter, error) {
 	fs.datacenterMutex.RLock()
 	defer fs.datacenterMutex.RUnlock()
 
@@ -1496,7 +1496,7 @@ func (fs *Firestore) Datacenter(id uint64) (routing.Datacenter, error) {
 	return d, nil
 }
 
-func (fs *Firestore) Datacenters() []routing.Datacenter {
+func (fs *Firestore) Datacenters(ctx context.Context) []routing.Datacenter {
 	fs.datacenterMutex.RLock()
 	defer fs.datacenterMutex.RUnlock()
 
@@ -2294,11 +2294,11 @@ func (fs *Firestore) SetInternalConfigForBuyerID(ctx context.Context, firestoreI
 	return err
 }
 
-func (fs *Firestore) GetFeatureFlags() map[string]bool {
+func (fs *Firestore) GetFeatureFlags(ctx context.Context) map[string]bool {
 	return map[string]bool{}
 }
 
-func (fs *Firestore) GetFeatureFlagByName(flagName string) (map[string]bool, error) {
+func (fs *Firestore) GetFeatureFlagByName(ctx context.Context, flagName string) (map[string]bool, error) {
 	return map[string]bool{}, fmt.Errorf(("GetFeatureFlagByName not implemented in Firestore storer"))
 }
 
@@ -2310,11 +2310,11 @@ func (fs *Firestore) RemoveFeatureFlagByName(ctx context.Context, flagName strin
 	return fmt.Errorf(("RemoveFeatureFlagByName not implemented in Firestore storer"))
 }
 
-func (fs *Firestore) InternalConfig(buyerID uint64) (core.InternalConfig, error) {
+func (fs *Firestore) InternalConfig(ctx context.Context, buyerID uint64) (core.InternalConfig, error) {
 	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not implemented in Firestore storer"))
 }
 
-func (fs *Firestore) RouteShader(buyerID uint64) (core.RouteShader, error) {
+func (fs *Firestore) RouteShader(ctx context.Context, buyerID uint64) (core.RouteShader, error) {
 	return core.RouteShader{}, fmt.Errorf(("RouteShaders not implemented in Firestore storer"))
 }
 
@@ -2354,7 +2354,7 @@ func (fs *Firestore) RemoveBannedUser(ctx context.Context, buyerID uint64, userI
 	return fmt.Errorf(("RemoveBannedUser not implemented in Firestore storer"))
 }
 
-func (fs *Firestore) BannedUsers(buyerID uint64) (map[uint64]bool, error) {
+func (fs *Firestore) BannedUsers(ctx context.Context, buyerID uint64) (map[uint64]bool, error) {
 	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not implemented in Firestore storer"))
 }
 
@@ -2378,7 +2378,7 @@ func (fs *Firestore) UpdateDatacenterMap(ctx context.Context, buyerID uint64, da
 	return fmt.Errorf("UpdateDatacenterMap not implemented in Firestore storer")
 }
 
-func (fs *Firestore) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error) {
+func (fs *Firestore) GetDatabaseBinFileMetaData(ctx context.Context) (routing.DatabaseBinFileMetaData, error) {
 	return routing.DatabaseBinFileMetaData{}, fmt.Errorf("GetDatabaseBinFileMetaData not implemented in Firestore storer")
 }
 
