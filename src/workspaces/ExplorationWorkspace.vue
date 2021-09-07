@@ -27,16 +27,16 @@
       <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
           <li class="nav-item">
-            <router-link to="/explore/notifications" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'notifications'}">Notifications</router-link>
+            <router-link to="/explore/notifications" class="nav-link" :class="{ active: $store.getters.currentPage === 'notifications'}">Notifications</router-link>
           </li>
           <li class="nav-item" v-if="false && $store.getters.hasAnalytics">
-            <router-link to="/explore/analytics" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
+            <router-link to="/explore/analytics" class="nav-link" :class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
           </li>
           <li class="nav-item" v-if="false && $store.getters.isSeller">
-            <router-link to="/explore/supply" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'supply'}">Supplier</router-link>
+            <router-link to="/explore/supply" class="nav-link" :class="{ active: $store.getters.currentPage === 'supply'}">Supplier</router-link>
           </li>
           <li class="nav-item" v-if="$store.getters.isAdmin">
-            <router-link to="/explore/billing" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'billing'}">Billing</router-link>
+            <router-link to="/explore/billing" class="nav-link" :class="{ active: $store.getters.currentPage === 'billing'}">Billing</router-link>
           </li>
         </ul>
       </div>

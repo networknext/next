@@ -129,7 +129,7 @@
                     User Hash
                   </dt>
                   <dd>
-                    <router-link v-bind:to="`/user-tool/${meta.user_hash}`" class="text-dark">{{ meta.user_hash }}</router-link>
+                    <router-link :to="`/user-tool/${meta.user_hash}`" class="text-dark">{{ meta.user_hash }}</router-link>
                   </dd>
                 </div>
                 <div v-if="(!$store.getters.isAnonymous && meta.buyer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">

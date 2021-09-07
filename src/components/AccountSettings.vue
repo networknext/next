@@ -108,7 +108,7 @@
           <br/>
         </small>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;" v-if="false">
+      <button type="submit" class="btn btn-primary btn-sm" :disabled="!validPasswordForm" style="margin-top: 1rem;" v-if="false">
         Save
       </button>
       <p class="text-muted text-small mt-2"></p>

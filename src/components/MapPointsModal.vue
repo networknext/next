@@ -41,13 +41,13 @@
                   </tr>
                 </tbody>
                 <tbody>
-                  <tr v-for="(point, index) in points" v-bind:key="index">
+                  <tr v-for="(point, index) in points" :key="index">
                     <td>
                       <font-awesome-icon
                         id="status"
                         icon="circle"
                         class="fa-w-16 fa-fw"
-                        v-bind:class="{
+                        :class="{
                           'text-success': point.source[2],
                           'text-primary': !point.source[2]
                         }"
@@ -55,7 +55,7 @@
                     </td>
                     <td v-if="point.source[3]">
                       <router-link
-                        v-bind:to="`/session-tool/${point.source[3]}`"
+                        :to="`/session-tool/${point.source[3]}`"
                         class="text-dark fixed-width"
                       >{{ point.source[3] }}</router-link>
                     </td>

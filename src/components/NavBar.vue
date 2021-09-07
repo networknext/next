@@ -13,7 +13,7 @@
           <router-link
             to="/map"
             class="nav-link"
-            v-bind:class="{ active: $store.getters.currentPage == 'map' }"
+            :class="{ active: $store.getters.currentPage == 'map' }"
             data-test="mapLink"
           >Map</router-link>
         </li>
@@ -22,7 +22,7 @@
             to="/sessions"
             class="nav-link"
             data-intercom="sessions"
-            v-bind:class="{ active: $store.getters.currentPage == 'sessions' }"
+            :class="{ active: $store.getters.currentPage == 'sessions' }"
             data-test="sessionsLink"
             data-tour="sessionsLink"
           >Sessions</router-link>
@@ -31,7 +31,7 @@
           <router-link
             to="/session-tool"
             class="nav-link"
-            v-bind:class="{
+            :class="{
               active:
                 $store.getters.currentPage == 'session-tool' ||
                 $store.getters.currentPage == 'session-details'
@@ -43,7 +43,7 @@
           <router-link
             to="/user-tool"
             class="nav-link"
-            v-bind:class="{
+            :class="{
               active:
                 $store.getters.currentPage == 'user-tool' ||
                 $store.getters.currentPage == 'user-sessions'
@@ -57,7 +57,7 @@
             class="nav-link"
             data-intercom="downloads"
             data-tour="downloadsLink"
-            v-bind:class="{ active: $store.getters.currentPage == 'downloads' }"
+            :class="{ active: $store.getters.currentPage == 'downloads' }"
             v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
           >Downloads</router-link>
         </li>
@@ -65,7 +65,7 @@
           <router-link
             to="/explore"
             class="nav-link"
-            v-bind:class="{
+            :class="{
               active:
                 $store.getters.currentPage == 'notifications' ||
                 $store.getters.currentPage == 'analytics' ||
@@ -78,7 +78,7 @@
           <router-link
             to="/settings"
             class="nav-link"
-            v-bind:class="{
+            :class="{
               active:
                 $store.getters.currentPage == 'account-settings' ||
                 $store.getters.currentPage == 'config' ||
@@ -109,7 +109,7 @@
             <option
               :value="buyer.company_code"
               v-for="buyer in allBuyers"
-              v-bind:key="buyer.company_code"
+              :key="buyer.company_code"
               :selected="buyer.company_code === companyCode"
             >{{ buyer.company_name }}</option>
           </select>
