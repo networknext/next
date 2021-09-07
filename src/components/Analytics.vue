@@ -1,11 +1,15 @@
 <template>
   <div class="card-body" id="analytics-page">
+    <h5 class="card-title">Analytics Dashboard</h5>
+    <p class="card-text">
+      One stop shop for analytics information
+    </p>
     <iframe
-      v-if="dashboardURL !== ''"
-      v-bind:src="dashboardURL"
-      width="1000"
-      height="2000"
-      frameborder="0">
+      id="analyticsDash"
+      :src="analyticsDashURL"
+      v-if="showSummary"
+      frameborder="0"
+    >
     </iframe>
   </div>
 </template>
@@ -15,18 +19,54 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class Analytics extends Vue {
-  private dashboardURL: string
+  private analyticsDashURL: string
+  private showSummary: boolean
+
+  private unwatchFilter: any
+
+  private startDate: string
+  private endDate: string
 
   constructor () {
     super()
-    this.dashboardURL = ''
+    this.analyticsDashURL = ''
+    this.showSummary = false
+
+    this.startDate = ''
+    this.endDate = ''
   }
 
   private mounted () {
-    this.$apiService.fetchLookerURL().then((response: any) => {
-      console.log(response)
-      this.dashboardURL = response.url
+    this.unwatchFilter = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.currentFilter
+      },
+      () => {
+        this.fetchAnalyticsSummary()
+      }
+    )
+
+    this.fetchAnalyticsSummary()
+  }
+
+  private beforeDestroy () {
+    this.unwatchFilter()
+  }
+
+  private fetchAnalyticsSummary () {
+    this.$apiService.fetchAnalyticsSummary({
+      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
+      .then((response: any) => {
+        this.analyticsDashURL = response.url || ''
+        if (this.analyticsDashURL !== '') {
+          this.showSummary = true
+        }
+      })
+      .catch((error: Error) => {
+        console.log('There was an issue fetching the analytics summary dashboard')
+        console.log(error)
+      })
   }
 }
 </script>

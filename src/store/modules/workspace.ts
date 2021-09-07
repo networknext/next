@@ -2,20 +2,24 @@
  * Basic Vuex module specific to workspace state
  */
 
+import { DateFilterType, Filter } from '@/components/types/FilterTypes'
+
 /**
  * TODO: Namespace these
  */
 
 export default {
   state: {
-    isTour: false,
-    isSignUpTour: false,
-    finishedTours: [],
-    finishedSignUpTours: [],
     currentPage: 'map',
     filter: {
-      companyCode: ''
+      companyCode: '',
+      dateRange: DateFilterType.CURRENT_MONTH
     },
+    finishedTours: [],
+    finishedSignUpTours: [],
+    isTour: false,
+    isSignUpTour: false,
+    killLoops: false,
     sessionCountAlertRef: null,
     viewport: null
   },
@@ -24,6 +28,7 @@ export default {
     currentFilter: (state: any) => state.filter,
     isTour: (state: any) => state.isTour,
     isSignUpTour: (state: any) => state.isSignUpTour,
+    killLoops: (state: any) => state.killLoops,
     finishedTours: (state: any) => state.finishedTours,
     finishedSignUpTours: (state: any) => state.finishedSignUpTours,
     sessionCountAlert: (state: any) => state.sessionCountAlertRef,
@@ -33,11 +38,14 @@ export default {
     updateCurrentPage ({ commit }: any, currentPage: string) {
       commit('UPDATE_CURRENT_PAGE', currentPage)
     },
-    updateCurrentFilter ({ commit }: any, currentFilter: string) {
-      commit('UPDATE_CURRENT_FILTER', currentFilter)
+    updateCurrentFilter ({ commit }: any, newFilter: Filter) {
+      commit('UPDATE_CURRENT_FILTER', newFilter)
     },
     toggleIsTour ({ commit }: any, isTour: boolean) {
       commit('TOGGLE_IS_TOUR', isTour)
+    },
+    toggleKillLoops ({ commit }: any, killLoops: boolean) {
+      commit('TOGGLE_KILL_LOOPS', killLoops)
     },
     updateFinishedTours ({ commit }: any, finishedTour: string) {
       commit('UPDATE_FINISHED_TOURS', finishedTour)
@@ -59,14 +67,17 @@ export default {
     UPDATE_CURRENT_PAGE (state: any, currentPage: string) {
       state.currentPage = currentPage
     },
-    UPDATE_CURRENT_FILTER (state: any, currentFilter: any) {
-      state.filter = currentFilter
+    UPDATE_CURRENT_FILTER (state: any, newFilter: Filter) {
+      state.filter = newFilter
     },
     TOGGLE_IS_TOUR (state: any, isTour: boolean) {
       state.isTour = isTour
     },
     TOGGLE_IS_SIGN_UP_TOUR (state: any, isSignUpTour: boolean) {
       state.isSignUpTour = isSignUpTour
+    },
+    TOGGLE_KILL_LOOPS (state: any, killLoops: boolean) {
+      state.killLoops = killLoops
     },
     UPDATE_FINISHED_TOURS (state: any, finishedTour: string) {
       if (!state.finishedTours.includes(finishedTour)) {

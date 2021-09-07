@@ -69,9 +69,9 @@
               active:
                 $store.getters.currentPage == 'notifications' ||
                 $store.getters.currentPage == 'analytics' ||
-                $store.getters.currentPage == 'invoicing'
+                $store.getters.currentPage == 'billing'
             }"
-            v-if="$store.getters.isAdmin"
+            v-if="$store.getters.isOwner || $store.getters.isAdmin"
           >Explore</router-link>
         </li>
         <li class="nav-item text-nowrap">

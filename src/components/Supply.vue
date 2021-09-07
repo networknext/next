@@ -1,8 +1,8 @@
 <template>
-  <div class="card-body" id="invoicing-page">
+  <div class="card-body" id="supply-page">
     <!-- TODO: Add a container here for the title information and floated right button to refresh notifications -->
-    <h5 class="card-title">Invoicing</h5>
-    <p class="card-text">One stop shop for all the money questions</p>
+    <h5 class="card-title">Supply</h5>
+    <p class="card-text">One stop shop for supply related analytics</p>
   </div>
 </template>
 
@@ -10,7 +10,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 
 @Component
-export default class Invoicing extends Vue {
+export default class Supply extends Vue {
 }
 </script>
 

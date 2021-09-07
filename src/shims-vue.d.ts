@@ -8,16 +8,19 @@ declare module '*.vue' {
     impersonate (args: any): Promise<any>;
     updateAccountSettings (args: any): Promise<any>;
     updateAutoSignupDomains (args: any): Promise<any>;
-    updateCompanyInformation (args: any): Promise<any>;
+    setupCompanyAccount (args: any): Promise<any>;
     upgradeAccount (args: any): Promise<any>;
     fetchTotalSessionCounts (args: any): Promise<any>;
     fetchMapSessions (args: any): Promise<any>;
     fetchSessionDetails (args: any): Promise<any>;
     fetchTopSessions (args: any): Promise<any>;
     fetchAllBuyers (): Promise<any>;
+    fetchBillingSummary(args: any): Promise<any>;
+    fetchAnalyticsSummary(args: any): Promise<any>;
     fetchUserSessions (args: any): Promise<any>;
     fetchAllRoles (): Promise<any>;
     fetchAllAccounts (): Promise<any>;
+    updateAccountDetails (args: any): Promise<any>;
     updateUserRoles (args: any): Promise<any>;
     deleteUserAccount (args: any): Promise<any>;
     addNewUserAccounts (args: any): Promise<any>;
@@ -33,6 +36,7 @@ declare module '*.vue' {
     sendSDKDownloadSlackNotification (args: any): Promise<any>;
     sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
     sendUE4DownloadNotifications (args: any): Promise<any>;
+    startAnalyticsTrial (): Promise<any>;
   }
 
   export class VueJSONRPCServicePlugin {

@@ -1,5 +1,5 @@
 <template>
-  <div class="map-container-no-offset">
+  <div class="map-container">
     <div class="map" id="map"></div>
     <canvas style="cursor: grab;" id="deck-canvas" data-intercom="map"></canvas>
   </div>
@@ -31,24 +31,26 @@ import data12 from '../../test_data/ghost-army-map-points-12.json' */
  * TODO: Cleanup component logic
  */
 
+const MAX_RETRIES = 4
+
 @Component({
   name: 'SessionMap'
 })
 export default class SessionMap extends Vue {
-  get offsetMap () {
-    return this.$store.getters.isAnonymousPlus
-  }
-
   private deckGlInstance: any
   private mapInstance: any
   private mapLoop: any
   private viewState: any
   private unwatchFilter: any
+  private unwatchKillLoops: any
+  private retryCount: number
 
   // private sessions: Array<any>
 
   constructor () {
     super()
+
+    this.retryCount = 0
 
     // If there is not stored viewport, add the default one and use that
     if (!this.$store.getters.currentViewport) {
@@ -84,7 +86,6 @@ export default class SessionMap extends Vue {
   }
 
   private mounted () {
-    this.restartLoop()
     this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
         return getters.currentFilter
@@ -94,11 +95,91 @@ export default class SessionMap extends Vue {
         this.restartLoop()
       }
     )
+
+    this.unwatchKillLoops = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.killLoops
+      },
+      () => {
+        this.stopLoop()
+      }
+    )
+
+    if (!(window as any).mapboxgl || !(window as any).deck) {
+      return
+    }
+
+    // Init the mapbox instance using the shared viewport values
+    this.mapInstance = new (window as any).mapboxgl.Map({
+      accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
+      style: 'mapbox://styles/mapbox/dark-v10',
+      center: [
+        this.viewState.longitude,
+        this.viewState.latitude
+      ],
+      zoom: this.viewState.zoom,
+      pitch: this.viewState.pitch,
+      bearing: this.viewState.bearing,
+      container: 'map',
+      minZoom: 1.9
+    })
+
+    this.deckGlInstance = new (window as any).deck.Deck({
+      canvas: document.getElementById('deck-canvas'),
+      width: '100%',
+      height: '100%',
+      initialViewState: this.viewState,
+      controller: {
+        dragRotate: false,
+        dragTilt: false
+      },
+      // change the map's viewstate whenever the view state of deck.gl changes
+      onViewStateChange: ({ viewState }: any) => {
+        // Whenever the viewport changes, update the mapbox instance and the stored version of the viewport
+        this.mapInstance.jumpTo({
+          center: [viewState.longitude, viewState.latitude],
+          zoom: viewState.zoom,
+          bearing: viewState.bearing,
+          pitch: viewState.pitch,
+          minZoom: 2,
+          maxZoom: 16
+        })
+
+        this.$store.commit(
+          'UPDATE_CURRENT_VIEWPORT',
+          {
+            latitude: viewState.latitude,
+            longitude: viewState.longitude,
+            zoom: viewState.zoom,
+            pitch: viewState.pitch,
+            bearing: viewState.bearing,
+            minZoom: 2,
+            maxZoom: 16
+          }
+        )
+      },
+      layers: [],
+      getCursor: ({ isHovering, isDragging }: any) => {
+        if (isHovering) {
+          return 'pointer'
+        }
+        if (isDragging) {
+          return 'grabbing'
+        }
+        return 'grab'
+      }
+    })
+
+    // Only start the polling loop if the network is available/working
+    if (!this.$store.getters.killLoops) {
+      this.restartLoop()
+    }
   }
 
   private beforeDestroy () {
     clearInterval(this.mapLoop)
     this.unwatchFilter()
+    this.unwatchKillLoops()
   }
 
   private fetchMapSessions () {
@@ -107,28 +188,7 @@ export default class SessionMap extends Vue {
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
-        // check if mapbox exists - primarily for tests
-        if (!(window as any).mapboxgl || !(window as any).deck) {
-          return
-        }
-
-        if (!this.mapInstance) {
-          // Init the mapbox instance using the shared viewport values
-          this.mapInstance = new (window as any).mapboxgl.Map({
-            accessToken: process.env.VUE_APP_MAPBOX_TOKEN,
-            style: 'mapbox://styles/mapbox/dark-v10',
-            center: [
-              this.viewState.longitude,
-              this.viewState.latitude
-            ],
-            zoom: this.viewState.zoom,
-            pitch: this.viewState.pitch,
-            bearing: this.viewState.bearing,
-            container: 'map',
-            minZoom: 1.9
-          })
-          // this.mapInstance.setRenderWorldCopies(status === 'false')
-        }
+        this.retryCount = 0
 
         const sessions = response.map_points || []
         let onNN: Array<any> = []
@@ -205,68 +265,40 @@ export default class SessionMap extends Vue {
           layers.push(nnLayer)
         }
 
-        if (!this.deckGlInstance) {
-          // creating the deck.gl instance
-          this.deckGlInstance = new (window as any).deck.Deck({
-            canvas: document.getElementById('deck-canvas'),
-            width: '100%',
-            height: '100%',
-            initialViewState: this.viewState,
-            controller: {
-              dragRotate: false,
-              dragTilt: false
-            },
-            // change the map's viewstate whenever the view state of deck.gl changes
-            onViewStateChange: ({ viewState }: any) => {
-              // Whenever the viewport changes, update the mapbox instance and the stored version of the viewport
-              this.mapInstance.jumpTo({
-                center: [viewState.longitude, viewState.latitude],
-                zoom: viewState.zoom,
-                bearing: viewState.bearing,
-                pitch: viewState.pitch,
-                minZoom: 2,
-                maxZoom: 16
-              })
+        this.deckGlInstance.setProps({ layers: [] })
+        this.deckGlInstance.setProps({ layers: layers })
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong fetching map points')
+        console.log(error)
 
-              this.$store.commit(
-                'UPDATE_CURRENT_VIEWPORT',
-                {
-                  latitude: viewState.latitude,
-                  longitude: viewState.longitude,
-                  zoom: viewState.zoom,
-                  pitch: viewState.pitch,
-                  bearing: viewState.bearing,
-                  minZoom: 2,
-                  maxZoom: 16
-                }
-              )
-            },
-            layers: layers,
-            getCursor: ({ isHovering, isDragging }: any) => {
-              if (isHovering) {
-                return 'pointer'
-              }
-              if (isDragging) {
-                return 'grabbing'
-              }
-              return 'grab'
-            }
-          })
-        } else {
-          this.deckGlInstance.setProps({ layers: [] })
-          this.deckGlInstance.setProps({ layers: layers })
+        this.stopLoop()
+        this.retryCount = this.retryCount + 1
+        if (this.retryCount < MAX_RETRIES) {
+          setTimeout(() => {
+            this.restartLoop()
+          }, 3000 * this.retryCount)
+        }
+
+        // If the retry count exceeds the max amount of retries we can assume the network is down. Kill all polling loops and display an error message
+        if (this.retryCount >= MAX_RETRIES) {
+          this.$store.dispatch('toggleKillLoops', true)
         }
       })
   }
 
   private restartLoop () {
-    if (this.mapLoop) {
-      clearInterval(this.mapLoop)
-    }
+    this.stopLoop()
     this.fetchMapSessions()
     this.mapLoop = setInterval(() => {
       this.fetchMapSessions()
     }, 10000)
+  }
+
+  private stopLoop () {
+    if (this.mapLoop) {
+      clearInterval(this.mapLoop)
+    }
   }
 
   private mapPointClickHandler (info: any) {
@@ -286,14 +318,7 @@ export default class SessionMap extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-.map-container-offset {
-  width: 100%;
-  height: calc(-160px + 95vh);
-  position: relative;
-  overflow: hidden;
-  max-height: 1000px;
-}
-.map-container-no-offset {
+.map-container {
   width: 100%;
   height: calc(-160px + 100vh);
   position: relative;

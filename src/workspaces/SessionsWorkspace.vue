@@ -155,6 +155,8 @@ import { FeatureEnum } from '@/components/types/FeatureTypes'
  * TODO: Make this a View
  */
 
+const MAX_RETRIES = 4
+
 @Component({
   components: {
     SessionCounts
@@ -164,16 +166,20 @@ export default class SessionsWorkspace extends Vue {
   private sessions: Array<any>
   private sessionsLoop: any
   private showTable: boolean
-  private unwatch: any
+  private unwatchFilter: any
+  private unwatchKillLoops: any
 
   private sessionsTourSteps: Array<any>
   private sessionsTourOptions: any
   private sessionsTourCallbacks: any
 
+  private retryCount: number
+
   constructor () {
     super()
     this.sessions = []
     this.showTable = false
+    this.retryCount = 0
 
     this.sessionsTourSteps = [
       {
@@ -212,8 +218,7 @@ export default class SessionsWorkspace extends Vue {
   }
 
   private mounted () {
-    this.restartLoop()
-    this.unwatch = this.$store.watch(
+    this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
         return getters.currentFilter
       },
@@ -222,11 +227,29 @@ export default class SessionsWorkspace extends Vue {
         this.restartLoop()
       }
     )
+
+    this.unwatchKillLoops = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.killLoops
+      },
+      () => {
+        this.stopLoop()
+      }
+    )
+
+    // If the network isn't available/working show an alert and skip starting the polling loop
+    if (this.$store.getters.killLoops) {
+      this.showTable = true
+      return
+    }
+
+    this.restartLoop()
   }
 
   private beforeDestroy (): void {
     clearInterval(this.sessionsLoop)
-    this.unwatch()
+    this.unwatchFilter()
+    this.unwatchKillLoops()
   }
 
   private fetchSessions (): void {
@@ -235,6 +258,7 @@ export default class SessionsWorkspace extends Vue {
         company_code: this.$store.getters.currentFilter.companyCode || ''
       })
       .then((response: any) => {
+        this.retryCount = 0
         this.sessions = response.sessions || []
         if (this.$store.getters.isTour && this.$tours.sessionsTour && !this.$tours.sessionsTour.isRunning && !this.$store.getters.finishedTours.includes('sessions')) {
           this.$tours.sessionsTour.start()
@@ -244,6 +268,18 @@ export default class SessionsWorkspace extends Vue {
         this.sessions = []
         console.log('Something went wrong fetching the top sessions list')
         console.log(error)
+
+        this.stopLoop()
+        this.retryCount = this.retryCount + 1
+        if (this.retryCount < MAX_RETRIES) {
+          setTimeout(() => {
+            this.restartLoop()
+          }, 3000 * this.retryCount)
+        }
+
+        if (this.retryCount >= MAX_RETRIES) {
+          this.$store.dispatch('toggleKillLoops', true)
+        }
       })
       .finally(() => {
         if (!this.showTable) {
@@ -265,13 +301,17 @@ export default class SessionsWorkspace extends Vue {
   }
 
   private restartLoop () {
-    if (this.sessionsLoop) {
-      clearInterval(this.sessionsLoop)
-    }
+    this.stopLoop()
     this.fetchSessions()
     this.sessionsLoop = setInterval(() => {
       this.fetchSessions()
     }, 10000)
+  }
+
+  private stopLoop () {
+    if (this.sessionsLoop) {
+      clearInterval(this.sessionsLoop)
+    }
   }
 }
 </script>

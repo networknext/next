@@ -13,10 +13,14 @@
             "
     >
       <h1 class="h2">
-        Explore
+        Exploration
       </h1>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
+      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
+        <Alert ref="verifyAlert"></Alert>
+      </div>
+      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="$store.getters.currentPage === 'billing'" style="max-width: 400px;">
         <div class="mr-auto"></div>
+        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" />
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
@@ -25,11 +29,14 @@
           <li class="nav-item">
             <router-link to="/explore/notifications" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'notifications'}">Notifications</router-link>
           </li>
-          <li class="nav-item" v-if="false">
+          <li class="nav-item" v-if="false && $store.getters.hasAnalytics">
             <router-link to="/explore/analytics" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
           </li>
-          <li class="nav-item" v-if="false">
-            <router-link to="/explore/invoicing" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'invoicing'}">Invoicing</router-link>
+          <li class="nav-item" v-if="false && $store.getters.isSeller">
+            <router-link to="/explore/supply" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'supply'}">Supplier</router-link>
+          </li>
+          <li class="nav-item" v-if="$store.getters.isAdmin">
+            <router-link to="/explore/billing" class="nav-link" v-bind:class="{ active: $store.getters.currentPage === 'billing'}">Billing</router-link>
           </li>
         </ul>
       </div>
@@ -40,6 +47,11 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import Alert from '@/components/Alert.vue'
+import { AlertType } from '@/components/types/AlertTypes'
+import BuyerFilter from '@/components/BuyerFilter.vue'
+import DateFilter from '@/components/DateFilter.vue'
+import { ANALYTICS_TRIAL_SIGNUP_RESPONSE, RELOAD_MESSAGE } from '@/components/types/Constants'
 
 /**
  * This component holds the workspace elements related to the downloads page in the Portal
@@ -49,8 +61,47 @@ import { Component, Vue } from 'vue-property-decorator'
  * TODO: Make this a View
  */
 
-@Component
-export default class ExplorationWorkspace extends Vue {}
+@Component({
+  components: {
+    Alert,
+    BuyerFilter,
+    DateFilter
+  }
+})
+export default class ExplorationWorkspace extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    verifyAlert: Alert;
+  }
+
+  private mounted () {
+    // If the network is down, show an error
+    if (this.$store.getters.killLoops) {
+      this.showErrorAlert()
+    }
+
+    this.$root.$on('showAnalyticsTrialResponse', this.showAnalyticsTrialResponse)
+  }
+
+  private beforeDestroy () {
+    this.$root.$off('showAnalyticsTrialResponse')
+  }
+
+  private showErrorAlert () {
+    this.$refs.verifyAlert.toggleSlots(false)
+    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
+  }
+
+  private showAnalyticsTrialResponse () {
+    this.$refs.verifyAlert.toggleSlots(false)
+    this.$refs.verifyAlert.setMessage(ANALYTICS_TRIAL_SIGNUP_RESPONSE)
+    this.$refs.verifyAlert.setAlertType(AlertType.SUCCESS)
+    setTimeout(() => {
+      this.$refs.verifyAlert.resetAlert()
+    }, 10000)
+  }
+}
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
