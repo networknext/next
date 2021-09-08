@@ -303,12 +303,12 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	}
 
 	cityres, err := mmdb.cityReader.City(ip)
-	if err != nil {
-		mmdb.cityMutex.RUnlock()
-		return Location{}, err
-	}
 
 	mmdb.cityMutex.RUnlock()
+
+	if err != nil {
+		return Location{}, err
+	}
 
 	mmdb.ispMutex.RLock()
 	if mmdb.ispReader == nil {
@@ -317,12 +317,13 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	}
 
 	ispres, err := mmdb.ispReader.ISP(ip)
+
+	mmdb.ispMutex.RUnlock()
+
 	if err != nil {
 		mmdb.ispMutex.RUnlock()
 		return Location{}, err
 	}
-
-	mmdb.ispMutex.RUnlock()
 
 	fmt.Println("Using DB files to look up location")
 
