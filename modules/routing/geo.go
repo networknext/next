@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/networknext/backend/modules/encoding"
@@ -234,6 +235,9 @@ type MaxmindDB struct {
 
 	cityReader *geoip2.Reader
 	ispReader  *geoip2.Reader
+
+	cityMutex sync.RWMutex
+	ispMutex  sync.RWMutex
 }
 
 func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMetrics) error {
@@ -261,7 +265,10 @@ func (mmdb *MaxmindDB) OpenCity(ctx context.Context, file string) error {
 		return err
 	}
 
+	mmdb.cityMutex.Lock()
 	mmdb.cityReader = reader
+	mmdb.cityMutex.Unlock()
+
 	return nil
 }
 
@@ -271,7 +278,10 @@ func (mmdb *MaxmindDB) OpenISP(ctx context.Context, file string) error {
 		return err
 	}
 
+	mmdb.ispMutex.Lock()
 	mmdb.ispReader = reader
+	mmdb.ispMutex.Unlock()
+
 	return nil
 }
 
@@ -286,20 +296,32 @@ func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, file string) (*geoip2.
 
 // LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
 func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
+	mmdb.cityMutex.RLock()
 	if mmdb.cityReader == nil {
+		mmdb.cityMutex.RUnlock()
 		return Location{}, errors.New("not configured with a Maxmind City DB")
-	}
-	if mmdb.ispReader == nil {
-		return Location{}, errors.New("not configured with a Maxmind ISP DB")
 	}
 
 	cityres, err := mmdb.cityReader.City(ip)
+
+	mmdb.cityMutex.RUnlock()
+
 	if err != nil {
 		return Location{}, err
 	}
 
+	mmdb.ispMutex.RLock()
+	if mmdb.ispReader == nil {
+		mmdb.ispMutex.RUnlock()
+		return Location{}, errors.New("not configured with a Maxmind ISP DB")
+	}
+
 	ispres, err := mmdb.ispReader.ISP(ip)
+
+	mmdb.ispMutex.RUnlock()
+
 	if err != nil {
+		mmdb.ispMutex.RUnlock()
 		return Location{}, err
 	}
 
