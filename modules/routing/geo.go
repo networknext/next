@@ -321,7 +321,6 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	mmdb.ispMutex.RUnlock()
 
 	if err != nil {
-		mmdb.ispMutex.RUnlock()
 		return Location{}, err
 	}
 
