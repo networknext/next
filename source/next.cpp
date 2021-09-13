@@ -4407,7 +4407,7 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         start = optional_route_changed_time;
     }
 
-    // calculate min/max/mean RTT
+    // calculate min RTT
 
     double min_rtt = FLT_MAX;
     int num_pings = 0;
@@ -10815,7 +10815,7 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     if ( !found )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "could not autodetect multiplay datacenter :(" );
-        printf( "\nmultiplay.txt:\n\n%s\nwhois:\n%s\n\n", multiplay_buffer, whois_buffer );
+        next_printf( "\nmultiplay.txt:\n\n%s\nwhois:\n%s\n\n", multiplay_buffer, whois_buffer );
         return false;
     }
 
