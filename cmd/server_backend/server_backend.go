@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"encoding/gob"
 	"expvar"
 	"fmt"
@@ -51,9 +50,6 @@ import (
 	googlepubsub "cloud.google.com/go/pubsub"
 )
 
-// MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
-const MaxRelayCount = 10
-
 var (
 	buildtime     string
 	commitMessage string
@@ -61,29 +57,6 @@ var (
 	tag           string
 	keys          middleware.JWKS
 )
-
-// A mock locator used in staging to set each session to a random, unique lat/long
-type stagingLocator struct {
-	SessionID uint64
-}
-
-func (locator *stagingLocator) LocateIP(ip net.IP) (routing.Location, error) {
-	// Generate a random lat/long from the session ID
-	sessionIDBytes := [8]byte{}
-	binary.LittleEndian.PutUint64(sessionIDBytes[0:8], locator.SessionID)
-
-	// Randomize the location by using 4 bits of the sessionID for the lat, and the other 4 for the long
-	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
-	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
-
-	lat := (float32(latBits)) / 0xFFFFFFFF
-	long := (float32(longBits)) / 0xFFFFFFFF
-
-	return routing.Location{
-		Latitude:  (-90.0 + lat*180.0) * 0.5,
-		Longitude: -180.0 + long*360.0,
-	}, nil
-}
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -182,62 +155,77 @@ func mainReturnWithCode() int {
 	routerPrivateKey := [crypto.KeySize]byte{}
 	copy(routerPrivateKey[:], routerPrivateKeySlice)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return routing.NullIsland
-	}
-
-	// Setup maxmind download go routine
-	maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute*1)
-	if err != nil {
-		maxmindSyncInterval = time.Minute * 1
-	}
-
-	// Open the Maxmind DB and create a routing.MaxmindDB from it
 	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
+	if maxmindCityFile == "" {
+		core.Error("could not get maxmind city file")
+		return 1
+	}
+
 	maxmindISPFile := envvar.Get("MAXMIND_ISP_DB_FILE", "")
-	if maxmindCityFile != "" && maxmindISPFile != "" {
-		mmdb := &routing.MaxmindDB{
-			CityFile: maxmindCityFile,
-			IspFile:  maxmindISPFile,
-		}
-		var mmdbMutex sync.RWMutex
+	if maxmindISPFile == "" {
+		core.Error("could not get maxmind isp file")
+		return 1
+	}
 
-		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
-			mmdbMutex.RLock()
-			mmdbRet := mmdb
-			mmdbMutex.RUnlock()
-			return mmdbRet
+	// function to get mmdb under mutex
+
+	mmdb := &routing.MaxmindDB{
+		CityFile:  maxmindCityFile,
+		IspFile:   maxmindISPFile,
+		IsStaging: env == "staging",
+	}
+
+	if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+		core.Error("could not open maxmind city/isp files: %v", err)
+		return 1
+	}
+
+	var mmdbMutex sync.RWMutex
+
+	getIPLocator := func() *routing.MaxmindDB {
+		mmdbMutex.RLock()
+		mmdbRet := mmdb
+		mmdbMutex.RUnlock()
+
+		return mmdbRet
+	}
+
+	// Sync mmdb
+	{
+		maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute*1)
+		if err != nil {
+			maxmindSyncInterval = time.Minute * 1
 		}
 
-		if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-			core.Error("max mind db sync error: %v", err)
-			return 1
-		}
-
-		ticker := time.NewTicker(maxmindSyncInterval)
 		go func() {
+			ticker := time.NewTicker(maxmindSyncInterval)
+
 			for {
 				select {
 				case <-ticker.C:
-					if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-						core.Error("max mind db sync error: %v", err)
+					// Load the new MMDB
+					newMMDB := &routing.MaxmindDB{
+						CityFile:  maxmindCityFile,
+						IspFile:   maxmindISPFile,
+						IsStaging: env == "staging",
+					}
+
+					if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
+						core.Error("could not update maxmind db: %v", err)
 						continue
 					}
+
+					// Pointer swap under mutex
+					mmdbMutex.Lock()
+					mmdb.CloseCity()
+					mmdb.CloseISP()
+					mmdb = newMMDB
+					mmdbMutex.Unlock()
 				case <-ctx.Done():
 					return
 				}
 			}
 		}()
-	}
-
-	// Use a custom IP locator for staging so that clients
-	// have different, random lat/longs
-	if env == "staging" {
-		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
-			return &stagingLocator{
-				SessionID: sessionID,
-			}
-		}
 	}
 
 	staleDuration, err := envvar.GetDuration("MATRIX_STALE_DURATION", 20*time.Second)
@@ -800,7 +788,7 @@ func mainReturnWithCode() int {
 
 	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, serverTracker, backendMetrics.ServerInitMetrics)
 	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, serverTracker, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocator, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
