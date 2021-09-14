@@ -1,6 +1,6 @@
 solution "enet"
 	configurations { "Debug", "Release" }
-	platforms { "x32", "x64" }
+	platforms { "x64" }
 
 	project "enet_static"
 		kind "StaticLib"
