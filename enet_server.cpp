@@ -35,7 +35,7 @@ int main( int argc, char ** argv )
         return 1;
     }
 
-    printf( "started server on %x:%d\n", address.host, address.port );
+    printf( "started server on port %d\n", address.port );
 
     while ( true )
     {
@@ -43,7 +43,7 @@ int main( int argc, char ** argv )
     
         while ( enet_host_service( server, &event, 1000 ) > 0 )
         {
-            switch (event.type)
+            switch ( event.type )
             {
                 case ENET_EVENT_TYPE_CONNECT:
                     printf( "client connected from %x:%u\n", event.peer->address.host, event.peer->address.port );
