@@ -186,7 +186,6 @@ func mainReturnWithCode() int {
 		mmdbMutex.RLock()
 		mmdbRet := mmdb
 		mmdbMutex.RUnlock()
-
 		return mmdbRet
 	}
 
@@ -290,109 +289,112 @@ func mainReturnWithCode() int {
 				Timeout: time.Second * 4,
 			}
 
-			syncTimer := helpers.NewSyncTimer(syncInterval)
+			ticker := time.NewTicker(syncInterval)
 
 			for {
+				select {
+				case <-ticker.C:
 
-				syncTimer.Run()
+					var buffer []byte
+					start := time.Now()
 
-				var buffer []byte
-				start := time.Now()
+					var routeMatrixReader io.ReadCloser
 
-				var routeMatrixReader io.ReadCloser
+					if f, err := os.Open(uri); err == nil {
+						routeMatrixReader = f
+					}
 
-				if f, err := os.Open(uri); err == nil {
-					routeMatrixReader = f
+					if r, err := httpClient.Get(uri); err == nil {
+						routeMatrixReader = r.Body
+					}
+
+					if routeMatrixReader == nil {
+						clearEverything()
+						backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Add(1)
+						continue
+					}
+
+					buffer, err = ioutil.ReadAll(routeMatrixReader)
+
+					routeMatrixReader.Close()
+
+					if err != nil {
+						core.Error("faired to read route matrix data: %v", err)
+						clearEverything()
+						backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
+						continue
+					}
+
+					if len(buffer) == 0 {
+						core.Debug("route matrix buffer is empty")
+						clearEverything()
+						backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Add(1)
+						continue
+					}
+
+					var newRouteMatrix routing.RouteMatrix
+					readStream := encoding.CreateReadStream(buffer)
+					if err := newRouteMatrix.Serialize(readStream); err != nil {
+						core.Error("failed to serialize route matrix: %v", err)
+						clearEverything()
+						backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Add(1)
+						continue
+					}
+
+					if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
+						core.Error("route matrix is stale")
+						backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
+						continue
+					}
+
+					routeEntriesTime := time.Since(start)
+					duration := float64(routeEntriesTime.Milliseconds())
+					backendMetrics.RouteMatrixUpdateDuration.Set(duration)
+					if duration > 250 {
+						core.Error("long route matrix duration %dms", int(duration))
+						backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
+					}
+
+					// update some statistics from the route matrix
+
+					numRoutes := int32(0)
+					for i := range newRouteMatrix.RouteEntries {
+						numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
+					}
+					backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
+					backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
+
+					// decode the database in the route matrix
+
+					var newDatabase routing.DatabaseBinWrapper
+
+					databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
+					decoder := gob.NewDecoder(databaseBuffer)
+					err := decoder.Decode(&newDatabase)
+					if err == io.EOF {
+						core.Error("database.bin is empty")
+						clearEverything()
+						backendMetrics.ErrorMetrics.BinWrapperEmpty.Add(1)
+						continue
+					}
+					if err != nil {
+						core.Error("failed to read database.bin: %v", err)
+						clearEverything()
+						backendMetrics.ErrorMetrics.BinWrapperFailure.Add(1)
+						continue
+					}
+
+					// pointer swap route matrix and database atomically
+
+					routeMatrixMutex.Lock()
+					databaseMutex.Lock()
+					routeMatrix = &newRouteMatrix
+					database = &newDatabase
+					databaseMutex.Unlock()
+					routeMatrixMutex.Unlock()
+				case <-ctx.Done():
+					return
 				}
-
-				if r, err := httpClient.Get(uri); err == nil {
-					routeMatrixReader = r.Body
-				}
-
-				if routeMatrixReader == nil {
-					clearEverything()
-					backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Add(1)
-					continue
-				}
-
-				buffer, err = ioutil.ReadAll(routeMatrixReader)
-
-				routeMatrixReader.Close()
-
-				if err != nil {
-					core.Error("faired to read route matrix data: %v", err)
-					clearEverything()
-					backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
-					continue
-				}
-
-				if len(buffer) == 0 {
-					core.Debug("route matrix buffer is empty")
-					clearEverything()
-					backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Add(1)
-					continue
-				}
-
-				var newRouteMatrix routing.RouteMatrix
-				readStream := encoding.CreateReadStream(buffer)
-				if err := newRouteMatrix.Serialize(readStream); err != nil {
-					core.Error("failed to serialize route matrix: %v", err)
-					clearEverything()
-					backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Add(1)
-					continue
-				}
-
-				if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
-					core.Error("route matrix is stale")
-					backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
-					continue
-				}
-
-				routeEntriesTime := time.Since(start)
-				duration := float64(routeEntriesTime.Milliseconds())
-				backendMetrics.RouteMatrixUpdateDuration.Set(duration)
-				if duration > 250 {
-					core.Error("long route matrix duration %dms", int(duration))
-					backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
-				}
-
-				// update some statistics from the route matrix
-
-				numRoutes := int32(0)
-				for i := range newRouteMatrix.RouteEntries {
-					numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
-				}
-				backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
-				backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
-
-				// decode the database in the route matrix
-
-				var newDatabase routing.DatabaseBinWrapper
-
-				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
-				decoder := gob.NewDecoder(databaseBuffer)
-				err := decoder.Decode(&newDatabase)
-				if err == io.EOF {
-					core.Error("database.bin is empty")
-					clearEverything()
-					backendMetrics.ErrorMetrics.BinWrapperEmpty.Add(1)
-					continue
-				}
-				if err != nil {
-					core.Error("failed to read database.bin: %v", err)
-					clearEverything()
-					backendMetrics.ErrorMetrics.BinWrapperFailure.Add(1)
-					continue
-				}
-
-				// pointer swap route matrix and database atomically
-
-				routeMatrixMutex.Lock()
-				databaseMutex.Lock()
-				routeMatrix = &newRouteMatrix
-				database = &newDatabase
-				databaseMutex.Unlock()
-				routeMatrixMutex.Unlock()
 			}
 		}()
 	}
