@@ -261,6 +261,7 @@ func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMet
 
 func (mmdb *MaxmindDB) OpenCity(ctx context.Context, file string) error {
 	mmdb.cityMutex.Lock()
+	defer mmdb.cityMutex.Unlock()
 
 	if mmdb.cityReader != nil {
 		// Close the previous DB before opening the latest one
@@ -274,13 +275,12 @@ func (mmdb *MaxmindDB) OpenCity(ctx context.Context, file string) error {
 
 	mmdb.cityReader = reader
 
-	mmdb.cityMutex.Unlock()
-
 	return nil
 }
 
 func (mmdb *MaxmindDB) OpenISP(ctx context.Context, file string) error {
 	mmdb.ispMutex.Lock()
+	defer mmdb.ispMutex.Unlock()
 
 	if mmdb.ispReader != nil {
 		// Close the previous DB before opening the latest one
@@ -293,8 +293,6 @@ func (mmdb *MaxmindDB) OpenISP(ctx context.Context, file string) error {
 	}
 
 	mmdb.ispReader = reader
-
-	mmdb.ispMutex.Unlock()
 
 	return nil
 }
