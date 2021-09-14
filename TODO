@@ -1,0 +1,16 @@
+	
+	Get enet building on macosx
+
+	Get a test client/server example working on macosx with multiple clients connecting
+
+TODO
+
+	Client sends verifiable packets to enet server.
+
+	Server validates packet data and responds with verifiable packet data.
+
+	Client prints out when verified packets are received.
+
+	----
+
+	Research and work out where to insert our packet send/receive.
