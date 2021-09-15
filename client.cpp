@@ -84,8 +84,6 @@ int main( int argc, char ** argv )
             }
         }
 
-        printf( "tick\n" );
-
         ENetPacket * packet = enet_packet_create( "hello", strlen ("hello") + 1, 0 );
         enet_peer_send( peer, 0, packet );
         enet_host_flush( client );
