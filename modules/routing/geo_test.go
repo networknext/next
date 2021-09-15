@@ -213,7 +213,7 @@ func TestIPLocator(t *testing.T) {
 				ISP:       "Andrews & Arnold Ltd",
 			}
 
-			actual, err := mmdb.LocateIP(net.ParseIP("81.2.69.160"))
+			actual, err := mmdb.LocateIP(net.ParseIP("81.2.69.160"), rand.Uint64())
 			assert.NoError(t, err)
 
 			assert.Equal(t, expected, actual)
@@ -226,7 +226,7 @@ func TestIPLocator(t *testing.T) {
 			cityreader.Close()
 			ispreader.Close()
 
-			_, err := mmdb.LocateIP(net.ParseIP("81.2.69.160"))
+			_, err := mmdb.LocateIP(net.ParseIP("81.2.69.160"), rand.Uint64())
 			assert.EqualError(t, err, "not configured with a Maxmind City DB")
 
 		}
