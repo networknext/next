@@ -303,7 +303,7 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP, sessionID uint64) (Location, error) {
 	}
 
 	if mmdb.cityReader == nil {
-		return Location{}, errors.New("not configured with a Maxmind City DB")
+		return LocationNullIsland, errors.New("not configured with a Maxmind City DB")
 	}
 
 	cityres, err := mmdb.cityReader.City(ip)
