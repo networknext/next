@@ -3,7 +3,17 @@
 
 	Get a test client/server example working on macosx with multiple clients connecting
 
+	Add network next source to project.
+
 TODO
+
+	Setup premake to build network next.
+
+	Build and link to network next library from client and server examples.
+
+	Add next_sleep to client so we have a regular pump once per-second (ish).
+
+	----
 
 	Client sends verifiable packets to enet server.
 
@@ -14,3 +24,7 @@ TODO
 	----
 
 	Research and work out where to insert our packet send/receive.
+
+	----
+
+	

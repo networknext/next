@@ -49,14 +49,15 @@ int main( int argc, char ** argv )
                     printf( "client connected from %x:%u\n", event.peer->address.host, event.peer->address.port );
                     break;
 
+                case ENET_EVENT_TYPE_DISCONNECT:
+                    printf( "client disconnected from %x:%u\n", event.peer->address.host, event.peer->address.port );
+                    break;
+
                 case ENET_EVENT_TYPE_RECEIVE:
                     printf( "packet of length %u was received from %x:%u on channel %u\n", int(event.packet->dataLength), event.peer->address.host, event.peer->address.port, event.channelID );
                     enet_packet_destroy( event.packet );
                     break;
            
-                case ENET_EVENT_TYPE_DISCONNECT:
-                    printf( "client disconnected from %x:%u\n", event.peer->address.host, event.peer->address.port );
-                    break;
 
                 default:
                     break;

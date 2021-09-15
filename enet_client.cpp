@@ -1,6 +1,7 @@
 #include <enet/enet.h>
 #include <stdio.h>
 #include <signal.h>
+#include <next.h>
 
 const int MaxChannels = 2;
 const int MaxIncomingBandwidth = 0;
@@ -15,6 +16,12 @@ void interrupt_handler( int signal )
 
 int main( int argc, char ** argv ) 
 {
+    if ( next_init( NULL, NULL ) != NEXT_OK )
+    {
+        printf( "error: could not initialize network next\n" );
+        return 1;
+    }
+
     if ( enet_initialize() != 0 )
     {
         printf( "error: failed to initialize enet\n" );
@@ -25,7 +32,7 @@ int main( int argc, char ** argv )
 
     if ( client == NULL )
     {
-        printf( "failed to create enet client\n" );
+        printf( "error: failed to create enet client\n" );
         return 1;
     }
 
@@ -37,7 +44,7 @@ int main( int argc, char ** argv )
   
     if ( peer == NULL )
     {
-        printf( "could not create client peer\n" );
+        printf( "error: could not create client peer\n" );
         return 1;
     }
 
@@ -49,7 +56,7 @@ int main( int argc, char ** argv )
     }
     else
     {
-        printf( "client could not connect to server\n" );
+        printf( "error: client could not connect to server\n" );
         return 1;
     }
 
@@ -68,6 +75,8 @@ int main( int argc, char ** argv )
                     break;
             }
         }
+
+        // todo: sleep
     }
 
     enet_peer_reset( peer );
@@ -75,6 +84,8 @@ int main( int argc, char ** argv )
     enet_host_destroy( client );
 
     enet_deinitialize();
+
+    next_term();
 
     return 0;
 }
