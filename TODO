@@ -5,15 +5,11 @@
 
 	Add network next source to project.
 
-TODO
-
 	Setup premake to build network next.
 
 	Build and link to network next library from client and server examples.
 
 	Add next_sleep to client so we have a regular pump once per-second (ish).
-
-	----
 
 	Client sends verifiable packets to enet server.
 
@@ -21,10 +17,11 @@ TODO
 
 	Client prints out when verified packets are received.
 
-	----
+TODO
 
 	Research and work out where to insert our packet send/receive.
 
-	----
+	Gonna need to probably do it differently for the client and server.
 
-	
+	Or have some host mode, or whatever -- might be able to drive it from number of connections?
+

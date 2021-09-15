@@ -18,6 +18,12 @@ void interrupt_handler( int signal )
 
 int main( int argc, char ** argv ) 
 {
+    if ( next_init( NULL, NULL ) != NEXT_OK )
+    {
+        printf( "error: could not initialize network next\n" );
+        return 1;
+    }
+
     if ( enet_initialize() != 0 )
     {
         printf( "error: failed to initialize enet\n" );
@@ -59,7 +65,7 @@ int main( int argc, char ** argv )
                     if ( event.packet->dataLength == 6 && strcmp( (const char*) event.packet->data, "hello" ) == 0 )
                     {
                         printf( "received packet from client %x:%u on channel %u\n", event.peer->address.host, event.peer->address.port, event.channelID );
-                        ENetPacket * packet = enet_packet_create( "how are you?", strlen ("how are you?") + 1, 0 );
+                        ENetPacket * packet = enet_packet_create( "how are you?", strlen("how are you?") + 1, 0 );
                         enet_peer_send( event.peer, 0, packet );
                         enet_host_flush( server );
                     }
@@ -76,6 +82,8 @@ int main( int argc, char ** argv )
     enet_host_destroy( server );
 
     enet_deinitialize();
+
+    next_term();
 
     return 0;
 }
