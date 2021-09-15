@@ -856,6 +856,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 		"EnvelopeBytesDown",
 		"Latitude",
 		"Longitude",
+		"ClientAddress",
 		"ISP",
 		"ConnectionType",
 		"PlatformType",
@@ -878,6 +879,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 		"TotalPriceSum",
 		"EnvelopeBytesUpSum",
 		"EnvelopeBytesDownSum",
+		"DurationOnNext",
 		"NextRTT",
 		"NextJitter",
 		"NextPacketLoss",
@@ -1245,6 +1247,16 @@ func dumpSession2(env Environment, sessionID uint64) {
 		if billingEntry.EnvelopeBytesDownSum.Valid {
 			envelopeBytesDownSum = fmt.Sprintf("%d", billingEntry.EnvelopeBytesDownSum.Int64)
 		}
+		// DurationOnNext
+		durationOnNext := ""
+		if billingEntry.DurationOnNext.Valid {
+			durationOnNext = fmt.Sprintf("%d", billingEntry.DurationOnNext.Int64)
+		}
+		// ClientAddress
+		clientAddress := ""
+		if billingEntry.ClientAddress.Valid {
+			clientAddress = billingEntry.ClientAddress.StringVal
+		}
 
 		bqBilling2DataEntryCSV = append(bqBilling2DataEntryCSV, []string{
 			timestamp,
@@ -1266,6 +1278,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 			envelopeBytesDown,
 			latitude,
 			longitude,
+			clientAddress,
 			isp,
 			connectionType,
 			platformType,
@@ -1288,6 +1301,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 			totalPriceSum,
 			envelopeBytesUpSum,
 			envelopeBytesDownSum,
+			durationOnNext,
 			nextRTT,
 			nextJitter,
 			nextPacketLoss,
@@ -1417,7 +1431,9 @@ func GetAllSessionBilling2Info(sessionID int64, env Environment) ([]BigQueryBill
 	sessionDuration,
 	totalPriceSum,
 	envelopeBytesUpSum,
-	envelopeBytesDownSum
+	envelopeBytesDownSum,
+	durationOnNext,
+	clientAddress,
     from `))
 
 	if env.Name != "prod" && env.Name != "dev" && env.Name != "staging" {

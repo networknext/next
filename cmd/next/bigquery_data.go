@@ -117,6 +117,7 @@ type BigQueryBilling2Entry struct {
 	EnvelopeBytesDown bigquery.NullInt64
 	Latitude          bigquery.NullFloat64
 	Longitude         bigquery.NullFloat64
+	ClientAddress     bigquery.NullString
 	ISP               bigquery.NullString
 	ConnectionType    bigquery.NullInt64
 	PlatformType      bigquery.NullInt64
@@ -142,6 +143,7 @@ type BigQueryBilling2Entry struct {
 	TotalPriceSum                   bigquery.NullInt64
 	EnvelopeBytesUpSum              bigquery.NullInt64
 	EnvelopeBytesDownSum            bigquery.NullInt64
+	DurationOnNext                  bigquery.NullInt64
 
 	// network next only
 

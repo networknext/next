@@ -588,26 +588,25 @@ func TestServerUpdateHandlerFunc_ServerTracker_DatacenterFound(t *testing.T) {
 
 // Session update handler
 
-type errLocator struct{}
-
-func (locator *errLocator) LocateIP(ip net.IP) (routing.Location, error) {
-	return routing.Location{}, fmt.Errorf("failed")
+func getErrorLocator() *routing.MaxmindDB {
+	return &routing.MaxmindDB{}
 }
 
-type successLocator struct{}
+func getSuccessLocator(t *testing.T) *routing.MaxmindDB {
+	// Set IsStaging to true to use sessionID instead of IP Address
+	// when we are not testing IP2Location
+	mmdb := &routing.MaxmindDB{
+		CityFile:  "../../testdata/GeoIP2-City-Test.mmdb",
+		IspFile:   "../../testdata/GeoIP2-ISP-Test.mmdb",
+		IsStaging: true,
+	}
 
-func (locator *successLocator) LocateIP(ip net.IP) (routing.Location, error) {
-	return routing.Location{
-		Continent:   "North America",
-		Country:     "United States",
-		CountryCode: "USA",
-		Region:      "New York",
-		City:        "Albany",
-		Latitude:    float32(42.652580),
-		Longitude:   float32(-73.756233),
-		ISP:         "Spectrum",
-		ASN:         10,
-	}, nil
+	err := mmdb.OpenCity(context.Background(), mmdb.CityFile)
+	assert.NoError(t, err)
+	err = mmdb.OpenISP(context.Background(), mmdb.IspFile)
+	assert.NoError(t, err)
+
+	return mmdb
 }
 
 func TestSessionUpdateHandlerFunc_Pre_BuyerNotFound(t *testing.T) {
@@ -732,15 +731,7 @@ func TestSessionUpdateHandlerFunc_Pre_LocationVeto(t *testing.T) {
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
 
-	state.IpLocator = &errLocator{}
-
-	transport.SessionPre(&state)
-
-	assert.True(t, state.Output.RouteState.LocationVeto)
-	assert.Equal(t, float64(1), state.Metrics.ClientLocateFailure.Value())
-
-	state.IpLocator = routing.NullIsland
-	state.Metrics.ClientLocateFailure.ValueReset()
+	state.IpLocator = getErrorLocator()
 
 	transport.SessionPre(&state)
 
@@ -768,7 +759,9 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
 
-	state.IpLocator = &successLocator{}
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
 
 	assert.True(t, transport.SessionPre(&state))
 
@@ -797,7 +790,9 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
 
-	state.IpLocator = &successLocator{}
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
 
 	assert.True(t, transport.SessionPre(&state))
 
@@ -828,7 +823,9 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
 
-	state.IpLocator = &successLocator{}
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
 
 	assert.True(t, transport.SessionPre(&state))
 
@@ -863,7 +860,9 @@ func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
 
-	state.IpLocator = &successLocator{}
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
 
 	assert.True(t, transport.SessionPre(&state))
 	assert.True(t, state.StaleRouteMatrix)
@@ -894,7 +893,9 @@ func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
-	state.IpLocator = &successLocator{}
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
 
 	assert.False(t, transport.SessionPre(&state))
 }
@@ -916,9 +917,6 @@ func TestSessionUpdateHandlerFunc_NewSession_Success(t *testing.T) {
 
 	assert.Equal(t, uint32(1), state.Output.SliceNumber)
 	assert.Equal(t, state.Output, state.Input)
-
-	assert.False(t, state.Output.RouteState.LocationVeto)
-	assert.Equal(t, float64(0), state.Metrics.ClientLocateFailure.Value())
 }
 
 func TestSessionUpdateHandlerFunc_ExistingSession_BadSessionID(t *testing.T) {
@@ -1735,8 +1733,8 @@ func TestSessionUpdateHandlerFunc_BuyerNotFound_NoResponse(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -1784,8 +1782,8 @@ func TestSessionUpdateHandlerFunc_SigCheckFailed_NoResponse(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -1835,8 +1833,8 @@ func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -1903,8 +1901,8 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testi
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -1998,8 +1996,8 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
