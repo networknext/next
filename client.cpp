@@ -71,7 +71,11 @@ int main( int argc, char ** argv )
             switch ( event.type )
             {
                 case ENET_EVENT_TYPE_RECEIVE:
-                    printf( "packet of length %u was received from server on channel %u\n", int(event.packet->dataLength), event.channelID );
+                    if ( event.packet->dataLength == 13 && strcmp( (const char*) event.packet->data, "how are you?" ) == 0 )
+                    {
+                        printf( "client received packet from server on channel %u\n", event.channelID );
+
+                    }
                     enet_packet_destroy( event.packet );
                     break;
            

@@ -1,6 +1,7 @@
 #include <enet.h>
 #include <next.h>
 #include <stdio.h>
+#include <string.h>
 #include <signal.h>
 
 const int MaxClients = 32;
@@ -55,7 +56,13 @@ int main( int argc, char ** argv )
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:
-                    printf( "packet of length %u was received from %x:%u on channel %u\n", int(event.packet->dataLength), event.peer->address.host, event.peer->address.port, event.channelID );
+                    if ( event.packet->dataLength == 6 && strcmp( (const char*) event.packet->data, "hello" ) == 0 )
+                    {
+                        printf( "received packet from client %x:%u on channel %u\n", event.peer->address.host, event.peer->address.port, event.channelID );
+                        ENetPacket * packet = enet_packet_create( "how are you?", strlen ("how are you?") + 1, 0 );
+                        enet_peer_send( event.peer, 0, packet );
+                        enet_host_flush( server );
+                    }
                     enet_packet_destroy( event.packet );
                     break;
            
