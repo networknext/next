@@ -521,7 +521,7 @@ type SessionHandlerState struct {
 	Datacenter         routing.Datacenter
 	Buyer              routing.Buyer
 	Debug              *string
-	IpLocator          routing.IPLocator
+	IpLocator          *routing.MaxmindDB
 	StaleDuration      time.Duration
 	RouterPrivateKey   [crypto.KeySize]byte
 	PostSessionHandler *PostSessionHandler
@@ -622,7 +622,7 @@ func SessionPre(state *SessionHandlerState) bool {
 	}
 
 	if state.Packet.SliceNumber == 0 {
-		state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP)
+		state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP, state.Packet.SessionID)
 
 		if err != nil || state.Output.Location == routing.LocationNullIsland {
 			core.Debug("location veto: %s\n", err)
@@ -2006,7 +2006,7 @@ func WriteSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 // ------------------------------------------------------------------
 
 func SessionUpdateHandlerFunc(
-	getIPLocator func(sessionID uint64) routing.IPLocator,
+	getIPLocator func() *routing.MaxmindDB,
 	getRouteMatrix func() *routing.RouteMatrix,
 	multipathVetoHandler storage.MultipathVetoHandler,
 	getDatabase func() *routing.DatabaseBinWrapper,
@@ -2064,7 +2064,7 @@ func SessionUpdateHandlerFunc(
 		state.Database = getDatabase()
 		state.Datacenter = routing.UnknownDatacenter
 		state.PacketData = incoming.Data
-		state.IpLocator = getIPLocator(state.Packet.SessionID)
+		state.IpLocator = getIPLocator()
 		state.RouteMatrix = getRouteMatrix()
 		state.StaleDuration = staleDuration
 		state.RouterPrivateKey = routerPrivateKey

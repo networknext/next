@@ -2,13 +2,13 @@ package routing
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math"
 	"net"
 	"os"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/networknext/backend/modules/encoding"
@@ -29,11 +29,6 @@ const (
 	MaxLocationSize = 128
 )
 
-// IPLocator defines anything that returns a routing.Location given an net.IP
-type IPLocator interface {
-	LocateIP(net.IP) (Location, error)
-}
-
 // Location represents a lat/long on Earth with additional metadata
 type Location struct {
 	Continent   string  `json:"continent"`
@@ -45,6 +40,10 @@ type Location struct {
 	Longitude   float32 `json:"longitude"`
 	ISP         string  `json:"isp"`
 	ASN         int     `json:"asn"`
+}
+
+var LocationNullIsland = Location{
+	ISP: "Water",
 }
 
 func (l *Location) UnmarshalBinary(data []byte) error {
@@ -233,11 +232,10 @@ type MaxmindDB struct {
 	CityFile string
 	IspFile  string
 
+	IsStaging bool
+
 	cityReader *geoip2.Reader
 	ispReader  *geoip2.Reader
-
-	cityMutex sync.RWMutex
-	ispMutex  sync.RWMutex
 }
 
 func (mmdb *MaxmindDB) Sync(ctx context.Context, metrics *metrics.MaxmindSyncMetrics) error {
@@ -265,11 +263,13 @@ func (mmdb *MaxmindDB) OpenCity(ctx context.Context, file string) error {
 		return err
 	}
 
-	mmdb.cityMutex.Lock()
 	mmdb.cityReader = reader
-	mmdb.cityMutex.Unlock()
 
 	return nil
+}
+
+func (mmdb *MaxmindDB) CloseCity() error {
+	return mmdb.cityReader.Close()
 }
 
 func (mmdb *MaxmindDB) OpenISP(ctx context.Context, file string) error {
@@ -278,11 +278,13 @@ func (mmdb *MaxmindDB) OpenISP(ctx context.Context, file string) error {
 		return err
 	}
 
-	mmdb.ispMutex.Lock()
 	mmdb.ispReader = reader
-	mmdb.ispMutex.Unlock()
 
 	return nil
+}
+
+func (mmdb *MaxmindDB) CloseISP() error {
+	return mmdb.ispReader.Close()
 }
 
 func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, file string) (*geoip2.Reader, error) {
@@ -295,36 +297,30 @@ func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, file string) (*geoip2.
 }
 
 // LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
-func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
-	mmdb.cityMutex.RLock()
+func (mmdb *MaxmindDB) LocateIP(ip net.IP, sessionID uint64) (Location, error) {
+	if mmdb.IsStaging {
+		return mmdb.LocateStagingIP(sessionID)
+	}
+
 	if mmdb.cityReader == nil {
-		mmdb.cityMutex.RUnlock()
-		return Location{}, errors.New("not configured with a Maxmind City DB")
+		return LocationNullIsland, errors.New("not configured with a Maxmind City DB")
 	}
 
 	cityres, err := mmdb.cityReader.City(ip)
 
-	mmdb.cityMutex.RUnlock()
-
 	if err != nil {
-		return Location{}, err
+		return LocationNullIsland, err
 	}
 
-	mmdb.ispMutex.RLock()
 	if mmdb.ispReader == nil {
-		mmdb.ispMutex.RUnlock()
-		return Location{}, errors.New("not configured with a Maxmind ISP DB")
+		return LocationNullIsland, errors.New("not configured with a Maxmind ISP DB")
 	}
 
 	ispres, err := mmdb.ispReader.ISP(ip)
 
-	mmdb.ispMutex.RUnlock()
-
 	if err != nil {
-		return Location{}, err
+		return LocationNullIsland, err
 	}
-
-	fmt.Println("Using DB files to look up location")
 
 	return Location{
 		Latitude:  float32(cityres.Location.Latitude),
@@ -334,18 +330,20 @@ func (mmdb *MaxmindDB) LocateIP(ip net.IP) (Location, error) {
 	}, nil
 }
 
-// LocateIPFunc allows anyone to define a custom function to lookup a net.IP for a routing.Location
-type LocateIPFunc func(net.IP) (Location, error)
+func (mmdb *MaxmindDB) LocateStagingIP(sessionID uint64) (Location, error) {
+	// Generate a random lat/long from the session ID
+	sessionIDBytes := [8]byte{}
+	binary.LittleEndian.PutUint64(sessionIDBytes[0:8], sessionID)
 
-// LocateIP just invokes the func itself and allows this to satisfy the IPLocator interface
-func (f LocateIPFunc) LocateIP(ip net.IP) (Location, error) {
-	return f(ip)
+	// Randomize the location by using 4 bits of the sessionID for the lat, and the other 4 for the long
+	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
+	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
+
+	lat := (float32(latBits)) / 0xFFFFFFFF
+	long := (float32(longBits)) / 0xFFFFFFFF
+
+	return Location{
+		Latitude:  (-90.0 + lat*180.0) * 0.5,
+		Longitude: -180.0 + long*360.0,
+	}, nil
 }
-
-var LocationNullIsland = Location{
-	ISP: "Water",
-}
-
-var NullIsland = LocateIPFunc(func(ip net.IP) (Location, error) {
-	return LocationNullIsland, nil
-})
