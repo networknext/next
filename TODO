@@ -17,11 +17,15 @@
 
 	Client prints out when verified packets are received.
 
-TODO
-
 	Research and work out where to insert our packet send/receive.
 
-	Gonna need to probably do it differently for the client and server.
+	Looks like surgery in enet_host.c is the right approach. Taking over the low-level socket implementation is bad news.
 
-	Or have some host mode, or whatever -- might be able to drive it from number of connections?
+	Probably need to determine client via MaxConnections = 1, and host if MaxConnections >= 1 -- but this is a bit dodgey.
+
+	There might be flags we can override...
+
+TODO
+
+	Dig in enet_host.c
 
