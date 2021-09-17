@@ -1530,6 +1530,8 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		Version 6
 
 		Includes session start timestamp in the summary slice
+
+		NOTE: Prior to version 6, summary slices were written to the billing2 table
 	*/
 	if entry.Version >= uint32(6) {
 		if entry.Summary {
