@@ -10,5 +10,6 @@ const BillingSliceSeconds = 10
 type Biller interface {
 	Bill(ctx context.Context, billingEntry *BillingEntry) error
 	Bill2(ctx context.Context, billingEntry *BillingEntry2) error
+	FlushBuffer(ctx context.Context)
 	Close()
 }

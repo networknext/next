@@ -22,6 +22,9 @@ func (noop *NoOpBiller) Bill2(ctx context.Context, entry *BillingEntry2) error {
 	return nil
 }
 
+// FlushBuffer does nothing
+func (noop *NoOpBiller) FlushBuffer(ctx context.Context) {}
+
 // Close does nothing
 func (noop *NoOpBiller) Close() {}
 

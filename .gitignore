@@ -20,6 +20,8 @@ cost.bin
 optimize.bin
 database.bin*
 servers*.json
+parsed*.json
+parsed*.csv
 
 # volatile sqlite3 db required for unit testing
 network_next.db
