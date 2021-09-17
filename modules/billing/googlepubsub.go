@@ -185,15 +185,18 @@ func (biller *GooglePubSubBiller) FlushBuffer(ctx context.Context) {
 	for _, client := range biller.clients {
 		client.bufferMutex.Lock()
 
-		result := client.Topic.Publish(ctx, &pubsub.Message{Data: client.buffer})
-		if result != nil {
-			client.ResultChan <- result
+		if client.bufferMessageCount > 0 {
+
+			result := client.Topic.Publish(ctx, &pubsub.Message{Data: client.buffer})
+			if result != nil {
+				client.ResultChan <- result
+			}
+
+			client.Metrics.Entries2Flushed.Add(float64(client.bufferMessageCount))
+
+			client.buffer = make([]byte, 0)
+			client.bufferMessageCount = 0
 		}
-
-		client.Metrics.Entries2Flushed.Add(float64(client.bufferMessageCount))
-
-		client.buffer = make([]byte, 0)
-		client.bufferMessageCount = 0
 
 		client.bufferMutex.Unlock()
 	}
