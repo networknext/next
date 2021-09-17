@@ -22,7 +22,7 @@ func main() {
 	prefix := "prefix_of_rows_to_delete_goes_here"
 	DeleteBigtableRows(gcpProjectID, btInstanceID, btTableName, prefix)
 }
-	
+
 // Fill in the "matches" string slice with datacenter hashes you want to brute force search.
 // The program will pair up all known suppliers with a list of common cities to try and find a match.
 func DatacenterReverseLookup() {
