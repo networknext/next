@@ -103,7 +103,7 @@ func mainReturnWithCode() int {
 		core.Debug("running as debug")
 	}
 
-	ctx := context.Background()
+	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	gcpProjectID := backend.GetGCPProjectID()
 
@@ -590,8 +590,9 @@ func mainReturnWithCode() int {
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
+	var wgPostSession sync.WaitGroup
 	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, biller2, featureBilling, featureBilling2, logger, backendMetrics.PostSessionMetrics)
-	go postSessionHandler.StartProcessing(ctx)
+	go postSessionHandler.StartProcessing(ctx, &wgPostSession)
 
 	// Create a server tracker to keep track of which servers are sending updates to this backend
 	serverTracker := storage.NewServerTracker()
@@ -876,10 +877,17 @@ func mainReturnWithCode() int {
 
 	fmt.Printf("started udp server on port %s\n\n", udpPort)
 
-	// Wait for interrupt signal
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
+	<-termChan
+	fmt.Println("Received shutdown signal.")
+
+	ctxCancelFunc()
+	// Wait for essential post session goroutines to finish up
+	wgPostSession.Wait()
+
+	fmt.Println("Successfully shutdown.")
 
 	return 0
 }

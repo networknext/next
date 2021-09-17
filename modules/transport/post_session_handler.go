@@ -62,9 +62,7 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 	}
 }
 
-func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
-	var wg sync.WaitGroup
-
+func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.WaitGroup) {
 	if post.featureBilling {
 
 		for i := 0; i < post.numGoroutines; i++ {
@@ -224,8 +222,6 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			}()
 		}
 	}
-
-	wg.Wait()
 }
 
 func (post *PostSessionHandler) SendBillingEntry(billingEntry *billing.BillingEntry) {

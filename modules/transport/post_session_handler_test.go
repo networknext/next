@@ -568,7 +568,7 @@ func TestPostSessionHandlerStartProcessingBillingFailure(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -600,7 +600,7 @@ func TestPostSessionHandlerStartProcessingBilling2Failure(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -632,7 +632,7 @@ func TestPostSessionHandlerStartProcessingBillingSuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -664,7 +664,7 @@ func TestPostSessionHandlerStartProcessingBilling2Success(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -698,7 +698,7 @@ func TestPostSessionHandlerStartProcessingVanityTransmitFailure(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -733,7 +733,7 @@ func TestPostSessionHandlerStartProcessingVanitySuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -767,7 +767,7 @@ func TestPostSessionHandlerStartProcessingPortalCountFailure(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -800,7 +800,7 @@ func TestPostSessionHandlerStartProcessingPortalCountSuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -842,7 +842,7 @@ func TestPostSessionHandlerStartProcessingPortalDataFailure(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -875,7 +875,7 @@ func TestPostSessionHandlerStartProcessingPortalDataSuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
