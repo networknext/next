@@ -1753,6 +1753,15 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 	}
 
 	/*
+		Calculate the starting timestamp of the session to include in the summary slice.
+	*/
+	var startTime time.Time
+	if state.Output.WroteSummary {
+		secondsToSub := int(sessionDuration) + billing.BillingSliceSeconds
+		startTime = time.Now().Add(time.Duration(-secondsToSub) * time.Second)
+	}
+
+	/*
 		Create the billing entry 2 and return it to the caller.
 	*/
 
@@ -1806,6 +1815,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		EnvelopeBytesUpSum:              state.Input.NextEnvelopeBytesUpSum,
 		EnvelopeBytesDownSum:            state.Input.NextEnvelopeBytesDownSum,
 		DurationOnNext:                  state.Input.DurationOnNext,
+		StartTimestamp:					 uint32(startTime.Unix()),
 		NextRTT:                         int32(state.Packet.NextRTT),
 		NextJitter:                      int32(state.Packet.NextJitter),
 		NextPacketLoss:                  int32(state.Packet.NextPacketLoss),
