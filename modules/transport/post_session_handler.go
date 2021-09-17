@@ -83,6 +83,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 
 						post.metrics.BillingEntriesFinished.Add(1)
 					case <-ctx.Done():
+						post.biller.FlushBuffer(ctx)
+						post.biller.Close()
 						return
 					}
 				}
@@ -108,6 +110,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 
 						post.metrics.BillingEntries2Finished.Add(1)
 					case <-ctx.Done():
+						post.biller2.FlushBuffer(ctx)
+						post.biller2.Close()
 						return
 					}
 				}

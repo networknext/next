@@ -254,6 +254,9 @@ func (bq *GoogleBigQueryClient) WriteLoop2(ctx context.Context, wg *sync.WaitGro
 	return nil
 }
 
+// FlushBuffer satisfies the Biller interface, actual flushing is done in write loop
+func (bq *GoogleBigQueryClient) FlushBuffer(ctx context.Context) {}
+
 // Closes the entries channel. Should only be done by the entry sender.
 func (bq *GoogleBigQueryClient) Close() {
 	if bq.FeatureBilling {
