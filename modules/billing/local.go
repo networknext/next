@@ -50,4 +50,6 @@ func (local *LocalBiller) Bill2(ctx context.Context, entry *BillingEntry2) error
 	return nil
 }
 
+func (local *LocalBiller) FlushBuffer(ctx context.Context) {}
+
 func (local *LocalBiller) Close() {}
