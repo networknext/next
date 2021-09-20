@@ -25,7 +25,21 @@
 
 	There might be flags we can override...
 
+	Dig in enet_host.c
+
+	Work out how to create client or server inside host as needed.
+
+	Disable socket creation when client or server is created.
+
+	Actually create the network next server.
+
+	Verify it gets shut down.
+
 TODO
 
-	Dig in enet_host.c
+	Work out how to get the bind address and server address from enet (might need to be supplied...)
+
+	Add the datacenter to the address.
+
+	Is address pass in messages? Might be better to extend host create instead...
 

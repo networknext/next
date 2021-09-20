@@ -18,6 +18,8 @@ void interrupt_handler( int signal )
 
 int main( int argc, char ** argv ) 
 {
+    signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
+
     if ( next_init( NULL, NULL ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "could not initialize network next" );
@@ -45,7 +47,7 @@ int main( int argc, char ** argv )
 
     next_printf( NEXT_LOG_LEVEL_INFO, "started server on port %d", address.port );
 
-    while ( true )
+    while ( !quit )
     {
         ENetEvent event;
     
@@ -79,11 +81,18 @@ int main( int argc, char ** argv )
         }
     }
 
+    printf( "\n" );
+    fflush( stdout );
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "shutting down..." );
+
     enet_host_destroy( server );
 
     enet_deinitialize();
 
     next_term();
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "done" );
 
     return 0;
 }

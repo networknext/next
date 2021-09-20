@@ -6,6 +6,22 @@
 #include <string.h>
 #include "enet.h"
 
+#if ENET_NETWORK_NEXT
+
+void enet_network_next_server_packet_received( struct next_server_t * server, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+{
+    (void) server;
+    (void) context;
+    (void) from;
+    (void) packet_data;
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "network next server received packet from client (%d bytes)", packet_bytes );
+
+    // todo: queue up received packet for enet
+}
+
+#endif // #if ENET_NETWORK_NEXT
+
 /** @defgroup host ENet host functions
     @{
 */
@@ -61,8 +77,18 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "creating enet network next server" );
 
-        // todo
-//      host->server = next_server_create
+        const char * server_address = "127.0.0.1:40000";    // todo: extract this string from the enet address and port?
+        const char * bind_address = "0.0.0.0:40000";
+        const char * datacenter = "local";      // todo: put datacenter in enet address so it can be passed in?
+
+        host->server = next_server_create( host, server_address, bind_address, datacenter, enet_network_next_server_packet_received, NULL );
+
+        if ( !host->server )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "could not create network next server" );
+            enet_free (host);
+            return NULL;
+        }
     }
 
 #endif // #if ENET_NETWORK_NEXT
