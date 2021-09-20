@@ -1753,6 +1753,20 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
 {
     enet_uint32 waitCondition;
 
+#if ENET_NETWORK_NEXT
+
+    if ( host->client )
+    {
+        next_client_update( host->client );
+    }
+
+    if ( host->server )
+    {
+        next_server_update( host->server );
+    }
+
+#endif // #if ENET_NETWORK_NEXT
+
     if (event != NULL)
     {
         event -> type = ENET_EVENT_TYPE_NONE;
@@ -1855,21 +1869,31 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
        if (ENET_TIME_GREATER_EQUAL (host -> serviceTime, timeout))
          return 0;
 
-       do
-       {
-          host -> serviceTime = enet_time_get ();
+#if ENET_NETWORK_NEXT
+     if ( !host->client && !host->server )
+     {
+#endif // #if ENET_NETWORK_NEXT
 
-          if (ENET_TIME_GREATER_EQUAL (host -> serviceTime, timeout))
-            return 0;
+           do
+           {
+              host -> serviceTime = enet_time_get ();
 
-          waitCondition = ENET_SOCKET_WAIT_RECEIVE | ENET_SOCKET_WAIT_INTERRUPT;
+              if (ENET_TIME_GREATER_EQUAL (host -> serviceTime, timeout))
+                return 0;
 
-          if (enet_socket_wait (host -> socket, & waitCondition, ENET_TIME_DIFFERENCE (timeout, host -> serviceTime)) != 0)
-            return -1;
-       }
-       while (waitCondition & ENET_SOCKET_WAIT_INTERRUPT);
+              waitCondition = ENET_SOCKET_WAIT_RECEIVE | ENET_SOCKET_WAIT_INTERRUPT;
 
-       host -> serviceTime = enet_time_get ();
+              if (enet_socket_wait (host -> socket, & waitCondition, ENET_TIME_DIFFERENCE (timeout, host -> serviceTime)) != 0)
+                return -1;
+           }
+           while (waitCondition & ENET_SOCKET_WAIT_INTERRUPT);
+
+           host -> serviceTime = enet_time_get ();
+
+#if ENET_NETWORK_NEXT
+      }
+#endif // #if ENET_NETWORK_NEXT
+
     } while (waitCondition & ENET_SOCKET_WAIT_RECEIVE);
 
     return 0; 
