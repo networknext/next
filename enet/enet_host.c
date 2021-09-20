@@ -50,7 +50,7 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
 
 #if ENET_NETWORK_NEXT
 
-    if ( peerCount == 1 )
+    if ( !address || address->client )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "creating enet network next client" );
     }

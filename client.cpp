@@ -20,13 +20,13 @@ int main( int argc, char ** argv )
 {
     if ( next_init( NULL, NULL ) != NEXT_OK )
     {
-        printf( "error: could not initialize network next\n" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "could not initialize network next" );
         return 1;
     }
 
     if ( enet_initialize() != 0 )
     {
-        printf( "error: failed to initialize enet\n" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to initialize enet" );
         return 1;
     }
 
@@ -34,7 +34,7 @@ int main( int argc, char ** argv )
 
     if ( client == NULL )
     {
-        printf( "error: failed to create enet client\n" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to create enet client" );
         return 1;
     }
 
@@ -46,21 +46,21 @@ int main( int argc, char ** argv )
   
     if ( peer == NULL )
     {
-        printf( "error: could not create client peer\n" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "could not create client peer" );
         return 1;
     }
 
-    printf( "client connecting to server %x:%d\n", address.host, address.port );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client connecting to server %x:%d", address.host, address.port );
 
     ENetEvent event;
        
     if ( enet_host_service( client, &event, 5000 ) > 0 && event.type == ENET_EVENT_TYPE_CONNECT )
     {
-        printf( "client connected to server\n" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "client connected to server" );
     }
     else
     {
-        printf( "error: client could not connect to server\n" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client could not connect to server" );
         return 1;
     }
 
@@ -73,8 +73,7 @@ int main( int argc, char ** argv )
                 case ENET_EVENT_TYPE_RECEIVE:
                     if ( event.packet->dataLength == 13 && strcmp( (const char*) event.packet->data, "how are you?" ) == 0 )
                     {
-                        printf( "client received packet from server on channel %u\n", event.channelID );
-
+                        next_printf( NEXT_LOG_LEVEL_INFO, "client received packet from server on channel %u", event.channelID );
                     }
                     enet_packet_destroy( event.packet );
                     break;

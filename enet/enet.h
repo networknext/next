@@ -94,6 +94,9 @@ typedef struct _ENetAddress
 {
    enet_uint32 host;
    enet_uint16 port;
+#if ENET_NETWORK_NEXT
+   int client;
+#endif // #if ENET_NETWORK_NEXT
 } ENetAddress;
 
 /**

@@ -33,6 +33,7 @@ int main( int argc, char ** argv )
     ENetAddress address;
     address.host = ENET_HOST_ANY;
     address.port = 1234;
+    address.client = 0;
 
     ENetHost * server = enet_host_create( &address, MaxClients, MaxChannels, MaxIncomingBandwidth, MaxOutgoingBandwidth );
 
