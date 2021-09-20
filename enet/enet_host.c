@@ -53,33 +53,56 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
     if ( !address || address->client )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "creating enet network next client" );
+
+        // todo
+//        host->client = next_client_create
     }
     else
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "creating enet network next server" );
+
+        // todo
+//      host->server = next_server_create
     }
 
 #endif // #if ENET_NETWORK_NEXT
 
-    host -> socket = enet_socket_create (ENET_SOCKET_TYPE_DATAGRAM);
-    if (host -> socket == ENET_SOCKET_NULL || (address != NULL && enet_socket_bind (host -> socket, address) < 0))
+#if ENET_NETWORK_NEXT
+    // IMPORTANT: Don't create a socket if we have a network next client or server
+    // We send and receive packets via network next instead of the enet socket!
+    if ( host->client || host->server )
     {
-       if (host -> socket != ENET_SOCKET_NULL)
-         enet_socket_destroy (host -> socket);
+#endif // #if ENET_NETWORK_NEXT
 
-       enet_free (host -> peers);
-       enet_free (host);
+        host -> socket = enet_socket_create (ENET_SOCKET_TYPE_DATAGRAM);
+        if (host -> socket == ENET_SOCKET_NULL || (address != NULL && enet_socket_bind (host -> socket, address) < 0))
+        {
+           if (host -> socket != ENET_SOCKET_NULL)
+             enet_socket_destroy (host -> socket);
 
-       return NULL;
+           enet_free (host -> peers);
+           enet_free (host);
+
+           return NULL;
+        }
+
+        enet_socket_set_option (host -> socket, ENET_SOCKOPT_NONBLOCK, 1);
+        enet_socket_set_option (host -> socket, ENET_SOCKOPT_BROADCAST, 1);
+        enet_socket_set_option (host -> socket, ENET_SOCKOPT_RCVBUF, ENET_HOST_RECEIVE_BUFFER_SIZE);
+        enet_socket_set_option (host -> socket, ENET_SOCKOPT_SNDBUF, ENET_HOST_SEND_BUFFER_SIZE);
+
+        if (address != NULL && enet_socket_get_address (host -> socket, & host -> address) < 0)   
+          host -> address = * address;
+
+#if ENET_NETWORK_NEXT
     }
+    else
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "using network next instead of enet socket" );
 
-    enet_socket_set_option (host -> socket, ENET_SOCKOPT_NONBLOCK, 1);
-    enet_socket_set_option (host -> socket, ENET_SOCKOPT_BROADCAST, 1);
-    enet_socket_set_option (host -> socket, ENET_SOCKOPT_RCVBUF, ENET_HOST_RECEIVE_BUFFER_SIZE);
-    enet_socket_set_option (host -> socket, ENET_SOCKOPT_SNDBUF, ENET_HOST_SEND_BUFFER_SIZE);
-
-    if (address != NULL && enet_socket_get_address (host -> socket, & host -> address) < 0)   
-      host -> address = * address;
+        // todo: we need to pull the host address back from the server/client instances here, in case we bound to port 0
+    }
+#endif // #if ENET_NETWORK_NEXT
 
     if (! channelLimit || channelLimit > ENET_PROTOCOL_MAXIMUM_CHANNEL_COUNT)
       channelLimit = ENET_PROTOCOL_MAXIMUM_CHANNEL_COUNT;
@@ -157,7 +180,28 @@ enet_host_destroy (ENetHost * host)
     if (host == NULL)
       return;
 
-    enet_socket_destroy (host -> socket);
+#if ENET_NETWORK_NEXT
+    if ( host->client || host->server )
+    {
+        if ( host->client )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "destroying network next client" );
+            next_client_destroy( host->client );
+            host->client = NULL;
+        }
+
+        if ( host->server )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "destroying network next server" );
+            next_server_destroy( host->server );
+            host->server = NULL;
+        }
+    }
+    else
+#endif // #if ENET_NETWORK_NEXT
+    {
+        enet_socket_destroy (host -> socket);
+    }
 
     for (currentPeer = host -> peers;
          currentPeer < & host -> peers [host -> peerCount];
@@ -270,6 +314,15 @@ enet_host_connect (ENetHost * host, const ENetAddress * address, size_t channelC
     command.connect.data = ENET_HOST_TO_NET_32 (data);
  
     enet_peer_queue_outgoing_command (currentPeer, & command, NULL, 0, 0);
+
+#if ENET_NETWORK_NEXT
+
+    if ( host->client )
+    {
+        // todo: next_client_connect
+    }
+
+#endif // #if ENET_NETWORK_NEXT
 
     return currentPeer;
 }

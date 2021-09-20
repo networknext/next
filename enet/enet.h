@@ -405,6 +405,14 @@ typedef struct _ENetHost
    size_t               duplicatePeers;              /**< optional number of allowed peers from duplicate IPs, defaults to ENET_PROTOCOL_MAXIMUM_PEER_ID */
    size_t               maximumPacketSize;           /**< the maximum allowable packet size that may be sent or received on a peer */
    size_t               maximumWaitingData;          /**< the maximum aggregate amount of buffer space a peer may use waiting for packets to be delivered */
+
+#if ENET_NETWORK_NEXT
+
+   struct next_client_t * client;
+   struct next_server_t * server;
+
+#endif // #if ENET_NETWORK_NEXT
+
 } ENetHost;
 
 /**
