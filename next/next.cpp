@@ -7858,7 +7858,7 @@ void next_client_open_session( next_client_t * client, const char * server_addre
     client->open_session_sequence++;
 }
 
-bool next_client_is_session_open( next_client_t * client )
+NEXT_BOOL next_client_is_session_open( next_client_t * client )
 {
     next_client_verify_sentinels( client );
 
@@ -8354,38 +8354,38 @@ const char * next_address_to_string( const next_address_t * address, char * buff
     }
 }
 
-bool next_address_equal( const next_address_t * a, const next_address_t * b )
+NEXT_BOOL next_address_equal( const next_address_t * a, const next_address_t * b )
 {
     next_assert( a );
     next_assert( b );
 
     if ( a->type != b->type )
-        return false;
+        return NEXT_FALSE;
 
     if ( a->type == NEXT_ADDRESS_IPV4 )
     {
         if ( a->port != b->port )
-            return false;
+            return NEXT_FALSE;
 
         for ( int i = 0; i < 4; ++i )
         {
             if ( a->data.ipv4[i] != b->data.ipv4[i] )
-                return false;
+                return NEXT_FALSE;
         }
     }
     else if ( a->type == NEXT_ADDRESS_IPV6 )
     {
         if ( a->port != b->port )
-            return false;
+            return NEXT_FALSE;
 
         for ( int i = 0; i < 8; ++i )
         {
             if ( a->data.ipv6[i] != b->data.ipv6[i] )
-                return false;
+                return NEXT_FALSE;
         }
     }
 
-    return true;
+    return NEXT_TRUE;
 }
 
 void next_address_anonymize( next_address_t * address )
@@ -13351,7 +13351,7 @@ void next_server_tag_session_multiple( next_server_t * server, const next_addres
     }
 }
 
-bool next_server_session_upgraded( next_server_t * server, const next_address_t * address )
+NEXT_BOOL next_server_session_upgraded( next_server_t * server, const next_address_t * address )
 {
     next_server_verify_sentinels( server );
 
@@ -13359,13 +13359,13 @@ bool next_server_session_upgraded( next_server_t * server, const next_address_t 
     
     next_proxy_session_entry_t * pending_entry = next_proxy_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry != NULL )
-        return true;
+        return NEXT_TRUE;
 
     next_proxy_session_entry_t * entry = next_proxy_session_manager_find( server->session_manager, address );
     if ( entry != NULL )
-        return true;
+        return NEXT_TRUE;
 
-    return false;
+    return NEXT_FALSE;
 }
 
 void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
@@ -13539,7 +13539,7 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
 }
 
-bool next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
+NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
 {
     next_assert( server );
     next_assert( address );
@@ -13549,7 +13549,7 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
 
     next_session_entry_t * entry = next_session_manager_find_by_address( server->internal->session_manager, address );
     if ( !entry )
-        return false;
+        return NEXT_FALSE;
 
     stats->address = *address;
     stats->session_id = entry->session_id; 
@@ -13580,7 +13580,7 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
     stats->num_tags = entry->num_tags;
     memcpy( stats->tags, entry->tags, sizeof(stats->tags) );
 
-    return true;
+    return NEXT_TRUE;
 }
 
 // ---------------------------------------------------------------

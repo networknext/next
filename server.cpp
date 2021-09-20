@@ -20,16 +20,15 @@ int main( int argc, char ** argv )
 {
     if ( next_init( NULL, NULL ) != NEXT_OK )
     {
-        printf( "error: could not initialize network next\n" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "could not initialize network next" );
         return 1;
     }
 
     if ( enet_initialize() != 0 )
     {
-        printf( "error: failed to initialize enet\n" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to initialize enet" );
         return 1;
     }
-
 
     ENetAddress address;
     address.host = ENET_HOST_ANY;
@@ -39,11 +38,11 @@ int main( int argc, char ** argv )
 
     if ( server == NULL )
     {   
-        printf( "failed to create enet server\n" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "failed to create enet server" );
         return 1;
     }
 
-    printf( "started server on port %d\n", address.port );
+    next_printf( NEXT_LOG_LEVEL_INFO, "started server on port %d", address.port );
 
     while ( true )
     {
@@ -54,17 +53,17 @@ int main( int argc, char ** argv )
             switch ( event.type )
             {
                 case ENET_EVENT_TYPE_CONNECT:
-                    printf( "client connected from %x:%u\n", event.peer->address.host, event.peer->address.port );
+                    next_printf( NEXT_LOG_LEVEL_INFO, "client connected from %x:%u", event.peer->address.host, event.peer->address.port );
                     break;
 
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    printf( "client disconnected from %x:%u\n", event.peer->address.host, event.peer->address.port );
+                    next_printf( NEXT_LOG_LEVEL_INFO, "client disconnected from %x:%u", event.peer->address.host, event.peer->address.port );
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:
                     if ( event.packet->dataLength == 6 && strcmp( (const char*) event.packet->data, "hello" ) == 0 )
                     {
-                        printf( "received packet from client %x:%u on channel %u\n", event.peer->address.host, event.peer->address.port, event.channelID );
+                        next_printf( NEXT_LOG_LEVEL_INFO, "received packet from client %x:%u on channel %u", event.peer->address.host, event.peer->address.port, event.channelID );
                         ENetPacket * packet = enet_packet_create( "how are you?", strlen("how are you?") + 1, 0 );
                         enet_peer_send( event.peer, 0, packet );
                         enet_host_flush( server );

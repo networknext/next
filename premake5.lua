@@ -2,23 +2,6 @@ solution "enet"
 	configurations { "Debug", "Release" }
 	platforms { "x64" }
 
-project "enet"
-	kind "StaticLib"
-	language "C"
-	files { "enet/*.c" }
-	includedirs { "enet/", "." }
-	configuration "Debug"
-		targetsuffix "d"
-		defines({ "DEBUG" })
-		symbols "On"		
-	configuration "Release"
-		defines({ "NDEBUG" })
-		optimize "On"
-	configuration { "Debug", "x64" }
-		targetsuffix "64d"
-	configuration { "Release", "x64" }
-		targetsuffix "64"
-
 project "next"
 	kind "StaticLib"
 	links { "sodium" }
@@ -34,6 +17,25 @@ project "next"
 		disablewarnings { "4324" }
 	filter "system:macosx"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
+
+project "enet"
+	kind "StaticLib"
+	language "C"
+	links { "next" }
+	files { "enet/*.c" }
+	defines { "ENET_NETWORK_NEXT=1" }
+	includedirs { "enet", "next", "sodium" }
+	configuration "Debug"
+		targetsuffix "d"
+		defines({ "DEBUG" })
+		symbols "On"		
+	configuration "Release"
+		defines({ "NDEBUG" })
+		optimize "On"
+	configuration { "Debug", "x64" }
+		targetsuffix "64d"
+	configuration { "Release", "x64" }
+		targetsuffix "64"
 
 project "sodium"
 	kind "StaticLib"

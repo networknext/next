@@ -48,6 +48,19 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
     }
     memset (host -> peers, 0, peerCount * sizeof (ENetPeer));
 
+#if ENET_NETWORK_NEXT
+
+    if ( peerCount == 1 )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "creating enet network next client" );
+    }
+    else
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "creating enet network next server" );
+    }
+
+#endif // #if ENET_NETWORK_NEXT
+
     host -> socket = enet_socket_create (ENET_SOCKET_TYPE_DATAGRAM);
     if (host -> socket == ENET_SOCKET_NULL || (address != NULL && enet_socket_bind (host -> socket, address) < 0))
     {

@@ -23,6 +23,10 @@ extern "C"
 #include "enet_list.h"
 #include "enet_callbacks.h"
 
+#if ENET_NETWORK_NEXT
+#include "next.h"
+#endif // #if ENET_NETWORK_NEXT
+
 #define ENET_VERSION_MAJOR 1
 #define ENET_VERSION_MINOR 3
 #define ENET_VERSION_PATCH 17
