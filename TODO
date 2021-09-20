@@ -35,7 +35,17 @@
 
 	Verify it gets shut down.
 
+	Setup client.cpp with signal as well.
+
 TODO
+
+    ***	Actually create the client inside enet host. ***
+
+	Connect the client inside enet client connect to server fn.
+
+	Fix enet early out on client "fail to connect" in client... (may require making it delay again...)
+
+	------------
 
 	Work out how to get the bind address and server address from enet (might need to be supplied...)
 
