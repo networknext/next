@@ -263,6 +263,16 @@ func main() {
 					batchSize = int(s)
 				}
 
+				summaryBatchSize := billing.DefaultBigQueryBatchSize / 10
+				if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_SUMMARY_BATCH_SIZE"); ok {
+					s, err := strconv.ParseInt(size, 10, 64)
+					if err != nil {
+						level.Error(logger).Log("err", err)
+						os.Exit(1)
+					}
+					summaryBatchSize = int(s)
+				}
+
 				// Pass context without cancel to ensure writing continues even past reception of shutdown signal
 				bqClient, err := bigquery.NewClient(context.Background(), gcpProjectID)
 				if err != nil {
@@ -270,11 +280,13 @@ func main() {
 					os.Exit(1)
 				}
 				b := billing.GoogleBigQueryClient{
-					Metrics:         &billingServiceMetrics.BillingMetrics,
-					Logger:          logger,
-					TableInserter:   bqClient.Dataset(billingDataset).Table(os.Getenv("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-					BatchSize:       batchSize,
-					FeatureBilling2: featureBilling2,
+					Metrics:              &billingServiceMetrics.BillingMetrics,
+					Logger:               logger,
+					TableInserter:        bqClient.Dataset(billingDataset).Table(os.Getenv("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
+					SummaryTableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING_SUMMARY")).Inserter(),
+					BatchSize:            batchSize,
+					SummaryBatchSize:     summaryBatchSize,
+					FeatureBilling2:      featureBilling2,
 				}
 
 				// Set the Biller to BigQuery
@@ -285,6 +297,12 @@ func main() {
 				go func() {
 					b.WriteLoop2(ctx, wg)
 				}()
+
+				wg.Add(1)
+				go func() {
+					b.SummaryWriteLoop2(ctx, wg)
+				}()
+
 			}
 		}
 	}
@@ -386,6 +404,9 @@ func main() {
 				fmt.Printf("%d billing entry 2s submitted\n", int(billingServiceMetrics.BillingMetrics.Entries2Submitted.Value()))
 				fmt.Printf("%d billing entry 2s queued\n", int(billingServiceMetrics.BillingMetrics.Entries2Queued.Value()))
 				fmt.Printf("%d billing entry 2s flushed\n", int(billingServiceMetrics.BillingMetrics.Entries2Flushed.Value()))
+				fmt.Printf("%d billing summary entry 2s submitted\n", int(billingServiceMetrics.BillingMetrics.SummaryEntries2Submitted.Value()))
+				fmt.Printf("%d billing sumary entry 2s queued\n", int(billingServiceMetrics.BillingMetrics.SummaryEntries2Queued.Value()))
+				fmt.Printf("%d billing summary entry 2s flushed\n", int(billingServiceMetrics.BillingMetrics.SummaryEntries2Flushed.Value()))
 				fmt.Printf("%d billing entry 2s with NaN\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2EntriesWithNaN.Value()))
 				fmt.Printf("%d invalid billing entry 2s\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2InvalidEntries.Value()))
 				fmt.Printf("%d billing entry 2 read failures\n", int(billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2ReadFailure.Value()))
