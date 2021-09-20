@@ -1815,7 +1815,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		EnvelopeBytesUpSum:              state.Input.NextEnvelopeBytesUpSum,
 		EnvelopeBytesDownSum:            state.Input.NextEnvelopeBytesDownSum,
 		DurationOnNext:                  state.Input.DurationOnNext,
-		StartTimestamp:					 uint32(startTime.Unix()),
+		StartTimestamp:                  uint32(startTime.Unix()),
 		NextRTT:                         int32(state.Packet.NextRTT),
 		NextJitter:                      int32(state.Packet.NextJitter),
 		NextPacketLoss:                  int32(state.Packet.NextPacketLoss),
