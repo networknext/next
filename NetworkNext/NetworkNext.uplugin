@@ -24,6 +24,7 @@
         "Win64",
         "XboxOne",
         "PS4",
+        "PS5",
         "Switch",
         "Linux"
       ]

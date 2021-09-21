@@ -57,9 +57,9 @@ public class NetworkNext : ModuleRules
         } 
         else if (Target.Platform.ToString() == "PS4")
         {
-            string SDKDir = Environment.GetEnvironmentVariable("SCE_ORBIS_SDK_DIR");
-            string LibDir = Path.Combine(SDKDir, "target", "lib");
-            PublicAdditionalLibraries.Add(Path.Combine(LibDir, "libSceSecure.a"));
+            string SDKDir = System.Environment.GetEnvironmentVariable("SCE_ORBIS_SDK_DIR");
+            string LibDir = System.IO.Path.Combine(SDKDir, "target", "lib");
+            PublicAdditionalLibraries.Add(System.IO.Path.Combine(LibDir, "libSceSecure.a"));
         }
     }
 }

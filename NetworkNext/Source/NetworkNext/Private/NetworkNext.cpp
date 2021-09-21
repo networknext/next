@@ -59,11 +59,11 @@ void FNetworkNextModule::StartupModule()
 	if (NetDriver->NextHostname.Len() > 0)
 	{
 		FString Hostname = NetDriver->NextHostname;
-		int Len = FMath::Min(Hostname.Len(), (int)sizeof(config.hostname));
-		FMemory::Memzero(&config.hostname, sizeof(config.hostname));
+		int Len = FMath::Min(Hostname.Len(), (int)sizeof(config.server_backend_hostname));
+		FMemory::Memzero(&config.server_backend_hostname, sizeof(config.server_backend_hostname));
 		for (int i = 0; i < Len; i++)
 		{
-			config.hostname[i] = Hostname[i];
+			config.server_backend_hostname[i] = Hostname[i];
 		}
 	}
 
@@ -99,7 +99,7 @@ void FNetworkNextModule::StartupModule()
 	config.disable_network_next = NetDriver->DisableNetworkNext;
 
 	// Print out the network next hostname for ease of debugging
-	FString hostname = FString(config.hostname);
+	FString hostname = FString(config.server_backend_hostname);
 	UE_LOG(LogNetworkNext, Display, TEXT("Hostname is %s"), *hostname);
 
 	// Initialize the Network Next SDK
