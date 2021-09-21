@@ -369,5 +369,6 @@ func (bq *GoogleBigQueryClient) Close() {
 	}
 	if bq.FeatureBilling2 {
 		close(bq.entries2)
+		close(bq.summaryEntries2)
 	}
 }
