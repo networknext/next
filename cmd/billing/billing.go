@@ -273,6 +273,10 @@ func main() {
 					summaryBatchSize = int(s)
 				}
 
+				billing2TableName := envvar.Get("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING", "billing2")
+
+				billing2SummaryTableName := envvar.Get("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING_SUMMARY", "billing2_session_summary")
+
 				// Pass context without cancel to ensure writing continues even past reception of shutdown signal
 				bqClient, err := bigquery.NewClient(context.Background(), gcpProjectID)
 				if err != nil {
@@ -282,8 +286,8 @@ func main() {
 				b := billing.GoogleBigQueryClient{
 					Metrics:              &billingServiceMetrics.BillingMetrics,
 					Logger:               logger,
-					TableInserter:        bqClient.Dataset(billingDataset).Table(os.Getenv("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING")).Inserter(),
-					SummaryTableInserter: bqClient.Dataset(billingDataset).Table(os.Getenv("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING_SUMMARY")).Inserter(),
+					TableInserter:        bqClient.Dataset(billingDataset).Table(billing2TableName).Inserter(),
+					SummaryTableInserter: bqClient.Dataset(billingDataset).Table(billing2SummaryTableName).Inserter(),
 					BatchSize:            batchSize,
 					SummaryBatchSize:     summaryBatchSize,
 					FeatureBilling2:      featureBilling2,
