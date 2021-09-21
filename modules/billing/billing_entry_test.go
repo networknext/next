@@ -111,6 +111,7 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		SessionDuration:                 5 * billing.BillingSliceSeconds,
 		EverOnNext:                      false,
 		DurationOnNext:                  4 * billing.BillingSliceSeconds,
+		StartTimestamp:                  uint32(time.Now().Add(-5 * billing.BillingSliceSeconds).Unix()),
 		NextRTT:                         int32(rand.Intn(255)),
 		NextJitter:                      int32(rand.Intn(255)),
 		NextPacketLoss:                  int32(rand.Intn(100)),
