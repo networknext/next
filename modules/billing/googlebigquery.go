@@ -20,12 +20,14 @@ const (
 )
 
 type GoogleBigQueryClient struct {
-	Metrics         *metrics.BillingMetrics
-	Logger          log.Logger
-	TableInserter   *bigquery.Inserter
-	BatchSize       int
-	FeatureBilling  bool
-	FeatureBilling2 bool
+	Metrics              *metrics.BillingMetrics
+	Logger               log.Logger
+	TableInserter        *bigquery.Inserter
+	SummaryTableInserter *bigquery.Inserter
+	BatchSize            int
+	SummaryBatchSize     int
+	FeatureBilling       bool
+	FeatureBilling2      bool
 
 	buffer      []*BillingEntry
 	bufferMutex sync.RWMutex
@@ -33,9 +35,14 @@ type GoogleBigQueryClient struct {
 	buffer2      []*BillingEntry2
 	bufferMutex2 sync.RWMutex
 
+	summaryBuffer2      []*BillingEntry2
+	summaryBufferMutex2 sync.RWMutex
+
 	entries chan *BillingEntry
 
 	entries2 chan *BillingEntry2
+
+	summaryEntries2 chan *BillingEntry2
 }
 
 // Bill pushes a BillingEntry to the entries channel
@@ -76,18 +83,36 @@ func (bq *GoogleBigQueryClient) Bill(ctx context.Context, entry *BillingEntry) e
 }
 
 // Bill2 pushes a BillingEntry2 to the entries2 channel
+// Entries with summary slices are pushed to the summaryEntries2 channel
 func (bq *GoogleBigQueryClient) Bill2(ctx context.Context, entry *BillingEntry2) error {
-	bq.Metrics.Entries2Submitted.Add(1)
 	if bq.entries2 == nil {
 		bq.entries2 = make(chan *BillingEntry2, DefaultBigQueryChannelSize)
 	}
+	if bq.summaryEntries2 == nil {
+		bq.summaryEntries2 = make(chan *BillingEntry2, DefaultBigQueryChannelSize)
+	}
 
-	bq.bufferMutex2.RLock()
-	bufferLength := len(bq.buffer2)
-	bq.bufferMutex2.RUnlock()
+	if entry.Summary {
+		bq.Metrics.SummaryEntries2Submitted.Add(1)
 
-	if bufferLength >= bq.BatchSize {
-		return errors.New("entries2 buffer full")
+		bq.summaryBufferMutex2.RLock()
+		bufferLength := len(bq.summaryEntries2)
+		bq.summaryBufferMutex2.RUnlock()
+
+		if bufferLength >= bq.SummaryBatchSize {
+			return errors.New("summaryEntries2 buffer full")
+		}
+
+	} else {
+		bq.Metrics.Entries2Submitted.Add(1)
+
+		bq.bufferMutex2.RLock()
+		bufferLength := len(bq.buffer2)
+		bq.bufferMutex2.RUnlock()
+
+		if bufferLength >= bq.BatchSize {
+			return errors.New("entries2 buffer full")
+		}
 	}
 
 	hasNanOrInf, nanOrInfFields := entry.CheckNaNOrInf()
@@ -104,11 +129,20 @@ func (bq *GoogleBigQueryClient) Bill2(ctx context.Context, entry *BillingEntry2)
 		return errors.New("invalid billing entry 2")
 	}
 
-	select {
-	case bq.entries2 <- entry:
-		return nil
-	default:
-		return errors.New("entries2 channel full")
+	if entry.Summary {
+		select {
+		case bq.summaryEntries2 <- entry:
+			return nil
+		default:
+			return errors.New("summaryEntries2 channel full")
+		}
+	} else {
+		select {
+		case bq.entries2 <- entry:
+			return nil
+		default:
+			return errors.New("entries2 channel full")
+		}
 	}
 }
 
@@ -247,6 +281,77 @@ func (bq *GoogleBigQueryClient) WriteLoop2(ctx context.Context, wg *sync.WaitGro
 			fmt.Printf("Final flush of %d billing entries 2 to BigQuery.\n", bufferLength)
 
 			bq.Metrics.Entries2Flushed.Add(float64(bufferLength))
+
+			return nil
+		}
+	}
+	return nil
+}
+
+// SummaryWriteLoop2 ranges over the incoming summary channel of BillingEntry2 types and fills an internal buffer.
+// Once the buffer fills to the SummaryBatchSize it will write all entries to BigQuery. This should
+// only be called from 1 goroutine to avoid using a mutex around the internal buffer slice
+func (bq *GoogleBigQueryClient) SummaryWriteLoop2(ctx context.Context, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
+	if bq.summaryEntries2 == nil {
+		bq.summaryEntries2 = make(chan *BillingEntry2, DefaultBigQueryChannelSize)
+	}
+	for {
+		select {
+		case entry := <-bq.summaryEntries2:
+			bq.Metrics.SummaryEntries2Queued.Set(float64(len(bq.summaryEntries2)))
+			bq.summaryBufferMutex2.Lock()
+			bq.summaryBuffer2 = append(bq.summaryBuffer2, entry)
+			bufferLength := len(bq.summaryBuffer2)
+
+			if bufferLength >= bq.SummaryBatchSize {
+				if err := bq.SummaryTableInserter.Put(context.Background(), bq.summaryBuffer2); err != nil {
+					bq.summaryBufferMutex2.Unlock()
+
+					level.Error(bq.Logger).Log("msg", "failed to write summaryBuffer2 to BigQuery", "err", err)
+					fmt.Printf("Failed to write summaryBuffer2 to BigQuery: %v\n", err)
+
+					bq.Metrics.ErrorMetrics.Billing2WriteFailure.Add(float64(bufferLength))
+					continue
+				}
+
+				bq.summaryBuffer2 = bq.summaryBuffer2[:0]
+				level.Info(bq.Logger).Log("msg", "flushed summary billing entries 2 to BigQuery", "size", bq.SummaryBatchSize, "total", bufferLength)
+				bq.Metrics.BillingEntry2Size.Set(float64(bufferLength * MaxBillingEntry2Bytes))
+				bq.Metrics.SummaryEntries2Flushed.Add(float64(bufferLength))
+			}
+
+			bq.summaryBufferMutex2.Unlock()
+		case <-ctx.Done():
+			var bufferLength int
+
+			// Received shutdown signal, write remaining entries to BigQuery
+			bq.summaryBufferMutex2.Lock()
+			for entry := range bq.summaryEntries2 {
+				// Add the remaining entries to the buffer
+				bq.summaryBuffer2 = append(bq.summaryBuffer2, entry)
+				bufferLength = len(bq.summaryBuffer2)
+				bq.Metrics.SummaryEntries2Queued.Set(float64(bufferLength))
+			}
+
+			// Emptied out the entries channel, flush to BigQuery
+			if err := bq.SummaryTableInserter.Put(context.Background(), bq.summaryBuffer2); err != nil {
+				bq.summaryBufferMutex2.Unlock()
+
+				level.Error(bq.Logger).Log("msg", "failed to write summaryBuffer2 to BigQuery", "err", err)
+				fmt.Printf("Failed to write summaryBuffer2 to BigQuery: %v\n", err)
+
+				bq.Metrics.ErrorMetrics.Billing2WriteFailure.Add(float64(bufferLength))
+				return err
+			}
+			bq.summaryBuffer2 = bq.summaryBuffer2[:0]
+			bq.summaryBufferMutex2.Unlock()
+
+			level.Info(bq.Logger).Log("msg", "flushed summary billing entries 2 to BigQuery", "size", bufferLength, "total", bufferLength)
+			fmt.Printf("Final flush of %d summary billing entries 2 to BigQuery.\n", bufferLength)
+
+			bq.Metrics.SummaryEntries2Flushed.Add(float64(bufferLength))
 
 			return nil
 		}
