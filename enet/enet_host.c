@@ -8,6 +8,18 @@
 
 #if ENET_NETWORK_NEXT
 
+void enet_network_next_client_packet_received( struct next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+{
+    (void) client; 
+    (void) context; 
+    (void) packet_data; 
+    (void) packet_bytes;
+    
+    next_printf( NEXT_LOG_LEVEL_INFO, "network next client received packet from server (%d bytes)", packet_bytes );
+
+    // todo: queue up received packet for enet
+}
+
 void enet_network_next_server_packet_received( struct next_server_t * server, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) server;
@@ -68,14 +80,23 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
 
     if ( !address || address->client )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "creating enet network next client" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "creating network next client" );
 
-        // todo
-//        host->client = next_client_create
+        // todo: extract bind address
+        const char * bind_address = "0.0.0.0:30000";
+
+        host->client = next_client_create( NULL, bind_address, enet_network_next_client_packet_received, NULL );
+
+        if ( host->client == NULL )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "could not create network next client" );
+            enet_free( host );
+            return NULL;
+        }
     }
     else
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "creating enet network next server" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "creating network next server" );
 
         const char * server_address = "127.0.0.1:40000";    // todo: extract this string from the enet address and port?
         const char * bind_address = "0.0.0.0:40000";
@@ -86,7 +107,7 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
         if ( !host->server )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "could not create network next server" );
-            enet_free (host);
+            enet_free( host );
             return NULL;
         }
     }
@@ -345,7 +366,10 @@ enet_host_connect (ENetHost * host, const ENetAddress * address, size_t channelC
 
     if ( host->client )
     {
-        // todo: next_client_connect
+        // todo: extract server address from ENetAddress passed in
+        const char * server_address = "127.0.0.1:40000";
+
+        next_client_open_session( host->client, server_address );
     }
 
 #endif // #if ENET_NETWORK_NEXT

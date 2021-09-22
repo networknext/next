@@ -1,49 +1,13 @@
 	
-	Get enet building on macosx
+    Actually create the client inside enet host.
 
-	Get a test client/server example working on macosx with multiple clients connecting
+	Fix enet early out on client "fail to connect" in client... (may require making it delay again...)
 
-	Add network next source to project.
-
-	Setup premake to build network next.
-
-	Build and link to network next library from client and server examples.
-
-	Add next_sleep to client so we have a regular pump once per-second (ish).
-
-	Client sends verifiable packets to enet server.
-
-	Server validates packet data and responds with verifiable packet data.
-
-	Client prints out when verified packets are received.
-
-	Research and work out where to insert our packet send/receive.
-
-	Looks like surgery in enet_host.c is the right approach. Taking over the low-level socket implementation is bad news.
-
-	Probably need to determine client via MaxConnections = 1, and host if MaxConnections >= 1 -- but this is a bit dodgey.
-
-	There might be flags we can override...
-
-	Dig in enet_host.c
-
-	Work out how to create client or server inside host as needed.
-
-	Disable socket creation when client or server is created.
-
-	Actually create the network next server.
-
-	Verify it gets shut down.
-
-	Setup client.cpp with signal as well.
+	Turn on enet debug prints.
 
 TODO
 
-    ***	Actually create the client inside enet host. ***
-
-	Connect the client inside enet client connect to server fn.
-
-	Fix enet early out on client "fail to connect" in client... (may require making it delay again...)
+	Connect the client inside enet client connect to server fn... 
 
 	------------
 
@@ -53,3 +17,6 @@ TODO
 
 	Is address pass in messages? Might be better to extend host create instead...
 
+	Might be worthwhile passing in an enet_next_t struct to the host create. We have multiple parameters that need to get passed in.
+
+	------------

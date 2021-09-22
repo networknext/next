@@ -1625,9 +1625,12 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
         {
            enet_uint32 packetLoss = currentPeer -> packetsLost * ENET_PEER_PACKET_LOSS_SCALE / currentPeer -> packetsSent;
 
+// todo: doesn't compile portably
+/*
 #ifdef ENET_DEBUG
            printf ("peer %u: %f%%+-%f%% packet loss, %u+-%u ms round trip time, %f%% throttle, %u outgoing, %u/%u incoming\n", currentPeer -> incomingPeerID, currentPeer -> packetLoss / (float) ENET_PEER_PACKET_LOSS_SCALE, currentPeer -> packetLossVariance / (float) ENET_PEER_PACKET_LOSS_SCALE, currentPeer -> roundTripTime, currentPeer -> roundTripTimeVariance, currentPeer -> packetThrottle / (float) ENET_PEER_PACKET_THROTTLE_SCALE, enet_list_size (& currentPeer -> outgoingCommands), currentPeer -> channels != NULL ? enet_list_size (& currentPeer -> channels -> incomingReliableCommands) : 0, currentPeer -> channels != NULL ? enet_list_size (& currentPeer -> channels -> incomingUnreliableCommands) : 0);
 #endif
+*/
 
            currentPeer -> packetLossVariance = (currentPeer -> packetLossVariance * 3 + ENET_DIFFERENCE (packetLoss, currentPeer -> packetLoss)) / 4;
            currentPeer -> packetLoss = (currentPeer -> packetLoss * 7 + packetLoss) / 8;
@@ -1753,20 +1756,6 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
 {
     enet_uint32 waitCondition;
 
-#if ENET_NETWORK_NEXT
-
-    if ( host->client )
-    {
-        next_client_update( host->client );
-    }
-
-    if ( host->server )
-    {
-        next_server_update( host->server );
-    }
-
-#endif // #if ENET_NETWORK_NEXT
-
     if (event != NULL)
     {
         event -> type = ENET_EVENT_TYPE_NONE;
@@ -1869,30 +1858,50 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
        if (ENET_TIME_GREATER_EQUAL (host -> serviceTime, timeout))
          return 0;
 
-#if ENET_NETWORK_NEXT
-     if ( !host->client && !host->server )
-     {
-#endif // #if ENET_NETWORK_NEXT
+       do
+       {
+          host -> serviceTime = enet_time_get ();
 
-           do
-           {
-              host -> serviceTime = enet_time_get ();
+          if (ENET_TIME_GREATER_EQUAL (host -> serviceTime, timeout))
+            return 0;
 
-              if (ENET_TIME_GREATER_EQUAL (host -> serviceTime, timeout))
-                return 0;
-
-              waitCondition = ENET_SOCKET_WAIT_RECEIVE | ENET_SOCKET_WAIT_INTERRUPT;
-
-              if (enet_socket_wait (host -> socket, & waitCondition, ENET_TIME_DIFFERENCE (timeout, host -> serviceTime)) != 0)
-                return -1;
-           }
-           while (waitCondition & ENET_SOCKET_WAIT_INTERRUPT);
-
-           host -> serviceTime = enet_time_get ();
+          waitCondition = ENET_SOCKET_WAIT_RECEIVE | ENET_SOCKET_WAIT_INTERRUPT;
 
 #if ENET_NETWORK_NEXT
-      }
+
+            if ( host->client )
+            {
+                next_client_update( host->client );
+            }
+
+            if ( host->server )
+            {
+                next_server_update( host->server );
+            }
+
+            int sleep_time_ms = ENET_TIME_DIFFERENCE( timeout, host ->serviceTime );
+
+            if ( sleep_time_ms > 0 )
+            {
+                if ( sleep_time_ms > 100 )
+                {
+                    sleep_time_ms = 100;
+                }
+
+                next_sleep( sleep_time_ms / 1000.0 );
+            }
+
+#else
+
+            if (enet_socket_wait (host -> socket, & waitCondition, ENET_TIME_DIFFERENCE (timeout, host -> serviceTime)) != 0)
+              return -1;
+
 #endif // #if ENET_NETWORK_NEXT
+
+       }
+       while (waitCondition & ENET_SOCKET_WAIT_INTERRUPT);
+
+       host -> serviceTime = enet_time_get ();
 
     } while (waitCondition & ENET_SOCKET_WAIT_RECEIVE);
 

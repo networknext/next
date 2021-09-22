@@ -1,5 +1,6 @@
 solution "enet"
 	configurations { "Debug", "Release" }
+	defines { "ENET_NETWORK_NEXT=1", "ENET_DEBUG=1" }
 	platforms { "x64" }
 
 project "next"
@@ -23,7 +24,6 @@ project "enet"
 	language "C"
 	links { "next" }
 	files { "enet/*.c" }
-	defines { "ENET_NETWORK_NEXT=1" }
 	includedirs { "enet", "next", "sodium" }
 	configuration "Debug"
 		targetsuffix "d"
@@ -72,7 +72,6 @@ project "client"
 	kind "ConsoleApp"
 	links { "enet", "next", "sodium" }
 	files { "client.cpp" }
-	defines { "ENET_NETWORK_NEXT=1" }
 	includedirs { "enet", "next" }
 	filter "system:not windows"
 		links { "pthread" }
@@ -83,7 +82,6 @@ project "server"
 	kind "ConsoleApp"
 	links { "enet", "next", "sodium" }
 	files { "server.cpp" }
-	defines { "ENET_NETWORK_NEXT=1" }
 	includedirs { "enet", "next" }
 	filter "system:not windows"
 		links { "pthread" }
