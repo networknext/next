@@ -295,7 +295,7 @@ func (bq *GoogleBigQueryClient) SummaryWriteLoop2(ctx context.Context, wg *sync.
 	defer wg.Done()
 
 	if bq.summaryEntries2 == nil {
-		bq.summaryEntries2 = make(chan *BillingEntry2, DefaultBigQueryChannelSize)
+		bq.summaryEntries2 = make(chan *BillingEntry2Summary, DefaultBigQueryChannelSize)
 	}
 	for {
 		select {
