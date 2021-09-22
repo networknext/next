@@ -263,7 +263,7 @@ func main() {
 					batchSize = int(s)
 				}
 
-				summaryBatchSize := billing.DefaultBigQueryBatchSize / 10
+				summaryBatchSize := int(billing.DefaultBigQueryBatchSize / 10)
 				if size, ok := os.LookupEnv("GOOGLE_BIGQUERY_SUMMARY_BATCH_SIZE"); ok {
 					s, err := strconv.ParseInt(size, 10, 64)
 					if err != nil {
