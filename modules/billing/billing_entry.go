@@ -2284,6 +2284,7 @@ func (entry *BillingEntry2) GetSummaryStruct() *BillingEntry2Summary {
 	return &BillingEntry2Summary{
 		Timestamp:                       entry.Timestamp,
 		SessionID:                       entry.SessionID,
+		Summary:                         entry.Summary,
 		BuyerID:                         entry.BuyerID,
 		UserHash:                        entry.UserHash,
 		DatacenterID:                    entry.DatacenterID,
