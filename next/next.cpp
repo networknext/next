@@ -17894,7 +17894,7 @@ void next_test()
 #endif // #if NEXT_BEACON_ENABLED
 #if NEXT_EXPERIMENTAL
     RUN_TEST( test_ping_token );
-#endif // #if NEXT_EXPERIMENTAL4
+#endif // #if NEXT_EXPERIMENTAL
 }
 
 #ifdef _MSC_VER

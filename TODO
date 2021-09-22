@@ -11,6 +11,8 @@
 
 TODO
 
+	To get network next client and server connecting, need to setup customer keypair and dev environment...
+
 	------------
 
 	Work out how to get the bind address and server address from enet (might need to be supplied...)
