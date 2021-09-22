@@ -36,14 +36,14 @@ type GoogleBigQueryClient struct {
 	buffer2      []*BillingEntry2
 	bufferMutex2 sync.RWMutex
 
-	summaryBuffer2      []*BillingEntry2
+	summaryBuffer2      []*BillingEntry2Summary
 	summaryBufferMutex2 sync.RWMutex
 
 	entries chan *BillingEntry
 
 	entries2 chan *BillingEntry2
 
-	summaryEntries2 chan *BillingEntry2
+	summaryEntries2 chan *BillingEntry2Summary
 }
 
 // Bill pushes a BillingEntry to the entries channel
@@ -90,7 +90,7 @@ func (bq *GoogleBigQueryClient) Bill2(ctx context.Context, entry *BillingEntry2)
 		bq.entries2 = make(chan *BillingEntry2, DefaultBigQueryChannelSize)
 	}
 	if bq.summaryEntries2 == nil {
-		bq.summaryEntries2 = make(chan *BillingEntry2, DefaultBigQueryChannelSize)
+		bq.summaryEntries2 = make(chan *BillingEntry2Summary, DefaultBigQueryChannelSize)
 	}
 
 	if entry.Summary {
@@ -132,7 +132,7 @@ func (bq *GoogleBigQueryClient) Bill2(ctx context.Context, entry *BillingEntry2)
 
 	if entry.Summary {
 		select {
-		case bq.summaryEntries2 <- entry:
+		case bq.summaryEntries2 <- entry.GetSummaryStruct():
 			return nil
 		default:
 			return errors.New("summaryEntries2 channel full")
@@ -296,7 +296,7 @@ func (bq *GoogleBigQueryClient) SummaryWriteLoop2(ctx context.Context, wg *sync.
 	defer wg.Done()
 
 	if bq.summaryEntries2 == nil {
-		bq.summaryEntries2 = make(chan *BillingEntry2, DefaultBigQueryChannelSize)
+		bq.summaryEntries2 = make(chan *BillingEntry2Summary, DefaultBigQueryChannelSize)
 	}
 	for {
 		select {
