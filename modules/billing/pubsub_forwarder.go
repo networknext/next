@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/go-kit/kit/log"
@@ -16,16 +17,28 @@ import (
 )
 
 type PubSubForwarder struct {
-	Biller  Biller
-	Logger  log.Logger
-	Metrics *metrics.BillingMetrics
+	Biller     Biller
+	MaxRetries int
+	RetryTime  time.Duration
+	Logger     log.Logger
+	Metrics    *metrics.BillingMetrics
 
 	pubsubSubscription *pubsub.Subscription
 }
 
 // PubSubForwarder receives batches of billing entries from Google Pub/Sub, unbatches, and inserts them into an internal channel.
 // NOTE: use SEPARATE PubSubForwarders for receiving BillingEntry and BillingEntry2 from different Pub/Sub subscriptions.
-func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, metrics *metrics.BillingMetrics, gcpProjectID string, topicName string, subscriptionName string, numRecvGoroutines int) (*PubSubForwarder, error) {
+func NewPubSubForwarder(ctx context.Context,
+	biller Biller,
+	maxRetries int,
+	retryTime time.Duration,
+	logger log.Logger,
+	metrics *metrics.BillingMetrics,
+	gcpProjectID string,
+	topicName string,
+	subscriptionName string,
+	numRecvGoroutines int,
+) (*PubSubForwarder, error) {
 	pubsubClient, err := pubsub.NewClient(ctx, gcpProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("could not create pubsub client: %v", err)
@@ -46,6 +59,8 @@ func NewPubSubForwarder(ctx context.Context, biller Biller, logger log.Logger, m
 
 	return &PubSubForwarder{
 		Biller:             biller,
+		MaxRetries:         maxRetries,
+		RetryTime:          retryTime,
 		Logger:             logger,
 		Metrics:            metrics,
 		pubsubSubscription: subscriber,
@@ -132,16 +147,45 @@ func (psf *PubSubForwarder) Forward2(ctx context.Context, wg *sync.WaitGroup) {
 		psf.Metrics.Entries2Received.Add(float64(len(entries)))
 
 		billingEntries := make([]BillingEntry2, len(entries))
+
 		for i := range billingEntries {
 			if err = ReadBillingEntry2(&billingEntries[i], entries[i]); err == nil {
-				if err := psf.Biller.Bill2(ctx, &billingEntries[i]); err != nil {
-					level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
-					// Nack if we failed to submit the billing entry
+
+				// Only retry so many times to submit the entry to the channel
+				var retryCount int
+
+				for retryCount < psf.MaxRetries+1 {
+					if err := psf.Biller.Bill2(ctx, &billingEntries[i]); err != nil {
+
+						switch err.(type) {
+						case *ErrEntries2BufferFull:
+							retryCount++
+							time.Sleep(psf.RetryTime)
+							continue
+						case *ErrSummaryEntries2BufferFull:
+							retryCount++
+							time.Sleep(psf.RetryTime)
+							continue
+						default:
+							level.Error(psf.Logger).Log("msg", "could not submit billing entry", "err", err)
+							// Nack if we failed to submit the billing entry
+							m.Nack()
+							return
+						}
+
+					}
+
+					// Submitted the entry, break out
+					retryCount -= 1
+					break
+				}
+
+				if retryCount > psf.MaxRetries {
+					// Failed to submit after max retries, nack the message
+					level.Error(psf.Logger).Log("msg", fmt.Sprintf("exceeded max retries (%d), could not submit billing entry (%d/%d)", psf.MaxRetries, i, len(entries)))
 					m.Nack()
 					return
 				}
-
-				m.Ack()
 			} else {
 				level.Error(psf.Logger).Log("msg", "could not read billing entry 2", "err", err)
 				level.Error(psf.Logger).Log("msg", "bytes for unread entry", "bytes", fmt.Sprintf("%+v", entries[i]))
@@ -165,8 +209,12 @@ func (psf *PubSubForwarder) Forward2(ctx context.Context, wg *sync.WaitGroup) {
 				psf.Metrics.ErrorMetrics.Billing2ReadFailure.Add(1)
 				// Nack if we failed to read the billing entry
 				m.Nack()
+				return
 			}
 		}
+
+		// Successfully submit all entries in the message
+		m.Ack()
 	})
 
 	if err != nil && err != context.Canceled {
