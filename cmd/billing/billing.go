@@ -273,6 +273,12 @@ func main() {
 					summaryBatchSize = int(s)
 				}
 
+				batchSizePercent, err := envvar.GetFloat("FEATURE_BILLING2_BATCH_SIZE_PERCENT", 0.80)
+				if err != nil {
+					level.Error(logger).Log("envvar", "FEATURE_BILLING2_BATCH_SIZE_PERCENT", "msg", "failed to parse envvar", "err", err)
+					os.Exit(1)
+				}
+
 				billing2TableName := envvar.Get("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING", "billing2")
 
 				billing2SummaryTableName := envvar.Get("FEATURE_BILLING2_GOOGLE_BIGQUERY_TABLE_BILLING_SUMMARY", "billing2_session_summary")
@@ -290,6 +296,7 @@ func main() {
 					SummaryTableInserter: bqClient.Dataset(billingDataset).Table(billing2SummaryTableName).Inserter(),
 					BatchSize:            batchSize,
 					SummaryBatchSize:     summaryBatchSize,
+					BatchSizePercent:     batchSizePercent,
 					FeatureBilling2:      featureBilling2,
 				}
 
@@ -348,7 +355,7 @@ func main() {
 				pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 				defer cancelFunc()
 
-				pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
+				pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller, 25, time.Second, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
@@ -362,13 +369,25 @@ func main() {
 
 				level.Debug(logger).Log("msg", "Billing2 enabled")
 
+				maxRetries, err := envvar.GetInt("FEATURE_BILLING2_MAX_RETRIES", 25)
+				if err != nil {
+					level.Error(logger).Log("envvar", "FEATURE_BILLING2_MAX_RETRIES", "msg", "failed to parse envvar", "err", err)
+					os.Exit(1)
+				}
+
+				retryTime, err := envvar.GetDuration("FEATURE_BILLING2_RETRY_TIME", time.Second*1)
+				if err != nil {
+					level.Error(logger).Log("envvar", "FEATURE_BILLING2_RETRY_TIME", "msg", "failed to parse envvar", "err", err)
+					os.Exit(1)
+				}
+
 				topicName := envvar.Get("FEATURE_BILLING2_TOPIC_NAME", "billing2")
 				subscriptionName := envvar.Get("FEATURE_BILLING2_SUBSCRIPTION_NAME", "billing2")
 
 				pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 				defer cancelFunc()
 
-				pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller2, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
+				pubsubForwarder, err := billing.NewPubSubForwarder(pubsubCtx, biller2, maxRetries, retryTime, logger, &billingServiceMetrics.BillingMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
 				if err != nil {
 					level.Error(logger).Log("err", err)
 					os.Exit(1)
