@@ -31,29 +31,26 @@
 #include <inttypes.h>
 
 #if defined( _MSC_VER )
+#pragma warning(push)
+#pragma warning(disable:4996)
 #pragma warning(disable:4127)
 #pragma warning(disable:4244)
 #pragma warning(disable:4668)
 #endif
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4996)
-#endif
+#if !NEXT_DEVELOPMENT
+#define NEXT_SERVER_BACKEND_HOSTNAME                 "prod.spacecats.net"
+#else // #if !NEXT_DEVELOPMENT
+#define NEXT_SERVER_BACKEND_HOSTNAME                  "dev.spacecats.net"
+#endif // #if !NEXT_DEVELOPMENT
+#define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME                  "prod.spacecats.net"
+#define NEXT_PING_BACKEND_HOSTNAME   "prod.losangelesfreewaysatnight.com"
 #else // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME                   "dev.spacecats.net"
+#define NEXT_PING_BACKEND_HOSTNAME    "dev.losangelesfreewaysatnight.com"
 #endif // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_PORT                                   "40000"
-
-#if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_HOSTNAME    "prod.losangelesfreewaysatnight.com"
-#else // #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_HOSTNAME     "dev.losangelesfreewaysatnight.com"
-#endif // #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_PORT                                     "40100"
+#define NEXT_PING_BACKEND_PORT                                    "40100"
 
 #define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19

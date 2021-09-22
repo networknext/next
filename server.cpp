@@ -26,6 +26,9 @@ int main( int argc, char ** argv )
         return 1;
     }
 
+    // temporary: turn on all logs to see what's up
+    next_log_level( NEXT_LOG_LEVEL_DEBUG );
+
     if ( enet_initialize() != 0 )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "failed to initialize enet" );
