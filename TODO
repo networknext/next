@@ -5,9 +5,11 @@
 
 	Turn on enet debug prints.
 
-TODO
+	Connect the client to the server.
 
-	Connect the client inside enet client connect to server fn... 
+	Make sure we don't spinlock inside enet_host_service
+
+TODO
 
 	------------
 
