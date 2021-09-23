@@ -1,10 +1,13 @@
 package transport
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
 	"net"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/networknext/backend/modules/billing"
@@ -69,7 +72,7 @@ func writeServerInitResponse(w io.Writer, packet *ServerInitRequestPacket, respo
 
 // ----------------------------------------------------------------------------
 
-func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
+func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, ServerTracker *storage.ServerTracker, metrics *metrics.ServerInitMetrics) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
@@ -137,6 +140,14 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metri
 			return
 		}
 
+		// Track which servers are initing
+		// This is where we get the datacenter name
+		if strings.TrimSpace(packet.DatacenterName) == "" {
+			ServerTracker.AddServer(packet.BuyerID, packet.DatacenterID, incoming.From, "unknown_init")
+		} else {
+			ServerTracker.AddServer(packet.BuyerID, packet.DatacenterID, incoming.From, packet.DatacenterName)
+		}
+
 		/*
 			IMPORTANT: When the datacenter doesn't exist, we intentionally let the server init succeed anyway
 			and just log here, so we can map the datacenter name to the datacenter id, when we are tracking it down.
@@ -156,7 +167,21 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, metri
 
 // ----------------------------------------------------------------------------
 
-func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, PostSessionHandler *PostSessionHandler, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
+func ServerTrackerHandlerFunc(serverTracker *storage.ServerTracker) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		w.Header().Set("Content-Type", "application/json")
+
+		serverTracker.TrackerMutex.RLock()
+		defer serverTracker.TrackerMutex.RUnlock()
+		json.NewEncoder(w).Encode(serverTracker.Tracker)
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, PostSessionHandler *PostSessionHandler, ServerTracker *storage.ServerTracker, metrics *metrics.ServerUpdateMetrics) UDPHandlerFunc {
 
 	return func(w io.Writer, incoming *UDPPacket) {
 
@@ -225,7 +250,14 @@ func ServerUpdateHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Pos
 		if !datacenterExists(database, packet.DatacenterID) {
 			core.Debug("datacenter does not exist %x", packet.DatacenterID)
 			metrics.DatacenterNotFound.Add(1)
+			// Track this server with unknown datacenter name
+			ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress, "unknown_update")
 			return
+		}
+
+		// The server is a known datacenter, track it using the correct datacenter name from the bin file
+		if datacenter, exists := database.DatacenterMap[packet.DatacenterID]; exists {
+			ServerTracker.AddServer(buyer.ID, packet.DatacenterID, packet.ServerAddress, datacenter.Name)
 		}
 
 		core.Debug("server is in datacenter %x", packet.DatacenterID)
@@ -244,7 +276,7 @@ func CalculateNextBytesUpAndDown(kbpsUp uint64, kbpsDown uint64, sliceDuration u
 	return bytesUp, bytesDown
 }
 
-func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
+func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin, envelopeBytesUp uint64, envelopeBytesDown uint64) routing.Nibblin {
 
 	if routeNumRelays == 0 {
 		return 0
@@ -253,18 +285,22 @@ func CalculateTotalPriceNibblins(routeNumRelays int, relaySellers [core.MaxRelay
 	envelopeUpGB := float64(envelopeBytesUp) / 1000000000.0
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
-	sellerPriceNibblinsPerGB := routing.Nibblin(0)
-	for _, seller := range relaySellers {
-		sellerPriceNibblinsPerGB += seller.EgressPriceNibblinsPerGB
+	relayPriceNibblinsPerGB := routing.Nibblin(0)
+	for i, seller := range relaySellers {
+		if relayEgressPriceOverride[i] > 0 {
+			relayPriceNibblinsPerGB += relayEgressPriceOverride[i]
+		} else {
+			relayPriceNibblinsPerGB += seller.EgressPriceNibblinsPerGB
+		}
 	}
 
 	nextPriceNibblinsPerGB := routing.Nibblin(1e9)
-	totalPriceNibblins := float64(sellerPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+	totalPriceNibblins := float64(relayPriceNibblinsPerGB+nextPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
 
 	return routing.Nibblin(totalPriceNibblins)
 }
 
-func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, envelopeBytesUp uint64, envelopeBytesDown uint64) [core.MaxRelaysPerRoute]routing.Nibblin {
+func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysPerRoute]routing.Seller, relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin, envelopeBytesUp uint64, envelopeBytesDown uint64) [core.MaxRelaysPerRoute]routing.Nibblin {
 
 	relayPrices := [core.MaxRelaysPerRoute]routing.Nibblin{}
 
@@ -276,7 +312,15 @@ func CalculateRouteRelaysPrice(routeNumRelays int, relaySellers [core.MaxRelaysP
 	envelopeDownGB := float64(envelopeBytesDown) / 1000000000.0
 
 	for i := 0; i < len(relayPrices); i++ {
-		relayPriceNibblins := float64(relaySellers[i].EgressPriceNibblinsPerGB) * (envelopeUpGB + envelopeDownGB)
+		var basePrice float64
+
+		if relayEgressPriceOverride[i] > 0 {
+			basePrice = float64(relayEgressPriceOverride[i])
+		} else {
+			basePrice = float64(relaySellers[i].EgressPriceNibblinsPerGB)
+		}
+
+		relayPriceNibblins := basePrice * (envelopeUpGB + envelopeDownGB)
 		relayPrices[i] = routing.Nibblin(relayPriceNibblins)
 	}
 
@@ -477,7 +521,7 @@ type SessionHandlerState struct {
 	Datacenter         routing.Datacenter
 	Buyer              routing.Buyer
 	Debug              *string
-	IpLocator          routing.IPLocator
+	IpLocator          *routing.MaxmindDB
 	StaleDuration      time.Duration
 	RouterPrivateKey   [crypto.KeySize]byte
 	PostSessionHandler *PostSessionHandler
@@ -508,17 +552,21 @@ type SessionHandlerState struct {
 	DestRelays       []int32
 
 	// for session post (billing, portal etc...)
-	PostNearRelayCount               int
-	PostNearRelayIDs                 [core.MaxNearRelays]uint64
-	PostNearRelayNames               [core.MaxNearRelays]string
-	PostNearRelayAddresses           [core.MaxNearRelays]net.UDPAddr
-	PostNearRelayRTT                 [core.MaxNearRelays]float32
-	PostNearRelayJitter              [core.MaxNearRelays]float32
-	PostNearRelayPacketLoss          [core.MaxNearRelays]float32
-	PostRouteRelayNames              [core.MaxRelaysPerRoute]string
-	PostRouteRelaySellers            [core.MaxRelaysPerRoute]routing.Seller
-	PostRealPacketLossClientToServer float32
-	PostRealPacketLossServerToClient float32
+	PostNearRelayCount                int
+	PostNearRelayIDs                  [core.MaxNearRelays]uint64
+	PostNearRelayNames                [core.MaxNearRelays]string
+	PostNearRelayAddresses            [core.MaxNearRelays]net.UDPAddr
+	PostNearRelayRTT                  [core.MaxNearRelays]float32
+	PostNearRelayJitter               [core.MaxNearRelays]float32
+	PostNearRelayPacketLoss           [core.MaxNearRelays]float32
+	PostRouteRelayNames               [core.MaxRelaysPerRoute]string
+	PostRouteRelaySellers             [core.MaxRelaysPerRoute]routing.Seller
+	PostRouteRelayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+	PostRealPacketLossClientToServer  float32
+	PostRealPacketLossServerToClient  float32
+
+	// for convenience
+	UnmarshaledSessionData bool
 
 	// todo
 	/*
@@ -529,6 +577,8 @@ type SessionHandlerState struct {
 func SessionPre(state *SessionHandlerState) bool {
 
 	var exists bool
+	var err error
+
 	state.Buyer, exists = state.Database.BuyerMap[state.Packet.BuyerID]
 	if !exists {
 		core.Debug("buyer not found")
@@ -563,10 +613,51 @@ func SessionPre(state *SessionHandlerState) bool {
 				state.Metrics.ReadSessionDataFailure.Add(1)
 				return true
 			}
+
+			state.UnmarshaledSessionData = true
 		}
 
 		state.Metrics.ClientPingTimedOut.Add(1)
 		return true
+	}
+
+	if state.Packet.SliceNumber == 0 {
+		state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP, state.Packet.SessionID)
+
+		if err != nil || state.Output.Location == routing.LocationNullIsland {
+			core.Debug("location veto: %s\n", err)
+			state.Metrics.ClientLocateFailure.Add(1)
+			state.Output.RouteState.LocationVeto = true
+			return true
+		}
+
+		// Always assign location no matter the outcome of SessionPre() on the first slice
+		defer func() {
+			state.Input.Location = state.Output.Location
+		}()
+	} else {
+
+		/*
+			For existing sessions, read in the input state from the session data.
+
+			This is the state.Output from the previous slice.
+
+			We do this in SessionPre() rather than SessionUpdateExistingSession()
+			in case we early out later on in SessionPre() to ensure location is
+			written back to the SDK.
+		*/
+
+		defer func() {
+			err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
+
+			if err != nil {
+				core.Debug("could not read session data:\n\n%s\n", err)
+				state.Metrics.ReadSessionDataFailure.Add(1)
+			} else {
+				state.Output.Location = state.Input.Location
+				state.UnmarshaledSessionData = true
+			}
+		}()
 	}
 
 	if !datacenterExists(state.Database, state.Packet.DatacenterID) {
@@ -620,17 +711,6 @@ func SessionUpdateNewSession(state *SessionHandlerState) {
 
 	core.Debug("new session")
 
-	var err error
-
-	state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP)
-
-	if err != nil || state.Output.Location == routing.LocationNullIsland {
-		core.Debug("location veto")
-		state.Metrics.ClientLocateFailure.Add(1)
-		state.Output.RouteState.LocationVeto = true
-		return
-	}
-
 	state.Output.Version = SessionDataVersion
 	state.Output.SessionID = state.Packet.SessionID
 	state.Output.SliceNumber = state.Packet.SliceNumber + 1
@@ -645,18 +725,20 @@ func SessionUpdateExistingSession(state *SessionHandlerState) {
 
 	core.Debug("existing session")
 
-	/*
-		Read in the input state from the session data
+	if !state.UnmarshaledSessionData {
 
-		This is the state.Output from the previous slice.
-	*/
+		/*
+			If for some reason we did not unmarshal the SessionData
+			already, we must do it here for existing sessions.
+		*/
 
-	err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
+		err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
 
-	if err != nil {
-		core.Debug("could not read session data:\n\n%s\n", err)
-		state.Metrics.ReadSessionDataFailure.Add(1)
-		return
+		if err != nil {
+			core.Debug("could not read session data:\n\n%s\n", err)
+			state.Metrics.ReadSessionDataFailure.Add(1)
+			return
+		}
 	}
 
 	/*
@@ -1177,10 +1259,20 @@ func SessionPost(state *SessionHandlerState) {
 	if state.Response.RouteType != routing.RouteTypeDirect {
 		core.Debug("session takes network next")
 		state.Metrics.NextSlices.Add(1)
-		state.Output.EverOnNext = true
 	} else {
 		core.Debug("session goes direct")
 		state.Metrics.DirectSlices.Add(1)
+	}
+
+	/*
+		Decide if the session was ever on next.
+
+		We avoid using route type to verify if a session was ever on next
+		in case the route decision to take next was made on the final slice.
+	*/
+
+	if state.Packet.Next {
+		state.Output.EverOnNext = true
 	}
 
 	/*
@@ -1205,6 +1297,43 @@ func SessionPost(state *SessionHandlerState) {
 	}
 
 	/*
+		Build route relay data (for portal, billing etc...).
+
+		This is done here to get the post route relay sellers egress price override for
+		calculating total price and route relay price when building the billing entry.
+	*/
+
+	BuildPostRouteRelayData(state)
+
+	/*
+		Each slice is 10 seconds long except for the first slice with a given network next route,
+		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
+		that we pre-bought at the start of the previous route.
+	*/
+
+	sliceDuration := uint64(billing.BillingSliceSeconds)
+	if state.Input.Initial {
+		sliceDuration *= 2
+	}
+
+	/*
+		Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
+
+		This is what we bill on.
+	*/
+
+	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
+
+	/*
+		Calculate the total price for this slice of bandwidth envelope.
+
+		This is the sum of all relay hop prices, plus our rake, multiplied by the envelope up/down
+		and the length of the session in seconds.
+	*/
+
+	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+
+	/*
 		Determine if we should write the summary slice. Should only happen
 		when the session is finished.
 
@@ -1217,6 +1346,23 @@ func SessionPost(state *SessionHandlerState) {
 
 	if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut {
 		state.Output.WroteSummary = true
+	}
+
+	/*
+		Store the cumulative sum of totalPrice, nextEnvelopeBytesUp, and nextEnvelopeBytesDown in
+		the output session data. Used in the summary slice.
+
+		If this is the summary slice, then we do NOT want to include this slice's values in the
+		cumulative sum since this session is finished.
+
+		This saves datascience some work when analyzing sessions across days.
+	*/
+
+	if !state.Output.WroteSummary && state.Packet.Next {
+		state.Output.TotalPriceSum = state.Input.TotalPriceSum + uint64(totalPrice)
+		state.Output.NextEnvelopeBytesUpSum = state.Input.NextEnvelopeBytesUpSum + nextEnvelopeBytesUp
+		state.Output.NextEnvelopeBytesDownSum = state.Input.NextEnvelopeBytesDownSum + nextEnvelopeBytesDown
+		state.Output.DurationOnNext = state.Input.DurationOnNext + billing.BillingSliceSeconds
 	}
 
 	/*
@@ -1252,12 +1398,6 @@ func SessionPost(state *SessionHandlerState) {
 	*/
 
 	/*
-		Build route relay data (for portal, billing etc...)
-	*/
-
-	BuildPostRouteRelayData(state)
-
-	/*
 		Build post near relay data (for portal, billing etc...)
 	*/
 
@@ -1276,9 +1416,18 @@ func SessionPost(state *SessionHandlerState) {
 	*/
 
 	if state.PostSessionHandler.featureBilling2 && !state.Input.WroteSummary {
-		billingEntry2 := BuildBillingEntry2(state)
+		billingEntry2 := BuildBillingEntry2(state, sliceDuration, nextEnvelopeBytesUp, nextEnvelopeBytesDown, totalPrice)
 
 		state.PostSessionHandler.SendBillingEntry2(billingEntry2)
+
+		/*
+			Send the billing entry to the vanity metrics system (real-time path)
+			except for the summary slice.
+		*/
+
+		if state.PostSessionHandler.useVanityMetrics && !state.Output.WroteSummary {
+			state.PostSessionHandler.SendVanityMetric(billingEntry2)
+		}
 	}
 
 	/*
@@ -1297,19 +1446,9 @@ func SessionPost(state *SessionHandlerState) {
 	*/
 
 	if state.PostSessionHandler.featureBilling {
-		billingEntry := BuildBillingEntry(state)
+		billingEntry := BuildBillingEntry(state, sliceDuration, nextEnvelopeBytesUp, nextEnvelopeBytesDown, totalPrice)
 
 		state.PostSessionHandler.SendBillingEntry(billingEntry)
-
-		/*
-			Send the billing entry to the vanity metrics system (real-time path)
-
-			TODO: once buildBillingEntry() is deprecated, modify vanity metrics to use BillingEntry2
-		*/
-
-		if state.PostSessionHandler.useVanityMetrics {
-			state.PostSessionHandler.SendVanityMetric(billingEntry)
-		}
 	}
 
 	/*
@@ -1336,6 +1475,7 @@ func BuildPostRouteRelayData(state *SessionHandlerState) {
 		if ok {
 			state.PostRouteRelayNames[i] = relay.Name
 			state.PostRouteRelaySellers[i] = relay.Seller
+			state.PostRouteRelayEgressPriceOverride[i] = relay.EgressPriceOverride
 		}
 	}
 }
@@ -1374,18 +1514,7 @@ func BuildPostNearRelayData(state *SessionHandlerState) {
 	}
 }
 
-func BuildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
-
-	/*
-		Each slice is 10 seconds long except for the first slice with a given network next route,
-		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
-		that we pre-bought at the start of the previous route.
-	*/
-
-	sliceDuration := uint64(billing.BillingSliceSeconds)
-	if state.Input.Initial {
-		sliceDuration *= 2
-	}
+func BuildBillingEntry(state *SessionHandlerState, sliceDuration uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin) *billing.BillingEntry {
 
 	/*
 		Calculate the actual amounts of bytes sent up and down along the network next route
@@ -1397,27 +1526,10 @@ func BuildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.Packet.NextKbpsUp), uint64(state.Packet.NextKbpsDown), sliceDuration)
 
 	/*
-		Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
-
-		This is what we bill on.
-	*/
-
-	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
-
-	/*
-		Calculate the total price for this slice of bandwidth envelope.
-
-		This is the sum of all relay hop prices, plus our rake, multiplied by the envelope up/down
-		and the length of the session in seconds.
-	*/
-
-	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
-
-	/*
 		Calculate the per-relay hop price that sums up to the total price, minus our rake.
 	*/
 
-	routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+	routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
 	// todo: not really sure why we transform it like this? seems wasteful
 	nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
@@ -1500,7 +1612,7 @@ func BuildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 		NextBytesDown:                   nextBytesDown,
 		EnvelopeBytesUp:                 nextEnvelopeBytesUp,
 		EnvelopeBytesDown:               nextEnvelopeBytesDown,
-		DatacenterID:                    state.Datacenter.ID,
+		DatacenterID:                    state.Packet.DatacenterID,
 		RTTReduction:                    state.Input.RouteState.ReduceLatency,
 		PacketLossReduction:             state.Input.RouteState.ReducePacketLoss,
 		NextRelaysPrice:                 nextRelaysPrice,
@@ -1556,18 +1668,7 @@ func BuildBillingEntry(state *SessionHandlerState) *billing.BillingEntry {
 	return &billingEntry
 }
 
-func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
-	/*
-		Each slice is 10 seconds long except for the first slice with a given network next route,
-		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
-		that we pre-bought at the start of the previous route.
-	*/
-
-	sliceDuration := uint64(billing.BillingSliceSeconds)
-	if state.Input.Initial {
-		sliceDuration *= 2
-	}
-
+func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin) *billing.BillingEntry2 {
 	/*
 		Calculate the actual amounts of bytes sent up and down along the network next route
 		for the duration of the previous slice (just being reported up from the SDK).
@@ -1578,27 +1679,10 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.Packet.NextKbpsUp), uint64(state.Packet.NextKbpsDown), sliceDuration)
 
 	/*
-		Calculate the envelope bandwidth in bytes up and down for the duration of the previous slice.
-
-		This is what we bill on.
-	*/
-
-	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
-
-	/*
-		Calculate the total price for this slice of bandwidth envelope.
-
-		This is the sum of all relay hop prices, plus our rake, multiplied by the envelope up/down
-		and the length of the session in seconds.
-	*/
-
-	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
-
-	/*
 		Calculate the per-relay hop price that sums up to the total price, minus our rake.
 	*/
 
-	routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
+	routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
 
 	// todo: not really sure why we transform it like this? seems wasteful
 	nextRelayPrice := [core.MaxRelaysPerRoute]uint64{}
@@ -1661,6 +1745,23 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 	}
 
 	/*
+		Calculate the session duration in seconds to include in the summary slice.
+	*/
+	var sessionDuration uint32
+	if state.Output.WroteSummary && state.Packet.SliceNumber != 0 {
+		sessionDuration = (state.Packet.SliceNumber - 1) * billing.BillingSliceSeconds
+	}
+
+	/*
+		Calculate the starting timestamp of the session to include in the summary slice.
+	*/
+	var startTime time.Time
+	if state.Output.WroteSummary {
+		secondsToSub := int(sessionDuration) + billing.BillingSliceSeconds
+		startTime = time.Now().Add(time.Duration(-secondsToSub) * time.Second)
+	}
+
+	/*
 		Create the billing entry 2 and return it to the caller.
 	*/
 
@@ -1681,13 +1782,14 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		UseDebug:                        state.Buyer.Debug,
 		Debug:                           debugString,
 		RouteDiversity:                  int32(state.RouteDiversity),
-		DatacenterID:                    state.Datacenter.ID,
+		DatacenterID:                    state.Packet.DatacenterID,
 		BuyerID:                         state.Packet.BuyerID,
 		UserHash:                        state.Packet.UserHash,
 		EnvelopeBytesDown:               nextEnvelopeBytesDown,
 		EnvelopeBytesUp:                 nextEnvelopeBytesUp,
 		Latitude:                        float32(state.Input.Location.Latitude),
 		Longitude:                       float32(state.Input.Location.Longitude),
+		ClientAddress:                   state.Packet.ClientAddress.String(),
 		ISP:                             state.Input.Location.ISP,
 		ConnectionType:                  int32(state.Packet.ConnectionType),
 		PlatformType:                    int32(state.Packet.PlatformType),
@@ -1707,6 +1809,13 @@ func BuildBillingEntry2(state *SessionHandlerState) *billing.BillingEntry2 {
 		NearRelayRTTs:                   NearRelayRTTs,
 		NearRelayJitters:                NearRelayJitters,
 		NearRelayPacketLosses:           nearRelayPacketLosses,
+		EverOnNext:                      state.Input.EverOnNext,
+		SessionDuration:                 sessionDuration,
+		TotalPriceSum:                   state.Input.TotalPriceSum,
+		EnvelopeBytesUpSum:              state.Input.NextEnvelopeBytesUpSum,
+		EnvelopeBytesDownSum:            state.Input.NextEnvelopeBytesDownSum,
+		DurationOnNext:                  state.Input.DurationOnNext,
+		StartTimestamp:                  uint32(startTime.Unix()),
 		NextRTT:                         int32(state.Packet.NextRTT),
 		NextJitter:                      int32(state.Packet.NextJitter),
 		NextPacketLoss:                  int32(state.Packet.NextPacketLoss),
@@ -1907,7 +2016,7 @@ func WriteSessionResponse(w io.Writer, response *SessionResponsePacket, sessionD
 // ------------------------------------------------------------------
 
 func SessionUpdateHandlerFunc(
-	getIPLocator func(sessionID uint64) routing.IPLocator,
+	getIPLocator func() *routing.MaxmindDB,
 	getRouteMatrix func() *routing.RouteMatrix,
 	multipathVetoHandler storage.MultipathVetoHandler,
 	getDatabase func() *routing.DatabaseBinWrapper,
@@ -1965,7 +2074,7 @@ func SessionUpdateHandlerFunc(
 		state.Database = getDatabase()
 		state.Datacenter = routing.UnknownDatacenter
 		state.PacketData = incoming.Data
-		state.IpLocator = getIPLocator(state.Packet.SessionID)
+		state.IpLocator = getIPLocator()
 		state.RouteMatrix = getRouteMatrix()
 		state.StaleDuration = staleDuration
 		state.RouterPrivateKey = routerPrivateKey

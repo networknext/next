@@ -35,17 +35,72 @@ type SQL struct {
 	Logger log.Logger
 }
 
+const (
+	SQL_TIMEOUT = 5 * time.Second
+	MAX_RETRIES = 4
+)
+
+func QueryMultipleRowsRetry(ctx context.Context, db *SQL, queryString bytes.Buffer, queryArgs ...interface{}) (*sql.Rows, error) {
+	var err error
+	var sqlRows *sql.Rows
+
+	retryCount := 0
+	for retryCount < MAX_RETRIES {
+		if len(queryArgs) > 0 {
+			sqlRows, err = db.Client.QueryContext(ctx, queryString.String(), queryArgs...)
+		} else {
+			sqlRows, err = db.Client.QueryContext(ctx, queryString.String())
+		}
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+	return sqlRows, err
+}
+
+func ExecRetry(ctx context.Context, db *SQL, queryString bytes.Buffer, queryArgs ...interface{}) (sql.Result, error) {
+	var result sql.Result
+	var err error
+	retryCount := 0
+
+	stmt, err := db.Client.PrepareContext(ctx, queryString.String())
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error preparing ExecRetry SQL", "err", err)
+		return nil, err
+	}
+
+	for retryCount < MAX_RETRIES {
+		result, err = stmt.Exec(queryArgs...)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
+	return result, err
+}
+
 type sqlBuyer struct {
-	SdkID          int64
-	ID             uint64
-	IsLiveCustomer bool
-	Debug          bool
-	Name           string
-	PublicKey      []byte
-	ShortName      string
-	CompanyCode    string // should not be needed
-	DatabaseID     int64  // sql PK
-	CustomerID     int64  // sql PK
+	SdkID               int64
+	ID                  uint64
+	IsLiveCustomer      bool
+	Debug               bool
+	Analytics           bool
+	Billing             bool
+	Trial               bool
+	ExoticLocationFee   float64
+	StandardLocationFee float64
+	Name                string
+	PublicKey           []byte
+	ShortName           string
+	CompanyCode         string // should not be needed
+	DatabaseID          int64  // sql PK
+	CustomerID          int64  // sql PK
 }
 
 type sqlDatacenterMap struct {
@@ -93,20 +148,39 @@ type sqlRouteShader struct {
 }
 
 // Customer retrieves a Customer record using the company code
-func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
-
+func (db *SQL) Customer(ctx context.Context, customerCode string) (routing.Customer, error) {
 	var querySQL bytes.Buffer
 	var customer sqlCustomer
+	var row *sql.Row
+	var err error
+	retryCount := 0
 
 	querySQL.Write([]byte("select id, automatic_signin_domain,"))
 	querySQL.Write([]byte("customer_name, customer_code from customers where customer_code = $1"))
 
-	row := db.Client.QueryRow(querySQL.String(), customerCode)
-	err := row.Scan(&customer.ID,
-		&customer.AutomaticSignInDomains,
-		&customer.Name,
-		&customer.CustomerCode)
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), customerCode)
+		err = row.Scan(
+			&customer.ID,
+			&customer.AutomaticSignInDomains,
+			&customer.Name,
+			&customer.CustomerCode,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "Customer() connection with the database timed out!")
+		return routing.Customer{}, err
 	case sql.ErrNoRows:
 		level.Error(db.Logger).Log("during", "Customer() no rows were returned!")
 		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: customerCode}
@@ -127,19 +201,22 @@ func (db *SQL) Customer(customerCode string) (routing.Customer, error) {
 
 // Customers retrieves the full list
 // TODO: not covered by sql_test.go
-func (db *SQL) Customers() []routing.Customer {
+func (db *SQL) Customers(ctx context.Context) []routing.Customer {
 	var sql bytes.Buffer
 	var customer sqlCustomer
 
 	customers := []routing.Customer{}
 	customerIDs := make(map[int64]string)
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
 	sql.Write([]byte("select id, automatic_signin_domain, "))
 	sql.Write([]byte("customer_name, customer_code from customers"))
 
-	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "Customers(): QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "Customers(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []routing.Customer{}
 	}
 	defer rows.Close()
@@ -191,26 +268,26 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		AutomaticSignInDomains: c.AutomaticSignInDomains,
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
 	sql.Write([]byte("insert into customers ("))
 	sql.Write([]byte("automatic_signin_domain, customer_name, customer_code"))
 	sql.Write([]byte(") values ($1, $2, $3)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddCustomer SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
 		customer.AutomaticSignInDomains,
 		customer.Name,
 		customer.CustomerCode,
 	)
-
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error adding customer", "err", err)
 		return err
 	}
+
 	rows, err := result.RowsAffected()
 	if err != nil {
 		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
@@ -231,19 +308,14 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 //
 // #2 is not checked here - it is enforced by the database
 func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
-
 	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	sql.Write([]byte("delete from customers where customer_code = $1"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing RemoveCustomer SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(customerCode)
-
+	result, err := ExecRetry(ctx, db, sql, customerCode)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing customer", "err", err)
 		return err
@@ -270,19 +342,22 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 // TODO: remove - need to modify AuthService.UpdateAutoSignupDomains to
 //       use UpdateCustomer() and then drop this method
 func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
-
 	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	sql.Write([]byte("update customers set (automatic_signin_domain, customer_name) ="))
 	sql.Write([]byte("($1, $2) where customer_code = $3"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing SetCustomer SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(c.AutomaticSignInDomains, c.Name, c.Code)
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		c.AutomaticSignInDomains,
+		c.Name,
+		c.Code,
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
 		return err
@@ -302,129 +377,182 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 
 // Buyer gets a copy of a buyer with the specified buyer ID,
 // and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
-func (db *SQL) Buyer(ephemeralBuyerID uint64) (routing.Buyer, error) {
+func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buyer, error) {
+	var querySQL bytes.Buffer
+	var buyer sqlBuyer
+	var row *sql.Row
+	var err error
+	retryCount := 0
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	sqlBuyerID := int64(ephemeralBuyerID)
 
-	var querySQL bytes.Buffer
-	var buyer sqlBuyer
-
-	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, public_key, customer_id "))
+	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where sdk_generated_id = $1"))
 
-	row := db.Client.QueryRow(querySQL.String(), sqlBuyerID)
-	err := row.Scan(
-		&buyer.DatabaseID,
-		&buyer.ShortName,
-		&buyer.IsLiveCustomer,
-		&buyer.Debug,
-		&buyer.PublicKey,
-		&buyer.CustomerID,
-	)
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), sqlBuyerID)
+		err = row.Scan(
+			&buyer.DatabaseID,
+			&buyer.ShortName,
+			&buyer.IsLiveCustomer,
+			&buyer.Debug,
+			&buyer.Analytics,
+			&buyer.Billing,
+			&buyer.Trial,
+			&buyer.ExoticLocationFee,
+			&buyer.StandardLocationFee,
+			&buyer.PublicKey,
+			&buyer.CustomerID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "Buyer() connection with the database timed out!")
+		return routing.Buyer{}, err
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "Customer() no rows were returned!")
+		level.Error(db.Logger).Log("during", "Buyer() no rows were returned!")
 		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	case nil:
-
-		ic, err := db.InternalConfig(ephemeralBuyerID)
+		ic, err := db.InternalConfig(ctx, ephemeralBuyerID)
 		if err != nil {
 			ic = core.NewInternalConfig()
 		}
 
-		rs, err := db.RouteShader(ephemeralBuyerID)
+		rs, err := db.RouteShader(ctx, ephemeralBuyerID)
 		if err != nil {
 			rs = core.NewRouteShader()
 		}
 
 		b := routing.Buyer{
-			ID:             ephemeralBuyerID,
-			HexID:          fmt.Sprintf("%016x", buyer.ID),
-			ShortName:      buyer.ShortName,
-			CompanyCode:    buyer.ShortName,
-			Live:           buyer.IsLiveCustomer,
-			Debug:          buyer.Debug,
-			PublicKey:      buyer.PublicKey,
-			RouteShader:    rs,
-			InternalConfig: ic,
-			CustomerID:     buyer.CustomerID,
-			DatabaseID:     buyer.DatabaseID,
+			ID:                  ephemeralBuyerID,
+			HexID:               fmt.Sprintf("%016x", buyer.ID),
+			ShortName:           buyer.ShortName,
+			CompanyCode:         buyer.ShortName,
+			Live:                buyer.IsLiveCustomer,
+			Debug:               buyer.Debug,
+			Analytics:           buyer.Analytics,
+			Billing:             buyer.Billing,
+			Trial:               buyer.Trial,
+			ExoticLocationFee:   buyer.ExoticLocationFee,
+			StandardLocationFee: buyer.StandardLocationFee,
+			PublicKey:           buyer.PublicKey,
+			RouteShader:         rs,
+			InternalConfig:      ic,
+			CustomerID:          buyer.CustomerID,
+			DatabaseID:          buyer.DatabaseID,
 		}
 		return b, nil
 	default:
-		level.Error(db.Logger).Log("during", "Buyer() QueryRow returned an error: %v", err)
+		level.Error(db.Logger).Log("during", fmt.Sprintf("Buyer() QueryRow returned an error: %v", err))
 		return routing.Buyer{}, err
 	}
 
 }
 
 // BuyerWithCompanyCode gets the Buyer with the matching company code
-func (db *SQL) BuyerWithCompanyCode(companCode string) (routing.Buyer, error) {
-
+func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (routing.Buyer, error) {
 	var querySQL bytes.Buffer
 	var buyer sqlBuyer
+	var row *sql.Row
+	var err error
+	retryCount := 0
 
-	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, public_key, customer_id "))
+	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
 	querySQL.Write([]byte("from buyers where short_name = $1"))
 
-	row := db.Client.QueryRow(querySQL.String(), companCode)
-	err := row.Scan(
-		&buyer.DatabaseID,
-		&buyer.SdkID,
-		&buyer.IsLiveCustomer,
-		&buyer.Debug,
-		&buyer.PublicKey,
-		&buyer.CustomerID,
-	)
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), companyCode)
+		err = row.Scan(
+			&buyer.DatabaseID,
+			&buyer.SdkID,
+			&buyer.IsLiveCustomer,
+			&buyer.Debug,
+			&buyer.Analytics,
+			&buyer.Billing,
+			&buyer.Trial,
+			&buyer.ExoticLocationFee,
+			&buyer.StandardLocationFee,
+			&buyer.PublicKey,
+			&buyer.CustomerID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "Buyer() connection with the database timed out!")
+		return routing.Buyer{}, err
 	case sql.ErrNoRows:
-		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: fmt.Sprintf("%016x", companCode)}
+		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: fmt.Sprintf("%016x", companyCode)}
 	case nil:
 		buyer.ID = uint64(buyer.SdkID)
-		ic, err := db.InternalConfig(buyer.ID)
+		ic, err := db.InternalConfig(ctx, buyer.ID)
 		if err != nil {
 			ic = core.NewInternalConfig()
 		}
 
-		rs, err := db.RouteShader(buyer.ID)
+		rs, err := db.RouteShader(ctx, buyer.ID)
 		if err != nil {
 			rs = core.NewRouteShader()
 		}
 
 		b := routing.Buyer{
-			ID:             buyer.ID,
-			HexID:          fmt.Sprintf("%016x", buyer.ID),
-			ShortName:      buyer.ShortName,
-			CompanyCode:    buyer.ShortName,
-			Live:           buyer.IsLiveCustomer,
-			Debug:          buyer.Debug,
-			PublicKey:      buyer.PublicKey,
-			RouteShader:    rs,
-			InternalConfig: ic,
-			CustomerID:     buyer.CustomerID,
-			DatabaseID:     buyer.DatabaseID,
+			ID:                  buyer.ID,
+			HexID:               fmt.Sprintf("%016x", buyer.ID),
+			ShortName:           companyCode,
+			CompanyCode:         companyCode,
+			Live:                buyer.IsLiveCustomer,
+			Debug:               buyer.Debug,
+			Analytics:           buyer.Analytics,
+			Billing:             buyer.Billing,
+			Trial:               buyer.Trial,
+			ExoticLocationFee:   buyer.ExoticLocationFee,
+			StandardLocationFee: buyer.StandardLocationFee,
+			PublicKey:           buyer.PublicKey,
+			RouteShader:         rs,
+			InternalConfig:      ic,
+			CustomerID:          buyer.CustomerID,
+			DatabaseID:          buyer.DatabaseID,
 		}
 		return b, nil
 	default:
-		level.Error(db.Logger).Log("during", "BuyerWithCompanyCode() QueryRow returned an error: %v", err)
+		level.Error(db.Logger).Log("during", fmt.Sprintf("BuyerWithCompanyCode() QueryRow returned an error: %v", err))
 		return routing.Buyer{}, err
 	}
 }
 
 // Buyers returns a copy of all stored buyers.
-func (db *SQL) Buyers() []routing.Buyer {
+func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 	var sql bytes.Buffer
 	var buyer sqlBuyer
 
 	buyers := []routing.Buyer{}
 	buyerIDs := make(map[uint64]int64)
 
-	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, public_key, customer_id "))
+	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
 	sql.Write([]byte("from buyers"))
 
-	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "Buyers(): QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "Buyers(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []routing.Buyer{}
 	}
 	defer rows.Close()
@@ -436,6 +564,11 @@ func (db *SQL) Buyers() []routing.Buyer {
 			&buyer.ShortName,
 			&buyer.IsLiveCustomer,
 			&buyer.Debug,
+			&buyer.Analytics,
+			&buyer.Billing,
+			&buyer.Trial,
+			&buyer.ExoticLocationFee,
+			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
 		)
@@ -448,28 +581,33 @@ func (db *SQL) Buyers() []routing.Buyer {
 
 		buyerIDs[buyer.ID] = buyer.DatabaseID
 
-		ic, err := db.InternalConfig(buyer.ID)
+		ic, err := db.InternalConfig(ctx, buyer.ID)
 		if err != nil {
 			ic = core.NewInternalConfig()
 		}
 
-		rs, err := db.RouteShader(buyer.ID)
+		rs, err := db.RouteShader(ctx, buyer.ID)
 		if err != nil {
 			rs = core.NewRouteShader()
 		}
 
 		b := routing.Buyer{
-			ID:             buyer.ID,
-			HexID:          fmt.Sprintf("%016x", buyer.ID),
-			ShortName:      buyer.ShortName,
-			CompanyCode:    buyer.ShortName,
-			Live:           buyer.IsLiveCustomer,
-			Debug:          buyer.Debug,
-			PublicKey:      buyer.PublicKey,
-			RouteShader:    rs,
-			InternalConfig: ic,
-			CustomerID:     buyer.CustomerID,
-			DatabaseID:     buyer.DatabaseID,
+			ID:                  buyer.ID,
+			HexID:               fmt.Sprintf("%016x", buyer.ID),
+			ShortName:           buyer.ShortName,
+			CompanyCode:         buyer.ShortName,
+			Live:                buyer.IsLiveCustomer,
+			Debug:               buyer.Debug,
+			Analytics:           buyer.Analytics,
+			Billing:             buyer.Billing,
+			Trial:               buyer.Trial,
+			ExoticLocationFee:   buyer.ExoticLocationFee,
+			StandardLocationFee: buyer.StandardLocationFee,
+			PublicKey:           buyer.PublicKey,
+			RouteShader:         rs,
+			InternalConfig:      ic,
+			CustomerID:          buyer.CustomerID,
+			DatabaseID:          buyer.DatabaseID,
 		}
 
 		buyers = append(buyers, b)
@@ -484,41 +622,50 @@ func (db *SQL) Buyers() []routing.Buyer {
 func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 	var sql bytes.Buffer
 
-	c, err := db.Customer(b.CompanyCode)
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	c, err := db.Customer(ctx, b.CompanyCode)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: b.CompanyCode}
 	}
 
 	buyer := sqlBuyer{
-		ID:             b.ID,
-		CompanyCode:    b.CompanyCode,
-		ShortName:      b.CompanyCode,
-		IsLiveCustomer: b.Live,
-		Debug:          b.Debug,
-		PublicKey:      b.PublicKey,
-		CustomerID:     c.DatabaseID,
+		ID:                  b.ID,
+		CompanyCode:         b.CompanyCode,
+		ShortName:           b.CompanyCode,
+		IsLiveCustomer:      b.Live,
+		Debug:               b.Debug,
+		Analytics:           b.Analytics,
+		Billing:             b.Billing,
+		Trial:               b.Trial,
+		ExoticLocationFee:   b.ExoticLocationFee,
+		StandardLocationFee: b.StandardLocationFee,
+		PublicKey:           b.PublicKey,
+		CustomerID:          c.DatabaseID,
 	}
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, public_key, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6)"))
+	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddBuyer SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
 		int64(buyer.ID),
 		buyer.ShortName,
 		buyer.IsLiveCustomer,
 		buyer.Debug,
+		buyer.Analytics,
+		buyer.Billing,
+		buyer.Trial,
+		buyer.ExoticLocationFee,
+		buyer.StandardLocationFee,
 		buyer.PublicKey,
 		buyer.CustomerID,
 	)
-
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error adding buyer", "err", err)
 		return err
@@ -546,16 +693,17 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
 	sql.Write([]byte("delete from buyers where sdk_generated_id = $1"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing RemoveBuyer SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(int64(ephemeralBuyerID))
-
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		int64(ephemeralBuyerID),
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing buyer", "err", err)
 		return err
@@ -575,26 +723,45 @@ func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 
 // Seller gets a copy of a seller with the specified seller ID,
 // and returns an empty seller and an error if a seller with that ID doesn't exist in storage.
-func (db *SQL) Seller(id string) (routing.Seller, error) {
-
+func (db *SQL) Seller(ctx context.Context, id string) (routing.Seller, error) {
 	var querySQL bytes.Buffer
 	var seller sqlSeller
+	var row *sql.Row
+	var err error
+	retryCount := 0
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	querySQL.Write([]byte("select id, short_name, public_egress_price, secret, "))
 	querySQL.Write([]byte("customer_id from sellers where short_name = $1"))
 
-	row := db.Client.QueryRow(querySQL.String(), id)
-	err := row.Scan(&seller.DatabaseID,
-		&seller.ShortName,
-		&seller.EgressPriceNibblinsPerGB,
-		&seller.Secret,
-		&seller.CustomerID)
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), id)
+		err = row.Scan(
+			&seller.DatabaseID,
+			&seller.ShortName,
+			&seller.EgressPriceNibblinsPerGB,
+			&seller.Secret,
+			&seller.CustomerID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "Seller() connection with the database timed out!")
+		return routing.Seller{}, err
 	case sql.ErrNoRows:
 		level.Error(db.Logger).Log("during", "Seller() no rows were returned!")
 		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
 	case nil:
-		c, err := db.Customer(id)
+		c, err := db.Customer(ctx, id)
 		if err != nil {
 			return routing.Seller{}, &DoesNotExistError{resourceType: "customer", resourceRef: id}
 		}
@@ -617,26 +784,44 @@ func (db *SQL) Seller(id string) (routing.Seller, error) {
 
 // SellerByDbId returns the sellers table entry for the given ID
 // TODO: add to storer interface?
-func (db *SQL) SellerByDbId(id int64) (routing.Seller, error) {
-
+func (db *SQL) SellerByDbId(ctx context.Context, id int64) (routing.Seller, error) {
 	var querySQL bytes.Buffer
 	var seller sqlSeller
+	var row *sql.Row
+	var err error
+	retryCount := 0
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	querySQL.Write([]byte("select short_name, public_egress_price, secret, "))
 	querySQL.Write([]byte("customer_id from sellers where id = $1"))
 
-	row := db.Client.QueryRow(querySQL.String(), id)
-	err := row.Scan(
-		&seller.ShortName,
-		&seller.EgressPriceNibblinsPerGB,
-		&seller.Secret,
-		&seller.CustomerID)
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), id)
+		err = row.Scan(
+			&seller.ShortName,
+			&seller.EgressPriceNibblinsPerGB,
+			&seller.Secret,
+			&seller.CustomerID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "SellerByDbId() connection with the database timed out!")
+		return routing.Seller{}, err
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "Seller() no rows were returned!")
+		level.Error(db.Logger).Log("during", "SellerByDbId() no rows were returned!")
 		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
 	case nil:
-		c, err := db.Customer(seller.ShortName)
+		c, err := db.Customer(ctx, seller.ShortName)
 		if err != nil {
 			return routing.Seller{}, &DoesNotExistError{resourceType: "customer", resourceRef: id}
 		}
@@ -652,25 +837,26 @@ func (db *SQL) SellerByDbId(id int64) (routing.Seller, error) {
 		}
 		return s, nil
 	default:
-		level.Error(db.Logger).Log("during", "Seller() QueryRow returned an error: %v", err)
+		level.Error(db.Logger).Log("during", "SellerByDbId() QueryRow returned an error: %v", err)
 		return routing.Seller{}, err
 	}
 }
 
 // Sellers returns a copy of all stored sellers.
-func (db *SQL) Sellers() []routing.Seller {
-
+func (db *SQL) Sellers(ctx context.Context) []routing.Seller {
 	var sql bytes.Buffer
 	var seller sqlSeller
-
 	sellers := []routing.Seller{}
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	sql.Write([]byte("select id, short_name, public_egress_price, secret, "))
 	sql.Write([]byte("customer_id from sellers"))
 
-	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "Sellers(): QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "Sellers(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []routing.Seller{}
 	}
 	defer rows.Close()
@@ -687,7 +873,7 @@ func (db *SQL) Sellers() []routing.Seller {
 			return []routing.Seller{}
 		}
 
-		c, err := db.Customer(seller.ShortName)
+		c, err := db.Customer(ctx, seller.ShortName)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "Sellers(): customer does not exist", "err", err)
 			return []routing.Seller{}
@@ -725,9 +911,12 @@ type sqlSeller struct {
 func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	var sql bytes.Buffer
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
 	// This check only pertains to the next tool. Stateful clients would already
 	// have the customer id.
-	c, err := db.Customer(s.CompanyCode)
+	c, err := db.Customer(ctx, s.CompanyCode)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: s.CompanyCode}
 	}
@@ -746,13 +935,10 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	sql.Write([]byte("short_name, public_egress_price, secret, customer_id"))
 	sql.Write([]byte(") values ($1, $2, $3, $4)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddSeller SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
 		newSellerData.ShortName,
 		newSellerData.EgressPriceNibblinsPerGB,
 		newSellerData.Secret,
@@ -784,16 +970,17 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 	var sql bytes.Buffer
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
 	sql.Write([]byte("delete from sellers where short_name = $1"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing RemoveBuyer SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(id)
-
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		id,
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing seller", "err", err)
 		return err
@@ -822,24 +1009,45 @@ func (db *SQL) SellerIDFromCustomerName(ctx context.Context, customerName string
 	return "", fmt.Errorf("BuyerIDFromCustomerName() not implemented in SQL Storer")
 }
 
-func (db *SQL) SellerWithCompanyCode(code string) (routing.Seller, error) {
+func (db *SQL) SellerWithCompanyCode(ctx context.Context, code string) (routing.Seller, error) {
 	var querySQL bytes.Buffer
 	var seller sqlSeller
+	var row *sql.Row
+	var err error
+
+	retryCount := 0
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	querySQL.Write([]byte("select id, short_name, public_egress_price, secret, "))
 	querySQL.Write([]byte("customer_id from sellers where short_name = $1"))
 
-	row := db.Client.QueryRow(querySQL.String(), code)
-	err := row.Scan(&seller.DatabaseID,
-		&seller.ShortName,
-		&seller.EgressPriceNibblinsPerGB,
-		&seller.Secret,
-		&seller.CustomerID)
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), code)
+		err = row.Scan(
+			&seller.DatabaseID,
+			&seller.ShortName,
+			&seller.EgressPriceNibblinsPerGB,
+			&seller.Secret,
+			&seller.CustomerID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "SellerWithCompanyCode() connection with the database timed out!")
+		return routing.Seller{}, err
 	case sql.ErrNoRows:
 		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: code}
 	case nil:
-		c, err := db.Customer(code)
+		c, err := db.Customer(ctx, code)
 		if err != nil {
 			return routing.Seller{}, &DoesNotExistError{resourceType: "customer", resourceRef: code}
 		}
@@ -870,15 +1078,21 @@ func (db *SQL) SetCustomerLink(ctx context.Context, customerName string, buyerID
 
 // Relay gets a copy of a relay with the specified relay ID
 // and returns an empty relay and an error if a relay with that ID doesn't exist in storage.
-func (db *SQL) Relay(id uint64) (routing.Relay, error) {
-	hexID := fmt.Sprintf("%016x", id)
-
+func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 	var sqlQuery bytes.Buffer
 	var relay sqlRelay
+	var row *sql.Row
+	var err error
+
+	retryCount := 0
+	hexID := fmt.Sprintf("%016x", id)
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	sqlQuery.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
-	sqlQuery.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
+	sqlQuery.Write([]byte("relays.max_sessions, relays.egress_price_override, relays.mrc, relays.overage, relays.port_speed, "))
 	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
@@ -886,37 +1100,49 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
 	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays where hex_id = $1"))
 
-	rows := db.Client.QueryRow(sqlQuery.String(), hexID)
-	err := rows.Scan(&relay.DatabaseID,
-		&relay.Name,
-		&relay.ContractTerm,
-		&relay.EndDate,
-		&relay.IncludedBandwithGB,
-		&relay.ManagementIP,
-		&relay.MaxSessions,
-		&relay.MRC,
-		&relay.Overage,
-		&relay.NICSpeedMbps,
-		&relay.PublicIP,
-		&relay.PublicIPPort,
-		&relay.PublicKey,
-		&relay.SSHPort,
-		&relay.SSHUser,
-		&relay.StartDate,
-		&relay.InternalIP,
-		&relay.InternalIPPort,
-		&relay.BWRule,
-		&relay.DatacenterID,
-		&relay.MachineType,
-		&relay.State,
-		&relay.InternalIP,
-		&relay.InternalIPPort,
-		&relay.Notes,
-		&relay.BillingSupplier,
-		&relay.Version,
-	)
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, sqlQuery.String(), hexID)
+		err = row.Scan(&relay.DatabaseID,
+			&relay.Name,
+			&relay.ContractTerm,
+			&relay.EndDate,
+			&relay.IncludedBandwithGB,
+			&relay.ManagementIP,
+			&relay.MaxSessions,
+			&relay.EgressPriceOverride,
+			&relay.MRC,
+			&relay.Overage,
+			&relay.NICSpeedMbps,
+			&relay.PublicIP,
+			&relay.PublicIPPort,
+			&relay.PublicKey,
+			&relay.SSHPort,
+			&relay.SSHUser,
+			&relay.StartDate,
+			&relay.InternalIP,
+			&relay.InternalIPPort,
+			&relay.BWRule,
+			&relay.DatacenterID,
+			&relay.MachineType,
+			&relay.State,
+			&relay.InternalIP,
+			&relay.InternalIPPort,
+			&relay.Notes,
+			&relay.BillingSupplier,
+			&relay.Version,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
 
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "Relay() connection with the database timed out!")
+		return routing.Relay{}, err
 	case sql.ErrNoRows:
 		level.Error(db.Logger).Log("during", "Relay() no rows were returned!")
 		return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: hexID}
@@ -936,12 +1162,12 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
 		}
 
-		datacenter, err := db.DatacenterByDbId(relay.DatacenterID)
+		datacenter, err := db.DatacenterByDbId(ctx, relay.DatacenterID)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
 		}
 
-		seller, err := db.SellerByDbId(datacenter.SellerID)
+		seller, err := db.SellerByDbId(ctx, datacenter.SellerID)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
 		}
@@ -963,6 +1189,7 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 			SSHUser:             relay.SSHUser,
 			SSHPort:             relay.SSHPort,
 			MaxSessions:         uint32(relay.MaxSessions),
+			EgressPriceOverride: routing.Nibblin(relay.EgressPriceOverride),
 			MRC:                 routing.Nibblin(relay.MRC),
 			Overage:             routing.Nibblin(relay.Overage),
 			BWRule:              bwRule,
@@ -994,7 +1221,7 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 
 		if relay.BillingSupplier.Valid {
 			found := false
-			for _, seller := range db.Sellers() {
+			for _, seller := range db.Sellers(ctx) {
 				if seller.DatabaseID == relay.BillingSupplier.Int64 {
 					found = true
 					r.BillingSupplier = seller.ID
@@ -1027,20 +1254,21 @@ func (db *SQL) Relay(id uint64) (routing.Relay, error) {
 		level.Error(db.Logger).Log("during", "Relay() QueryRow returned an error: %v", err)
 		return routing.Relay{}, err
 	}
-
 }
 
 // Relays returns a copy of all stored relays.
-func (db *SQL) Relays() []routing.Relay {
-
+func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 	var sqlQuery bytes.Buffer
 	var relay sqlRelay
 
 	relays := []routing.Relay{}
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
 	sqlQuery.Write([]byte("select relays.id, relays.hex_id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
-	sqlQuery.Write([]byte("relays.max_sessions, relays.mrc, relays.overage, relays.port_speed, "))
+	sqlQuery.Write([]byte("relays.max_sessions, relays.egress_price_override, relays.mrc, relays.overage, relays.port_speed, "))
 	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
@@ -1048,9 +1276,9 @@ func (db *SQL) Relays() []routing.Relay {
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
 	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays "))
 
-	rows, err := db.Client.QueryContext(context.Background(), sqlQuery.String())
+	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "syncRelays(): QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "Relays(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []routing.Relay{}
 	}
 	defer rows.Close()
@@ -1064,6 +1292,7 @@ func (db *SQL) Relays() []routing.Relay {
 			&relay.IncludedBandwithGB,
 			&relay.ManagementIP,
 			&relay.MaxSessions,
+			&relay.EgressPriceOverride,
 			&relay.MRC,
 			&relay.Overage,
 			&relay.NICSpeedMbps,
@@ -1086,7 +1315,7 @@ func (db *SQL) Relays() []routing.Relay {
 			&relay.Version,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays(): error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "Relays(): error parsing returned row", "err", err)
 			return []routing.Relay{}
 		}
 
@@ -1105,19 +1334,19 @@ func (db *SQL) Relays() []routing.Relay {
 			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
 		}
 
-		datacenter, err := db.DatacenterByDbId(relay.DatacenterID)
+		datacenter, err := db.DatacenterByDbId(ctx, relay.DatacenterID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
+			level.Error(db.Logger).Log("during", "Relays error dereferencing datacenter", "err", err)
 		}
 
-		seller, err := db.SellerByDbId(datacenter.SellerID)
+		seller, err := db.SellerByDbId(ctx, datacenter.SellerID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
+			level.Error(db.Logger).Log("during", "Relays error dereferencing seller", "err", err)
 		}
 
 		internalID, err := strconv.ParseUint(relay.HexID, 16, 64)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays error parsing hex_id", "err", err)
+			level.Error(db.Logger).Log("during", "Relays error parsing hex_id", "err", err)
 		}
 
 		r := routing.Relay{
@@ -1132,6 +1361,7 @@ func (db *SQL) Relays() []routing.Relay {
 			SSHUser:             relay.SSHUser,
 			SSHPort:             relay.SSHPort,
 			MaxSessions:         uint32(relay.MaxSessions),
+			EgressPriceOverride: routing.Nibblin(relay.EgressPriceOverride),
 			MRC:                 routing.Nibblin(relay.MRC),
 			Overage:             routing.Nibblin(relay.Overage),
 			BWRule:              bwRule,
@@ -1163,7 +1393,7 @@ func (db *SQL) Relays() []routing.Relay {
 
 		if relay.BillingSupplier.Valid {
 			found := false
-			for _, seller := range db.Sellers() {
+			for _, seller := range db.Sellers(ctx) {
 				if seller.DatabaseID == relay.BillingSupplier.Int64 {
 					found = true
 					r.BillingSupplier = seller.ID
@@ -1172,7 +1402,7 @@ func (db *SQL) Relays() []routing.Relay {
 			}
 
 			if !found {
-				errString := fmt.Sprintf("syncRelays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
+				errString := fmt.Sprintf("Relays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
 				level.Error(db.Logger).Log("during", errString, "err", err)
 			}
 
@@ -1199,22 +1429,24 @@ func (db *SQL) Relays() []routing.Relay {
 // UpdateRelay updates one field (2 for addr) in a relay record - field names
 // are those provided by routing.Relay.
 // value:
-//	addr           : ipaddress:port (string)
-//  bw_billing_rule: float64 (json number)
-//  machine_type   : float64 (json number)
-//  relay_state    : float64 (json number)
-//  MRC            : USD float64 (json number)
-//  Overage        : USD float64 (json number)
-//  StartDate      : string ('January 2, 2006')
-//  EndDate        : string ('January 2, 2006')
+//	addr               : ipaddress:port (string)
+//  bw_billing_rule    : float64 (json number)
+//  machine_type       : float64 (json number)
+//  relay_state        : float64 (json number)
+//  EgressPriceOverride: USD float64 (json number)
+//  MRC                : USD float64 (json number)
+//  Overage            : USD float64 (json number)
+//  StartDate          : string ('January 2, 2006')
+//  EndDate            : string ('January 2, 2006')
 //  all others are bool, float64 or string, based on field type
 func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
-
 	var updateSQL bytes.Buffer
 	var args []interface{}
-	var stmt *sql.Stmt
 
-	relay, err := db.Relay(relayID)
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	relay, err := db.Relay(ctx, relayID)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "relay", resourceRef: fmt.Sprintf("%016x", relayID)}
 	}
@@ -1349,6 +1581,15 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		updateSQL.Write([]byte("update relays set max_sessions=$1 where id=$2"))
 		args = append(args, int64(maxSessions), relay.DatabaseID)
 
+	case "EgressPriceOverride":
+		egressPriceOverrideUSD, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		egressPriceOverride := routing.DollarsToNibblins(egressPriceOverrideUSD)
+		updateSQL.Write([]byte("update relays set egress_price_override=$1 where id=$2"))
+		args = append(args, int64(egressPriceOverride), relay.DatabaseID)
+
 	case "MRC":
 		mrcUSD, ok := value.(float64)
 		if !ok {
@@ -1465,7 +1706,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		} else {
 
 			sellerDatabaseID := 0
-			for _, seller := range db.Sellers() {
+			for _, seller := range db.Sellers(ctx) {
 				if seller.ID == billingSupplier {
 					sellerDatabaseID = int(seller.DatabaseID)
 				}
@@ -1497,13 +1738,7 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 
 	}
 
-	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing UpdateRelay SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(args...)
+	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying relay record", "err", err)
 		return err
@@ -1523,40 +1758,43 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 }
 
 type sqlRelay struct {
-	ID                 uint64
-	HexID              string
-	Name               string
-	PublicIP           sql.NullString
-	PublicIPPort       sql.NullInt64
-	InternalIP         sql.NullString
-	InternalIPPort     sql.NullInt64
-	BillingSupplier    sql.NullInt64
-	PublicKey          []byte
-	NICSpeedMbps       int64
-	IncludedBandwithGB int64
-	DatacenterID       int64
-	ManagementIP       string
-	SSHUser            string
-	SSHPort            int64
-	State              int64
-	MaxSessions        int64
-	MRC                int64
-	Overage            int64
-	BWRule             int64
-	ContractTerm       int64
-	Notes              sql.NullString
-	StartDate          sql.NullTime
-	EndDate            sql.NullTime
-	MachineType        int64
-	Version            string
-	DatabaseID         int64
+	ID                  uint64
+	HexID               string
+	Name                string
+	PublicIP            sql.NullString
+	PublicIPPort        sql.NullInt64
+	InternalIP          sql.NullString
+	InternalIPPort      sql.NullInt64
+	BillingSupplier     sql.NullInt64
+	PublicKey           []byte
+	NICSpeedMbps        int64
+	IncludedBandwithGB  int64
+	DatacenterID        int64
+	ManagementIP        string
+	SSHUser             string
+	SSHPort             int64
+	State               int64
+	MaxSessions         int64
+	EgressPriceOverride int64
+	MRC                 int64
+	Overage             int64
+	BWRule              int64
+	ContractTerm        int64
+	Notes               sql.NullString
+	StartDate           sql.NullTime
+	EndDate             sql.NullTime
+	MachineType         int64
+	Version             string
+	DatabaseID          int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
 func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
-
 	var sqlQuery bytes.Buffer
 	var err error
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	// Routing.Addr is possibly null during syncRelays (due to removed/renamed
 	// relays) but *must* have a value when adding a relay
@@ -1566,6 +1804,21 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		return fmt.Errorf("unable to convert PublicIP Port %s to int: %v", strings.Split(r.Addr.String(), ":")[1], err)
 	}
 	rid := crypto.HashID(r.Addr.String())
+
+	relays := db.Relays(ctx)
+
+	existingRelay := false
+	for _, relay := range relays {
+		if relay.ID == rid && relay.State != routing.RelayStateDecommissioned {
+			existingRelay = true
+			break
+		}
+	}
+
+	// If a relay with this IP exists already and isn't removed, throw an error
+	if existingRelay {
+		return fmt.Errorf("a relay already exists with this IP address. please remove the existing relay before adding a new one under the same IP")
+	}
 
 	var internalIP sql.NullString
 	var internalIPPort sql.NullInt64
@@ -1600,7 +1853,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	var billingSupplier sql.NullInt64
 	if r.BillingSupplier != "" {
-		supplier, err := db.Seller(r.BillingSupplier)
+		supplier, err := db.Seller(ctx, r.BillingSupplier)
 		if err != nil {
 			return fmt.Errorf("Seller %s does not exist %v", r.BillingSupplier, err)
 		}
@@ -1635,49 +1888,47 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	relay := sqlRelay{
-		Name:               r.Name,
-		HexID:              fmt.Sprintf("%016x", rid),
-		PublicIP:           nullablePublicIP,
-		PublicIPPort:       nullablePublicIPPort,
-		InternalIP:         internalIP,
-		InternalIPPort:     internalIPPort,
-		PublicKey:          r.PublicKey,
-		NICSpeedMbps:       int64(r.NICSpeedMbps),
-		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
-		DatacenterID:       r.Datacenter.DatabaseID,
-		ManagementIP:       r.ManagementAddr,
-		BillingSupplier:    billingSupplier,
-		SSHUser:            r.SSHUser,
-		SSHPort:            r.SSHPort,
-		State:              int64(r.State),
-		MaxSessions:        int64(r.MaxSessions),
-		MRC:                int64(r.MRC),
-		Overage:            int64(r.Overage),
-		BWRule:             int64(r.BWRule),
-		ContractTerm:       int64(r.ContractTerm),
-		StartDate:          startDate,
-		EndDate:            endDate,
-		MachineType:        int64(r.Type),
-		Notes:              nullableNotes,
-		Version:            r.Version,
+		Name:                r.Name,
+		HexID:               fmt.Sprintf("%016x", rid),
+		PublicIP:            nullablePublicIP,
+		PublicIPPort:        nullablePublicIPPort,
+		InternalIP:          internalIP,
+		InternalIPPort:      internalIPPort,
+		PublicKey:           r.PublicKey,
+		NICSpeedMbps:        int64(r.NICSpeedMbps),
+		IncludedBandwithGB:  int64(r.IncludedBandwidthGB),
+		DatacenterID:        r.Datacenter.DatabaseID,
+		ManagementIP:        r.ManagementAddr,
+		BillingSupplier:     billingSupplier,
+		SSHUser:             r.SSHUser,
+		SSHPort:             r.SSHPort,
+		State:               int64(r.State),
+		MaxSessions:         int64(r.MaxSessions),
+		EgressPriceOverride: int64(r.EgressPriceOverride),
+		MRC:                 int64(r.MRC),
+		Overage:             int64(r.Overage),
+		BWRule:              int64(r.BWRule),
+		ContractTerm:        int64(r.ContractTerm),
+		StartDate:           startDate,
+		EndDate:             endDate,
+		MachineType:         int64(r.Type),
+		Notes:               nullableNotes,
+		Version:             r.Version,
 	}
 
 	sqlQuery.Write([]byte("insert into relays ("))
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
-	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
+	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
 	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version "))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddRelay SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sqlQuery,
 		relay.HexID,
 		relay.ContractTerm,
 		relay.Name,
@@ -1685,6 +1936,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
+		relay.EgressPriceOverride,
 		relay.MRC,
 		relay.Overage,
 		relay.NICSpeedMbps,
@@ -1704,7 +1956,6 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.BillingSupplier,
 		relay.Version,
 	)
-
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error adding relay", "err", err)
 		return err
@@ -1729,17 +1980,18 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 	var sql bytes.Buffer
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
 	hexID := fmt.Sprintf("%016x", id)
 	sql.Write([]byte("delete from relays where hex_id = $1"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing RemoveRelay SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(hexID)
-
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		hexID,
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing relay", "err", err)
 		return err
@@ -1771,9 +2023,11 @@ func NewNullString(s string) sql.NullString {
 // error if the relay could not be updated.
 // TODO: chopping block, used in OpsService
 func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
-
 	var sqlQuery bytes.Buffer
 	var err error
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	hexID := fmt.Sprintf("%016x", r.ID)
 
@@ -1825,45 +2079,43 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	relay := sqlRelay{
-		Name:               r.Name,
-		PublicIP:           publicIP,
-		PublicIPPort:       publicIPPort,
-		InternalIP:         internalIP,
-		InternalIPPort:     internalIPPort,
-		PublicKey:          r.PublicKey,
-		NICSpeedMbps:       int64(r.NICSpeedMbps),
-		IncludedBandwithGB: int64(r.IncludedBandwidthGB),
-		DatacenterID:       r.Datacenter.DatabaseID,
-		ManagementIP:       r.ManagementAddr,
-		SSHUser:            r.SSHUser,
-		SSHPort:            r.SSHPort,
-		State:              int64(r.State),
-		MaxSessions:        int64(r.MaxSessions),
-		MRC:                int64(r.MRC),
-		Overage:            int64(r.Overage),
-		BWRule:             int64(r.BWRule),
-		ContractTerm:       int64(r.ContractTerm),
-		StartDate:          startDate,
-		EndDate:            endDate,
-		MachineType:        int64(r.Type),
-		HexID:              hexID,
+		Name:                r.Name,
+		PublicIP:            publicIP,
+		PublicIPPort:        publicIPPort,
+		InternalIP:          internalIP,
+		InternalIPPort:      internalIPPort,
+		PublicKey:           r.PublicKey,
+		NICSpeedMbps:        int64(r.NICSpeedMbps),
+		IncludedBandwithGB:  int64(r.IncludedBandwidthGB),
+		DatacenterID:        r.Datacenter.DatabaseID,
+		ManagementIP:        r.ManagementAddr,
+		SSHUser:             r.SSHUser,
+		SSHPort:             r.SSHPort,
+		State:               int64(r.State),
+		MaxSessions:         int64(r.MaxSessions),
+		EgressPriceOverride: int64(r.EgressPriceOverride),
+		MRC:                 int64(r.MRC),
+		Overage:             int64(r.Overage),
+		BWRule:              int64(r.BWRule),
+		ContractTerm:        int64(r.ContractTerm),
+		StartDate:           startDate,
+		EndDate:             endDate,
+		MachineType:         int64(r.Type),
+		HexID:               hexID,
 	}
 
 	sqlQuery.Write([]byte("update relays set ("))
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
-	sqlQuery.Write([]byte("management_ip, max_sessions, mrc, overage, port_speed, public_ip, "))
+	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
 	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) where id = $23"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23) where id = $24"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sqlQuery.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing SetRelay SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sqlQuery,
 		relay.HexID,
 		relay.ContractTerm,
 		relay.Name,
@@ -1871,6 +2123,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.IncludedBandwithGB,
 		relay.ManagementIP,
 		relay.MaxSessions,
+		relay.EgressPriceOverride,
 		relay.MRC,
 		relay.Overage,
 		relay.NICSpeedMbps,
@@ -1888,7 +2141,6 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.InternalIPPort,
 		r.DatabaseID,
 	)
-
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying relay", "err", err)
 		return err
@@ -1910,22 +2162,43 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 
 // Datacenter gets a copy of a datacenter with the specified datacenter ID
 // and returns an empty datacenter and an error if a datacenter with that ID doesn't exist in storage.
-func (db *SQL) Datacenter(datacenterID uint64) (routing.Datacenter, error) {
-
-	hexID := fmt.Sprintf("%016x", datacenterID)
+func (db *SQL) Datacenter(ctx context.Context, datacenterID uint64) (routing.Datacenter, error) {
 	var querySQL bytes.Buffer
 	var dc sqlDatacenter
+	var row *sql.Row
+	var err error
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	retryCount := 0
+	hexID := fmt.Sprintf("%016x", datacenterID)
 
 	querySQL.Write([]byte("select id, display_name, latitude, longitude,"))
 	querySQL.Write([]byte("seller_id from datacenters where hex_id = $1"))
 
-	row := db.Client.QueryRow(querySQL.String(), hexID)
-	err := row.Scan(&dc.ID,
-		&dc.Name,
-		&dc.Latitude,
-		&dc.Longitude,
-		&dc.SellerID)
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), hexID)
+
+		err = row.Scan(
+			&dc.ID,
+			&dc.Name,
+			&dc.Latitude,
+			&dc.Longitude,
+			&dc.SellerID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "Datacenter() connection with database timed out!")
+		return routing.Datacenter{}, err
 	case sql.ErrNoRows:
 		level.Error(db.Logger).Log("during", "Datacenter() no rows were returned!")
 		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: hexID}
@@ -1948,29 +2221,48 @@ func (db *SQL) Datacenter(datacenterID uint64) (routing.Datacenter, error) {
 
 // DatacenterByDbId retrives the entry in the datacenters table for the provided ID
 // TODO: add to storer interface?
-func (db *SQL) DatacenterByDbId(databaseID int64) (routing.Datacenter, error) {
-
+func (db *SQL) DatacenterByDbId(ctx context.Context, databaseID int64) (routing.Datacenter, error) {
 	var querySQL bytes.Buffer
 	var dc sqlDatacenter
+	var row *sql.Row
+	var err error
+
+	retryCount := 0
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	querySQL.Write([]byte("select hex_id, display_name, latitude, longitude,"))
 	querySQL.Write([]byte("seller_id from datacenters where id = $1"))
 
-	row := db.Client.QueryRow(querySQL.String(), databaseID)
-	err := row.Scan(
-		&dc.HexID,
-		&dc.Name,
-		&dc.Latitude,
-		&dc.Longitude,
-		&dc.SellerID)
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), databaseID)
+		err = row.Scan(
+			&dc.HexID,
+			&dc.Name,
+			&dc.Latitude,
+			&dc.Longitude,
+			&dc.SellerID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "DatacenterByDbId() connection with the database timed out!")
+		return routing.Datacenter{}, err
 	case sql.ErrNoRows:
 		level.Error(db.Logger).Log("during", "DatacenterByDbId() no rows were returned!")
 		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%d", databaseID)}
 	case nil:
 		datacenterID, err := strconv.ParseUint(dc.HexID, 16, 64)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "DatacenterByDbId()error parsing hex ID")
+			level.Error(db.Logger).Log("during", "DatacenterByDbId() error parsing hex ID")
 			return routing.Datacenter{}, &HexStringConversionError{hexString: dc.HexID}
 		}
 		d := routing.Datacenter{
@@ -1991,19 +2283,21 @@ func (db *SQL) DatacenterByDbId(databaseID int64) (routing.Datacenter, error) {
 }
 
 // Datacenters returns a copy of all stored datacenters.
-func (db *SQL) Datacenters() []routing.Datacenter {
-
+func (db *SQL) Datacenters(ctx context.Context) []routing.Datacenter {
 	var sql bytes.Buffer
 	var dc sqlDatacenter
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	datacenters := []routing.Datacenter{}
 
 	sql.Write([]byte("select id, display_name, latitude, longitude,"))
 	sql.Write([]byte("seller_id from datacenters"))
 
-	rows, err := db.Client.QueryContext(context.Background(), sql.String())
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "syncDatacenters(): QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "Datacenters(): QueryContext returned an error", "err", err)
 		return []routing.Datacenter{}
 	}
 	defer rows.Close()
@@ -2016,7 +2310,7 @@ func (db *SQL) Datacenters() []routing.Datacenter {
 			&dc.SellerID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncDatacenters(): error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "Datacenters(): error parsing returned row", "err", err)
 			return []routing.Datacenter{}
 		}
 
@@ -2047,20 +2341,20 @@ func (db *SQL) Datacenters() []routing.Datacenter {
 //  2. Removing the datacenter would break foreigh key relationships (datacenter_maps, relays)
 //  3. Any other error returned from the database
 func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
-
 	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	hexID := fmt.Sprintf("%016x", id)
 	sql.Write([]byte("delete from datacenters where hex_id = $1"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing RemoveDatacenter SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(hexID)
-
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		hexID,
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing datacenter", "err", err)
 		return err
@@ -2081,11 +2375,12 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 // GetDatacenterMapsForBuyer returns a map of datacenter aliases in use for a given
 // (internally generated) buyerID. The map is indexed by the datacenter ID. Returns
 // an empty map if there are no aliases for that buyerID.
-func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]routing.DatacenterMap {
-
+func (db *SQL) GetDatacenterMapsForBuyer(ctx context.Context, ephemeralBuyerID uint64) map[uint64]routing.DatacenterMap {
 	var querySQL bytes.Buffer
 	var dcMaps = make(map[uint64]routing.DatacenterMap)
-	// var sqlMap sqlDatacenterMap
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	dbBuyerID := int64(ephemeralBuyerID)
 
@@ -2094,9 +2389,9 @@ func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]rou
 	querySQL.Write([]byte("= datacenters.id where datacenter_maps.buyer_id = "))
 	querySQL.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
 
-	rows, err := db.Client.QueryContext(context.Background(), querySQL.String(), dbBuyerID)
+	rows, err := QueryMultipleRowsRetry(ctx, db, querySQL, dbBuyerID)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer(): QueryContext returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer(): QueryMultipleRowsRetry returned an error", "err", err)
 		return map[uint64]routing.DatacenterMap{}
 	}
 	defer rows.Close()
@@ -2128,15 +2423,17 @@ func (db *SQL) GetDatacenterMapsForBuyer(ephemeralBuyerID uint64) map[uint64]rou
 
 // AddDatacenterMap adds a new datacenter map for the given buyer and datacenter IDs
 func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
-
 	var sql bytes.Buffer
 
-	buyer, err := db.Buyer(dcMap.BuyerID)
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	buyer, err := db.Buyer(ctx, dcMap.BuyerID)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "Buyer.ID", resourceRef: fmt.Sprintf("%016x", dcMap.BuyerID)}
 	}
 
-	datacenter, err := db.Datacenter(dcMap.DatacenterID)
+	datacenter, err := db.Datacenter(ctx, dcMap.DatacenterID)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "DatacenterID", resourceRef: dcMap.DatacenterID}
 	}
@@ -2144,13 +2441,10 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	sql.Write([]byte("insert into datacenter_maps (buyer_id, datacenter_id) "))
 	sql.Write([]byte("values ($1, $2)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddDatacenterMap SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
 		buyer.DatabaseID,
 		datacenter.DatabaseID,
 	)
@@ -2176,11 +2470,13 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 
 // ListDatacenterMaps returns a list of alias/buyer mappings for the specified datacenter ID. An
 // empty dcID returns a list of all maps.
-func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap {
-
+func (db *SQL) ListDatacenterMaps(ctx context.Context, dcID uint64) map[uint64]routing.DatacenterMap {
 	var querySQL bytes.Buffer
 	var dcMaps = make(map[uint64]routing.DatacenterMap)
 	var sqlMap sqlDatacenterMap
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	hexID := fmt.Sprintf("%016x", dcID)
 
@@ -2188,7 +2484,7 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 	querySQL.Write([]byte("select buyer_id from datacenter_maps where datacenter_id = ( "))
 	querySQL.Write([]byte("select id from datacenters where hex_id = $1 )) "))
 
-	rows, err := db.Client.QueryContext(context.Background(), querySQL.String(), hexID)
+	rows, err := QueryMultipleRowsRetry(ctx, db, querySQL, hexID)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "ListDatacenterMaps(): QueryContext returned an error", "err", err)
 		return map[uint64]routing.DatacenterMap{}
@@ -2218,18 +2514,20 @@ func (db *SQL) ListDatacenterMaps(dcID uint64) map[uint64]routing.DatacenterMap 
 func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap) error {
 	var sql bytes.Buffer
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
 	sql.Write([]byte("delete from datacenter_maps where buyer_id = "))
 	sql.Write([]byte("(select id from buyers where sdk_generated_id = $1) "))
 	sql.Write([]byte("and datacenter_id = (select id from datacenters where hex_id = $2)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing RemoveDatacenterMap SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(int64(dcMap.BuyerID), fmt.Sprintf("%016x", dcMap.DatacenterID))
-
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		int64(dcMap.BuyerID),
+		fmt.Sprintf("%016x", dcMap.DatacenterID),
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing datacenter map", "err", err)
 		return err
@@ -2262,8 +2560,10 @@ type sqlDatacenter struct {
 // The seller_id is reqired by the schema. The client interface must already have a
 // seller defined.
 func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter) error {
-
 	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	did := fmt.Sprintf("%016x", crypto.HashID(datacenter.Name))
 	dc := sqlDatacenter{
@@ -2278,13 +2578,10 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	sql.Write([]byte("display_name, hex_id, latitude, longitude, "))
 	sql.Write([]byte("seller_id ) values ($1, $2, $3, $4, $5)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddDatacenter SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
 		dc.Name,
 		dc.HexID,
 		dc.Latitude,
@@ -2310,10 +2607,16 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 }
 
 // RouteShaders returns a slice of route shaders for the given buyer ID
-func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
-
+func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.RouteShader, error) {
 	var querySQL bytes.Buffer
 	var sqlRS sqlRouteShader
+	var row *sql.Row
+	var err error
+
+	retryCount := 0
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	querySQL.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
 	querySQL.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
@@ -2321,24 +2624,36 @@ func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
 	querySQL.Write([]byte("packet_loss_sustained from route_shaders where buyer_id = ( "))
 	querySQL.Write([]byte("select id from buyers where sdk_generated_id = $1)"))
 
-	row := db.Client.QueryRow(querySQL.String(), int64(ephemeralBuyerID))
-	err := row.Scan(
-		&sqlRS.ABTest,
-		&sqlRS.AcceptableLatency,
-		&sqlRS.AcceptablePacketLoss,
-		&sqlRS.BandwidthEnvelopeDownKbps,
-		&sqlRS.BandwidthEnvelopeUpKbps,
-		&sqlRS.DisableNetworkNext,
-		&sqlRS.LatencyThreshold,
-		&sqlRS.Multipath,
-		&sqlRS.ProMode,
-		&sqlRS.ReduceLatency,
-		&sqlRS.ReducePacketLoss,
-		&sqlRS.ReduceJitter,
-		&sqlRS.SelectionPercent,
-		&sqlRS.PacketLossSustained,
-	)
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), int64(ephemeralBuyerID))
+		err = row.Scan(
+			&sqlRS.ABTest,
+			&sqlRS.AcceptableLatency,
+			&sqlRS.AcceptablePacketLoss,
+			&sqlRS.BandwidthEnvelopeDownKbps,
+			&sqlRS.BandwidthEnvelopeUpKbps,
+			&sqlRS.DisableNetworkNext,
+			&sqlRS.LatencyThreshold,
+			&sqlRS.Multipath,
+			&sqlRS.ProMode,
+			&sqlRS.ReduceLatency,
+			&sqlRS.ReducePacketLoss,
+			&sqlRS.ReduceJitter,
+			&sqlRS.SelectionPercent,
+			&sqlRS.PacketLossSustained,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "RouteShader() connection with the database timed out!")
+		return core.RouteShader{}, err
 	case sql.ErrNoRows:
 		// By default buyers do not have a custom route shader so will not
 		// have an entry in the route_shaders table. We probably don't need
@@ -2365,7 +2680,7 @@ func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
 			PacketLossSustained:       float32(sqlRS.PacketLossSustained),
 		}
 
-		bannedUserList, err := db.BannedUsers(ephemeralBuyerID)
+		bannedUserList, err := db.BannedUsers(ctx, ephemeralBuyerID)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "RouteShader() -> BannedUsers() returned an error")
 			return core.RouteShader{}, fmt.Errorf("RouteShader() -> BannedUser() returned an error: %v for Buyer %s", err, fmt.Sprintf("%016x", ephemeralBuyerID))
@@ -2379,10 +2694,16 @@ func (db *SQL) RouteShader(ephemeralBuyerID uint64) (core.RouteShader, error) {
 }
 
 // InternalConfig returns the InternalConfig entry for the specified buyer
-func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, error) {
-
+func (db *SQL) InternalConfig(ctx context.Context, ephemeralBuyerID uint64) (core.InternalConfig, error) {
 	var querySQL bytes.Buffer
 	var sqlIC sqlInternalConfig
+	var row *sql.Row
+	var err error
+
+	retryCount := 0
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	querySQL.Write([]byte("select max_latency_tradeoff, max_rtt, multipath_overload_threshold, "))
 	querySQL.Write([]byte("route_switch_threshold, route_select_threshold, rtt_veto_default, "))
@@ -2392,27 +2713,39 @@ func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, err
 	querySQL.Write([]byte("from rs_internal_configs where buyer_id = ( "))
 	querySQL.Write([]byte("select id from buyers where sdk_generated_id = $1)"))
 
-	row := db.Client.QueryRow(querySQL.String(), int64(ephemeralBuyerID))
-	err := row.Scan(
-		&sqlIC.MaxLatencyTradeOff,
-		&sqlIC.MaxRTT,
-		&sqlIC.MultipathOverloadThreshold,
-		&sqlIC.RouteSwitchThreshold,
-		&sqlIC.RouteSelectThreshold,
-		&sqlIC.RTTVetoDefault,
-		&sqlIC.RTTVetoMultipath,
-		&sqlIC.RTTVetoPacketLoss,
-		&sqlIC.TryBeforeYouBuy,
-		&sqlIC.ForceNext,
-		&sqlIC.LargeCustomer,
-		&sqlIC.Uncommitted,
-		&sqlIC.HighFrequencyPings,
-		&sqlIC.RouteDiversity,
-		&sqlIC.MultipathThreshold,
-		&sqlIC.EnableVanityMetrics,
-		&sqlIC.ReducePacketLossMinSliceNumber,
-	)
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), int64(ephemeralBuyerID))
+		err = row.Scan(
+			&sqlIC.MaxLatencyTradeOff,
+			&sqlIC.MaxRTT,
+			&sqlIC.MultipathOverloadThreshold,
+			&sqlIC.RouteSwitchThreshold,
+			&sqlIC.RouteSelectThreshold,
+			&sqlIC.RTTVetoDefault,
+			&sqlIC.RTTVetoMultipath,
+			&sqlIC.RTTVetoPacketLoss,
+			&sqlIC.TryBeforeYouBuy,
+			&sqlIC.ForceNext,
+			&sqlIC.LargeCustomer,
+			&sqlIC.Uncommitted,
+			&sqlIC.HighFrequencyPings,
+			&sqlIC.RouteDiversity,
+			&sqlIC.MultipathThreshold,
+			&sqlIC.EnableVanityMetrics,
+			&sqlIC.ReducePacketLossMinSliceNumber,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
 	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "InternalConfig() connection with the database timed out!")
+		return core.InternalConfig{}, err
 	case sql.ErrNoRows:
 		// By default buyers do not have a custom internal config so will not
 		// have an entry in the rs_internal_configs table. We probably don't need
@@ -2451,8 +2784,10 @@ func (db *SQL) InternalConfig(ephemeralBuyerID uint64) (core.InternalConfig, err
 
 // AddInternalConfig adds an InternalConfig for the specified buyer
 func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ephemeralBuyerID uint64) error {
-
 	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	internalConfig := sqlInternalConfig{
 		RouteSelectThreshold:           int64(ic.RouteSelectThreshold),
@@ -2484,13 +2819,10 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 	sql.Write([]byte("(select id from buyers where sdk_generated_id = $18)"))
 	sql.Write([]byte(")"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddInternalConfig SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
 		internalConfig.MaxLatencyTradeOff,
 		internalConfig.MaxRTT,
 		internalConfig.MultipathOverloadThreshold,
@@ -2510,7 +2842,6 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		internalConfig.ReducePacketLossMinSliceNumber,
 		int64(ephemeralBuyerID),
 	)
-
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error adding internal config", "err", err)
 		return err
@@ -2531,18 +2862,19 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
 	buyerID := int64(ephemeralBuyerID)
 	sql.Write([]byte("delete from rs_internal_configs where buyer_id = "))
 	sql.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing RemoveInternalConfig SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(buyerID)
-
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		buyerID,
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing internal config", "err", err)
 		return err
@@ -2561,11 +2893,12 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 }
 
 func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
-
 	var updateSQL bytes.Buffer
 	var args []interface{}
-	var stmt *sql.Stmt
 	var err error
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	switch field {
 	case "RouteSelectThreshold":
@@ -2575,7 +2908,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set route_select_threshold=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, routeSelectThreshold, ephemeralBuyerID)
+		args = append(args, routeSelectThreshold, int64(ephemeralBuyerID))
 	case "RouteSwitchThreshold":
 		routeSwitchThreshold, ok := value.(int32)
 		if !ok {
@@ -2583,7 +2916,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set route_switch_threshold=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, routeSwitchThreshold, ephemeralBuyerID)
+		args = append(args, routeSwitchThreshold, int64(ephemeralBuyerID))
 	case "MaxLatencyTradeOff":
 		maxLatencyTradeOff, ok := value.(int32)
 		if !ok {
@@ -2591,7 +2924,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set max_latency_tradeoff=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, maxLatencyTradeOff, ephemeralBuyerID)
+		args = append(args, maxLatencyTradeOff, int64(ephemeralBuyerID))
 	case "RTTVeto_Default":
 		rttVetoDefault, ok := value.(int32)
 		if !ok {
@@ -2599,7 +2932,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_default=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, rttVetoDefault, ephemeralBuyerID)
+		args = append(args, rttVetoDefault, int64(ephemeralBuyerID))
 	case "RTTVeto_PacketLoss":
 		rttVetoPacketLoss, ok := value.(int32)
 		if !ok {
@@ -2607,7 +2940,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_packetloss=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, rttVetoPacketLoss, ephemeralBuyerID)
+		args = append(args, rttVetoPacketLoss, int64(ephemeralBuyerID))
 	case "RTTVeto_Multipath":
 		rttVetoMultipath, ok := value.(int32)
 		if !ok {
@@ -2615,7 +2948,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set rtt_veto_multipath=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, rttVetoMultipath, ephemeralBuyerID)
+		args = append(args, rttVetoMultipath, int64(ephemeralBuyerID))
 	case "MultipathOverloadThreshold":
 		multipathOverloadThreshold, ok := value.(int32)
 		if !ok {
@@ -2623,7 +2956,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set multipath_overload_threshold=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, multipathOverloadThreshold, ephemeralBuyerID)
+		args = append(args, multipathOverloadThreshold, int64(ephemeralBuyerID))
 	case "TryBeforeYouBuy":
 		tryBeforeYouBuy, ok := value.(bool)
 		if !ok {
@@ -2631,7 +2964,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set try_before_you_buy=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, tryBeforeYouBuy, ephemeralBuyerID)
+		args = append(args, tryBeforeYouBuy, int64(ephemeralBuyerID))
 	case "ForceNext":
 		forceNext, ok := value.(bool)
 		if !ok {
@@ -2639,7 +2972,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set force_next=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, forceNext, ephemeralBuyerID)
+		args = append(args, forceNext, int64(ephemeralBuyerID))
 	case "LargeCustomer":
 		largeCustomer, ok := value.(bool)
 		if !ok {
@@ -2647,7 +2980,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set large_customer=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, largeCustomer, ephemeralBuyerID)
+		args = append(args, largeCustomer, int64(ephemeralBuyerID))
 	case "Uncommitted":
 		uncommitted, ok := value.(bool)
 		if !ok {
@@ -2655,7 +2988,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set is_uncommitted=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, uncommitted, ephemeralBuyerID)
+		args = append(args, uncommitted, int64(ephemeralBuyerID))
 	case "HighFrequencyPings":
 		highFrequencyPings, ok := value.(bool)
 		if !ok {
@@ -2663,7 +2996,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set high_frequency_pings=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, highFrequencyPings, ephemeralBuyerID)
+		args = append(args, highFrequencyPings, int64(ephemeralBuyerID))
 	case "MaxRTT":
 		maxRTT, ok := value.(int32)
 		if !ok {
@@ -2671,7 +3004,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set max_rtt=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, maxRTT, ephemeralBuyerID)
+		args = append(args, maxRTT, int64(ephemeralBuyerID))
 	case "RouteDiversity":
 		routeDiversity, ok := value.(int32)
 		if !ok {
@@ -2679,7 +3012,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set route_diversity=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, routeDiversity, ephemeralBuyerID)
+		args = append(args, routeDiversity, int64(ephemeralBuyerID))
 	case "MultipathThreshold":
 		multipathThreshold, ok := value.(int32)
 		if !ok {
@@ -2687,7 +3020,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set multipath_threshold=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, multipathThreshold, ephemeralBuyerID)
+		args = append(args, multipathThreshold, int64(ephemeralBuyerID))
 	case "EnableVanityMetrics":
 		enableVanityMetrics, ok := value.(bool)
 		if !ok {
@@ -2695,7 +3028,7 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set enable_vanity_metrics=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, enableVanityMetrics, ephemeralBuyerID)
+		args = append(args, enableVanityMetrics, int64(ephemeralBuyerID))
 	case "ReducePacketLossMinSliceNumber":
 		reducePacketLossMinSliceNumber, ok := value.(int32)
 		if !ok {
@@ -2703,19 +3036,18 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		}
 		updateSQL.Write([]byte("update rs_internal_configs set reduce_pl_min_slice_number=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, reducePacketLossMinSliceNumber, ephemeralBuyerID)
+		args = append(args, reducePacketLossMinSliceNumber, int64(ephemeralBuyerID))
 
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
 	}
 
-	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing UpdateInternalConfig SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(args...)
+	result, err := ExecRetry(
+		ctx,
+		db,
+		updateSQL,
+		args...,
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying internal_config record", "err", err)
 		return err
@@ -2735,8 +3067,10 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 }
 
 func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemeralBuyerID uint64) error {
-
 	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	routeShader := sqlRouteShader{
 		ABTest:                    rs.ABTest,
@@ -2762,13 +3096,10 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, "))
 	sql.Write([]byte("(select id from buyers where sdk_generated_id = $15))"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddInternalConfig SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
 		routeShader.ABTest,
 		routeShader.AcceptableLatency,
 		routeShader.AcceptablePacketLoss,
@@ -2805,11 +3136,12 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 }
 
 func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
-
 	var updateSQL bytes.Buffer
 	var args []interface{}
-	var stmt *sql.Stmt
 	var err error
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	switch field {
 	case "ABTest":
@@ -2819,7 +3151,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set ab_test=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, abTest, ephemeralBuyerID)
+		args = append(args, abTest, int64(ephemeralBuyerID))
 	case "AcceptableLatency":
 		acceptableLatency, ok := value.(int32)
 		if !ok {
@@ -2827,7 +3159,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set acceptable_latency=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, acceptableLatency, ephemeralBuyerID)
+		args = append(args, acceptableLatency, int64(ephemeralBuyerID))
 	case "AcceptablePacketLoss":
 		acceptablePacketLoss, ok := value.(float32)
 		if !ok {
@@ -2835,7 +3167,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set acceptable_packet_loss=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, acceptablePacketLoss, ephemeralBuyerID)
+		args = append(args, acceptablePacketLoss, int64(ephemeralBuyerID))
 	case "BandwidthEnvelopeDownKbps":
 		bandwidthEnvelopeDownKbps, ok := value.(int32)
 		if !ok {
@@ -2843,7 +3175,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set bw_envelope_down_kbps=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, bandwidthEnvelopeDownKbps, ephemeralBuyerID)
+		args = append(args, bandwidthEnvelopeDownKbps, int64(ephemeralBuyerID))
 	case "BandwidthEnvelopeUpKbps":
 		bandwidthEnvelopeUpKbps, ok := value.(int32)
 		if !ok {
@@ -2851,7 +3183,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set bw_envelope_up_kbps=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, bandwidthEnvelopeUpKbps, ephemeralBuyerID)
+		args = append(args, bandwidthEnvelopeUpKbps, int64(ephemeralBuyerID))
 	case "DisableNetworkNext":
 		disableNetworkNext, ok := value.(bool)
 		if !ok {
@@ -2859,7 +3191,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set disable_network_next=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, disableNetworkNext, ephemeralBuyerID)
+		args = append(args, disableNetworkNext, int64(ephemeralBuyerID))
 	case "LatencyThreshold":
 		latencyThreshold, ok := value.(int32)
 		if !ok {
@@ -2867,7 +3199,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set latency_threshold=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, latencyThreshold, ephemeralBuyerID)
+		args = append(args, latencyThreshold, int64(ephemeralBuyerID))
 	case "Multipath":
 		multipath, ok := value.(bool)
 		if !ok {
@@ -2875,7 +3207,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set multipath=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, multipath, ephemeralBuyerID)
+		args = append(args, multipath, int64(ephemeralBuyerID))
 	case "ProMode":
 		proMode, ok := value.(bool)
 		if !ok {
@@ -2883,7 +3215,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set pro_mode=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, proMode, ephemeralBuyerID)
+		args = append(args, proMode, int64(ephemeralBuyerID))
 	case "ReduceLatency":
 		reduceLatency, ok := value.(bool)
 		if !ok {
@@ -2891,7 +3223,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set reduce_latency=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, reduceLatency, ephemeralBuyerID)
+		args = append(args, reduceLatency, int64(ephemeralBuyerID))
 	case "ReducePacketLoss":
 		reducePacketLoss, ok := value.(bool)
 		if !ok {
@@ -2899,7 +3231,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set reduce_packet_loss=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, reducePacketLoss, ephemeralBuyerID)
+		args = append(args, reducePacketLoss, int64(ephemeralBuyerID))
 	case "ReduceJitter":
 		reduceJitter, ok := value.(bool)
 		if !ok {
@@ -2907,7 +3239,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set reduce_jitter=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, reduceJitter, ephemeralBuyerID)
+		args = append(args, reduceJitter, int64(ephemeralBuyerID))
 	case "SelectionPercent":
 		selectionPercent, ok := value.(int)
 		if !ok {
@@ -2915,7 +3247,7 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set selection_percent=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, selectionPercent, ephemeralBuyerID)
+		args = append(args, selectionPercent, int64(ephemeralBuyerID))
 	case "PacketLossSustained":
 		packetLossSustained, ok := value.(float32)
 		if !ok {
@@ -2923,19 +3255,18 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		}
 		updateSQL.Write([]byte("update route_shaders set packet_loss_sustained=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, packetLossSustained, ephemeralBuyerID)
+		args = append(args, packetLossSustained, int64(ephemeralBuyerID))
 	default:
 		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
 
 	}
 
-	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing UpdateRouteShader SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(args...)
+	result, err := ExecRetry(
+		ctx,
+		db,
+		updateSQL,
+		args...,
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying route_shader record", "err", err)
 		return err
@@ -2952,22 +3283,23 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 	}
 
 	return nil
-
 }
 
 func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) error {
 	var sql bytes.Buffer
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
 	sql.Write([]byte("delete from route_shaders where buyer_id = "))
 	sql.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing RemoveRouteShader SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(int64(ephemeralBuyerID))
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		int64(ephemeralBuyerID),
+	)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing route shader", "err", err)
@@ -2988,18 +3320,20 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) e
 
 // AddBannedUser adds a user to the banned_user table
 func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userID uint64) error {
-
 	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	sql.Write([]byte("insert into banned_users (user_id, buyer_id) values ($1, "))
 	sql.Write([]byte("(select id from buyers where sdk_generated_id = $2))"))
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddBannedUser SQL", "err", err)
-		return err
-	}
 
-	result, err := stmt.Exec(int64(userID), int64(ephemeralBuyerID))
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		int64(userID), int64(ephemeralBuyerID),
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error adding banned user", "err", err)
 		return err
@@ -3020,19 +3354,21 @@ func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userI
 
 // RemoveBannedUser removes a user from the banned_user table
 func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, userID uint64) error {
-
 	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	sql.Write([]byte("delete from banned_users where user_id = $1 and buyer_id = "))
 	sql.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing AddInternalConfig SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(int64(userID), int64(ephemeralBuyerID))
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		int64(userID),
+		int64(ephemeralBuyerID),
+	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error removing banned user", "err", err)
 		return err
@@ -3052,15 +3388,17 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, us
 }
 
 // BannedUsers returns the set of banned users for the specified buyer ID.
-func (db *SQL) BannedUsers(ephemeralBuyerID uint64) (map[uint64]bool, error) {
-
+func (db *SQL) BannedUsers(ctx context.Context, ephemeralBuyerID uint64) (map[uint64]bool, error) {
 	var sql bytes.Buffer
 	bannedUserList := make(map[uint64]bool)
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	sql.Write([]byte("select user_id from banned_users where buyer_id = "))
 	sql.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
 
-	rows, err := db.Client.QueryContext(context.Background(), sql.String(), int64(ephemeralBuyerID))
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql, int64(ephemeralBuyerID))
 	if err != nil {
 		level.Error(db.Logger).Log("during", "BannedUsers(): QueryContext returned an error", "err", err)
 		return bannedUserList, err
@@ -3079,7 +3417,6 @@ func (db *SQL) BannedUsers(ephemeralBuyerID uint64) (map[uint64]bool, error) {
 	}
 
 	return bannedUserList, nil
-
 }
 
 type featureFlag struct {
@@ -3088,11 +3425,11 @@ type featureFlag struct {
 	Enabled     bool
 }
 
-func (db *SQL) GetFeatureFlags() map[string]bool {
+func (db *SQL) GetFeatureFlags(ctx context.Context) map[string]bool {
 	return map[string]bool{}
 }
 
-func (db *SQL) GetFeatureFlagByName(flagName string) (map[string]bool, error) {
+func (db *SQL) GetFeatureFlagByName(ctx context.Context, flagName string) (map[string]bool, error) {
 	return map[string]bool{}, fmt.Errorf(("GetFeatureFlagByName not yet impemented in SQL storer"))
 }
 
@@ -3105,11 +3442,12 @@ func (db *SQL) RemoveFeatureFlagByName(ctx context.Context, flagName string) err
 }
 
 func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field string, value interface{}) error {
-
 	var updateSQL bytes.Buffer
 	var args []interface{}
-	var stmt *sql.Stmt
 	var err error
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	switch field {
 	case "Live":
@@ -3119,7 +3457,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		}
 		updateSQL.Write([]byte("update buyers set is_live_customer=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, live, ephemeralBuyerID)
+		args = append(args, live, int64(ephemeralBuyerID))
 	case "Debug":
 		debug, ok := value.(bool)
 		if !ok {
@@ -3127,7 +3465,47 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		}
 		updateSQL.Write([]byte("update buyers set debug=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, debug, ephemeralBuyerID)
+		args = append(args, debug, int64(ephemeralBuyerID))
+	case "Analytics":
+		analytics, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Analytics: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set analytics=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, analytics, int64(ephemeralBuyerID))
+	case "Billing":
+		billing, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Billing: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set billing=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, billing, int64(ephemeralBuyerID))
+	case "Trial":
+		trial, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Trial: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set trial=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, trial, int64(ephemeralBuyerID))
+	case "ExoticLocationFee":
+		exoticLocationFee, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("ExoticLocationFee: %v is not a valid float64 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set exotic_location_fee=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, exoticLocationFee, int64(ephemeralBuyerID))
+	case "StandardLocationFee":
+		standardLocationFee, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("StandardLocationFee: %v is not a valid float64 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set standard_location_fee=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, standardLocationFee, int64(ephemeralBuyerID))
 	case "ShortName":
 		shortName, ok := value.(string)
 		if !ok {
@@ -3135,7 +3513,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		}
 		updateSQL.Write([]byte("update buyers set short_name=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
-		args = append(args, shortName, ephemeralBuyerID)
+		args = append(args, shortName, int64(ephemeralBuyerID))
 	case "PublicKey":
 		pubKey, ok := value.(string)
 		if !ok {
@@ -3156,7 +3534,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		newBuyerID := binary.LittleEndian.Uint64(newPublicKey[:8])
 		updateSQL.Write([]byte("update buyers set public_key=$1, sdk_generated_id=$2 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $3)"))
-		args = append(args, newPublicKey[8:], int64(newBuyerID), ephemeralBuyerID)
+		args = append(args, newPublicKey[8:], int64(newBuyerID), int64(ephemeralBuyerID))
 
 		// TODO: datacenter maps for this buyer must be updated with the new buyer ID
 
@@ -3165,13 +3543,7 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 
 	}
 
-	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing UpdateBuyer SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(args...)
+	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying buyer record", "err", err)
 		return err
@@ -3191,12 +3563,13 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 }
 
 func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
-
 	var updateSQL bytes.Buffer
 	var args []interface{}
-	var stmt *sql.Stmt
 
-	customer, err := db.Customer(customerID)
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	customer, err := db.Customer(ctx, customerID)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%016x", customerID)}
 	}
@@ -3224,13 +3597,7 @@ func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field stri
 
 	}
 
-	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing UpdateCustomer SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(args...)
+	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
 		return err
@@ -3250,12 +3617,13 @@ func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field stri
 }
 
 func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {
-
 	var updateSQL bytes.Buffer
 	var args []interface{}
-	var stmt *sql.Stmt
 
-	seller, err := db.Seller(sellerID)
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	seller, err := db.Seller(ctx, sellerID)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "seller", resourceRef: sellerID}
 	}
@@ -3293,13 +3661,7 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 
 	}
 
-	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing UpdateSeller SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(args...)
+	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying seller record", "err", err)
 		return err
@@ -3319,12 +3681,13 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 }
 
 func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
-
 	var updateSQL bytes.Buffer
 	var args []interface{}
-	var stmt *sql.Stmt
 
-	datacenter, err := db.Datacenter(datacenterID)
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	datacenter, err := db.Datacenter(ctx, datacenterID)
 	if err != nil {
 		return &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%016x", datacenterID)}
 	}
@@ -3351,13 +3714,7 @@ func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field 
 
 	}
 
-	stmt, err = db.Client.PrepareContext(ctx, updateSQL.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing UpdateDatacenter SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(args...)
+	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error modifying datacenter record", "err", err)
 		return err
@@ -3376,15 +3733,35 @@ func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field 
 	return nil
 }
 
-func (db *SQL) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, error) {
+func (db *SQL) GetDatabaseBinFileMetaData(ctx context.Context) (routing.DatabaseBinFileMetaData, error) {
 	var querySQL bytes.Buffer
 	var dashboardData routing.DatabaseBinFileMetaData
+	var row *sql.Row
+	var err error
+
+	retryCount := 0
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	querySQL.Write([]byte("select bin_file_creation_time, bin_file_author "))
 	querySQL.Write([]byte("from database_bin_meta order by bin_file_creation_time desc limit 1"))
 
-	row := db.Client.QueryRow(querySQL.String())
-	switch err := row.Scan(&dashboardData.DatabaseBinFileCreationTime, &dashboardData.DatabaseBinFileAuthor); err {
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String())
+		err = row.Scan(&dashboardData.DatabaseBinFileCreationTime, &dashboardData.DatabaseBinFileAuthor)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
+	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "GetFleetDashboardData() connection with the database timed out!")
+		return routing.DatabaseBinFileMetaData{}, err
 	case sql.ErrNoRows:
 		level.Error(db.Logger).Log("during", "GetFleetDashboardData() no rows were returned!")
 		return routing.DatabaseBinFileMetaData{}, err
@@ -3394,25 +3771,26 @@ func (db *SQL) GetDatabaseBinFileMetaData() (routing.DatabaseBinFileMetaData, er
 		level.Error(db.Logger).Log("during", "GetFleetDashboardData() QueryRow returned an error: %v", err)
 		return routing.DatabaseBinFileMetaData{}, err
 	}
-
 }
 
 func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routing.DatabaseBinFileMetaData) error {
-
 	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
 	// Add the metadata record to the database_bin_meta table
 	sql.Write([]byte("insert into database_bin_meta ("))
 	sql.Write([]byte("bin_file_creation_time, bin_file_author "))
 	sql.Write([]byte(") values ($1, $2)"))
 
-	stmt, err := db.Client.PrepareContext(ctx, sql.String())
-	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing UpdateDatabaseBinFileMetaData SQL", "err", err)
-		return err
-	}
-
-	result, err := stmt.Exec(metaData.DatabaseBinFileCreationTime, metaData.DatabaseBinFileAuthor)
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		metaData.DatabaseBinFileCreationTime,
+		metaData.DatabaseBinFileAuthor,
+	)
 
 	if err != nil {
 		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() error adding DatabaseBinFileMetaData", "err", err)

@@ -2,8 +2,6 @@ package jsonrpc
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -47,7 +45,8 @@ const (
 	MapPointByteCacheVersion = uint8(1)
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
-	LOOKER_HOST              = "networknextexternal.cloud.looker.com"
+	EmbeddedUserGroupID      = 3
+	BillingDashURI           = "/embed/dashboards-next/11"
 )
 
 var (
@@ -88,6 +87,8 @@ type BuyersService struct {
 	Logger  log.Logger
 
 	LookerSecret string
+
+	SlackClient notifications.SlackClient
 }
 
 type FlushSessionsArgs struct{}
@@ -210,7 +211,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 					sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
 
-					buyer, err := s.Storage.Buyer(session.BuyerID)
+					buyer, err := s.Storage.Buyer(r.Context(), session.BuyerID)
 					if err != nil {
 						err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
 						level.Error(s.Logger).Log("err", err)
@@ -262,7 +263,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		currentPage := reply.Page
 
 		// Fetch historic sessions by each identifier if there are any
-		rowsByHash, err = s.GetHistoricalSessions(reply, userHash, currentPageDate, nextPageDate)
+		rowsByHash, err = s.GetHistoricalSessions(r.Context(), reply, userHash, currentPageDate, nextPageDate)
 		if err != nil {
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -275,7 +276,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 
 		if searchType == -1 {
-			rowsByID, err = s.GetHistoricalSessions(reply, userID, currentPageDate, nextPageDate)
+			rowsByID, err = s.GetHistoricalSessions(r.Context(), reply, userID, currentPageDate, nextPageDate)
 			if err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
@@ -289,7 +290,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 		}
 
 		if searchType == -1 {
-			rowsByHexID, err = s.GetHistoricalSessions(reply, hexUserID, currentPageDate, nextPageDate)
+			rowsByHexID, err = s.GetHistoricalSessions(r.Context(), reply, hexUserID, currentPageDate, nextPageDate)
 			if err != nil {
 				level.Error(s.Logger).Log("err", err)
 				return err
@@ -321,12 +322,11 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	sort.Slice(reply.Sessions, func(i, j int) bool {
 		return reply.Sessions[i].Timestamp.After(reply.Sessions[j].Timestamp)
 	})
-	fmt.Println()
 
 	return nil
 }
 
-func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifier string, currentPageDate time.Time, nextPageDate time.Time) ([]bigtable.Row, error) {
+func (s *BuyersService) GetHistoricalSessions(ctx context.Context, reply *UserSessionsReply, identifier string, currentPageDate time.Time, nextPageDate time.Time) ([]bigtable.Row, error) {
 	// Gets the rows within [nextPageDate, currentPageDate)
 	chainFilter := bigtable.ChainFilters(bigtable.ColumnFilter("meta"), // Search for cells in the "meta" column
 		bigtable.LatestNFilter(1),                                    // Gets the latest cell from the "meta" column
@@ -336,7 +336,7 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 	var btRows []bigtable.Row
 	for {
 		// Fetch historic sessions by the identifier if there are any
-		rows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", identifier), bigtable.RowFilter(chainFilter), bigtable.LimitRows(MaxHistoricalSessions))
+		rows, err := s.BigTable.GetRowsWithPrefix(ctx, fmt.Sprintf("%s#", identifier), bigtable.RowFilter(chainFilter), bigtable.LimitRows(MaxHistoricalSessions))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("GetHistoricalSessions() failed to fetch historic user sessions: %v", err)
@@ -369,7 +369,6 @@ func (s *BuyersService) GetHistoricalSessions(reply *UserSessionsReply, identifi
 
 		// if we found the full amount of sessions in one page, return that page number for next time
 		if len(btRows) == MaxHistoricalSessions {
-			fmt.Println("Hit max sessions for the day")
 			break
 		}
 	}
@@ -382,12 +381,21 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 	var sessionMeta transport.SessionMeta
 
 	for _, row := range rows {
+		// Try binary decoding, and upon failure, try serialization
+		// TODO: after Bigtable stores only serialized data, remove binary decoding
 		if err := sessionMeta.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
-			return err
+			level.Warn(s.Logger).Log("msg", "GetHistoricalSlices() failed to binary decode sesion meta, attempting serialization", "err", err)
+
+			sessionMeta = transport.SessionMeta{}
+			if err := transport.ReadSessionMeta(&sessionMeta, row[s.BigTableCfName][0].Value); err != nil {
+				level.Error(s.Logger).Log("msg", "GetHistoricalSlices() session meta serialization failed, attempting binary decoding", "err", err)
+				return err
+			}
 		}
+
 		// Make sure we aren't duplicating live sessions
 		if !strings.Contains(liveSessionIDString, fmt.Sprintf("%016x", sessionMeta.ID)) {
-			sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+			sliceRows, err := s.BigTable.GetRowsWithPrefix(r.Context(), fmt.Sprintf("%016x#", sessionMeta.ID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 			if err != nil {
 				s.BigTableMetrics.ReadSliceFailureCount.Add(1)
 				err = fmt.Errorf("GetHistoricalSlices() failed to fetch historic slice information: %v", err)
@@ -397,9 +405,20 @@ func (s *BuyersService) GetHistoricalSlices(r *http.Request, reply *UserSessions
 
 			// If a slice exists, add the session and the timestamp
 			if len(sliceRows) > 0 {
-				sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value)
 
-				buyer, err := s.Storage.Buyer(sessionMeta.BuyerID)
+				// Try binary decoding first, and upon failure, try serialization
+				// TODO: after Bigtable stores only serialized data, remove binary decoding
+				if err = sessionSlice.UnmarshalBinary(sliceRows[0][s.BigTableCfName][0].Value); err != nil {
+					level.Warn(s.Logger).Log("msg", "GetHistoricalSlices() session slice binary decoding failed, using serialization", "err", err)
+
+					sessionSlice = transport.SessionSlice{}
+					if err = transport.ReadSessionSlice(&sessionSlice, sliceRows[0][s.BigTableCfName][0].Value); err != nil {
+						level.Error(s.Logger).Log("msg", "GetHistoricalSlices() session slice serialization failed", "err", err)
+						return err
+					}
+				}
+
+				buyer, err := s.Storage.Buyer(r.Context(), sessionMeta.BuyerID)
 				if err != nil {
 					err = fmt.Errorf("GetHistoricalSlices() failed to fetch buyer: %v", err)
 					level.Error(s.Logger).Log("err", err)
@@ -459,7 +478,7 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 
 	switch args.CompanyCode {
 	case "":
-		buyers := s.Storage.Buyers()
+		buyers := s.Storage.Buyers(r.Context())
 
 		var firstNextCount int
 		var secondNextCount int
@@ -577,9 +596,9 @@ func (s *BuyersService) TotalSessions(r *http.Request, args *TotalSessionsArgs, 
 	default:
 		var ghostArmyNextCount int
 
-		buyer, err := s.Storage.BuyerWithCompanyCode(args.CompanyCode)
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), args.CompanyCode)
 		if err != nil {
-			err = fmt.Errorf("TotalSessions() failed getting company with code: %v", err)
+			err = fmt.Errorf("TotalSessions() failed getting buyer with code: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
@@ -731,7 +750,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 	metaString, err := redis.String(sessionMetaClient.Do("GET", fmt.Sprintf("sm-%s", args.SessionID)))
 	// Use bigtable if error from redis or requesting historic information
 	if s.UseBigtable && (err != nil || metaString == "") {
-		metaRows, err := s.BigTable.GetRowWithRowKey(context.Background(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
+		metaRows, err := s.BigTable.GetRowWithRowKey(r.Context(), fmt.Sprintf("%s", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("meta")))
 		if err != nil {
 			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information from bigtable: %v", err)
@@ -739,9 +758,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			return err
 		}
 		if len(metaRows) == 0 {
-			s.BigTableMetrics.ReadMetaFailureCount.Add(1)
-			err = fmt.Errorf("SessionDetails() failed to fetch historic meta information: %v", err)
-			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("SessionDetails() no rows were returned from bigtable")
+			level.Warn(s.Logger).Log("msg", err)
 			return err
 		}
 		s.BigTableMetrics.ReadMetaSuccessCount.Add(1)
@@ -750,7 +768,18 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		historic = true
 
 		for _, row := range metaRows {
-			reply.Meta.UnmarshalBinary(row[0].Value)
+			// Try binary decoding first, and upon failure, try serialization
+			// TODO: after Bigtable stores only serialized data, remove binary decoding
+			if err = reply.Meta.UnmarshalBinary(row[0].Value); err != nil {
+				level.Warn(s.Logger).Log("msg", "SessionDetails() session meta binary decoding failed, using serialization", "err", err)
+
+				reply.Meta = transport.SessionMeta{}
+				if err = transport.ReadSessionMeta(&reply.Meta, row[0].Value); err != nil {
+					err = fmt.Errorf("SessionDetails() session meta serialization failed: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+			}
 		}
 	}
 
@@ -763,7 +792,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 	}
 
-	buyer, err := s.Storage.Buyer(reply.Meta.BuyerID)
+	buyer, err := s.Storage.Buyer(r.Context(), reply.Meta.BuyerID)
 	if err != nil {
 		err = fmt.Errorf("SessionDetails() failed to fetch buyer: %v", err)
 		level.Error(s.Logger).Log("err", err)
@@ -800,7 +829,7 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 			reply.Slices = append(reply.Slices, slice)
 		}
 	} else {
-		sliceRows, err := s.BigTable.GetRowsWithPrefix(context.Background(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
+		sliceRows, err := s.BigTable.GetRowsWithPrefix(r.Context(), fmt.Sprintf("%s#", args.SessionID), bigtable.RowFilter(bigtable.ColumnFilter("slices")))
 		if err != nil {
 			s.BigTableMetrics.ReadSliceFailureCount.Add(1)
 			err = fmt.Errorf("SessionDetails() failed to fetch historic slice information from bigtable: %v", err)
@@ -816,7 +845,19 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		s.BigTableMetrics.ReadSliceSuccessCount.Add(1)
 
 		for _, row := range sliceRows {
-			slice.UnmarshalBinary(row[s.BigTableCfName][0].Value)
+			// Try binary decoding first, and upon failure, try serialization
+			// TODO: after Bigtable stores only serialized data, remove binary decoding
+			if err = slice.UnmarshalBinary(row[s.BigTableCfName][0].Value); err != nil {
+				level.Warn(s.Logger).Log("msg", "SessionDetails() session slice binary decoding failed, using serialization", "err", err)
+
+				slice = transport.SessionSlice{}
+				if err = transport.ReadSessionSlice(&slice, row[s.BigTableCfName][0].Value); err != nil {
+					err = fmt.Errorf("SessionDetails() session slice serialization failed: %v", err)
+					level.Error(s.Logger).Log("err", err)
+					return err
+				}
+			}
+
 			reply.Slices = append(reply.Slices, slice)
 		}
 	}
@@ -856,13 +897,13 @@ type point struct {
 	OnNetworkNext bool    `json:"on_network_next"`
 }
 
-func (s *BuyersService) GenerateMapPointsPerBuyer() error {
+func (s *BuyersService) GenerateMapPointsPerBuyer(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	var err error
 
-	buyers := s.Storage.Buyers()
+	buyers := s.Storage.Buyers(ctx)
 
 	// slices to hold all the final map points
 	mapPointsBuyers := make(map[string][]transport.SessionMapPoint, 0)
@@ -946,7 +987,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyer() error {
 	return nil
 }
 
-func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
+func (s *BuyersService) GenerateMapPointsPerBuyerBytes(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -956,7 +997,7 @@ func (s *BuyersService) GenerateMapPointsPerBuyerBytes() error {
 	s.mapPointsBuyerByteCache = make(map[string][]byte, 0)
 	s.mapPointsByteCache = make([]byte, 0)
 
-	buyers := s.Storage.Buyers()
+	buyers := s.Storage.Buyers(ctx)
 
 	for _, buyer := range buyers {
 		stringID := fmt.Sprintf("%016x", buyer.ID)
@@ -1292,7 +1333,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 
 	reply.GameConfiguration.PublicKey = ""
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
+	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
 	// Buyer not found
 	if err != nil {
 		return nil
@@ -1322,7 +1363,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 		return err
 	}
 
-	ctx := context.Background()
+	ctx := r.Context()
 
 	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
@@ -1342,7 +1383,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 		return err
 	}
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
+	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
 
 	// Buyer found
 	if buyer.ID != 0 {
@@ -1367,6 +1408,10 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 			CompanyCode: companyCode,
 			ID:          buyerID,
 			Live:        false,
+			Analytics:   false,
+			Billing:     false,
+			Trial:       true,
+			Debug:       false,
 			PublicKey:   byteKey[8:],
 		})
 		if err != nil {
@@ -1376,7 +1421,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 		}
 
 		// Check if buyer is associated with the ID and everything worked
-		buyer, err = s.Storage.Buyer(buyerID)
+		buyer, err = s.Storage.Buyer(r.Context(), buyerID)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyerInformation() buyer creation failed: %v", err)
 			level.Error(s.Logger).Log("err", err)
@@ -1401,7 +1446,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	ctx := context.Background()
+	ctx := r.Context()
 
 	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
 	if !ok {
@@ -1421,7 +1466,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(companyCode)
+	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
 
 	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
 	if err != nil {
@@ -1440,6 +1485,9 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			CompanyCode: companyCode,
 			ID:          buyerID,
 			Live:        false,
+			Analytics:   false,
+			Billing:     false,
+			Trial:       true,
 			PublicKey:   byteKey[8:],
 		})
 
@@ -1450,7 +1498,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		}
 
 		// Check if buyer is associated with the ID and everything worked
-		if buyer, err = s.Storage.Buyer(buyerID); err != nil {
+		if buyer, err = s.Storage.Buyer(r.Context(), buyerID); err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() buyer creation failed: %v", err)
 			level.Error(s.Logger).Log("err", err)
 			return err
@@ -1462,11 +1510,15 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return nil
 	}
 
+	analytics := buyer.Analytics
+	billing := buyer.Billing
+	debug := buyer.Debug
 	live := buyer.Live
 	oldBuyerID := buyer.ID
+	trial := buyer.Trial
 
 	// Remove all dc Maps
-	dcMaps := s.Storage.GetDatacenterMapsForBuyer(oldBuyerID)
+	dcMaps := s.Storage.GetDatacenterMapsForBuyer(r.Context(), oldBuyerID)
 	for _, dcMap := range dcMaps {
 		if err := s.Storage.RemoveDatacenterMap(ctx, dcMap); err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() failed to remove old datacenter map: %v, datacenter ID: %016x", err, dcMap.DatacenterID)
@@ -1485,6 +1537,10 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		CompanyCode: companyCode,
 		ID:          buyerID,
 		Live:        live,
+		Debug:       debug,
+		Analytics:   analytics,
+		Billing:     billing,
+		Trial:       trial,
 		PublicKey:   byteKey[8:],
 	})
 	if err != nil {
@@ -1504,7 +1560,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	// Check if buyer is associated with the ID and everything worked
-	if buyer, err = s.Storage.Buyer(buyerID); err != nil {
+	if buyer, err = s.Storage.Buyer(r.Context(), buyerID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() buyer update check failed: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1527,6 +1583,9 @@ type buyerAccount struct {
 	CompanyCode string `json:"company_code"`
 	ID          string `json:"id"`
 	IsLive      bool   `json:"is_live"`
+	Analytics   bool   `json:"analytics"`
+	Billing     bool   `json:"billing"`
+	Trial       bool   `json:"trial"`
 }
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
@@ -1535,9 +1594,9 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 		return nil
 	}
 
-	for _, b := range s.Storage.Buyers() {
+	for _, b := range s.Storage.Buyers(r.Context()) {
 		id := fmt.Sprintf("%016x", b.ID)
-		customer, err := s.Storage.Customer(b.CompanyCode)
+		customer, err := s.Storage.Customer(r.Context(), b.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("Buyers() buyer is not assigned to customer: %v", b.ID)
 			level.Error(s.Logger).Log("err", err)
@@ -1548,6 +1607,9 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			CompanyCode: b.CompanyCode,
 			ID:          id,
 			IsLive:      b.Live,
+			Analytics:   b.Analytics,
+			Billing:     b.Billing,
+			Trial:       b.Trial,
 		}
 		if middleware.VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
@@ -1599,24 +1661,24 @@ func (s *BuyersService) DatacenterMapsForBuyer(r *http.Request, args *Datacenter
 
 	var dcm map[uint64]routing.DatacenterMap
 
-	dcm = s.Storage.GetDatacenterMapsForBuyer(buyerID)
+	dcm = s.Storage.GetDatacenterMapsForBuyer(r.Context(), buyerID)
 
 	var replySlice []DatacenterMapsFull
 	for _, dcMap := range dcm {
-		buyer, err := s.Storage.Buyer(dcMap.BuyerID)
+		buyer, err := s.Storage.Buyer(r.Context(), dcMap.BuyerID)
 		if err != nil {
 			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse buyer")
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-		datacenter, err := s.Storage.Datacenter(dcMap.DatacenterID)
+		datacenter, err := s.Storage.Datacenter(r.Context(), dcMap.DatacenterID)
 		if err != nil {
 			err = fmt.Errorf("DatacenterMapsForBuyer() could not parse datacenter")
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 
-		customer, err := s.Storage.Customer(buyer.CompanyCode)
+		customer, err := s.Storage.Customer(r.Context(), buyer.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("DatacenterMapsForBuyer() buyer is not associated with a company")
 			level.Error(s.Logger).Log("err", err)
@@ -1649,7 +1711,7 @@ type JSRemoveDatacenterMapReply struct {
 }
 
 func (s *BuyersService) JSRemoveDatacenterMap(r *http.Request, args *JSRemoveDatacenterMapArgs, reply *JSRemoveDatacenterMapReply) error {
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	buyerID, err := strconv.ParseUint(args.BuyerHexID, 16, 64)
@@ -1678,7 +1740,7 @@ type RemoveDatacenterMapArgs struct {
 type RemoveDatacenterMapReply struct{}
 
 func (s *BuyersService) RemoveDatacenterMap(r *http.Request, args *RemoveDatacenterMapArgs, reply *RemoveDatacenterMapReply) error {
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	return s.Storage.RemoveDatacenterMap(ctx, args.DatacenterMap)
@@ -1695,7 +1757,7 @@ type JSAddDatacenterMapReply struct{}
 
 func (s *BuyersService) JSAddDatacenterMap(r *http.Request, args *JSAddDatacenterMapArgs, reply *JSAddDatacenterMapReply) error {
 
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	buyerID, err := strconv.ParseUint(args.HexBuyerID, 16, 64)
@@ -1727,7 +1789,7 @@ type AddDatacenterMapReply struct{}
 
 func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMapArgs, reply *AddDatacenterMapReply) error {
 
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
+	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	return s.Storage.AddDatacenterMap(ctx, args.DatacenterMap)
@@ -1794,7 +1856,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			return sessions, err
 		}
 
-		buyer, err := s.Storage.BuyerWithCompanyCode(companyCodeFilter)
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCodeFilter)
 		if err != nil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed getting buyer with code: %v", err)
 			level.Error(s.Logger).Log("err", err)
@@ -1853,7 +1915,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			continue
 		}
 
-		buyer, err := s.Storage.Buyer(meta.BuyerID)
+		buyer, err := s.Storage.Buyer(r.Context(), meta.BuyerID)
 		if err != nil {
 			err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
 			level.Error(s.Logger).Log("err", err)
@@ -1933,7 +1995,7 @@ func (s *BuyersService) InternalConfig(r *http.Request, arg *InternalConfigArg, 
 		return err
 	}
 
-	ic, err := s.Storage.InternalConfig(buyerID)
+	ic, err := s.Storage.InternalConfig(r.Context(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("InternalConfig() no InternalConfig stored for buyer %s", arg.BuyerID)
 		level.Error(s.Logger).Log("err", err)
@@ -2002,7 +2064,7 @@ func (s *BuyersService) JSAddInternalConfig(r *http.Request, arg *JSAddInternalC
 		ReducePacketLossMinSliceNumber: int32(arg.InternalConfig.ReducePacketLossMinSliceNumber),
 	}
 
-	err = s.Storage.AddInternalConfig(context.Background(), ic, buyerID)
+	err = s.Storage.AddInternalConfig(r.Context(), ic, buyerID)
 	if err != nil {
 		err = fmt.Errorf("JSAddInternalConfig() error adding internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2049,7 +2111,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 			return fmt.Errorf("Value: %v is not a valid integer type", args.Value)
 		}
 		newInt32 := int32(newInt)
-		err = s.Storage.UpdateInternalConfig(context.Background(), buyerID, args.Field, newInt32)
+		err = s.Storage.UpdateInternalConfig(r.Context(), buyerID, args.Field, newInt32)
 		if err != nil {
 			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2063,7 +2125,7 @@ func (s *BuyersService) UpdateInternalConfig(r *http.Request, args *UpdateIntern
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
 		}
 
-		err = s.Storage.UpdateInternalConfig(context.Background(), buyerID, args.Field, newValue)
+		err = s.Storage.UpdateInternalConfig(r.Context(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateInternalConfig() error updating internal config for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2094,7 +2156,7 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 		return err
 	}
 
-	err = s.Storage.RemoveInternalConfig(context.Background(), buyerID)
+	err = s.Storage.RemoveInternalConfig(r.Context(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveInternalConfig() error removing internal config for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2140,7 +2202,7 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 		return err
 	}
 
-	rs, err := s.Storage.RouteShader(buyerID)
+	rs, err := s.Storage.RouteShader(r.Context(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RouteShader() error retrieving route shader for buyer %s: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2203,7 +2265,7 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 		PacketLossSustained:       float32(arg.RouteShader.PacketLossSustained),
 	}
 
-	err = s.Storage.AddRouteShader(context.Background(), rs, buyerID)
+	err = s.Storage.AddRouteShader(r.Context(), rs, buyerID)
 	if err != nil {
 		err = fmt.Errorf("AddRouteShader() error adding route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2230,7 +2292,7 @@ func (s *BuyersService) RemoveRouteShader(r *http.Request, arg *RemoveRouteShade
 		return err
 	}
 
-	err = s.Storage.RemoveRouteShader(context.Background(), buyerID)
+	err = s.Storage.RemoveRouteShader(r.Context(), buyerID)
 	if err != nil {
 		err = fmt.Errorf("RemoveRouteShader() error removing route shader for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2275,7 +2337,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid integer type", args.Value)
 		}
 		newInt32 := int32(newInt)
-		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newInt32)
+		err = s.Storage.UpdateRouteShader(r.Context(), buyerID, args.Field, newInt32)
 		if err != nil {
 			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2288,7 +2350,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid integer type", args.Value)
 		}
 		newInteger := int(newInt)
-		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newInteger)
+		err = s.Storage.UpdateRouteShader(r.Context(), buyerID, args.Field, newInteger)
 		if err != nil {
 			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2301,7 +2363,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid float type", args.Value)
 		}
 		newFloat32 := float32(newFloat)
-		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newFloat32)
+		err = s.Storage.UpdateRouteShader(r.Context(), buyerID, args.Field, newFloat32)
 		if err != nil {
 			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2315,8 +2377,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid boolean type", args.Value)
 		}
 
-		fmt.Printf("newValue: %T\n", newValue)
-		err = s.Storage.UpdateRouteShader(context.Background(), buyerID, args.Field, newValue)
+		err = s.Storage.UpdateRouteShader(r.Context(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateRouteShader() error updating route shader for buyer %016x: %v", buyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2346,7 +2407,7 @@ func (s *BuyersService) GetBannedUsers(r *http.Request, arg *GetBannedUserArg, r
 
 	var userList []string
 
-	bannedUsers, err := s.Storage.BannedUsers(arg.BuyerID)
+	bannedUsers, err := s.Storage.BannedUsers(r.Context(), arg.BuyerID)
 	if err != nil {
 		err = fmt.Errorf("GetBannedUsers() error retrieving banned users for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2373,7 +2434,7 @@ func (s *BuyersService) AddBannedUser(r *http.Request, arg *BannedUserArgs, repl
 		return nil
 	}
 
-	err := s.Storage.AddBannedUser(context.Background(), arg.BuyerID, arg.UserID)
+	err := s.Storage.AddBannedUser(r.Context(), arg.BuyerID, arg.UserID)
 	if err != nil {
 		err = fmt.Errorf("AddBannedUser() error adding banned user for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2388,7 +2449,7 @@ func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, r
 		return nil
 	}
 
-	err := s.Storage.RemoveBannedUser(context.Background(), arg.BuyerID, arg.UserID)
+	err := s.Storage.RemoveBannedUser(r.Context(), arg.BuyerID, arg.UserID)
 	if err != nil {
 		err = fmt.Errorf("RemoveBannedUser() error removing banned user for buyer %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2411,7 +2472,7 @@ func (s *BuyersService) Buyer(r *http.Request, arg *BuyerArg, reply *BuyerReply)
 	var b routing.Buyer
 	var err error
 
-	b, err = s.Storage.Buyer(arg.BuyerID)
+	b, err = s.Storage.Buyer(r.Context(), arg.BuyerID)
 	if err != nil {
 		err = fmt.Errorf("Buyer() error retrieving buyer for ID %016x: %v", arg.BuyerID, err)
 		level.Error(s.Logger).Log("err", err)
@@ -2450,20 +2511,32 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
 	switch args.Field {
-	case "Live", "Debug":
+	case "Live", "Debug", "Analytics", "Billing", "Trial":
 		newValue, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", args.Value)
 		}
 
-		err = s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, newValue)
+		err = s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	case "ExoticLocationFee", "StandardLocationFee":
+		newValue, err := strconv.ParseFloat(args.Value, 64)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid float64 type", args.Value)
+		}
+
+		err = s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
 	case "ShortName", "PublicKey":
-		err := s.Storage.UpdateBuyer(context.Background(), buyerID, args.Field, args.Value)
+		err := s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
 			level.Error(s.Logger).Log("err", err)
@@ -2503,171 +2576,139 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	// Grab release notes notifications from cache
 	reply.ReleaseNotesNotifications = s.ReleaseNotesNotificationsCache
 
-	// Everything below here will be implemented at some point in the future. It is primarily waiting on storage and admin tool support
-
-	// TODO: bring these back for analytics notifications at some point
-	/* 	user := r.Context().Value(middleware.Keys.UserKey)
-	   	if user == nil {
-	   		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-	   		return &err
-	   	}
-
-	   	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	   	requestID, ok := claims["sub"].(string)
-	   	if !ok {
-	   		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
-	   		return &err
-	   	}
-
-	   	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-	   	if !ok {
-	   		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
-	   		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-	   		return &err
-	   	}
-
-			// Admins can request access to the notifications of another company only
-			if args.CompanyCode != "" && args.CompanyCode != companyCode && middleware.VerifyAllRoles(r, middleware.AdminRole) {
-				err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-				return &err
-			}
-
-			if args.CompanyCode != "" {
-				companyCode = args.CompanyCode
-			}
-	*/
-
-	// TODO: Fetch all invoice, system, and looker notifications from storage
-
+	// TODO: Add this back in when we get analytics up and running
 	/*
-		notifications, err := s.Storage.Notifications(buyerID)
-		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
-			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to fetch notifications", err.Error()))
+		user := r.Context().Value(middleware.Keys.UserKey)
+		if user == nil {
+			err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
 			return &err
 		}
 
-		for _, notification := range notifications {
-			switch notification.type {
-			case NOTIFICATION_SYSTEM:
-				systemNotification := notifications.NewSystemNotification
-				// TODO: figure out if anything else is needed here
-				reply.SystemNotifications = append(reply.SystemNotifications, systemNotification)
-			case NOTIFICATION_ANALYTICS:
-				analyticsNotification := notifications.NewAnalyticsNotification()
+		claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+		requestID, ok := claims["sub"].(string)
+		if !ok {
+			err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
+			return &err
+		}
 
-				nonce, err := GenerateRandomString(16)
-				if err != nil {
-					err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-					s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
-					return &err
-				}
+		companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+		if !ok {
+			err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+			return &err
+		}
 
-				// TODO: This data should come from a specific "looker" notification
-				urlOptions := LookerURLOptions{
-					Host:            LOOKER_HOST,
-					Secret:          s.LookerSecret,
-					ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-					FirstName:       "",
-					LastName:        "",
-					GroupsIds:       make([]int, 0),
-					ExternalGroupId: "",
-					Permissions:     notifications.data.permissions,
-					Models:          notification.data.models,
-					AccessFilters:   make(map[string]map[string]interface{}),
-					UserAttributes:  make(map[string]interface{}),
-					SessionLength:   3600,
-					EmbedURL:        "/login/embed/" + url.QueryEscape(notification.data.url),
-					ForceLogout:     true,
-					Nonce:           fmt.Sprintf("\"%s\"", nonce),
-					Time:            time.Now().Unix(),
-				}
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+		if err != nil {
+			err = fmt.Errorf("FetchNotifications() failed getting buyer with code: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
 
-				urlOptions.UserAttributes["customer_code"] = companyCode
 
-				analyticsNotification.LookerURL = s.BuildLookerURL(urlOptions)
-				reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, analyticsNotification)
-			case NOTIFICATION_INVOICE:
-				invoiceNotification := notifications.NewInvoiceNotification
-				invoice, err := s.Storage.Invoice()
-				invoiceNotification.InvoiceID = fmt.Sprintf("%016x", notification.data.invoiceID)
-				reply.InvoiceNotification = append(reply.InvoiceNotification, invoiceNotification)
-			default:
-				err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
-				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Unknown notification type", err.Error()))
-				continue
+		if buyer.Trial && !buyer.Analytics {
+			nonce, err := GenerateRandomString(16)
+			if err != nil {
+				err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+				return &err
 			}
+
+			reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerSecret, nonce, requestID))
 		}
 	*/
+
 	return nil
 }
 
-func (s *BuyersService) FetchReleaseNotes() error {
-	cacheList := make([]notifications.ReleaseNotesNotification, 0)
+type StartAnalyticsTrialArgs struct{}
+type StartAnalyticsTrialReply struct{}
 
-	gistList, _, err := s.GithubClient.Gists.List(context.Background(), "", &github.GistListOptions{})
+func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalyticsTrialArgs, reply *StartAnalyticsTrialReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v", err.Error()))
+		return &err
+	}
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	email, ok := claims["email"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+		s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v", err.Error()))
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
 	if err != nil {
-		err = fmt.Errorf("FetchReleaseNotes() error fetching gist list: %v", err)
+		err = fmt.Errorf("StartAnalyticsTrial() failed getting buyer with code: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
 	}
 
-	for _, list := range gistList {
-		gistID := list.ID
-
-		resp, err := http.Get(fmt.Sprintf("https://gist.github.com/network-next-notifications/%s.js", *gistID))
-		if err != nil {
-			err = fmt.Errorf("FetchReleaseNotes() failed fetching embed data: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			continue
-		}
-
-		buffer, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			err = fmt.Errorf("FetchReleaseNotes() failed reading embed data: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			continue
-		}
-
-		fullEmbedOutput := string(buffer)
-
-		// Extract the actual css url and html that needs to be added to the notification
-		cssRegex := regexp.MustCompile(`https:\/\/github\.githubassets\.com\/assets\/gist-embed-[a-z0-9]+\.css`)
-		htmlRegex := regexp.MustCompile(`<div [a-z=\\"0-9\s>\-_A-Z</:.#&;]+`)
-
-		cssURL := cssRegex.FindString(fullEmbedOutput)
-		embedHTML := htmlRegex.FindString(fullEmbedOutput)
-		embedHTML = strings.ReplaceAll(embedHTML, "\\n", "")
-		embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
-
-		notification := notifications.NewReleaseNotesNotification()
-		notification.Title = fmt.Sprintf("Service updates for the month of %s", list.GetDescription())
-		notification.EmbedHTML = embedHTML
-		notification.CSSURL = cssURL
-
-		cacheList = append(cacheList, notification)
+	company, err := s.Storage.Customer(r.Context(), companyCode)
+	if err != nil {
+		err = fmt.Errorf("StartAnalyticsTrial() failed getting customer with code: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
 	}
 
-	s.ReleaseNotesNotificationsCache = cacheList
+	// Buyer has a trial still and isn't currently signed up for analytics, remove trial and flip analytics
+	if buyer.Trial && !buyer.Analytics {
+		if err := s.Storage.UpdateBuyer(r.Context(), buyer.ID, "Trial", false); err != nil {
+			err = fmt.Errorf("StartAnalyticsTrial() failed to flip Trial bit: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+		if err := s.Storage.UpdateBuyer(r.Context(), buyer.ID, "Analytics", true); err != nil {
+			err = fmt.Errorf("StartAnalyticsTrial() failed to flip Analytics bit: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+
+		if err := s.SlackClient.SendInfo(fmt.Sprintf("%s signed from %s up for an analytics trial! :money_mouth_face:", email, company.Name)); err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v: Email is required", err.Error()))
+			return &err
+		}
+	}
 
 	return nil
 }
 
-type FetchLookerURLArgs struct{}
+type FetchBillingSummaryArgs struct {
+	CompanyCode string `json:"company_code"`
+}
 
-type FetchLookerURLReply struct {
+type FetchBillingSummaryReply struct {
 	URL string `json:"url"`
 }
 
-func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs, reply *FetchLookerURLReply) error {
-	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) { // TODO: Add in roles for looker feature if necessary
+// TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
+func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *FetchBillingSummaryArgs, reply *FetchBillingSummaryReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
 		return &err
 	}
+
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
@@ -2698,21 +2739,28 @@ func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs
 		return &err
 	}
 
-	// TODO: Figure out what params are needed from frontend
-	urlOptions := LookerURLOptions{
-		Host:            LOOKER_HOST,
+	// Admin's will be able to search any company's billing info
+	if isAdmin {
+		companyCode = args.CompanyCode
+	}
+
+	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
+		companyCode = "esl"
+	}
+
+	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
+	urlOptions := notifications.LookerURLOptions{
+		Host:            notifications.LOOKER_HOST,
 		Secret:          s.LookerSecret,
 		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-		FirstName:       "",
-		LastName:        "",
-		GroupsIds:       make([]int, 0),
+		GroupsIds:       []int{EmbeddedUserGroupID},
 		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks"},
-		Models:          []string{"networknext_pbl"},
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   3600,
-		EmbedURL:        "/login/embed/" + url.QueryEscape( /* TODO: we want notification.data.path or something similar here */ "/embed/looks/1"),
+		EmbedURL:        "/login/embed/" + url.QueryEscape(BillingDashURI),
 		ForceLogout:     true,
 		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
@@ -2720,95 +2768,57 @@ func (s *BuyersService) FetchLookerURL(r *http.Request, args *FetchLookerURLArgs
 
 	urlOptions.UserAttributes["customer_code"] = companyCode
 
-	reply.URL = s.BuildLookerURL(urlOptions)
+	reply.URL = notifications.BuildLookerURL(urlOptions)
 	return nil
 }
 
-type LookerURLOptions struct {
-	Secret          string                            //required
-	Host            string                            //required
-	EmbedURL        string                            //required
-	Nonce           string                            //required
-	Time            int64                             //required
-	SessionLength   int                               //required
-	ExternalUserId  string                            //required
-	Permissions     []string                          //required
-	Models          []string                          //required
-	ForceLogout     bool                              //required
-	GroupsIds       []int                             //optional
-	ExternalGroupId string                            //optional
-	UserAttributes  map[string]interface{}            //optional
-	AccessFilters   map[string]map[string]interface{} //required
-	FirstName       string                            //optional
-	LastName        string                            //optional
-}
+func (s *BuyersService) FetchReleaseNotes(ctx context.Context) error {
+	cacheList := make([]notifications.ReleaseNotesNotification, 0)
 
-func (s *BuyersService) BuildLookerURL(urlOptions LookerURLOptions) string {
-	// TODO: Verify logic below, this came from here: https://github.com/looker/looker_embed_sso_examples/pull/36 and is NOT an official implementation. That being said, be careful changing it because it works :P
-	jsonPerms, _ := json.Marshal(urlOptions.Permissions)
-	jsonModels, _ := json.Marshal(urlOptions.Models)
-	jsonUserAttrs, _ := json.Marshal(urlOptions.UserAttributes)
-	jsonFilters, _ := json.Marshal(urlOptions.AccessFilters)
-	jsonGroupIds, _ := json.Marshal(urlOptions.GroupsIds)
-	strTime := strconv.Itoa(int(urlOptions.Time))
-	strSessionLen := strconv.Itoa(urlOptions.SessionLength)
-	strForceLogin := strconv.FormatBool(urlOptions.ForceLogout)
-
-	strToSign := strings.Join([]string{urlOptions.Host,
-		urlOptions.EmbedURL,
-		urlOptions.Nonce,
-		strTime,
-		strSessionLen,
-		urlOptions.ExternalUserId,
-		string(jsonPerms),
-		string(jsonModels)}, "\n")
-
-	strToSign = strToSign + "\n"
-
-	if len(urlOptions.GroupsIds) > 0 {
-		strToSign = strToSign + string(jsonGroupIds) + "\n"
+	gistList, _, err := s.GithubClient.Gists.List(ctx, "", &github.GistListOptions{})
+	if err != nil {
+		err = fmt.Errorf("FetchReleaseNotes() error fetching gist list: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
 	}
 
-	if urlOptions.ExternalGroupId != "" {
-		strToSign = strToSign + urlOptions.ExternalGroupId + "\n"
+	for _, list := range gistList {
+		gistID := list.ID
+
+		resp, err := http.Get(fmt.Sprintf("https://gist.github.com/network-next-notifications/%s.js", *gistID))
+		if err != nil {
+			err = fmt.Errorf("FetchReleaseNotes() failed fetching embed data: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			continue
+		}
+
+		buffer, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			err = fmt.Errorf("FetchReleaseNotes() failed reading embed data: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			continue
+		}
+
+		fullEmbedOutput := string(buffer)
+
+		// Extract the actual css url and html that needs to be added to the notification
+		cssRegex := regexp.MustCompile(`https:\/\/github\.githubassets\.com\/assets\/gist-embed-[a-z0-9]+\.css`)
+		htmlRegex := regexp.MustCompile(`<div [a-z=\\"0-9\s>\-_A-Z</:.#&;,()']+div>`)
+
+		cssURL := cssRegex.FindString(fullEmbedOutput)
+		embedHTML := htmlRegex.FindString(fullEmbedOutput)
+		embedHTML = strings.ReplaceAll(embedHTML, "\\n", "")
+		embedHTML = strings.ReplaceAll(embedHTML, "\\", "")
+
+		notification := notifications.NewReleaseNotesNotification()
+		notification.Title = list.GetDescription()
+		notification.EmbedHTML = embedHTML
+		notification.CSSURL = cssURL
+
+		cacheList = append(cacheList, notification)
 	}
 
-	if len(urlOptions.UserAttributes) > 0 {
-		strToSign = strToSign + string(jsonUserAttrs) + "\n"
-	}
+	s.ReleaseNotesNotificationsCache = cacheList
 
-	strToSign = strToSign + string(jsonFilters)
-
-	h := hmac.New(sha1.New, []byte(urlOptions.Secret))
-	h.Write([]byte(strToSign))
-	encoded := base64.StdEncoding.EncodeToString(h.Sum(nil))
-
-	query := url.Values{}
-	query.Add("nonce", urlOptions.Nonce)
-	query.Add("time", strTime)
-	query.Add("session_length", strSessionLen)
-	query.Add("external_user_id", urlOptions.ExternalUserId)
-	query.Add("permissions", string(jsonPerms))
-	query.Add("models", string(jsonModels))
-	query.Add("access_filters", string(jsonFilters))
-	query.Add("first_name", urlOptions.FirstName)
-	query.Add("last_name", urlOptions.LastName)
-	query.Add("force_logout_login", strForceLogin)
-	query.Add("signature", encoded)
-
-	if len(urlOptions.GroupsIds) > 0 {
-		query.Add("group_ids", string(jsonGroupIds))
-	}
-
-	if urlOptions.ExternalGroupId != "" {
-		query.Add("external_group_id", urlOptions.ExternalGroupId)
-	}
-
-	if len(urlOptions.UserAttributes) > 0 {
-		query.Add("user_attributes", string(jsonUserAttrs))
-	}
-
-	finalUrl := fmt.Sprintf("https://%s%s?%s", urlOptions.Host, urlOptions.EmbedURL, query.Encode())
-
-	return finalUrl
+	return nil
 }

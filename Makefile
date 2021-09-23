@@ -357,7 +357,7 @@ dev-server: build-sdk build-server  ## runs a local server
 	@./dist/server
 
 .PHONY: dev-portal
-dev-portal: build-portal-local ## runs a local portal
+dev-portal: build-portal ## runs a local portal
 	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist RELAY_FRONTEND=http://localhost:30005 ./dist/portal
 
 .PHONY: dev-beacon
@@ -371,6 +371,10 @@ dev-beacon-inserter: build-beacon-inserter ## runs a local beacon inserter
 .PHONY: dev-billing
 dev-billing: build-billing ## runs a local billing service
 	@PORT=41000 ./dist/billing
+
+.PHONY: dev-analytics-pusher
+dev-analytics-pusher: build-analytics-pusher ## runs a local analytics pusher service
+	@PORT=41002 ./dist/analytics_pusher
 
 .PHONY: dev-analytics
 dev-analytics: build-analytics ## runs a local analytics service
@@ -508,15 +512,6 @@ build-portal:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
 	@printf "done\n"
 
-.PHONY: build-portal-local
-build-portal-local:
-	@printf "Building portal... \n"
-	@gsutil cp $(ARTIFACT_BUCKET_PROD)/portal-dist.local.tar.gz $(PORTAL_DIR)/portal-dist.local.tar.gz
-	@$(TAR) -xvf $(PORTAL_DIR)/portal-dist.local.tar.gz --directory $(PORTAL_DIR)
-	@rm -fr $(PORTAL_DIR)/portal-dist.local.tar.gz
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/portal ./cmd/portal/portal.go
-	@printf "done\n"
-
 .PHONY: build-beacon
 build-beacon:
 	@printf "Building beacon..."
@@ -539,6 +534,12 @@ build-server-backend:
 build-billing:
 	@printf "Building billing... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/billing ./cmd/billing/billing.go
+	@printf "done\n"
+
+.PHONY: build-analytics-pusher
+build-analytics-pusher:
+	@printf "Building analytics pusher... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics_pusher ./cmd/analytics_pusher/analytics_pusher.go
 	@printf "done\n"
 
 .PHONY: build-api
@@ -569,6 +570,10 @@ deploy-vanity-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t vanity -n vanity -b gs://development_artifacts
 	./deploy/deploy.sh -e dev -c dev-2 -t vanity -n vanity -b gs://development_artifacts
 
+.PHONY: deploy-analytics-pusher-dev
+deploy-analytics-pusher-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t analytics-pusher -n analytics_pusher -b gs://development_artifacts
+
 .PHONY: deploy-portal-crunchers-staging
 deploy-portal-crunchers-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
@@ -583,6 +588,10 @@ deploy-vanity-staging:
 	./deploy/deploy.sh -e staging -c staging-3 -t vanity -n vanity -b gs://staging_artifacts
 	./deploy/deploy.sh -e staging -c staging-4 -t vanity -n vanity -b gs://staging_artifacts
 
+.PHONY: deploy-analytics-pusher-staging
+deploy-analytics-pusher-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t analytics-pusher -n analytics_pusher -b gs://staging_artifacts
+
 .PHONY: deploy-portal-crunchers-prod
 deploy-portal-crunchers-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
@@ -596,6 +605,10 @@ deploy-vanity-prod:
 	./deploy/deploy.sh -e prod -c prod-2 -t vanity -n vanity -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-3 -t vanity -n vanity -b gs://prod_artifacts
 	./deploy/deploy.sh -e prod -c prod-4 -t vanity -n vanity -b gs://prod_artifacts
+
+.PHONY: deploy-analytics-pusher-prod
+deploy-analytics-pusher-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t analytics-pusher -n analytics_pusher -b gs://prod_artifacts
 
 .PHONY: build-fake-server-artifacts-staging
 build-fake-server-artifacts-staging: build-fake-server
@@ -620,6 +633,10 @@ build-beacon-artifacts-dev: build-beacon
 .PHONY: build-beacon-inserter-artifacts-dev
 build-beacon-inserter-artifacts-dev: build-beacon-inserter
 	./deploy/build-artifacts.sh -e dev -s beacon_inserter
+
+.PHONY: build-analytics-pusher-artifacts-dev
+build-analytics-pusher-artifacts-dev: build-analytics-pusher
+	./deploy/build-artifacts.sh -e dev -s analytics_pusher
 
 .PHONY: build-analytics-artifacts-dev
 build-analytics-artifacts-dev: build-analytics
@@ -665,6 +682,10 @@ build-beacon-artifacts-staging: build-beacon
 build-beacon-inserter-artifacts-staging: build-beacon-inserter
 	./deploy/build-artifacts.sh -e staging -s beacon_inserter
 
+.PHONY: build-analytics-pusher-artifacts-staging
+build-analytics-pusher-artifacts-staging: build-analytics-pusher
+	./deploy/build-artifacts.sh -e staging -s analytics_pusher
+
 .PHONY: build-analytics-artifacts-staging
 build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
@@ -709,6 +730,10 @@ build-beacon-artifacts-prod: build-beacon
 build-beacon-inserter-artifacts-prod: build-beacon-inserter
 	./deploy/build-artifacts.sh -e prod -s beacon_inserter
 
+.PHONY: build-analytics-pusher-artifacts-prod
+build-analytics-pusher-artifacts-prod: build-analytics-pusher
+	./deploy/build-artifacts.sh -e prod -s analytics_pusher
+
 .PHONY: build-analytics-artifacts-prod
 build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
@@ -748,6 +773,10 @@ publish-beacon-artifacts-dev:
 .PHONY: publish-beacon-inserter-artifacts-dev
 publish-beacon-inserter-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s beacon_inserter
+
+.PHONY: publish-analytics-pusher-artifacts-dev
+publish-analytics-pusher-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics_pusher
 
 .PHONY: publish-analytics-artifacts-dev
 publish-analytics-artifacts-dev:
@@ -792,6 +821,10 @@ publish-beacon-artifacts-staging:
 .PHONY: publish-beacon-inserter-artifacts-staging
 publish-beacon-inserter-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s beacon_inserter
+
+.PHONY: publish-analytics-pusher-artifacts-staging
+publish-analytics-pusher-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics_pusher
 
 .PHONY: publish-analytics-artifacts-staging
 publish-analytics-artifacts-staging:
@@ -864,6 +897,10 @@ publish-api-artifacts-prod:
 .PHONY: publish-vanity-artifacts-prod
 publish-vanity-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s vanity
+
+.PHONY: publish-analytics-pusher-artifacts-prod
+publish-analytics-pusher-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics_pusher
 
 .PHONY: publish-analytics-artifacts-prod
 publish-analytics-artifacts-prod:
@@ -1408,7 +1445,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything

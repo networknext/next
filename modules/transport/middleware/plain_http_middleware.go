@@ -9,7 +9,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-func PlainHttpAuthMiddleware(audience string, next http.Handler, allowedOrigins []string) http.Handler {
+func PlainHttpAuthMiddleware(keys JWKS, audience string, next http.Handler, allowedOrigins []string) http.Handler {
 
 	mw := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
@@ -27,7 +27,7 @@ func PlainHttpAuthMiddleware(audience string, next http.Handler, allowedOrigins 
 				return nil, errors.New("invalid issuer")
 			}
 
-			cert, err := getPemCert(token)
+			cert, err := getPemCert(keys, token)
 			if err != nil {
 				return nil, err
 			}
@@ -41,7 +41,7 @@ func PlainHttpAuthMiddleware(audience string, next http.Handler, allowedOrigins 
 	return CORSControlHandler(allowedOrigins, mw.Handler(next))
 }
 
-type jwks struct {
+type JWKS struct {
 	Keys []struct {
 		Kty string   `json:"kty"`
 		Kid string   `json:"kid"`
@@ -52,22 +52,24 @@ type jwks struct {
 	} `json:"keys"`
 }
 
-func getPemCert(token *jwt.Token) (string, error) {
-	cert := ""
+func FetchAuth0Cert() (JWKS, error) {
 	resp, err := http.Get("https://networknext.auth0.com/.well-known/jwks.json")
-
 	if err != nil {
-		return cert, err
+		return JWKS{}, err
 	}
 	defer resp.Body.Close()
 
-	var keys = jwks{}
+	keys := JWKS{}
 	err = json.NewDecoder(resp.Body).Decode(&keys)
-
 	if err != nil {
-		return cert, err
+		return JWKS{}, err
 	}
 
+	return keys, nil
+}
+
+func getPemCert(keys JWKS, token *jwt.Token) (string, error) {
+	cert := ""
 	for k := range keys.Keys {
 		if token.Header["kid"] == keys.Keys[k].Kid {
 			cert = "-----BEGIN CERTIFICATE-----\n" + keys.Keys[k].X5c[0] + "\n-----END CERTIFICATE-----"

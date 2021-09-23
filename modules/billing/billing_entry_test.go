@@ -85,6 +85,7 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		EnvelopeBytesUp:                 rand.Uint64(),
 		Latitude:                        rand.Float32(),
 		Longitude:                       rand.Float32(),
+		ClientAddress:                   generateRandomStringSequence(billing.BillingEntryMaxAddressLength - 1),
 		ISP:                             generateRandomStringSequence(billing.BillingEntryMaxISPLength - 1),
 		ConnectionType:                  int32(rand.Intn(3)),
 		PlatformType:                    int32(rand.Intn(10)),
@@ -104,6 +105,13 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		NearRelayRTTs:                   nearRelayRTTs,
 		NearRelayJitters:                nearRelayJitters,
 		NearRelayPacketLosses:           nearRelayPacketLosses,
+		TotalPriceSum:                   rand.Uint64(),
+		EnvelopeBytesUpSum:              rand.Uint64(),
+		EnvelopeBytesDownSum:            rand.Uint64(),
+		SessionDuration:                 5 * billing.BillingSliceSeconds,
+		EverOnNext:                      false,
+		DurationOnNext:                  4 * billing.BillingSliceSeconds,
+		StartTimestamp:                  uint32(time.Now().Add(-5 * billing.BillingSliceSeconds).Unix()),
 		NextRTT:                         int32(rand.Intn(255)),
 		NextJitter:                      int32(rand.Intn(255)),
 		NextPacketLoss:                  int32(rand.Intn(100)),
@@ -230,6 +238,7 @@ func TestSerializeBillingEntry2_EveryCondition(t *testing.T) {
 	entry := getTestBillingEntry2()
 	entry.SliceNumber = 0
 	entry.Next = true
+	entry.EverOnNext = true
 	entry.Summary = true
 	entry.Uncommitted = false
 	entry.FallbackToDirect = true
@@ -273,6 +282,7 @@ func TestSerializeBillingEntry2_OnNext(t *testing.T) {
 
 	entry := getTestBillingEntry2()
 	entry.Next = true
+	entry.EverOnNext = true
 	entry.UseDebug = true
 	entry.Debug = "on network next"
 	entry.Uncommitted = false
@@ -288,6 +298,7 @@ func TestSerializeBillingEntry2_OnNext_RouteChanged(t *testing.T) {
 
 	entry := getTestBillingEntry2()
 	entry.Next = true
+	entry.EverOnNext = true
 	entry.UseDebug = true
 	entry.Debug = "on network next. route changed."
 	entry.Uncommitted = false
@@ -305,6 +316,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 	t.Run("error state - fallback to direct", func(t *testing.T) {
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. fallback to direct."
 		entry.Uncommitted = true
@@ -318,6 +330,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 	t.Run("error state - multipath veto", func(t *testing.T) {
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. multipath veto."
 		entry.Uncommitted = true
@@ -331,6 +344,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 	t.Run("error state - Mispredicted", func(t *testing.T) {
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. Mispredicted."
 		entry.Uncommitted = true
@@ -344,6 +358,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 	t.Run("error state - vetoed", func(t *testing.T) {
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. vetoed."
 		entry.Uncommitted = true
@@ -357,6 +372,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 	t.Run("error state - latency worse", func(t *testing.T) {
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. latency worse."
 		entry.Uncommitted = true
@@ -370,6 +386,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 	t.Run("error state - no route", func(t *testing.T) {
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. no route."
 		entry.Uncommitted = true
@@ -383,6 +400,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 	t.Run("error state - next latency too high", func(t *testing.T) {
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. next latency too high."
 		entry.Uncommitted = true
@@ -396,6 +414,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 	t.Run("error state - commit veto", func(t *testing.T) {
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. commit veto."
 		entry.Uncommitted = true
@@ -411,6 +430,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. unknown datacenter."
 		entry.Uncommitted = true
@@ -426,6 +446,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. datacenter not enabled."
 		entry.Uncommitted = true
@@ -441,6 +462,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. buyer not live."
 		entry.Uncommitted = true
@@ -454,6 +476,7 @@ func TestSerializeBillingEntry2_ErrorState_Next(t *testing.T) {
 	t.Run("error state - stale route matrix", func(t *testing.T) {
 		entry := getTestBillingEntry2()
 		entry.Next = true
+		entry.EverOnNext = true
 		entry.UseDebug = true
 		entry.Debug = "leaving network next. stale route matrix."
 		entry.Uncommitted = true
@@ -645,6 +668,7 @@ func TestSerializeBillingEntry2_Summary_Next(t *testing.T) {
 	entry := getTestBillingEntry2()
 	entry.Summary = true
 	entry.Next = true
+	entry.EverOnNext = true
 	entry.Uncommitted = false
 
 	data, err := writeReadEqualBillingEntry2(entry)
@@ -785,6 +809,20 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 	})
 
 	t.Run("test first slice", func(t *testing.T) {
+
+		t.Run("client IP address length", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.SliceNumber = 0
+			clientAddrStr := generateRandomStringSequence(billing.BillingEntryMaxAddressLength + 1)
+			assert.Equal(t, billing.BillingEntryMaxAddressLength+1, len(clientAddrStr))
+			entry.ClientAddress = clientAddrStr
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, clientAddrStr[:billing.BillingEntryMaxAddressLength-1], readEntry.ClientAddress)
+		})
 
 		t.Run("isp length", func(t *testing.T) {
 			entry = getTestBillingEntry2()
@@ -989,6 +1027,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		t.Run("next rtt", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.NextRTT = -1
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -999,6 +1038,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.NextRTT = 256
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -1011,6 +1051,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		t.Run("next jitter", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.NextJitter = -1
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -1021,6 +1062,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.NextJitter = 256
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -1033,6 +1075,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		t.Run("next packet loss", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.NextPacketLoss = -1
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -1043,6 +1086,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.NextPacketLoss = 101
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -1055,6 +1099,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		t.Run("predicted next rtt", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.PredictedNextRTT = -1
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -1065,6 +1110,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.PredictedNextRTT = 256
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -1077,6 +1123,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		t.Run("near relay rtt", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.NearRelayRTT = -1
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -1087,6 +1134,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.NearRelayRTT = 256
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -1099,6 +1147,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		t.Run("num next relays", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.NumNextRelays = -1
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
@@ -1109,6 +1158,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 
 			entry = getTestBillingEntry2()
 			entry.Next = true
+			entry.EverOnNext = true
 			entry.NumNextRelays = billing.BillingEntryMaxRelays + 1
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)

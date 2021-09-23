@@ -14,6 +14,7 @@ const (
 	BillingEntryVersion = uint8(27)
 
 	BillingEntryMaxRelays           = 5
+	BillingEntryMaxAddressLength    = 256
 	BillingEntryMaxISPLength        = 64
 	BillingEntryMaxSDKVersionLength = 11
 	BillingEntryMaxDebugLength      = 2048
@@ -1168,7 +1169,7 @@ func (entry *BillingEntry) Save() (map[string]bigquery.Value, string, error) {
 // ------------------------------------------------------------------------
 
 const (
-	BillingEntryVersion2 = uint32(1)
+	BillingEntryVersion2 = uint32(6)
 
 	MaxBillingEntry2Bytes = 4096
 )
@@ -1194,7 +1195,7 @@ type BillingEntry2 struct {
 	Debug               string
 	RouteDiversity      int32
 
-	// first slice only
+	// first slice and summary slice only
 
 	DatacenterID      uint64
 	BuyerID           uint64
@@ -1203,6 +1204,7 @@ type BillingEntry2 struct {
 	EnvelopeBytesDown uint64
 	Latitude          float32
 	Longitude         float32
+	ClientAddress     string
 	ISP               string
 	ConnectionType    int32
 	PlatformType      int32
@@ -1225,6 +1227,13 @@ type BillingEntry2 struct {
 	NearRelayRTTs                   [BillingEntryMaxNearRelays]int32
 	NearRelayJitters                [BillingEntryMaxNearRelays]int32
 	NearRelayPacketLosses           [BillingEntryMaxNearRelays]int32
+	EverOnNext                      bool
+	SessionDuration                 uint32
+	TotalPriceSum                   uint64
+	EnvelopeBytesUpSum              uint64
+	EnvelopeBytesDownSum            uint64
+	DurationOnNext                  uint32
+	StartTimestamp                  uint32
 
 	// network next only
 
@@ -1259,6 +1268,46 @@ type BillingEntry2 struct {
 	DatacenterNotEnabled bool
 	BuyerNotLive         bool
 	StaleRouteMatrix     bool
+}
+
+type BillingEntry2Summary struct {
+	Timestamp                       uint32
+	SessionID                       uint64
+	Summary                         bool
+	BuyerID                         uint64
+	UserHash                        uint64
+	DatacenterID                    uint64
+	StartTimestamp                  uint32
+	Latitude                        float32
+	Longitude                       float32
+	ISP                             string
+	ConnectionType                  int32
+	PlatformType                    int32
+	NumTags                         int32
+	Tags                            [BillingEntryMaxTags]uint64
+	ABTest                          bool
+	Pro                             bool
+	SDKVersion                      string
+	EnvelopeBytesUp                 uint64
+	EnvelopeBytesDown               uint64
+	ClientToServerPacketsSent       uint64
+	ServerToClientPacketsSent       uint64
+	ClientToServerPacketsLost       uint64
+	ServerToClientPacketsLost       uint64
+	ClientToServerPacketsOutOfOrder uint64
+	ServerToClientPacketsOutOfOrder uint64
+	NumNearRelays                   int32
+	NearRelayIDs                    [BillingEntryMaxNearRelays]uint64
+	NearRelayRTTs                   [BillingEntryMaxNearRelays]int32
+	NearRelayJitters                [BillingEntryMaxNearRelays]int32
+	NearRelayPacketLosses           [BillingEntryMaxNearRelays]int32
+	EverOnNext                      bool
+	SessionDuration                 uint32
+	TotalPriceSum                   uint64
+	EnvelopeBytesUpSum              uint64
+	EnvelopeBytesDownSum            uint64
+	DurationOnNext                  uint32
+	ClientAddress                   string
 }
 
 func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
@@ -1302,31 +1351,57 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	stream.SerializeInteger(&entry.RouteDiversity, 0, 32)
 
 	/*
-		2. First slice only
+		2. First slice and summary slice only
 
-		These values are serialized only for slice 0.
+		These values are serialized only for slice 0 and summary slice.
+
+		NOTE: Prior to version 3, these fields were only serialized for slice 0.
 	*/
 
-	if entry.SliceNumber == 0 {
+	if entry.Version >= 3 {
+		if entry.SliceNumber == 0 || entry.Summary {
 
-		stream.SerializeUint64(&entry.DatacenterID)
-		stream.SerializeUint64(&entry.BuyerID)
-		stream.SerializeUint64(&entry.UserHash)
-		stream.SerializeUint64(&entry.EnvelopeBytesUp)
-		stream.SerializeUint64(&entry.EnvelopeBytesDown)
-		stream.SerializeFloat32(&entry.Latitude)
-		stream.SerializeFloat32(&entry.Longitude)
-		stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
-		stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
-		stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
-		stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
-		stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
-		for i := 0; i < int(entry.NumTags); i++ {
-			stream.SerializeUint64(&entry.Tags[i])
+			stream.SerializeUint64(&entry.DatacenterID)
+			stream.SerializeUint64(&entry.BuyerID)
+			stream.SerializeUint64(&entry.UserHash)
+			stream.SerializeUint64(&entry.EnvelopeBytesUp)
+			stream.SerializeUint64(&entry.EnvelopeBytesDown)
+			stream.SerializeFloat32(&entry.Latitude)
+			stream.SerializeFloat32(&entry.Longitude)
+			stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
+			stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
+			stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+			stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
+			stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
+			for i := 0; i < int(entry.NumTags); i++ {
+				stream.SerializeUint64(&entry.Tags[i])
+			}
+			stream.SerializeBool(&entry.ABTest)
+			stream.SerializeBool(&entry.Pro)
+
 		}
-		stream.SerializeBool(&entry.ABTest)
-		stream.SerializeBool(&entry.Pro)
+	} else {
+		if entry.SliceNumber == 0 {
 
+			stream.SerializeUint64(&entry.DatacenterID)
+			stream.SerializeUint64(&entry.BuyerID)
+			stream.SerializeUint64(&entry.UserHash)
+			stream.SerializeUint64(&entry.EnvelopeBytesUp)
+			stream.SerializeUint64(&entry.EnvelopeBytesDown)
+			stream.SerializeFloat32(&entry.Latitude)
+			stream.SerializeFloat32(&entry.Longitude)
+			stream.SerializeString(&entry.ISP, BillingEntryMaxISPLength)
+			stream.SerializeInteger(&entry.ConnectionType, 0, 3) // todo: constant
+			stream.SerializeInteger(&entry.PlatformType, 0, 10)  // todo: constant
+			stream.SerializeString(&entry.SDKVersion, BillingEntryMaxSDKVersionLength)
+			stream.SerializeInteger(&entry.NumTags, 0, BillingEntryMaxTags)
+			for i := 0; i < int(entry.NumTags); i++ {
+				stream.SerializeUint64(&entry.Tags[i])
+			}
+			stream.SerializeBool(&entry.ABTest)
+			stream.SerializeBool(&entry.Pro)
+
+		}
 	}
 
 	/*
@@ -1439,6 +1514,70 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		}
 	}
 
+	/*
+		Version 2
+
+		Includes the following in the summary slice:
+			- Sum of TotalPrice
+			- Sum of EnvelopeBytesUp
+			- Sum of EnvelopeBytesDown
+			- Duration of the session (in seconds)
+			- EverOnNext
+	*/
+	if entry.Version >= uint32(2) {
+		if entry.Summary {
+
+			stream.SerializeBool(&entry.EverOnNext)
+
+			stream.SerializeUint32(&entry.SessionDuration)
+
+			if entry.EverOnNext {
+
+				stream.SerializeUint64(&entry.TotalPriceSum)
+
+				stream.SerializeUint64(&entry.EnvelopeBytesUpSum)
+				stream.SerializeUint64(&entry.EnvelopeBytesDownSum)
+
+			}
+
+		}
+	}
+
+	/*
+		Version 4
+
+		Includes the following in the summary slice:
+			- Duration of the session on next (in seconds)
+	*/
+	if entry.Version >= uint32(4) {
+		if entry.Summary && entry.EverOnNext {
+			stream.SerializeUint32(&entry.DurationOnNext)
+		}
+	}
+
+	/*
+		Version 5
+
+		Includes client IP address in first and summary slice
+	*/
+	if entry.Version >= uint32(5) {
+		if entry.SliceNumber == 0 || entry.Summary {
+			stream.SerializeString(&entry.ClientAddress, BillingEntryMaxAddressLength)
+		}
+	}
+
+	/*
+		Version 6
+
+		Includes session start timestamp in the summary slice
+
+		NOTE: Prior to version 6, summary slices were written to the billing2 table
+	*/
+	if entry.Version >= uint32(6) {
+		if entry.Summary {
+			stream.SerializeUint32(&entry.StartTimestamp)
+		}
+	}
 	return stream.Error()
 }
 
@@ -1468,6 +1607,7 @@ func ReadBillingEntry2(entry *BillingEntry2, data []byte) error {
 	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -1735,12 +1875,17 @@ func (entry *BillingEntry2) ClampEntry() {
 		entry.RouteDiversity = 32
 	}
 
-	// first slice only
+	// first slice and summary slice only
 
-	if entry.SliceNumber == 0 {
+	if entry.SliceNumber == 0 || entry.Summary {
+
+		if len(entry.ClientAddress) >= BillingEntryMaxAddressLength {
+			core.Debug("BillingEntry2 Client IP Address length (%d) >= BillingEntryMaxAddressLength (%d). Clamping to BillingEntryMaxAddressLength - 1 (%d)", len(entry.ClientAddress), BillingEntryMaxAddressLength, BillingEntryMaxAddressLength-1)
+			entry.ClientAddress = entry.ClientAddress[:BillingEntryMaxAddressLength-1]
+		}
 
 		if len(entry.ISP) >= BillingEntryMaxISPLength {
-			core.Debug("BillingEntry2 ISP length (%d) >= BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength - 1(%d)", len(entry.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength-1)
+			core.Debug("BillingEntry2 ISP length (%d) >= BillingEntryMaxISPLength (%d). Clamping to BillingEntryMaxISPLength - 1 (%d)", len(entry.ISP), BillingEntryMaxISPLength, BillingEntryMaxISPLength-1)
 			entry.ISP = entry.ISP[:BillingEntryMaxISPLength-1]
 		}
 
@@ -1935,12 +2080,12 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 	}
 
 	/*
-		2. First slice only
+		2. First slice and summary slice only
 
-		These values are serialized only for slice 0.
+		These values are serialized only for slice 0 and the summary slice.
 	*/
 
-	if entry.SliceNumber == 0 {
+	if entry.SliceNumber == 0 || entry.Summary {
 
 		e["datacenterID"] = int(entry.DatacenterID)
 		e["buyerID"] = int(entry.BuyerID)
@@ -1949,6 +2094,7 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
 		e["latitude"] = entry.Latitude
 		e["longitude"] = entry.Longitude
+		e["clientAddress"] = entry.ClientAddress
 		e["isp"] = entry.ISP
 		e["connectionType"] = int(entry.ConnectionType)
 		e["platformType"] = int(entry.PlatformType)
@@ -2006,6 +2152,19 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 			e["nearRelayPacketLosses"] = nearRelayPacketLosses
 
 		}
+
+		e["everOnNext"] = entry.EverOnNext
+
+		e["sessionDuration"] = int(entry.SessionDuration)
+
+		if entry.EverOnNext {
+			e["totalPriceSum"] = int(entry.TotalPriceSum)
+			e["envelopeBytesUpSum"] = int(entry.EnvelopeBytesUpSum)
+			e["envelopeBytesDownSum"] = int(entry.EnvelopeBytesDownSum)
+			e["durationOnNext"] = int(entry.DurationOnNext)
+		}
+
+		e["startTimestamp"] = int(entry.StartTimestamp)
 
 	}
 
@@ -2116,6 +2275,154 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 	if entry.StaleRouteMatrix {
 		e["staleRouteMatrix"] = true
+	}
+
+	return e, "", nil
+}
+
+func (entry *BillingEntry2) GetSummaryStruct() *BillingEntry2Summary {
+	return &BillingEntry2Summary{
+		Timestamp:                       entry.Timestamp,
+		SessionID:                       entry.SessionID,
+		Summary:                         entry.Summary,
+		BuyerID:                         entry.BuyerID,
+		UserHash:                        entry.UserHash,
+		DatacenterID:                    entry.DatacenterID,
+		StartTimestamp:                  entry.StartTimestamp,
+		Latitude:                        entry.Latitude,
+		Longitude:                       entry.Longitude,
+		ISP:                             entry.ISP,
+		ConnectionType:                  entry.ConnectionType,
+		PlatformType:                    entry.PlatformType,
+		NumTags:                         entry.NumTags,
+		Tags:                            entry.Tags,
+		ABTest:                          entry.ABTest,
+		Pro:                             entry.Pro,
+		SDKVersion:                      entry.SDKVersion,
+		EnvelopeBytesUp:                 entry.EnvelopeBytesUp,
+		EnvelopeBytesDown:               entry.EnvelopeBytesDown,
+		ClientToServerPacketsSent:       entry.ClientToServerPacketsSent,
+		ServerToClientPacketsSent:       entry.ServerToClientPacketsSent,
+		ClientToServerPacketsLost:       entry.ClientToServerPacketsLost,
+		ServerToClientPacketsLost:       entry.ServerToClientPacketsLost,
+		ClientToServerPacketsOutOfOrder: entry.ClientToServerPacketsOutOfOrder,
+		ServerToClientPacketsOutOfOrder: entry.ServerToClientPacketsOutOfOrder,
+		NumNearRelays:                   entry.NumNearRelays,
+		NearRelayIDs:                    entry.NearRelayIDs,
+		NearRelayRTTs:                   entry.NearRelayRTTs,
+		NearRelayJitters:                entry.NearRelayJitters,
+		NearRelayPacketLosses:           entry.NearRelayPacketLosses,
+		EverOnNext:                      entry.EverOnNext,
+		SessionDuration:                 entry.SessionDuration,
+		TotalPriceSum:                   entry.TotalPriceSum,
+		EnvelopeBytesUpSum:              entry.EnvelopeBytesUpSum,
+		EnvelopeBytesDownSum:            entry.EnvelopeBytesDownSum,
+		DurationOnNext:                  entry.DurationOnNext,
+		ClientAddress:                   entry.ClientAddress,
+	}
+}
+
+func (entry *BillingEntry2Summary) Save() (map[string]bigquery.Value, string, error) {
+
+	e := make(map[string]bigquery.Value)
+
+	/*
+		1. Always
+
+		These values are written for every slice.
+	*/
+
+	e["timestamp"] = int(entry.Timestamp)
+	e["sessionID"] = int(entry.SessionID)
+
+	if entry.Summary {
+		e["summary"] = true
+	}
+
+	if entry.Summary {
+
+		/*
+			2. First slice and summary slice only
+
+			These values are serialized only for slice 0 and the summary slice.
+		*/
+
+		e["datacenterID"] = int(entry.DatacenterID)
+		e["buyerID"] = int(entry.BuyerID)
+		e["userHash"] = int(entry.UserHash)
+		e["envelopeBytesUp"] = int(entry.EnvelopeBytesUp)
+		e["envelopeBytesDown"] = int(entry.EnvelopeBytesDown)
+		e["latitude"] = entry.Latitude
+		e["longitude"] = entry.Longitude
+		e["clientAddress"] = entry.ClientAddress
+		e["isp"] = entry.ISP
+		e["connectionType"] = int(entry.ConnectionType)
+		e["platformType"] = int(entry.PlatformType)
+		e["sdkVersion"] = entry.SDKVersion
+
+		if entry.NumTags > 0 {
+			tags := make([]bigquery.Value, entry.NumTags)
+			for i := 0; i < int(entry.NumTags); i++ {
+				tags[i] = int(entry.Tags[i])
+			}
+			e["tags"] = tags
+		}
+
+		if entry.ABTest {
+			e["abTest"] = true
+		}
+
+		if entry.Pro {
+			e["pro"] = true
+		}
+
+		/*
+			3. Summary slice only
+
+			These values are serialized only for the summary slice (at the end of the session)
+		*/
+
+		e["clientToServerPacketsSent"] = int(entry.ClientToServerPacketsSent)
+		e["serverToClientPacketsSent"] = int(entry.ServerToClientPacketsSent)
+		e["clientToServerPacketsLost"] = int(entry.ClientToServerPacketsLost)
+		e["serverToClientPacketsLost"] = int(entry.ServerToClientPacketsLost)
+		e["clientToServerPacketsOutOfOrder"] = int(entry.ClientToServerPacketsOutOfOrder)
+		e["serverToClientPacketsOutOfOrder"] = int(entry.ServerToClientPacketsOutOfOrder)
+
+		if entry.NumNearRelays > 0 {
+
+			nearRelayIDs := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayRTTs := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayJitters := make([]bigquery.Value, entry.NumNearRelays)
+			nearRelayPacketLosses := make([]bigquery.Value, entry.NumNearRelays)
+
+			for i := 0; i < int(entry.NumNearRelays); i++ {
+				nearRelayIDs[i] = int(entry.NearRelayIDs[i])
+				nearRelayRTTs[i] = int(entry.NearRelayRTTs[i])
+				nearRelayJitters[i] = int(entry.NearRelayJitters[i])
+				nearRelayPacketLosses[i] = int(entry.NearRelayPacketLosses[i])
+			}
+
+			e["nearRelayIDs"] = nearRelayIDs
+			e["nearRelayRTTs"] = nearRelayRTTs
+			e["nearRelayJitters"] = nearRelayJitters
+			e["nearRelayPacketLosses"] = nearRelayPacketLosses
+
+		}
+
+		e["everOnNext"] = entry.EverOnNext
+
+		e["sessionDuration"] = int(entry.SessionDuration)
+
+		if entry.EverOnNext {
+			e["totalPriceSum"] = int(entry.TotalPriceSum)
+			e["envelopeBytesUpSum"] = int(entry.EnvelopeBytesUpSum)
+			e["envelopeBytesDownSum"] = int(entry.EnvelopeBytesDownSum)
+			e["durationOnNext"] = int(entry.DurationOnNext)
+		}
+
+		e["startTimestamp"] = int(entry.StartTimestamp)
+
 	}
 
 	return e, "", nil
