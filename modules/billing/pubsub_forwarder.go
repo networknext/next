@@ -183,6 +183,7 @@ func (psf *PubSubForwarder) Forward2(ctx context.Context, wg *sync.WaitGroup) {
 				if retryCount > psf.MaxRetries {
 					// Failed to submit after max retries, nack the message
 					level.Error(psf.Logger).Log("msg", fmt.Sprintf("exceeded max retries (%d), could not submit billing entry (%d/%d)", psf.MaxRetries, i, len(entries)))
+					psf.Metrics.ErrorMetrics.Billing2RetryLimitReached.Add(1)
 					m.Nack()
 					return
 				}
