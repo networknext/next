@@ -1271,7 +1271,6 @@ type BillingEntry2 struct {
 }
 
 type BillingEntry2Summary struct {
-	Timestamp                       uint32
 	SessionID                       uint64
 	Summary                         bool
 	BuyerID                         uint64
@@ -2282,7 +2281,6 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 func (entry *BillingEntry2) GetSummaryStruct() *BillingEntry2Summary {
 	return &BillingEntry2Summary{
-		Timestamp:                       entry.Timestamp,
 		SessionID:                       entry.SessionID,
 		Summary:                         entry.Summary,
 		BuyerID:                         entry.BuyerID,
@@ -2332,12 +2330,7 @@ func (entry *BillingEntry2Summary) Save() (map[string]bigquery.Value, string, er
 		These values are written for every slice.
 	*/
 
-	e["timestamp"] = int(entry.Timestamp)
 	e["sessionID"] = int(entry.SessionID)
-
-	if entry.Summary {
-		e["summary"] = true
-	}
 
 	if entry.Summary {
 
