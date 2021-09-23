@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
@@ -439,6 +440,9 @@ type buyer struct {
 	CustomerCode string
 	Live         bool
 	Debug        bool
+	Analytics    bool
+	Billing      bool
+	Trial        bool
 	PublicKey    string
 }
 
@@ -635,6 +639,10 @@ func main() {
 	var sessionDumpSignedInt bool
 	sessionDumpfs.BoolVar(&sessionDumpSignedInt, "signed", false, "Accept session ID as a signed int (next session dump)")
 
+	// Query billing1 instead of billing2 (next session dump)
+	var sessionDumpUseBilling1 bool
+	sessionDumpfs.BoolVar(&sessionDumpUseBilling1, "billing1", false, "Query billing1 instead of billing2 (next session dump)")
+
 	var authCommand = &ffcli.Command{
 		Name:       "auth",
 		ShortUsage: "next auth",
@@ -735,11 +743,13 @@ func main() {
 				usersCSV := [][]string{{}}
 
 				usersCSV = append(usersCSV, []string{
-					"Email", "Company Code", "Buyer ID", "Is Owner?", "Time Created"})
+					"First Name", "Last Name", "Email", "Company Code", "Buyer ID", "Is Owner?", "Time Created"})
 
 				for _, entry := range reply.Entries {
-					fmt.Printf("Email: %s - Company Code: %s - Buyer ID: %s - Is Owner: %s - Time Created: %s\n\n", entry.Email, entry.CompanyCode, entry.BuyerID, strconv.FormatBool(entry.IsOwner), entry.CreationTime)
+					fmt.Printf("First Name: %s - Last Name: %s - Email: %s - Company Code: %s - Buyer ID: %s - Is Owner: %s - Time Created: %s\n\n", entry.FirstName, entry.LastName, entry.Email, entry.CompanyCode, entry.BuyerID, strconv.FormatBool(entry.IsOwner), entry.CreationTime)
 					usersCSV = append(usersCSV, []string{
+						entry.FirstName,
+						entry.LastName,
 						entry.Email,
 						entry.CompanyCode,
 						entry.BuyerID,
@@ -880,17 +890,17 @@ func main() {
 		Subcommands: []*ffcli.Command{
 			{
 				Name:       "dump",
-				ShortUsage: "next session dump <session id>",
+				ShortUsage: "next session dump <session id> <use_billing1>",
 				ShortHelp:  "Write all billing data for the given ID to a CSV file",
 				FlagSet:    sessionDumpfs,
 				Exec: func(ctx context.Context, args []string) error {
-					if len(args) != 1 {
+					if len(args) < 1 {
 						handleRunTimeError(fmt.Sprintln("you must supply the session ID in hex format"), 0)
 					}
 
 					var sessionID uint64
 					var err error
-					if sessionDumpfs.NFlag() == 1 && sessionDumpSignedInt {
+					if sessionDumpfs.NFlag() >= 1 && sessionDumpSignedInt {
 						signed, err := strconv.ParseInt(args[0], 10, 64)
 						if err != nil {
 							handleRunTimeError(fmt.Sprintf("could not convert %s to int64", args[0]), 0)
@@ -903,7 +913,12 @@ func main() {
 						}
 					}
 
-					dumpSession(env, sessionID)
+					// By default, use billing2 for next session dump, unless second param is given
+					if len(args) <= 1 {
+						dumpSession2(env, sessionID)
+					} else {
+						dumpSession(env, sessionID)
+					}
 
 					return nil
 				},
@@ -1567,6 +1582,9 @@ func main() {
 						ShortName: b.CustomerCode,
 						Live:      b.Live,
 						Debug:     b.Debug,
+						Analytics: b.Analytics,
+						Billing:   b.Billing,
+						Trial:     b.Trial,
 						PublicKey: b.PublicKey,
 					}
 
@@ -2405,6 +2423,73 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 		},
 	}
 
+	var serversCommand = &ffcli.Command{
+		Name:       "servers",
+		ShortUsage: "next servers <subcommand>",
+		ShortHelp:  "Analayze and parse all live servers connected to a server backend",
+		Exec: func(_ context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "analyze",
+				ShortUsage: "next servers analyze <serverBackendIP>...",
+				ShortHelp:  "Saves a JSON of all live servers connected to each server backend.",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						return flag.ErrHelp
+					}
+
+					// Add http:// to args if needed
+					for i, backendIP := range args {
+						if !strings.Contains(backendIP, "http://") {
+							args[i] = fmt.Sprintf("http://%s", backendIP)
+						}
+					}
+
+					getLiveServers(env, args)
+
+					return nil
+				},
+			},
+			{
+				Name:       "parse",
+				ShortUsage: "next servers parse <fileName>...",
+				ShortHelp:  "Parse the JSON from next servers to list of servers per buyer ordered by timestamp in a csv and JSON output.",
+				Exec: func(_ context.Context, args []string) error {
+
+					if len(args) > 0 {
+						// Specified file names to parse
+						for _, fileName := range args {
+							if err := parseLiveServerOutput(fileName); err != nil {
+								handleRunTimeError(fmt.Sprintf("Failed to parse live server output for file %s: %v", fileName, err), 0)
+							}
+						}
+					} else {
+						// Parse all file names that exist in the current directory
+						currentDate := time.Now().Local().Format("2006-01-02")
+						idx := 0
+						for {
+							fileName := fmt.Sprintf("servers_%d_%s.json", idx, currentDate)
+							if _, err := os.Stat(fmt.Sprintf("./%s", fileName)); os.IsNotExist(err) {
+								// file name does not exist, done analyzing
+								break
+							}
+
+							if err := parseLiveServerOutput(fileName); err != nil {
+								handleRunTimeError(fmt.Sprintf("Failed to parse live server output for file %s: %v", fileName, err), 0)
+							}
+
+							idx++
+						}
+					}
+
+					return nil
+				},
+			},
+		},
+	}
+
 	var commands = []*ffcli.Command{
 		authCommand,
 		selectCommand,
@@ -2435,6 +2520,7 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 		unsignedCommand,
 		hashCommand,
 		databaseCommand,
+		serversCommand,
 	}
 
 	root := &ffcli.Command{
@@ -2473,6 +2559,9 @@ provided by a JSON file of the form:
   "CustomerCode": "microzon",
   "Live": true,
   "Debug": false // optional
+  "Analytics": false // optional
+  "Billing": false // optional
+  "Trial": true // optional
   "PublicKey": "IQl4JmtP5T8wyqc6EpNk0ymD3iVfvDx3teXZ98ghFqQ1leO6GmKNrQ=="
 }
 
@@ -2719,6 +2808,9 @@ must be one of the following and is case-sensitive:
 
   Live      bool
   Debug     bool
+  Analytics bool
+  Billing   bool
+  Trial     bool
   ShortName string
   PublicKey string
 

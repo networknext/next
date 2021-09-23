@@ -107,9 +107,11 @@ func TestServerInitHandlerFunc_BuyerNotFound(t *testing.T) {
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, unknownBuyerID, datacenterID, datacenterName, unknownPrivateKey)
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -135,9 +137,11 @@ func TestServerInitHandlerFunc_BuyerNotLive(t *testing.T) {
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, privateKey)
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -163,9 +167,11 @@ func TestServerInitHandlerFunc_SigCheckFail(t *testing.T) {
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, privateKey[2:])
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -191,9 +197,11 @@ func TestServerInitHandlerFunc_SDKTooOld(t *testing.T) {
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersion{3, 0, 0}, buyerID, datacenterID, datacenterName, privateKey)
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -219,9 +227,11 @@ func TestServerInitHandlerFunc_Success_DatacenterNotFound(t *testing.T) {
 	datacenterName := "datacenter.name"
 	datacenterID := crypto.HashID(datacenterName)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, privateKey)
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -245,9 +255,11 @@ func TestServerInitHandlerFunc_Success(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
+	serverTracker := storage.NewServerTracker()
+
 	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenter.ID, datacenter.Name, privateKey)
 
-	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, metrics.ServerInitMetrics)
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -258,6 +270,82 @@ func TestServerInitHandlerFunc_Success(t *testing.T) {
 
 	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
 	assert.Equal(t, float64(0), metrics.ServerInitMetrics.DatacenterNotFound.Value())
+}
+
+func TestServerInitHandlerFunc_ServerTracker_DatacenterNotFound_WithoutName(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	datacenterName := ""
+	datacenterID := crypto.HashID(datacenterName)
+
+	serverTracker := storage.NewServerTracker()
+
+	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, privateKey)
+
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.ServerInitResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.ServerInitMetrics.DatacenterNotFound.Value())
+
+	assert.NotEmpty(t, serverTracker.Tracker)
+
+	buyerHexID := fmt.Sprintf("%016x", buyerID)
+	for _, serverInfo := range serverTracker.Tracker[buyerHexID] {
+		assert.Equal(t, serverInfo.DatacenterID, fmt.Sprintf("%016x", datacenterID))
+		assert.Equal(t, serverInfo.DatacenterName, "unknown_init")
+	}
+}
+
+func TestServerInitHandlerFunc_ServerTracker_DatacenterNotFound_WithName(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	datacenterName := "datacenter.name"
+	datacenterID := crypto.HashID(datacenterName)
+
+	serverTracker := storage.NewServerTracker()
+
+	requestData := env.GenerateServerInitRequestPacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, privateKey)
+
+	handler := transport.ServerInitHandlerFunc(env.GetDatabaseWrapper, serverTracker, metrics.ServerInitMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.ServerInitResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.InitResponseOK), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.ServerInitMetrics.DatacenterNotFound.Value())
+
+	assert.NotEmpty(t, serverTracker.Tracker)
+
+	buyerHexID := fmt.Sprintf("%016x", buyerID)
+	for _, serverInfo := range serverTracker.Tracker[buyerHexID] {
+		assert.Equal(t, serverInfo.DatacenterID, fmt.Sprintf("%016x", datacenterID))
+		assert.Equal(t, serverInfo.DatacenterName, datacenterName)
+	}
 }
 
 // Server update handler tests
@@ -287,7 +375,9 @@ func TestServerUpdateHandlerFunc_BuyerNotFound(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -312,7 +402,9 @@ func TestServerUpdateHandlerFunc_BuyerNotLive(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -337,7 +429,9 @@ func TestServerUpdateHandlerFunc_SigCheckFail(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -362,7 +456,9 @@ func TestServerUpdateHandlerFunc_SDKToOld(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -387,7 +483,9 @@ func TestServerUpdateHandlerFunc_DatacenterNotFound(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -410,7 +508,9 @@ func TestServerUpdateHandlerFunc_Success(t *testing.T) {
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
 
-	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.ServerUpdateMetrics)
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
 	handler(responseBuffer, &transport.UDPPacket{
 		Data: requestData,
 	})
@@ -418,7 +518,97 @@ func TestServerUpdateHandlerFunc_Success(t *testing.T) {
 	assert.Equal(t, float64(0), metrics.ServerUpdateMetrics.DatacenterNotFound.Value())
 }
 
+func TestServerUpdateHandlerFunc_ServerTracker_DatacenterNotFound(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	datacenterName := "datacenter.name"
+	datacenterID := crypto.HashID(datacenterName)
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, 10, "10.0.0.1", privateKey)
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
+
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	assert.Equal(t, float64(1), metrics.ServerUpdateMetrics.DatacenterNotFound.Value())
+
+	assert.NotEmpty(t, serverTracker.Tracker)
+
+	buyerHexID := fmt.Sprintf("%016x", buyerID)
+	for _, serverInfo := range serverTracker.Tracker[buyerHexID] {
+		assert.Equal(t, serverInfo.DatacenterID, fmt.Sprintf("%016x", datacenterID))
+		assert.Equal(t, serverInfo.DatacenterName, "unknown_update")
+	}
+}
+
+func TestServerUpdateHandlerFunc_ServerTracker_DatacenterFound(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+	datacenter := env.AddDatacenter("datacenter.name")
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, buyerID, datacenter.ID, datacenter.Name, 10, "10.0.0.1", privateKey)
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
+
+	serverTracker := storage.NewServerTracker()
+
+	handler := transport.ServerUpdateHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, serverTracker, metrics.ServerUpdateMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	assert.Equal(t, float64(0), metrics.ServerUpdateMetrics.DatacenterNotFound.Value())
+
+	assert.NotEmpty(t, serverTracker.Tracker)
+
+	buyerHexID := fmt.Sprintf("%016x", buyerID)
+	for _, serverInfo := range serverTracker.Tracker[buyerHexID] {
+		assert.Equal(t, serverInfo.DatacenterID, fmt.Sprintf("%016x", datacenter.ID))
+		assert.Equal(t, serverInfo.DatacenterName, datacenter.Name)
+	}
+}
+
 // Session update handler
+
+func getErrorLocator() *routing.MaxmindDB {
+	return &routing.MaxmindDB{}
+}
+
+func getSuccessLocator(t *testing.T) *routing.MaxmindDB {
+	// Set IsStaging to true to use sessionID instead of IP Address
+	// when we are not testing IP2Location
+	mmdb := &routing.MaxmindDB{
+		CityFile:  "../../testdata/GeoIP2-City-Test.mmdb",
+		IspFile:   "../../testdata/GeoIP2-ISP-Test.mmdb",
+		IsStaging: true,
+	}
+
+	err := mmdb.OpenCity(context.Background(), mmdb.CityFile)
+	assert.NoError(t, err)
+	err = mmdb.OpenISP(context.Background(), mmdb.IspFile)
+	assert.NoError(t, err)
+
+	return mmdb
+}
+
 func TestSessionUpdateHandlerFunc_Pre_BuyerNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -521,6 +711,34 @@ func TestSessionUpdateHandlerFunc_Pre_ClientTimedOut(t *testing.T) {
 	assert.Equal(t, float64(1), state.Metrics.ClientPingTimedOut.Value())
 }
 
+func TestSessionUpdateHandlerFunc_Pre_LocationVeto(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	state := transport.SessionHandlerState{}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+
+	state.Metrics = metrics.SessionUpdateMetrics
+	state.Database = env.GetDatabaseWrapper()
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics.PostSessionMetrics)
+	state.Packet.BuyerID = buyerID
+	state.Packet.ClientPingTimedOut = false
+
+	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
+	state.PacketData = requestData
+
+	state.IpLocator = getErrorLocator()
+
+	transport.SessionPre(&state)
+
+	assert.True(t, state.Output.RouteState.LocationVeto)
+	assert.Equal(t, float64(1), state.Metrics.ClientLocateFailure.Value())
+}
+
 func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -540,6 +758,10 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
+
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
 
 	assert.True(t, transport.SessionPre(&state))
 
@@ -567,6 +789,10 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
+
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
 
 	assert.True(t, transport.SessionPre(&state))
 
@@ -596,6 +822,10 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
+
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
 
 	assert.True(t, transport.SessionPre(&state))
 
@@ -630,6 +860,10 @@ func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
 
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
+
 	assert.True(t, transport.SessionPre(&state))
 	assert.True(t, state.StaleRouteMatrix)
 	assert.Equal(t, float64(1), state.Metrics.StaleRouteMatrix.Value())
@@ -659,55 +893,11 @@ func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
 	state.PacketData = requestData
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
 
 	assert.False(t, transport.SessionPre(&state))
-}
-
-type errLocator struct{}
-
-func (locator *errLocator) LocateIP(ip net.IP) (routing.Location, error) {
-	return routing.Location{}, fmt.Errorf("failed")
-}
-
-type successLoccator struct{}
-
-func (locator *successLoccator) LocateIP(ip net.IP) (routing.Location, error) {
-	return routing.Location{
-		Continent:   "North America",
-		Country:     "United States",
-		CountryCode: "USA",
-		Region:      "New York",
-		City:        "Albany",
-		Latitude:    float32(42.652580),
-		Longitude:   float32(-73.756233),
-		ISP:         "Spectrum",
-		ASN:         10,
-	}, nil
-}
-
-func TestSessionUpdateHandlerFunc_NewSession_LocationVeto(t *testing.T) {
-	t.Parallel()
-
-	metricsHandler := metrics.LocalHandler{}
-	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
-	assert.NoError(t, err)
-
-	state := transport.SessionHandlerState{
-		IpLocator: &errLocator{},
-		Metrics:   metrics.SessionUpdateMetrics,
-	}
-	transport.SessionUpdateNewSession(&state)
-
-	assert.True(t, state.Output.RouteState.LocationVeto)
-	assert.Equal(t, float64(1), state.Metrics.ClientLocateFailure.Value())
-
-	state.IpLocator = routing.NullIsland
-	state.Metrics.ClientLocateFailure.ValueReset()
-
-	transport.SessionUpdateNewSession(&state)
-
-	assert.True(t, state.Output.RouteState.LocationVeto)
-	assert.Equal(t, float64(1), state.Metrics.ClientLocateFailure.Value())
 }
 
 func TestSessionUpdateHandlerFunc_NewSession_Success(t *testing.T) {
@@ -718,8 +908,7 @@ func TestSessionUpdateHandlerFunc_NewSession_Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	state := transport.SessionHandlerState{
-		IpLocator: &successLoccator{},
-		Metrics:   metrics.SessionUpdateMetrics,
+		Metrics: metrics.SessionUpdateMetrics,
 		Output: transport.SessionData{
 			SliceNumber: 0,
 		},
@@ -728,9 +917,6 @@ func TestSessionUpdateHandlerFunc_NewSession_Success(t *testing.T) {
 
 	assert.Equal(t, uint32(1), state.Output.SliceNumber)
 	assert.Equal(t, state.Output, state.Input)
-
-	assert.False(t, state.Output.RouteState.LocationVeto)
-	assert.Equal(t, float64(0), state.Metrics.ClientLocateFailure.Value())
 }
 
 func TestSessionUpdateHandlerFunc_ExistingSession_BadSessionID(t *testing.T) {
@@ -1547,8 +1733,8 @@ func TestSessionUpdateHandlerFunc_BuyerNotFound_NoResponse(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -1596,8 +1782,8 @@ func TestSessionUpdateHandlerFunc_SigCheckFailed_NoResponse(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -1647,8 +1833,8 @@ func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -1715,8 +1901,8 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testi
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -1810,8 +1996,8 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	assert.NoError(t, err)
 	responseBuffer := bytes.NewBuffer(nil)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return &testLocator{}
+	getIPLocatorFunc := func() *routing.MaxmindDB {
+		return getSuccessLocator(t)
 	}
 
 	getRouteMatrixFunc := func() *routing.RouteMatrix {
@@ -1904,4 +2090,140 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 
 	assert.True(t, sessionData.RouteState.Next)
 	assert.False(t, sessionData.Initial)
+}
+
+func TestCalculateTotalPriceNibblins_SellerPrice(t *testing.T) {
+	t.Parallel()
+
+	routeNumRelays := 2
+
+	seller := routing.Seller{
+		ID:                       "test-seller",
+		Name:                     "test-seller",
+		CompanyCode:              "test-seller",
+		ShortName:                "test-seller",
+		Secret:                   false,
+		EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
+		DatabaseID:               0,
+		CustomerID:               0,
+	}
+
+	var relaySellers [core.MaxRelaysPerRoute]routing.Seller
+	var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+
+	assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
+	for i := 0; i < routeNumRelays; i++ {
+		relaySellers[i] = seller
+		relayEgressPriceOverride[i] = routing.Nibblin(0)
+	}
+
+	envelopeBytesDown := uint64(1)
+	envelopeBytesUp := uint64(1)
+
+	totalPrice := transport.CalculateTotalPriceNibblins(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+
+	assert.Equal(t, routing.Nibblin(40002), totalPrice)
+}
+
+func TestCalculateTotalPriceNibblins_EgressPriceOverride(t *testing.T) {
+	t.Parallel()
+
+	routeNumRelays := 2
+
+	seller := routing.Seller{
+		ID:                       "test-seller",
+		Name:                     "test-seller",
+		CompanyCode:              "test-seller",
+		ShortName:                "test-seller",
+		Secret:                   false,
+		EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
+		DatabaseID:               0,
+		CustomerID:               0,
+	}
+
+	var relaySellers [core.MaxRelaysPerRoute]routing.Seller
+	var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+
+	assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
+	for i := 0; i < routeNumRelays; i++ {
+		relaySellers[i] = seller
+		relayEgressPriceOverride[i] = routing.Nibblin(20000000000000)
+	}
+
+	envelopeBytesDown := uint64(1)
+	envelopeBytesUp := uint64(1)
+
+	totalPrice := transport.CalculateTotalPriceNibblins(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+
+	assert.Equal(t, routing.Nibblin(80002), totalPrice)
+}
+
+func TestCalculateRouteRelaysPrice_SellerPrice(t *testing.T) {
+	t.Parallel()
+
+	routeNumRelays := 2
+
+	seller := routing.Seller{
+		ID:                       "test-seller",
+		Name:                     "test-seller",
+		CompanyCode:              "test-seller",
+		ShortName:                "test-seller",
+		Secret:                   false,
+		EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
+		DatabaseID:               0,
+		CustomerID:               0,
+	}
+
+	var relaySellers [core.MaxRelaysPerRoute]routing.Seller
+	var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+
+	assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
+	for i := 0; i < routeNumRelays; i++ {
+		relaySellers[i] = seller
+		relayEgressPriceOverride[i] = routing.Nibblin(0)
+	}
+
+	envelopeBytesDown := uint64(1)
+	envelopeBytesUp := uint64(1)
+
+	routeRelaysPrice := transport.CalculateRouteRelaysPrice(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+
+	expectedRouteRelaysPrice := [core.MaxRelaysPerRoute]routing.Nibblin{routing.Nibblin(20000), routing.Nibblin(20000), routing.Nibblin(0), routing.Nibblin(0), routing.Nibblin(0)}
+
+	assert.Equal(t, expectedRouteRelaysPrice, routeRelaysPrice)
+}
+
+func TestCalculateRouteRelaysPrice_EgressPriceOverride(t *testing.T) {
+	t.Parallel()
+
+	routeNumRelays := 2
+
+	seller := routing.Seller{
+		ID:                       "test-seller",
+		Name:                     "test-seller",
+		CompanyCode:              "test-seller",
+		ShortName:                "test-seller",
+		Secret:                   false,
+		EgressPriceNibblinsPerGB: routing.Nibblin(10000000000000),
+		DatabaseID:               0,
+		CustomerID:               0,
+	}
+
+	var relaySellers [core.MaxRelaysPerRoute]routing.Seller
+	var relayEgressPriceOverride [core.MaxRelaysPerRoute]routing.Nibblin
+
+	assert.Less(t, routeNumRelays, core.MaxRelaysPerRoute)
+	for i := 0; i < routeNumRelays; i++ {
+		relaySellers[i] = seller
+		relayEgressPriceOverride[i] = routing.Nibblin(20000000000000)
+	}
+
+	envelopeBytesDown := uint64(1)
+	envelopeBytesUp := uint64(1)
+
+	routeRelaysPrice := transport.CalculateRouteRelaysPrice(routeNumRelays, relaySellers, relayEgressPriceOverride, envelopeBytesUp, envelopeBytesDown)
+
+	expectedRouteRelaysPrice := [core.MaxRelaysPerRoute]routing.Nibblin{routing.Nibblin(40000), routing.Nibblin(40000), routing.Nibblin(0), routing.Nibblin(0), routing.Nibblin(0)}
+
+	assert.Equal(t, expectedRouteRelaysPrice, routeRelaysPrice)
 }

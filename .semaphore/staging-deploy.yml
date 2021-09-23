@@ -44,6 +44,10 @@ blocks:
           commands:
             - make build-beacon-inserter-artifacts-staging
             - make publish-beacon-inserter-artifacts-staging
+        - name: Analytics Pusher
+          commands:
+            - make build-analytics-pusher-artifacts-staging
+            - make publish-analytics-pusher-artifacts-staging
         - name: Analytics
           commands:
             - make build-analytics-artifacts-staging

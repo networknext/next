@@ -1,9 +1,11 @@
 package routing_test
 
 import (
+	"math/rand"
 	"net"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/core"
@@ -12,19 +14,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const LosAngelesLatitude = 33.9909
-const LosAngelesLongitude = -118.2144
+const (
+	LosAngelesLatitude  = 33.9909
+	LosAngelesLongitude = -118.2144
 
-const TokyoLatitude = 35.6762
-const TokyoLongitude = 139.6503
+	TokyoLatitude  = 35.6762
+	TokyoLongitude = 139.6503
 
-const PapuaNewGuineaLatitude = -6.3150
-const PapuaNewGuineaLongitude = 143.9555
+	PapuaNewGuineaLatitude  = -6.3150
+	PapuaNewGuineaLongitude = 143.9555
 
-const HonoluluLatitude = 21.3069
-const HonoluluLongitude = -157.8583
+	HonoluluLatitude  = 21.3069
+	HonoluluLongitude = -157.8583
+)
 
-func getRouteMatrix(t *testing.T) routing.RouteMatrix {
+func getRouteMatrix(t *testing.T, version uint32) routing.RouteMatrix {
 	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
 	assert.NoError(t, err)
 	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
@@ -45,36 +49,150 @@ func getRouteMatrix(t *testing.T) routing.RouteMatrix {
 		RouteEntries:       []core.RouteEntry{},
 	}
 
+	if version >= 2 {
+		expected.Version = 2
+
+		expected.DestRelays = []bool{false, false, false, true}
+	}
+
+	if version >= 3 {
+		expected.Version = 3
+
+		pingStat := analytics.PingStatsEntry{
+			Timestamp:  uint64(time.Now().Unix()),
+			RelayA:     uint64(0),
+			RelayB:     uint64(1),
+			RTT:        float32(rand.Int63n(255)),
+			Jitter:     float32(rand.Int63n(255)),
+			PacketLoss: float32(rand.Int63n(100)),
+			Routable:   true,
+			InstanceID: "test_ping_stat",
+			Debug:      false,
+		}
+
+		expected.PingStats = []analytics.PingStatsEntry{pingStat}
+
+		relayStat := analytics.RelayStatsEntry{
+			Timestamp:     uint64(time.Now().Unix()),
+			ID:            uint64(0),
+			NumSessions:   uint32(1),
+			MaxSessions:   uint32(1),
+			NumRoutable:   uint32(4),
+			NumUnroutable: uint32(0),
+		}
+
+		expected.RelayStats = []analytics.RelayStatsEntry{relayStat}
+	}
+
+	if version >= 4 {
+		expected.Version = 4
+
+		expected.RelayStats[0].Full = true
+
+		expected.FullRelayIDs = []uint64{1}
+	}
+
 	return expected
 }
 
 func TestRouteMatrixSerialize(t *testing.T) {
-	expected := getRouteMatrix(t)
+	t.Parallel()
 
-	buffer := make([]byte, 10000)
+	t.Run("serialize v0 and v1", func(t *testing.T) {
+		expected := getRouteMatrix(t, 0)
 
-	ws, err := encoding.CreateWriteStream(buffer)
-	assert.NoError(t, err)
-	err = expected.Serialize(ws)
-	assert.NoError(t, err)
+		buffer := make([]byte, 10000)
 
-	ws.Flush()
-	data := ws.GetData()[:ws.GetBytesProcessed()]
+		ws, err := encoding.CreateWriteStream(buffer)
+		assert.NoError(t, err)
+		err = expected.Serialize(ws)
+		assert.NoError(t, err)
 
-	var actual routing.RouteMatrix
-	rs := encoding.CreateReadStream(data)
-	err = actual.Serialize(rs)
-	assert.NoError(t, err)
+		ws.Flush()
+		data := ws.GetData()[:ws.GetBytesProcessed()]
 
-	assert.Equal(t, expected, actual)
+		var actual routing.RouteMatrix
+		rs := encoding.CreateReadStream(data)
+		err = actual.Serialize(rs)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("serialize v2", func(t *testing.T) {
+		expected := getRouteMatrix(t, 2)
+
+		buffer := make([]byte, 10000)
+
+		ws, err := encoding.CreateWriteStream(buffer)
+		assert.NoError(t, err)
+		err = expected.Serialize(ws)
+		assert.NoError(t, err)
+
+		ws.Flush()
+		data := ws.GetData()[:ws.GetBytesProcessed()]
+
+		var actual routing.RouteMatrix
+		rs := encoding.CreateReadStream(data)
+		err = actual.Serialize(rs)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("serialize v3", func(t *testing.T) {
+		expected := getRouteMatrix(t, 3)
+
+		buffer := make([]byte, 10000)
+
+		ws, err := encoding.CreateWriteStream(buffer)
+		assert.NoError(t, err)
+		err = expected.Serialize(ws)
+		assert.NoError(t, err)
+
+		ws.Flush()
+		data := ws.GetData()[:ws.GetBytesProcessed()]
+
+		var actual routing.RouteMatrix
+		rs := encoding.CreateReadStream(data)
+		err = actual.Serialize(rs)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("serialize v4", func(t *testing.T) {
+		expected := getRouteMatrix(t, 4)
+
+		buffer := make([]byte, 10000)
+
+		ws, err := encoding.CreateWriteStream(buffer)
+		assert.NoError(t, err)
+		err = expected.Serialize(ws)
+		assert.NoError(t, err)
+
+		ws.Flush()
+		data := ws.GetData()[:ws.GetBytesProcessed()]
+
+		var actual routing.RouteMatrix
+		rs := encoding.CreateReadStream(data)
+		err = actual.Serialize(rs)
+		assert.NoError(t, err)
+
+		assert.NotEmpty(t, actual.FullRelayIndicesSet)
+		actual.FullRelayIndicesSet = nil
+
+		assert.Equal(t, expected, actual)
+	})
 }
 
 func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
-	original := getRouteMatrix(t)
+	original := getRouteMatrix(t, 0)
+	original.CreatedAt = 0
 	expected := original
 	original.CreatedAt = 19803
 
-	buffer := make([]byte, 10000)
+	buffer := make([]byte, 20000)
 
 	ws, err := encoding.CreateWriteStream(buffer)
 	assert.NoError(t, err)
@@ -107,6 +225,8 @@ func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
 // todo: GetNearRelays tests should be extended to also check the second value returned, array of relay addresses is correct
 
 func TestRouteMatrixNoNearRelays(t *testing.T) {
+	t.Parallel()
+
 	routeMatrix := routing.RouteMatrix{}
 
 	nearRelayIDs, nearRelayAddresses := routeMatrix.GetNearRelays(0, 0, 0, 0, 0, core.MaxNearRelays)
@@ -116,7 +236,9 @@ func TestRouteMatrixNoNearRelays(t *testing.T) {
 }
 
 func TestRouteMatrixGetNearRelays(t *testing.T) {
-	routeMatrix := getRouteMatrix(t)
+	t.Parallel()
+
+	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
 
 	expected := []uint64{1, 4, 3}
 
@@ -126,7 +248,9 @@ func TestRouteMatrixGetNearRelays(t *testing.T) {
 }
 
 func TestRouteMatrixGetNearRelaysWithMax(t *testing.T) {
-	routeMatrix := getRouteMatrix(t)
+	t.Parallel()
+
+	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
 
 	expected := routeMatrix.RelayIDs[:1]
 
@@ -136,7 +260,9 @@ func TestRouteMatrixGetNearRelaysWithMax(t *testing.T) {
 }
 
 func TestRouteMatrixGetNearRelaysNoNearRelaysAroundSource(t *testing.T) {
-	routeMatrix := getRouteMatrix(t)
+	t.Parallel()
+
+	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
 
 	// Zero out the Tokyo relay lat/long so that it is far enough away that it
 	// won't be picked up by the speed of light check
@@ -151,7 +277,9 @@ func TestRouteMatrixGetNearRelaysNoNearRelaysAroundSource(t *testing.T) {
 }
 
 func TestRouteMatrixGetNearRelaysNoNearRelaysAroundDest(t *testing.T) {
-	routeMatrix := getRouteMatrix(t)
+	t.Parallel()
+
+	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
 
 	// Zero out the Los Angeles relay lat/long so that it is far enough away that it
 	// won't be picked up by the speed of light check
@@ -166,7 +294,9 @@ func TestRouteMatrixGetNearRelaysNoNearRelaysAroundDest(t *testing.T) {
 }
 
 func TestRouteMatrixGetDatacenterIDsEmpty(t *testing.T) {
-	routeMatrix := getRouteMatrix(t)
+	t.Parallel()
+
+	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
 
 	expected := []uint64{}
 	actual := routeMatrix.GetDatacenterRelayIDs(0)
@@ -174,7 +304,9 @@ func TestRouteMatrixGetDatacenterIDsEmpty(t *testing.T) {
 }
 
 func TestRouteMatrixGetDatacenterIDsSuccess(t *testing.T) {
-	routeMatrix := getRouteMatrix(t)
+	t.Parallel()
+
+	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
 
 	expected := routeMatrix.RelayIDs
 	actual := routeMatrix.GetDatacenterRelayIDs(10)
@@ -182,6 +314,7 @@ func TestRouteMatrixGetDatacenterIDsSuccess(t *testing.T) {
 }
 
 func TestRouteMatrixGetJsonAnalysis(t *testing.T) {
+	t.Parallel()
 
 	fileName := "../../testdata/optimize.bin.prod-5_may"
 	file, err := os.Open(fileName)
@@ -246,18 +379,11 @@ func TestRouteMatrixGetJsonAnalysis(t *testing.T) {
 }
 
 func TestRouteMatrixRelayFull(t *testing.T) {
-	expected := getRouteMatrix(t)
-	// Fill in all the info up to v4
-	expected.BinFileBytes = 0
-	expected.BinFileData = []byte{}
-	expected.CreatedAt = uint64(0)
-	expected.Version = routing.RouteMatrixSerializeVersion
-	expected.DestRelays = []bool{false, false, false, false}
-	expected.PingStats = []analytics.PingStatsEntry{}
-	expected.RelayStats = []analytics.RelayStatsEntry{}
-	expected.FullRelayIDs = []uint64{1}
+	t.Parallel()
 
-	buffer := make([]byte, 1000)
+	expected := getRouteMatrix(t, 4)
+
+	buffer := make([]byte, 20000)
 
 	ws, err := encoding.CreateWriteStream(buffer)
 	assert.NoError(t, err)

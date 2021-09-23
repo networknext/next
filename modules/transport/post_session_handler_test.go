@@ -32,6 +32,8 @@ func (biller *badBiller) Bill2(ctx context.Context, billingEntry *billing.Billin
 	return errors.New("bad bill")
 }
 
+func (biller *badBiller) FlushBuffer(ctx context.Context) {}
+
 func (biller *badBiller) Close() {}
 
 type mockBiller struct {
@@ -54,6 +56,8 @@ func (biller *mockBiller) Bill2(ctx context.Context, billingEntry *billing.Billi
 	biller.calledChan2 <- true
 	return nil
 }
+
+func (biller *mockBiller) FlushBuffer(ctx context.Context) {}
 
 func (biller *mockBiller) Close() {}
 
@@ -165,6 +169,7 @@ func testBillingEntry2() *billing.BillingEntry2 {
 		Summary:                         true,
 		UseDebug:                        false,
 		Debug:                           "",
+		RouteDiversity:                  5,
 		DatacenterID:                    rand.Uint64(),
 		BuyerID:                         rand.Uint64(),
 		UserHash:                        rand.Uint64(),
@@ -172,6 +177,7 @@ func testBillingEntry2() *billing.BillingEntry2 {
 		EnvelopeBytesUp:                 rand.Uint64(),
 		Latitude:                        rand.Float32(),
 		Longitude:                       rand.Float32(),
+		ClientAddress:                   "127.0.0.1",
 		ISP:                             "ISP",
 		ConnectionType:                  1,
 		PlatformType:                    3,
@@ -191,6 +197,12 @@ func testBillingEntry2() *billing.BillingEntry2 {
 		NearRelayRTTs:                   [billing.BillingEntryMaxNearRelays]int32{rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31()},
 		NearRelayJitters:                [billing.BillingEntryMaxNearRelays]int32{rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31()},
 		NearRelayPacketLosses:           [billing.BillingEntryMaxNearRelays]int32{rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31(), rand.Int31()},
+		TotalPriceSum:                   rand.Uint64(),
+		EnvelopeBytesUpSum:              rand.Uint64(),
+		EnvelopeBytesDownSum:            rand.Uint64(),
+		SessionDuration:                 5 * billing.BillingSliceSeconds,
+		EverOnNext:                      true,
+		DurationOnNext:                  4 * billing.BillingSliceSeconds,
 		NextRTT:                         rand.Int31(),
 		NextJitter:                      rand.Int31(),
 		NextPacketLoss:                  rand.Int31(),
@@ -200,7 +212,6 @@ func testBillingEntry2() *billing.BillingEntry2 {
 		NextRelays:                      [billing.BillingEntryMaxRelays]uint64{rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64()},
 		NextRelayPrice:                  [billing.BillingEntryMaxRelays]uint64{rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64()},
 		TotalPrice:                      rand.Uint64(),
-		RouteDiversity:                  5,
 		Uncommitted:                     false,
 		Multipath:                       false,
 		RTTReduction:                    true,
@@ -218,6 +229,8 @@ func testBillingEntry2() *billing.BillingEntry2 {
 		DatacenterNotEnabled:            false,
 		BuyerNotLive:                    false,
 		StaleRouteMatrix:                false,
+		NextBytesUp:                     rand.Uint64(),
+		NextBytesDown:                   rand.Uint64(),
 	}
 }
 
@@ -347,7 +360,7 @@ func TestPostSessionHandlerSendVanityMetricsFull(t *testing.T) {
 	assert.NoError(t, err)
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
-	postSessionHandler.SendVanityMetric(testBillingEntry())
+	postSessionHandler.SendVanityMetric(testBillingEntry2())
 
 	assert.Equal(t, postSessionHandler.VanityBufferSize(), uint64(0))
 	assert.Equal(t, 1.0, metrics.VanityBufferFull.Value())
@@ -359,7 +372,7 @@ func TestPostSessionHandlerSendVanityMetricSuccess(t *testing.T) {
 	assert.NoError(t, err)
 
 	postSessionHandler := transport.NewPostSessionHandler(4, 1000, nil, 10, nil, 10, true, &billing.NoOpBiller{}, &billing.NoOpBiller{}, true, false, log.NewNopLogger(), metrics)
-	postSessionHandler.SendVanityMetric(testBillingEntry())
+	postSessionHandler.SendVanityMetric(testBillingEntry2())
 
 	assert.Equal(t, postSessionHandler.VanityBufferSize(), uint64(1))
 	assert.Equal(t, 1.0, metrics.VanityMetricsSent.Value())
@@ -555,7 +568,7 @@ func TestPostSessionHandlerStartProcessingBillingFailure(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -587,7 +600,7 @@ func TestPostSessionHandlerStartProcessingBilling2Failure(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -619,7 +632,7 @@ func TestPostSessionHandlerStartProcessingBillingSuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -651,7 +664,7 @@ func TestPostSessionHandlerStartProcessingBilling2Success(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -685,11 +698,11 @@ func TestPostSessionHandlerStartProcessingVanityTransmitFailure(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
-	postSessionHandler.SendVanityMetric(testBillingEntry())
+	postSessionHandler.SendVanityMetric(testBillingEntry2())
 	<-vanityPublisher.calledChan
 
 	ctxCancelFunc()
@@ -720,11 +733,11 @@ func TestPostSessionHandlerStartProcessingVanitySuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
-	postSessionHandler.SendVanityMetric(testBillingEntry())
+	postSessionHandler.SendVanityMetric(testBillingEntry2())
 	<-vanityPublisher.calledChan
 
 	ctxCancelFunc()
@@ -754,7 +767,7 @@ func TestPostSessionHandlerStartProcessingPortalCountFailure(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -787,12 +800,12 @@ func TestPostSessionHandlerStartProcessingPortalCountSuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
 	countData := testCountData()
-	countDataBytes, err := countData.MarshalBinary()
+	countDataBytes, err := transport.WriteSessionCountData(countData)
 	assert.NoError(t, err)
 
 	postSessionHandler.SendPortalCounts(countData)
@@ -829,7 +842,7 @@ func TestPostSessionHandlerStartProcessingPortalDataFailure(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
@@ -862,12 +875,12 @@ func TestPostSessionHandlerStartProcessingPortalDataSuccess(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		postSessionHandler.StartProcessing(ctx)
+		postSessionHandler.StartProcessing(ctx, &wg)
 		wg.Done()
 	}()
 
 	portalData := testPortalData()
-	portalDataBytes, err := portalData.MarshalBinary()
+	portalDataBytes, err := transport.WriteSessionPortalData(portalData)
 	assert.NoError(t, err)
 
 	postSessionHandler.SendPortalData(portalData)

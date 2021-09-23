@@ -8,7 +8,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"encoding/gob"
 	"expvar"
 	"fmt"
@@ -20,6 +19,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -31,7 +31,6 @@ import (
 
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/billing"
-	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/config"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
@@ -41,6 +40,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/pubsub"
 
 	"golang.org/x/sys/unix"
@@ -49,38 +49,13 @@ import (
 	googlepubsub "cloud.google.com/go/pubsub"
 )
 
-// MaxRelayCount is the maximum number of relays you can run locally with the firestore emulator
-const MaxRelayCount = 10
-
 var (
 	buildtime     string
 	commitMessage string
 	sha           string
 	tag           string
+	keys          middleware.JWKS
 )
-
-// A mock locator used in staging to set each session to a random, unique lat/long
-type stagingLocator struct {
-	SessionID uint64
-}
-
-func (locator *stagingLocator) LocateIP(ip net.IP) (routing.Location, error) {
-	// Generate a random lat/long from the session ID
-	sessionIDBytes := [8]byte{}
-	binary.LittleEndian.PutUint64(sessionIDBytes[0:8], locator.SessionID)
-
-	// Randomize the location by using 4 bits of the sessionID for the lat, and the other 4 for the long
-	latBits := binary.LittleEndian.Uint32(sessionIDBytes[0:4])
-	longBits := binary.LittleEndian.Uint32(sessionIDBytes[4:8])
-
-	lat := (float32(latBits)) / 0xFFFFFFFF
-	long := (float32(longBits)) / 0xFFFFFFFF
-
-	return routing.Location{
-		Latitude:  (-90.0 + lat*180.0) * 0.5,
-		Longitude: -180.0 + long*360.0,
-	}, nil
-}
 
 // Allows us to return an exit code and allows log flushes and deferred functions
 // to finish before exiting.
@@ -100,7 +75,7 @@ func mainReturnWithCode() int {
 		core.Debug("running as debug")
 	}
 
-	ctx := context.Background()
+	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	gcpProjectID := backend.GetGCPProjectID()
 
@@ -179,62 +154,76 @@ func mainReturnWithCode() int {
 	routerPrivateKey := [crypto.KeySize]byte{}
 	copy(routerPrivateKey[:], routerPrivateKeySlice)
 
-	getIPLocatorFunc := func(sessionID uint64) routing.IPLocator {
-		return routing.NullIsland
-	}
-
-	// Setup maxmind download go routine
-	maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute*1)
-	if err != nil {
-		maxmindSyncInterval = time.Minute * 1
-	}
-
-	// Open the Maxmind DB and create a routing.MaxmindDB from it
 	maxmindCityFile := envvar.Get("MAXMIND_CITY_DB_FILE", "")
+	if maxmindCityFile == "" {
+		core.Error("could not get maxmind city file")
+		return 1
+	}
+
 	maxmindISPFile := envvar.Get("MAXMIND_ISP_DB_FILE", "")
-	if maxmindCityFile != "" && maxmindISPFile != "" {
-		mmdb := &routing.MaxmindDB{
-			CityFile: maxmindCityFile,
-			IspFile:  maxmindISPFile,
-		}
-		var mmdbMutex sync.RWMutex
+	if maxmindISPFile == "" {
+		core.Error("could not get maxmind isp file")
+		return 1
+	}
 
-		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
-			mmdbMutex.RLock()
-			mmdbRet := mmdb
-			mmdbMutex.RUnlock()
-			return mmdbRet
+	// function to get mmdb under mutex
+
+	mmdb := &routing.MaxmindDB{
+		CityFile:  maxmindCityFile,
+		IspFile:   maxmindISPFile,
+		IsStaging: env == "staging",
+	}
+
+	if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
+		core.Error("could not open maxmind city/isp files: %v", err)
+		return 1
+	}
+
+	var mmdbMutex sync.RWMutex
+
+	getIPLocator := func() *routing.MaxmindDB {
+		mmdbMutex.RLock()
+		mmdbRet := mmdb
+		mmdbMutex.RUnlock()
+		return mmdbRet
+	}
+
+	// Sync mmdb
+	{
+		maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Minute*1)
+		if err != nil {
+			maxmindSyncInterval = time.Minute * 1
 		}
 
-		if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-			core.Error("max mind db sync error: %v", err)
-			return 1
-		}
-
-		ticker := time.NewTicker(maxmindSyncInterval)
 		go func() {
+			ticker := time.NewTicker(maxmindSyncInterval)
+
 			for {
 				select {
 				case <-ticker.C:
-					if err := mmdb.Sync(ctx, maxmindSyncMetrics); err != nil {
-						core.Error("max mind db sync error: %v", err)
+					// Load the new MMDB
+					newMMDB := &routing.MaxmindDB{
+						CityFile:  maxmindCityFile,
+						IspFile:   maxmindISPFile,
+						IsStaging: env == "staging",
+					}
+
+					if err := newMMDB.Sync(ctx, maxmindSyncMetrics); err != nil {
+						core.Error("could not update maxmind db: %v", err)
 						continue
 					}
+
+					// Pointer swap under mutex
+					mmdbMutex.Lock()
+					mmdb.CloseCity()
+					mmdb.CloseISP()
+					mmdb = newMMDB
+					mmdbMutex.Unlock()
 				case <-ctx.Done():
 					return
 				}
 			}
 		}()
-	}
-
-	// Use a custom IP locator for staging so that clients
-	// have different, random lat/longs
-	if env == "staging" {
-		getIPLocatorFunc = func(sessionID uint64) routing.IPLocator {
-			return &stagingLocator{
-				SessionID: sessionID,
-			}
-		}
 	}
 
 	staleDuration, err := envvar.GetDuration("MATRIX_STALE_DURATION", 20*time.Second)
@@ -299,109 +288,112 @@ func mainReturnWithCode() int {
 				Timeout: time.Second * 4,
 			}
 
-			syncTimer := helpers.NewSyncTimer(syncInterval)
+			ticker := time.NewTicker(syncInterval)
 
 			for {
+				select {
+				case <-ticker.C:
 
-				syncTimer.Run()
+					var buffer []byte
+					start := time.Now()
 
-				var buffer []byte
-				start := time.Now()
+					var routeMatrixReader io.ReadCloser
 
-				var routeMatrixReader io.ReadCloser
+					if f, err := os.Open(uri); err == nil {
+						routeMatrixReader = f
+					}
 
-				if f, err := os.Open(uri); err == nil {
-					routeMatrixReader = f
+					if r, err := httpClient.Get(uri); err == nil {
+						routeMatrixReader = r.Body
+					}
+
+					if routeMatrixReader == nil {
+						clearEverything()
+						backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Add(1)
+						continue
+					}
+
+					buffer, err = ioutil.ReadAll(routeMatrixReader)
+
+					routeMatrixReader.Close()
+
+					if err != nil {
+						core.Error("faired to read route matrix data: %v", err)
+						clearEverything()
+						backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
+						continue
+					}
+
+					if len(buffer) == 0 {
+						core.Debug("route matrix buffer is empty")
+						clearEverything()
+						backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Add(1)
+						continue
+					}
+
+					var newRouteMatrix routing.RouteMatrix
+					readStream := encoding.CreateReadStream(buffer)
+					if err := newRouteMatrix.Serialize(readStream); err != nil {
+						core.Error("failed to serialize route matrix: %v", err)
+						clearEverything()
+						backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Add(1)
+						continue
+					}
+
+					if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
+						core.Error("route matrix is stale")
+						backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
+						continue
+					}
+
+					routeEntriesTime := time.Since(start)
+					duration := float64(routeEntriesTime.Milliseconds())
+					backendMetrics.RouteMatrixUpdateDuration.Set(duration)
+					if duration > 250 {
+						core.Error("long route matrix duration %dms", int(duration))
+						backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
+					}
+
+					// update some statistics from the route matrix
+
+					numRoutes := int32(0)
+					for i := range newRouteMatrix.RouteEntries {
+						numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
+					}
+					backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
+					backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
+
+					// decode the database in the route matrix
+
+					var newDatabase routing.DatabaseBinWrapper
+
+					databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
+					decoder := gob.NewDecoder(databaseBuffer)
+					err := decoder.Decode(&newDatabase)
+					if err == io.EOF {
+						core.Error("database.bin is empty")
+						clearEverything()
+						backendMetrics.ErrorMetrics.BinWrapperEmpty.Add(1)
+						continue
+					}
+					if err != nil {
+						core.Error("failed to read database.bin: %v", err)
+						clearEverything()
+						backendMetrics.ErrorMetrics.BinWrapperFailure.Add(1)
+						continue
+					}
+
+					// pointer swap route matrix and database atomically
+
+					routeMatrixMutex.Lock()
+					databaseMutex.Lock()
+					routeMatrix = &newRouteMatrix
+					database = &newDatabase
+					databaseMutex.Unlock()
+					routeMatrixMutex.Unlock()
+				case <-ctx.Done():
+					return
 				}
-
-				if r, err := httpClient.Get(uri); err == nil {
-					routeMatrixReader = r.Body
-				}
-
-				if routeMatrixReader == nil {
-					clearEverything()
-					backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Add(1)
-					continue
-				}
-
-				buffer, err = ioutil.ReadAll(routeMatrixReader)
-
-				routeMatrixReader.Close()
-
-				if err != nil {
-					core.Error("faired to read route matrix data: %v", err)
-					clearEverything()
-					backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
-					continue
-				}
-
-				if len(buffer) == 0 {
-					core.Debug("route matrix buffer is empty")
-					clearEverything()
-					backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Add(1)
-					continue
-				}
-
-				var newRouteMatrix routing.RouteMatrix
-				readStream := encoding.CreateReadStream(buffer)
-				if err := newRouteMatrix.Serialize(readStream); err != nil {
-					core.Error("failed to serialize route matrix: %v", err)
-					clearEverything()
-					backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Add(1)
-					continue
-				}
-
-				if newRouteMatrix.CreatedAt+uint64(staleDuration.Seconds()) < uint64(time.Now().Unix()) {
-					core.Error("route matrix is stale")
-					backendMetrics.ErrorMetrics.StaleRouteMatrix.Add(1)
-					continue
-				}
-
-				routeEntriesTime := time.Since(start)
-				duration := float64(routeEntriesTime.Milliseconds())
-				backendMetrics.RouteMatrixUpdateDuration.Set(duration)
-				if duration > 250 {
-					core.Error("long route matrix duration %dms", int(duration))
-					backendMetrics.RouteMatrixUpdateLongDuration.Add(1)
-				}
-
-				// update some statistics from the route matrix
-
-				numRoutes := int32(0)
-				for i := range newRouteMatrix.RouteEntries {
-					numRoutes += newRouteMatrix.RouteEntries[i].NumRoutes
-				}
-				backendMetrics.RouteMatrixNumRoutes.Set(float64(numRoutes))
-				backendMetrics.RouteMatrixBytes.Set(float64(len(buffer)))
-
-				// decode the database in the route matrix
-
-				var newDatabase routing.DatabaseBinWrapper
-
-				databaseBuffer := bytes.NewBuffer(newRouteMatrix.BinFileData)
-				decoder := gob.NewDecoder(databaseBuffer)
-				err := decoder.Decode(&newDatabase)
-				if err == io.EOF {
-					core.Error("database.bin is empty")
-					clearEverything()
-					backendMetrics.ErrorMetrics.BinWrapperEmpty.Add(1)
-					continue
-				}
-				if err != nil {
-					core.Error("failed to read database.bin: %v", err)
-					clearEverything()
-					backendMetrics.ErrorMetrics.BinWrapperFailure.Add(1)
-					continue
-				}
-
-				// pointer swap route matrix and database atomically
-
-				routeMatrixMutex.Lock()
-				databaseMutex.Lock()
-				routeMatrix = &newRouteMatrix
-				database = &newDatabase
-				databaseMutex.Unlock()
-				routeMatrixMutex.Unlock()
 			}
 		}()
 	}
@@ -412,13 +404,13 @@ func mainReturnWithCode() int {
 		{
 			Name:        "FEATURE_BILLING",
 			Enum:        config.FEATURE_BILLING,
-			Value:       true,
+			Value:       false,
 			Description: "Inserts BillingEntry types to Google Pub/Sub",
 		},
 		{
 			Name:        "FEATURE_BILLING2",
 			Enum:        config.FEATURE_BILLING2,
-			Value:       false,
+			Value:       true,
 			Description: "Inserts BillingEntry2 types to Google Pub/Sub",
 		},
 		{
@@ -587,8 +579,12 @@ func mainReturnWithCode() int {
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
+	var wgPostSession sync.WaitGroup
 	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, biller2, featureBilling, featureBilling2, logger, backendMetrics.PostSessionMetrics)
-	go postSessionHandler.StartProcessing(ctx)
+	go postSessionHandler.StartProcessing(ctx, &wgPostSession)
+
+	// Create a server tracker to keep track of which servers are sending updates to this backend
+	serverTracker := storage.NewServerTracker()
 
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", getDatabase)
 	if err != nil {
@@ -647,12 +643,49 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	newKeys, err := middleware.FetchAuth0Cert()
+	if err != nil {
+		core.Error("faild to fetch auth0 cert: %v", err)
+		os.Exit(1)
+	}
+	keys = newKeys
+
+	go func() {
+		fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+		if err != nil {
+			core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
+			os.Exit(1)
+		}
+
+		for {
+			newKeys, err := middleware.FetchAuth0Cert()
+			if err != nil {
+				continue
+			}
+			keys = newKeys
+			time.Sleep(fetchAuthCertInterval)
+		}
+	}()
+
 	// Start HTTP server
 	{
+		allowedOrigins := envvar.Get("ALLOWED_ORIGINS", "")
+		if allowedOrigins == "" {
+			core.Debug("unable to parse ALLOWED_ORIGINS environment variable")
+		}
+
+		audience := envvar.Get("JWT_AUDIENCE", "")
+		if audience == "" {
+			core.Error("unable to parse JWT_AUDIENCE environment variable")
+		}
+
 		router := mux.NewRouter()
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 		router.Handle("/debug/vars", expvar.Handler())
+
+		serverTrackerHandler := http.HandlerFunc(transport.ServerTrackerHandlerFunc(serverTracker))
+		router.Handle("/servers", middleware.PlainHttpAuthMiddleware(keys, audience, serverTrackerHandler, strings.Split(allowedOrigins, ",")))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
@@ -755,9 +788,9 @@ func mainReturnWithCode() int {
 		},
 	}
 
-	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, backendMetrics.ServerInitMetrics)
-	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, backendMetrics.ServerUpdateMetrics)
-	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocatorFunc, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
+	serverInitHandler := transport.ServerInitHandlerFunc(getDatabase, serverTracker, backendMetrics.ServerInitMetrics)
+	serverUpdateHandler := transport.ServerUpdateHandlerFunc(getDatabase, postSessionHandler, serverTracker, backendMetrics.ServerUpdateMetrics)
+	sessionUpdateHandler := transport.SessionUpdateHandlerFunc(getIPLocator, getRouteMatrix, multipathVetoHandler, getDatabase, routerPrivateKey, postSessionHandler, backendMetrics.SessionUpdateMetrics, staleDuration)
 
 	for i := 0; i < numThreads; i++ {
 		go func(thread int) {
@@ -833,10 +866,17 @@ func mainReturnWithCode() int {
 
 	fmt.Printf("started udp server on port %s\n\n", udpPort)
 
-	// Wait for interrupt signal
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
+	<-termChan
+	fmt.Println("Received shutdown signal.")
+
+	ctxCancelFunc()
+	// Wait for essential post session goroutines to finish up
+	wgPostSession.Wait()
+
+	fmt.Println("Successfully shutdown.")
 
 	return 0
 }

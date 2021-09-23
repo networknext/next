@@ -26,7 +26,7 @@ var Keys contextKeys = contextKeys{
 	UserKey:              "user",
 }
 
-func JSONRPCMiddleware(audience string, next http.Handler, allowedOrigins []string) http.Handler {
+func JSONRPCMiddleware(keys JWKS, audience string, next http.Handler, allowedOrigins []string) http.Handler {
 	if audience == "" {
 		return next
 	}
@@ -49,7 +49,7 @@ func JSONRPCMiddleware(audience string, next http.Handler, allowedOrigins []stri
 				return token, errors.New("Invalid issuer.")
 			}
 
-			cert, err := getPemCert(token)
+			cert, err := getPemCert(keys, token)
 			if err != nil {
 				return nil, err
 			}
