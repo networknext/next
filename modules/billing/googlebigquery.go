@@ -26,6 +26,7 @@ type GoogleBigQueryClient struct {
 	SummaryTableInserter *bigquery.Inserter
 	BatchSize            int
 	SummaryBatchSize     int
+	BatchSizePercent     float64
 	FeatureBilling       bool
 	FeatureBilling2      bool
 
@@ -100,7 +101,7 @@ func (bq *GoogleBigQueryClient) Bill2(ctx context.Context, entry *BillingEntry2)
 		bq.summaryBufferMutex2.RUnlock()
 
 		if bufferLength >= bq.SummaryBatchSize {
-			return errors.New("summaryEntries2 buffer full")
+			return &ErrSummaryEntries2BufferFull{}
 		}
 
 	} else {
@@ -111,7 +112,7 @@ func (bq *GoogleBigQueryClient) Bill2(ctx context.Context, entry *BillingEntry2)
 		bq.bufferMutex2.RUnlock()
 
 		if bufferLength >= bq.BatchSize {
-			return errors.New("entries2 buffer full")
+			return &ErrEntries2BufferFull{}
 		}
 	}
 
@@ -234,7 +235,7 @@ func (bq *GoogleBigQueryClient) WriteLoop2(ctx context.Context, wg *sync.WaitGro
 			bq.buffer2 = append(bq.buffer2, entry)
 			bufferLength := len(bq.buffer2)
 
-			if bufferLength >= bq.BatchSize {
+			if float64(bufferLength) >= float64(bq.BatchSize)*bq.BatchSizePercent {
 				if err := bq.TableInserter.Put(context.Background(), bq.buffer2); err != nil {
 					bq.bufferMutex2.Unlock()
 
@@ -305,7 +306,7 @@ func (bq *GoogleBigQueryClient) SummaryWriteLoop2(ctx context.Context, wg *sync.
 			bq.summaryBuffer2 = append(bq.summaryBuffer2, entry)
 			bufferLength := len(bq.summaryBuffer2)
 
-			if bufferLength >= bq.SummaryBatchSize {
+			if float64(bufferLength) >= float64(bq.SummaryBatchSize)*bq.BatchSizePercent {
 				if err := bq.SummaryTableInserter.Put(context.Background(), bq.summaryBuffer2); err != nil {
 					bq.summaryBufferMutex2.Unlock()
 
@@ -369,5 +370,6 @@ func (bq *GoogleBigQueryClient) Close() {
 	}
 	if bq.FeatureBilling2 {
 		close(bq.entries2)
+		close(bq.summaryEntries2)
 	}
 }
