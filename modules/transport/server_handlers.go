@@ -1325,10 +1325,17 @@ func SessionPost(state *SessionHandlerState) {
 		Each slice is 10 seconds long except for the first slice with a given network next route,
 		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
 		that we pre-bought at the start of the previous route.
+
+		If the route changed on the final session slice, the slice duration
+		should be 10 seconds, not 20 seconds, since the session ended using
+		the previous route.
+
+		Otherwise the first and summary slices will have different values for
+		the envelope bandwidth, total price, etc.
 	*/
 
 	sliceDuration := uint64(billing.BillingSliceSeconds)
-	if state.Input.Initial {
+	if state.Input.Initial && !(state.Output.WroteSummary && state.Input.RouteChanged) {
 		sliceDuration *= 2
 	}
 
@@ -1339,19 +1346,6 @@ func SessionPost(state *SessionHandlerState) {
 	*/
 
 	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
-
-	/*
-		If the route changed on the final session slice, the envelope bandwidth
-		should be calculated using a 10 second slice duration, not 20 seconds,
-		since the session ended using the previous route.
-
-		Otherwise the first and summary slices will have different values for
-		the envelope bandwidth.
-	*/
-
-	if state.Output.WroteSummary && state.Input.RouteChanged {
-		nextEnvelopeBytesUp, nextEnvelopeBytesDown = CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration/2)
-	}
 
 	/*
 		Calculate the total price for this slice of bandwidth envelope.
