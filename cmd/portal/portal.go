@@ -629,7 +629,7 @@ func main() {
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
-		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second*10)
+		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second*40)
 		if err != nil {
 			level.Error(logger).Log("envvar", "HTTP_TIMEOUT", "value", httpTimeout, "err", err)
 			os.Exit(1)
