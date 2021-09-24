@@ -30,3 +30,7 @@ Makefile
 
 # Annoying
 .DS_Store
+
+# Build Artifacts
+Intermediate
+Binaries
