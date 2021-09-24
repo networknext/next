@@ -1307,6 +1307,21 @@ func SessionPost(state *SessionHandlerState) {
 	BuildPostRouteRelayData(state)
 
 	/*
+		Determine if we should write the summary slice. Should only happen
+		when the session is finished.
+
+		The end of a session occurs when the client ping times out.
+
+		We always set the output flag to true so that it remains recorded as true on
+		subsequent slices where the client ping has timed out. Instead, we check
+		the input when deciding to write billing entry 2.
+	*/
+
+	if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut {
+		state.Output.WroteSummary = true
+	}
+
+	/*
 		Each slice is 10 seconds long except for the first slice with a given network next route,
 		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
 		that we pre-bought at the start of the previous route.
@@ -1326,6 +1341,19 @@ func SessionPost(state *SessionHandlerState) {
 	nextEnvelopeBytesUp, nextEnvelopeBytesDown := CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration)
 
 	/*
+		If the route changed on the final session slice, the envelope bandwidth
+		should be calculated using a 10 second slice duration, not 20 seconds,
+		since the session ended using the previous route.
+
+		Otherwise the first and summary slices will have different values for
+		the envelope bandwidth.
+	*/
+
+	if state.Output.WroteSummary && state.Input.RouteChanged {
+		nextEnvelopeBytesUp, nextEnvelopeBytesDown = CalculateNextBytesUpAndDown(uint64(state.Buyer.RouteShader.BandwidthEnvelopeUpKbps), uint64(state.Buyer.RouteShader.BandwidthEnvelopeDownKbps), sliceDuration/2)
+	}
+
+	/*
 		Calculate the total price for this slice of bandwidth envelope.
 
 		This is the sum of all relay hop prices, plus our rake, multiplied by the envelope up/down
@@ -1333,21 +1361,6 @@ func SessionPost(state *SessionHandlerState) {
 	*/
 
 	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
-
-	/*
-		Determine if we should write the summary slice. Should only happen
-		when the session is finished.
-
-		The end of a session occurs when the client ping times out.
-
-		We always set the output flag to true so that it remains recorded as true on
-		subsequent slices where the client ping has timed out. Instead, we check
-		the input when deciding to write billing entry 2.
-	*/
-
-	if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut {
-		state.Output.WroteSummary = true
-	}
 
 	/*
 		Store the cumulative sum of totalPrice, nextEnvelopeBytesUp, and nextEnvelopeBytesDown in
