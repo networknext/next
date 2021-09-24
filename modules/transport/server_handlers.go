@@ -1107,6 +1107,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 		return
 	}
 
+	var stayOnNext bool
 	var routeChanged bool
 	var routeCost int32
 	var routeNumRelays int32
@@ -1150,7 +1151,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 			state.Metrics.RouteDoesNotExist.Add(1)
 		}
 
-		stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
 
 		if stayOnNext {
 
