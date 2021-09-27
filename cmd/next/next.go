@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
@@ -2424,17 +2425,68 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 
 	var serversCommand = &ffcli.Command{
 		Name:       "servers",
-		ShortUsage: "next servers <serverBackendIP>...",
-		ShortHelp:  "Saves a JSON of all live servers connected to each server backend",
+		ShortUsage: "next servers <subcommand>",
+		ShortHelp:  "Analayze and parse all live servers connected to a server backend",
 		Exec: func(_ context.Context, args []string) error {
+			return flag.ErrHelp
+		},
+		Subcommands: []*ffcli.Command{
+			{
+				Name:       "analyze",
+				ShortUsage: "next servers analyze <serverBackendIP>...",
+				ShortHelp:  "Saves a JSON of all live servers connected to each server backend.",
+				Exec: func(_ context.Context, args []string) error {
+					if len(args) == 0 {
+						return flag.ErrHelp
+					}
 
-			if len(args) == 0 {
-				return flag.ErrHelp
-			}
+					// Add http:// to args if needed
+					for i, backendIP := range args {
+						if !strings.Contains(backendIP, "http://") {
+							args[i] = fmt.Sprintf("http://%s", backendIP)
+						}
+					}
 
-			getLiveServers(env, args)
+					getLiveServers(env, args)
 
-			return nil
+					return nil
+				},
+			},
+			{
+				Name:       "parse",
+				ShortUsage: "next servers parse <fileName>...",
+				ShortHelp:  "Parse the JSON from next servers to list of servers per buyer ordered by timestamp in a csv and JSON output.",
+				Exec: func(_ context.Context, args []string) error {
+
+					if len(args) > 0 {
+						// Specified file names to parse
+						for _, fileName := range args {
+							if err := parseLiveServerOutput(fileName); err != nil {
+								handleRunTimeError(fmt.Sprintf("Failed to parse live server output for file %s: %v", fileName, err), 0)
+							}
+						}
+					} else {
+						// Parse all file names that exist in the current directory
+						currentDate := time.Now().Local().Format("2006-01-02")
+						idx := 0
+						for {
+							fileName := fmt.Sprintf("servers_%d_%s.json", idx, currentDate)
+							if _, err := os.Stat(fmt.Sprintf("./%s", fileName)); os.IsNotExist(err) {
+								// file name does not exist, done analyzing
+								break
+							}
+
+							if err := parseLiveServerOutput(fileName); err != nil {
+								handleRunTimeError(fmt.Sprintf("Failed to parse live server output for file %s: %v", fileName, err), 0)
+							}
+
+							idx++
+						}
+					}
+
+					return nil
+				},
+			},
 		},
 	}
 

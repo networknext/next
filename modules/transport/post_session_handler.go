@@ -62,9 +62,7 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 	}
 }
 
-func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
-	var wg sync.WaitGroup
-
+func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.WaitGroup) {
 	if post.featureBilling {
 
 		for i := 0; i < post.numGoroutines; i++ {
@@ -83,6 +81,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 
 						post.metrics.BillingEntriesFinished.Add(1)
 					case <-ctx.Done():
+						post.biller.FlushBuffer(ctx)
+						post.biller.Close()
 						return
 					}
 				}
@@ -108,6 +108,8 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 
 						post.metrics.BillingEntries2Finished.Add(1)
 					case <-ctx.Done():
+						post.biller2.FlushBuffer(ctx)
+						post.biller2.Close()
 						return
 					}
 				}
@@ -220,8 +222,6 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context) {
 			}()
 		}
 	}
-
-	wg.Wait()
 }
 
 func (post *PostSessionHandler) SendBillingEntry(billingEntry *billing.BillingEntry) {
