@@ -1768,7 +1768,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 	*/
 	var startTime time.Time
 	if state.Output.WroteSummary {
-		secondsToSub := int(sessionDuration) + billing.BillingSliceSeconds
+		secondsToSub := int(sessionDuration)
 		startTime = time.Now().Add(time.Duration(-secondsToSub) * time.Second)
 	}
 
