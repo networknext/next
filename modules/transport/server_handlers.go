@@ -1753,11 +1753,14 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 	}
 
 	/*
-		Calculate the session duration in seconds to include in the summary slice.
+		Calculate the session duration in seconds for the summary slice.
+
+		Slice numbers start at 0, so the length of a session is the
+		summary slice's slice number * 10 seconds.
 	*/
 	var sessionDuration uint32
 	if state.Output.WroteSummary && state.Packet.SliceNumber != 0 {
-		sessionDuration = (state.Packet.SliceNumber - 1) * billing.BillingSliceSeconds
+		sessionDuration = state.Packet.SliceNumber * billing.BillingSliceSeconds
 	}
 
 	/*
