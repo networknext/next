@@ -1107,6 +1107,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 		return
 	}
 
+	var stayOnNext bool
 	var routeChanged bool
 	var routeCost int32
 	var routeNumRelays int32
@@ -1150,7 +1151,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 			state.Metrics.RouteDoesNotExist.Add(1)
 		}
 
-		stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
 
 		if stayOnNext {
 
@@ -1306,13 +1307,35 @@ func SessionPost(state *SessionHandlerState) {
 	BuildPostRouteRelayData(state)
 
 	/*
+		Determine if we should write the summary slice. Should only happen
+		when the session is finished.
+
+		The end of a session occurs when the client ping times out.
+
+		We always set the output flag to true so that it remains recorded as true on
+		subsequent slices where the client ping has timed out. Instead, we check
+		the input when deciding to write billing entry 2.
+	*/
+
+	if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut {
+		state.Output.WroteSummary = true
+	}
+
+	/*
 		Each slice is 10 seconds long except for the first slice with a given network next route,
 		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
 		that we pre-bought at the start of the previous route.
+
+		If the route changed on the final session slice, the slice duration
+		should be 10 seconds, not 20 seconds, since the session ended using
+		the previous route.
+
+		Otherwise the first and summary slices will have different values for
+		the envelope bandwidth, total price, etc.
 	*/
 
 	sliceDuration := uint64(billing.BillingSliceSeconds)
-	if state.Input.Initial {
+	if state.Input.Initial && !(state.Output.WroteSummary && state.Input.RouteChanged) {
 		sliceDuration *= 2
 	}
 
@@ -1332,21 +1355,6 @@ func SessionPost(state *SessionHandlerState) {
 	*/
 
 	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
-
-	/*
-		Determine if we should write the summary slice. Should only happen
-		when the session is finished.
-
-		The end of a session occurs when the client ping times out.
-
-		We always set the output flag to true so that it remains recorded as true on
-		subsequent slices where the client ping has timed out. Instead, we check
-		the input when deciding to write billing entry 2.
-	*/
-
-	if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut {
-		state.Output.WroteSummary = true
-	}
 
 	/*
 		Store the cumulative sum of totalPrice, nextEnvelopeBytesUp, and nextEnvelopeBytesDown in
@@ -1745,11 +1753,23 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 	}
 
 	/*
-		Calculate the session duration in seconds to include in the summary slice.
+		Calculate the session duration in seconds for the summary slice.
+
+		Slice numbers start at 0, so the length of a session is the
+		summary slice's slice number * 10 seconds.
 	*/
 	var sessionDuration uint32
 	if state.Output.WroteSummary && state.Packet.SliceNumber != 0 {
-		sessionDuration = (state.Packet.SliceNumber - 1) * billing.BillingSliceSeconds
+		sessionDuration = state.Packet.SliceNumber * billing.BillingSliceSeconds
+	}
+
+	/*
+		Calculate the starting timestamp of the session to include in the summary slice.
+	*/
+	var startTime time.Time
+	if state.Output.WroteSummary {
+		secondsToSub := int(sessionDuration)
+		startTime = time.Now().Add(time.Duration(-secondsToSub) * time.Second)
 	}
 
 	/*
@@ -1806,6 +1826,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		EnvelopeBytesUpSum:              state.Input.NextEnvelopeBytesUpSum,
 		EnvelopeBytesDownSum:            state.Input.NextEnvelopeBytesDownSum,
 		DurationOnNext:                  state.Input.DurationOnNext,
+		StartTimestamp:                  uint32(startTime.Unix()),
 		NextRTT:                         int32(state.Packet.NextRTT),
 		NextJitter:                      int32(state.Packet.NextJitter),
 		NextPacketLoss:                  int32(state.Packet.NextPacketLoss),
