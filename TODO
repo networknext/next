@@ -15,9 +15,15 @@
 
 TODO
 
-	Hook up packet receive for client and server.
+	------------
 
-	At this point, the client and server should be able to connect....
+	Hook up packet receive for server...
+
+	Verify that response packet is sent back to client.
+
+	Hook up packet receive for client...
+
+	At this point, the client and server should be able to connect.
 
 	------------
 
@@ -27,6 +33,8 @@ TODO
 
 		2. Pass in the network next data in host create
 
-		3. Share with Erdogan :)
+		3. Make sure no additional delay is added on packet receive due to ordering of calls (eg. don't get offset by one frame)
+
+		4. Test with multiple clients connecting, to make sure no wires are crossed in server mux/demux of client packets.
 
 	------------

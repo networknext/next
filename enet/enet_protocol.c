@@ -1218,18 +1218,24 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
 {
     int packets;
 
-    for (packets = 0; packets < 256; ++ packets)                        // todo: why 256?
+    for (packets = 0; packets < 256; ++ packets)
     {
        int receivedLength;
        ENetBuffer buffer;
 
-       buffer.data = host -> packetData [0];                            // todo: it's just a buffer of MTU size
-       buffer.dataLength = sizeof (host -> packetData [0]);             // todo: this is set to ENET_PROTOCOL_MAXIMUM_MTU
+       buffer.data = host -> packetData [0];
+       buffer.dataLength = sizeof (host -> packetData [0]);
 
-       receivedLength = enet_socket_receive (host -> socket,            // todo: typical recvfrom pump
+#if ENET_NETWORK_NEXT
+
+#else // #if ENET_NETWORK_NEXT
+
+       receivedLength = enet_socket_receive (host -> socket,
                                              & host -> receivedAddress,
                                              & buffer,
                                              1);
+
+#endif // #if ENET_NETWORK_NEXT
 
        if (receivedLength < 0)
          return -1;
@@ -1237,15 +1243,15 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
        if (receivedLength == 0)
          return 0;
 
-       host -> receivedData = host -> packetData [0];                   // todo: why set host->receivedData? is this used internally in "intercept"?
-       host -> receivedDataLength = receivedLength;                     // todo: length of packet
+       host -> receivedData = host -> packetData [0];
+       host -> receivedDataLength = receivedLength;
       
-       host -> totalReceivedData += receivedLength;                     // todo: total received data in bytes
-       host -> totalReceivedPackets ++;                                 // todo: total number of received packets
+       host -> totalReceivedData += receivedLength;
+       host -> totalReceivedPackets ++;            
 
-       if (host -> intercept != NULL)                                   // todo: intercept seems optional...
+       if (host -> intercept != NULL)
        {
-          switch (host -> intercept (host, event))                      // todo: what is intercept for? what is the purpose?
+          switch (host -> intercept (host, event))
           {
           case 1:
              if (event != NULL && event -> type != ENET_EVENT_TYPE_NONE)
@@ -1261,7 +1267,8 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
           }
        }
         
-       switch (enet_protocol_handle_incoming_commands (host, event))    // todo: assume this is to process commands generated from packet processing above in intercept?
+       // todo: the meat must be going on here. intercept is just a user override to process raw UDP packets...
+       switch (enet_protocol_handle_incoming_commands (host, event))
        {
        case 1:
           return 1;
@@ -1688,14 +1695,14 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
         {
             // todo: convert enet peer address to network next address -- currentPeer->address
             struct next_address_t address;
-            next_address_parse( "127.0.0.1:30000", &address );
+            next_address_parse( &address, "127.0.0.1:30000" );
 
             int i;
             sentLength = 0;
             for ( i = 0; i < host->bufferCount; i++ )
             {
                 // todo
-                printf( "server sent %d byte packet\n", host->buffers[i].dataLength );
+                printf( "server sent %d byte packet\n", (int) host->buffers[i].dataLength );
                 next_server_send_packet( host->server, &address, host->buffers[i].data, host->buffers[i].dataLength );
                 sentLength += host->buffers[i].dataLength;
             }
@@ -1710,8 +1717,6 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
                 sentLength += host->buffers[i].dataLength;
             }
         }
-
-        // todo: override send packet to go through host->client or host->server
 
 #else // #if ENET_NETWORK_NEXT
 
