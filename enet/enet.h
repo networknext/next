@@ -95,7 +95,7 @@ typedef struct _ENetAddress
    enet_uint32 host;
    enet_uint16 port;
 #if ENET_NETWORK_NEXT
-   int client;
+   int client;                         // todo: this is used on packet receive, so best not to inflate it like this
 #endif // #if ENET_NETWORK_NEXT
 } ENetAddress;
 
@@ -423,6 +423,7 @@ typedef struct _ENetHost
 
 struct ENetInternalPacket
 {
+    ENetListNode node;
     ENetAddress from;
     enet_uint8 data[NEXT_MTU];
     int size;

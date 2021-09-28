@@ -7691,7 +7691,7 @@ struct next_client_t
     next_address_t server_address;
     next_client_internal_t * internal;
     next_platform_thread_t * thread;
-    void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes );
+    void (*packet_received_callback)( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes );
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -7733,7 +7733,7 @@ void next_client_verify_sentinels( next_client_t * client )
 
 void next_client_destroy( next_client_t * client );
 
-next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) )
+next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) )
 {
     next_assert( bind_address );
     next_assert( packet_received_callback );
@@ -7922,7 +7922,7 @@ void next_client_update( next_client_t * client )
             {
                 next_client_notify_packet_received_t * packet_received = (next_client_notify_packet_received_t*) notify;
 
-                client->packet_received_callback( client, client->context, packet_received->payload_data, packet_received->payload_bytes );
+                client->packet_received_callback( client, client->context, &client->server_address, packet_received->payload_data, packet_received->payload_bytes );
 
                 next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
                 const int envelope_kbps_down = client->internal->bandwidth_envelope_kbps_down;
@@ -15498,10 +15498,11 @@ static void test_platform_mutex()
 
 static int num_client_packets_received = 0;
 
-static void test_client_packet_received_callback( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+static void test_client_packet_received_callback( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client;
     (void) context;
+    (void) from;
     (void) packet_data;
     (void) packet_bytes;
     num_client_packets_received++;

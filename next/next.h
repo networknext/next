@@ -34,10 +34,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.0.16"
+    #define NEXT_VERSION_FULL                              "4.0.17"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                                0
-    #define NEXT_VERSION_PATCH_INT                               16
+    #define NEXT_VERSION_PATCH_INT                               17
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -265,7 +265,7 @@ struct next_client_stats_t
 
 struct next_client_t;
 
-NEXT_EXPORT_FUNC struct next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( struct next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) );
+NEXT_EXPORT_FUNC struct next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( struct next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) );
 
 NEXT_EXPORT_FUNC void next_client_destroy( struct next_client_t * client );
 
