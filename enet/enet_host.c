@@ -237,7 +237,14 @@ enet_host_destroy (ENetHost * host)
 
 #if ENET_NETWORK_NEXT
 
-    // todo: destroy host->receivePacketQueue here
+    while ( !enet_list_empty( &host->receivePacketQueue ) )
+    {
+        struct ENetInternalPacket * packet = (struct ENetInternalPacket*) enet_list_remove( enet_list_begin( &host->receivePacketQueue ) );
+        next_assert( packet );
+        enet_free( packet );
+    }
+
+    enet_list_clear( &host->receivePacketQueue );
 
     if ( host->client )
     {
