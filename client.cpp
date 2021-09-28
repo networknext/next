@@ -9,6 +9,10 @@ const int MaxChannels = 2;
 const int MaxIncomingBandwidth = 0;
 const int MaxOutgoingBandwidth = 0;
 
+const char * bind_address = "0.0.0.0:30000";
+const char * server_address = "127.0.0.1:50000";
+const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
+
 static volatile int quit = 0;
 
 void interrupt_handler( int signal )
@@ -20,14 +24,15 @@ int main( int argc, char ** argv )
 {
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
-    if ( next_init( NULL, NULL ) != NEXT_OK )
+    next_config_t config;
+    next_default_config( &config );
+    strncpy( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+
+    if ( next_init( NULL, &config ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "could not initialize network next" );
         return 1;
     }
-
-    // temporary: turn on all logs to see what's up
-    next_log_level( NEXT_LOG_LEVEL_DEBUG );
 
     if ( enet_initialize() != 0 )
     {

@@ -466,7 +466,7 @@ enet_socket_send (ENetSocket socket,
 
     return sentLength;
 }
-
+ 
 int
 enet_socket_receive (ENetSocket socket,
                      ENetAddress * address,

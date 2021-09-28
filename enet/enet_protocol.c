@@ -1226,6 +1226,8 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
        buffer.data = host -> packetData [0];
        buffer.dataLength = sizeof (host -> packetData [0]);
 
+       // todo: here is where we receive packets. need to decode WTF is going on here... =p
+
        receivedLength = enet_socket_receive (host -> socket,
                                              & host -> receivedAddress,
                                              & buffer,
@@ -1625,13 +1627,6 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
         {
            enet_uint32 packetLoss = currentPeer -> packetsLost * ENET_PEER_PACKET_LOSS_SCALE / currentPeer -> packetsSent;
 
-// todo: doesn't compile portably
-/*
-#ifdef ENET_DEBUG
-           printf ("peer %u: %f%%+-%f%% packet loss, %u+-%u ms round trip time, %f%% throttle, %u outgoing, %u/%u incoming\n", currentPeer -> incomingPeerID, currentPeer -> packetLoss / (float) ENET_PEER_PACKET_LOSS_SCALE, currentPeer -> packetLossVariance / (float) ENET_PEER_PACKET_LOSS_SCALE, currentPeer -> roundTripTime, currentPeer -> roundTripTimeVariance, currentPeer -> packetThrottle / (float) ENET_PEER_PACKET_THROTTLE_SCALE, enet_list_size (& currentPeer -> outgoingCommands), currentPeer -> channels != NULL ? enet_list_size (& currentPeer -> channels -> incomingReliableCommands) : 0, currentPeer -> channels != NULL ? enet_list_size (& currentPeer -> channels -> incomingUnreliableCommands) : 0);
-#endif
-*/
-
            currentPeer -> packetLossVariance = (currentPeer -> packetLossVariance * 3 + ENET_DIFFERENCE (packetLoss, currentPeer -> packetLoss)) / 4;
            currentPeer -> packetLoss = (currentPeer -> packetLoss * 7 + packetLoss) / 8;
 
@@ -1689,7 +1684,42 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
 
         currentPeer -> lastSendTime = host -> serviceTime;
 
+#if ENET_NETWORK_NEXT
+
+        if ( host->server )
+        {
+            // todo: convert enet peer address to network next address -- currentPeer->address
+            struct next_address_t address;
+            next_address_parse( "127.0.0.1:30000", &address );
+
+            int i;
+            sentLength = 0;
+            for ( i = 0; i < host->bufferCount; i++ )
+            {
+                // todo
+                printf( "server sent %d byte packet\n", host->buffers[i].dataLength );
+                next_server_send_packet( host->server, &address, host->buffers[i].data, host->buffers[i].dataLength );
+                sentLength += host->buffers[i].dataLength;
+            }
+        }
+        else if ( host->client )
+        {
+            int i;
+            sentLength = 0;
+            for ( i = 0; i < host->bufferCount; i++ )
+            {
+                next_client_send_packet( host->client, host->buffers[i].data, host->buffers[i].dataLength );
+                sentLength += host->buffers[i].dataLength;
+            }
+        }
+
+        // todo: override send packet to go through host->client or host->server
+
+#else // #if ENET_NETWORK_NEXT
+
         sentLength = enet_socket_send (host -> socket, & currentPeer -> address, host -> buffers, host -> bufferCount);
+
+#endif // #if ENET_NETWORK_NEXT
 
         enet_protocol_remove_sent_unreliable_commands (currentPeer);
 

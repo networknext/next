@@ -9,6 +9,12 @@ const int MaxChannels = 2;
 const int MaxIncomingBandwidth = 0;
 const int MaxOutgoingBandwidth = 0;
 
+const char * bind_address = "0.0.0.0:50000";
+const char * server_address = "127.0.0.1:50000";
+const char * server_datacenter = "local";
+const char * server_backend_hostname = "prod.spacecats.net";
+const char * customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn";
+
 static volatile int quit = 0;
 
 void interrupt_handler( int signal )
@@ -20,14 +26,16 @@ int main( int argc, char ** argv )
 {
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
-    if ( next_init( NULL, NULL ) != NEXT_OK )
+    next_config_t config;
+    next_default_config( &config );
+    strncpy( config.server_backend_hostname, server_backend_hostname, sizeof(config.server_backend_hostname) - 1 );
+    strncpy( config.customer_private_key, customer_private_key, sizeof(config.customer_private_key) - 1 );
+
+    if ( next_init( NULL, &config ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "could not initialize network next" );
         return 1;
     }
-
-    // temporary: turn on all logs to see what's up
-    next_log_level( NEXT_LOG_LEVEL_DEBUG );
 
     if ( enet_initialize() != 0 )
     {

@@ -9,18 +9,24 @@
 
 	Make sure we don't spinlock inside enet_host_service
 
+	To get network next client and server connecting, need to setup customer keypair and dev environment...
+
+	Hook up packet send for client and server.
+
 TODO
 
-	To get network next client and server connecting, need to setup customer keypair and dev environment...
+	Hook up packet receive for client and server.
+
+	At this point, the client and server should be able to connect....
 
 	------------
 
-	Work out how to get the bind address and server address from enet (might need to be supplied...)
+	Clean up:
 
-	Add the datacenter to the address.
+		1. Fix up todos
 
-	Is address pass in messages? Might be better to extend host create instead...
+		2. Pass in the network next data in host create
 
-	Might be worthwhile passing in an enet_next_t struct to the host create. We have multiple parameters that need to get passed in.
+		3. Share with Erdogan :)
 
 	------------
