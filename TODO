@@ -29,11 +29,11 @@
 
 	Add network next received packet queue data structures inside ENetHost
 
-TODO
-
 	Work out allocation for new ENetInternalPacket struct being passed through linked list via pointer... what's the ENet strategy for allocators?
 
 	Insert received packet data into the queue for client packet receive.
+
+TODO
 
 	Insert received packet data into the queue for server packet receive.
 
