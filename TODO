@@ -27,9 +27,11 @@
 
 	The strategy now must be to queue up received client and server packets from network next, and then pop off these queues inside enet_protocol_receive_incoming_commands in lieu of actually hitting the socket.
 
+	Add network next received packet queue data structures inside ENetHost
+
 TODO
 
-	Add network next received packet queue data structures inside ENetHost
+	Work out allocation for new ENetInternalPacket struct being passed through linked list via pointer... what's the ENet strategy for allocators?
 
 	Insert received packet data into the queue for client packet receive.
 

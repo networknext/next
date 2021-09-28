@@ -1234,10 +1234,11 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
         {
             struct ENetInternalPacket * packet = (struct ENetInternalPacket*) enet_list_remove( enet_list_begin( &host->receivePacketQueue ) );
             next_assert( packet );
+            printf( "dequeued %d byte packet from receive packet queue\n", packet->size );
             host->receivedAddress = packet->from;
             memcpy( buffer.data, packet->data, packet->size );
             buffer.dataLength = packet->size;
-            // todo: free packet
+            enet_free( packet );
         }
 
 #else // #if ENET_NETWORK_NEXT
