@@ -1230,13 +1230,14 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
 
         receivedLength = 0;
 
-        if ( host->client )
+        if ( !enet_list_empty( &host->receivePacketQueue ) )
         {
-            // todo: dequeue packet from client queue
-        }
-        else
-        {
-            // todo: dequeue packet from server queue
+            struct ENetInternalPacket * packet = (struct ENetInternalPacket*) enet_list_remove( enet_list_begin( &host->receivePacketQueue ) );
+            next_assert( packet );
+            host->receivedAddress = packet->from;
+            memcpy( buffer.data, packet->data, packet->size );
+            buffer.dataLength = packet->size;
+            // todo: free packet
         }
 
 #else // #if ENET_NETWORK_NEXT
@@ -1278,7 +1279,6 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
           }
        }
         
-       // todo: the meat must be going on here. intercept is just a user override to process raw UDP packets...
        switch (enet_protocol_handle_incoming_commands (host, event))
        {
        case 1:

@@ -369,7 +369,9 @@ typedef int (ENET_CALLBACK * ENetInterceptCallback) (struct _ENetHost * host, st
   */
 typedef struct _ENetHost
 {
+#ifndef ENET_NETWORK_NEXT
    ENetSocket           socket;
+#endif // #ifndef ENET_NETWORK_NEXT
    ENetAddress          address;                     /**< Internet address of the host */
    enet_uint32          incomingBandwidth;           /**< downstream bandwidth of the host */
    enet_uint32          outgoingBandwidth;           /**< upstream bandwidth of the host */
@@ -411,9 +413,22 @@ typedef struct _ENetHost
    struct next_client_t * client;
    struct next_server_t * server;
 
+   ENetList receivePacketQueue;                      // queue of ENetInternalPacket
+
 #endif // #if ENET_NETWORK_NEXT
 
 } ENetHost;
+
+#if ENET_NETWORK_NEXT
+
+struct ENetInternalPacket
+{
+    ENetAddress from;
+    enet_uint8 data[NEXT_MTU];
+    int size;
+};
+
+#endif // #if ENET_NETWORK_NEXT
 
 /**
  * An ENet event type, as specified in @ref ENetEvent.
