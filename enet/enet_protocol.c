@@ -1921,7 +1921,7 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
                 next_sleep( sleep_time_ms / 1000.0 );
             }
 
-#else
+#else // #if ENET_NETWORK_NEXT
 
             if (enet_socket_wait (host -> socket, & waitCondition, ENET_TIME_DIFFERENCE (timeout, host -> serviceTime)) != 0)
               return -1;
