@@ -33,15 +33,21 @@
 
 	Insert received packet data into the queue for client packet receive.
 
-TODO
-
 	Insert received packet data into the queue for server packet receive.
 
-	Process packet queue for client inside enet_protocol_receive_incoming_commands.
+	Dequeue packets from receive queue and process them.
 
-	Process packet queue for server inside enet_protocol_receive_incoming_commands.
+TODO
 
-	Client should now be able to connect to server.
+	------------
+
+	So close now...
+
+	Work out how to get address for server when the client receives a packet.
+
+	Translate the client address to ENetAddress when the server receives a packet.
+
+	*** Client should now be able to connect to server ***
 
 	------------
 

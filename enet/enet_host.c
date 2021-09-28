@@ -48,7 +48,27 @@ void enet_network_next_server_packet_received( struct next_server_t * server, vo
 
     next_printf( NEXT_LOG_LEVEL_INFO, "network next server received packet from client (%d bytes)", packet_bytes );
 
-    // todo: queue up received packet
+    ENetHost * host = (ENetHost*) context;
+
+    struct ENetInternalPacket * packet = enet_malloc( sizeof( struct ENetInternalPacket ) );
+    
+    next_assert( packet );
+    
+    if ( !packet )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "could not allocate packet for server packet receive" );
+        return;
+    }
+
+    // todo: convert the network next client address to ENetAddress
+//    packet->from = host->server_address;
+
+    next_assert( packet_bytes > 0 );
+    next_assert( packet_bytes <= NEXT_MTU );
+    memcpy( packet->data, packet_data, packet_bytes );
+    packet->size = packet_bytes;
+
+    enet_list_insert( enet_list_end( &host->receivePacketQueue), packet );
 }
 
 #endif // #if ENET_NETWORK_NEXT
