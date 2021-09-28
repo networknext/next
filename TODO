@@ -13,17 +13,33 @@
 
 	Hook up packet send for client and server.
 
+	What does enet_protocol_handle_incoming_commands do? ---> processes received UDP packets, adds events to ENetEvent struct passed in.
+
+	Who calls enet_protocol_receive_incoming_commands? ---> called once in service pump
+
+	Does it call it once or multiple times? ----> one and done, but it's called in the service pump loop, so it's multiple.
+
+	What fills in ENetEvent passed to receive incoming commands? -----> enet_protocol_handle_incoming_commands
+
+	How is the ENetEvent used. Is it an output, or an input? ------> It's an output. Pass in the ENetEvent struct to enet_host_service and it gets filled with the received event.
+
+	Can we just do the same processing in the callback instead? avoid buffering, just call it in and queue it up? ----> no. because of the design of enet, the pump for each event is performed via enet_host_service, which passes in the event -- looping until no more events are received.
+
+	The strategy now must be to queue up received client and server packets from network next, and then pop off these queues inside enet_protocol_receive_incoming_commands in lieu of actually hitting the socket.
+
 TODO
 
-	------------
+	Add network next received packet queue data structures inside ENetHost
 
-	Hook up packet receive for server...
+	Insert received packet data into the queue for client packet receive.
 
-	Verify that response packet is sent back to client.
+	Insert received packet data into the queue for server packet receive.
 
-	Hook up packet receive for client...
+	Process packet queue for client inside enet_protocol_receive_incoming_commands.
 
-	At this point, the client and server should be able to connect.
+	Process packet queue for server inside enet_protocol_receive_incoming_commands.
+
+	Client should now be able to connect to server.
 
 	------------
 

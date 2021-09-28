@@ -1228,9 +1228,20 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
 
 #if ENET_NETWORK_NEXT
 
+        receivedLength = 0;
+
+        if ( host->client )
+        {
+            // todo: dequeue packet from client queue
+        }
+        else
+        {
+            // todo: dequeue packet from server queue
+        }
+
 #else // #if ENET_NETWORK_NEXT
 
-       receivedLength = enet_socket_receive (host -> socket,
+        receivedLength = enet_socket_receive (host -> socket,
                                              & host -> receivedAddress,
                                              & buffer,
                                              1);
