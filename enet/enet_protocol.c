@@ -1218,17 +1218,15 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
 {
     int packets;
 
-    for (packets = 0; packets < 256; ++ packets)
+    for (packets = 0; packets < 256; ++ packets)                        // todo: why 256?
     {
        int receivedLength;
        ENetBuffer buffer;
 
-       buffer.data = host -> packetData [0];
-       buffer.dataLength = sizeof (host -> packetData [0]);
+       buffer.data = host -> packetData [0];                            // todo: it's just a buffer of MTU size
+       buffer.dataLength = sizeof (host -> packetData [0]);             // todo: this is set to ENET_PROTOCOL_MAXIMUM_MTU
 
-       // todo: here is where we receive packets. need to decode WTF is going on here... =p
-
-       receivedLength = enet_socket_receive (host -> socket,
+       receivedLength = enet_socket_receive (host -> socket,            // todo: typical recvfrom pump
                                              & host -> receivedAddress,
                                              & buffer,
                                              1);
@@ -1239,15 +1237,15 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
        if (receivedLength == 0)
          return 0;
 
-       host -> receivedData = host -> packetData [0];
-       host -> receivedDataLength = receivedLength;
+       host -> receivedData = host -> packetData [0];                   // todo: why set host->receivedData? is this used internally in "intercept"?
+       host -> receivedDataLength = receivedLength;                     // todo: length of packet
       
-       host -> totalReceivedData += receivedLength;
-       host -> totalReceivedPackets ++;
+       host -> totalReceivedData += receivedLength;                     // todo: total received data in bytes
+       host -> totalReceivedPackets ++;                                 // todo: total number of received packets
 
-       if (host -> intercept != NULL)
+       if (host -> intercept != NULL)                                   // todo: intercept seems optional...
        {
-          switch (host -> intercept (host, event))
+          switch (host -> intercept (host, event))                      // todo: what is intercept for? what is the purpose?
           {
           case 1:
              if (event != NULL && event -> type != ENET_EVENT_TYPE_NONE)
@@ -1263,7 +1261,7 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
           }
        }
         
-       switch (enet_protocol_handle_incoming_commands (host, event))
+       switch (enet_protocol_handle_incoming_commands (host, event))    // todo: assume this is to process commands generated from packet processing above in intercept?
        {
        case 1:
           return 1;
