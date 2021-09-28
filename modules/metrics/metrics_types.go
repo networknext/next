@@ -45,12 +45,15 @@ type BillingMetrics struct {
 	PubsubBillingEntrySize Gauge
 	BillingEntrySize       Gauge
 
-	Entries2Received        Counter
-	Entries2Submitted       Counter
-	Entries2Queued          Gauge
-	Entries2Flushed         Counter
-	PubsubBillingEntry2Size Gauge
-	BillingEntry2Size       Gauge
+	Entries2Received         Counter
+	Entries2Submitted        Counter
+	Entries2Queued           Gauge
+	Entries2Flushed          Counter
+	SummaryEntries2Submitted Counter
+	SummaryEntries2Queued    Gauge
+	SummaryEntries2Flushed   Counter
+	PubsubBillingEntry2Size  Gauge
+	BillingEntry2Size        Gauge
 
 	ErrorMetrics BillingErrorMetrics
 }
@@ -63,12 +66,15 @@ var EmptyBillingMetrics BillingMetrics = BillingMetrics{
 	PubsubBillingEntrySize: &EmptyGauge{},
 	BillingEntrySize:       &EmptyGauge{},
 
-	Entries2Received:        &EmptyCounter{},
-	Entries2Submitted:       &EmptyCounter{},
-	Entries2Queued:          &EmptyGauge{},
-	Entries2Flushed:         &EmptyCounter{},
-	PubsubBillingEntry2Size: &EmptyGauge{},
-	BillingEntry2Size:       &EmptyGauge{},
+	Entries2Received:         &EmptyCounter{},
+	Entries2Submitted:        &EmptyCounter{},
+	Entries2Queued:           &EmptyGauge{},
+	Entries2Flushed:          &EmptyCounter{},
+	SummaryEntries2Submitted: &EmptyCounter{},
+	SummaryEntries2Queued:    &EmptyGauge{},
+	SummaryEntries2Flushed:   &EmptyCounter{},
+	PubsubBillingEntry2Size:  &EmptyGauge{},
+	BillingEntry2Size:        &EmptyGauge{},
 
 	ErrorMetrics: EmptyBillingErrorMetrics,
 }
@@ -87,6 +93,7 @@ type BillingErrorMetrics struct {
 	Billing2WriteFailure       Counter
 	Billing2InvalidEntries     Counter
 	Billing2EntriesWithNaN     Counter
+	Billing2RetryLimitReached  Counter
 }
 
 var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
@@ -103,6 +110,7 @@ var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
 	Billing2WriteFailure:       &EmptyCounter{},
 	Billing2InvalidEntries:     &EmptyCounter{},
 	Billing2EntriesWithNaN:     &EmptyCounter{},
+	Billing2RetryLimitReached:  &EmptyCounter{},
 }
 
 type AnalyticsMetrics struct {
@@ -613,6 +621,39 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		return nil, err
 	}
 
+	billingServiceMetrics.BillingMetrics.SummaryEntries2Submitted, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Summary Entries 2 Submitted",
+		ServiceName: "billing",
+		ID:          "billing.summary.entries.2.submitted",
+		Unit:        "entries",
+		Description: "The total number of billing summary entries 2 submitted to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.SummaryEntries2Queued, err = metricsHandler.NewGauge(ctx, &Descriptor{
+		DisplayName: "Billing Summary Entries 2 Queued",
+		ServiceName: "billing",
+		ID:          "billing.summary.entries.2.queued",
+		Unit:        "entries",
+		Description: "The total number of billing summary entries 2 waiting to be sent to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.SummaryEntries2Flushed, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing Summary Entries 2 Written",
+		ServiceName: "billing",
+		ID:          "billing.summary.entries.2.written",
+		Unit:        "entries",
+		Description: "The total number of billing summary entries 2 written to BigQuery",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	billingServiceMetrics.BillingMetrics.BillingEntry2Size, err = metricsHandler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Billing Entry 2 Size",
 		ServiceName: "billing",
@@ -739,6 +780,17 @@ func NewBillingServiceMetrics(ctx context.Context, metricsHandler Handler) (*Bil
 		ID:          "billing.error.billing_entries_with_nan_2",
 		Unit:        "errors",
 		Description: "The number of times a billing entry 2 had NaN values",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	billingServiceMetrics.BillingMetrics.ErrorMetrics.Billing2RetryLimitReached, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Billing 2 Retry Limit Reached",
+		ServiceName: "billing",
+		ID:          "billing.error.billing_retry_limit_reached_2",
+		Unit:        "errors",
+		Description: "The number of times a billing entry 2 message could not be fully submitted to the internal buffer and was nacked",
 	})
 	if err != nil {
 		return nil, err
