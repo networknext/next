@@ -1749,37 +1749,35 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
 
 #if ENET_NETWORK_NEXT
 
+        // IMPORTANT: merge the enet buffers into a single packet to be sent 
+        // (this is done implicitly by sendmsg inside enet_socket_send in the regular codepath)
+        enet_uint8 packet_data[NEXT_MTU];
+        int packet_bytes = 0;
+        for ( int i = 0; i < host->bufferCount; i++ )
+        {
+            memcpy( packet_data + packet_bytes, host->buffers[i].data, host->buffers[i].dataLength );
+            packet_bytes += host->buffers[i].dataLength;
+            next_assert( packet_bytes >= 0 );
+            next_assert( packet_bytes <= NEXT_MTU );    // this should not fire, but if it does, it's because the enet wire packet size is above NET_MTU (1300 bytes)
+        }
+
         if ( host->server )
         {
             // todo: convert enet peer address to network next address -- currentPeer->address
             struct next_address_t address;
-            next_address_parse( &address, "127.0.0.1:30000" );
+            next_address_parse( &address, "127.0.0.1:40000" );
 
-            printf( "server buffer count = %d\n", (int) host->bufferCount );
+            ENetAddress enet_address = enet_address_from_next( &address );
 
-            int i;
-            sentLength = 0;
-            for ( i = 0; i < host->bufferCount; i++ )
-            {
-                // todo
-                printf( "server sent %d byte packet\n", (int) host->buffers[i].dataLength );
-                next_server_send_packet( host->server, &address, host->buffers[i].data, host->buffers[i].dataLength );
-                sentLength += host->buffers[i].dataLength;
-            }
+            printf( "server sent %d byte packet to %x:%d\n", packet_bytes, enet_address.host, enet_address.port );
+            next_server_send_packet( host->server, &address, packet_data, packet_bytes );
+            sentLength = packet_bytes;
         }
         else if ( host->client )
         {
-            printf( "client buffer count = %d\n", (int) host->bufferCount );
-
-            int i;
-            sentLength = 0;
-            for ( i = 0; i < host->bufferCount; i++ )
-            {
-                // todo
-                printf( "client sent %d byte packet\n", (int) host->buffers[i].dataLength );
-                next_client_send_packet( host->client, host->buffers[i].data, host->buffers[i].dataLength );
-                sentLength += host->buffers[i].dataLength;
-            }
+            printf( "client sent %d byte packet to server\n", packet_bytes );
+            next_client_send_packet( host->client, packet_data, packet_bytes );
+            sentLength = packet_bytes;
         }
 
 #else // #if ENET_NETWORK_NEXT

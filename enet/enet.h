@@ -219,7 +219,11 @@ enum
    ENET_HOST_RECEIVE_BUFFER_SIZE          = 256 * 1024,
    ENET_HOST_SEND_BUFFER_SIZE             = 256 * 1024,
    ENET_HOST_BANDWIDTH_THROTTLE_INTERVAL  = 1000,
+#if ENET_NETWORK_NEXT
+   ENET_HOST_DEFAULT_MTU                  = NEXT_MTU, // 1300
+#else
    ENET_HOST_DEFAULT_MTU                  = 1400,
+#endif
    ENET_HOST_DEFAULT_MAXIMUM_PACKET_SIZE  = 32 * 1024 * 1024,
    ENET_HOST_DEFAULT_MAXIMUM_WAITING_DATA = 32 * 1024 * 1024,
 
@@ -635,6 +639,12 @@ ENET_API size_t enet_range_coder_compress (void *, const ENetBuffer *, size_t, s
 ENET_API size_t enet_range_coder_decompress (void *, const enet_uint8 *, size_t, enet_uint8 *, size_t);
    
 extern size_t enet_protocol_command_size (enet_uint8);
+
+#if ENET_NETWORK_NEXT
+
+ENET_API ENetAddress enet_address_from_next( const struct next_address_t * in );
+
+#endif // #if ENET_NETWORK_NEXT
 
 #ifdef __cplusplus
 }

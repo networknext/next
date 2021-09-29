@@ -438,5 +438,9 @@ enet_socket_wait (ENetSocket socket, enet_uint32 * condition, enet_uint32 timeou
     return 0;
 } 
 
+#else
+
+int enet_win32_dummy = 0;
+
 #endif
 

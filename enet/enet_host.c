@@ -136,7 +136,7 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
         // todo: extract bind address
         const char * bind_address = "0.0.0.0:40000";
 
-        host->client = next_client_create( NULL, bind_address, enet_network_next_client_packet_received, NULL );
+        host->client = next_client_create( host, bind_address, enet_network_next_client_packet_received, NULL );
 
         if ( host->client == NULL )
         {

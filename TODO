@@ -41,15 +41,15 @@
 
 	Translate the client address to ENetAddress when the server receives a packet.
 
-TODO
-
-	------------
+	Make sure that enet default MTU matches network next MTU (NEXT_MTU = 1300 bytes).
 
 	The problem is that enet is merging the two buffers into one packet when sending.
 
 	Fixing this so I coalesce buffers into a single packet on send should fix the connect issue.
 
-	Pass this point it's simply clean up...
+	Verify client and server connect with network next.
+
+TODO
 
 	------------
 

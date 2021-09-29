@@ -77,7 +77,7 @@ int main( int argc, char ** argv )
         return 1;
     }
 
-    while ( true )
+    while ( !quit )
     {
         while ( enet_host_service( client, &event, 0 ) > 0 )
         {

@@ -611,5 +611,9 @@ enet_socket_wait (ENetSocket socket, enet_uint32 * condition, enet_uint32 timeou
 #endif
 }
 
+#else
+
+int enet_unix_dummy = 0;
+
 #endif
 
