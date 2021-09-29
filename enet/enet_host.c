@@ -142,6 +142,7 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
         if ( host->client == NULL )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "could not create network next client" );
+            enet_free( host->peers );
             enet_free( host );
             return NULL;
         }
@@ -163,6 +164,7 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
         if ( !host->server )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "could not create network next server" );
+            enet_free( host->peers );
             enet_free( host );
             return NULL;
         }
