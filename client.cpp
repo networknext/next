@@ -9,7 +9,7 @@ const int MaxChannels = 2;
 const int MaxIncomingBandwidth = 0;
 const int MaxOutgoingBandwidth = 0;
 
-const char * bind_address = "0.0.0.0:30000";
+const char * bind_address = "0.0.0.0:40000";
 const char * server_address = "127.0.0.1:50000";
 const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
@@ -50,7 +50,7 @@ int main( int argc, char ** argv )
 
     ENetAddress address;
     enet_address_set_host( &address, "localhost" );
-    address.port = 1234;
+    address.port = 40000;
 #if ENET_NETWORK_NEXT
     address.client = 1;
 #endif // #if ENET_NETWORK_NEXT

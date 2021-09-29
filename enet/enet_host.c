@@ -135,7 +135,7 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
         next_printf( NEXT_LOG_LEVEL_INFO, "creating network next client" );
 
         // todo: extract bind address
-        const char * bind_address = "0.0.0.0:30000";
+        const char * bind_address = "0.0.0.0:40000";
 
         host->client = next_client_create( NULL, bind_address, enet_network_next_client_packet_received, NULL );
 
@@ -145,13 +145,17 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
             enet_free( host );
             return NULL;
         }
+
+        // todo: get client address from next_client_t
+        enet_address_set_host( &host->address, "localhost" );
+        host->address.port = 40000;
     }
     else
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "creating network next server" );
 
-        const char * server_address = "127.0.0.1:40000";    // todo: extract this string from the enet address and port?
-        const char * bind_address = "0.0.0.0:40000";
+        const char * server_address = "127.0.0.1:50000";    // todo: extract this string from the enet address and port?
+        const char * bind_address = "0.0.0.0:50000";
         const char * datacenter = "local";      // todo: put datacenter in enet address so it can be passed in?
 
         host->server = next_server_create( host, server_address, bind_address, datacenter, enet_network_next_server_packet_received, NULL );
@@ -162,9 +166,11 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
             enet_free( host );
             return NULL;
         }
-    }
 
-    // todo: we have to pull the address back into enet here, in case we bound to port 0
+        // todo: get server address from next_server_t
+        enet_address_set_host( &host->address, "localhost" );
+        host->address.port = 50000;
+    }
 
 #else // #if ENET_NETWORK_NEXT
 
@@ -414,7 +420,7 @@ enet_host_connect (ENetHost * host, const ENetAddress * address, size_t channelC
     if ( host->client )
     {
         // todo: extract server address from ENetAddress passed in
-        const char * server_address = "127.0.0.1:40000";
+        const char * server_address = "127.0.0.1:50000";
 
         next_client_open_session( host->client, server_address );
     }

@@ -53,7 +53,9 @@ TODO
 
 	This indicates that something is broken with how I shunt packets through network next.
 
-	I believe it's on the send side.
+	I believe it's on the send side. The packets sent by the client look different on connect, with network next than they do without.
+
+	What's the difference?
 
 	It could also be something broken with the host service or protocol pump.
 
