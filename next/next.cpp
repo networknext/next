@@ -13870,7 +13870,6 @@ void next_ping_verify_sentinels( next_ping_t * ping )
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_resolve_hostname_thread_function( void * context );
 
-
 next_ping_t * next_ping_create( void * context, const char * bind_address_string, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens )
 {
     next_assert( ping_token_data );

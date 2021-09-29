@@ -49,18 +49,18 @@
 
 	Verify client and server connect with network next.
 
+	Make sure no additional delay is added on packet receive due to ordering of calls (eg. don't get offset by one frame)
+
 TODO
 
 	------------
 
 	Clean up:
 
-		1. Fix up todos
+		Fix up todos
 
-		2. Pass in the network next data in host create
+		Pass in the network next data in host create rather than via address (overhead)
 
-		3. Make sure no additional delay is added on packet receive due to ordering of calls (eg. don't get offset by one frame)
-
-		4. Test with multiple clients connecting, to make sure no wires are crossed in server mux/demux of client packets.
+		Test with multiple clients connecting, to make sure no wires are crossed in server mux/demux of client packets.
 
 	------------

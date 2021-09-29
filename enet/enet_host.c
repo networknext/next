@@ -28,7 +28,7 @@ void enet_network_next_client_packet_received( struct next_client_t * client, vo
     (void) packet_data; 
     (void) packet_bytes;
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "network next client received packet from server (%d bytes)", packet_bytes );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "network next client received packet from server (%d bytes)", packet_bytes );
 
     ENetHost * host = (ENetHost*) context;
 
@@ -58,7 +58,7 @@ void enet_network_next_server_packet_received( struct next_server_t * server, vo
     (void) from;
     (void) packet_data;
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "network next server received packet from client (%d bytes)", packet_bytes );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "network next server received packet from client (%d bytes)", packet_bytes );
 
     ENetHost * host = (ENetHost*) context;
 
