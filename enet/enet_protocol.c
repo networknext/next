@@ -1878,8 +1878,24 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
 
     do
     {
-       if (ENET_TIME_DIFFERENCE (host -> serviceTime, host -> bandwidthThrottleEpoch) >= ENET_HOST_BANDWIDTH_THROTTLE_INTERVAL)
-         enet_host_bandwidth_throttle (host);
+        if (ENET_TIME_DIFFERENCE (host -> serviceTime, host -> bandwidthThrottleEpoch) >= ENET_HOST_BANDWIDTH_THROTTLE_INTERVAL)
+        {
+            enet_host_bandwidth_throttle (host);
+        }
+
+#if ENET_NETWORK_NEXT
+
+        if ( host->client )
+        {
+            next_client_update( host->client );
+        }
+
+        if ( host->server )
+        {
+            next_server_update( host->server );
+        }
+
+#endif // #if ENET_NETWORK_NEXT
 
        switch (enet_protocol_send_outgoing_commands (host, event, 1))
        {
@@ -1951,52 +1967,33 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
        if (ENET_TIME_GREATER_EQUAL (host -> serviceTime, timeout))
          return 0;
 
-       do
-       {
-          host -> serviceTime = enet_time_get ();
+#if !ENET_NETWORK_NEXT
 
-          if (ENET_TIME_GREATER_EQUAL (host -> serviceTime, timeout))
-            return 0;
+        do
+        {
+            host -> serviceTime = enet_time_get ();
 
-          waitCondition = ENET_SOCKET_WAIT_RECEIVE | ENET_SOCKET_WAIT_INTERRUPT;
+            if (ENET_TIME_GREATER_EQUAL (host -> serviceTime, timeout))
+                return 0;
 
-#if ENET_NETWORK_NEXT
-
-            if ( host->client )
-            {
-                next_client_update( host->client );
-            }
-
-            if ( host->server )
-            {
-                next_server_update( host->server );
-            }
-
-            int sleep_time_ms = ENET_TIME_DIFFERENCE( timeout, host ->serviceTime );
-
-            if ( sleep_time_ms > 0 )
-            {
-                if ( sleep_time_ms > 100 )
-                {
-                    sleep_time_ms = 100;
-                }
-
-                next_sleep( sleep_time_ms / 1000.0 );
-            }
-
-#else // #if ENET_NETWORK_NEXT
+            waitCondition = ENET_SOCKET_WAIT_RECEIVE | ENET_SOCKET_WAIT_INTERRUPT;
 
             if (enet_socket_wait (host -> socket, & waitCondition, ENET_TIME_DIFFERENCE (timeout, host -> serviceTime)) != 0)
-              return -1;
+                return -1;
+        }
+        while (waitCondition & ENET_SOCKET_WAIT_INTERRUPT);
 
-#endif // #if ENET_NETWORK_NEXT
-
-       }
-       while (waitCondition & ENET_SOCKET_WAIT_INTERRUPT);
-
-       host -> serviceTime = enet_time_get ();
+        host -> serviceTime = enet_time_get ();
 
     } while (waitCondition & ENET_SOCKET_WAIT_RECEIVE);
+
+#else // #if !ENET_NETWORK_NEXT
+
+        host -> serviceTime = enet_time_get ();
+
+    } while (1);
+
+#endif // #if !ENET_NETWORK_NEXT
 
     return 0; 
 }

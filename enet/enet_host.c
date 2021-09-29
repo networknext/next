@@ -150,6 +150,8 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
         // todo: get client address from next_client_t
         enet_address_set_host( &host->address, "localhost" );
         host->address.port = 40000;
+
+        next_printf( NEXT_LOG_LEVEL_INFO, "enet host address is %x:%d", host->address.host, host->address.port );
     }
     else
     {
@@ -172,6 +174,8 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
         // todo: get server address from next_server_t
         enet_address_set_host( &host->address, "localhost" );
         host->address.port = 50000;
+
+        next_printf( NEXT_LOG_LEVEL_INFO, "enet host address is %x:%d", host->address.host, host->address.port );
     }
 
 #else // #if ENET_NETWORK_NEXT
