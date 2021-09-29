@@ -21,6 +21,18 @@ ENetAddress enet_address_from_next( const struct next_address_t * in )
     return out;
 }
 
+void enet_address_to_next( const ENetAddress * in, struct next_address_t * out )
+{
+    next_assert( in );
+    next_assert( out );
+    out->type = NEXT_ADDRESS_IPV4;
+    out->port = in->port;
+    out->data.ipv4[0] = in->host & 0xFF;
+    out->data.ipv4[1] = ( in->host >> 8 )  & 0xFF;
+    out->data.ipv4[2] = ( in->host >> 16 ) & 0xFF;
+    out->data.ipv4[3] = ( in->host >> 24 ) & 0xFF;
+}
+
 void enet_network_next_client_packet_received( struct next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client; 
@@ -133,8 +145,8 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "creating network next client" );
 
-        // todo: extract bind address
-        const char * bind_address = "0.0.0.0:40000";
+        // todo: get bind address from ENetHostConfig (new struct for network next passed in)
+        const char * bind_address = "0.0.0.0:0";
 
         host->client = next_client_create( host, bind_address, enet_network_next_client_packet_received, NULL );
 
@@ -146,10 +158,8 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
             return NULL;
         }
 
-        // todo: get client address from next_client_t
-        enet_address_set_host( &host->address, "localhost" );
-        host->address.port = 40000;
-
+        host->address.host = 0x100007f;
+        host->address.port = next_client_port( host->client );
         next_printf( NEXT_LOG_LEVEL_INFO, "enet host address is %x:%d", host->address.host, host->address.port );
     }
     else
@@ -174,7 +184,7 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
         enet_address_set_host( &host->address, "localhost" );
         host->address.port = 50000;
 
-        next_printf( NEXT_LOG_LEVEL_INFO, "enet host address is %x:%d", host->address.host, host->address.port );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "enet host address is %x:%d", host->address.host, host->address.port );
     }
 
 #else // #if ENET_NETWORK_NEXT

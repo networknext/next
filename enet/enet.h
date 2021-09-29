@@ -643,6 +643,7 @@ extern size_t enet_protocol_command_size (enet_uint8);
 #if ENET_NETWORK_NEXT
 
 ENET_API ENetAddress enet_address_from_next( const struct next_address_t * in );
+ENET_API void enet_address_to_next( const ENetAddress * in, struct next_address_t * out );
 
 #endif // #if ENET_NETWORK_NEXT
 

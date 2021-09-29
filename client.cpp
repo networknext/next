@@ -40,22 +40,20 @@ int main( int argc, char ** argv )
         return 1;
     }
 
-    ENetHost * client = enet_host_create( NULL, 1, MaxChannels, MaxIncomingBandwidth, MaxOutgoingBandwidth ); 
+    // todo: setup and pass in host config here
 
+    ENetHost * client = enet_host_create( NULL, 1, MaxChannels, MaxIncomingBandwidth, MaxOutgoingBandwidth );
     if ( client == NULL )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "failed to create enet client" );
         return 1;
     }
 
-    ENetAddress address;
-    enet_address_set_host( &address, "localhost" );
-    address.port = 50000;
-#if ENET_NETWORK_NEXT
-    address.client = 1;
-#endif // #if ENET_NETWORK_NEXT
+    ENetAddress server_address;
+    enet_address_set_host( &server_address, "localhost" );
+    server_address.port = 50000;
 
-    ENetPeer * peer = enet_host_connect( client, &address, MaxChannels, 0 );    
+    ENetPeer * peer = enet_host_connect( client, &server_address, MaxChannels, 0 );    
   
     if ( peer == NULL )
     {
@@ -63,7 +61,7 @@ int main( int argc, char ** argv )
         return 1;
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "client connecting to server %x:%d", address.host, address.port );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client connecting to server %x:%d", server_address.host, server_address.port );
 
     ENetEvent event;
        

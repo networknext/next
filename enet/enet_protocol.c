@@ -1733,11 +1733,10 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
         {
             // todo: convert enet peer address to network next address -- currentPeer->address
             struct next_address_t address;
-            next_address_parse( &address, "127.0.0.1:40000" );
-
+            enet_address_to_next( &currentPeer->address, &address );
             ENetAddress enet_address = enet_address_from_next( &address );
-
-            // printf( "server sent %d byte packet to %x:%d\n", packet_bytes, enet_address.host, enet_address.port );
+            (void) enet_address;
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent %d byte packet to %x:%d\n", packet_bytes, enet_address.host, enet_address.port );
             next_server_send_packet( host->server, &address, packet_data, packet_bytes );
             sentLength = packet_bytes;
         }
