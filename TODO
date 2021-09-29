@@ -51,16 +51,8 @@
 
 	Make sure no additional delay is added on packet receive due to ordering of calls (eg. don't get offset by one frame)
 
-TODO
+	Fix up todos
 
-	------------
+	Pass in the network next data in host create rather than via address (overhead)
 
-	Clean up:
-
-		Fix up todos
-
-		Pass in the network next data in host create rather than via address (overhead)
-
-		Test with multiple clients connecting, to make sure no wires are crossed in server mux/demux of client packets.
-
-	------------
+	Test with multiple clients connecting, to make sure no wires are crossed in server mux/demux of client packets.
