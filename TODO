@@ -45,19 +45,11 @@ TODO
 
 	------------
 
-	Client should now be able to connect to server, but there seems to be something after receiving the packet, where it's not getting processed correctly into the client joining the game.
+	The problem is that enet is merging the two buffers into one packet when sending.
 
-	Look into what is happening after receiving the packet from dequeue...
+	Fixing this so I coalesce buffers into a single packet on send should fix the connect issue.
 
-	When I disable network next integration, client connects, but also the packets sent and received are different.
-
-	This indicates that something is broken with how I shunt packets through network next.
-
-	I believe it's on the send side. The packets sent by the client look different on connect, with network next than they do without.
-
-	What's the difference?
-
-	It could also be something broken with the host service or protocol pump.
+	Pass this point it's simply clean up...
 
 	------------
 

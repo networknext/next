@@ -50,7 +50,7 @@ int main( int argc, char ** argv )
 
     ENetAddress address;
     enet_address_set_host( &address, "localhost" );
-    address.port = 40000;
+    address.port = 50000;
 #if ENET_NETWORK_NEXT
     address.client = 1;
 #endif // #if ENET_NETWORK_NEXT

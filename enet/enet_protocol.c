@@ -1755,6 +1755,8 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
             struct next_address_t address;
             next_address_parse( &address, "127.0.0.1:30000" );
 
+            printf( "server buffer count = %d\n", (int) host->bufferCount );
+
             int i;
             sentLength = 0;
             for ( i = 0; i < host->bufferCount; i++ )
@@ -1767,6 +1769,8 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
         }
         else if ( host->client )
         {
+            printf( "client buffer count = %d\n", (int) host->bufferCount );
+
             int i;
             sentLength = 0;
             for ( i = 0; i < host->bufferCount; i++ )

@@ -73,7 +73,6 @@ void enet_network_next_server_packet_received( struct next_server_t * server, vo
     }
 
     packet->from = enet_address_from_next( from );
-
     next_assert( packet_bytes > 0 );
     next_assert( packet_bytes <= NEXT_MTU );
     memcpy( packet->data, packet_data, packet_bytes );
