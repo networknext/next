@@ -1006,7 +1006,7 @@ enet_protocol_handle_incoming_commands (ENetHost * host, ENetEvent * event)
     enet_uint16 peerID, flags;
     enet_uint8 sessionID;
 
-    if (host -> receivedDataLength < (size_t) & ((ENetProtocolHeader *) 0) -> sentTime)     // todo: what the ACTUAL FUCK are they doing here?
+    if (host -> receivedDataLength < (size_t) & ((ENetProtocolHeader *) 0) -> sentTime)
     {
         return 0;
     }
@@ -1018,7 +1018,7 @@ enet_protocol_handle_incoming_commands (ENetHost * host, ENetEvent * event)
     flags = peerID & ENET_PROTOCOL_HEADER_FLAG_MASK;
     peerID &= ~ (ENET_PROTOCOL_HEADER_FLAG_MASK | ENET_PROTOCOL_HEADER_SESSION_MASK);
 
-    headerSize = (flags & ENET_PROTOCOL_HEADER_FLAG_SENT_TIME ? sizeof (ENetProtocolHeader) : (size_t) & ((ENetProtocolHeader *) 0) -> sentTime);    // todo: again. WTF?
+    headerSize = (flags & ENET_PROTOCOL_HEADER_FLAG_SENT_TIME ? sizeof (ENetProtocolHeader) : (size_t) & ((ENetProtocolHeader *) 0) -> sentTime);
     if (host -> checksum != NULL)
       headerSize += sizeof (enet_uint32);
 
@@ -1959,7 +1959,16 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
 
 #else // #if !ENET_NETWORK_NEXT
 
-        // todo: we don't want a spinlock here
+        // IMPORTANT: Don't spinlock
+
+        int delay = ENET_TIME_DIFFERENCE( timeout, host->serviceTime );
+
+        if ( delay > 100 )
+        {
+            delay = 100;
+        }
+
+        next_sleep( delay / 1000.0 );
 
         host -> serviceTime = enet_time_get ();
 
