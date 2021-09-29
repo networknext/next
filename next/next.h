@@ -339,6 +339,8 @@ NEXT_EXPORT_FUNC void next_server_destroy( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC uint16_t next_server_port( struct next_server_t * server );
 
+NEXT_EXPORT_FUNC struct next_address_t next_server_address( struct next_server_t * server );
+
 NEXT_EXPORT_FUNC int next_server_state( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC void next_server_update( struct next_server_t * server );

@@ -43,14 +43,25 @@ int main( int argc, char ** argv )
         return 1;
     }
 
+#if ENET_NETWORK_NEXT
+
+    ENetHostConfig host_config;
+    host_config.client = 0;
+    host_config.bind_address = bind_address;
+    host_config.server_address = server_address;
+    host_config.server_datacenter = server_datacenter;
+
+    ENetHost * server = enet_host_create( &host_config, MaxClients, MaxChannels, MaxIncomingBandwidth, MaxOutgoingBandwidth );
+
+#else // #if ENET_NETWORK_NEXT
+
     ENetAddress address;
     address.host = ENET_HOST_ANY;
     address.port = 50000;
-#if ENET_NETWORK_NEXT
-    address.client = 0;
-#endif // #if ENET_NETWORK_NEXT
 
     ENetHost * server = enet_host_create( &address, MaxClients, MaxChannels, MaxIncomingBandwidth, MaxOutgoingBandwidth );
+
+#endif // #if ENET_NETWORK_NEXT
 
     if ( server == NULL )
     {   
@@ -58,7 +69,7 @@ int main( int argc, char ** argv )
         return 1;
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "started server on port %d", address.port );
+    next_printf( NEXT_LOG_LEVEL_INFO, "started server on port %d", server->address.port );
 
     while ( !quit )
     {

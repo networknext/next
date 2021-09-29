@@ -115,13 +115,25 @@ void enet_network_next_server_packet_received( struct next_server_t * server, vo
     at any given time.
 */
 ENetHost *
+#if ENET_NETWORK_NEXT
+enet_host_create (const ENetHostConfig * config, size_t peerCount, size_t channelLimit, enet_uint32 incomingBandwidth, enet_uint32 outgoingBandwidth)
+#else // #if ENET_NETWORK_NEXT
 enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelLimit, enet_uint32 incomingBandwidth, enet_uint32 outgoingBandwidth)
+#endif // #if ENET_NETWORK_NEXT
 {
     ENetHost * host;
     ENetPeer * currentPeer;
 
     if (peerCount > ENET_PROTOCOL_MAXIMUM_PEER_ID)
       return NULL;
+
+#if ENET_NETWORK_NEXT
+    next_assert( config );
+    if ( !config )
+    {
+        return NULL;        
+    }
+#endif // #if ENET_NETWORK_NEXT
 
     host = (ENetHost *) enet_malloc (sizeof (ENetHost));
     if (host == NULL)
@@ -141,14 +153,11 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
 
     enet_list_clear( &host->receivePacketQueue );
 
-    if ( !address || address->client )
+    if ( config->client )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "creating network next client" );
 
-        // todo: get bind address from ENetHostConfig (new struct for network next passed in)
-        const char * bind_address = "0.0.0.0:0";
-
-        host->client = next_client_create( host, bind_address, enet_network_next_client_packet_received, NULL );
+        host->client = next_client_create( host, config->bind_address, enet_network_next_client_packet_received, NULL );
 
         if ( host->client == NULL )
         {
@@ -160,17 +169,12 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
 
         host->address.host = 0x100007f;
         host->address.port = next_client_port( host->client );
-        next_printf( NEXT_LOG_LEVEL_INFO, "enet host address is %x:%d", host->address.host, host->address.port );
     }
     else
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "creating network next server" );
 
-        const char * server_address = "127.0.0.1:50000";    // todo: extract this string from the enet address and port?
-        const char * bind_address = "0.0.0.0:50000";
-        const char * datacenter = "local";      // todo: put datacenter in enet address so it can be passed in?
-
-        host->server = next_server_create( host, server_address, bind_address, datacenter, enet_network_next_server_packet_received, NULL );
+        host->server = next_server_create( host, config->server_address, config->bind_address, config->server_datacenter, enet_network_next_server_packet_received, NULL );
 
         if ( !host->server )
         {
@@ -180,12 +184,11 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
             return NULL;
         }
 
-        // todo: get server address from next_server_t
-        enet_address_set_host( &host->address, "localhost" );
-        host->address.port = 50000;
-
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "enet host address is %x:%d", host->address.host, host->address.port );
+        struct next_address_t server_address = next_server_address( host->server );
+        host->address = enet_address_from_next( &server_address );
     }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "enet host address is %x:%d", host->address.host, host->address.port );
 
 #else // #if ENET_NETWORK_NEXT
 
@@ -434,10 +437,12 @@ enet_host_connect (ENetHost * host, const ENetAddress * address, size_t channelC
 
     if ( host->client )
     {
-        // todo: extract server address from ENetAddress passed in
-        const char * server_address = "127.0.0.1:50000";
-
-        next_client_open_session( host->client, server_address );
+        // puking noises... =p
+        struct next_address_t server_address;
+        enet_address_to_next( address, &server_address );
+        char server_address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_address_to_string( &server_address, server_address_string );
+        next_client_open_session( host->client, server_address_string );
     }
 
 #endif // #if ENET_NETWORK_NEXT

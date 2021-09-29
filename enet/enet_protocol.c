@@ -1731,7 +1731,6 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
 
         if ( host->server )
         {
-            // todo: convert enet peer address to network next address -- currentPeer->address
             struct next_address_t address;
             enet_address_to_next( &currentPeer->address, &address );
             ENetAddress enet_address = enet_address_from_next( &address );
@@ -1742,7 +1741,7 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
         }
         else if ( host->client )
         {
-            // printf( "client sent %d byte packet to server\n", packet_bytes );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent %d byte packet to server\n", packet_bytes );
             next_client_send_packet( host->client, packet_data, packet_bytes );
             sentLength = packet_bytes;
         }

@@ -9,7 +9,7 @@ const int MaxChannels = 2;
 const int MaxIncomingBandwidth = 0;
 const int MaxOutgoingBandwidth = 0;
 
-const char * bind_address = "0.0.0.0:40000";
+const char * bind_address = "0.0.0.0:0";
 const char * server_address = "127.0.0.1:50000";
 const char * customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw==";
 
@@ -40,20 +40,40 @@ int main( int argc, char ** argv )
         return 1;
     }
 
-    // todo: setup and pass in host config here
+    // create client
+
+#if ENET_NETWORK_NEXT
+
+    ENetHostConfig host_config;
+    host_config.client = 1;
+    host_config.bind_address = bind_address;
+
+    ENetHost * client = enet_host_create( &host_config, 1, MaxChannels, MaxIncomingBandwidth, MaxOutgoingBandwidth );
+
+#else // #if ENET_NETWORK_NEXT
 
     ENetHost * client = enet_host_create( NULL, 1, MaxChannels, MaxIncomingBandwidth, MaxOutgoingBandwidth );
+
+#endif // #if ENET_NETWORK_NEXT
+
     if ( client == NULL )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "failed to create enet client" );
         return 1;
     }
 
-    ENetAddress server_address;
-    enet_address_set_host( &server_address, "localhost" );
-    server_address.port = 50000;
+    // connect to server
 
-    ENetPeer * peer = enet_host_connect( client, &server_address, MaxChannels, 0 );    
+    struct next_address_t address;
+    if ( next_address_parse( &address, server_address ) != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "could not parse server address: %s", server_address );
+        return 1;
+    }
+
+    ENetAddress enet_server_address = enet_address_from_next( &address );
+
+    ENetPeer * peer = enet_host_connect( client, &enet_server_address, MaxChannels, 0 );    
   
     if ( peer == NULL )
     {
@@ -61,7 +81,9 @@ int main( int argc, char ** argv )
         return 1;
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "client connecting to server %x:%d", server_address.host, server_address.port );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client connecting to server %x:%d", enet_server_address.host, enet_server_address.port );
+
+    // wait for client to connect to server...
 
     ENetEvent event;
        
@@ -74,6 +96,8 @@ int main( int argc, char ** argv )
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not connect to server" );
         return 1;
     }
+
+    // main loop. make sure to pass in 0 or you'll get delays (sleeps) in your game loop. you don't want that.
 
     while ( !quit )
     {
@@ -100,6 +124,8 @@ int main( int argc, char ** argv )
 
         next_sleep( 1.0f );
     }
+
+    // cleanup
 
     printf( "\n" );
     fflush( stdout );

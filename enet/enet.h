@@ -80,6 +80,18 @@ typedef enum _ENetSocketShutdown
 #define ENET_HOST_BROADCAST 0xFFFFFFFFU
 #define ENET_PORT_ANY       0
 
+#if ENET_NETWORK_NEXT
+
+typedef struct _ENetHostConfig
+{
+   int client;                       // set this to 1 if the host is a client, 0 if it is a server.
+   const char * bind_address;        // typically set to "0.0.0.0:0" for client and "0.0.0.0:portnum" for server.
+   const char * server_address;      // only required for server. the public address that clients connect to.
+   const char * server_datacenter;   // only required for server. the datacenter the server is running in. use "local" by default and the specific datacenter string when running in bare metal.
+} ENetHostConfig;
+
+#endif // #if ENET_NETWORK_NEXT
+
 /**
  * Portable internet address structure. 
  *
@@ -94,9 +106,6 @@ typedef struct _ENetAddress
 {
    enet_uint32 host;
    enet_uint16 port;
-#if ENET_NETWORK_NEXT
-   int client;                         // todo: this is used on packet receive, so best not to inflate it like this
-#endif // #if ENET_NETWORK_NEXT
 } ENetAddress;
 
 /**
@@ -597,7 +606,11 @@ ENET_API void         enet_packet_destroy (ENetPacket *);
 ENET_API int          enet_packet_resize  (ENetPacket *, size_t);
 ENET_API enet_uint32  enet_crc32 (const ENetBuffer *, size_t);
                 
+#if ENET_NETWORK_NEXT
+ENET_API ENetHost * enet_host_create (const ENetHostConfig *, size_t, size_t, enet_uint32, enet_uint32);
+#else // #if ENET_NETWORK_NEXT
 ENET_API ENetHost * enet_host_create (const ENetAddress *, size_t, size_t, enet_uint32, enet_uint32);
+#endif // #if ENET_NETWORK_NEXT
 ENET_API void       enet_host_destroy (ENetHost *);
 ENET_API ENetPeer * enet_host_connect (ENetHost *, const ENetAddress *, size_t, enet_uint32);
 ENET_API int        enet_host_check_events (ENetHost *, ENetEvent *);

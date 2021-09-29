@@ -13015,6 +13015,7 @@ struct next_server_t
     void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes );
     next_proxy_session_manager_t * pending_session_manager;
     next_proxy_session_manager_t * session_manager;
+    next_address_t address;
     uint16_t bound_port;
 
     NEXT_DECLARE_SENTINEL(1)
@@ -13066,6 +13067,7 @@ next_server_t * next_server_create( void * context, const char * server_address,
         return NULL;
     }
 
+    server->address = server->internal->server_address;
     server->bound_port = server->internal->server_address.port;
 
     server->thread = next_platform_thread_create( server->context, next_server_internal_thread_function, server->internal );
@@ -13110,6 +13112,13 @@ uint16_t next_server_port( next_server_t * server )
     next_server_verify_sentinels( server );
 
     return server->bound_port;
+}
+
+next_address_t next_server_address( next_server_t * server )
+{
+    next_server_verify_sentinels( server );
+
+    return server->address;
 }
 
 void next_server_destroy( next_server_t * server )
