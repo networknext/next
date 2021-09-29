@@ -51,6 +51,9 @@ int main( int argc, char ** argv )
     ENetAddress address;
     enet_address_set_host( &address, "localhost" );
     address.port = 1234;
+#if ENET_NETWORK_NEXT
+    address.client = 1;
+#endif // #if ENET_NETWORK_NEXT
 
     ENetPeer * peer = enet_host_connect( client, &address, MaxChannels, 0 );    
   

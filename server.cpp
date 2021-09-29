@@ -46,7 +46,9 @@ int main( int argc, char ** argv )
     ENetAddress address;
     address.host = ENET_HOST_ANY;
     address.port = 1234;
+#if ENET_NETWORK_NEXT
     address.client = 0;
+#endif // #if ENET_NETWORK_NEXT
 
     ENetHost * server = enet_host_create( &address, MaxClients, MaxChannels, MaxIncomingBandwidth, MaxOutgoingBandwidth );
 

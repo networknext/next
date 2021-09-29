@@ -1,6 +1,6 @@
 solution "enet"
 	configurations { "Debug", "Release" }
-	defines { "ENET_NETWORK_NEXT=1", "ENET_DEBUG=1" }
+	defines { "ENET_DEBUG=1" } -- "ENET_NETWORK_NEXT=1", 
 	platforms { "x64" }
 
 project "next"

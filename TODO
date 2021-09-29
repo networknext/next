@@ -49,6 +49,14 @@ TODO
 
 	Look into what is happening after receiving the packet from dequeue...
 
+	When I disable network next integration, client connects, but also the packets sent and received are different.
+
+	This indicates that something is broken with how I shunt packets through network next.
+
+	I believe it's on the send side.
+
+	It could also be something broken with the host service or protocol pump.
+
 	------------
 
 	Clean up:
