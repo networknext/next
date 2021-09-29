@@ -1989,6 +1989,8 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
 
 #else // #if !ENET_NETWORK_NEXT
 
+        // todo: we don't want a spinlock here
+
         host -> serviceTime = enet_time_get ();
 
     } while (1);
