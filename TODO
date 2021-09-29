@@ -37,17 +37,17 @@
 
 	Dequeue packets from receive queue and process them.
 
-TODO
-
-	------------
-
-	So close now...
-
 	Work out how to get address for server when the client receives a packet.
 
 	Translate the client address to ENetAddress when the server receives a packet.
 
-	*** Client should now be able to connect to server ***
+TODO
+
+	------------
+
+	Client should now be able to connect to server, but there seems to be something after receiving the packet, where it's not getting processed correctly into the client joining the game.
+
+	Look into what is happening after receiving the packet from dequeue...
 
 	------------
 

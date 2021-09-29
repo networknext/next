@@ -995,9 +995,14 @@ enet_protocol_handle_verify_connect (ENetHost * host, ENetEvent * event, ENetPee
     return 0;
 }
 
+// todo
+#include <stdio.h>
+
 static int
 enet_protocol_handle_incoming_commands (ENetHost * host, ENetEvent * event)
 {
+    printf( "enet_protocol_handle_incoming_commands\n" );
+
     ENetProtocolHeader * header;
     ENetProtocol * command;
     ENetPeer * peer;
@@ -1006,44 +1011,70 @@ enet_protocol_handle_incoming_commands (ENetHost * host, ENetEvent * event)
     enet_uint16 peerID, flags;
     enet_uint8 sessionID;
 
-    if (host -> receivedDataLength < (size_t) & ((ENetProtocolHeader *) 0) -> sentTime)
-      return 0;
+    printf( "host->receivedDataLength = %d\n", (int) host->receivedDataLength );
+
+    if (host -> receivedDataLength < (size_t) & ((ENetProtocolHeader *) 0) -> sentTime)     // todo: what the ACTUAL FUCK are they doing here?
+    {
+        printf( "nope (1)\n" );
+        return 0;
+    }
 
     header = (ENetProtocolHeader *) host -> receivedData;
+
+    printf( "packet[0] = %d\n", host->receivedData[0] );
+    printf( "packet[1] = %d\n", host->receivedData[1] );
+    printf( "packet[2] = %d\n", host->receivedData[2] );
+    printf( "packet[3] = %d\n", host->receivedData[3] );
+    printf( "packet[4] = %d\n", host->receivedData[4] );
+    printf( "packet[5] = %d\n", host->receivedData[5] );
+    printf( "packet[6] = %d\n", host->receivedData[6] );
+    printf( "packet[7] = %d\n", host->receivedData[7] );
 
     peerID = ENET_NET_TO_HOST_16 (header -> peerID);
     sessionID = (peerID & ENET_PROTOCOL_HEADER_SESSION_MASK) >> ENET_PROTOCOL_HEADER_SESSION_SHIFT;
     flags = peerID & ENET_PROTOCOL_HEADER_FLAG_MASK;
     peerID &= ~ (ENET_PROTOCOL_HEADER_FLAG_MASK | ENET_PROTOCOL_HEADER_SESSION_MASK);
 
-    headerSize = (flags & ENET_PROTOCOL_HEADER_FLAG_SENT_TIME ? sizeof (ENetProtocolHeader) : (size_t) & ((ENetProtocolHeader *) 0) -> sentTime);
+    headerSize = (flags & ENET_PROTOCOL_HEADER_FLAG_SENT_TIME ? sizeof (ENetProtocolHeader) : (size_t) & ((ENetProtocolHeader *) 0) -> sentTime);    // todo: again. WTF?
     if (host -> checksum != NULL)
       headerSize += sizeof (enet_uint32);
 
+    printf( "peer id = %x\n", peerID );
+
     if (peerID == ENET_PROTOCOL_MAXIMUM_PEER_ID)
-      peer = NULL;
-    else
-    if (peerID >= host -> peerCount)
-      return 0;
+    {
+        peer = NULL;
+    }
+    else if (peerID >= host -> peerCount)
+    {
+        printf( "nope (2)\n" );
+        return 0;
+    }
     else
     {
-       peer = & host -> peers [peerID];
+        peer = & host -> peers [peerID];
 
-       if (peer -> state == ENET_PEER_STATE_DISCONNECTED ||
+        if (peer -> state == ENET_PEER_STATE_DISCONNECTED ||
            peer -> state == ENET_PEER_STATE_ZOMBIE ||
            ((host -> receivedAddress.host != peer -> address.host ||
              host -> receivedAddress.port != peer -> address.port) &&
              peer -> address.host != ENET_HOST_BROADCAST) ||
            (peer -> outgoingPeerID < ENET_PROTOCOL_MAXIMUM_PEER_ID &&
             sessionID != peer -> incomingSessionID))
-         return 0;
+        {
+            printf( "nope (3)\n" );
+            return 0;
+        }
     }
  
     if (flags & ENET_PROTOCOL_HEADER_FLAG_COMPRESSED)
     {
         size_t originalSize;
         if (host -> compressor.context == NULL || host -> compressor.decompress == NULL)
-          return 0;
+        {
+            printf( "nope (4)\n" );
+            return 0;
+        }
 
         originalSize = host -> compressor.decompress (host -> compressor.context,
                                     host -> receivedData + headerSize, 
@@ -1051,7 +1082,10 @@ enet_protocol_handle_incoming_commands (ENetHost * host, ENetEvent * event)
                                     host -> packetData [1] + headerSize, 
                                     sizeof (host -> packetData [1]) - headerSize);
         if (originalSize <= 0 || originalSize > sizeof (host -> packetData [1]) - headerSize)
-          return 0;
+        {
+            printf( "nope (5)\n" );
+            return 0;
+        }
 
         memcpy (host -> packetData [1], header, headerSize);
         host -> receivedData = host -> packetData [1];
@@ -1070,7 +1104,10 @@ enet_protocol_handle_incoming_commands (ENetHost * host, ENetEvent * event)
         buffer.dataLength = host -> receivedDataLength;
 
         if (host -> checksum (& buffer, 1) != desiredChecksum)
-          return 0;
+        {
+            printf( "nope (6)\n" );
+            return 0;
+        }
     }
        
     if (peer != NULL)
@@ -1106,6 +1143,8 @@ enet_protocol_handle_incoming_commands (ENetHost * host, ENetEvent * event)
          break;
          
        command -> header.reliableSequenceNumber = ENET_NET_TO_HOST_16 (command -> header.reliableSequenceNumber);
+
+       printf( "switch command number\n" );
 
        switch (commandNumber)
        {
@@ -1208,7 +1247,12 @@ enet_protocol_handle_incoming_commands (ENetHost * host, ENetEvent * event)
 
 commandError:
     if (event != NULL && event -> type != ENET_EVENT_TYPE_NONE)
-      return 1;
+    {
+        printf( "command error\n" );
+        return 1;
+    }
+
+    printf( "OK\n" );
 
     return 0;
 }
@@ -1237,7 +1281,7 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
             printf( "dequeued %d byte packet from receive packet queue from %x:%d\n", packet->size, packet->from.host, packet->from.port );
             host->receivedAddress = packet->from;
             memcpy( buffer.data, packet->data, packet->size );
-            buffer.dataLength = packet->size;
+            receivedLength = packet->size;
             enet_free( packet );
         }
 
@@ -1261,6 +1305,8 @@ enet_protocol_receive_incoming_commands (ENetHost * host, ENetEvent * event)
       
        host -> totalReceivedData += receivedLength;
        host -> totalReceivedPackets ++;            
+
+       printf( "received data of length %d\n", receivedLength );
 
        if (host -> intercept != NULL)
        {
@@ -1725,6 +1771,8 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
             sentLength = 0;
             for ( i = 0; i < host->bufferCount; i++ )
             {
+                // todo
+                printf( "client sent %d byte packet\n", (int) host->buffers[i].dataLength );
                 next_client_send_packet( host->client, host->buffers[i].data, host->buffers[i].dataLength );
                 sentLength += host->buffers[i].dataLength;
             }
