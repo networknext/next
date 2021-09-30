@@ -1,28 +1,27 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"expvar"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
+	"sync"
+	"syscall"
 	"time"
 
-	"github.com/networknext/backend/modules/envvar"
-
 	"cloud.google.com/go/bigquery"
-	gcplogging "cloud.google.com/go/logging"
-	"cloud.google.com/go/profiler"
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/analytics"
-	"github.com/networknext/backend/modules/logging"
+	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 )
@@ -35,284 +34,163 @@ var (
 )
 
 func main() {
-	fmt.Printf("analytics: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	os.Exit(mainReturnWithCode())
+}
 
-	ctx := context.Background()
+func mainReturnWithCode() int {
+	serviceName := "analytics"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
-	logger := log.NewLogfmtLogger(os.Stdout)
+	est, _ := time.LoadLocation("EST")
+	startTime := time.Now().In(est)
 
-	var metricsHandler metrics.Handler = &metrics.NoOpHandler{}
+	ctx, ctxCancelFunc := context.WithCancel(context.Background())
+	wg := &sync.WaitGroup{}
 
-	// StackDriver Logging
-	{
-		var enableSDLogging bool
-		enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
-		if ok {
-			var err error
-			enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
-			if err != nil {
-				level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-		}
+	logger := log.NewNopLogger()
 
-		if enableSDLogging {
-			if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-				loggingClient, err := gcplogging.NewClient(ctx, projectID)
-				if err != nil {
-					level.Error(logger).Log("msg", "failed to create GCP logging client", "err", err)
-					os.Exit(1)
-				}
+	gcpProjectID := backend.GetGCPProjectID()
+	gcpOK := gcpProjectID != ""
 
-				logger = logging.NewStackdriverLogger(loggingClient, "analytics")
-			}
-		}
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		core.Error("could not get metrics handler: %v", err)
+		return 1
 	}
 
-	switch os.Getenv("BACKEND_LOG_LEVEL") {
-	case "none":
-		logger = level.NewFilter(logger, level.AllowNone())
-	case level.ErrorValue().String():
-		logger = level.NewFilter(logger, level.AllowError())
-	case level.WarnValue().String():
-		logger = level.NewFilter(logger, level.AllowWarn())
-	case level.InfoValue().String():
-		logger = level.NewFilter(logger, level.AllowInfo())
-	case level.DebugValue().String():
-		logger = level.NewFilter(logger, level.AllowDebug())
-	default:
-		logger = level.NewFilter(logger, level.AllowWarn())
+	env, err := backend.GetEnv()
+	if err != nil {
+		core.Error("could not get env: %v", err)
+		return 1
 	}
 
-	logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-
-	env, ok := os.LookupEnv("ENV")
-	if !ok {
-		level.Error(logger).Log("err", "ENV not set")
-		os.Exit(1)
-	}
-
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 	if gcpOK {
-
-		// StackDriver Metrics
-		{
-			var enableSDMetrics bool
-			var err error
-			enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
-			if ok {
-				enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDMetrics {
-				// Set up StackDriver metrics
-				sd := metrics.StackDriverHandler{
-					ProjectID:          gcpProjectID,
-					OverwriteFrequency: time.Second,
-					OverwriteTimeout:   10 * time.Second,
-				}
-
-				if err := sd.Open(ctx); err != nil {
-					level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
-					os.Exit(1)
-				}
-
-				metricsHandler = &sd
-
-				sdwriteinterval := os.Getenv("GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL")
-				writeInterval, err := time.ParseDuration(sdwriteinterval)
-				if err != nil {
-					level.Error(logger).Log("envvar", "GOOGLE_STACKDRIVER_METRICS_WRITE_INTERVAL", "value", sdwriteinterval, "err", err)
-					os.Exit(1)
-				}
-				go metricsHandler.WriteLoop(ctx, logger, writeInterval, 200)
-			}
-		}
-
-		// StackDriver Profiler
-		{
-			var enableSDProfiler bool
-			var err error
-			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
-			if ok {
-				enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_PROFILER", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDProfiler {
-				// Set up StackDriver profiler
-				if err := profiler.Start(profiler.Config{
-					Service:        "analytics",
-					ServiceVersion: env,
-					ProjectID:      gcpProjectID,
-					MutexProfiling: true,
-				}); err != nil {
-					level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
-					os.Exit(1)
-				}
-			}
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+			core.Error("could not initialize stackdriver profiler: %v", err)
+			return 1
 		}
 	}
 
 	analyticsMetrics, err := metrics.NewAnalyticsServiceMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create analytics metrics", "err", err)
+		core.Error("failed to create analytics metrics: %v", err)
+		return 1
 	}
+
+	// Create an error chan for exiting from goroutines
+	errChan := make(chan error, 1)
 
 	var pingStatsWriter analytics.PingStatsWriter = &analytics.NoOpPingStatsWriter{}
-	{
-		// BigQuery
-		if gcpOK {
-			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_PING_STATS"); ok {
-				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
-				b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, logger, &analyticsMetrics.PingStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_PING_STATS"))
-				pingStatsWriter = &b
-
-				go b.WriteLoop(ctx)
-			}
-		}
-
-		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-		if emulatorOK {
-			gcpProjectID = "local"
-
-			pingStatsWriter = &analytics.LocalPingStatsWriter{
-				Logger: logger,
-			}
-
-			level.Info(logger).Log("msg", "detected pubsub emulator")
-		}
-
-		// google pubsub forwarder
-		if gcpOK || emulatorOK {
-			topicName := "ping_stats"
-			subscriptionName := "ping_stats"
-
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-			defer cancelFunc()
-
-			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, logger, &analyticsMetrics.PingStatsMetrics, gcpProjectID, topicName, subscriptionName)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-
-			go pubsubForwarder.Forward(ctx)
-		}
-	}
-
 	var relayStatsWriter analytics.RelayStatsWriter = &analytics.NoOpRelayStatsWriter{}
-	{
-		// BigQuery
-		if gcpOK {
-			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_RELAY_STATS"); ok {
-				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
-				b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, logger, &analyticsMetrics.RelayStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_RELAY_STATS"))
-				relayStatsWriter = &b
 
-				go b.WriteLoop(ctx)
-			}
-		}
-
-		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-		if emulatorOK {
-			gcpProjectID = "local"
-
-			relayStatsWriter = &analytics.LocalRelayStatsWriter{
-				Logger: logger,
+	if gcpOK {
+		// Google BigQuery
+		{
+			pingStatsDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_PING_STATS", "")
+			if pingStatsDataset == "" {
+				core.Error("envvar GOOGLE_BIGQUERY_DATASET_PING_STATS not set")
+				return 1
 			}
 
-			level.Info(logger).Log("msg", "detected pubsub emulator")
-		}
+			pingStatsTableName := envvar.Get("GOOGLE_BIGQUERY_TABLE_PING_STATS", "")
+			if pingStatsTableName == "" {
+				core.Error("envvar GOOGLE_BIGQUERY_TABLE_PING_STATS not set")
+				return 1
+			}
 
-		// google pubsub forwarder
-		if gcpOK || emulatorOK {
-			topicName := "relay_stats"
-			subscriptionName := "relay_stats"
-
-			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-			defer cancelFunc()
-
-			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, &analyticsMetrics.RelayStatsMetrics, gcpProjectID, topicName, subscriptionName)
+			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
+				core.Error("could not create ping stats bigquery client: %v", err)
+				return 1
 			}
 
-			go pubsubForwarder.Forward(ctx)
+			b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, &analyticsMetrics.PingStatsMetrics, pingStatsDataset, pingStatsTableName)
+			pingStatsWriter = &b
+
+			go b.WriteLoop(wg)
+		}
+
+		{
+			relayStatsDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_RELAY_STATS", "")
+			if relayStatsDataset == "" {
+				core.Error("envvar GOOGLE_BIGQUERY_DATASET_RELAY_STATS not set")
+				return 1
+			}
+
+			relayStatsTableName := envvar.Get("GOOGLE_BIGQUERY_TABLE_RELAY_STATS", "")
+			if relayStatsTableName == "" {
+				core.Error("envvar GOOGLE_BIGQUERY_TABLE_RELAY_STATS not set")
+				return 1
+			}
+
+			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
+			if err != nil {
+				core.Error("could not create relay stats bigquery client: %v", err)
+				return 1
+			}
+
+			b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, &analyticsMetrics.RelayStatsMetrics, relayStatsDataset, relayStatsTableName)
+			relayStatsWriter = &b
+
+			go b.WriteLoop(wg)
 		}
 	}
 
-	/* 	var relayNamesHashWriter analytics.RouteMatrixStatsWriter = &analytics.NoOpRouteMatrixStatsWriter{}
-	   	{
-	   		// BigQuery
-	   		if gcpOK {
-	   			if analyticsDataset, ok := os.LookupEnv("GOOGLE_BIGQUERY_DATASET_ROUTE_MATRIX_STATS"); ok {
-	   				bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
-	   				if err != nil {
-	   					level.Error(logger).Log("err", err)
-	   					os.Exit(1)
-	   				}
-	   				b, err := analytics.NewGoogleBigQueryRouteMatrixStatsWriter(bqClient, logger, &analyticsMetrics.RouteMatrixStatsMetrics, analyticsDataset, os.Getenv("GOOGLE_BIGQUERY_TABLE_ROUTE_MATRIX_STATS"))
-	   				if err != nil {
-	   					level.Error(logger).Log("err", err)
-	   					os.Exit(1)
-	   				}
+	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 
-	   				relayNamesHashWriter = &b
+	if gcpOK || pubsubEmulatorOK {
 
-	   				go b.WriteLoop(ctx)
-	   			}
-	   		}
+		if pubsubEmulatorOK {
+			// Prefer to use the emulator instead of actual Google pubsub
+			gcpProjectID = "local"
 
-	   		_, emulatorOK := os.LookupEnv("PUBSUB_EMULATOR_HOST")
-	   		if emulatorOK {
-	   			gcpProjectID = "local"
+			// Use local ping stats and relay stats writer
+			pingStatsWriter = &analytics.LocalPingStatsWriter{Metrics: &analyticsMetrics.PingStatsMetrics}
+			relayStatsWriter = &analytics.LocalRelayStatsWriter{Metrics: &analyticsMetrics.RelayStatsMetrics}
 
-	   			relayNamesHashWriter = &analytics.LocalRouteMatrixStatsWriter{
-	   				Logger: logger,
-	   			}
+			core.Debug("Detected pubsub emulator")
+		}
 
-	   			level.Info(logger).Log("msg", "detected pubsub emulator")
-	   		}
+		// Google pubsub forwarder
+		{
+			topicName := envvar.Get("PING_STATS_TOPIC_NAME", "ping_stats")
+			subscriptionName := envvar.Get("PING_STATS_SUBSCRIPTION_NAME", "ping_stats")
 
-	   		// google pubsub forwarder
-	   		if gcpOK || emulatorOK {
-	   			topicName := "route_matrix_stats"
-	   			subscriptionName := "route_matrix_stats"
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
 
-	   			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(60*time.Minute))
-	   			defer cancelFunc()
+			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, &analyticsMetrics.PingStatsMetrics, gcpProjectID, topicName, subscriptionName)
+			if err != nil {
+				core.Error("could not create ping stats pub sub forwarder: %v", err)
+				return 1
+			}
 
-	   			pubsubForwarder, err := analytics.NewRouteMatrixStatsPubSubForwarder(pubsubCtx, relayNamesHashWriter, logger, &analyticsMetrics.RouteMatrixStatsMetrics, gcpProjectID, topicName, subscriptionName)
-	   			if err != nil {
-	   				level.Error(logger).Log("err", err)
-	   				os.Exit(1)
-	   			}
+			wg.Add(1)
+			go pubsubForwarder.Forward(ctx, wg)
+		}
 
-	   			go pubsubForwarder.Forward(ctx)
-	   		}
-	   	} */
+		{
+			topicName := envvar.Get("RELAY_STATS_TOPIC_NAME", "ping_stats")
+			subscriptionName := envvar.Get("RELAY_STATS_SUBSCRIPTION_NAME", "ping_stats")
 
-	// Setup the stats print routine
+			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
+			defer cancelFunc()
+
+			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, &analyticsMetrics.RelayStatsMetrics, gcpProjectID, topicName, subscriptionName)
+			if err != nil {
+				core.Error("could not create relay stats pub sub forwarder: %v", err)
+				return 1
+			}
+
+			wg.Add(1)
+			go pubsubForwarder.Forward(ctx, wg)
+		}
+	}
+
+	// Setup the status handler info
+	var statusData []byte
+	var statusMutex sync.RWMutex
+
 	{
 		memoryUsed := func() float64 {
 			var m runtime.MemStats
@@ -325,77 +203,91 @@ func main() {
 				analyticsMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				analyticsMetrics.MemoryAllocated.Set(memoryUsed())
 
-				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(analyticsMetrics.Goroutines.Value()))
-				fmt.Printf("%.2f mb allocated\n", analyticsMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d ping stats entries received\n", int(analyticsMetrics.PingStatsMetrics.EntriesReceived.Value()))
-				fmt.Printf("%d ping stats entries submitted\n", int(analyticsMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
-				fmt.Printf("%d ping stats entries queued\n", int(analyticsMetrics.PingStatsMetrics.EntriesQueued.Value()))
-				fmt.Printf("%d ping stats entries flushed\n", int(analyticsMetrics.PingStatsMetrics.EntriesFlushed.Value()))
-				fmt.Printf("%d relay stats entries received\n", int(analyticsMetrics.RelayStatsMetrics.EntriesReceived.Value()))
-				fmt.Printf("%d relay stats entries submitted\n", int(analyticsMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
-				fmt.Printf("%d relay stats entries queued\n", int(analyticsMetrics.RelayStatsMetrics.EntriesQueued.Value()))
-				fmt.Printf("%d relay stats entries flushed\n", int(analyticsMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
-				fmt.Printf("%d route matrix stats entries received\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesReceived.Value()))
-				fmt.Printf("%d route matrix entries submitted\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesSubmitted.Value()))
-				fmt.Printf("%d route matrix entries queued\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesQueued.Value()))
-				fmt.Printf("%d route matrix entries flushed\n", int(analyticsMetrics.RouteMatrixStatsMetrics.EntriesFlushed.Value()))
-				fmt.Printf("-----------------------------\n")
+				statusDataString := fmt.Sprintf("%s\n", serviceName)
+				statusDataString += fmt.Sprintf("git hash %s\n", sha)
+				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
+				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
+				statusDataString += fmt.Sprintf("%d goroutines\n", int(analyticsMetrics.Goroutines.Value()))
+				statusDataString += fmt.Sprintf("%.2f mb allocated\n", analyticsMetrics.MemoryAllocated.Value())
+				statusDataString += fmt.Sprintf("%d ping stats entries received\n", int(analyticsMetrics.PingStatsMetrics.EntriesReceived.Value()))
+				statusDataString += fmt.Sprintf("%d ping stats entries submitted\n", int(analyticsMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
+				statusDataString += fmt.Sprintf("%d ping stats entries queued\n", int(analyticsMetrics.PingStatsMetrics.EntriesQueued.Value()))
+				statusDataString += fmt.Sprintf("%d ping stats entries flushed\n", int(analyticsMetrics.PingStatsMetrics.EntriesFlushed.Value()))
+				statusDataString += fmt.Sprintf("%d relay stats entries received\n", int(analyticsMetrics.RelayStatsMetrics.EntriesReceived.Value()))
+				statusDataString += fmt.Sprintf("%d relay stats entries submitted\n", int(analyticsMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
+				statusDataString += fmt.Sprintf("%d relay stats entries queued\n", int(analyticsMetrics.RelayStatsMetrics.EntriesQueued.Value()))
+				statusDataString += fmt.Sprintf("%d relay stats entries flushed\n", int(analyticsMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
+
+				statusMutex.Lock()
+				statusData = []byte(statusDataString)
+				statusMutex.Unlock()
 
 				time.Sleep(time.Second * 10)
 			}
 		}()
 	}
 
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+		buffer := bytes.NewBuffer(data)
+		_, err := buffer.WriteTo(w)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	// Start HTTP server
 	{
+		port := envvar.Get("PORT", "41001")
+		if port == "" {
+			core.Error("envvar PORT not set: %v", err)
+			return 1
+		}
+
+		router := mux.NewRouter()
+		router.HandleFunc("/health", transport.HealthHandlerFunc())
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
+		router.Handle("/debug/vars", expvar.Handler())
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			core.Error("could not parse envvar FEATURE_ENABLE_PPROF: %v", err)
+		}
+		if enablePProf {
+			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
+
+		fmt.Printf("starting http server on port %s\n", port)
+
 		go func() {
-			router := mux.NewRouter()
-			router.HandleFunc("/health", HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-
-			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-			}
-			if enablePProf {
-				router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
-			}
-
-			port, ok := os.LookupEnv("PORT")
-			if !ok {
-				level.Error(logger).Log("err", "env var PORT must be set")
-				os.Exit(1)
-			}
-
-			level.Info(logger).Log("addr", ":"+port)
-
 			err = http.ListenAndServe(":"+port, router)
 			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
+				core.Error("error starting http server: %v", err)
+				errChan <- err
 			}
 		}()
 	}
 
-	// Wait for interrupt signal
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
-}
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
-func HealthHandlerFunc() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		_, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
+	select {
+	case <-termChan:
+		core.Debug("received shutdown signal")
+		ctxCancelFunc()
 
-		statusCode := http.StatusOK
+		// Wait for essential goroutines to finish up
+		wg.Wait()
 
-		w.WriteHeader(statusCode)
-		w.Write([]byte(http.StatusText(statusCode)))
+		core.Debug("successfully shutdown")
+		return 0
+	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		ctxCancelFunc()
+		return 1
 	}
 }
