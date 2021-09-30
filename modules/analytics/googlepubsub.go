@@ -6,9 +6,8 @@ import (
 	"sync/atomic"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/metrics"
 )
 
@@ -40,21 +39,21 @@ func newGooglePubSubClient(ctx context.Context, statsMetrics *metrics.AnalyticsM
 	client.Metrics = statsMetrics
 	client.Topic = client.PubsubClient.Topic(topicID)
 	client.Topic.PublishSettings = settings
-	client.ResultChan = make(chan *pubsub.PublishResult, 1)
+	client.ResultChan = make(chan *pubsub.PublishResult)
 
 	return client, nil
 }
 
-func (client *googlePubSubClient) pubsubResults(ctx context.Context, logger log.Logger) {
+func (client *googlePubSubClient) pubsubResults(ctx context.Context) {
 	for {
 		select {
 		case result := <-client.ResultChan:
 			_, err := result.Get(ctx)
 			if err != nil {
-				level.Error(logger).Log("analytics", "failed to publish to pubsub", "err", err)
+				core.Error("failed to publish to Google Pub/Sub: %v", err)
 				client.Metrics.ErrorMetrics.PublishFailure.Add(1)
 			} else {
-				level.Debug(logger).Log("analytics", "successfully published analytics data")
+				core.Debug("successfully published to Google Pub/Sub")
 				client.Metrics.EntriesFlushed.Add(1)
 			}
 		case <-ctx.Done():
@@ -67,6 +66,8 @@ type GooglePubSubPingStatsPublisher struct {
 	client *googlePubSubClient
 }
 
+// NewGooglePubSubPingStatsPublisher() returns a GooglePubSubPingStatsPublisher that publishes ping stats to Google Pub/Sub
+// TODO: remove resultLogger once Analytics Pusher no longer uses the gokit logger
 func NewGooglePubSubPingStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubPingStatsPublisher, error) {
 	publisher := &GooglePubSubPingStatsPublisher{}
 
@@ -76,7 +77,7 @@ func NewGooglePubSubPingStatsPublisher(ctx context.Context, statsMetrics *metric
 	}
 	publisher.client = client
 
-	go client.pubsubResults(ctx, resultLogger)
+	go client.pubsubResults(ctx)
 
 	return publisher, nil
 }
@@ -85,23 +86,33 @@ func (publisher *GooglePubSubPingStatsPublisher) Publish(ctx context.Context, en
 	data := WritePingStatsEntries(entries)
 
 	if publisher.client == nil {
-		return fmt.Errorf("analytics: client not initialized")
+		return fmt.Errorf("analytics: ping stats pub/sub client not initialized")
 	}
 
 	topic := publisher.client.Topic
 	resultChan := publisher.client.ResultChan
 
 	result := topic.Publish(ctx, &pubsub.Message{Data: data})
-	resultChan <- result
-	publisher.client.Metrics.EntriesSubmitted.Add(1)
+
+	if result != nil {
+		resultChan <- result
+		publisher.client.Metrics.EntriesSubmitted.Add(float64(len(entries)))
+	}
 
 	return nil
+}
+
+// TODO: call Close() when context is canceled in the Analytics Pusher
+func (publisher *GooglePubSubPingStatsPublisher) Close() {
+	publisher.client.Topic.Stop()
 }
 
 type GooglePubSubRelayStatsPublisher struct {
 	client *googlePubSubClient
 }
 
+// NewGooglePubSubPingStatsPublisher() returns a GooglePubSubRelayStatsPublisher that publishes relay stats to Google Pub/Sub
+// TODO: remove resultLogger once Analytics Pusher no longer uses the gokit logger
 func NewGooglePubSubRelayStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRelayStatsPublisher, error) {
 	publisher := &GooglePubSubRelayStatsPublisher{}
 
@@ -111,7 +122,7 @@ func NewGooglePubSubRelayStatsPublisher(ctx context.Context, statsMetrics *metri
 	}
 	publisher.client = client
 
-	go client.pubsubResults(ctx, resultLogger)
+	go client.pubsubResults(ctx)
 
 	return publisher, nil
 }
@@ -120,15 +131,23 @@ func (publisher *GooglePubSubRelayStatsPublisher) Publish(ctx context.Context, e
 	data := WriteRelayStatsEntries(entries)
 
 	if publisher.client == nil {
-		return fmt.Errorf("analytics: client not initialized")
+		return fmt.Errorf("analytics: relay stats pub/sub client not initialized")
 	}
 
 	topic := publisher.client.Topic
 	resultChan := publisher.client.ResultChan
 
 	result := topic.Publish(ctx, &pubsub.Message{Data: data})
-	resultChan <- result
-	publisher.client.Metrics.EntriesSubmitted.Add(1)
+
+	if result != nil {
+		resultChan <- result
+		publisher.client.Metrics.EntriesSubmitted.Add(float64(len(entries)))
+	}
 
 	return nil
+}
+
+// TODO: call Close() when context is canceled in the Analytics Pusher
+func (publisher *GooglePubSubRelayStatsPublisher) Close() {
+	publisher.client.Topic.Stop()
 }

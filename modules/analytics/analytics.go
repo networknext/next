@@ -7,11 +7,13 @@ import (
 // PingStatsWriter is an interface that handles publishing ping stats entries to Google Pub/Sub
 type PingStatsPublisher interface {
 	Publish(ctx context.Context, entries []PingStatsEntry) error
+	Close()
 }
 
 // RelayStatsWriter is an interface that handles publishing relay stats entries to Google Pub/Sub
 type RelayStatsPublisher interface {
 	Publish(ctx context.Context, entries []RelayStatsEntry) error
+	Close()
 }
 
 type ErrPingStatsChannelFull struct{}

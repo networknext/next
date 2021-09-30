@@ -16,6 +16,9 @@ func (noop *NoOpPingStatsPublisher) Publish(ctx context.Context, entries []PingS
 	return nil
 }
 
+// Close() does nothing
+func (noop *NoOpPingStatsPublisher) Close() {}
+
 // NoOpRelayStatsPublisher does not perform any analytics actions. Useful for when analytics is not configured or for testing.
 type NoOpRelayStatsPublisher struct {
 	submitted uint64
@@ -26,6 +29,9 @@ func (noop *NoOpRelayStatsPublisher) Publish(ctx context.Context, entries []Rela
 	atomic.AddUint64(&noop.submitted, uint64(len(entries)))
 	return nil
 }
+
+// Close() does nothing
+func (noop *NoOpRelayStatsPublisher) Close() {}
 
 // NoOpPingStatsWriter does not perform any analytics actions. Useful for when analytics is not configured or for testing.
 type NoOpPingStatsWriter struct {
