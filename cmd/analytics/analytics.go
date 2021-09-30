@@ -102,8 +102,7 @@ func mainReturnWithCode() {
 			b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, logger, &analyticsMetrics.PingStatsMetrics, pingStatsDataset, pingStatsTableName)
 			pingStatsWriter = &b
 
-			wg.Add(1)
-			go b.WriteLoop(ctx, wg)
+			go b.WriteLoop(wg)
 		}
 
 		{
@@ -128,8 +127,7 @@ func mainReturnWithCode() {
 			b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, logger, &analyticsMetrics.RelayStatsMetrics, relayStatsDataset, relayStatsTableName)
 			relayStatsWriter = &b
 
-			wg.Add(1)
-			go b.WriteLoop(ctx, wg)
+			go b.WriteLoop(wg)
 		}
 	}
 

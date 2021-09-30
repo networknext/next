@@ -38,6 +38,9 @@ func (noop *NoOpPingStatsWriter) Write(ctx context.Context, entries []*PingStats
 	return nil
 }
 
+// Close() does nothing
+func (noop *NoOpPingStatsWriter) Close() {}
+
 // NoOpRelayStatsWriter does not perform any analytics actions. Useful for when analytics is not configured or for testing.
 type NoOpRelayStatsWriter struct {
 	submitted uint64
@@ -48,3 +51,6 @@ func (noop *NoOpRelayStatsWriter) Write(ctx context.Context, entries []*RelaySta
 	atomic.AddUint64(&noop.submitted, uint64(len(entries)))
 	return nil
 }
+
+// Close() does nothing
+func (noop *NoOpRelayStatsWriter) Close() {}

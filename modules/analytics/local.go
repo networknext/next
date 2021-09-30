@@ -3,6 +3,7 @@ package analytics
 import (
 	"context"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/metrics"
 )
 
@@ -11,7 +12,7 @@ type LocalPingStatsWriter struct {
 }
 
 func (writer *LocalPingStatsWriter) Write(ctx context.Context, entries []*PingStatsEntry) error {
-	writer.Metrics.EntriesSubmitted.Add(len(entries))
+	writer.Metrics.EntriesSubmitted.Add(float64(len(entries)))
 
 	core.Debug("wrote analytics ping stats entries")
 
@@ -20,17 +21,20 @@ func (writer *LocalPingStatsWriter) Write(ctx context.Context, entries []*PingSt
 		core.Debug("entry %d: %+v", i, *entry)
 	}
 
-	writer.Metrics.EntriesFlushed.Add(len(entries))
+	writer.Metrics.EntriesFlushed.Add(float64(len(entries)))
 
 	return nil
 }
+
+// Close() is needed to satisfy the interface
+func (noop *LocalPingStatsWriter) Close() {}
 
 type LocalRelayStatsWriter struct {
 	Metrics *metrics.AnalyticsMetrics
 }
 
 func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []*RelayStatsEntry) error {
-	writer.Metrics.EntriesSubmitted.Add(len(entries))
+	writer.Metrics.EntriesSubmitted.Add(float64(len(entries)))
 
 	core.Debug("wrote analytics relay stats entries")
 
@@ -39,7 +43,10 @@ func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []*Relay
 		core.Debug("entry %d: %+v", i, *entry)
 	}
 
-	writer.Metrics.EntriesFlushed.Add(len(entries))
+	writer.Metrics.EntriesFlushed.Add(float64(len(entries)))
 
 	return nil
 }
+
+// Close() is needed to satisfy the interface
+func (noop *LocalRelayStatsWriter) Close() {}
