@@ -2,166 +2,123 @@ package analytics
 
 import (
 	"context"
-	"sync/atomic"
+	"sync"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/metrics"
 )
 
 const (
 	DefaultBigQueryChannelSize = 10000
-	PingStatsToPublishAtOnce   = 10000
 )
 
-type PingStatsWriter interface {
-	Write(ctx context.Context, entries []*PingStatsEntry) error
-}
-
-type NoOpPingStatsWriter struct {
-	written uint64
-}
-
-func (bq *NoOpPingStatsWriter) Write(ctx context.Context, entries []*PingStatsEntry) error {
-	atomic.AddUint64(&bq.written, uint64(len(entries)))
-	return nil
-}
-
 type GoogleBigQueryPingStatsWriter struct {
-	Metrics       *metrics.AnalyticsMetrics
-	Logger        log.Logger
-	TableInserter *bigquery.Inserter
+	Metrics                  *metrics.AnalyticsMetrics
+	TableInserter            *bigquery.Inserter
+	PingStatsToPublishAtOnce int
 
 	entries chan []*PingStatsEntry
 }
 
-func NewGoogleBigQueryPingStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryPingStatsWriter {
+func NewGoogleBigQueryPingStatsWriter(client *bigquery.Client, metrics *metrics.AnalyticsMetrics, dataset, table string, pingStatsToPublishAtOnce int) GoogleBigQueryPingStatsWriter {
 	return GoogleBigQueryPingStatsWriter{
-		Metrics:       metrics,
-		Logger:        logger,
-		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
-		entries:       make(chan []*PingStatsEntry, DefaultBigQueryChannelSize),
+		Metrics:                  metrics,
+		TableInserter:            client.Dataset(dataset).Table(table).Inserter(),
+		PingStatsToPublishAtOnce: pingStatsToPublishAtOnce,
+
+		entries: make(chan []*PingStatsEntry, DefaultBigQueryChannelSize),
 	}
 }
 
 func (bq *GoogleBigQueryPingStatsWriter) Write(ctx context.Context, entries []*PingStatsEntry) error {
-	bq.Metrics.EntriesSubmitted.Add(1)
-	bq.entries <- entries
-	return nil
-}
-
-func (bq *GoogleBigQueryPingStatsWriter) WriteLoop(ctx context.Context) {
-	for entries := range bq.entries {
-		fullBatches := len(entries) / PingStatsToPublishAtOnce
-		for i := 0; i < fullBatches; i++ {
-			if err := bq.TableInserter.Put(ctx, entries[i*PingStatsToPublishAtOnce:(i+1)*PingStatsToPublishAtOnce]); err != nil {
-				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
-			}
-		}
-
-		if len(entries[fullBatches*PingStatsToPublishAtOnce:]) > 0 {
-			if err := bq.TableInserter.Put(ctx, entries[fullBatches*PingStatsToPublishAtOnce:]); err != nil {
-				level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-				bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
-			}
-		}
-
-		bq.Metrics.EntriesFlushed.Add(1)
+	select {
+	case bq.entries <- entries:
+		bq.Metrics.EntriesSubmitted.Add(float64(len(entries)))
+		return nil
+	default:
+		return &ErrPingStatsChannelFull{}
 	}
 }
 
-type RelayStatsWriter interface {
-	Write(ctx context.Context, entries []*RelayStatsEntry) error
+// WriteLoop() continues to write ping stats to BigQuery until the entries channel is closed by the PubSubForwarder
+// We do not use the parent context in order to continue writing to BigQuery even if the parent context is canceled
+func (bq *GoogleBigQueryPingStatsWriter) WriteLoop(wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for entries := range bq.entries {
+		fullBatches := len(entries) / bq.PingStatsToPublishAtOnce
+
+		for i := 0; i < fullBatches; i++ {
+			entriesToWrite := entries[i*bq.PingStatsToPublishAtOnce : (i+1)*bq.PingStatsToPublishAtOnce]
+			if err := bq.TableInserter.Put(context.Background(), entriesToWrite); err != nil {
+				core.Error("failed to write ping stats to BigQuery: %v", err)
+				bq.Metrics.ErrorMetrics.WriteFailure.Add(float64(len(entriesToWrite)))
+			} else {
+				bq.Metrics.EntriesFlushed.Add(float64(len(entriesToWrite)))
+			}
+		}
+
+		remainingEntriesToWrite := entries[fullBatches*bq.PingStatsToPublishAtOnce:]
+		if len(remainingEntriesToWrite) > 0 {
+			if err := bq.TableInserter.Put(context.Background(), remainingEntriesToWrite); err != nil {
+				core.Error("failed to write ping stats to BigQuery: %v", err)
+				bq.Metrics.ErrorMetrics.WriteFailure.Add(float64(len(remainingEntriesToWrite)))
+			} else {
+				bq.Metrics.EntriesFlushed.Add(float64(len(remainingEntriesToWrite)))
+			}
+		}
+	}
 }
 
-type NoOpRelayStatsWriter struct {
-	submitted uint64
-}
-
-func (bq *NoOpRelayStatsWriter) Write(ctx context.Context, entries []*RelayStatsEntry) error {
-	atomic.AddUint64(&bq.submitted, uint64(len(entries)))
-	return nil
+func (bq *GoogleBigQueryPingStatsWriter) Close() {
+	if bq.entries != nil {
+		close(bq.entries)
+	}
 }
 
 type GoogleBigQueryRelayStatsWriter struct {
 	Metrics       *metrics.AnalyticsMetrics
-	Logger        log.Logger
 	TableInserter *bigquery.Inserter
 
 	entries chan []*RelayStatsEntry
 }
 
-func NewGoogleBigQueryRelayStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryRelayStatsWriter {
+func NewGoogleBigQueryRelayStatsWriter(client *bigquery.Client, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryRelayStatsWriter {
 	return GoogleBigQueryRelayStatsWriter{
 		Metrics:       metrics,
-		Logger:        logger,
 		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
 		entries:       make(chan []*RelayStatsEntry, DefaultBigQueryChannelSize),
 	}
 }
 
 func (bq *GoogleBigQueryRelayStatsWriter) Write(ctx context.Context, entries []*RelayStatsEntry) error {
-	bq.Metrics.EntriesSubmitted.Add(1)
-	bq.entries <- entries
-	return nil
+	select {
+	case bq.entries <- entries:
+		bq.Metrics.EntriesSubmitted.Add(float64(len(entries)))
+		return nil
+	default:
+		return &ErrRelayStatsChannelFull{}
+	}
 }
 
-func (bq *GoogleBigQueryRelayStatsWriter) WriteLoop(ctx context.Context) {
+// WriteLoop() continues to write relay stats to BigQuery until the entries channel is closed by the PubSubForwarder
+func (bq *GoogleBigQueryRelayStatsWriter) WriteLoop(wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	for entries := range bq.entries {
-		if err := bq.TableInserter.Put(ctx, entries); err != nil {
-			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-			bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
+		if err := bq.TableInserter.Put(context.Background(), entries); err != nil {
+			core.Error("failed to write relay stats to BigQuery: %v", err)
+			bq.Metrics.ErrorMetrics.WriteFailure.Add(float64(len(entries)))
 		}
+
 		bq.Metrics.EntriesFlushed.Add(float64(len(entries)))
 	}
 }
 
-type RouteMatrixStatsWriter interface {
-	Write(ctx context.Context, entry *RouteMatrixStatsEntry) error
-}
-
-type NoOpRouteMatrixStatsWriter struct {
-	written uint64
-}
-
-func (bq *NoOpRouteMatrixStatsWriter) Write(ctx context.Context, entry *RouteMatrixStatsEntry) error {
-	atomic.AddUint64(&bq.written, 1)
-	return nil
-}
-
-type GoogleBigQueryRouteMatrixStatsWriter struct {
-	Metrics       *metrics.AnalyticsMetrics
-	Logger        log.Logger
-	TableInserter *bigquery.Inserter
-
-	entries chan *RouteMatrixStatsEntry
-}
-
-func NewGoogleBigQueryRouteMatrixStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) (GoogleBigQueryRouteMatrixStatsWriter, error) {
-
-	return GoogleBigQueryRouteMatrixStatsWriter{
-		Metrics:       metrics,
-		Logger:        logger,
-		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
-		entries:       make(chan *RouteMatrixStatsEntry, DefaultBigQueryChannelSize),
-	}, nil
-}
-
-func (bq *GoogleBigQueryRouteMatrixStatsWriter) Write(ctx context.Context, entries *RouteMatrixStatsEntry) error {
-	bq.Metrics.EntriesSubmitted.Add(1)
-	bq.entries <- entries
-	return nil
-}
-
-func (bq *GoogleBigQueryRouteMatrixStatsWriter) WriteLoop(ctx context.Context) {
-	for entries := range bq.entries {
-		if err := bq.TableInserter.Put(ctx, entries); err != nil {
-			level.Error(bq.Logger).Log("msg", "failed to write to BigQuery", "err", err)
-			bq.Metrics.ErrorMetrics.WriteFailure.Add(1)
-		}
-		bq.Metrics.EntriesFlushed.Add(1)
+func (bq *GoogleBigQueryRelayStatsWriter) Close() {
+	if bq.entries != nil {
+		close(bq.entries)
 	}
 }
