@@ -27,7 +27,7 @@ func (writer *LocalPingStatsWriter) Write(ctx context.Context, entries []*PingSt
 }
 
 // Close() is needed to satisfy the interface
-func (noop *LocalPingStatsWriter) Close() {}
+func (writer *LocalPingStatsWriter) Close() {}
 
 type LocalRelayStatsWriter struct {
 	Metrics *metrics.AnalyticsMetrics
@@ -49,4 +49,4 @@ func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []*Relay
 }
 
 // Close() is needed to satisfy the interface
-func (noop *LocalRelayStatsWriter) Close() {}
+func (writer *LocalRelayStatsWriter) Close() {}

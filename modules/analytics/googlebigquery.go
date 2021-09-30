@@ -83,7 +83,7 @@ type GoogleBigQueryRelayStatsWriter struct {
 	entries chan []*RelayStatsEntry
 }
 
-func NewGoogleBigQueryRelayStatsWriter(client *bigquery.Client, logger log.Logger, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryRelayStatsWriter {
+func NewGoogleBigQueryRelayStatsWriter(client *bigquery.Client, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryRelayStatsWriter {
 	return GoogleBigQueryRelayStatsWriter{
 		Metrics:       metrics,
 		TableInserter: client.Dataset(dataset).Table(table).Inserter(),

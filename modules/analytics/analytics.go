@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"context"
+	"fmt"
 )
 
 // PingStatsWriter is an interface that handles publishing ping stats entries to Google Pub/Sub

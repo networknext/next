@@ -1,28 +1,27 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"expvar"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
+	"sync"
+	"syscall"
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	gcplogging "cloud.google.com/go/logging"
-	"cloud.google.com/go/profiler"
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 )
@@ -38,7 +37,7 @@ func main() {
 	os.Exit(mainReturnWithCode())
 }
 
-func mainReturnWithCode() {
+func mainReturnWithCode() int {
 	serviceName := "analytics"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
@@ -78,6 +77,12 @@ func mainReturnWithCode() {
 		return 1
 	}
 
+	// Create an error chan for exiting from goroutines
+	errChan := make(chan error, 1)
+
+	var pingStatsWriter analytics.PingStatsWriter = &analytics.NoOpPingStatsWriter{}
+	var relayStatsWriter analytics.RelayStatsWriter = &analytics.NoOpRelayStatsWriter{}
+
 	if gcpOK {
 		// Google BigQuery
 		{
@@ -99,7 +104,7 @@ func mainReturnWithCode() {
 				return 1
 			}
 
-			b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, logger, &analyticsMetrics.PingStatsMetrics, pingStatsDataset, pingStatsTableName)
+			b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, &analyticsMetrics.PingStatsMetrics, pingStatsDataset, pingStatsTableName)
 			pingStatsWriter = &b
 
 			go b.WriteLoop(wg)
@@ -124,15 +129,12 @@ func mainReturnWithCode() {
 				return 1
 			}
 
-			b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, logger, &analyticsMetrics.RelayStatsMetrics, relayStatsDataset, relayStatsTableName)
+			b := analytics.NewGoogleBigQueryRelayStatsWriter(bqClient, &analyticsMetrics.RelayStatsMetrics, relayStatsDataset, relayStatsTableName)
 			relayStatsWriter = &b
 
 			go b.WriteLoop(wg)
 		}
 	}
-
-	var pingStatsWriter analytics.PingStatsWriter = &analytics.NoOpPingStatsWriter{}
-	var relayStatsWriter analytics.RelayStatsWriter = &analytics.NoOpRelayStatsWriter{}
 
 	pubsubEmulatorOK := envvar.Exists("PUBSUB_EMULATOR_HOST")
 
@@ -143,8 +145,8 @@ func mainReturnWithCode() {
 			gcpProjectID = "local"
 
 			// Use local ping stats and relay stats writer
-			pingStatsWriter = analytics.LocalPingStatsWriter{Logger: logger}
-			relayStatsWriter = analytics.LocalRelayStatsWriter{Logger: logger}
+			pingStatsWriter = &analytics.LocalPingStatsWriter{Metrics: &analyticsMetrics.PingStatsMetrics}
+			relayStatsWriter = &analytics.LocalRelayStatsWriter{Metrics: &analyticsMetrics.RelayStatsMetrics}
 		}
 
 		// Google pubsub forwarder
@@ -155,7 +157,7 @@ func mainReturnWithCode() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, logger, &analyticsMetrics.PingStatsMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := analytics.NewPingStatsPubSubForwarder(pubsubCtx, pingStatsWriter, &analyticsMetrics.PingStatsMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				core.Error("could not create ping stats pub sub forwarder: %v", err)
 				return 1
@@ -172,7 +174,7 @@ func mainReturnWithCode() {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, logger, &analyticsMetrics.RelayStatsMetrics, gcpProjectID, topicName, subscriptionName)
+			pubsubForwarder, err := analytics.NewRelayStatsPubSubForwarder(pubsubCtx, relayStatsWriter, &analyticsMetrics.RelayStatsMetrics, gcpProjectID, topicName, subscriptionName)
 			if err != nil {
 				core.Error("could not create relay stats pub sub forwarder: %v", err)
 				return 1

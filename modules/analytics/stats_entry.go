@@ -1,8 +1,6 @@
 package analytics
 
 import (
-	"strconv"
-
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/encoding"
 )
