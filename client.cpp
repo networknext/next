@@ -64,6 +64,8 @@ int main( int argc, char ** argv )
 
     // connect to server
 
+#if ENET_NETWORK_NEXT
+
     struct next_address_t address;
     if ( next_address_parse( &address, server_address ) != NEXT_OK )
     {
@@ -72,6 +74,15 @@ int main( int argc, char ** argv )
     }
 
     ENetAddress enet_server_address = enet_address_from_next( &address );
+
+#else // #if ENET_NETWORK_NEXT
+
+    ENetAddress enet_server_address;
+    enet_server_address.host = 0x100007f; // 127.0.0.1
+    enet_server_address.port = 50000;
+
+#endif // #if ENET_NETWORK_NEXT
+
 
     ENetPeer * peer = enet_host_connect( client, &enet_server_address, MaxChannels, 0 );    
   
