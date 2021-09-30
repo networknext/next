@@ -98,13 +98,19 @@ func mainReturnWithCode() int {
 				return 1
 			}
 
+			pingStatsToPublishAtOnce, err := envvar.GetInt("PING_STATS_TO_PUBLISH_AT_ONCE", 10000)
+			if err != nil {
+				core.Error("could not parse PING_STATS_TO_PUBLISH_AT_ONCE: %v", err)
+				return 1
+			}
+
 			bqClient, err := bigquery.NewClient(ctx, gcpProjectID)
 			if err != nil {
 				core.Error("could not create ping stats bigquery client: %v", err)
 				return 1
 			}
 
-			b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, &analyticsMetrics.PingStatsMetrics, pingStatsDataset, pingStatsTableName)
+			b := analytics.NewGoogleBigQueryPingStatsWriter(bqClient, &analyticsMetrics.PingStatsMetrics, pingStatsDataset, pingStatsTableName, pingStatsToPublishAtOnce)
 			pingStatsWriter = &b
 
 			go b.WriteLoop(wg)

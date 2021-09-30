@@ -12,21 +12,23 @@ import (
 
 const (
 	DefaultBigQueryChannelSize = 10000
-	PingStatsToPublishAtOnce   = 10000
 )
 
 type GoogleBigQueryPingStatsWriter struct {
-	Metrics       *metrics.AnalyticsMetrics
-	TableInserter *bigquery.Inserter
+	Metrics                  *metrics.AnalyticsMetrics
+	TableInserter            *bigquery.Inserter
+	PingStatsToPublishAtOnce int
 
 	entries chan []*PingStatsEntry
 }
 
-func NewGoogleBigQueryPingStatsWriter(client *bigquery.Client, metrics *metrics.AnalyticsMetrics, dataset, table string) GoogleBigQueryPingStatsWriter {
+func NewGoogleBigQueryPingStatsWriter(client *bigquery.Client, metrics *metrics.AnalyticsMetrics, dataset, table string, pingStatsToPublishAtOnce int) GoogleBigQueryPingStatsWriter {
 	return GoogleBigQueryPingStatsWriter{
-		Metrics:       metrics,
-		TableInserter: client.Dataset(dataset).Table(table).Inserter(),
-		entries:       make(chan []*PingStatsEntry, DefaultBigQueryChannelSize),
+		Metrics:                  metrics,
+		TableInserter:            client.Dataset(dataset).Table(table).Inserter(),
+		PingStatsToPublishAtOnce: pingStatsToPublishAtOnce,
+
+		entries: make(chan []*PingStatsEntry, DefaultBigQueryChannelSize),
 	}
 }
 
@@ -46,10 +48,10 @@ func (bq *GoogleBigQueryPingStatsWriter) WriteLoop(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for entries := range bq.entries {
-		fullBatches := len(entries) / PingStatsToPublishAtOnce
+		fullBatches := len(entries) / bq.PingStatsToPublishAtOnce
 
 		for i := 0; i < fullBatches; i++ {
-			entriesToWrite := entries[i*PingStatsToPublishAtOnce : (i+1)*PingStatsToPublishAtOnce]
+			entriesToWrite := entries[i*bq.PingStatsToPublishAtOnce : (i+1)*bq.PingStatsToPublishAtOnce]
 			if err := bq.TableInserter.Put(context.Background(), entriesToWrite); err != nil {
 				core.Error("failed to write ping stats to BigQuery: %v", err)
 				bq.Metrics.ErrorMetrics.WriteFailure.Add(float64(len(entriesToWrite)))
@@ -58,7 +60,7 @@ func (bq *GoogleBigQueryPingStatsWriter) WriteLoop(wg *sync.WaitGroup) {
 			}
 		}
 
-		remainingEntriesToWrite := entries[fullBatches*PingStatsToPublishAtOnce:]
+		remainingEntriesToWrite := entries[fullBatches*bq.PingStatsToPublishAtOnce:]
 		if len(remainingEntriesToWrite) > 0 {
 			if err := bq.TableInserter.Put(context.Background(), remainingEntriesToWrite); err != nil {
 				core.Error("failed to write ping stats to BigQuery: %v", err)
