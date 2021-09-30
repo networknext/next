@@ -147,6 +147,8 @@ func mainReturnWithCode() int {
 			// Use local ping stats and relay stats writer
 			pingStatsWriter = &analytics.LocalPingStatsWriter{Metrics: &analyticsMetrics.PingStatsMetrics}
 			relayStatsWriter = &analytics.LocalRelayStatsWriter{Metrics: &analyticsMetrics.RelayStatsMetrics}
+
+			core.Debug("Detected pubsub emulator")
 		}
 
 		// Google pubsub forwarder
