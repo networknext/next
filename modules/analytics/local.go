@@ -11,7 +11,7 @@ type LocalPingStatsWriter struct {
 }
 
 func (writer *LocalPingStatsWriter) Write(ctx context.Context, entries []*PingStatsEntry) error {
-	writer.Metrics.EntriesSubmitted.Add(1)
+	writer.Metrics.EntriesSubmitted.Add(len(entries))
 
 	core.Debug("wrote analytics ping stats entries")
 
@@ -20,7 +20,7 @@ func (writer *LocalPingStatsWriter) Write(ctx context.Context, entries []*PingSt
 		core.Debug("entry %d: %+v", i, *entry)
 	}
 
-	writer.Metrics.EntriesFlushed.Add(1)
+	writer.Metrics.EntriesFlushed.Add(len(entries))
 
 	return nil
 }
@@ -30,7 +30,7 @@ type LocalRelayStatsWriter struct {
 }
 
 func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []*RelayStatsEntry) error {
-	writer.Metrics.EntriesSubmitted.Add(1)
+	writer.Metrics.EntriesSubmitted.Add(len(entries))
 
 	core.Debug("wrote analytics relay stats entries")
 
@@ -38,6 +38,8 @@ func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []*Relay
 		entry := entries[i]
 		core.Debug("entry %d: %+v", i, *entry)
 	}
+
+	writer.Metrics.EntriesFlushed.Add(len(entries))
 
 	return nil
 }
