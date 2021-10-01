@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/go-kit/kit/log"
 
 	"github.com/networknext/backend/modules/analytics"
 	"github.com/networknext/backend/modules/metrics"
@@ -27,12 +26,12 @@ func TestNewGooglePubSubPublisher(t *testing.T) {
 	t.Parallel()
 
 	t.Run("ping stats publisher", func(t *testing.T) {
-		_, err := analytics.NewGooglePubSubPingStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+		_, err := analytics.NewGooglePubSubPingStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, "default", "analytics", pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 	})
 
 	t.Run("relay stats publisher", func(t *testing.T) {
-		_, err := analytics.NewGooglePubSubRelayStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+		_, err := analytics.NewGooglePubSubRelayStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, "default", "analytics", pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 	})
 
@@ -57,7 +56,7 @@ func TestGooglePubSubPublisher(t *testing.T) {
 
 		pingStatsMetrics := analyticsMetrics.PingStatsMetrics
 
-		publisher, err := analytics.NewGooglePubSubPingStatsPublisher(ctx, &pingStatsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+		publisher, err := analytics.NewGooglePubSubPingStatsPublisher(ctx, &pingStatsMetrics, "default", "analytics", pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 
 		entry := analytics.PingStatsEntry{}
@@ -79,7 +78,7 @@ func TestGooglePubSubPublisher(t *testing.T) {
 
 		relayStatsMetrics := analyticsMetrics.RelayStatsMetrics
 
-		publisher, err := analytics.NewGooglePubSubRelayStatsPublisher(ctx, &relayStatsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+		publisher, err := analytics.NewGooglePubSubRelayStatsPublisher(ctx, &relayStatsMetrics, "default", "analytics", pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 
 		entry := analytics.RelayStatsEntry{}

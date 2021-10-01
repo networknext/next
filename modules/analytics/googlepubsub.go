@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/go-kit/kit/log"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/metrics"
@@ -67,8 +66,7 @@ type GooglePubSubPingStatsPublisher struct {
 }
 
 // NewGooglePubSubPingStatsPublisher() returns a GooglePubSubPingStatsPublisher that publishes ping stats to Google Pub/Sub
-// TODO: remove resultLogger once Analytics Pusher no longer uses the gokit logger
-func NewGooglePubSubPingStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubPingStatsPublisher, error) {
+func NewGooglePubSubPingStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubPingStatsPublisher, error) {
 	publisher := &GooglePubSubPingStatsPublisher{}
 
 	client, err := newGooglePubSubClient(ctx, statsMetrics, projectID, topicID, settings)
@@ -112,8 +110,7 @@ type GooglePubSubRelayStatsPublisher struct {
 }
 
 // NewGooglePubSubPingStatsPublisher() returns a GooglePubSubRelayStatsPublisher that publishes relay stats to Google Pub/Sub
-// TODO: remove resultLogger once Analytics Pusher no longer uses the gokit logger
-func NewGooglePubSubRelayStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, resultLogger log.Logger, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRelayStatsPublisher, error) {
+func NewGooglePubSubRelayStatsPublisher(ctx context.Context, statsMetrics *metrics.AnalyticsMetrics, projectID string, topicID string, settings pubsub.PublishSettings) (*GooglePubSubRelayStatsPublisher, error) {
 	publisher := &GooglePubSubRelayStatsPublisher{}
 
 	client, err := newGooglePubSubClient(ctx, statsMetrics, projectID, topicID, settings)

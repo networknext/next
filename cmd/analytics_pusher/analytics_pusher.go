@@ -23,7 +23,6 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 
-	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 )
 
@@ -146,7 +145,7 @@ func mainReturnWithCode() int {
 					Timeout:        time.Minute,
 				}
 
-				pingPubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &analyticsPusherMetrics.PingStatsMetrics, logger, gcpProjectID, "ping_stats", settings)
+				pingPubsub, err := analytics.NewGooglePubSubPingStatsPublisher(pubsubCtx, &analyticsPusherMetrics.PingStatsMetrics, gcpProjectID, "ping_stats", settings)
 				if err != nil {
 					core.Error("could not create ping stats analytics pubsub publisher: %v", err)
 					return 1
@@ -154,7 +153,7 @@ func mainReturnWithCode() int {
 
 				pingStatsPublisher = pingPubsub
 
-				relayPubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &analyticsPusherMetrics.RelayStatsMetrics, logger, gcpProjectID, "relay_stats", settings)
+				relayPubsub, err := analytics.NewGooglePubSubRelayStatsPublisher(pubsubCtx, &analyticsPusherMetrics.RelayStatsMetrics, gcpProjectID, "relay_stats", settings)
 				if err != nil {
 					core.Error("could not create relay stats analytics pubsub publisher: %v", err)
 					return 1
@@ -260,7 +259,7 @@ func mainReturnWithCode() int {
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("could not parse FEATURE_ENABLE_PPROF: %v", err)
 		}
 		if enablePProf {
 			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
