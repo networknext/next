@@ -94,7 +94,7 @@ func (ap *AnalyticsPusher) StartRelayStatsPublisher(ctx context.Context, wg *syn
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			routeMatrix, err := ap.getRouteMatrix()
+			routeMatrix, err := ap.GetRouteMatrix()
 			if err != nil {
 				core.Error("error getting route matrix: %v", err)
 				continue
@@ -127,7 +127,7 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			routeMatrix, err := ap.getRouteMatrix()
+			routeMatrix, err := ap.GetRouteMatrix()
 			if err != nil {
 				core.Error("error getting route matrix: %v", err)
 				continue
@@ -150,7 +150,7 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 	}
 }
 
-func (ap *AnalyticsPusher) getRouteMatrix() (*routing.RouteMatrix, error) {
+func (ap *AnalyticsPusher) GetRouteMatrix() (*routing.RouteMatrix, error) {
 	ap.metrics.RouteMatrixInvocations.Add(1)
 
 	var buffer []byte
