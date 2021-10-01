@@ -23,53 +23,139 @@ func checkGooglePubsubEmulator(t *testing.T) {
 
 func TestNewGooglePubSubPublisher(t *testing.T) {
 	checkGooglePubsubEmulator(t)
-	_, err := analytics.NewGooglePubSubPingStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
-	assert.NoError(t, err)
+
+	t.Parallel()
+
+	t.Run("ping stats publisher", func(t *testing.T) {
+		_, err := analytics.NewGooglePubSubPingStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+		assert.NoError(t, err)
+	})
+
+	t.Run("relay stats publisher", func(t *testing.T) {
+		_, err := analytics.NewGooglePubSubRelayStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+		assert.NoError(t, err)
+	})
+
 }
 
 func TestGooglePubSubPublisher(t *testing.T) {
 	checkGooglePubsubEmulator(t)
+
+	t.Parallel()
+
 	ctx := context.Background()
 
-	t.Run("uninitialized writing client", func(t *testing.T) {
+	t.Run("ping stats uninitialized writing client", func(t *testing.T) {
 		publisher := &analytics.GooglePubSubPingStatsPublisher{}
 		err := publisher.Publish(ctx, []analytics.PingStatsEntry{})
-		assert.EqualError(t, err, "analytics: client not initialized")
+		assert.EqualError(t, err, "analytics: ping stats pub/sub client not initialized")
 	})
 
-	t.Run("success", func(t *testing.T) {
-		publisher, err := analytics.NewGooglePubSubPingStatsPublisher(ctx, &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+	t.Run("ping stats publisher success", func(t *testing.T) {
+		analyticsMetrics, err := metrics.NewAnalyticsServiceMetrics(ctx, &metrics.LocalHandler{})
 		assert.NoError(t, err)
-		err = publisher.Publish(ctx, []analytics.PingStatsEntry{})
+
+		pingStatsMetrics := analyticsMetrics.PingStatsMetrics
+
+		publisher, err := analytics.NewGooglePubSubPingStatsPublisher(ctx, &pingStatsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
+
+		entry := analytics.PingStatsEntry{}
+		err = publisher.Publish(ctx, []analytics.PingStatsEntry{entry})
+		assert.NoError(t, err)
+
+		assert.Equal(t, float64(1), pingStatsMetrics.EntriesSubmitted.Value())
+	})
+
+	t.Run("relay stats uninitialized writing client", func(t *testing.T) {
+		publisher := &analytics.GooglePubSubRelayStatsPublisher{}
+		err := publisher.Publish(ctx, []analytics.RelayStatsEntry{})
+		assert.EqualError(t, err, "analytics: relay stats pub/sub client not initialized")
+	})
+
+	t.Run("relay stats publisher success", func(t *testing.T) {
+		analyticsMetrics, err := metrics.NewAnalyticsServiceMetrics(ctx, &metrics.LocalHandler{})
+		assert.NoError(t, err)
+
+		relayStatsMetrics := analyticsMetrics.RelayStatsMetrics
+
+		publisher, err := analytics.NewGooglePubSubRelayStatsPublisher(ctx, &relayStatsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+		assert.NoError(t, err)
+
+		entry := analytics.RelayStatsEntry{}
+		err = publisher.Publish(ctx, []analytics.RelayStatsEntry{entry})
+		assert.NoError(t, err)
+
+		assert.Equal(t, float64(1), relayStatsMetrics.EntriesSubmitted.Value())
 	})
 }
 
 func TestLocalBigQueryWriter(t *testing.T) {
-	t.Run("no logger", func(t *testing.T) {
-		writer := analytics.LocalPingStatsWriter{}
-		err := writer.Write(context.Background(), []*analytics.PingStatsEntry{})
-		assert.EqualError(t, err, "no logger for local big query writer, can't display entry")
-	})
+	t.Parallel()
 
-	t.Run("success", func(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("ping stats success", func(t *testing.T) {
+
+		analyticsMetrics, err := metrics.NewAnalyticsServiceMetrics(ctx, &metrics.LocalHandler{})
+		assert.NoError(t, err)
+
 		writer := analytics.LocalPingStatsWriter{
-			Logger: log.NewNopLogger(),
+			Metrics: &analyticsMetrics.PingStatsMetrics,
 		}
 
-		err := writer.Write(context.Background(), []*analytics.PingStatsEntry{})
+		entry := &analytics.PingStatsEntry{}
+
+		err = writer.Write(context.Background(), []*analytics.PingStatsEntry{entry})
 		assert.NoError(t, err)
+
+		assert.Equal(t, float64(1), writer.Metrics.EntriesSubmitted.Value())
+		assert.Equal(t, float64(1), writer.Metrics.EntriesFlushed.Value())
+	})
+
+	t.Run("relay stats success", func(t *testing.T) {
+
+		analyticsMetrics, err := metrics.NewAnalyticsServiceMetrics(ctx, &metrics.LocalHandler{})
+		assert.NoError(t, err)
+
+		writer := analytics.LocalRelayStatsWriter{
+			Metrics: &analyticsMetrics.RelayStatsMetrics,
+		}
+
+		entry := &analytics.RelayStatsEntry{}
+
+		err = writer.Write(context.Background(), []*analytics.RelayStatsEntry{entry})
+		assert.NoError(t, err)
+
+		assert.Equal(t, float64(1), writer.Metrics.EntriesSubmitted.Value())
+		assert.Equal(t, float64(1), writer.Metrics.EntriesFlushed.Value())
 	})
 }
 
 func TestNoOp(t *testing.T) {
-	t.Run("pubsub", func(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ping stats publisher", func(t *testing.T) {
 		publisher := analytics.NoOpPingStatsPublisher{}
-		publisher.Publish(context.Background(), []analytics.PingStatsEntry{})
+		err := publisher.Publish(context.Background(), []analytics.PingStatsEntry{})
+		assert.NoError(t, err)
 	})
 
-	t.Run("bigquery", func(t *testing.T) {
+	t.Run("ping stats writer", func(t *testing.T) {
 		writer := analytics.NoOpPingStatsWriter{}
-		writer.Write(context.Background(), []*analytics.PingStatsEntry{})
+		err := writer.Write(context.Background(), []*analytics.PingStatsEntry{})
+		assert.NoError(t, err)
+	})
+
+	t.Run("relay stats publisher", func(t *testing.T) {
+		publisher := analytics.NoOpRelayStatsPublisher{}
+		err := publisher.Publish(context.Background(), []analytics.RelayStatsEntry{})
+		assert.NoError(t, err)
+	})
+
+	t.Run("relay stats writer", func(t *testing.T) {
+		writer := analytics.NoOpRelayStatsWriter{}
+		err := writer.Write(context.Background(), []*analytics.RelayStatsEntry{})
+		assert.NoError(t, err)
 	})
 }

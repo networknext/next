@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/analytics"
-	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
@@ -88,14 +87,14 @@ func (ap *AnalyticsPusher) Start(ctx context.Context, wg *sync.WaitGroup, errCha
 func (ap *AnalyticsPusher) StartRelayStatsPublisher(ctx context.Context, wg *sync.WaitGroup, errChan chan error) {
 	defer wg.Done()
 
-	syncTimer := helpers.NewSyncTimer(ap.relayStatsPublishInterval)
+	ticker := time.NewTicker(ap.relayStatsPublishInterval)
+
 	for {
-		syncTimer.Run()
 		select {
 		case <-ctx.Done():
 			return
-		default:
-			routeMatrix, err := ap.getRouteMatrix()
+		case <-ticker.C:
+			routeMatrix, err := ap.GetRouteMatrix()
 			if err != nil {
 				core.Error("error getting route matrix: %v", err)
 				continue
@@ -121,14 +120,14 @@ func (ap *AnalyticsPusher) StartRelayStatsPublisher(ctx context.Context, wg *syn
 func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync.WaitGroup, errChan chan error) {
 	defer wg.Done()
 
-	syncTimer := helpers.NewSyncTimer(ap.pingStatsPublishInterval)
+	ticker := time.NewTicker(ap.pingStatsPublishInterval)
+
 	for {
-		syncTimer.Run()
 		select {
 		case <-ctx.Done():
 			return
-		default:
-			routeMatrix, err := ap.getRouteMatrix()
+		case <-ticker.C:
+			routeMatrix, err := ap.GetRouteMatrix()
 			if err != nil {
 				core.Error("error getting route matrix: %v", err)
 				continue
@@ -151,7 +150,7 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 	}
 }
 
-func (ap *AnalyticsPusher) getRouteMatrix() (*routing.RouteMatrix, error) {
+func (ap *AnalyticsPusher) GetRouteMatrix() (*routing.RouteMatrix, error) {
 	ap.metrics.RouteMatrixInvocations.Add(1)
 
 	var buffer []byte
