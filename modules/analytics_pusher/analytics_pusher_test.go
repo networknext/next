@@ -156,40 +156,6 @@ func TestStartRelayStatsPublisher(t *testing.T) {
 		assert.Equal(t, 0, len(errChan))
 	})
 
-	t.Run("error publishing relay stats", func(t *testing.T) {
-		checkGooglePubsubEmulator(t)
-
-		pusherMetrics, err := metrics.NewAnalyticsPusherMetrics(context.Background(), &metrics.LocalHandler{}, "analytics_pusher")
-		assert.NoError(t, err)
-
-		var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
-		relayStatsPublisher := &analytics.GooglePubSubRelayStatsPublisher{}
-
-		ap, err := pusher.NewAnalyticsPusher(relayStatsPublisher, pingStatsPublisher, time.Millisecond*50, time.Second, time.Second, "../../testdata/route_matrix_dev.bin", time.Hour*87600, pusherMetrics)
-		assert.NoError(t, err)
-
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		wg := &sync.WaitGroup{}
-		errChan := make(chan error, 1)
-
-		wg.Add(1)
-		go ap.StartRelayStatsPublisher(ctx, wg, errChan)
-
-		time.Sleep(time.Millisecond * 200)
-		cancelFunc()
-		wg.Wait()
-
-		assert.Equal(t, 1, len(errChan))
-		if len(errChan) > 0 {
-			err := <-errChan
-			assert.EqualError(t, err, "analytics: relay stats pub/sub client not initialized")
-		}
-
-		assert.Greater(t, pusherMetrics.RelayStatsMetrics.EntriesReceived.Value(), float64(0))
-		assert.Equal(t, pusherMetrics.RelayStatsMetrics.EntriesSubmitted.Value(), float64(0))
-		assert.Equal(t, pusherMetrics.RelayStatsMetrics.EntriesFlushed.Value(), float64(0))
-	})
-
 	t.Run("success", func(t *testing.T) {
 		checkGooglePubsubEmulator(t)
 
@@ -246,40 +212,6 @@ func TestStartPingStatsPublisher(t *testing.T) {
 
 		assert.Greater(t, pusherMetrics.ErrorMetrics.RouteMatrixReaderNil.Value(), float64(0))
 		assert.Equal(t, 0, len(errChan))
-	})
-
-	t.Run("error publishing ping stats", func(t *testing.T) {
-		checkGooglePubsubEmulator(t)
-
-		pusherMetrics, err := metrics.NewAnalyticsPusherMetrics(context.Background(), &metrics.LocalHandler{}, "analytics_pusher")
-		assert.NoError(t, err)
-
-		var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
-		pingStatsPublisher := &analytics.GooglePubSubPingStatsPublisher{}
-
-		ap, err := pusher.NewAnalyticsPusher(relayStatsPublisher, pingStatsPublisher, time.Second, time.Millisecond*50, time.Second, "../../testdata/route_matrix_dev.bin", time.Hour*87600, pusherMetrics)
-		assert.NoError(t, err)
-
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		wg := &sync.WaitGroup{}
-		errChan := make(chan error, 1)
-
-		wg.Add(1)
-		go ap.StartPingStatsPublisher(ctx, wg, errChan)
-
-		time.Sleep(time.Millisecond * 200)
-		cancelFunc()
-		wg.Wait()
-
-		assert.Equal(t, 1, len(errChan))
-		if len(errChan) > 0 {
-			err := <-errChan
-			assert.EqualError(t, err, "analytics: ping stats pub/sub client not initialized")
-		}
-
-		assert.Greater(t, pusherMetrics.PingStatsMetrics.EntriesReceived.Value(), float64(0))
-		assert.Equal(t, pusherMetrics.PingStatsMetrics.EntriesSubmitted.Value(), float64(0))
-		assert.Equal(t, pusherMetrics.PingStatsMetrics.EntriesFlushed.Value(), float64(0))
 	})
 
 	t.Run("success", func(t *testing.T) {
