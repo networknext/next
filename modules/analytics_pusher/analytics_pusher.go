@@ -92,6 +92,7 @@ func (ap *AnalyticsPusher) StartRelayStatsPublisher(ctx context.Context, wg *syn
 	for {
 		select {
 		case <-ctx.Done():
+			ap.relayStatsPublisher.Close()
 			return
 		case <-ticker.C:
 			routeMatrix, err := ap.GetRouteMatrix()
@@ -125,6 +126,7 @@ func (ap *AnalyticsPusher) StartPingStatsPublisher(ctx context.Context, wg *sync
 	for {
 		select {
 		case <-ctx.Done():
+			ap.pingStatsPublisher.Close()
 			return
 		case <-ticker.C:
 			routeMatrix, err := ap.GetRouteMatrix()

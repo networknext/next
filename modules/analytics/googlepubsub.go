@@ -100,7 +100,6 @@ func (publisher *GooglePubSubPingStatsPublisher) Publish(ctx context.Context, en
 	return nil
 }
 
-// TODO: call Close() when context is canceled in the Analytics Pusher
 func (publisher *GooglePubSubPingStatsPublisher) Close() {
 	publisher.client.Topic.Stop()
 }
@@ -144,7 +143,6 @@ func (publisher *GooglePubSubRelayStatsPublisher) Publish(ctx context.Context, e
 	return nil
 }
 
-// TODO: call Close() when context is canceled in the Analytics Pusher
 func (publisher *GooglePubSubRelayStatsPublisher) Close() {
 	publisher.client.Topic.Stop()
 }
