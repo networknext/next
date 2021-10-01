@@ -132,8 +132,6 @@ func TestGetRouteMatrix(t *testing.T) {
 
 func TestStartRelayStatsPublisher(t *testing.T) {
 
-	t.Parallel()
-
 	t.Run("error getting route matrix", func(t *testing.T) {
 		pusherMetrics, err := metrics.NewAnalyticsPusherMetrics(context.Background(), &metrics.LocalHandler{}, "analytics_pusher")
 		assert.NoError(t, err)
@@ -225,8 +223,6 @@ func TestStartRelayStatsPublisher(t *testing.T) {
 }
 
 func TestStartPingStatsPublisher(t *testing.T) {
-
-	t.Parallel()
 
 	t.Run("error getting route matrix", func(t *testing.T) {
 		pusherMetrics, err := metrics.NewAnalyticsPusherMetrics(context.Background(), &metrics.LocalHandler{}, "analytics_pusher")
