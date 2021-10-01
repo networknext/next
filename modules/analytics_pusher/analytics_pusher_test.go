@@ -163,7 +163,7 @@ func TestStartRelayStatsPublisher(t *testing.T) {
 		assert.NoError(t, err)
 
 		var pingStatsPublisher analytics.PingStatsPublisher = &analytics.NoOpPingStatsPublisher{}
-		relayStatsPublisher, err := analytics.NewGooglePubSubRelayStatsPublisher(context.Background(), &pusherMetrics.RelayStatsMetrics, "default", "analytics", pubsub.DefaultPublishSettings)
+		relayStatsPublisher, err := analytics.NewGooglePubSubRelayStatsPublisher(context.Background(), &pusherMetrics.RelayStatsMetrics, "local", "analytics", pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 
 		ap, err := pusher.NewAnalyticsPusher(relayStatsPublisher, pingStatsPublisher, time.Millisecond*50, time.Second, time.Second, "../../testdata/route_matrix_dev.bin", time.Hour*87600, pusherMetrics)
@@ -221,7 +221,7 @@ func TestStartPingStatsPublisher(t *testing.T) {
 		assert.NoError(t, err)
 
 		var relayStatsPublisher analytics.RelayStatsPublisher = &analytics.NoOpRelayStatsPublisher{}
-		pingStatsPublisher, err := analytics.NewGooglePubSubPingStatsPublisher(context.Background(), &pusherMetrics.PingStatsMetrics, "default", "analytics", pubsub.DefaultPublishSettings)
+		pingStatsPublisher, err := analytics.NewGooglePubSubPingStatsPublisher(context.Background(), &pusherMetrics.PingStatsMetrics, "local", "analytics", pubsub.DefaultPublishSettings)
 		assert.NoError(t, err)
 
 		ap, err := pusher.NewAnalyticsPusher(relayStatsPublisher, pingStatsPublisher, time.Second, time.Millisecond*50, time.Second, "../../testdata/route_matrix_dev.bin", time.Hour*87600, pusherMetrics)
