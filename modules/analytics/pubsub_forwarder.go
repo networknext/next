@@ -55,6 +55,8 @@ func (psf *PingStatsPubSubForwarder) Forward(ctx context.Context, wg *sync.WaitG
 			}
 
 			if err := psf.Writer.Write(ctx, entries); err != nil {
+				core.Error("failed to submit ping stats batch entry: %v", err)
+
 				// Nack if we fail to submit the batch of ping stats entries at once
 				m.Nack()
 				return
@@ -125,6 +127,8 @@ func (psf *RelayStatsPubSubForwarder) Forward(ctx context.Context, wg *sync.Wait
 			}
 
 			if err := psf.Writer.Write(ctx, entries); err != nil {
+				core.Error("failed to submit relay stats batch entry: %v", err)
+
 				// Nack if we fail to submit the batch of relay stats entries at once
 				m.Nack()
 				return
