@@ -26,8 +26,16 @@ func TestNewGooglePubSubPublisher(t *testing.T) {
 
 	t.Parallel()
 
-	_, err := analytics.NewGooglePubSubPingStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
-	assert.NoError(t, err)
+	t.Run("ping stats publisher", func(t *testing.T) {
+		_, err := analytics.NewGooglePubSubPingStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+		assert.NoError(t, err)
+	})
+
+	t.Run("relay stats publisher", func(t *testing.T) {
+		_, err := analytics.NewGooglePubSubRelayStatsPublisher(context.Background(), &metrics.EmptyAnalyticsMetrics, log.NewNopLogger(), "default", "analytics", pubsub.DefaultPublishSettings)
+		assert.NoError(t, err)
+	})
+
 }
 
 func TestGooglePubSubPublisher(t *testing.T) {
