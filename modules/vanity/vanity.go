@@ -293,7 +293,6 @@ func (vm *VanityMetricHandler) ReceiveMessage(ctx context.Context) <-chan error 
 
 				select {
 				case vm.vanityMetricDataChan <- &vanityData:
-					core.Debug("successfully received vanity data from ZeroMQ")
 				default:
 					errChan <- &ErrChannelFull{}
 				}
