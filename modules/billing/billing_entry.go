@@ -3,6 +3,7 @@ package billing
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 
@@ -2414,8 +2415,12 @@ func (entry *BillingEntry2Summary) Save() (map[string]bigquery.Value, string, er
 			e["durationOnNext"] = int(entry.DurationOnNext)
 		}
 
-		e["startTimestamp"] = int(entry.StartTimestamp)
-
+		if entry.StartTimestamp == 0 {
+			// In case startTimestamp is 0 during transition
+			e["startTimestamp"] = int(time.Now().Add(time.Duration(entry.SessionDuration) * time.Second * -1).Unix())
+		} else {
+			e["startTimestamp"] = int(entry.StartTimestamp)
+		}
 	}
 
 	return e, "", nil
