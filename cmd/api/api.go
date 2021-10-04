@@ -108,14 +108,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// StackDriver Logging
-	// TODO: remove this once vanity metrics no longer requires a gokit logger
-	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
-	if err != nil {
-		core.Error("could not get logger: %v", err)
-		return 1
-	}
-
 	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
 	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
 	// on creation so we can use that for the default then
@@ -171,7 +163,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, redisHostname, redisPassword, 5, 5, time.Minute*5, "", env, logger)
+	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, redisHostname, redisPassword, 5, 5, time.Minute*5, "", env)
 	if err != nil {
 		core.Error("failed to create vanity metric handler: %v", err)
 		return 1
