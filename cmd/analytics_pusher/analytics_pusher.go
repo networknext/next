@@ -183,8 +183,8 @@ func mainReturnWithCode() int {
 	// Setup the status handler info
 	type AnalyticsPusherStatus struct {
 		// Service Information
-		ServiceName string `json:"serviceName"`
-		GitHash     string `json:"gitHash"`
+		ServiceName string `json:"service_name"`
+		GitHash     string `json:"git_hash"`
 		Started     string `json:"started"`
 		Uptime      string `json:"uptime"`
 
