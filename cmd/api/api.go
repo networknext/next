@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,15 +10,17 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
@@ -70,42 +73,46 @@ func init() {
 	binCreationTime = database.CreationTime
 }
 
-// Allows us to return an exit code and allows log flushes and deferred functions
-// to finish before exiting.
 func main() {
 	os.Exit(mainReturnWithCode())
 }
 
+// Allows us to return an exit code and allows log flushes and deferred functions
+// to finish before exiting.
 func mainReturnWithCode() int {
-	fmt.Printf("api: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	serviceName := "api"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
-	ctx := context.Background()
+	est, _ := time.LoadLocation("EST")
+	startTime := time.Now().In(est)
 
-	logger := log.NewLogfmtLogger(os.Stdout)
+	ctx, ctxCancelFunc := context.WithCancel(context.Background())
+
+	logger := log.NewNopLogger()
 
 	// Get env and set the variable
 	{
 		envName, err := backend.GetEnv()
 		if err != nil {
-			level.Error(logger).Log("err", "ENV not set")
+			core.Error("ENV not set: %v", err)
 			return 1
 		}
 		env = envName
 	}
 
 	gcpProjectID = backend.GetGCPProjectID()
-	gcpOK := gcpProjectID != ""
-	if gcpOK {
-		level.Info(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "Found GOOGLE_PROJECT_ID")
+	if gcpProjectID != "" {
+		core.Debug("Found GOOGLE_PROJECT_ID: %s", gcpProjectID)
 	} else {
-		level.Error(logger).Log("envvar", "GOOGLE_PROJECT_ID", "msg", "GOOGLE_PROJECT_ID not set. Cannot get vanity metrics.")
+		core.Error("GOOGLE_PROJECT_ID not set. Cannot get vanity metrics")
 		return 1
 	}
 
 	// StackDriver Logging
-	logger, err := backend.GetLogger(ctx, gcpProjectID, "api")
+	// TODO: remove this once vanity metrics no longer requires a gokit logger
+	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("could not get logger: %v", err)
 		return 1
 	}
 
@@ -115,15 +122,15 @@ func mainReturnWithCode() int {
 
 	// StackDriver Metrics
 	var enableSDMetrics bool
-	enableSDMetricsString, ok := os.LookupEnv("ENABLE_STACKDRIVER_METRICS")
-	if ok {
+	enableSDMetricsString := envvar.Get("ENABLE_STACKDRIVER_METRICS", "")
+	if enableSDMetricsString != "" {
 		enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
 		if err != nil {
-			level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "could not parse", "err", err)
+			core.Error("could not parse ENABLE_STACKDRIVER_METRICS: %v", err)
 			return 1
 		}
 	} else {
-		level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_METRICS", "msg", "ENABLE_STACKDRIVER_METRICS not set. Cannot get vanity metrics.")
+		core.Error("ENABLE_STACKDRIVER_METRICS not set. Cannot get vanity metrics")
 		return 1
 	}
 
@@ -136,7 +143,7 @@ func mainReturnWithCode() int {
 		}
 
 		if err := sdHandler.Open(ctx); err != nil {
-			level.Error(logger).Log("msg", "Failed to create StackDriver metrics client", "err", err)
+			core.Error("failed to create StackDriver metrics client: %v", err)
 			return 1
 		}
 
@@ -149,24 +156,24 @@ func mainReturnWithCode() int {
 	// Create metric handler for tracking performance of api service
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get metrics handler: %v", err)
 		return 1
 	}
 	vanityServiceMetrics, err := metrics.NewVanityServiceMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create vanity metric metrics", "err", err)
+		core.Error("failed to create vanity metric metrics: %v", err)
 		return 1
 	}
 
 	// StackDriver Profiler
 	if err = backend.InitStackDriverProfiler(gcpProjectID, "api", env); err != nil {
-		level.Error(logger).Log("msg", "failed to initialize StackDriver profiler", "err", err)
+		core.Error("failed to initialize StackDriver profiler: %v", err)
 		return 1
 	}
 
 	vanityMetrics, err = vanity.NewVanityMetricHandler(sd, vanityServiceMetrics, 0, nil, redisHostname, redisPassword, 5, 5, time.Minute*5, "", env, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "error creating vanity metric handler", "err", err)
+		core.Error("failed to create vanity metric handler: %v", err)
 		return 1
 	}
 
@@ -178,13 +185,13 @@ func mainReturnWithCode() int {
 		databaseFilePath := envvar.Get("BIN_PATH", "./database.bin")
 		absPath, err := filepath.Abs(databaseFilePath)
 		if err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", databaseFilePath), "err", err)
+			core.Error("error getting absolute path %s: %v", databaseFilePath, err)
 			return 1
 		}
 
 		// Check if file exists
 		if _, err := os.Stat(absPath); err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("%s does not exist", absPath), "err", err)
+			core.Error("%s does not exist: %v", absPath, err)
 			return 1
 		}
 
@@ -194,7 +201,7 @@ func mainReturnWithCode() int {
 
 		binSyncInterval, err := envvar.GetDuration("BIN_SYNC_INTERVAL", time.Minute*1)
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to get BIN_SYNC_INTERVAL", "err", err)
+			core.Error("failed to get BIN_SYNC_INTERVAL: %v", err)
 			return 1
 		}
 
@@ -202,14 +209,14 @@ func mainReturnWithCode() int {
 
 		// Setup goroutine to watch for replaced file and update buyerCodeMap
 		go func() {
-			level.Debug(logger).Log("msg", fmt.Sprintf("started watchman on %s", directoryPath))
+			core.Debug("started watchman on %s", directoryPath)
 			for {
 				select {
 				case <-ticker.C:
 					// File has changed
 					file, err := os.Open(absPath)
 					if err != nil {
-						level.Error(logger).Log("msg", fmt.Sprintf("could not load database binary at %s", absPath), "err", err)
+						core.Error("could not load database binary at %s: %v", absPath, err)
 						continue
 					}
 
@@ -220,11 +227,11 @@ func mainReturnWithCode() int {
 						// Sometimes we receive an EOF error since the file is still being replaced
 						// so early out here and proceed on the next notification
 						file.Close()
-						level.Debug(logger).Log("msg", "DecodeBinWrapper() EOF error, will wait for next notification")
+						core.Debug("DecodeBinWrapper() EOF error, will wait for next notification")
 						continue
 					} else if err != nil {
 						file.Close()
-						level.Error(logger).Log("msg", "DecodeBinWrapper() error", "err", err)
+						core.Debug("DecodeBinWrapper() error: %v", err)
 						continue
 					}
 
@@ -234,7 +241,7 @@ func mainReturnWithCode() int {
 					if databaseNew.IsEmpty() {
 						// Don't want to use an empty bin wrapper
 						// so early out here and use existing values
-						level.Debug(logger).Log("msg", "new bin wrapper is empty, keeping previous values")
+						core.Error("new database file is empty, keeping previous values")
 						continue
 					}
 
@@ -258,36 +265,90 @@ func mainReturnWithCode() int {
 		}()
 	}
 
+	// Setup the status handler info
+	type APIStatus struct {
+		// Service Information
+		ServiceName string `json:"serviceName"`
+		GitHash     string `json:"gitHash"`
+		Started     string `json:"started"`
+		Uptime      string `json:"uptime"`
+
+		// Metrics
+		Goroutines      int     `json:"goroutines"`
+		MemoryAllocated float64 `json:"mb_allocated"`
+	}
+
+	statusData := &APIStatus{}
+	var statusMutex sync.RWMutex
+
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				newStatusData := &APIStatus{}
+
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+				newStatusData.Goroutines = runtime.NumGoroutine()
+				newStatusData.MemoryAllocated = memoryUsed()
+
+				statusMutex.Lock()
+				statusData = newStatusData
+				statusMutex.Unlock()
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
+
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	// Start HTTP server
 	{
+		port := envvar.Get("PORT", "30005")
+		if port == "" {
+			core.Error("PORT not set")
+			return 1
+		}
+
+		fmt.Printf("starting http server on port %s\n", port)
+
 		go func() {
 			router := mux.NewRouter()
 			router.HandleFunc("/vanity", VanityMetricHandlerFunc())
 			router.HandleFunc("/health", transport.HealthHandlerFunc())
 			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 			router.HandleFunc("/database_version", transport.DatabaseBinVersionFunc(&binCreator, &binCreationTime, &env))
+			router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				core.Error("could not parse envvar FEATURE_ENABLE_PPROF: %v", err)
 			}
 			if enablePProf {
 				router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 			}
 
-			port, ok := os.LookupEnv("PORT")
-			if !ok {
-				level.Error(logger).Log("err", "env var PORT must be set")
-				errChan <- err
-				return
-			}
-
-			serviceName := ""
-			level.Info(logger).Log("addr", serviceName+":"+port)
-
-			err = http.ListenAndServe(serviceName+":"+port, router)
+			err = http.ListenAndServe(":"+port, router)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				core.Error("error starting http server: %v", err)
 				errChan <- err
 				return
 			}
@@ -295,14 +356,19 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Wait for interrupt signal
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case <-sigint:
+	case <-termChan:
+		core.Debug("received shutdown signal")
+		ctxCancelFunc()
+
+		core.Debug("successfully shutdown")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		ctxCancelFunc()
 		return 1
 	}
 }
