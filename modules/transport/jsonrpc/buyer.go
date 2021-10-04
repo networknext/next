@@ -47,6 +47,7 @@ const (
 	MaxBigTableDays          = 10
 	EmbeddedUserGroupID      = 3
 	BillingDashURI           = "/embed/dashboards-next/11"
+	AnalyticsDashURI         = "/embed/dashboards-next/12"
 )
 
 var (
@@ -2692,16 +2693,100 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 	return nil
 }
 
-type FetchBillingSummaryArgs struct {
+type FetchSummaryDashboardArgs struct {
 	CompanyCode string `json:"company_code"`
 }
 
-type FetchBillingSummaryReply struct {
+type FetchSummaryDashboardReply struct {
 	URL string `json:"url"`
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
-func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *FetchBillingSummaryArgs, reply *FetchBillingSummaryReply) error {
+func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+	if !isAdmin && !middleware.VerifyAllRoles(r, middleware.OwnerRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+		return &err
+	}
+
+	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+		return &err
+	}
+
+	// Admin's will be able to search any company's billing info
+	if isAdmin {
+		companyCode = args.CompanyCode
+	}
+
+	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
+		companyCode = "esl"
+	} else {
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v: Failed to fetch buyer", err.Error()))
+			return &err
+		}
+
+		if !buyer.Analytics && !isAdmin {
+			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+			s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+			return &err
+		}
+	}
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
+	nonce, err := GenerateRandomString(16)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v: Failed to generate nonce", err.Error()))
+		return &err
+	}
+
+	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
+	urlOptions := notifications.LookerURLOptions{
+		Host:            notifications.LOOKER_HOST,
+		Secret:          s.LookerSecret,
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		GroupsIds:       []int{EmbeddedUserGroupID},
+		ExternalGroupId: "",
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+		AccessFilters:   make(map[string]map[string]interface{}),
+		UserAttributes:  make(map[string]interface{}),
+		SessionLength:   3600,
+		EmbedURL:        "/login/embed/" + url.QueryEscape(AnalyticsDashURI),
+		ForceLogout:     true,
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Time:            time.Now().Unix(),
+	}
+
+	urlOptions.UserAttributes["customer_code"] = companyCode
+
+	reply.URL = notifications.BuildLookerURL(urlOptions)
+	return nil
+}
+
+// TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
+func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
