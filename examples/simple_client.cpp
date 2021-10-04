@@ -37,9 +37,9 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+void client_packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
-    (void) client; (void) context; (void) packet_data; (void) packet_bytes;
+    (void) client; (void) context; (void) packet_data; (void) packet_bytes; (void) from;
     next_printf( NEXT_LOG_LEVEL_INFO, "client received packet from server (%d bytes)", packet_bytes );
 }
 

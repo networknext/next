@@ -202,9 +202,10 @@ bool verify_packet( const uint8_t * packet_data, int packet_bytes )
     return true;
 }
 
-void client_packet_received( next_client_t * client, void * _context, const uint8_t * packet_data, int packet_bytes )
+void client_packet_received( next_client_t * client, void * _context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client;
+    (void) from;
 
     ClientContext * context = (ClientContext*) _context;
 

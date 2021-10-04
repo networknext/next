@@ -31,29 +31,26 @@
 #include <inttypes.h>
 
 #if defined( _MSC_VER )
+#pragma warning(push)
+#pragma warning(disable:4996)
 #pragma warning(disable:4127)
 #pragma warning(disable:4244)
 #pragma warning(disable:4668)
 #endif
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4996)
-#endif
+#if !NEXT_DEVELOPMENT
+#define NEXT_SERVER_BACKEND_HOSTNAME                 "prod.spacecats.net"
+#else // #if !NEXT_DEVELOPMENT
+#define NEXT_SERVER_BACKEND_HOSTNAME                  "dev.spacecats.net"
+#endif // #if !NEXT_DEVELOPMENT
+#define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME                  "prod.spacecats.net"
+#define NEXT_PING_BACKEND_HOSTNAME   "prod.losangelesfreewaysatnight.com"
 #else // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_HOSTNAME                   "dev.spacecats.net"
+#define NEXT_PING_BACKEND_HOSTNAME    "dev.losangelesfreewaysatnight.com"
 #endif // #if !NEXT_DEVELOPMENT
-#define NEXT_SERVER_BACKEND_PORT                                   "40000"
-
-#if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_HOSTNAME    "prod.losangelesfreewaysatnight.com"
-#else // #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_HOSTNAME     "dev.losangelesfreewaysatnight.com"
-#endif // #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_PORT                                     "40100"
+#define NEXT_PING_BACKEND_PORT                                    "40100"
 
 #define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
@@ -489,9 +486,9 @@ void next_sleep( double time_seconds )
     next_platform_sleep( time_seconds );
 }
 
-static int log_quiet = false;
+static int log_quiet = 0;
 
-void next_quiet( bool flag )
+void next_quiet( NEXT_BOOL flag )
 {
     log_quiet = flag;
 }
@@ -7694,7 +7691,7 @@ struct next_client_t
     next_address_t server_address;
     next_client_internal_t * internal;
     next_platform_thread_t * thread;
-    void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes );
+    void (*packet_received_callback)( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes );
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -7736,7 +7733,7 @@ void next_client_verify_sentinels( next_client_t * client )
 
 void next_client_destroy( next_client_t * client );
 
-next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) )
+next_client_t * next_client_create( void * context, const char * bind_address, void (*packet_received_callback)( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) )
 {
     next_assert( bind_address );
     next_assert( packet_received_callback );
@@ -7858,7 +7855,7 @@ void next_client_open_session( next_client_t * client, const char * server_addre
     client->open_session_sequence++;
 }
 
-bool next_client_is_session_open( next_client_t * client )
+NEXT_BOOL next_client_is_session_open( next_client_t * client )
 {
     next_client_verify_sentinels( client );
 
@@ -7925,7 +7922,7 @@ void next_client_update( next_client_t * client )
             {
                 next_client_notify_packet_received_t * packet_received = (next_client_notify_packet_received_t*) notify;
 
-                client->packet_received_callback( client, client->context, packet_received->payload_data, packet_received->payload_bytes );
+                client->packet_received_callback( client, client->context, &client->server_address, packet_received->payload_data, packet_received->payload_bytes );
 
                 next_platform_mutex_acquire( &client->internal->bandwidth_mutex );
                 const int envelope_kbps_down = client->internal->bandwidth_envelope_kbps_down;
@@ -8354,38 +8351,38 @@ const char * next_address_to_string( const next_address_t * address, char * buff
     }
 }
 
-bool next_address_equal( const next_address_t * a, const next_address_t * b )
+NEXT_BOOL next_address_equal( const next_address_t * a, const next_address_t * b )
 {
     next_assert( a );
     next_assert( b );
 
     if ( a->type != b->type )
-        return false;
+        return NEXT_FALSE;
 
     if ( a->type == NEXT_ADDRESS_IPV4 )
     {
         if ( a->port != b->port )
-            return false;
+            return NEXT_FALSE;
 
         for ( int i = 0; i < 4; ++i )
         {
             if ( a->data.ipv4[i] != b->data.ipv4[i] )
-                return false;
+                return NEXT_FALSE;
         }
     }
     else if ( a->type == NEXT_ADDRESS_IPV6 )
     {
         if ( a->port != b->port )
-            return false;
+            return NEXT_FALSE;
 
         for ( int i = 0; i < 8; ++i )
         {
             if ( a->data.ipv6[i] != b->data.ipv6[i] )
-                return false;
+                return NEXT_FALSE;
         }
     }
 
-    return true;
+    return NEXT_TRUE;
 }
 
 void next_address_anonymize( next_address_t * address )
@@ -13018,6 +13015,7 @@ struct next_server_t
     void (*packet_received_callback)( next_server_t * server, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes );
     next_proxy_session_manager_t * pending_session_manager;
     next_proxy_session_manager_t * session_manager;
+    next_address_t address;
     uint16_t bound_port;
 
     NEXT_DECLARE_SENTINEL(1)
@@ -13069,6 +13067,7 @@ next_server_t * next_server_create( void * context, const char * server_address,
         return NULL;
     }
 
+    server->address = server->internal->server_address;
     server->bound_port = server->internal->server_address.port;
 
     server->thread = next_platform_thread_create( server->context, next_server_internal_thread_function, server->internal );
@@ -13113,6 +13112,13 @@ uint16_t next_server_port( next_server_t * server )
     next_server_verify_sentinels( server );
 
     return server->bound_port;
+}
+
+next_address_t next_server_address( next_server_t * server )
+{
+    next_server_verify_sentinels( server );
+
+    return server->address;
 }
 
 void next_server_destroy( next_server_t * server )
@@ -13351,7 +13357,7 @@ void next_server_tag_session_multiple( next_server_t * server, const next_addres
     }
 }
 
-bool next_server_session_upgraded( next_server_t * server, const next_address_t * address )
+NEXT_BOOL next_server_session_upgraded( next_server_t * server, const next_address_t * address )
 {
     next_server_verify_sentinels( server );
 
@@ -13359,13 +13365,13 @@ bool next_server_session_upgraded( next_server_t * server, const next_address_t 
     
     next_proxy_session_entry_t * pending_entry = next_proxy_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry != NULL )
-        return true;
+        return NEXT_TRUE;
 
     next_proxy_session_entry_t * entry = next_proxy_session_manager_find( server->session_manager, address );
     if ( entry != NULL )
-        return true;
+        return NEXT_TRUE;
 
-    return false;
+    return NEXT_FALSE;
 }
 
 void next_server_send_packet( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
@@ -13539,7 +13545,7 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
 }
 
-bool next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
+NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * address, next_server_stats_t * stats )
 {
     next_assert( server );
     next_assert( address );
@@ -13549,7 +13555,7 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
 
     next_session_entry_t * entry = next_session_manager_find_by_address( server->internal->session_manager, address );
     if ( !entry )
-        return false;
+        return NEXT_FALSE;
 
     stats->address = *address;
     stats->session_id = entry->session_id; 
@@ -13580,7 +13586,7 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
     stats->num_tags = entry->num_tags;
     memcpy( stats->tags, entry->tags, sizeof(stats->tags) );
 
-    return true;
+    return NEXT_TRUE;
 }
 
 // ---------------------------------------------------------------
@@ -13872,7 +13878,6 @@ void next_ping_verify_sentinels( next_ping_t * ping )
 }
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_resolve_hostname_thread_function( void * context );
-
 
 next_ping_t * next_ping_create( void * context, const char * bind_address_string, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens )
 {
@@ -15501,10 +15506,11 @@ static void test_platform_mutex()
 
 static int num_client_packets_received = 0;
 
-static void test_client_packet_received_callback( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+static void test_client_packet_received_callback( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client;
     (void) context;
+    (void) from;
     (void) packet_data;
     (void) packet_bytes;
     num_client_packets_received++;
@@ -17897,7 +17903,7 @@ void next_test()
 #endif // #if NEXT_BEACON_ENABLED
 #if NEXT_EXPERIMENTAL
     RUN_TEST( test_ping_token );
-#endif // #if NEXT_EXPERIMENTAL4
+#endif // #if NEXT_EXPERIMENTAL
 }
 
 #ifdef _MSC_VER
