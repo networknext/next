@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"net/http"
@@ -194,7 +194,27 @@ func mainReturnWithCode() int {
 	}
 
 	// Setup the status handler info
-	var statusData []byte
+	type AnalyticsStatus struct {
+		// Service Information
+		ServiceName string `json:"serviceName"`
+		GitHash     string `json:"gitHash"`
+		Started     string `json:"started"`
+		Uptime      string `json:"uptime"`
+
+		// Metrics
+		Goroutines                 int     `json:"goroutines"`
+		MemoryAllocated            float64 `json:"mb_allocated"`
+		PingStatsEntriesReceived   int     `json:"ping_stats_entries_received"`
+		PingStatsEntriesSubmitted  int     `json:"ping_stats_entries_submitted"`
+		PingStatsEntriesQueued     int     `json:"ping_stats_entries_queued"`
+		PingStatsEntriesFlushed    int     `json:"ping_stats_entries_flushed"`
+		RelayStatsEntriesReceived  int     `json:"relay_stats_entries_received"`
+		RelayStatsEntriesSubmitted int     `json:"relay_stats_entries_submitted"`
+		RelayStatsEntriesQueued    int     `json:"relay_stats_entries_queued"`
+		RelayStatsEntriesFlushed   int     `json:"relay_stats_entries_flushed"`
+	}
+
+	statusData := &AnalyticsStatus{}
 	var statusMutex sync.RWMutex
 
 	{
@@ -209,23 +229,26 @@ func mainReturnWithCode() int {
 				analyticsMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				analyticsMetrics.MemoryAllocated.Set(memoryUsed())
 
-				statusDataString := fmt.Sprintf("%s\n", serviceName)
-				statusDataString += fmt.Sprintf("git hash %s\n", sha)
-				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
-				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
-				statusDataString += fmt.Sprintf("%d goroutines\n", int(analyticsMetrics.Goroutines.Value()))
-				statusDataString += fmt.Sprintf("%.2f mb allocated\n", analyticsMetrics.MemoryAllocated.Value())
-				statusDataString += fmt.Sprintf("%d ping stats entries received\n", int(analyticsMetrics.PingStatsMetrics.EntriesReceived.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats entries submitted\n", int(analyticsMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats entries queued\n", int(analyticsMetrics.PingStatsMetrics.EntriesQueued.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats entries flushed\n", int(analyticsMetrics.PingStatsMetrics.EntriesFlushed.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries received\n", int(analyticsMetrics.RelayStatsMetrics.EntriesReceived.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries submitted\n", int(analyticsMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries queued\n", int(analyticsMetrics.RelayStatsMetrics.EntriesQueued.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries flushed\n", int(analyticsMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
+				newStatusData := &AnalyticsStatus{}
+
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+
+				newStatusData.Goroutines = int(analyticsMetrics.Goroutines.Value())
+				newStatusData.MemoryAllocated = analyticsMetrics.MemoryAllocated.Value()
+				newStatusData.PingStatsEntriesReceived = int(analyticsMetrics.PingStatsMetrics.EntriesReceived.Value())
+				newStatusData.PingStatsEntriesSubmitted = int(analyticsMetrics.PingStatsMetrics.EntriesSubmitted.Value())
+				newStatusData.PingStatsEntriesQueued = int(analyticsMetrics.PingStatsMetrics.EntriesQueued.Value())
+				newStatusData.PingStatsEntriesFlushed = int(analyticsMetrics.PingStatsMetrics.EntriesFlushed.Value())
+				newStatusData.RelayStatsEntriesReceived = int(analyticsMetrics.RelayStatsMetrics.EntriesReceived.Value())
+				newStatusData.RelayStatsEntriesSubmitted = int(analyticsMetrics.RelayStatsMetrics.EntriesSubmitted.Value())
+				newStatusData.RelayStatsEntriesQueued = int(analyticsMetrics.RelayStatsMetrics.EntriesQueued.Value())
+				newStatusData.RelayStatsEntriesFlushed = int(analyticsMetrics.RelayStatsMetrics.EntriesFlushed.Value())
 
 				statusMutex.Lock()
-				statusData = []byte(statusDataString)
+				statusData = newStatusData
 				statusMutex.Unlock()
 
 				time.Sleep(time.Second * 10)
@@ -234,13 +257,13 @@ func mainReturnWithCode() int {
 	}
 
 	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
 		statusMutex.RLock()
 		data := statusData
 		statusMutex.RUnlock()
-		buffer := bytes.NewBuffer(data)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
