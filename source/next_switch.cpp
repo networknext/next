@@ -369,6 +369,8 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
         // timeout < 0, socket is blocking with no timeout
     }
 
+#if NEXT_PACKET_TAGGING
+
 	// tag as latency sensitive
 
 	if ( enable_packet_tagging )
@@ -380,6 +382,12 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
 			next_printf(NEXT_LOG_LEVEL_DEBUG, "failed to set socket tos (ipv4)");
 		}
 	}
+
+#else // If NEXT_PACKET_TAGGING
+
+    (void) enable_packet_tagging;
+
+#endif // #if NEXT_PACKET_TAGGING
 	
 	return NEXT_OK;
 }

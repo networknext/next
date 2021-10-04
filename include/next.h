@@ -32,6 +32,10 @@
 
 // #define NEXT_EXPERIMENTAL 1
 
+#ifndef NEXT_PACKET_TAGGING
+#define NEXT_PACKET_TAGGING                                       1
+#endif // #if NEXT_PACKET_TAGGING
+
 #if !defined(NEXT_DEVELOPMENT)
 
     #define NEXT_VERSION_FULL                              "4.0.17"

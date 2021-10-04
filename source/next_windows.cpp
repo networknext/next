@@ -47,7 +47,10 @@
 
 #pragma comment( lib, "WS2_32.lib" )
 #pragma comment( lib, "IPHLPAPI.lib" )
+
+#if NEXT_PACKET_TAGGING
 #pragma comment( lib, "Qwave.lib" )
+#endif // #if NEXT_PACKET_TAGGING
 
 #ifdef SetPort
 #undef SetPort
@@ -308,6 +311,8 @@ int next_platform_id()
 
 void next_platform_socket_destroy( next_platform_socket_t * );
 
+#if NEXT_PACKET_TAGGING
+
 int next_set_socket_codepoint( SOCKET socket, QOS_TRAFFIC_TYPE trafficType, QOS_FLOWID flowId, PSOCKADDR addr ) 
 {
 	QOS_VERSION QosVersion = { 1 , 0 };
@@ -322,6 +327,8 @@ int next_set_socket_codepoint( SOCKET socket, QOS_TRAFFIC_TYPE trafficType, QOS_
 	}
 	return 0;
 }
+
+#endif // #if NEXT_PACKET_TAGGING
 
 next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging )
 {
@@ -471,12 +478,20 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // timeout < 0, socket is blocking with no timeout
     }
 
+#if NEXT_PACKET_TAGGING
+
 	// tag as latency sensitive
 
     if ( enable_packet_tagging )
     {
         next_set_socket_codepoint( s->handle, QOSTrafficTypeAudioVideo, 0, addr );
     }
+
+#else // #if NEXT_PACKET_TAGGING
+
+    (void) enable_packet_tagging;
+
+#endif // #if NEXT_PACKET_TAGGING
 
     return s;
 }

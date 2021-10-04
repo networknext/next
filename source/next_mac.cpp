@@ -357,6 +357,8 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // blocking with no timeout
     }
 
+#if NEXT_PACKET_TAGGING
+
     // tag packet as low latency
 
     if ( enable_packet_tagging )
@@ -382,6 +384,12 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
             #endif
         }
     }
+
+#else // #if NEXT_PACKET_TAGGING
+
+    (void) enable_packet_tagging;
+
+#endif // #if NEXT_PACKET_TAGGING
 
     return socket;
 }
