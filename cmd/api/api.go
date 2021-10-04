@@ -114,6 +114,8 @@ func mainReturnWithCode() int {
 
 	// StackDriver Metrics
 	var enableSDMetrics bool
+	var err error
+
 	enableSDMetricsString := envvar.Get("ENABLE_STACKDRIVER_METRICS", "")
 	if enableSDMetricsString != "" {
 		enableSDMetrics, err = strconv.ParseBool(enableSDMetricsString)
