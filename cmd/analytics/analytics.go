@@ -234,7 +234,7 @@ func mainReturnWithCode() int {
 				newStatusData.ServiceName = serviceName
 				newStatusData.GitHash = sha
 				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
-				newStatusData.Uptime = fmt.Sprintf("%d", time.Since(startTime))
+				newStatusData.Uptime = time.Since(startTime).String()
 
 				newStatusData.Goroutines = int(analyticsMetrics.Goroutines.Value())
 				newStatusData.MemoryAllocated = analyticsMetrics.MemoryAllocated.Value()
