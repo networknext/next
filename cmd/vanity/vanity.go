@@ -217,9 +217,6 @@ func mainReturnWithCode() int {
 			return float64(m.Alloc) / (1000.0 * 1000.0)
 		}
 
-		statusData := &VanityStatus{}
-		var statusMutex sync.RWMutex
-
 		go func() {
 			for {
 				vanityServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
