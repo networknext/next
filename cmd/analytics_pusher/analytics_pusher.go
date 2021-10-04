@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"net/http"
@@ -181,7 +181,36 @@ func mainReturnWithCode() int {
 	go analyticsPusher.Start(ctx, &wg, errChan)
 
 	// Setup the status handler info
-	var statusData []byte
+	type AnalyticsPusherStatus struct {
+		// Service Information
+		ServiceName string `json:"serviceName"`
+		GitHash     string `json:"gitHash"`
+		Started     string `json:"started"`
+		Uptime      string `json:"uptime"`
+
+		// Metrics
+		Goroutines                   int     `json:"goroutines"`
+		MemoryAllocated              float64 `json:"mb_allocated"`
+		RouteMatrixInvocations       int     `json:"route_matrix_invocations"`
+		RouteMatrixSuccesses         int     `json:"route_matrix_successes"`
+		RouteMatrixDuration          int     `json:"route_matrix_duration"`
+		RouteMatrixLongDurations     int     `json:"route_matrix_long_durations"`
+		PingStatsEntriesReceived     int     `json:"ping_stats_entries_received"`
+		PingStatsEntriesSubmitted    int     `json:"ping_stats_entries_submitted"`
+		PingStatsEntriesFlushed      int     `json:"ping_stats_entries_flushed"`
+		RelayStatsEntriesReceived    int     `json:"relay_stats_entries_received"`
+		RelayStatsEntriesSubmitted   int     `json:"relay_stats_entries_submitted"`
+		RelayStatsEntriesFlushed     int     `json:"relay_stats_entries_flushed"`
+		PingStatusPublishFailures    int     `json:"ping_stats_publish_failures"`
+		RelayStatsPublishFailures    int     `json:"relay_stats_publish_failures"`
+		RouteMatrixReaderNilErrors   int     `json:"route_matrix_reader_nil_errors"`
+		RouteMatrixReadErrors        int     `json:"route_matrix_read_errors"`
+		RouteMatrixBufferEmptyErrors int     `json:"route_matrix_buffer_empty_errors"`
+		RouteMatrixSerializeErrors   int     `json:"route_matrix_serialize_errors"`
+		RouteMatrixStaleErrors       int     `json:"route_matrix_stale_errors"`
+	}
+
+	statusData := &AnalyticsPusherStatus{}
 	var statusMutex sync.RWMutex
 
 	{
@@ -196,32 +225,35 @@ func mainReturnWithCode() int {
 				analyticsPusherMetrics.AnalyticsPusherServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				analyticsPusherMetrics.AnalyticsPusherServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
-				statusDataString := fmt.Sprintf("%s\n", serviceName)
-				statusDataString += fmt.Sprintf("git hash %s\n", sha)
-				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
-				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
-				statusDataString += fmt.Sprintf("%d goroutines\n", int(analyticsPusherMetrics.AnalyticsPusherServiceMetrics.Goroutines.Value()))
-				statusDataString += fmt.Sprintf("%.2f mb allocated\n", analyticsPusherMetrics.AnalyticsPusherServiceMetrics.MemoryAllocated.Value())
-				statusDataString += fmt.Sprintf("%d route matrix invocations\n", int(analyticsPusherMetrics.RouteMatrixInvocations.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix successes\n", int(analyticsPusherMetrics.RouteMatrixSuccess.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix duration\n", int(analyticsPusherMetrics.RouteMatrixUpdateDuration.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix long durations\n", int(analyticsPusherMetrics.RouteMatrixUpdateLongDuration.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats entries received\n", int(analyticsPusherMetrics.PingStatsMetrics.EntriesReceived.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats entries submitted\n", int(analyticsPusherMetrics.PingStatsMetrics.EntriesSubmitted.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats entries flushed\n", int(analyticsPusherMetrics.PingStatsMetrics.EntriesFlushed.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries received\n", int(analyticsPusherMetrics.RelayStatsMetrics.EntriesReceived.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries submitted\n", int(analyticsPusherMetrics.RelayStatsMetrics.EntriesSubmitted.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats entries flushed\n", int(analyticsPusherMetrics.RelayStatsMetrics.EntriesFlushed.Value()))
-				statusDataString += fmt.Sprintf("%d ping stats publish failures\n", int(analyticsPusherMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure.Value()))
-				statusDataString += fmt.Sprintf("%d relay stats publish failures\n", int(analyticsPusherMetrics.RelayStatsMetrics.ErrorMetrics.PublishFailure.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix reader nil errors\n", int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixReaderNil.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix read errors\n", int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixReaderNil.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix buffer empty errors\n", int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix serialize errors\n", int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix stale errors\n", int(analyticsPusherMetrics.ErrorMetrics.StaleRouteMatrix.Value()))
+				newStatusData := &AnalyticsPusherStatus{}
+
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+
+				newStatusData.Goroutines = int(analyticsPusherMetrics.AnalyticsPusherServiceMetrics.Goroutines.Value())
+				newStatusData.MemoryAllocated = analyticsPusherMetrics.AnalyticsPusherServiceMetrics.MemoryAllocated.Value()
+				newStatusData.RouteMatrixInvocations = int(analyticsPusherMetrics.RouteMatrixInvocations.Value())
+				newStatusData.RouteMatrixSuccesses = int(analyticsPusherMetrics.RouteMatrixSuccess.Value())
+				newStatusData.RouteMatrixDuration = int(analyticsPusherMetrics.RouteMatrixUpdateDuration.Value())
+				newStatusData.RouteMatrixLongDurations = int(analyticsPusherMetrics.RouteMatrixUpdateLongDuration.Value())
+				newStatusData.PingStatsEntriesReceived = int(analyticsPusherMetrics.PingStatsMetrics.EntriesReceived.Value())
+				newStatusData.PingStatsEntriesSubmitted = int(analyticsPusherMetrics.PingStatsMetrics.EntriesSubmitted.Value())
+				newStatusData.PingStatsEntriesFlushed = int(analyticsPusherMetrics.PingStatsMetrics.EntriesFlushed.Value())
+				newStatusData.RelayStatsEntriesReceived = int(analyticsPusherMetrics.RelayStatsMetrics.EntriesReceived.Value())
+				newStatusData.RelayStatsEntriesSubmitted = int(analyticsPusherMetrics.RelayStatsMetrics.EntriesSubmitted.Value())
+				newStatusData.RelayStatsEntriesFlushed = int(analyticsPusherMetrics.RelayStatsMetrics.EntriesFlushed.Value())
+				newStatusData.PingStatusPublishFailures = int(analyticsPusherMetrics.PingStatsMetrics.ErrorMetrics.PublishFailure.Value())
+				newStatusData.RelayStatsPublishFailures = int(analyticsPusherMetrics.RelayStatsMetrics.ErrorMetrics.PublishFailure.Value())
+				newStatusData.RouteMatrixReaderNilErrors = int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixReaderNil.Value())
+				newStatusData.RouteMatrixReadErrors = int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixReaderNil.Value())
+				newStatusData.RouteMatrixBufferEmptyErrors = int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Value())
+				newStatusData.RouteMatrixSerializeErrors = int(analyticsPusherMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Value())
+				newStatusData.RouteMatrixStaleErrors = int(analyticsPusherMetrics.ErrorMetrics.StaleRouteMatrix.Value())
 
 				statusMutex.Lock()
-				statusData = []byte(statusDataString)
+				statusData = newStatusData
 				statusMutex.Unlock()
 
 				time.Sleep(time.Second * 10)
@@ -230,13 +262,13 @@ func mainReturnWithCode() int {
 	}
 
 	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
 		statusMutex.RLock()
 		data := statusData
 		statusMutex.RUnlock()
-		buffer := bytes.NewBuffer(data)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
