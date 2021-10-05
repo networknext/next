@@ -110,6 +110,8 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		RTTReduction:                    false,
 		PacketLossReduction:             false,
 		RouteChanged:                    false,
+		NextBytesUp:                     rand.Uint64(),
+		NextBytesDown:                   rand.Uint64(),
 		FallbackToDirect:                false,
 		MultipathVetoed:                 false,
 		Mispredicted:                    false,
@@ -122,8 +124,6 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		DatacenterNotEnabled:            false,
 		BuyerNotLive:                    false,
 		StaleRouteMatrix:                false,
-		NextBytesUp:                     rand.Uint64(),
-		NextBytesDown:                   rand.Uint64(),
 	}
 }
 
