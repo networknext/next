@@ -143,6 +143,7 @@ func testBillingEntry2() *billing.BillingEntry2 {
 		SessionDuration:                 5 * billing.BillingSliceSeconds,
 		EverOnNext:                      true,
 		DurationOnNext:                  4 * billing.BillingSliceSeconds,
+		StartTimestamp:                  rand.Uint32(),
 		NextRTT:                         rand.Int31(),
 		NextJitter:                      rand.Int31(),
 		NextPacketLoss:                  rand.Int31(),
@@ -157,6 +158,8 @@ func testBillingEntry2() *billing.BillingEntry2 {
 		RTTReduction:                    true,
 		PacketLossReduction:             true,
 		RouteChanged:                    false,
+		NextBytesUp:                     rand.Uint64(),
+		NextBytesDown:                   rand.Uint64(),
 		FallbackToDirect:                false,
 		MultipathVetoed:                 false,
 		Mispredicted:                    false,
@@ -169,8 +172,6 @@ func testBillingEntry2() *billing.BillingEntry2 {
 		DatacenterNotEnabled:            false,
 		BuyerNotLive:                    false,
 		StaleRouteMatrix:                false,
-		NextBytesUp:                     rand.Uint64(),
-		NextBytesDown:                   rand.Uint64(),
 	}
 }
 
