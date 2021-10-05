@@ -603,6 +603,7 @@ func SessionPre(state *SessionHandlerState) bool {
 
 	if state.Packet.ClientPingTimedOut {
 		core.Debug("client ping timed out")
+		state.Metrics.ClientPingTimedOut.Add(1)
 
 		if state.PostSessionHandler.featureBilling2 {
 			// Unmarshal the session data into the input to verify if we wrote the summary slice in sessionPost()
@@ -617,7 +618,6 @@ func SessionPre(state *SessionHandlerState) bool {
 			state.UnmarshaledSessionData = true
 		}
 
-		state.Metrics.ClientPingTimedOut.Add(1)
 		return true
 	}
 
