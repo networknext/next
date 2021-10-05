@@ -50,12 +50,12 @@
           </tr>
         </thead>
         <tbody v-if="sessions.length > 0">
-          <tr id="data-row" v-for="(session, index) in sessions" v-bind:key="index">
+          <tr id="data-row" v-for="(session, index) in sessions" :key="index">
             <td>
               {{ convertUTCDateToLocalDate(new Date(session.time_stamp)) }}
             </td>
             <td>
-                <router-link v-bind:to="`/session-tool/${session.meta.id}`" class="text-dark fixed-width">{{ session.meta.id }}</router-link>
+                <router-link :to="`/session-tool/${session.meta.id}`" class="text-dark fixed-width">{{ session.meta.id }}</router-link>
             </td>
             <td>
               {{ session.meta.platform }}

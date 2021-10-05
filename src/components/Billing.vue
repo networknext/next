@@ -1,17 +1,11 @@
 <template>
   <div class="card-body" id="billing-page">
-    <!--
-      <h5 class="card-title">Billing Dashboard</h5>
-      <p class="card-text">
-        One stop shop for billing information
-      </p>
-    -->
     <div class="row">
       <iframe
         class="col"
         id="billingDash"
         :src="billingDashURL"
-        style="min-height: 2325px;"
+        style="min-height: 5200px;"
         v-if="billingDashURL !== ''"
         frameborder="0"
       >

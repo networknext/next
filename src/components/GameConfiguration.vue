@@ -11,7 +11,7 @@
           class="form-control"
           id="company-input"
           :disabled="true"
-          v-bind:value="companyName"
+          :value="companyName"
         />
         <br />
         <label>Public Key</label>
