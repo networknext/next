@@ -145,7 +145,6 @@ func mainReturnWithCode() int {
 
 			b := billing.GoogleBigQueryClient{
 				Metrics:              &billingServiceMetrics.BillingMetrics,
-				Logger:               logger,
 				TableInserter:        bqClient.Dataset(billingDataset).Table(billing2TableName).Inserter(),
 				SummaryTableInserter: bqClient.Dataset(billingDataset).Table(billing2SummaryTableName).Inserter(),
 				BatchSize:            batchSize,
@@ -174,7 +173,6 @@ func mainReturnWithCode() int {
 
 		// Use the local biller
 		biller2 = &billing.LocalBiller{
-			Logger:  logger,
 			Metrics: &billingServiceMetrics.BillingMetrics,
 		}
 
