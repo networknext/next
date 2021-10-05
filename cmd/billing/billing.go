@@ -230,30 +230,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Setup the status handler info
-	type BillingStatus struct {
-		// Service Information
-		ServiceName string `json:"service_name"`
-		GitHash     string `json:"git_hash"`
-		Started     string `json:"started"`
-		Uptime      string `json:"uptime"`
-
-		// Metrics
-		Goroutines                      int     `json:"goroutines"`
-		MemoryAllocated                 float64 `json:"mb_allocated"`
-		Billing2EntriesReceived         int     `json:"billing_2_entries_received"`
-		Billing2EntriesSubmitted        int     `json:"billing_2_entries_submitted"`
-		Billing2EntriesQueued           int     `json:"billing_2_entries_queued"`
-		Billing2EntriesFlushed          int     `json:"billing_2_entries_flushed"`
-		Billing2SummaryEntriesSubmitted int     `json:"billing_2_summary_entries_submitted"`
-		Billing2SummaryEntriesQueued    int     `json:"billing_2_summary_entries_queued"`
-		Billing2SummaryEntriesFlushed   int     `json:"billing_2_summary_entries_flushed"`
-		Billing2EntriesWithNaN          int     `json:"billing_2_entries_with_nan"`
-		Billing2InvalidEntries          int     `json:"billing_2_invalid_entries"`
-		Billing2ReadFailures            int     `json:"billing_2_read_failures"`
-		Billing2WriteFailures           int     `json:"billing_2_write_failures"`
-	}
-
-	statusData := &BillingStatus{}
+	statusData := &metrics.BillingStatus{}
 	var statusMutex sync.RWMutex
 
 	{
@@ -268,7 +245,7 @@ func mainReturnWithCode() int {
 				billingServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				billingServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
-				newStatusData := &BillingStatus{}
+				newStatusData := &metrics.BillingStatus{}
 
 				newStatusData.ServiceName = serviceName
 				newStatusData.GitHash = sha
