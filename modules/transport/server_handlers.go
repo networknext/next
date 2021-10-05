@@ -1575,8 +1575,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 
 	/*
 		Recast near relay RTT, Jitter, and Packet Loss to int32.
-
-		TODO: once buildBillingEntry() is deprecated, modify buildPostNearRelayData() to use int32 instead of float32.
+		We do this here since the portal data requires float level precision.
 	*/
 
 	var NearRelayRTTs [core.MaxNearRelays]int32
