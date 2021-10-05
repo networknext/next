@@ -169,7 +169,7 @@ func (client *GooglePubSubClient) pubsubResults(ctx context.Context) {
 			_, err := result.Get(ctx)
 			if err != nil {
 				core.Error("failed to publish to pubsub: %v", err)
-				client.Metrics.ErrorMetrics.BillingPublishFailure.Add(1)
+				client.Metrics.ErrorMetrics.Billing2PublishFailure.Add(1)
 			}
 		case <-ctx.Done():
 			return
