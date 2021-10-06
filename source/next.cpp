@@ -7231,8 +7231,9 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             client->client_stats.next_kbps_down = 0;
         }
 
-        // todo: store max and prime RTT here as well
-        client->client_stats.direct_rtt = direct_route_stats.min_rtt;
+        client->client_stats.direct_min_rtt = direct_route_stats.min_rtt;
+        client->client_stats.direct_max_rtt = direct_route_stats.max_rtt;
+        client->client_stats.direct_prime_rtt = direct_route_stats.prime_rtt;
         client->client_stats.direct_jitter = direct_route_stats.jitter;    
         client->client_stats.direct_packet_loss = direct_route_stats.packet_loss;
 
@@ -7279,7 +7280,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->last_stats_update_time = current_time;
     }        
 
-    if ( client->last_stats_report_time + 1.0 < current_time && client->client_stats.direct_rtt > 0.0f )
+    if ( client->last_stats_report_time + 1.0 < current_time && client->client_stats.direct_min_rtt > 0.0f )
     {
         NextClientStatsPacket packet;
 
@@ -7309,7 +7310,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.next_jitter = client->client_stats.next_jitter;
         packet.next_packet_loss = client->client_stats.next_packet_loss;
 
-        packet.direct_rtt = client->client_stats.direct_rtt;
+        // todo: pass up min/max/prime rtt here
         packet.direct_jitter = client->client_stats.direct_jitter;
         packet.direct_packet_loss = client->client_stats.direct_packet_loss;
 
@@ -15122,8 +15123,6 @@ static void test_ping_stats()
         next_check( route_stats.jitter > 0.0 );
         next_check( route_stats.packet_loss == 0.0 );
     }
-
-    // todo: add a test for max and prime RTT
 
     // add some pings and set them to have a pong response, but leave the last second of pings without response. packet loss should be zero
     {

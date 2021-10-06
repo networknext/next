@@ -243,7 +243,9 @@ struct next_client_stats_t
     NEXT_BOOL reported;
     NEXT_BOOL fallback_to_direct;
     NEXT_BOOL high_frequency_pings;
-    float direct_rtt;
+    float direct_min_rtt;
+    float direct_max_rtt;
+    float direct_prime_rtt;         // second largest direct rtt value seen in the last 10 second interval. for approximating P99 etc.
     float direct_jitter;
     float direct_packet_loss;
     float next_rtt;

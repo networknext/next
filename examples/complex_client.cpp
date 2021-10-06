@@ -340,7 +340,9 @@ void print_client_stats( next_client_t * client )
 
     printf( "high frequency pings = %s\n", stats->high_frequency_pings ? "true" : "false" );
 
-    printf( "direct rtt = %.2fms\n", stats->direct_rtt );
+    printf( "direct min rtt = %.2fms\n", stats->direct_min_rtt );
+    printf( "direct max rtt = %.2fms\n", stats->direct_max_rtt );
+    printf( "direct prime rtt = %.2fms\n", stats->direct_prime_rtt );
     printf( "direct jitter = %.2fms\n", stats->direct_jitter );
     printf( "direct packet loss = %.1f%%\n", stats->direct_packet_loss );
 
