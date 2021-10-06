@@ -4434,6 +4434,10 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
                     prime_rtt = max_rtt;
                     max_rtt = rtt;
                 }
+                else if ( rtt > prime_rtt )
+                {
+                    prime_rtt = rtt;
+                }
                 num_pongs++;
             }
             num_pings++;
@@ -15034,6 +15038,47 @@ static void test_ping_stats()
         // IMPORTANT: prime is unstable in this case due to numerical instability
         next_check( equal_within_tolerance( route_stats.prime_rtt, 0.0 ) || equal_within_tolerance( route_stats.prime_rtt, expected_rtt * 1000.0 ) ); 
         next_check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
+        next_check( route_stats.packet_loss == 0.0 );
+    }
+
+    // test that max and prime RTT work correctly. prime is the second largest RTT value
+    {
+        const double ping_safety = 1.0;
+
+        static next_ping_history_t history;
+        next_ping_history_clear( &history );
+
+        const double expected_min_rtt = 0.1;
+        const double expected_max_rtt = 1.0;
+        const double expected_prime_rtt = 0.5;
+
+        for ( int i = 0; i < NEXT_PING_HISTORY_ENTRY_COUNT; ++i )
+        {
+            uint64_t sequence = next_ping_history_ping_sent( &history, i * 0.01 );
+            if ( i == 0 )
+            {
+                // max rtt
+                next_ping_history_pong_received( &history, sequence, i * 0.01 + expected_max_rtt );
+            }
+            else if ( i ==1 )
+            {
+                // prime rtt
+                next_ping_history_pong_received( &history, sequence, i * 0.01 + expected_prime_rtt );
+            }
+            else
+            {
+                // min rtt
+                next_ping_history_pong_received( &history, sequence, i * 0.01 + expected_min_rtt );
+            }
+        }
+
+        next_route_stats_t route_stats;
+        next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
+
+        next_check( equal_within_tolerance( route_stats.min_rtt, expected_min_rtt * 1000.0 ) );
+        next_check( equal_within_tolerance( route_stats.max_rtt, expected_max_rtt * 1000.0 ) );
+        next_check( equal_within_tolerance( route_stats.prime_rtt, expected_prime_rtt * 1000.0 ) ); 
+        next_check( route_stats.jitter > 0.0 );
         next_check( route_stats.packet_loss == 0.0 );
     }
 
