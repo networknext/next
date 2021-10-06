@@ -257,9 +257,9 @@ func mainReturnWithCode() int {
 
 	// Start HTTP server
 	{
-		port := envvar.Get("PORT", "41005")
+		port := envvar.Get("HTTP_PORT", "41005")
 		if port == "" {
-			core.Error("PORT not set")
+			core.Error("HTTP_PORT not set")
 			return 1
 		}
 
