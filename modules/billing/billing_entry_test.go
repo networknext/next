@@ -5,29 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 
 	"github.com/stretchr/testify/assert"
 )
-
-// Helper function to create a random string of a specified length
-// Useful for testing constant string lengths
-// Adapted from: https://stackoverflow.com/a/22892986
-func generateRandomStringSequence(length int) string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-	// Seed randomness
-	rand.Seed(time.Now().UnixNano())
-
-	b := make([]rune, length)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-
-	return string(b)
-}
 
 // Returns a BillingEntry2 struct with all the data filled out and each condition flag disabled
 func getTestBillingEntry2() *billing.BillingEntry2 {
@@ -76,7 +60,7 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		Flagged:                         false,
 		Summary:                         false,
 		UseDebug:                        false,
-		Debug:                           generateRandomStringSequence(billing.BillingEntryMaxDebugLength - 1),
+		Debug:                           backend.GenerateRandomStringSequence(billing.BillingEntryMaxDebugLength - 1),
 		RouteDiversity:                  int32(rand.Intn(32)),
 		DatacenterID:                    rand.Uint64(),
 		BuyerID:                         rand.Uint64(),
@@ -85,11 +69,11 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		EnvelopeBytesUp:                 rand.Uint64(),
 		Latitude:                        rand.Float32(),
 		Longitude:                       rand.Float32(),
-		ClientAddress:                   generateRandomStringSequence(billing.BillingEntryMaxAddressLength - 1),
-		ISP:                             generateRandomStringSequence(billing.BillingEntryMaxISPLength - 1),
+		ClientAddress:                   backend.GenerateRandomStringSequence(billing.BillingEntryMaxAddressLength - 1),
+		ISP:                             backend.GenerateRandomStringSequence(billing.BillingEntryMaxISPLength - 1),
 		ConnectionType:                  int32(rand.Intn(3)),
 		PlatformType:                    int32(rand.Intn(10)),
-		SDKVersion:                      generateRandomStringSequence(billing.BillingEntryMaxSDKVersionLength - 1),
+		SDKVersion:                      backend.GenerateRandomStringSequence(billing.BillingEntryMaxSDKVersionLength - 1),
 		NumTags:                         int32(numTags),
 		Tags:                            tags,
 		ABTest:                          false,
@@ -126,6 +110,8 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		RTTReduction:                    false,
 		PacketLossReduction:             false,
 		RouteChanged:                    false,
+		NextBytesUp:                     rand.Uint64(),
+		NextBytesDown:                   rand.Uint64(),
 		FallbackToDirect:                false,
 		MultipathVetoed:                 false,
 		Mispredicted:                    false,
@@ -138,8 +124,6 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		DatacenterNotEnabled:            false,
 		BuyerNotLive:                    false,
 		StaleRouteMatrix:                false,
-		NextBytesUp:                     rand.Uint64(),
-		NextBytesDown:                   rand.Uint64(),
 	}
 }
 
@@ -776,7 +760,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		t.Run("debug length", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.UseDebug = true
-			debugStr := generateRandomStringSequence(billing.BillingEntryMaxDebugLength + 1)
+			debugStr := backend.GenerateRandomStringSequence(billing.BillingEntryMaxDebugLength + 1)
 			assert.Equal(t, billing.BillingEntryMaxDebugLength+1, len(debugStr))
 			entry.Debug = debugStr
 
@@ -813,7 +797,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		t.Run("client IP address length", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.SliceNumber = 0
-			clientAddrStr := generateRandomStringSequence(billing.BillingEntryMaxAddressLength + 1)
+			clientAddrStr := backend.GenerateRandomStringSequence(billing.BillingEntryMaxAddressLength + 1)
 			assert.Equal(t, billing.BillingEntryMaxAddressLength+1, len(clientAddrStr))
 			entry.ClientAddress = clientAddrStr
 
@@ -827,7 +811,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		t.Run("isp length", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.SliceNumber = 0
-			ispStr := generateRandomStringSequence(billing.BillingEntryMaxISPLength + 1)
+			ispStr := backend.GenerateRandomStringSequence(billing.BillingEntryMaxISPLength + 1)
 			assert.Equal(t, billing.BillingEntryMaxISPLength+1, len(ispStr))
 			entry.ISP = ispStr
 
@@ -885,7 +869,7 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 		t.Run("sdk version", func(t *testing.T) {
 			entry = getTestBillingEntry2()
 			entry.SliceNumber = 0
-			sdkStr := generateRandomStringSequence(billing.BillingEntryMaxSDKVersionLength + 1)
+			sdkStr := backend.GenerateRandomStringSequence(billing.BillingEntryMaxSDKVersionLength + 1)
 			assert.Equal(t, billing.BillingEntryMaxSDKVersionLength+1, len(sdkStr))
 			entry.SDKVersion = sdkStr
 
