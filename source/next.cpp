@@ -3147,7 +3147,9 @@ struct NextClientStatsPacket
     int connection_type;
     float next_kbps_up;
     float next_kbps_down;
-    float direct_rtt;
+    float direct_min_rtt;
+    float direct_max_rtt;
+    float direct_prime_rtt;
     float direct_jitter;
     float direct_packet_loss;
     float next_rtt;
@@ -3183,7 +3185,9 @@ struct NextClientStatsPacket
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         serialize_float( stream, next_kbps_up );
         serialize_float( stream, next_kbps_down );
-        serialize_float( stream, direct_rtt );
+        serialize_float( stream, direct_min_rtt );
+        serialize_float( stream, direct_max_rtt );
+        serialize_float( stream, direct_prime_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
         if ( next )
@@ -7310,7 +7314,9 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.next_jitter = client->client_stats.next_jitter;
         packet.next_packet_loss = client->client_stats.next_packet_loss;
 
-        // todo: pass up min/max/prime rtt here
+        packet.direct_min_rtt = client->client_stats.direct_min_rtt;
+        packet.direct_max_rtt = client->client_stats.direct_max_rtt;
+        packet.direct_prime_rtt = client->client_stats.direct_prime_rtt;
         packet.direct_jitter = client->client_stats.direct_jitter;
         packet.direct_packet_loss = client->client_stats.direct_packet_loss;
 
@@ -9143,7 +9149,9 @@ struct NextBackendSessionUpdatePacket
 #endif // #if NEXT_EXPERIMENTAL
     int num_tags;
     uint64_t tags[NEXT_MAX_TAGS];
-    float direct_rtt;
+    float direct_min_rtt;
+    float direct_max_rtt;
+    float direct_prime_rtt;
     float direct_jitter;
     float direct_packet_loss;
     float next_rtt;
@@ -9250,7 +9258,9 @@ struct NextBackendSessionUpdatePacket
             }
         }
 
-        serialize_float( stream, direct_rtt );
+        serialize_float( stream, direct_min_rtt );
+        serialize_float( stream, direct_max_rtt );
+        serialize_float( stream, direct_prime_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
 
@@ -9336,7 +9346,9 @@ struct next_session_entry_t
     int stats_connection_type;
     float stats_next_kbps_up;
     float stats_next_kbps_down;
-    float stats_direct_rtt;
+    float stats_direct_min_rtt;
+    float stats_direct_max_rtt;
+    float stats_direct_prime_rtt;
     float stats_direct_jitter;
     float stats_direct_packet_loss;
     bool stats_next;
@@ -12309,7 +12321,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_connection_type = packet.connection_type;
             session->stats_next_kbps_up = packet.next_kbps_up;
             session->stats_next_kbps_down = packet.next_kbps_down;
-            session->stats_direct_rtt = packet.direct_rtt;
+            session->stats_direct_min_rtt = packet.direct_min_rtt;
+            session->stats_direct_max_rtt = packet.direct_max_rtt;
+            session->stats_direct_prime_rtt = packet.direct_prime_rtt;
             session->stats_direct_jitter = packet.direct_jitter;
             session->stats_direct_packet_loss = packet.direct_packet_loss;
             session->stats_next = packet.next;
@@ -12893,7 +12907,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.next_rtt = session->stats_next_rtt;
             packet.next_jitter = session->stats_next_jitter;
             packet.next_packet_loss = session->stats_next_packet_loss;
-            packet.direct_rtt = session->stats_direct_rtt;
+            packet.direct_min_rtt = session->stats_direct_min_rtt;
+            packet.direct_max_rtt = session->stats_direct_max_rtt;
+            packet.direct_prime_rtt = session->stats_direct_prime_rtt;
             packet.direct_jitter = session->stats_direct_jitter;
             packet.direct_packet_loss = session->stats_direct_packet_loss;
 #if NEXT_EXPERIMENTAL
@@ -13588,7 +13604,9 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     stats->multipath = entry->stats_multipath;
     stats->reported = entry->stats_reported;
     stats->fallback_to_direct = entry->stats_fallback_to_direct;
-    stats->direct_rtt = entry->stats_direct_rtt;
+    stats->direct_min_rtt = entry->stats_direct_min_rtt;
+    stats->direct_max_rtt = entry->stats_direct_max_rtt;
+    stats->direct_prime_rtt = entry->stats_direct_prime_rtt;
     stats->direct_jitter = entry->stats_direct_jitter;
     stats->direct_packet_loss = entry->stats_direct_packet_loss;    
     stats->next_rtt = entry->stats_next_rtt;
@@ -15844,7 +15862,9 @@ static void test_packets()
         in.fallback_to_direct = true;
         in.platform_id = NEXT_PLATFORM_WINDOWS;
         in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
-        in.direct_rtt = 50.0f;
+        in.direct_min_rtt = 50.0f;
+        in.direct_max_rtt = 60.0f;
+        in.direct_prime_rtt = 59.0f;
         in.direct_jitter = 10.0f;
         in.direct_packet_loss = 0.1f;
         in.next = true;
@@ -15876,7 +15896,9 @@ static void test_packets()
         next_check( in.fallback_to_direct == out.fallback_to_direct );
         next_check( in.platform_id == out.platform_id );
         next_check( in.connection_type == out.connection_type );
-        next_check( in.direct_rtt == out.direct_rtt );
+        next_check( in.direct_min_rtt == out.direct_min_rtt );
+        next_check( in.direct_max_rtt == out.direct_max_rtt );
+        next_check( in.direct_prime_rtt == out.direct_prime_rtt );
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
         next_check( in.next == out.next );
@@ -16687,7 +16709,9 @@ static void test_backend_packets()
         in.tags[1] = 0x3344556677;
         in.reported = true;
         in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
-        in.direct_rtt = 10.1f;
+        in.direct_min_rtt = 10.1f;
+        in.direct_max_rtt = 20.0f;
+        in.direct_prime_rtt = 19.0f;
         in.direct_jitter = 5.2f;
         in.direct_packet_loss = 0.1f;
         in.next = true;
@@ -16737,7 +16761,9 @@ static void test_backend_packets()
         }
         next_check( in.reported == out.reported );
         next_check( in.connection_type == out.connection_type );
-        next_check( in.direct_rtt == out.direct_rtt );
+        next_check( in.direct_min_rtt == out.direct_min_rtt );
+        next_check( in.direct_max_rtt == out.direct_max_rtt );
+        next_check( in.direct_prime_rtt == out.direct_prime_rtt );
         next_check( in.direct_jitter == out.direct_jitter );
         next_check( in.direct_packet_loss == out.direct_packet_loss );
         next_check( in.next == out.next );

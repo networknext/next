@@ -384,7 +384,9 @@ void print_server_stats( next_server_t * server, ServerContext * context )
 
         printf( "fallback_to_direct = %s\n", stats.fallback_to_direct ? "true" : "false" );
 
-        printf( "direct_rtt = %.2fms\n", stats.direct_rtt );
+        printf( "direct_min_rtt = %.2fms\n", stats.direct_min_rtt );
+        printf( "direct_max_rtt = %.2fms\n", stats.direct_max_rtt );
+        printf( "direct_prime_rtt = %.2fms\n", stats.direct_prime_rtt );
         printf( "direct_jitter = %.2fms\n", stats.direct_jitter );
         printf( "direct_packet_loss = %.1f%%\n", stats.direct_packet_loss );
 
