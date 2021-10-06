@@ -194,27 +194,7 @@ func mainReturnWithCode() int {
 	}
 
 	// Setup the status handler info
-	type AnalyticsStatus struct {
-		// Service Information
-		ServiceName string `json:"service_name"`
-		GitHash     string `json:"git_hash"`
-		Started     string `json:"started"`
-		Uptime      string `json:"uptime"`
-
-		// Metrics
-		Goroutines                 int     `json:"goroutines"`
-		MemoryAllocated            float64 `json:"mb_allocated"`
-		PingStatsEntriesReceived   int     `json:"ping_stats_entries_received"`
-		PingStatsEntriesSubmitted  int     `json:"ping_stats_entries_submitted"`
-		PingStatsEntriesQueued     int     `json:"ping_stats_entries_queued"`
-		PingStatsEntriesFlushed    int     `json:"ping_stats_entries_flushed"`
-		RelayStatsEntriesReceived  int     `json:"relay_stats_entries_received"`
-		RelayStatsEntriesSubmitted int     `json:"relay_stats_entries_submitted"`
-		RelayStatsEntriesQueued    int     `json:"relay_stats_entries_queued"`
-		RelayStatsEntriesFlushed   int     `json:"relay_stats_entries_flushed"`
-	}
-
-	statusData := &AnalyticsStatus{}
+	statusData := &metrics.AnalyticsStatus{}
 	var statusMutex sync.RWMutex
 
 	{
@@ -229,7 +209,7 @@ func mainReturnWithCode() int {
 				analyticsMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				analyticsMetrics.MemoryAllocated.Set(memoryUsed())
 
-				newStatusData := &AnalyticsStatus{}
+				newStatusData := &metrics.AnalyticsStatus{}
 
 				newStatusData.ServiceName = serviceName
 				newStatusData.GitHash = sha

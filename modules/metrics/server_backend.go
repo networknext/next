@@ -4,66 +4,169 @@ import (
 	"context"
 )
 
+// ServerBackendStatus defines the metrics reported by the service's status endpoint
+type ServerBackendStatus struct {
+	// Service Information
+	ServiceName string `json:"service_name"`
+	GitHash     string `json:"git_hash"`
+	Started     string `json:"started"`
+	Uptime      string `json:"uptime"`
+
+	// Service Metrics
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+
+	// Server Init Metrics
+	ServerInitInvocations           int `json:"server_init_invocations"`
+	ServerInitReadPacketFailure     int `json:"server_init_read_packet_failure"`
+	ServerInitBuyerNotFound         int `json:"server_init_buyer_not_found"`
+	ServerInitBuyerNotActive        int `json:"server_init_buyer_not_active"`
+	ServerInitSignatureCheckFailed  int `json:"server_init_signature_check_failed"`
+	ServerInitSDKTooOld             int `json:"server_init_sdk_too_old"`
+	ServerInitDatacenterMapNotFound int `json:"server_init_datacneter_map_not_found"`
+	ServerInitDatacenterNotFound    int `json:"server_init_datacenter_not_found"`
+	ServerInitWriteResponseFailure  int `json:"server_init_write_response_failure"`
+
+	// Server Update Metrics
+	ServerUpdateInvocations           int `json:"server_update_invocations"`
+	ServerUpdateReadPacketFailure     int `json:"server_update_read_packet_failure"`
+	ServerUpdateBuyerNotFound         int `json:"server_update_buyer_not_found"`
+	ServerUpdateBuyerNotLive          int `json:"server_update_buyer_not_live"`
+	ServerUpdateSignatureCheckFailed  int `json:"server_update_signature_check_failed"`
+	ServerUpdateSDKTooOld             int `json:"server_update_sdk_too_old"`
+	ServerUpdateDatacenterMapNotFound int `json:"server_update_datacneter_map_not_found"`
+	ServerUpdateDatacenterNotFound    int `json:"server_update_datacenter_not_found"`
+
+	// Session Update Metrics
+	SessionUpdateInvocations                                int `json:"session_update_invocations"`
+	SessionUpdateDirectSlices                               int `json:"session_update_direct_slices"`
+	SessionUpdateNextSlices                                 int `json:"session_update_next_slices"`
+	SessionUpdateReadPacketFailure                          int `json:"session_update_read_packet_failure"`
+	SessionUpdateFallbackToDirectUnknownReason              int `json:"session_update_fallback_to_direct_unknown_reason"`
+	SessionUpdateFallbackToDirectBadRouteToken              int `json:"session_update_fallback_to_direct_bad_route_token"`
+	SessionUpdateFallbackToDirectNoNextRouteToContinue      int `json:"session_update_fallback_to_direct_no_next_route_token_to_continue"`
+	SessionUpdateFallbackToDirectPreviousUpdateStillPending int `json:"session_update_fallback_to_direct_previous_update_still_pending"`
+	SessionUpdateFallbackToDirectBadContinueToken           int `json:"session_update_fallback_to_direct_bad_continue_token"`
+	SessionUpdateFallbackToDirectRouteExpired               int `json:"session_update_fallback_to_direct_route_expired"`
+	SessionUpdateFallbackToDirectRouteRequestTimedOut       int `json:"session_update_fallback_to_direct_route_request_timed_out"`
+	SessionUpdateFallbackToDirectContinueRequestTimedOut    int `json:"session_update_fallback_to_direct_continue_request_timed_out"`
+	SessionUpdateFallbackToDirectClientTimedOut             int `json:"session_update_fallback_to_direct_client_timed_out"`
+	SessionUpdateFallbackToDirectUpgradeResponseTimedOut    int `json:"session_update_fallback_to_direct_upgrade_response_timed_out"`
+	SessionUpdateFallbackToDirectRouteUpdateTimedOut        int `json:"session_update_fallback_to_direct_route_update_timed_out"`
+	SessionUpdateFallbackToDirectPongTimedOut               int `json:"session_update_fallback_to_direct_pong_timed_out"`
+	SessionUpdateFallbackToDirectNextPongTimedOut           int `json:"session_update_fallback_to_direct_next_pong_timed_out"`
+	SessionUpdateBuyerNotFound                              int `json:"session_update_buyer_not_found"`
+	SessionUpdateSignatureCheckFailed                       int `json:"session_update_signature_check_failed"`
+	SessionUpdateClientLocateFailure                        int `json:"session_update_client_locate_failure"`
+	SessionUpdateReadSessionDataFailure                     int `json:"session_update_read_session_data_failure"`
+	SessionUpdateBadSessionID                               int `json:"session_update_bad_session_id"`
+	SessionUpdateBadSliceNumber                             int `json:"session_update_bad_slice_number"`
+	SessionUpdateBuyerNotLive                               int `json:"session_update_buyer_not_live"`
+	SessionUpdateClientPingTimedOut                         int `json:"session_update_client_ping_timed_out"`
+	SessionUpdateDatacenterMapNotFound                      int `json:"session_update_datacenter_map_not_found"`
+	SessionUpdateDatacenterNotFound                         int `json:"session_update_datacenter_not_found"`
+	SessionUpdateDatacenterNotEnabled                       int `json:"session_update_datacenter_not_enabled"`
+	SessionUpdateNearRelaysLocateFailure                    int `json:"session_update_near_relays_locate_failure"`
+	SessionUpdateNearRelaysChanged                          int `json:"session_update_near_relays_changed"`
+	SessionUpdateNoRelaysInDatacenter                       int `json:"session_update_no_relays_in_datacenter"`
+	SessionUpdateRouteDoesNotExist                          int `json:"session_update_route_does_not_exist"`
+	SessionUpdateRouteSwitched                              int `json:"session_update_route_switched"`
+	SessionUpdateNextWithoutRouteRelays                     int `json:"session_update_next_without_route_relays"`
+	SessionUpdateSDKAborted                                 int `json:"session_update_sdk_aborted"`
+	SessionUpdateNoRoute                                    int `json:"session_update_no_route"`
+	SessionUpdateMultipathOverload                          int `json:"session_update_multipath_overload"`
+	SessionUpdateLatencyWorse                               int `json:"session_update_latency_worse"`
+	SessionUpdateMispredictVeto                             int `json:"session_update_mispredict_veto"`
+	SessionUpdateWriteResponseFailure                       int `json:"session_update_writeresponse_failure"`
+	SessionUpdateStaleRouteMatrix                           int `json:"session_update_stale_route_matrix"`
+
+	// Post Session Metrics
+	PostSessionBillingEntries2Sent     int `json:"post_session_billing_entries_2_sent"`
+	PostSessionBillingEntries2Finished int `json:"post_session_billing_entires_2_finished"`
+	PostSessionBilling2BufferFull      int `json:"post_session_billing_2_buffer_full"`
+	PostSessionPortalEntriesSent       int `json:"post_session_portal_entries_sent"`
+	PostSessionPortalEntriesFinished   int `json:"post_session_portal_entries_finished"`
+	PostSessionPortalBufferFull        int `json:"post_session_portal_buffer_full"`
+	PostSessionVanityMetricsSent       int `json:"post_session_vanity_metrics_sent"`
+	PostSessionVanityMetricsFinished   int `json:"post_session_vanity_metrics_finished"`
+	PostSessionVanityBufferFull        int `json:"post_session_vanity_buffer_full"`
+	PostSessionBilling2Failure         int `json:"post_session_billing_2_failure"`
+	PostSessionPortalFailure           int `json:"post_session_portal_failure"`
+	PostSessionVanityMarshalFailure    int `json:"post_session_vanity_marshal_failure"`
+	PostSessionVanityTransmitFailure   int `json:"post_session_vanity_transmit_failure"`
+
+	// Billing Metrics
+	BillingEntries2Submitted int `json:"billing_entries_2_submitted"`
+	BillingEntries2Queued    int `json:"billing_entries_2_queued"`
+	BillingEntries2Flushed   int `json:"billing_entries_2_flushed"`
+	Billing2PublishFailure   int `json:"billing_2_publish_failure"`
+
+	// Route Matrix Metrics
+	RouteMatrixNumRoutes int `json:"route_matrix_num_routes"`
+	RouteMatrixBytes     int `json:"route_matrix_bytes"`
+
+	// Error Metrics
+	RouteMatrixReaderNil        int `json:"route_matrix_reader_nil"`
+	RouteMatrixReadFailure      int `json:"route_matrix_read_failure"`
+	RouteMatrixBufferEmpty      int `json:"route_matrix_buffer_empty"`
+	RouteMatrixSerializeFailure int `json:"route_matrix_serialize_failure"`
+	BinWrapperEmpty             int `json:"bin_wrapper_empty"`
+	BinWrapperFailure           int `json:"bin_wrapper_failure"`
+	StaleRouteMatrix            int `json:"stale_route_matrix"`
+}
+
 // ServerInitMetrics defines the set of metrics for the server init handler in the server backend.
 type ServerInitMetrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
-	ReadPacketFailure            Counter
-	BuyerNotFound                Counter
-	BuyerNotActive               Counter
-	SignatureCheckFailed         Counter
-	SDKTooOld                    Counter
-	DatacenterMapNotFound        Counter
-	DatacenterNotFound           Counter
-	MisconfiguredDatacenterAlias Counter
-	DatacenterNotAllowed         Counter
-	WriteResponseFailure         Counter
+	ReadPacketFailure     Counter
+	BuyerNotFound         Counter
+	BuyerNotActive        Counter
+	SignatureCheckFailed  Counter
+	SDKTooOld             Counter
+	DatacenterMapNotFound Counter
+	DatacenterNotFound    Counter
+	WriteResponseFailure  Counter
 }
 
 // EmptyServerInitMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyServerInitMetrics = ServerInitMetrics{
-	HandlerMetrics:               &EmptyPacketHandlerMetrics,
-	ReadPacketFailure:            &EmptyCounter{},
-	BuyerNotFound:                &EmptyCounter{},
-	BuyerNotActive:               &EmptyCounter{},
-	SignatureCheckFailed:         &EmptyCounter{},
-	SDKTooOld:                    &EmptyCounter{},
-	DatacenterMapNotFound:        &EmptyCounter{},
-	DatacenterNotFound:           &EmptyCounter{},
-	MisconfiguredDatacenterAlias: &EmptyCounter{},
-	DatacenterNotAllowed:         &EmptyCounter{},
-	WriteResponseFailure:         &EmptyCounter{},
+	HandlerMetrics:        &EmptyPacketHandlerMetrics,
+	ReadPacketFailure:     &EmptyCounter{},
+	BuyerNotFound:         &EmptyCounter{},
+	BuyerNotActive:        &EmptyCounter{},
+	SignatureCheckFailed:  &EmptyCounter{},
+	SDKTooOld:             &EmptyCounter{},
+	DatacenterMapNotFound: &EmptyCounter{},
+	DatacenterNotFound:    &EmptyCounter{},
+	WriteResponseFailure:  &EmptyCounter{},
 }
 
 // ServerUpdateMetrics defines the set of metrics for the server update handler in the server backend.
 type ServerUpdateMetrics struct {
 	HandlerMetrics *PacketHandlerMetrics
 
-	ReadPacketFailure            Counter
-	BuyerNotFound                Counter
-	BuyerNotLive                 Counter
-	SignatureCheckFailed         Counter
-	SDKTooOld                    Counter
-	DatacenterMapNotFound        Counter
-	DatacenterNotFound           Counter
-	MisconfiguredDatacenterAlias Counter
-	DatacenterNotAllowed         Counter
-	ServerUpdatePacketSize       Gauge
+	ReadPacketFailure      Counter
+	BuyerNotFound          Counter
+	BuyerNotLive           Counter
+	SignatureCheckFailed   Counter
+	SDKTooOld              Counter
+	DatacenterMapNotFound  Counter
+	DatacenterNotFound     Counter
+	ServerUpdatePacketSize Gauge
 }
 
 // EmptyServerUpdateMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyServerUpdateMetrics = ServerUpdateMetrics{
-	HandlerMetrics:               &EmptyPacketHandlerMetrics,
-	ReadPacketFailure:            &EmptyCounter{},
-	BuyerNotFound:                &EmptyCounter{},
-	BuyerNotLive:                 &EmptyCounter{},
-	SignatureCheckFailed:         &EmptyCounter{},
-	SDKTooOld:                    &EmptyCounter{},
-	DatacenterMapNotFound:        &EmptyCounter{},
-	DatacenterNotFound:           &EmptyCounter{},
-	MisconfiguredDatacenterAlias: &EmptyCounter{},
-	DatacenterNotAllowed:         &EmptyCounter{},
-	ServerUpdatePacketSize:       &EmptyGauge{},
+	HandlerMetrics:         &EmptyPacketHandlerMetrics,
+	ReadPacketFailure:      &EmptyCounter{},
+	BuyerNotFound:          &EmptyCounter{},
+	BuyerNotLive:           &EmptyCounter{},
+	SignatureCheckFailed:   &EmptyCounter{},
+	SDKTooOld:              &EmptyCounter{},
+	DatacenterMapNotFound:  &EmptyCounter{},
+	DatacenterNotFound:     &EmptyCounter{},
+	ServerUpdatePacketSize: &EmptyGauge{},
 }
 
 // SessionUpdateMetrics defines the set of metrics for the session update handler in the server backend.
@@ -98,8 +201,6 @@ type SessionUpdateMetrics struct {
 	DatacenterMapNotFound                      Counter
 	DatacenterNotFound                         Counter
 	DatacenterNotEnabled                       Counter
-	MisconfiguredDatacenterAlias               Counter
-	DatacenterNotAllowed                       Counter
 	NearRelaysLocateFailure                    Counter
 	NearRelaysChanged                          Counter
 	NoRelaysInDatacenter                       Counter
@@ -148,8 +249,6 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	DatacenterMapNotFound:                      &EmptyCounter{},
 	DatacenterNotFound:                         &EmptyCounter{},
 	DatacenterNotEnabled:                       &EmptyCounter{},
-	MisconfiguredDatacenterAlias:               &EmptyCounter{},
-	DatacenterNotAllowed:                       &EmptyCounter{},
 	NearRelaysLocateFailure:                    &EmptyCounter{},
 	NearRelaysChanged:                          &EmptyCounter{},
 	NoRelaysInDatacenter:                       &EmptyCounter{},
@@ -256,41 +355,6 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 	}
 
 	m.BillingMetrics = &BillingMetrics{}
-	m.BillingMetrics.EntriesReceived = &EmptyCounter{}
-
-	m.BillingMetrics.EntriesSubmitted, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Server Backend Billing Entries Submitted",
-		ServiceName: serviceName,
-		ID:          "billing.entries_submitted",
-		Unit:        "entries",
-		Description: "The number of billing entries the server_backend has submitted to be published",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingMetrics.EntriesQueued, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Server Backend Billing Entries Queued",
-		ServiceName: serviceName,
-		ID:          "billing.entries_queued",
-		Unit:        "entries",
-		Description: "The number of billing entries the server_backend has queued waiting to be published",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingMetrics.EntriesFlushed, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Server Backend Billing Entries Flushed",
-		ServiceName: serviceName,
-		ID:          "billing.entries_flushed",
-		Unit:        "entries",
-		Description: "The number of billing entries the server_backend has flushed after publishing",
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	m.BillingMetrics.Entries2Received = &EmptyCounter{}
 
 	m.BillingMetrics.Entries2Submitted, err = handler.NewCounter(ctx, &Descriptor{
@@ -326,21 +390,6 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 		return nil, err
 	}
 
-	m.BillingMetrics.ErrorMetrics.BillingPublishFailure, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Server Backend Billing Publish Failure",
-		ServiceName: serviceName,
-		ID:          "billing.publish_failure",
-		Unit:        "entries",
-		Description: "The number of billing entries the server_backend has failed to publish",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingMetrics.ErrorMetrics.BillingBatchedReadFailure = &EmptyCounter{}
-	m.BillingMetrics.ErrorMetrics.BillingReadFailure = &EmptyCounter{}
-	m.BillingMetrics.ErrorMetrics.BillingWriteFailure = &EmptyCounter{}
-
 	m.BillingMetrics.ErrorMetrics.Billing2PublishFailure, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Server Backend Billing 2 Publish Failure",
 		ServiceName: serviceName,
@@ -355,28 +404,6 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 	m.BillingMetrics.ErrorMetrics.Billing2BatchedReadFailure = &EmptyCounter{}
 	m.BillingMetrics.ErrorMetrics.Billing2ReadFailure = &EmptyCounter{}
 	m.BillingMetrics.ErrorMetrics.Billing2WriteFailure = &EmptyCounter{}
-
-	m.BillingMetrics.BillingEntrySize, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Billing Entry Size",
-		ServiceName: "billing",
-		ID:          "billing.entry.size",
-		Unit:        "bytes",
-		Description: "The size of a billing entry",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingMetrics.PubsubBillingEntrySize, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Pubsub Billing Entry Size",
-		ServiceName: "billing",
-		ID:          "pubsub.billing.entry.size",
-		Unit:        "bytes",
-		Description: "The size of a pubsub billing entry",
-	})
-	if err != nil {
-		return nil, err
-	}
 
 	m.BillingMetrics.BillingEntry2Size, err = handler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Billing Entry Size",
@@ -622,28 +649,6 @@ func newServerInitMetrics(ctx context.Context, handler Handler, serviceName stri
 		return nil, err
 	}
 
-	m.MisconfiguredDatacenterAlias, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Misconfigured Datacenter Alias",
-		ServiceName: serviceName,
-		ID:          handlerID + ".misconfigured_datacenter_alias",
-		Unit:        "errors",
-		Description: "The number of times a " + packetDescription + " contained a valid datacenter alias but the datacenter map was misconfigured in our database.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.DatacenterNotAllowed, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Datacenter Not Allowed",
-		ServiceName: serviceName,
-		ID:          handlerID + ".datacenter_not_allowed",
-		Unit:        "errors",
-		Description: "The number of times a " + packetDescription + " contained a valid datacenter but the buyer was not configured to use it.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	m.WriteResponseFailure, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Write Response Failure",
 		ServiceName: serviceName,
@@ -739,28 +744,6 @@ func newServerUpdateMetrics(ctx context.Context, handler Handler, serviceName st
 		ID:          handlerID + ".datacenter_not_found",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained an unknown datacenter ID.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.MisconfiguredDatacenterAlias, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Misconfigured Datacenter Alias",
-		ServiceName: serviceName,
-		ID:          handlerID + ".misconfigured_datacenter_alias",
-		Unit:        "errors",
-		Description: "The number of times a " + packetDescription + " contained a valid datacenter alias but the datacenter map was misconfigured in our database.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.DatacenterNotAllowed, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Datacenter Not Allowed",
-		ServiceName: serviceName,
-		ID:          handlerID + ".datacenter_not_allowed",
-		Unit:        "errors",
-		Description: "The number of times a " + packetDescription + " contained a valid datacenter but the buyer was not configured to use it.",
 	})
 	if err != nil {
 		return nil, err
@@ -1081,28 +1064,6 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".datacenter_not_enabled",
 		Unit:        "errors",
 		Description: "The number of times a " + packetDescription + " contained a datacenter ID that was not enabled.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.MisconfiguredDatacenterAlias, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Misconfigured Datacenter Alias",
-		ServiceName: serviceName,
-		ID:          handlerID + ".misconfigured_datacenter_alias",
-		Unit:        "errors",
-		Description: "The number of times a " + packetDescription + " contained a valid datacenter alias but the datacenter map was misconfigured in our database.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.DatacenterNotAllowed, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: handlerName + " Datacenter Not Allowed",
-		ServiceName: serviceName,
-		ID:          handlerID + ".datacenter_not_allowed",
-		Unit:        "errors",
-		Description: "The number of times a " + packetDescription + " contained a valid datacenter but the buyer was not configured to use it.",
 	})
 	if err != nil {
 		return nil, err
