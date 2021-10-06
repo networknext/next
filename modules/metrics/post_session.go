@@ -4,10 +4,6 @@ import "context"
 
 // PostSessionMetrics defines the set of metrics for the post session update processing.
 type PostSessionMetrics struct {
-	BillingEntriesSent      Counter
-	BillingEntriesFinished  Counter
-	BillingBufferLength     Gauge
-	BillingBufferFull       Counter
 	BillingEntries2Sent     Counter
 	BillingEntries2Finished Counter
 	Billing2BufferLength    Gauge
@@ -21,7 +17,6 @@ type PostSessionMetrics struct {
 	VanityBufferLength      Gauge
 	VanityBufferFull        Counter
 
-	BillingFailure        Counter
 	Billing2Failure       Counter
 	PortalFailure         Counter
 	VanityMarshalFailure  Counter
@@ -30,10 +25,6 @@ type PostSessionMetrics struct {
 
 // EmptyPostSessionMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyPostSessionMetrics = PostSessionMetrics{
-	BillingEntriesSent:      &EmptyCounter{},
-	BillingEntriesFinished:  &EmptyCounter{},
-	BillingBufferLength:     &EmptyGauge{},
-	BillingBufferFull:       &EmptyCounter{},
 	BillingEntries2Sent:     &EmptyCounter{},
 	BillingEntries2Finished: &EmptyCounter{},
 	Billing2BufferLength:    &EmptyGauge{},
@@ -46,7 +37,6 @@ var EmptyPostSessionMetrics = PostSessionMetrics{
 	VanityMetricsFinished:   &EmptyCounter{},
 	VanityBufferLength:      &EmptyGauge{},
 	VanityBufferFull:        &EmptyCounter{},
-	BillingFailure:          &EmptyCounter{},
 	Billing2Failure:         &EmptyCounter{},
 	PortalFailure:           &EmptyCounter{},
 	VanityMarshalFailure:    &EmptyCounter{},
@@ -57,61 +47,6 @@ var EmptyPostSessionMetrics = PostSessionMetrics{
 func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName string) (*PostSessionMetrics, error) {
 	var err error
 	m := &PostSessionMetrics{}
-
-	m.BillingEntriesSent, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Billing Entries Sent",
-		ServiceName: serviceName,
-		ID:          "post_session_update.billing_entries_sent",
-		Unit:        "entries",
-		Description: "The number of billing entries sent to the post session billing channel.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingEntriesFinished, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Billing Entries Finished",
-		ServiceName: serviceName,
-		ID:          "post_session_update.billing_entries_finished",
-		Unit:        "entries",
-		Description: "The number of billing entries finished sending to Google Pub/Sub.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingBufferLength, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Post Session Update Billing Entries Length",
-		ServiceName: serviceName,
-		ID:          "post_session_update.billing_entries_length",
-		Unit:        "entries",
-		Description: "The number of billing entries in queue waiting to be sent.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingBufferFull, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Billing Buffer Full",
-		ServiceName: serviceName,
-		ID:          "post_session_update.billing_buffer_full",
-		Unit:        "entries",
-		Description: "The number of billing entries dropped because the billing queue was full.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.BillingFailure, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Billing Failure",
-		ServiceName: serviceName,
-		ID:          "post_session_update.billing_failure",
-		Unit:        "errors",
-		Description: "The number of billing entries that failed to be sent to Google Pub/Sub.",
-	})
-	if err != nil {
-		return nil, err
-	}
 
 	m.BillingEntries2Sent, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Post Session Update Billing Entries 2 Sent",
