@@ -109,7 +109,7 @@ func mainReturnWithCode() int {
 		// Google BigQuery
 		if featureBilling2 {
 			billingDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_BILLING", "")
-			if billingDataset != "" {
+			if billingDataset == "" {
 				core.Error("GOOGLE_BIGQUERY_DATASET_BILLING not set")
 				return 1
 			}
