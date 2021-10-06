@@ -73,7 +73,7 @@ var defaultFeatures = []Feature{
 	{
 		Name:        "FEATURE_ROUTE_MATRIX_STATS",
 		Enum:        FEATURE_ROUTE_MATRIX_STATS,
-		Value:       true,
+		Value:       false,
 		Description: "Writes Route Matrix Stats to pubsub when true",
 	},
 	{
@@ -91,13 +91,13 @@ var defaultFeatures = []Feature{
 	{
 		Name:        "FEATURE_BILLING",
 		Enum:        FEATURE_BILLING,
-		Value:       true,
+		Value:       false,
 		Description: "Inserts and writes BillingEntry to BigQuery",
 	},
 	{
 		Name:        "FEATURE_BILLING2",
 		Enum:        FEATURE_BILLING2,
-		Value:       false,
+		Value:       true,
 		Description: "Inserts and writes BillingEntry2 to BigQuery",
 	},
 }
