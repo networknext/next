@@ -4247,9 +4247,11 @@ void * next_queue_pop( next_queue_t * queue )
 
 struct next_route_stats_t
 {
-    float rtt;
-    float jitter;
-    float packet_loss;
+    float min_rtt;                      // minimum rtt (ms)
+    float max_rtt;                      // maximum rtt (ms)
+    float prime_rtt;                    // second largest rtt value (ms) -- for approximating P99 etc.
+    float jitter;                       // jitter (ms)
+    float packet_loss;                  // packet loss %
 };
 
 struct next_ping_history_entry_t
@@ -4346,7 +4348,9 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     next_assert( stats );
     next_assert( start < end );
 
-    stats->rtt = 0.0f;
+    stats->min_rtt = 0.0f;
+    stats->max_rtt = 0.0f;
+    stats->prime_rtt = 0.0f;
     stats->jitter = 0.0f;
     stats->packet_loss = 0.0f;
 
@@ -4404,9 +4408,11 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
         start = optional_route_changed_time;
     }
 
-    // calculate min RTT
+    // calculate min, max and prime RTT (prime is second largest RTT value)
 
     double min_rtt = FLT_MAX;
+    double max_rtt = 0.0;
+    double prime_rtt = 0.0;
     int num_pings = 0;
     int num_pongs = 0;
 
@@ -4423,6 +4429,11 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
                 {
                     min_rtt = rtt;
                 }
+                if ( rtt > max_rtt )
+                {
+                    prime_rtt = max_rtt;
+                    max_rtt = rtt;
+                }
                 num_pongs++;
             }
             num_pings++;
@@ -4436,8 +4447,12 @@ void next_route_stats_from_ping_history( const next_ping_history_t * history, do
     }
 
     next_assert( min_rtt >= 0.0 );
+    next_assert( max_rtt >= 0.0 );
+    next_assert( prime_rtt >= 0.0 );
 
-    stats->rtt = float( min_rtt );
+    stats->min_rtt = float( min_rtt );
+    stats->max_rtt = float( max_rtt );
+    stats->prime_rtt = float( prime_rtt );
 
     // calculate jitter
 
@@ -4788,7 +4803,7 @@ void next_relay_manager_get_stats( next_relay_manager_t * manager, next_relay_st
             next_route_stats_from_ping_history( &manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats, NEXT_PING_SAFETY );
             
             stats->relay_ids[i] = manager->relay_ids[i];
-            stats->relay_rtt[i] = route_stats.rtt;
+            stats->relay_rtt[i] = route_stats.min_rtt;
             stats->relay_jitter[i] = route_stats.jitter;
             stats->relay_packet_loss[i] = route_stats.packet_loss;
         }
@@ -7195,7 +7210,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         if ( network_next )
         {
-            client->client_stats.next_rtt = next_route_stats.rtt;
+            client->client_stats.next_rtt = next_route_stats.min_rtt;
             client->client_stats.next_jitter = next_route_stats.jitter;    
             client->client_stats.next_packet_loss = next_route_stats.packet_loss;
             next_platform_mutex_acquire( &client->bandwidth_mutex );
@@ -7212,7 +7227,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             client->client_stats.next_kbps_down = 0;
         }
 
-        client->client_stats.direct_rtt = direct_route_stats.rtt;
+        // todo: store max and prime RTT here as well
+        client->client_stats.direct_rtt = direct_route_stats.min_rtt;
         client->client_stats.direct_jitter = direct_route_stats.jitter;    
         client->client_stats.direct_packet_loss = direct_route_stats.packet_loss;
 
@@ -14966,7 +14982,9 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
         
-        next_check( route_stats.rtt == 0.0f );
+        next_check( route_stats.min_rtt == 0.0f );
+        next_check( route_stats.max_rtt == 0.0f );
+        next_check( route_stats.prime_rtt == 0.0f );
         next_check( route_stats.jitter == 0.0f );
         next_check( route_stats.packet_loss == 0.0f );
     }
@@ -14986,7 +15004,9 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
 
-        next_check( route_stats.rtt == 0.0f );
+        next_check( route_stats.min_rtt == 0.0f );
+        next_check( route_stats.max_rtt == 0.0f );
+        next_check( route_stats.prime_rtt == 0.0f );
         next_check( route_stats.jitter == 0.0f );
         next_check( route_stats.packet_loss == 100.0f );
     }
@@ -15009,10 +15029,15 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
-        next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0 ) );
+        next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0 ) );
+        next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0 ) );
+        // IMPORTANT: prime is unstable in this case due to numerical instability
+        next_check( equal_within_tolerance( route_stats.prime_rtt, 0.0 ) || equal_within_tolerance( route_stats.prime_rtt, expected_rtt * 1000.0 ) ); 
         next_check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
         next_check( route_stats.packet_loss == 0.0 );
     }
+
+    // todo: add a test for max and prime RTT
 
     // add some pings and set them to have a pong response, but leave the last second of pings without response. packet loss should be zero
     {
@@ -15040,7 +15065,10 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 10.0, &route_stats, ping_safety );
 
-        next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0 ) );
+        next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0 ) );
+        next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0 ) );
+        // IMPORTANT: prime is unstable in this case due to numerical instability
+        next_check( equal_within_tolerance( route_stats.prime_rtt, 0.0 ) || equal_within_tolerance( route_stats.prime_rtt, expected_rtt * 1000.0 ) ); 
         next_check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
         next_check( route_stats.packet_loss == 0.0 );
     }
@@ -15064,7 +15092,10 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
-        next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0 ) );
+        next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0 ) );
+        next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0 ) );
+        // IMPORTANT: prime is unstable in this case due to numerical instability
+        next_check( equal_within_tolerance( route_stats.prime_rtt, 0.0 ) || equal_within_tolerance( route_stats.prime_rtt, expected_rtt * 1000.0 ) ); 
         next_check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
         next_check( equal_within_tolerance( route_stats.packet_loss, 50.0 ) );
     }
@@ -15088,7 +15119,10 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
-        next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0f ) );
+        next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0f ) );
+        next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0f ) );
+        // IMPORTANT: prime is unstable in this case due to numerical instability
+        next_check( equal_within_tolerance( route_stats.prime_rtt, 0.0 ) || equal_within_tolerance( route_stats.prime_rtt, expected_rtt * 1000.0 ) ); 
         next_check( equal_within_tolerance( route_stats.jitter, 0.0 ) );
         next_check( equal_within_tolerance( route_stats.packet_loss, 10.0f, 0.25f ) );
     }
@@ -15112,7 +15146,10 @@ static void test_ping_stats()
         next_route_stats_t route_stats;
         next_route_stats_from_ping_history( &history, 0.0, 100.0, &route_stats, ping_safety );
 
-        next_check( equal_within_tolerance( route_stats.rtt, expected_rtt * 1000.0f ) );
+        next_check( equal_within_tolerance( route_stats.min_rtt, expected_rtt * 1000.0f ) );
+        next_check( equal_within_tolerance( route_stats.max_rtt, expected_rtt * 1000.0f ) );
+        // IMPORTANT: prime is unstable in this case due to numerical instability
+        next_check( equal_within_tolerance( route_stats.prime_rtt, 0.0 ) || equal_within_tolerance( route_stats.prime_rtt, expected_rtt * 1000.0 ) ); 
         next_check( equal_within_tolerance( route_stats.jitter, 0.0f ) );
         next_check( equal_within_tolerance( route_stats.packet_loss, 90.0f, 1.0f ) );
     }
