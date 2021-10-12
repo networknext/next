@@ -20,7 +20,7 @@ func (local *LocalBiller) Bill2(ctx context.Context, entry *BillingEntry2) error
 		core.Debug("submitted billing entry 2")
 	}
 
-	core.Debug("%+v", entry)
+	// core.Debug("%+v", entry)
 
 	if entry.Summary {
 		local.Metrics.SummaryEntries2Flushed.Add(1)
