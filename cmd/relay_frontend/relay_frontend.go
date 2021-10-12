@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"net/http"
@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
@@ -290,7 +289,6 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 		router.HandleFunc("/route_matrix", frontendClient.GetRouteMatrixHandlerFunc()).Methods("GET")
 		router.HandleFunc("/database_version", frontendClient.GetRelayBackendHandlerFunc("/database_version")).Methods("GET")
-		router.HandleFunc("/relay_dashboard", frontendClient.GetRelayDashboardHandlerFunc("local", "local")).Methods("GET")
 		router.HandleFunc("/dest_relays", frontendClient.GetRelayBackendHandlerFunc("/dest_relays")).Methods("GET")
 		router.HandleFunc("/master_status", frontendClient.GetRelayBackendHandlerFunc("/status")).Methods("GET")
 		router.HandleFunc("/master", frontendClient.GetRelayBackendMasterHandlerFunc()).Methods("GET")
