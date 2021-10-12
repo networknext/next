@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"net/http"
@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/backend"
-	"github.com/networknext/backend/modules/common/helpers"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
@@ -26,7 +25,6 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 
-	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 )
 
@@ -55,92 +53,104 @@ func mainReturnWithCode() int {
 	gcpProjectID := backend.GetGCPProjectID()
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
-		fmt.Println(err.Error())
+		core.Error("failed to get logger: %v", err)
 		return 1
 	}
 
 	cfg, err := GetRelayFrontendConfig()
 	if err != nil {
-		_ = level.Error(logger).Log("err", err)
+		core.Error("failed to get relay frontend config: %v", err)
 		return 1
 	}
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get metrics handler: %v", err)
 		return 1
 	}
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, cfg.Env); err != nil {
-			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			core.Error("failed to initialize StackDriver profiler: %v", err)
 			return 1
 		}
 	}
 
 	frontendMetrics, err := metrics.NewRelayFrontendMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get relay frontend metrics: %v", err)
 		return 1
 	}
 
 	// Get the redis matrix store
 	store, err := storage.NewRedisMatrixStore(cfg.MatrixStoreAddress, cfg.MatrixStorePassword, cfg.MSMaxIdleConnections, cfg.MSMaxActiveConnections, cfg.MSReadTimeout, cfg.MSWriteTimeout, cfg.MSMatrixExpireTimeout)
 	if err != nil {
-		_ = level.Error(logger).Log("err", err)
+		core.Error("failed to get redis matrix store: %v", err)
 		return 1
 	}
 
 	// Get the relay frontend
 	frontendClient, err := frontend.NewRelayFrontend(store, cfg)
 	if err != nil {
-		_ = level.Error(logger).Log("err", err)
+		core.Error("failed to get relay frontend client: %v", err)
 		return 1
 	}
 
 	// Create an error chan for exiting from goroutines
 	errChan := make(chan error, 1)
 
+	// Fetch the Auth0 Cert and refresh occasionally
 	newKeys, err := middleware.FetchAuth0Cert()
 	if err != nil {
-		core.Error("faild to fetch auth0 cert: %v", err)
-		os.Exit(1)
+		core.Error("failed to fetch auth0 cert: %v", err)
+		return 1
 	}
 	keys = newKeys
 
-	go func() {
-		fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
-		if err != nil {
-			core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
-			os.Exit(1)
-		}
+	fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+	if err != nil {
+		core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
+		return 1
+	}
 
+	go func() {
+		ticker := time.NewTicker(fetchAuthCertInterval)
 		for {
-			newKeys, err := middleware.FetchAuth0Cert()
-			if err != nil {
-				continue
+			select {
+			case <-ticker.C:
+				newKeys, err := middleware.FetchAuth0Cert()
+				if err != nil {
+					continue
+				}
+				keys = newKeys
+			case <-ctx.Done():
+				return
 			}
-			keys = newKeys
-			time.Sleep(fetchAuthCertInterval)
+
 		}
 	}()
 
+	matrixSyncInterval, err := envvar.GetDuration("MATRIX_SYNC_INTERVAL", time.Second*1)
+	if err != nil {
+		core.Error("invalid MATRIX_SYNC_INTERVAL: %v", err)
+		return 1
+	}
+
 	// Start a goroutine for updating the master relay backend
 	go func() {
-		syncTimer := helpers.NewSyncTimer(1000 * time.Millisecond)
+		ticker := time.NewTicker(matrixSyncInterval)
 		for {
-			syncTimer.Run()
 			select {
 			case <-ctx.Done():
 				// Shutdown signal received
 				return
-			default:
+			case <-ticker.C:
 				if frontendClient.ReachedRetryLimit() {
 					// Couldn't get the master relay backend for UPDATE_RETRY_COUNT attempts
 					// Reset the cost and route matrix cache
 					frontendClient.ResetCachedMatrix(frontend.MatrixTypeCost)
 					frontendClient.ResetCachedMatrix(frontend.MatrixTypeNormal)
-					level.Debug(logger).Log("msg", "reached retry limit, reset cost and route matrix cache")
+					core.Error("reached retry limit, reset cost and route matrix cache")
 				}
 
 				// Get the oldest relay backend
@@ -150,7 +160,7 @@ func mainReturnWithCode() int {
 				if err != nil {
 					frontendClient.RetryCount++
 					frontendMetrics.ErrorMetrics.MasterSelectError.Add(1)
-					_ = level.Error(logger).Log("error", err)
+					core.Error("failed ot update master relay backend (retry counter %d): %v", frontendClient.RetryCount, err)
 					continue
 				}
 				frontendClient.RetryCount = 0
@@ -169,7 +179,7 @@ func mainReturnWithCode() int {
 					err = frontendClient.CacheMatrix(frontend.MatrixTypeCost)
 					if err != nil {
 						frontendMetrics.CostMatrix.Error.Add(1)
-						_ = level.Error(logger).Log("msg", "error getting cost matrix", "error", err)
+						core.Error("error getting cost matrix: %v", err)
 						return
 					}
 
@@ -186,7 +196,7 @@ func mainReturnWithCode() int {
 					err = frontendClient.CacheMatrix(frontend.MatrixTypeNormal)
 					if err != nil {
 						frontendMetrics.RouteMatrix.Error.Add(1)
-						_ = level.Error(logger).Log("msg", "error getting normal matrix", "error", err)
+						core.Error("error getting route matrix: %v", err)
 						return
 					}
 
@@ -199,7 +209,8 @@ func mainReturnWithCode() int {
 	}()
 
 	// Setup the status handler info
-	var statusData []byte
+
+	statusData := &metrics.RelayFrontendStatus{}
 	var statusMutex sync.RWMutex
 
 	{
@@ -214,24 +225,31 @@ func mainReturnWithCode() int {
 				frontendMetrics.FrontendServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				frontendMetrics.FrontendServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
-				statusDataString := fmt.Sprintf("%s\n", serviceName)
-				statusDataString += fmt.Sprintf("git hash %s\n", sha)
-				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
-				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
-				statusDataString += fmt.Sprintf("%d goroutines\n", int(frontendMetrics.FrontendServiceMetrics.Goroutines.Value()))
-				statusDataString += fmt.Sprintf("%.2f mb allocated\n", frontendMetrics.FrontendServiceMetrics.MemoryAllocated.Value())
-				statusDataString += fmt.Sprintf("%d master select invocations\n", int(frontendMetrics.MasterSelect.Value()))
-				statusDataString += fmt.Sprintf("%d cost matrix invocations\n", int(frontendMetrics.CostMatrix.Invocations.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix invocations\n", int(frontendMetrics.RouteMatrix.Invocations.Value()))
-				statusDataString += fmt.Sprintf("%d master select success count\n", int(frontendMetrics.MasterSelectSuccess.Value()))
-				statusDataString += fmt.Sprintf("%d cost matrix success count\n", int(frontendMetrics.CostMatrix.Success.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix success count\n", int(frontendMetrics.RouteMatrix.Success.Value()))
-				statusDataString += fmt.Sprintf("%d master select errors\n", int(frontendMetrics.ErrorMetrics.MasterSelectError.Value()))
-				statusDataString += fmt.Sprintf("%d cost matrix errors\n", int(frontendMetrics.CostMatrix.Error.Value()))
-				statusDataString += fmt.Sprintf("%d route matrix errors\n", int(frontendMetrics.RouteMatrix.Error.Value()))
+				newStatusData := &metrics.RelayFrontendStatus{}
+
+				// Service Information
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+
+				// Invocations
+				newStatusData.MasterSelectInvocations = int(frontendMetrics.MasterSelect.Value())
+				newStatusData.CostMatrixInvocations = int(frontendMetrics.CostMatrix.Invocations.Value())
+				newStatusData.RouteMatrixInvocations = int(frontendMetrics.RouteMatrix.Invocations.Value())
+
+				// Success
+				newStatusData.MasterSelectSuccessCount = int(frontendMetrics.MasterSelectSuccess.Value())
+				newStatusData.CostMatrixSuccessCount = int(frontendMetrics.CostMatrix.Success.Value())
+				newStatusData.RouteMatrixSuccessCount = int(frontendMetrics.RouteMatrix.Success.Value())
+
+				// Error
+				newStatusData.MasterSelectError = int(frontendMetrics.ErrorMetrics.MasterSelectError.Value())
+				newStatusData.CostMatrixError = int(frontendMetrics.CostMatrix.Error.Value())
+				newStatusData.RouteMatrixError = int(frontendMetrics.RouteMatrix.Error.Value())
 
 				statusMutex.Lock()
-				statusData = []byte(statusDataString)
+				statusData = newStatusData
 				statusMutex.Unlock()
 
 				time.Sleep(time.Second * 10)
@@ -240,74 +258,73 @@ func mainReturnWithCode() int {
 	}
 
 	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
 		statusMutex.RLock()
 		data := statusData
 		statusMutex.RUnlock()
-		buffer := bytes.NewBuffer(data)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 
-	allowedOrigins, found := os.LookupEnv("ALLOWED_ORIGINS")
-	if !found {
-		level.Error(logger).Log("msg", "unable to parse ALLOWED_ORIGINS environment variable")
-	}
-
-	audience, found := os.LookupEnv("JWT_AUDIENCE")
-	if !found {
-		level.Error(logger).Log("msg", "unable to parse JWT_AUDIENCE environment variable")
-	}
-
-	port := envvar.Get("PORT", "30005")
-	fmt.Printf("starting http server on port %s\n", port)
-
-	router := mux.NewRouter()
-	router.HandleFunc("/health", transport.HealthHandlerFunc())
-	router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
-	router.HandleFunc("/status", serveStatusFunc).Methods("GET")
-	router.HandleFunc("/route_matrix", frontendClient.GetRouteMatrixHandlerFunc()).Methods("GET")
-	router.HandleFunc("/database_version", frontendClient.GetRelayBackendHandlerFunc("/database_version")).Methods("GET")
-	router.HandleFunc("/relay_dashboard", frontendClient.GetRelayDashboardHandlerFunc("local", "local")).Methods("GET")
-	router.HandleFunc("/dest_relays", frontendClient.GetRelayBackendHandlerFunc("/dest_relays")).Methods("GET")
-	router.HandleFunc("/master_status", frontendClient.GetRelayBackendHandlerFunc("/status")).Methods("GET")
-	router.HandleFunc("/master", frontendClient.GetRelayBackendMasterHandlerFunc()).Methods("GET")
-	router.Handle("/debug/vars", expvar.Handler())
-
-	// Wrap the following endpoints in auth and CORS middleware
-	// NOTE: the next tool is unaware of CORS and its requests simply pass through
-	costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
-	router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(keys, audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
-
-	relaysCsvHandler := http.HandlerFunc(frontendClient.GetRelayBackendHandlerFunc("/relays"))
-	router.Handle("/relays", middleware.PlainHttpAuthMiddleware(keys, audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
-
-	jsonDashboardHandler := http.HandlerFunc(frontendClient.GetRelayDashboardDataHandlerFunc())
-	router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(keys, audience, jsonDashboardHandler, strings.Split(allowedOrigins, ",")))
-
-	jsonDashboardAnalysisHandler := http.HandlerFunc(frontendClient.GetRelayDashboardAnalysisHandlerFunc())
-	router.Handle("/relay_dashboard_analysis", middleware.PlainHttpAuthMiddleware(keys, audience, jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ",")))
-
-	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-	}
-	if enablePProf {
-		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
-	}
-
-	go func() {
-
-		_ = level.Info(logger).Log("addr", ":"+port)
-
-		err := http.ListenAndServe(":"+port, router)
-		if err != nil {
-			_ = level.Error(logger).Log("err", err)
-			errChan <- err
+	// Start HTTP Server
+	{
+		allowedOrigins := envvar.Get("ALLOWED_ORIGINS", "")
+		if allowedOrigins == "" {
+			core.Debug("unable to parse ALLOWED_ORIGINS environment variable")
 		}
-	}()
+
+		audience := envvar.Get("JWT_AUDIENCE", "")
+		if audience == "" {
+			core.Error("unable to parse JWT_AUDIENCE environment variable")
+		}
+
+		port := envvar.Get("PORT", "30005")
+
+		router := mux.NewRouter()
+		router.HandleFunc("/health", transport.HealthHandlerFunc())
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
+		router.HandleFunc("/route_matrix", frontendClient.GetRouteMatrixHandlerFunc()).Methods("GET")
+		router.HandleFunc("/database_version", frontendClient.GetRelayBackendHandlerFunc("/database_version")).Methods("GET")
+		router.HandleFunc("/dest_relays", frontendClient.GetRelayBackendHandlerFunc("/dest_relays")).Methods("GET")
+		router.HandleFunc("/master_status", frontendClient.GetRelayBackendHandlerFunc("/status")).Methods("GET")
+		router.HandleFunc("/master", frontendClient.GetRelayBackendMasterHandlerFunc()).Methods("GET")
+		router.Handle("/debug/vars", expvar.Handler())
+
+		// Wrap the following endpoints in auth and CORS middleware
+		// NOTE: the next tool is unaware of CORS and its requests simply pass through
+		costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
+		router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(keys, audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
+
+		relaysCsvHandler := http.HandlerFunc(frontendClient.GetRelayBackendHandlerFunc("/relays"))
+		router.Handle("/relays", middleware.PlainHttpAuthMiddleware(keys, audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
+
+		jsonDashboardHandler := http.HandlerFunc(frontendClient.GetRelayDashboardDataHandlerFunc())
+		router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(keys, audience, jsonDashboardHandler, strings.Split(allowedOrigins, ",")))
+
+		jsonDashboardAnalysisHandler := http.HandlerFunc(frontendClient.GetRelayDashboardAnalysisHandlerFunc())
+		router.Handle("/relay_dashboard_analysis", middleware.PlainHttpAuthMiddleware(keys, audience, jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ",")))
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			core.Error("could not parse FEATURE_ENABLE_PPROF: %v", err)
+		}
+		if enablePProf {
+			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
+
+		go func() {
+			fmt.Printf("starting http server on port %s\n", port)
+			err := http.ListenAndServe(":"+port, router)
+			if err != nil {
+				core.Error("could not start http server: %v", err)
+				errChan <- err
+			}
+		}()
+	}
 
 	// Wait for shutdown signal
 	termChan := make(chan os.Signal, 1)
@@ -315,12 +332,10 @@ func mainReturnWithCode() int {
 
 	select {
 	case <-termChan: // Exit with an error code of 0 if we receive SIGINT or SIGTERM
-		level.Debug(logger).Log("msg", "Received shutdown signal")
 		fmt.Println("Received shutdown signal.")
 
 		cancel()
 
-		level.Debug(logger).Log("msg", "Successfully shutdown.")
 		fmt.Println("Successfully shutdown.")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
