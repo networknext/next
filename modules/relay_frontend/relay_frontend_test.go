@@ -20,16 +20,42 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type MatrixStoreMock struct {
+	LiveData map[string]storage.RelayBackendLiveData
+}
+
+func (ms *MatrixStoreMock) SetRelayBackendLiveData(data storage.RelayBackendLiveData) error {
+	if ms.LiveData == nil {
+		ms.LiveData = make(map[string]storage.RelayBackendLiveData)
+	}
+
+	ms.LiveData[data.ID] = data
+	return nil
+}
+
+func (ms *MatrixStoreMock) GetRelayBackendLiveData() ([]storage.RelayBackendLiveData, error) {
+	if ms.LiveData == nil {
+		return []storage.RelayBackendLiveData{}, nil
+	}
+
+	var data []storage.RelayBackendLiveData
+	for _, v := range ms.LiveData {
+		data = append(data, v)
+	}
+
+	return data, nil
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	store := storage.MatrixStoreMock{}
+	store := &MatrixStoreMock{}
 	cfg := &RelayFrontendConfig{MasterTimeVariance: timeVariance(15)}
-	svc, err := NewRelayFrontend(&store, cfg)
+	svc, err := NewRelayFrontend(store, cfg)
 	assert.Nil(t, err)
 	assert.NotNil(t, svc)
 	assert.Equal(t, timeVariance(15), svc.cfg.MasterTimeVariance)
-	assert.Equal(t, &store, svc.store)
+	assert.Equal(t, store, svc.store)
 }
 
 func timeVariance(value int) time.Duration {
@@ -95,14 +121,17 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 		UpdatedAt: currTime,
 	}
 
-	store := storage.MatrixStoreMock{
-		GetRelayBackendLiveDataFunc: func() ([]storage.RelayBackendLiveData, error) {
-			return []storage.RelayBackendLiveData{rb1, rb2, rb3}, nil
-		},
-	}
+	store := &MatrixStoreMock{}
+
+	err := store.SetRelayBackendLiveData(rb1)
+	assert.NoError(t, err)
+	err = store.SetRelayBackendLiveData(rb2)
+	assert.NoError(t, err)
+	err = store.SetRelayBackendLiveData(rb3)
+	assert.NoError(t, err)
 
 	cfg := &RelayFrontendConfig{MasterTimeVariance: time.Second}
-	svc, err := NewRelayFrontend(&store, cfg)
+	svc, err := NewRelayFrontend(store, cfg)
 	assert.Nil(t, err)
 
 	// rb2 should be master
@@ -112,6 +141,8 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterSetAndUpdate(t *testing.T) {
 
 	// change to rb1 as master
 	rb2.UpdatedAt = rb2.UpdatedAt.Add(-6 * time.Second)
+	store.SetRelayBackendLiveData(rb2)
+
 	err = svc.UpdateRelayBackendMaster()
 	assert.Nil(t, err)
 	assert.Equal(t, "1.1.1.1", svc.currentMasterBackendAddress)
@@ -135,14 +166,15 @@ func TestRelayFrontendSvc_UpdateRelayBackendMasterCurrent(t *testing.T) {
 		UpdatedAt: currTime,
 	}
 
-	store := storage.MatrixStoreMock{
-		GetRelayBackendLiveDataFunc: func() ([]storage.RelayBackendLiveData, error) {
-			return []storage.RelayBackendLiveData{rb1, rb2}, nil
-		},
-	}
+	store := &MatrixStoreMock{}
+
+	err := store.SetRelayBackendLiveData(rb1)
+	assert.NoError(t, err)
+	err = store.SetRelayBackendLiveData(rb2)
+	assert.NoError(t, err)
 
 	cfg := &RelayFrontendConfig{MasterTimeVariance: time.Second}
-	svc, err := NewRelayFrontend(&store, cfg)
+	svc, err := NewRelayFrontend(store, cfg)
 	assert.Nil(t, err)
 
 	svc.currentMasterBackendAddress = rb2.Address
