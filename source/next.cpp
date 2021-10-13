@@ -7248,7 +7248,9 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_ROUTE_UPDATE_TIMED_OUT );
             next_platform_mutex_release( &client->route_manager_mutex );
         }
-        client->client_stats.direct_rtt += next_fake_direct_rtt;
+        client->client_stats.direct_min_rtt += next_fake_direct_rtt;
+        client->client_stats.direct_max_rtt += next_fake_direct_rtt;
+        client->client_stats.direct_prime_rtt += next_fake_direct_rtt;
         client->client_stats.direct_packet_loss += next_fake_direct_packet_loss;
         client->client_stats.next_rtt += next_fake_next_rtt;
         client->client_stats.next_packet_loss += next_fake_next_packet_loss;
