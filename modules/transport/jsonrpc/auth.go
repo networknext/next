@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
@@ -17,9 +18,12 @@ import (
 )
 
 type AuthService struct {
+	mu               sync.Mutex
+	RoleCache        map[string]*management.Role
 	MailChimpManager notifications.MailChimpHandler
-	UserManager      storage.UserManager
 	JobManager       storage.JobManager
+	RoleManager      storage.RoleManager
+	UserManager      storage.UserManager
 	SlackClient      notifications.SlackClient
 	Storage          storage.Storer
 	Logger           log.Logger
@@ -58,22 +62,6 @@ type account struct {
 	Analytics   bool               `json:"analytics"`
 	Billing     bool               `json:"billing"`
 	Trial       bool               `json:"trial"`
-}
-
-var roleIDs []string = []string{
-	"rol_ScQpWhLvmTKRlqLU",
-	"rol_8r0281hf2oC4cvrD",
-	"rol_YfFrtom32or4vH89",
-}
-var roleNames []string = []string{
-	"Viewer",
-	"Owner",
-	"Admin",
-}
-var roleDescriptions []string = []string{
-	"Can see current sessions and the map.",
-	"Can access and manage everything in an account.",
-	"Can manage the Network Next system, including access to configstore.",
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
@@ -370,16 +358,9 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 				return &err
 			}
 			roles := []*management.Role{
-				{
-					ID:          &roleIDs[0],
-					Name:        &roleNames[0],
-					Description: &roleDescriptions[0],
-				},
-				{
-					ID:          &roleIDs[1],
-					Name:        &roleNames[1],
-					Description: &roleDescriptions[1],
-				},
+				s.RoleCache["Viewer"],
+				s.RoleCache["Owner"],
+				s.RoleCache["Admin"],
 			}
 			if err := s.UserManager.RemoveRoles(user.GetID(), roles...); err != nil {
 				s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to remove exist roles from user account", err.Error()))
@@ -517,7 +498,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 		isOwner := false
 		for _, role := range userRoles.Roles {
 			// Check if the role is an owner role
-			if *role.ID == roleIDs[1] {
+			if role.GetID() == s.RoleCache["Owner"].GetID() {
 				isOwner = true
 				break
 			}
@@ -564,34 +545,14 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 
 	if middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		reply.Roles = []*management.Role{
-			{
-				ID:          &roleIDs[0],
-				Name:        &roleNames[0],
-				Description: &roleDescriptions[0],
-			},
-			{
-				ID:          &roleIDs[1],
-				Name:        &roleNames[1],
-				Description: &roleDescriptions[1],
-			},
-			{
-				ID:          &roleIDs[2],
-				Name:        &roleNames[2],
-				Description: &roleDescriptions[2],
-			},
+			s.RoleCache["Viewer"],
+			s.RoleCache["Owner"],
+			s.RoleCache["Admin"],
 		}
 	} else {
 		reply.Roles = []*management.Role{
-			{
-				ID:          &roleIDs[0],
-				Name:        &roleNames[0],
-				Description: &roleDescriptions[0],
-			},
-			{
-				ID:          &roleIDs[1],
-				Name:        &roleNames[1],
-				Description: &roleDescriptions[1],
-			},
+			s.RoleCache["Viewer"],
+			s.RoleCache["Owner"],
 		}
 	}
 
@@ -647,16 +608,8 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	}
 
 	removeRoles := []*management.Role{
-		{
-			Name:        &roleNames[0],
-			ID:          &roleIDs[0],
-			Description: &roleDescriptions[0],
-		},
-		{
-			Name:        &roleNames[1],
-			ID:          &roleIDs[1],
-			Description: &roleDescriptions[1],
-		},
+		s.RoleCache["Viewer"],
+		s.RoleCache["Owner"],
 	}
 
 	if len(userRoles.Roles) > 0 {
@@ -751,11 +704,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 
 	ctx := r.Context()
 	roles := []*management.Role{
-		{
-			Name:        &roleNames[0],
-			ID:          &roleIDs[0],
-			Description: &roleDescriptions[0],
-		},
+		s.RoleCache["Viewer"],
 	}
 
 	// Check if customer account exists already
@@ -787,11 +736,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 			return &err
 		}
 
-		roles = append(roles, &management.Role{
-			Name:        &roleNames[1],
-			ID:          &roleIDs[1],
-			Description: &roleDescriptions[1],
-		})
+		roles = append(roles, s.RoleCache["Owner"])
 	}
 
 	// Assign the customer code to the user token
@@ -808,16 +753,8 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 	if !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		// Remove existing roles if there are any
 		if err := s.UserManager.RemoveRoles(requestID, []*management.Role{
-			{
-				Name:        &roleNames[0],
-				ID:          &roleIDs[0],
-				Description: &roleDescriptions[0],
-			},
-			{
-				Name:        &roleNames[1],
-				ID:          &roleIDs[1],
-				Description: &roleDescriptions[1],
-			},
+			s.RoleCache["Viewer"],
+			s.RoleCache["Owner"],
 		}...); err != nil {
 			s.Logger.Log("err", fmt.Errorf("SetupCompanyAccount() failed to remove roles: %v", err))
 			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
@@ -1230,5 +1167,26 @@ func (s *AuthService) SlackNotification(r *http.Request, args *GenericSlackNotif
 		s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v: Slack notification type not supported: %s", args.Type, err.Error()))
 		return &err
 	}
+	return nil
+}
+
+func (s *AuthService) RefreshAuthRolesCache() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	roleList, err := s.RoleManager.List()
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("RefreshAuthRolesCache(): Failed to refresh role caches: %s", err.Error()))
+		return err
+	}
+
+	roles := roleList.Roles
+
+	s.RoleCache = make(map[string]*management.Role)
+
+	for _, r := range roles {
+		s.RoleCache[r.GetName()] = r
+	}
+
 	return nil
 }

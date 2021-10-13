@@ -149,18 +149,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	auth0Issuer := os.Getenv("AUTH0_ISSUER")
+	auth0Domain := os.Getenv("AUTH0_DOMAIN")
 	manager, err := management.New(
-		os.Getenv("AUTH_DOMAIN"),
-		os.Getenv("AUTH_CLIENTID"),
-		os.Getenv("AUTH_CLIENTSECRET"),
+		auth0Domain,
+		os.Getenv("AUTH0_CLIENTID"),
+		os.Getenv("AUTH0_CLIENTSECRET"),
 	)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
 
-	var userManager storage.UserManager = manager.User
 	var jobManager storage.JobManager = manager.Job
+	var roleManager storage.RoleManager = manager.Role
+	var userManager storage.UserManager = manager.User
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 
@@ -386,6 +389,19 @@ func main() {
 		Channel:    channel,
 	}
 
+	authservice := &jsonrpc.AuthService{
+		MailChimpManager: notifications.MailChimpHandler{
+			HTTPHandler: *http.DefaultClient,
+			MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
+		},
+		Logger:      logger,
+		JobManager:  jobManager,
+		RoleManager: roleManager,
+		UserManager: userManager,
+		SlackClient: slackClient,
+		Storage:     db,
+	}
+
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -410,7 +426,7 @@ func main() {
 		Storage: db,
 	}
 
-	newKeys, err := middleware.FetchAuth0Cert()
+	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 	if err != nil {
 		level.Error(logger).Log("msg", "error fetching auth0 cert", "err", err)
 		os.Exit(1)
@@ -425,12 +441,22 @@ func main() {
 		}
 
 		for {
-			newKeys, err := middleware.FetchAuth0Cert()
+			newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 			if err != nil {
 				continue
 			}
 			keys = newKeys
 			time.Sleep(fetchAuthCertInterval)
+		}
+	}()
+
+	go func() {
+		for {
+			err := authservice.RefreshAuthRolesCache()
+			if err != nil {
+				continue
+			}
+			time.Sleep(time.Hour)
 		}
 	}()
 
@@ -570,18 +596,7 @@ func main() {
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&configService, "")
-
-		s.RegisterService(&jsonrpc.AuthService{
-			MailChimpManager: notifications.MailChimpHandler{
-				HTTPHandler: *http.DefaultClient,
-				MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
-			},
-			Logger:      logger,
-			UserManager: userManager,
-			JobManager:  jobManager,
-			SlackClient: slackClient,
-			Storage:     db,
-		}, "")
+		s.RegisterService(authservice, "")
 
 		relayFrontEnd, ok := os.LookupEnv("RELAY_FRONTEND")
 		if !ok {
@@ -637,7 +652,7 @@ func main() {
 
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", middleware.JSONRPCMiddleware(keys, os.Getenv("JWT_AUDIENCE"), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", middleware.JSONRPCMiddleware(keys, os.Getenv("JWT_AUDIENCE"), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ","), auth0Issuer))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 

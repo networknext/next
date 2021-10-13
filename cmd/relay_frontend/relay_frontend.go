@@ -101,7 +101,9 @@ func mainReturnWithCode() int {
 	// Create an error chan for exiting from goroutines
 	errChan := make(chan error, 1)
 
-	newKeys, err := middleware.FetchAuth0Cert()
+	auth0Domain := os.Getenv("AUTH0_DOMAIN")
+
+	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 	if err != nil {
 		core.Error("faild to fetch auth0 cert: %v", err)
 		os.Exit(1)
@@ -116,7 +118,7 @@ func mainReturnWithCode() int {
 		}
 
 		for {
-			newKeys, err := middleware.FetchAuth0Cert()
+			newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 			if err != nil {
 				continue
 			}

@@ -14,6 +14,7 @@ type contextKeys struct {
 	AnonymousCallKey     string
 	RolesKey             string
 	CompanyKey           string
+	CustomerKey          string
 	NewsletterConsentKey string
 	UserKey              string
 }
@@ -22,11 +23,12 @@ var Keys contextKeys = contextKeys{
 	AnonymousCallKey:     "anonymous",
 	RolesKey:             "roles",
 	CompanyKey:           "company",
+	CustomerKey:          "customer",
 	NewsletterConsentKey: "newsletter",
 	UserKey:              "user",
 }
 
-func JSONRPCMiddleware(keys JWKS, audience string, next http.Handler, allowedOrigins []string) http.Handler {
+func JSONRPCMiddleware(keys JWKS, audience string, next http.Handler, allowedOrigins []string, issuer string) http.Handler {
 	if audience == "" {
 		return next
 	}
@@ -43,8 +45,7 @@ func JSONRPCMiddleware(keys JWKS, audience string, next http.Handler, allowedOri
 				}
 			}
 			// Verify 'iss' claim
-			iss := "https://networknext.auth0.com/"
-			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
+			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(issuer, false)
 			if !checkIss {
 				return token, errors.New("Invalid issuer.")
 			}
@@ -74,13 +75,13 @@ func IsAnonymous(r *http.Request) bool {
 	return ok && anon
 }
 
-func AddTokenContext(r *http.Request, roles []string, companyCode string, newsletterConsent bool) *http.Request {
+func AddTokenContext(r *http.Request, roles []string, customerCode string, newsletterConsent bool) *http.Request {
 	ctx := r.Context()
 	if len(roles) > 0 {
 		ctx = context.WithValue(ctx, Keys.RolesKey, roles)
 	}
-	if companyCode != "" {
-		ctx = context.WithValue(ctx, Keys.CompanyKey, companyCode)
+	if customerCode != "" {
+		ctx = context.WithValue(ctx, Keys.CustomerKey, customerCode)
 	}
 	ctx = context.WithValue(ctx, Keys.NewsletterConsentKey, newsletterConsent)
 	return r.WithContext(ctx)
