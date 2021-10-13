@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -36,7 +35,6 @@ type RelayFrontendSvc struct {
 	RetryCount int
 
 	cfg                         *RelayFrontendConfig
-	id                          uint64
 	store                       storage.MatrixStore
 	createdAt                   time.Time
 	currentMasterBackendAddress string
@@ -47,11 +45,9 @@ type RelayFrontendSvc struct {
 }
 
 func NewRelayFrontend(store storage.MatrixStore, cfg *RelayFrontendConfig) (*RelayFrontendSvc, error) {
-	rand.Seed(time.Now().UnixNano())
 	r := new(RelayFrontendSvc)
 	r.RetryCount = 0
 	r.cfg = cfg
-	r.id = rand.Uint64()
 	r.store = store
 	r.createdAt = time.Now().UTC()
 	r.costMatrix = new(helpers.MatrixData)
