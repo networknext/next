@@ -193,7 +193,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		Version 7
 
 		Includes DirectMaxRTT and DirectPrimeRTT stats from SDK 4.0.18.
-		DirectMinRTT was changed to DirectMinRTT.
+		DirectRTT was changed to DirectMinRTT.
 	*/
 	if entry.Version >= uint32(7) {
 		stream.SerializeInteger(&entry.DirectMaxRTT, 0, 1023)
