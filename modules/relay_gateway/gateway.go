@@ -8,11 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
-
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 )
 
 type GatewayConfig struct {
@@ -22,7 +20,6 @@ type GatewayConfig struct {
 	RelayBackendAddresses []string
 	HTTPTimeout           time.Duration
 	BatchSize             int
-	NumGoroutines         int
 
 	PublishToHosts        []string
 	PublisherSendBuffer   int
@@ -35,10 +32,9 @@ type GatewayHTTPClient struct {
 	updateChan     chan []byte
 	gatewayMetrics *metrics.RelayGatewayMetrics
 	client         *http.Client
-	logger         log.Logger
 }
 
-func NewGatewayHTTPClient(cfg *GatewayConfig, updateChan chan []byte, gatewayMetrics *metrics.RelayGatewayMetrics, logger log.Logger) (*GatewayHTTPClient, error) {
+func NewGatewayHTTPClient(cfg *GatewayConfig, updateChan chan []byte, gatewayMetrics *metrics.RelayGatewayMetrics) (*GatewayHTTPClient, error) {
 	// Create HTTP client to communicate with relay backends
 	client := &http.Client{Timeout: cfg.HTTPTimeout}
 
@@ -47,96 +43,89 @@ func NewGatewayHTTPClient(cfg *GatewayConfig, updateChan chan []byte, gatewayMet
 		updateChan:     updateChan,
 		gatewayMetrics: gatewayMetrics,
 		client:         client,
-		logger:         logger,
 	}, nil
 }
 
 // Starts goroutines for batch-sending relay update requests to the relay backends
+// NOTE: Start() should be called once to avoid race conditions with the internal buffer
 func (httpClient *GatewayHTTPClient) Start(ctx context.Context, wg *sync.WaitGroup) error {
-	// Create worker goroutines to pull updates from the update channel
-	for i := 0; i < httpClient.Cfg.NumGoroutines; i++ {
-		wg.Add(1)
+	defer wg.Done()
 
-		// Handle update requests
-		go func() {
-			defer wg.Done()
-			// Create buffers to store updates for batch-sending
-			var updateBufferMessageCount int
-			var updateBufferMutex sync.Mutex
-			updateBuffer := make([]byte, 0)
+	// Create buffers to store updates for batch-sending
+	var updateBufferMessageCount int
+	var updateBufferMutex sync.Mutex
+	updateBuffer := make([]byte, 0)
 
-			for {
-				select {
-				case <-ctx.Done():
-					// Flush all remaining updates to the relay backends
-					level.Debug(httpClient.logger).Log("msg", "received shutdown signal")
-					// Copy the buffer so we can clear it without affecting the worker goroutines
-					updateBufferMutex.Lock()
+	// Handle update requests
+	for {
+		select {
+		case <-ctx.Done():
+			// Flush all remaining updates to the relay backends
+			core.Debug("received shutdown signal")
 
-					bufferCopy := updateBuffer
-					updateBuffer = make([]byte, 0)
-					numUpdatesFlushed := updateBufferMessageCount
-					updateBufferMessageCount = 0
+			// Copy the buffer so we can clear it without affecting the worker goroutines
+			updateBufferMutex.Lock()
 
-					updateBufferMutex.Unlock()
+			bufferCopy := updateBuffer
+			updateBuffer = make([]byte, 0)
+			numUpdatesFlushed := updateBufferMessageCount
+			updateBufferMessageCount = 0
 
-					// Send the buffer to all relay backends
-					for _, address := range httpClient.Cfg.RelayBackendAddresses {
-						wg.Add(1)
-						go httpClient.PostRelayUpdate(bufferCopy, address, wg)
-					}
+			updateBufferMutex.Unlock()
 
-					// Set the number of relay update requests sent to the relay backends (not necessarily successful)
-					httpClient.gatewayMetrics.UpdatesFlushed.Add(float64(numUpdatesFlushed))
-					level.Info(httpClient.logger).Log("msg", fmt.Sprintf("Sent %d relay updates to the relay backends", numUpdatesFlushed))
-					level.Debug(httpClient.logger).Log("msg", "finished shutdown")
-					return
-				case update := <-httpClient.updateChan:
-					// Create a byte slice with an offset
-					var offset int
-					data := make([]byte, 4+len(update))
-					encoding.WriteUint32(data, &offset, uint32(len(update)))
-					encoding.WriteBytes(data, &offset, update, len(update))
-
-					// Chain the update to previous updates linked via offset
-					updateBufferMutex.Lock()
-					updateBuffer = append(updateBuffer, data...)
-					updateBufferMessageCount++
-					updateBufferMutex.Unlock()
-
-					// Increment the updates received metric
-					httpClient.gatewayMetrics.UpdatesReceived.Add(1)
-					// Set the number of updates queued for batch-sending
-					httpClient.gatewayMetrics.UpdatesQueued.Set(float64(updateBufferMessageCount))
-
-					// Check if we have reached the batch size
-					if updateBufferMessageCount >= httpClient.Cfg.BatchSize {
-						// Copy the buffer so we can clear it without affecting the worker goroutines
-						updateBufferMutex.Lock()
-
-						bufferCopy := updateBuffer
-						updateBuffer = make([]byte, 0)
-						numUpdatesFlushed := updateBufferMessageCount
-						updateBufferMessageCount = 0
-
-						updateBufferMutex.Unlock()
-
-						// Send the buffer to all relay backends
-						for _, address := range httpClient.Cfg.RelayBackendAddresses {
-							wg.Add(1)
-							go httpClient.PostRelayUpdate(bufferCopy, address, wg)
-						}
-
-						// Set the number of relay update requests sent to the relay backends (not necessarily successful)
-						httpClient.gatewayMetrics.UpdatesFlushed.Add(float64(numUpdatesFlushed))
-						level.Info(httpClient.logger).Log("msg", fmt.Sprintf("Sent %d relay updates to the relay backends", numUpdatesFlushed))
-					}
-				}
+			// Send the buffer to all relay backends
+			for _, address := range httpClient.Cfg.RelayBackendAddresses {
+				wg.Add(1)
+				go httpClient.PostRelayUpdate(bufferCopy, address, wg)
 			}
-		}()
-	}
 
-	return nil
+			// Set the number of relay update requests sent to the relay backends (not necessarily successful)
+			httpClient.gatewayMetrics.UpdatesFlushed.Add(float64(numUpdatesFlushed))
+			core.Debug("sent %d relay updates to the relay backends", numUpdatesFlushed)
+			core.Debug("finished shutdown")
+			return
+		case update := <-httpClient.updateChan:
+			// Create a byte slice with an offset
+			var offset int
+			data := make([]byte, 4+len(update))
+			encoding.WriteUint32(data, &offset, uint32(len(update)))
+			encoding.WriteBytes(data, &offset, update, len(update))
+
+			// Chain the update to previous updates linked via offset
+			updateBufferMutex.Lock()
+			updateBuffer = append(updateBuffer, data...)
+			updateBufferMessageCount++
+			updateBufferMutex.Unlock()
+
+			// Increment the updates received metric
+			httpClient.gatewayMetrics.UpdatesReceived.Add(1)
+			// Set the number of updates queued for batch-sending
+			httpClient.gatewayMetrics.UpdatesQueued.Set(float64(updateBufferMessageCount))
+
+			// Check if we have reached the batch size
+			if updateBufferMessageCount >= httpClient.Cfg.BatchSize {
+				// Copy the buffer so we can clear it without affecting the worker goroutines
+				updateBufferMutex.Lock()
+
+				bufferCopy := updateBuffer
+				updateBuffer = make([]byte, 0)
+				numUpdatesFlushed := updateBufferMessageCount
+				updateBufferMessageCount = 0
+
+				updateBufferMutex.Unlock()
+
+				// Send the buffer to all relay backends
+				for _, address := range httpClient.Cfg.RelayBackendAddresses {
+					wg.Add(1)
+					go httpClient.PostRelayUpdate(bufferCopy, address, wg)
+				}
+
+				// Set the number of relay update requests sent to the relay backends (not necessarily successful)
+				httpClient.gatewayMetrics.UpdatesFlushed.Add(float64(numUpdatesFlushed))
+				core.Debug("sent %d relay updates to the relay backends", numUpdatesFlushed)
+			}
+		}
+	}
 }
 
 func (httpClient *GatewayHTTPClient) PostRelayUpdate(bufferCopy []byte, address string, wg *sync.WaitGroup) {
@@ -148,12 +137,13 @@ func (httpClient *GatewayHTTPClient) PostRelayUpdate(bufferCopy []byte, address 
 	resp, err := httpClient.client.Post(fmt.Sprintf("http://%s/relay_update", address), "application/octet-stream", buffer)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		httpClient.gatewayMetrics.ErrorMetrics.BackendSendFailure.Add(1)
-		level.Error(httpClient.logger).Log("msg", fmt.Sprintf("unable to send update to relay backend %s, response was non-200", address), "err", err)
+		core.Error("unabled to send update to relay backend %s, response was non-200: %v", address, err)
 		return
 	} else if resp.StatusCode != http.StatusOK {
 		httpClient.gatewayMetrics.ErrorMetrics.BackendSendFailure.Add(1)
-		level.Error(httpClient.logger).Log("msg", fmt.Sprintf("unable to send update to relay backend %s, response was %d", address, resp.StatusCode), "err", err)
+		core.Error("unabled to send update to relay backend %s, response was %d: %v", address, resp.StatusCode, err)
 		return
 	}
+
 	resp.Body.Close()
 }

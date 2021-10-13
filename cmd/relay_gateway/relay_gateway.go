@@ -6,8 +6,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"io"
@@ -28,7 +28,6 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
 
-	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 )
 
@@ -40,13 +39,14 @@ var (
 
 	binCreator      string
 	binCreationTime string
-	env             string
 
 	relayArray_internal []routing.Relay
 	relayHash_internal  map[uint64]routing.Relay
 
 	relayArrayMutex sync.RWMutex
 	relayHashMutex  sync.RWMutex
+
+	startTime time.Time
 )
 
 func init() {
@@ -57,13 +57,13 @@ func init() {
 	filePath := envvar.Get("BIN_PATH", "./database.bin")
 	file, err := os.Open(filePath)
 	if err != nil {
-		fmt.Printf("could not load database binary: %s\n", filePath)
+		// fmt.Printf("could not load database binary: %s\n", filePath)
 		return
 	}
 	defer file.Close()
 
 	if err = backend.DecodeBinWrapper(file, database); err != nil {
-		fmt.Printf("DecodeBinWrapper() error: %v\n", err)
+		core.Error("failed to read database: %v", err)
 		os.Exit(1)
 	}
 
@@ -77,12 +77,12 @@ func init() {
 	binCreationTime = database.CreationTime
 }
 
-// Allows us to return an exit code and allows log flushes and deferred functions
-// to finish before exiting.
 func main() {
 	os.Exit(mainReturnWithCode())
 }
 
+// Allows us to return an exit code and allows log flushes and deferred functions
+// to finish before exiting.
 func mainReturnWithCode() int {
 	serviceName := "relay_gateway"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
@@ -97,39 +97,39 @@ func mainReturnWithCode() int {
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get logger: %v")
 		return 1
 	}
 
 	env, err := backend.GetEnv()
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get env: %v", err)
 		return 1
 	}
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			core.Error("failed to initialze StackDriver profiler: %v", err)
 			return 1
 		}
 	}
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get metrics handler: %v", err)
 		return 1
 	}
 
 	gatewayMetrics, err := metrics.NewRelayGatewayMetrics(ctx, metricsHandler, serviceName, "relay_gateway", "Relay Gateway", "relay update request")
 	if err != nil {
-		level.Error(logger).Log("msg", "could not create gateway metrics", "err", err)
+		core.Error("failed to create relay gateway metrics: %v", err)
 		return 1
 	}
 
 	// Get a config for how the Gateway should operate
 	cfg, err := newConfig()
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to create relay gateway config: %v", err)
 		return 1
 	}
 
@@ -139,13 +139,13 @@ func mainReturnWithCode() int {
 		databaseFilePath := envvar.Get("BIN_PATH", "./database.bin")
 		absPath, err := filepath.Abs(databaseFilePath)
 		if err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("error getting absolute path %s", databaseFilePath), "err", err)
+			core.Error("error getting absolute path %s: %v", databaseFilePath, err)
 			return 1
 		}
 
 		// Check if file exists
 		if _, err := os.Stat(absPath); err != nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("%s does not exist", absPath), "err", err)
+			core.Error("%s does not exist: %v", absPath, err)
 			return 1
 		}
 
@@ -157,14 +157,16 @@ func mainReturnWithCode() int {
 
 		// Setup goroutine to watch for replaced file and update relayArray_internal and relayHash_internal
 		go func() {
-			level.Debug(logger).Log("msg", fmt.Sprintf("started watchman on %s", directoryPath))
+			core.Debug("started watchman on %s", directoryPath)
 			for {
 				select {
+				case <-ctx.Done():
+					return
 				case <-ticker.C:
 					// File has changed
 					file, err := os.Open(absPath)
 					if err != nil {
-						level.Error(logger).Log("msg", fmt.Sprintf("could not load relay binary at %s", absPath), "err", err)
+						core.Error("could not load relay binary at %s: %v", absPath, err)
 						continue
 					}
 
@@ -177,11 +179,11 @@ func mainReturnWithCode() int {
 						// Sometimes we receive an EOF error since the file is still being replaced
 						// so early out here and proceed on the next notification
 						file.Close()
-						level.Debug(logger).Log("msg", "DecodeBinWrapper() EOF error, will wait for next notification")
+						core.Debug("DecodeBinWrapper() EOF error, will wait for next notification")
 						continue
 					} else if err != nil {
 						file.Close()
-						level.Error(logger).Log("msg", "DecodeBinWrapper() error", "err", err)
+						core.Error("DecodeBinWrapper() error: %v")
 						continue
 					}
 
@@ -191,7 +193,7 @@ func mainReturnWithCode() int {
 					if databaseNew.IsEmpty() {
 						// Don't want to use an empty bin wrapper
 						// so early out here and use existing array and hash
-						level.Debug(logger).Log("msg", "new bin wrapper is empty, keeping previous values")
+						core.Error("new database file is empty, keeping previous values")
 						continue
 					}
 
@@ -230,9 +232,9 @@ func mainReturnWithCode() int {
 	// Prioritize using HTTP to batch-send updates to relay backends
 	if cfg.UseHTTP {
 		// Create a Gateway HTTP Client
-		gatewayHTTPClient, err := gateway.NewGatewayHTTPClient(cfg, updateChan, gatewayMetrics, logger)
+		gatewayHTTPClient, err := gateway.NewGatewayHTTPClient(cfg, updateChan, gatewayMetrics)
 		if err != nil {
-			level.Error(logger).Log("msg", "could not create gateway http client", "err", err)
+			core.Error("could not create gateway http client: %v", err)
 			return 1
 		}
 
@@ -241,7 +243,7 @@ func mainReturnWithCode() int {
 
 	} else {
 		// TODO: implement ZeroMQ functionality
-		level.Error(logger).Log("err", "ZeroMQ is not yet supported")
+		core.Error("ZeroMQ is not yet supported")
 		return 1
 
 		// // Use ZeroMQ to publish updates to relay backend
@@ -295,8 +297,10 @@ func mainReturnWithCode() int {
 	}
 
 	// Setup the status handler info
-	var statusData []byte
+
+	statusData := &metrics.RelayGatewayStatus{}
 	var statusMutex sync.RWMutex
+
 	{
 		memoryUsed := func() float64 {
 			var m runtime.MemStats
@@ -309,27 +313,35 @@ func mainReturnWithCode() int {
 				gatewayMetrics.GatewayServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				gatewayMetrics.GatewayServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
-				statusDataString := fmt.Sprintf("%s\n", serviceName)
-				statusDataString += fmt.Sprintf("git hash %s\n", sha)
-				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
-				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
+				newStatusData := &metrics.RelayGatewayStatus{}
 
-				statusDataString += fmt.Sprintf("%d goroutines\n", int(gatewayMetrics.GatewayServiceMetrics.Goroutines.Value()))
-				statusDataString += fmt.Sprintf("%.2f mb allocated\n", gatewayMetrics.GatewayServiceMetrics.MemoryAllocated.Value())
-				statusDataString += fmt.Sprintf("%d update requests received\n", int(gatewayMetrics.UpdatesReceived.Value()))
-				statusDataString += fmt.Sprintf("%d update requests queued\n", int(gatewayMetrics.UpdatesQueued.Value()))
-				statusDataString += fmt.Sprintf("%d update requests flushed\n", int(gatewayMetrics.UpdatesFlushed.Value()))
-				statusDataString += fmt.Sprintf("%d update request read packet failures\n", int(gatewayMetrics.ErrorMetrics.ReadPacketFailure.Value()))
-				statusDataString += fmt.Sprintf("%d update request content type failures\n", int(gatewayMetrics.ErrorMetrics.ContentTypeFailure.Value()))
-				statusDataString += fmt.Sprintf("%d update request unmarshal failures\n", int(gatewayMetrics.ErrorMetrics.UnmarshalFailure.Value()))
-				statusDataString += fmt.Sprintf("%d update request exceed max relays errors\n", int(gatewayMetrics.ErrorMetrics.ExceedMaxRelays.Value()))
-				statusDataString += fmt.Sprintf("%d update request relay not found errors\n", int(gatewayMetrics.ErrorMetrics.RelayNotFound.Value()))
-				statusDataString += fmt.Sprintf("%d update response marshal binary failures\n", int(gatewayMetrics.ErrorMetrics.MarshalBinaryResponseFailure.Value()))
-				statusDataString += fmt.Sprintf("%d batch update request marshal binary failures\n", int(gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Value()))
-				statusDataString += fmt.Sprintf("%d batch update request backend send failures\n", int(gatewayMetrics.ErrorMetrics.BackendSendFailure.Value()))
+				// Service Information
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+
+				// Service Metrics
+				newStatusData.Goroutines = int(gatewayMetrics.GatewayServiceMetrics.Goroutines.Value())
+				newStatusData.MemoryAllocated = gatewayMetrics.GatewayServiceMetrics.MemoryAllocated.Value()
+
+				// Requests
+				newStatusData.UpdateRequestsReceived = int(gatewayMetrics.UpdatesReceived.Value())
+				newStatusData.UpdateRequestsQueued = int(gatewayMetrics.UpdatesQueued.Value())
+				newStatusData.UpdateRequestsFlushed = int(gatewayMetrics.UpdatesFlushed.Value())
+
+				// Errors
+				newStatusData.UpdateRequestReadPacketFailure = int(gatewayMetrics.ErrorMetrics.ReadPacketFailure.Value())
+				newStatusData.UpdateRequestContentTypeFailure = int(gatewayMetrics.ErrorMetrics.ContentTypeFailure.Value())
+				newStatusData.UpdateRequestUnmarshalFailure = int(gatewayMetrics.ErrorMetrics.UnmarshalFailure.Value())
+				newStatusData.UpdateRequestExceedMaxRelaysError = int(gatewayMetrics.ErrorMetrics.ExceedMaxRelays.Value())
+				newStatusData.UpdateRequestRelayNotFoundError = int(gatewayMetrics.ErrorMetrics.RelayNotFound.Value())
+				newStatusData.UpdateResponseMarshalBinaryFailure = int(gatewayMetrics.ErrorMetrics.MarshalBinaryResponseFailure.Value())
+				newStatusData.BatchUpdateRequestMarshalBinaryFailure = int(gatewayMetrics.ErrorMetrics.MarshalBinaryFailure.Value())
+				newStatusData.BatchUpdateRequestBackendSendFailure = int(gatewayMetrics.ErrorMetrics.BackendSendFailure.Value())
 
 				statusMutex.Lock()
-				statusData = []byte(statusDataString)
+				statusData = newStatusData
 				statusMutex.Unlock()
 
 				time.Sleep(time.Second * 10)
@@ -338,13 +350,13 @@ func mainReturnWithCode() int {
 	}
 
 	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
 		statusMutex.RLock()
 		data := statusData
 		statusMutex.RUnlock()
-		buffer := bytes.NewBuffer(data)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
@@ -370,18 +382,16 @@ func mainReturnWithCode() int {
 
 	enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("could not parse envvar FEATURE_ENABLE_PPROF: %v", err)
 	}
 	if enablePProf {
 		router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 	}
 
 	go func() {
-		level.Info(logger).Log("addr", ":"+port)
-
 		err := http.ListenAndServe(":"+port, router)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("error starting http server: %v", err)
 			errChan <- err
 		}
 	}()
@@ -392,14 +402,12 @@ func mainReturnWithCode() int {
 
 	select {
 	case <-termChan: // Exit with an error code of 0 if we receive SIGINT or SIGTERM
-		level.Debug(logger).Log("msg", "Received shutdown signal")
 		fmt.Println("Received shutdown signal.")
 
 		cancel()
 		// Wait for essential goroutines to finish up
 		wg.Wait()
 
-		level.Debug(logger).Log("msg", "Successfully shutdown.")
 		fmt.Println("Successfully shutdown.")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
@@ -426,7 +434,7 @@ func GetRelayData() ([]routing.Relay, map[uint64]routing.Relay) {
 func newConfig() (*gateway.GatewayConfig, error) {
 	cfg := new(gateway.GatewayConfig)
 	// Get the channel size
-	channelBufferSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_CHANNEL_BUFFER_SIZE", 100000)
+	channelBufferSize, err := envvar.GetInt("GATEWAY_CHANNEL_BUFFER_SIZE", 100000)
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +447,7 @@ func newConfig() (*gateway.GatewayConfig, error) {
 	cfg.BinSyncInterval = binSyncInterval
 
 	// Decide if we are using HTTP to batch-write to relay backends
-	useHTTP, err := envvar.GetBool("FEATURE_NEW_RELAY_BACKEND_HTTP", true)
+	useHTTP, err := envvar.GetBool("GATEWAY_USE_HTTP", true)
 	if err != nil {
 		return nil, err
 	}
@@ -448,10 +456,10 @@ func newConfig() (*gateway.GatewayConfig, error) {
 	// Load env vars depending on relay update delivery method
 	if useHTTP {
 		// Using HTTP, get the relay backend addresses to send relay updates to
-		if exists := envvar.Exists("FEATURE_NEW_RELAY_BACKEND_ADDRESSES"); !exists {
-			return nil, fmt.Errorf("FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
+		if exists := envvar.Exists("RELAY_BACKEND_ADDRESSES"); !exists {
+			return nil, fmt.Errorf("RELAY_BACKEND_ADDRESSES not set")
 		}
-		relayBackendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
+		relayBackendAddresses := envvar.GetList("RELAY_BACKEND_ADDRESSES", []string{})
 		cfg.RelayBackendAddresses = relayBackendAddresses
 
 		// Get the HTTP timeout duration
@@ -462,17 +470,11 @@ func newConfig() (*gateway.GatewayConfig, error) {
 		cfg.HTTPTimeout = httpTimeout
 
 		// Get the batch size threshold for sending updates to relay backends
-		batchSize, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_BATCH_SIZE", 10)
+		batchSize, err := envvar.GetInt("GATEWAY_BACKEND_BATCH_SIZE", 10)
 		if err != nil {
 			return nil, err
 		}
 		cfg.BatchSize = batchSize
-
-		numGoroutines, err := envvar.GetInt("FEATURE_NEW_RELAY_BACKEND_NUM_GOROUTINES", 1)
-		if err != nil {
-			return nil, err
-		}
-		cfg.NumGoroutines = numGoroutines
 	} else {
 		// Using ZeroMQ Pub/Sub, get the relay backend addresses that will receive messages
 		if exists := envvar.Exists("PUBLISH_TO_HOSTS"); !exists {
