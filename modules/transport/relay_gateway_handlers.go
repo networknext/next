@@ -1,19 +1,15 @@
 package transport
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
-
-	"github.com/networknext/backend/modules/core"
 )
 
 const (
@@ -48,7 +44,6 @@ func GatewayRelayInitHandlerFunc() func(writer http.ResponseWriter, request *htt
 }
 
 type GatewayRelayUpdateHandlerConfig struct {
-	Logger       log.Logger
 	RequestChan  chan []byte
 	Metrics      *metrics.RelayGatewayMetrics
 	GetRelayData func() ([]routing.Relay, map[uint64]routing.Relay)
@@ -79,8 +74,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			params.Metrics.ErrorMetrics.ReadPacketFailure.Add(1)
-			level.Error(params.Logger).Log("msg", "could not read packet", "err", err)
-			core.Debug("%s - error: relay update could not read request body: %v", request.RemoteAddr, err)
+			core.Error("%s - error: relay update could not read request body: %v", request.RemoteAddr, err)
 			writer.WriteHeader(http.StatusInternalServerError) // 500
 			return
 		}
@@ -89,8 +83,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		// Ensure the content type is valid
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
 			params.Metrics.ErrorMetrics.ContentTypeFailure.Add(1)
-			level.Error(params.Logger).Log("err", fmt.Sprintf("%s - error: relay update unsupported content type", request.RemoteAddr))
-			core.Debug("%s - error: relay update unsupported content type", request.RemoteAddr)
+			core.Error("%s - error: relay update unsupported content type", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -100,8 +93,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		err = relayUpdateRequest.UnmarshalBinary(body)
 		if err != nil {
 			params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
-			level.Error(params.Logger).Log("err", fmt.Sprintf("%s - error: relay update could not read request packet", request.RemoteAddr))
-			core.Debug("%s - error: relay update could not read request packet", request.RemoteAddr)
+			core.Error("%s - error: relay update could not read request packet", request.RemoteAddr)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -109,8 +101,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		// Check if the version number is valid
 		if relayUpdateRequest.Version > VersionNumberUpdateRequest {
 			params.Metrics.ErrorMetrics.InvalidVersion.Add(1)
-			level.Error(params.Logger).Log("err", fmt.Sprintf("%s - error: relay update version mismatch: %d > %d", request.RemoteAddr, relayUpdateRequest.Version, VersionNumberUpdateRequest))
-			core.Debug("%s - error: relay update version mismatch: %d > %d", request.RemoteAddr, relayUpdateRequest.Version, VersionNumberUpdateRequest)
+			core.Error("%s - error: relay update version mismatch: %d > %d", request.RemoteAddr, relayUpdateRequest.Version, VersionNumberUpdateRequest)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -118,8 +109,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		// Check if we have too many relays in the ping stats
 		if len(relayUpdateRequest.PingStats) > MaxRelays {
 			params.Metrics.ErrorMetrics.ExceedMaxRelays.Add(1)
-			level.Error(params.Logger).Log("err", fmt.Sprintf("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, len(relayUpdateRequest.PingStats), MaxRelays))
-			core.Debug("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, MaxRelays)
+			core.Error("%s - error: relay update too many relays in ping stats: %d > %d", request.RemoteAddr, relayUpdateRequest.PingStats, MaxRelays)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -132,8 +122,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		relay, ok := relayHash[id]
 		if !ok {
 			params.Metrics.ErrorMetrics.RelayNotFound.Add(1)
-			level.Error(params.Logger).Log("err", fmt.Sprintf("%s - error: could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id))
-			core.Debug("%s - error: could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id)
+			core.Error("%s - error: could not find relay: %s [%x]", request.RemoteAddr, relayUpdateRequest.Address.String(), id)
 			writer.WriteHeader(http.StatusNotFound) // 404
 			return
 		}
@@ -141,7 +130,6 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 
 		// Request is valid, insert the body into the channel
 		params.RequestChan <- body
-		level.Debug(params.Logger).Log("msg", fmt.Sprintf("inserted relay update %s body into channel", request.RemoteAddr))
 
 		// Get relays to ping
 		relaysToPing := make([]routing.RelayPingData, 0)
@@ -178,8 +166,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 		responseData, err = response.MarshalBinary()
 		if err != nil {
 			params.Metrics.ErrorMetrics.MarshalBinaryResponseFailure.Add(1)
-			level.Error(params.Logger).Log("err", fmt.Sprintf("%s - error: failed to write relay update response: %v", request.RemoteAddr, err))
-			core.Debug("%s - error: failed to write relay update response: %v", request.RemoteAddr, err)
+			core.Error("%s - error: failed to write relay update response: %v", request.RemoteAddr, err)
 			writer.WriteHeader(http.StatusInternalServerError) // 500
 			return
 		}
