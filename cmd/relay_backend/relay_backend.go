@@ -84,13 +84,6 @@ func init() {
 
 	binCreator = database_internal.Creator
 	binCreationTime = database_internal.CreationTime
-
-	est, _ := time.LoadLocation("EST")
-	startTime = time.Now().In(est)
-}
-
-func uptime() time.Duration {
-	return time.Since(startTime)
 }
 
 // Allows us to return an exit code and allows log flushes and deferred functions
@@ -100,46 +93,47 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-
 	serviceName := "relay_backend"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
-	fmt.Printf("\n%s\n\n", serviceName)
+	est, _ := time.LoadLocation("EST")
+	startTime = time.Now().In(est)
 
 	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
 	if err != nil {
-		fmt.Println("Failed to get debug status")
+		core.Error("Failed to get debug status")
 		isDebug = false
 	}
 
 	if isDebug {
-		fmt.Println("Instance is running as a debug instance")
+		core.Debug("Instance is running as a debug instance")
 	}
 
-	ctx := context.Background()
+	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
 	gcpProjectID := backend.GetGCPProjectID()
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get logger: %v", err)
 		return 1
 	}
 
 	env, err := backend.GetEnv()
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get env: %v", err)
 		return 1
 	}
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get metrics handler: %v", err)
 		return 1
 	}
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			core.Error("failed to initialze StackDriver profiler: %v", err)
 			return 1
 		}
 	}
