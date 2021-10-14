@@ -96,7 +96,7 @@ func mainReturnWithCode() int {
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
-		core.Error("failed to get logger: %v")
+		core.Error("failed to get logger: %v", err)
 		return 1
 	}
 
