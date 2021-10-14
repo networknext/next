@@ -345,9 +345,9 @@ func mainReturnWithCode() int {
 	var backendLiveData storage.RelayBackendLiveData
 	{
 		// Determine which relay backend address this instance is
-		backendAddresses := envvar.GetList("FEATURE_NEW_RELAY_BACKEND_ADDRESSES", []string{})
+		backendAddresses := envvar.GetList("RELAY_BACKEND_ADDRESSES", []string{})
 		if len(backendAddresses) == 0 {
-			level.Error(logger).Log("err", "FEATURE_NEW_RELAY_BACKEND_ADDRESSES not set")
+			level.Error(logger).Log("err", "RELAY_BACKEND_ADDRESSES not set")
 			return 1
 		}
 		foundAddress, backendAddress, err := getBackendAddress(backendAddresses, env)
