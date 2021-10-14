@@ -4,6 +4,34 @@ import (
 	"context"
 )
 
+// RelayBackendStatus defines the metrics reported by the service's status endpoint
+type RelayBackendStatus struct {
+	// Service Information
+	ServiceName string `json:"service_name"`
+	GitHash     string `json:"git_hash"`
+	Started     string `json:"started"`
+	Uptime      string `json:"uptime"`
+
+	// Service Metrics
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+
+	// Relay Information
+	DatacenterCount int `json:"datacenter_count"`
+	RelayCount      int `json:"relay_count"`
+	RouteCount      int `json:"route_count"`
+
+	// Durations
+	LongCostMatrixUpdates  int     `json:"long_cost_matrix_updates"`
+	LongRouteMatrixUpdates int     `json:"long_route_matrix_updates"`
+	CostMatrixUpdateMs     float64 `json:"cost_matrix_update_ms"`
+	RouteMatrixUpdateMs    float64 `json:"route_matrix_update_ms"`
+
+	// Size
+	CostMatrixBytes  int `json:"cost_matrix_bytes"`
+	RouteMatrixBytes int `json:"route_matrix_bytes"`
+}
+
 type RelayInitMetrics struct {
 	Invocations   Counter
 	DurationGauge Gauge

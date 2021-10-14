@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"io"
@@ -429,7 +430,6 @@ func mainReturnWithCode() int {
 	var costMatrixData []byte
 	var routeMatrixData []byte
 	var relaysData []byte
-	var statusData []byte
 	var destRelaysData []byte
 
 	costMatrix := &routing.CostMatrix{}
@@ -438,7 +438,6 @@ func mainReturnWithCode() int {
 	var costMatrixMutex sync.RWMutex
 	var routeMatrixMutex sync.RWMutex
 	var relaysMutex sync.RWMutex
-	var statusMutex sync.RWMutex
 	var destRelaysMutex sync.RWMutex
 
 	_ = costMatrix
@@ -807,36 +806,6 @@ func mainReturnWithCode() int {
 				}
 				relayBackendMetrics.RouteMatrix.RouteCount.Set(float64(numRoutes))
 
-				memoryUsed := func() float64 {
-					var m runtime.MemStats
-					runtime.ReadMemStats(&m)
-					return float64(m.Alloc) / (1000.0 * 1000.0)
-				}
-
-				relayBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-
-				relayBackendMetrics.MemoryAllocated.Set(memoryUsed())
-
-				statusDataString := fmt.Sprintf("relay backend\n")
-				statusDataString += fmt.Sprintf("git hash %s\n", sha)
-				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
-				statusDataString += fmt.Sprintf("uptime %s\n", uptime())
-				statusDataString += fmt.Sprintf("%.2f mb allocated\n", relayBackendMetrics.MemoryAllocated.Value())
-				statusDataString += fmt.Sprintf("%d goroutines\n", int(relayBackendMetrics.Goroutines.Value()))
-				statusDataString += fmt.Sprintf("%d datacenters\n", int(relayBackendMetrics.RouteMatrix.DatacenterCount.Value()))
-				statusDataString += fmt.Sprintf("%d relays\n", int(relayBackendMetrics.RouteMatrix.RelayCount.Value()))
-				statusDataString += fmt.Sprintf("%d routes\n", int(relayBackendMetrics.RouteMatrix.RouteCount.Value()))
-				statusDataString += fmt.Sprintf("%d long cost matrix updates\n", int(costMatrixMetrics.LongUpdateCount.Value()))
-				statusDataString += fmt.Sprintf("%d long route matrix updates\n", int(optimizeMetrics.LongUpdateCount.Value()))
-				statusDataString += fmt.Sprintf("cost matrix update: %.2f milliseconds\n", costMatrixMetrics.DurationGauge.Value())
-				statusDataString += fmt.Sprintf("route matrix update: %.2f milliseconds\n", optimizeMetrics.DurationGauge.Value())
-				statusDataString += fmt.Sprintf("cost matrix bytes: %d\n", int(costMatrixMetrics.Bytes.Value()))
-				statusDataString += fmt.Sprintf("route matrix bytes: %d\n", int(relayBackendMetrics.RouteMatrix.Bytes.Value()))
-
-				statusMutex.Lock()
-				statusData = []byte(statusDataString)
-				statusMutex.Unlock()
-
 				// Update redis with last update time
 				// Debug instance should not store this data in redis
 				if !isDebug {
@@ -873,6 +842,59 @@ func mainReturnWithCode() int {
 		}
 	}()
 
+	// Setup the status handler info
+
+	statusData := &metrics.RelayBackendStatus{}
+	var statusMutex sync.RWMutex
+
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				relayBackendMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				relayBackendMetrics.MemoryAllocated.Set(memoryUsed())
+
+				newStatusData := &metrics.RelayBackendStatus{}
+
+				// Service Information
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+
+				// Service Metrics
+				newStatusData.Goroutines = int(relayBackendMetrics.Goroutines.Value())
+				newStatusData.MemoryAllocated = relayBackendMetrics.MemoryAllocated.Value()
+
+				// Relay Information
+				newStatusData.DatacenterCount = int(relayBackendMetrics.RouteMatrix.DatacenterCount.Value())
+				newStatusData.RelayCount = int(relayBackendMetrics.RouteMatrix.RelayCount.Value())
+				newStatusData.RouteCount = int(relayBackendMetrics.RouteMatrix.RouteCount.Value())
+
+				// Durations
+				newStatusData.LongCostMatrixUpdates = int(costMatrixMetrics.LongUpdateCount.Value())
+				newStatusData.LongRouteMatrixUpdates = int(optimizeMetrics.LongUpdateCount.Value())
+				newStatusData.CostMatrixUpdateMs = costMatrixMetrics.DurationGauge.Value()
+				newStatusData.RouteMatrixUpdateMs = optimizeMetrics.DurationGauge.Value()
+
+				// Size
+				newStatusData.CostMatrixBytes = int(costMatrixMetrics.Bytes.Value())
+				newStatusData.RouteMatrixBytes = int(relayBackendMetrics.RouteMatrix.Bytes.Value())
+
+				statusMutex.Lock()
+				statusData = newStatusData
+				statusMutex.Unlock()
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
+
 	commonUpdateParams := transport.RelayUpdateHandlerConfig{
 		RelayMap:     relayMap,
 		StatsDB:      statsdb,
@@ -905,13 +927,13 @@ func mainReturnWithCode() int {
 	}
 
 	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
 		statusMutex.RLock()
 		data := statusData
 		statusMutex.RUnlock()
-		buffer := bytes.NewBuffer(data)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
