@@ -7,11 +7,13 @@ import Analytics from '@/components/Analytics.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
 import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
+import LoginModal from '@/components/LoginModal.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
 import Notifications from '@/components/Notifications.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
+import GetAccessModal from '@/components/GetAccessModal.vue'
 import UserManagement from '@/components/UserManagement.vue'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 import RouteShader from '@/components/RouteShader.vue'
@@ -25,6 +27,11 @@ Vue.use(VueRouter)
 
 // All navigable routes for the Portal
 const routes: Array<RouteConfig> = [
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginModal
+  },
   {
     path: '/map',
     name: 'map',
@@ -46,6 +53,11 @@ const routes: Array<RouteConfig> = [
         component: SessionDetails
       }
     ]
+  },
+  {
+    path: '/get-access',
+    name: 'get-access',
+    component: GetAccessModal
   },
   {
     path: '/user-tool',
@@ -90,10 +102,6 @@ const routes: Array<RouteConfig> = [
         component: RouteShader
       }
     ]
-  },
-  {
-    path: '/get-access',
-    name: 'get-access'
   },
   {
     path: '/explore',

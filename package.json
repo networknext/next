@@ -19,6 +19,8 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.29",
     "@fortawesome/free-solid-svg-icons": "^5.13.1",
     "@fortawesome/vue-fontawesome": "^0.1.10",
+    "@types/auth0-js": "^9.14.5",
+    "auth0-js": "^9.16.4",
     "bootstrap": "^4.5.0",
     "core-js": "^3.6.5",
     "jquery": "^3.5.1",

@@ -46,9 +46,10 @@ declare module '*.vue' {
   }
 
   export interface VueAuthService {
+    login (username: string, password: string): Promise<any>;
     logout (): void;
-    login (): void;
     signUp (): void;
+    getAccess(email: string, password: string): void;
     refreshToken (): Promise<any>;
   }
 

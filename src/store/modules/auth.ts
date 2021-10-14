@@ -1,6 +1,8 @@
 import { UserProfile } from '@/components/types/AuthTypes'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { DateFilterType, Filter } from '@/components/types/FilterTypes'
-import { cloneDeep } from 'lodash'
+import { Auth0DecodedHash } from 'auth0-js'
+import { clone, cloneDeep } from 'lodash'
 import Vue from 'vue'
 
 /**
@@ -11,29 +13,32 @@ import Vue from 'vue'
  * TODO: Namespace these
  */
 
-const defaultProfile: UserProfile = {
-  auth0ID: '',
-  companyCode: '',
-  companyName: '',
-  buyerID: '',
-  seller: false,
-  domains: [],
-  firstName: '',
-  lastName: '',
-  email: '',
-  idToken: '',
-  verified: false,
-  routeShader: null,
-  pubKey: '',
-  newsletterConsent: false,
-  roles: [],
-  hasAnalytics: false,
-  hasBilling: false,
-  hasTrial: false
+function newDefaultProfile (): UserProfile {
+  const defaultProfile: UserProfile = {
+    auth0ID: '',
+    avatar: '',
+    companyCode: '',
+    companyName: '',
+    buyerID: '',
+    seller: false,
+    domains: [],
+    firstName: '',
+    lastName: '',
+    email: '',
+    idToken: '',
+    verified: false,
+    routeShader: null,
+    pubKey: '',
+    newsletterConsent: false,
+    roles: [],
+    hasAnalytics: false,
+    hasBilling: false,
+    hasTrial: false
+  }
+  return defaultProfile
 }
-
 const state = {
-  userProfile: defaultProfile,
+  userProfile: newDefaultProfile(),
   allBuyers: []
 }
 
@@ -55,11 +60,27 @@ const getters = {
 }
 
 const actions = {
-  processAuthChange ({ dispatch, getters }: any) {
-    if (getters.isAnonymous) {
+  processAuthChange ({ dispatch, getters }: any, authResult: Auth0DecodedHash) {
+    const token = authResult.idToken || ''
+    if (token === '') {
       return
     }
+
     const userProfile = cloneDeep(state.userProfile)
+    const idTokenPayload = authResult.idTokenPayload
+    const nnScope = idTokenPayload['https://networknext.com/userData'] || {}
+    const roles: Array<any> = nnScope.roles || { roles: [] }
+    const companyCode: string = nnScope.company_code || nnScope.customer_code || ''
+    const newsletterConsent: boolean = nnScope.newsletter || false
+
+    userProfile.roles = roles
+    userProfile.idToken = token
+    userProfile.auth0ID = idTokenPayload.sub
+    userProfile.companyCode = companyCode
+    userProfile.newsletterConsent = newsletterConsent
+
+    dispatch('updateUserProfile', userProfile)
+
     let promises = []
     if (getters.registeredToCompany) {
       promises = [
@@ -76,6 +97,7 @@ const actions = {
     return Promise.all(promises)
       .then((responses: any) => {
         let allBuyers = []
+        const userProfile = cloneDeep(state.userProfile)
         if (getters.registeredToCompany) {
           allBuyers = responses[2].buyers
           userProfile.pubKey = responses[1].game_config.public_key
@@ -83,16 +105,36 @@ const actions = {
           allBuyers = responses[1].buyers
         }
 
-        userProfile.buyerID = responses[0].account.id || responses[0].account.buyer_id || '' // TODO: remove the ".id" case after deploy
-        userProfile.seller = responses[0].account.seller || false
-        userProfile.firstName = responses[0].account.first_name || ''
-        userProfile.lastName = responses[0].account.last_name || ''
-        userProfile.companyName = responses[0].account.company_name || ''
-        userProfile.hasAnalytics = responses[0].account.analytics || false
-        userProfile.hasBilling = responses[0].account.billing || false
-        userProfile.hasTrial = responses[0].account.trial || true
+        const userInformation = responses[0].account
+
+        userProfile.email = userInformation.email || ''
+        userProfile.verified = userInformation.verified || false
+        userProfile.avatar = userInformation.avatar || ''
+
+        userProfile.buyerID = userInformation.id || userInformation.buyer_id || '' // TODO: remove the ".id" case after deploy
+        userProfile.seller = userInformation.seller || false
+        userProfile.firstName = userInformation.first_name || ''
+        userProfile.lastName = userInformation.last_name || ''
+        userProfile.companyName = userInformation.company_name || ''
+        userProfile.hasAnalytics = userInformation.analytics || false
+        userProfile.hasBilling = userInformation.billing || false
+        userProfile.hasTrial = userInformation.trial || true
         userProfile.domains = responses[0].domains || []
+
         dispatch('updateUserProfile', userProfile)
+
+        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+          (window as any).Intercom('boot', {
+            api_base: process.env.VUE_APP_INTERCOM_BASE_API,
+            app_id: process.env.VUE_APP_INTERCOM_ID,
+            email: userProfile.email,
+            user_id: userProfile.auth0ID,
+            avatar: userProfile.avatar,
+            unsubscribed_from_emails: newsletterConsent,
+            company: companyCode
+          })
+        }
+
         dispatch('updateAllBuyers', allBuyers)
         const defaultFilter: Filter = {
           companyCode: (userProfile.buyerID === '' || getters.isAdmin) ? '' : userProfile.companyCode,

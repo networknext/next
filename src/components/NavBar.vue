@@ -99,7 +99,7 @@
       </ul>
       <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
-          <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">Log in</a>
+          <router-link to="login" data-test="loginButton" class="login btn-sm btn-primary">Log in</router-link>
         </li>
       </ul>
       <ul class="navbar-nav px-3" v-if="$flagService.isEnabled(FeatureEnum.FEATURE_IMPERSONATION) && $store.getters.isAdmin">
@@ -117,13 +117,7 @@
       </ul>
       <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap" data-tour="signUpButton">
-          <a
-            data-test="signUpButton"
-            data-intercom="signUpButton"
-            class="signup btn-sm btn-primary"
-            href="#"
-            @click="signUp()"
-          >Get Access</a>
+          <router-link to="get-access" data-test="signUpButton" class="signup btn-sm btn-primary">Get Access</router-link>
         </li>
       </ul>
       <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
@@ -262,22 +256,8 @@ export default class NavBar extends Vue {
     )
   }
 
-  private login (): void {
-    this.$authService.login()
-  }
-
   private logout (): void {
     this.$authService.logout()
-  }
-
-  private signUp (): void {
-    if (process.env.VUE_APP_MODE === 'prod') {
-      this.$gtag.event('clicked sign up', {
-        event_category: 'Account Creation',
-        event_label: 'Sign up'
-      })
-    }
-    this.$authService.signUp()
   }
 
   private impersonate (companyCode: string): void {

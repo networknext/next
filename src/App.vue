@@ -1,6 +1,6 @@
 <template>
-  <div id="app">
-    <nav-bar></nav-bar>
+  <div id="app" :style="{ login: $store.getters.currentPage !== 'login' }">
+    <nav-bar v-if="$store.getters.currentPage !== 'login' && $store.getters.currentPage !== 'get-access'"></nav-bar>
     <workspace></workspace>
   </div>
 </template>
@@ -9,6 +9,7 @@
 import Vue from 'vue'
 
 import {
+  faArrowLeft,
   faBell,
   faCheck,
   faChevronDown,
@@ -41,6 +42,7 @@ import Workspace from '@/workspaces/Workspace.vue'
  */
 
 const ICONS = [
+  faArrowLeft,
   faBell,
   faCheck,
   faChevronDown,
@@ -200,5 +202,9 @@ export default Vue.extend({})
   .sidebar-heading {
     font-size: 0.75rem;
     text-transform: uppercase;
+  }
+
+  .login {
+    background-color: black;
   }
 </style>
