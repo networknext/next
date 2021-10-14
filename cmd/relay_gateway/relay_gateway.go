@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
 	gateway "github.com/networknext/backend/modules/relay_gateway"
@@ -362,7 +363,6 @@ func mainReturnWithCode() int {
 	}
 
 	updateParams := transport.GatewayRelayUpdateHandlerConfig{
-		Logger:       logger,
 		RequestChan:  updateChan,
 		Metrics:      gatewayMetrics,
 		GetRelayData: GetRelayData,

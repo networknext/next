@@ -48,7 +48,7 @@ func NewGatewayHTTPClient(cfg *GatewayConfig, updateChan chan []byte, gatewayMet
 
 // Starts goroutines for batch-sending relay update requests to the relay backends
 // NOTE: Start() should be called once to avoid race conditions with the internal buffer
-func (httpClient *GatewayHTTPClient) Start(ctx context.Context, wg *sync.WaitGroup) error {
+func (httpClient *GatewayHTTPClient) Start(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	// Create buffers to store updates for batch-sending
