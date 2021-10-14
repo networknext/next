@@ -46,8 +46,6 @@ var (
 
 	relayArrayMutex sync.RWMutex
 	relayHashMutex  sync.RWMutex
-
-	startTime time.Time
 )
 
 func init() {
