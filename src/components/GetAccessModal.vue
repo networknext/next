@@ -6,8 +6,12 @@
           <div class="card-body">
             <font-awesome-icon
               icon="arrow-left"
-              class="fa-w-16 fa-fw"
+              class="fa-w-16 fa-fw back-btn"
+              data-toggle="tooltip"
+              data-placement="bottom"
+              title="Back"
               v-if="!stepOne"
+              @click="switchSteps(true)"
             />
             <div class="card-title">
               <div class="row">
@@ -21,89 +25,121 @@
                 <div class="col"></div>
               </div>
             </div>
-            <div v-if="stepOne" class="form-group">
-              <p style="text-align: center;">
-                Please enter your email and create a secure password to get access to the SDK, documentation and to set up a company account.
-              </p>
-              <input
-                type="text"
-                class="form-control"
-                id="email-input"
-                placeholder="Email"
-              />
-              <small v-for="(error, index) in emailErrors" :key="index" class="text-danger">
-                {{ error }}
-                <br/>
-              </small>
-              <br />
-              <input
-                type="password"
-                class="form-control"
-                id="password-input"
-                placeholder="Password"
-              />
-              <small v-for="(error, index) in passwordErrors" :key="index" class="text-danger">
-                {{ error }}
-                <br/>
-              </small>
-              <br />
-              <input
-                type="password"
-                class="form-control"
-                id="passwprd-input"
-                placeholder="Confirm Password"
-              />
-              <small v-for="(error, index) in confirmPasswordErrors" :key="index" class="text-danger">
-                {{ error }}
-                <br/>
-              </small>
-            </div>
-            <div v-if="!stepOne" class="form-group">
-              <p style="text-align: center;">
-                Please enter a company name and website so that our team can learn more about your company to help make your on boarding experience smoother.
-              </p>
-              <input
-                type="text"
-                class="form-control"
-                id="first-name-input"
-                placeholder="First Name"
-              />
-              <small v-for="(error, index) in firstNameErrors" :key="index" class="text-danger">
-                {{ error }}
-                <br/>
-              </small>
-              <br />
-              <input
-                type="text"
-                class="form-control"
-                id="last-name-input"
-                placeholder="Last Name"
-              />
-              <small v-for="(error, index) in lastNameErrors" :key="index" class="text-danger">
-                {{ error }}
-                <br/>
-              </small>
-              <br />
-              <input
-                type="text"
-                class="form-control"
-                id="company-name-input"
-                placeholder="Company Name"
-              />
-              <br />
-              <input
-                type="text"
-                class="form-control"
-                id="company-website-input"
-                placeholder="Company Website"
-              />
-            </div>
-            <button v-if="stepOne" class="btn btn-primary btn-block" @click="switchSteps(false)" :disabled="!validForm">
-              Continue
-            </button>
-            <button v-if="!stepOne" class="btn btn-primary btn-block" @click="getAccess()">
-              Get Access
-            </button>
+            <form @submit.prevent="stepOne ? switchSteps(false) : getAccess()">
+              <div v-if="stepOne" class="form-group">
+                <p style="text-align: center;">
+                  Please enter your email and create a secure password to get access to the SDK, documentation and to set up a company account.
+                </p>
+                <input
+                  type="email"
+                  class="form-control"
+                  id="email-input"
+                  placeholder="Email"
+                  autocomplete="off"
+                  v-model="email"
+                />
+                <small class="text-danger" v-if="!validEmail">
+                  Please enter a valid email address
+                  <br/>
+                </small>
+                <br />
+                <input
+                  type="password"
+                  class="form-control"
+                  id="password-input"
+                  placeholder="Password"
+                  autocomplete="off"
+                  v-model="password"
+                />
+                <small class="text-danger" v-if="!validPassword">
+                  Please enter a valid password
+                  <br/>
+                </small>
+                <br v-if="password.length > 0"/>
+                <div v-if="password.length > 0" class="password-checker">
+                  <div>
+                    <span>Your password must contain:</span>
+                  </div>
+                  <ul style="padding-left: inherit;">
+                    <li>
+                      At least 8 characters <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': password.length >= 8 ? 'green' : 'red', 'width': '2rem'}"/>
+                    </li>
+                    <li>
+                      At least 3 of the following:
+                    </li>
+                    <ul>
+                      <li>
+                        Lower case letters (a-z) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasLowerCase ? 'green' : 'red', 'width': '2rem'}"/>
+                      </li>
+                      <li>
+                        Upper case letters (A-Z) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasUpperCase ? 'green' : 'red', 'width': '2rem'}"/>
+                      </li>
+                      <li>
+                        Numbers (0-9) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasNumbers ? 'green' : 'red', 'width': '2rem'}"/>
+                      </li>
+                      <li>
+                        Special characters (ex. !@#$%^&*) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasCharacters ? 'green' : 'red', 'width': '2rem'}"/>
+                      </li>
+                    </ul>
+                  </ul>
+                </div>
+              </div>
+              <div v-if="!stepOne" class="form-group">
+                <p style="text-align: center;">
+                  Please enter a company name and website so that our team can learn more about your company to help make your on boarding experience smoother.
+                </p>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="first-name-input"
+                  placeholder="First Name"
+                  autocomplete="off"
+                  v-model="firstName"
+                />
+                <small class="text-danger" v-if="!validFirstName">
+                  Please enter your first name
+                </small>
+                <br />
+                <input
+                  type="text"
+                  class="form-control"
+                  id="last-name-input"
+                  placeholder="Last Name"
+                  autocomplete="off"
+                  v-model="lastName"
+                />
+                <small class="text-danger" v-if="!validLastName">
+                  Please enter your last name
+                </small>
+                <br />
+                <input
+                  type="text"
+                  class="form-control"
+                  id="company-name-input"
+                  placeholder="Company Name"
+                  autocomplete="off"
+                  v-model="companyName"
+                />
+                <small class="text-danger" v-if="!validCompanyName">
+                  Please enter your company's name
+                </small>
+                <br />
+                <input
+                  type="text"
+                  class="form-control"
+                  id="company-website-input"
+                  placeholder="Company Website"
+                  autocomplete="off"
+                  v-model="companyWebsite"
+                />
+                <small class="text-danger" v-if="!validWebsite">
+                  Please enter your company's website
+                </small>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">
+                {{ stepOne ? 'Continue' : 'Get Access' }}
+              </button>
+            </form>
             <div style="padding: 1rem 0 1rem 0;">Already have an account? <router-link to="login"><strong>Log in</strong></router-link></div>
           </div>
         </div>
@@ -121,45 +157,55 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class GetAccessModal extends Vue {
-  get validForm () {
-    this.checkPasswords()
-    this.checkNames()
-    this.checkEmail()
-
-    return (
-      this.confirmPasswordErrors.length +
-      this.emailErrors.length +
-      this.firstNameErrors.length +
-      this.lastNameErrors.length +
-      this.passwordErrors.length
-    ) === 0
+  get hasCharacters () {
+    const regex = new RegExp(/([#$%&'*+/=?^_`{|}~-])/)
+    return regex.test(this.password)
   }
 
-  private confirmPassword: string
-  private confirmPasswordErrors: Array<string>
+  get hasLowerCase () {
+    const regex = new RegExp(/([a-z])/)
+    return regex.test(this.password)
+  }
+
+  get hasNumbers () {
+    const regex = new RegExp(/([0-9])/)
+    return regex.test(this.password)
+  }
+
+  get hasUpperCase () {
+    const regex = new RegExp(/([A-Z])/)
+    return regex.test(this.password)
+  }
+
+  private companyName: string
+  private companyWebsite: string
   private email: string
-  private emailErrors: Array<string>
   private firstName: string
-  private firstNameErrors: Array<string>
   private lastName: string
-  private lastNameErrors: Array<string>
   private password: string
-  private passwordErrors: Array<string>
   private stepOne: boolean
+  private validCompanyName: boolean
+  private validEmail: boolean
+  private validFirstName: boolean
+  private validLastName: boolean
+  private validPassword: boolean
+  private validWebsite: boolean
 
   constructor () {
     super()
-    this.confirmPassword = ''
-    this.confirmPasswordErrors = []
+    this.companyName = ''
+    this.companyWebsite = ''
     this.email = ''
-    this.emailErrors = []
     this.firstName = ''
-    this.firstNameErrors = []
     this.lastName = ''
-    this.lastNameErrors = []
     this.password = ''
-    this.passwordErrors = []
     this.stepOne = true
+    this.validCompanyName = false
+    this.validEmail = false
+    this.validFirstName = false
+    this.validLastName = false
+    this.validPassword = false
+    this.validWebsite = false
   }
 
   // This function is only necessary as a helper for the WIX sign up system
@@ -168,27 +214,69 @@ export default class GetAccessModal extends Vue {
     if (typeof email === 'string') { // TODO: see if there is a way around this. Typescript doesn't like the (string | null)[] secondary type definition...
       this.email = email
     }
+    // TODO: Find a better way of doing this
+    this.checkCompanyName(false)
+    this.checkEmail(false)
+    this.checkFirstName(false)
+    this.checkLastName(false)
+    this.checkPassword(false)
+    this.checkWebsite(false)
   }
 
-  private checkPasswords () {
-    console.log('Checking passwords')
+  private checkCompanyName (checkLength: boolean) {
+    this.validCompanyName = !checkLength || this.companyName !== ''
   }
 
-  private checkNames () {
-    console.log('Checking names')
+  private checkEmail (checkLength: boolean) {
+    const regex = new RegExp(/(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/)
+    this.validEmail = !checkLength || (this.email.length > 0 && regex.test(this.email))
   }
 
-  private checkEmail () {
-    if (this.email === '') {
-      this.emailErrors.push('Please enter a valid email address')
-    }
+  private checkFirstName (checkLength: boolean) {
+    this.validFirstName = !checkLength || this.firstName !== ''
+  }
+
+  private checkLastName (checkLength: boolean) {
+    this.validLastName = !checkLength || this.lastName !== ''
+  }
+
+  private checkPassword (checkLength: boolean) {
+    const regex = new RegExp(/([A-Za-z0-9!#$%&'*+/=?^_`{|}~-]){3,}/)
+    this.validPassword = !checkLength || (this.password.length >= 8 && regex.test(this.password))
+  }
+
+  private checkWebsite (checkLength: boolean) {
+    this.validWebsite = !checkLength || this.companyWebsite !== ''
   }
 
   private getAccess (): void {
-    this.$authService.getAccess(this.email, this.password)
+    // TODO: Find a better way of doing this
+    this.checkCompanyName(true)
+    this.checkFirstName(true)
+    this.checkLastName(true)
+    this.checkWebsite(true)
+    if (!this.validCompanyName || !this.validFirstName || !this.validLastName || !this.validWebsite) {
+      return
+    }
+    this.$authService.getAccess(
+      this.firstName,
+      this.lastName,
+      this.email,
+      this.password,
+      this.companyName,
+      this.companyWebsite
+    )
   }
 
   private switchSteps (isFirstStep: boolean) {
+    // TODO: Find a better way of doing this
+    if (!isFirstStep) {
+      this.checkEmail(true)
+      this.checkPassword(true)
+      if (!this.validEmail || !this.validPassword) {
+        return
+      }
+    }
     this.stepOne = isFirstStep
   }
 }
@@ -196,12 +284,28 @@ export default class GetAccessModal extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  .back-btn {
+    margin-bottom: 1rem;
+    margin-left: -0.75rem;
+    margin-top: -0.5rem;
+    cursor: pointer;
+    font-size: 24px;
+  }
   .logo-sizing {
     width: 320px;
     height: 37px;
   }
   .header {
     padding-top: 1rem;
+  }
+  .password-checker {
+    width: 100%;
+    height: 200px;
+    border-color: #ced4da;
+    border-radius: .25rem;
+    border-width: 1px;
+    border-style: solid;
+    padding: 14px 16px;
   }
   .modal-mask {
     position: fixed;
@@ -221,8 +325,8 @@ export default class GetAccessModal extends Vue {
 
   .modal-container {
     max-width: 400px;
-    max-height: 600px;
-    margin: 0px auto;
+    max-height: 800px;
+    margin: 0px auto 10%;
     background-color: #fff;
     border-radius: 5px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.33);

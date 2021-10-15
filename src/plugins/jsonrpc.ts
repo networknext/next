@@ -148,10 +148,6 @@ export class JSONRPCService {
     return this.call('ConfigService.AllFeatureFlags', {})
   }
 
-  public sendSignUpSlackNotification (args: any): Promise<any> {
-    return this.call('AuthService.CustomerSignedUpSlackNotification', args)
-  }
-
   public sendDocsViewSlackNotification (args: any): Promise<any> {
     return this.call('AuthService.CustomerViewedTheDocsSlackNotification', args)
   }
@@ -178,6 +174,10 @@ export class JSONRPCService {
 
   public fetchLookerURL (): Promise<any> {
     return this.call('BuyersService.FetchLookerURL', {})
+  }
+
+  public processNewSignup (args: any): Promise<any> {
+    return this.call('AuthService.ProcessNewSignup', args)
   }
 }
 

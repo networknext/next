@@ -31,12 +31,12 @@ declare module '*.vue' {
     updateRouteShader (args: any): Promise<any>;
     updateGameConfiguration (args: any): Promise<any>;
     resendVerificationEmail (args: any): Promise<any>;
-    sendSignUpSlackNotification (args: any): Promise<any>;
     sendDocsViewSlackNotification (args: any): Promise<any>;
     sendSDKDownloadSlackNotification (args: any): Promise<any>;
     sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
     sendUE4DownloadNotifications (args: any): Promise<any>;
     startAnalyticsTrial (): Promise<any>;
+    processNewSignup (args: any): Promise<any>;
   }
 
   export class VueJSONRPCServicePlugin {
@@ -49,7 +49,7 @@ declare module '*.vue' {
     login (username: string, password: string): Promise<any>;
     logout (): void;
     signUp (): void;
-    getAccess(email: string, password: string): void;
+    getAccess(firstName: string, lastName: string, email: string, password: string, companyName: string, companyWebsite: string): void;
     refreshToken (): Promise<any>;
   }
 

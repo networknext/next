@@ -105,17 +105,6 @@ Vue.prototype.$authService.processAuthentication()
       }
     }
 
-    if (query.includes('signup')) {
-      setTimeout(() => {
-        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-          Vue.prototype.$gtag.event('Auth0 account created', {
-            event_category: 'Account Creation'
-          })
-        }
-        Vue.prototype.$apiService.sendSignUpSlackNotification({ email: store.getters.userProfile.email })
-      }, 5000)
-    }
-
     if (window.location.hash !== '' || query.includes('signup')) {
       router.push('/map')
     }

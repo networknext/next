@@ -47,7 +47,7 @@
 <script lang="ts">
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
-import { RELOAD_MESSAGE } from '@/components/types/Constants'
+import { EMAIL_CONFIRMATION_MESSAGE, RELOAD_MESSAGE } from '@/components/types/Constants'
 import { Component, Vue } from 'vue-property-decorator'
 import { FeatureEnum } from '../components/types/FeatureTypes'
 
@@ -77,7 +77,7 @@ export default class SettingsWorkspace extends Vue {
 
   private mounted () {
     if (this.$store.getters.isAnonymousPlus) {
-      this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+      this.$refs.verifyAlert.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
       this.$refs.verifyAlert.setAlertType(AlertType.INFO)
     }
 

@@ -5,43 +5,42 @@
         <div class="card modal-container">
           <div class="card-body">
             <div class="card-title">
-              <div class="row">
+              <div class="row" v-if="stepOne">
                 <div class="col"></div>
                 <img class="logo-sizing" src="https://storage.googleapis.com/network-next-press-kit/networknext_logo_colour_black_RGB.png" />
                 <div class="col"></div>
               </div>
               <div class="row">
-                <div class="col"></div>
-                <h2 class="header">Log in</h2>
-                <div class="col"></div>
+                <h3 class="header">{{ stepOne ? 'Forgot Your Password?' : 'Check Your Email'}}</h3>
               </div>
             </div>
-            <form @submit.prevent="login()">
+            <form @submit.prevent="resetPassword()">
               <div class="form-group">
+                <p style="text-align: center;">
+                  {{ stepOne ? 'Enter your email address and we will send you instructions to reset your password.' : `Please check the email address ${email} for instructions to reset your password.` }}
+                </p>
                 <input
-                  type="text"
+                  type="email"
                   class="form-control"
                   id="email-input"
-                  placeholder="Email"
+                  placeholder="Email address"
+                  autocomplete="off"
                   v-model="email"
+                  v-if="stepOne"
                 />
-                <br />
-                <input
-                  type="password"
-                  class="form-control"
-                  id="password-input"
-                  placeholder="Password"
-                  v-model="password"
-                />
-                <small v-if="passwordError !== ''" class="text-danger">
-                  {{ passwordError }}
+                <small class="text-danger" v-if="!validEmail">
+                  Please enter a valid email address
                   <br/>
                 </small>
               </div>
-              <div style="padding: 1rem 0 1rem 0;"><router-link to="password-reset"><strong>Forgot Password?</strong></router-link></div>
-              <button type="submit" class="btn btn-primary btn-block">Log in</button>
+              <button type="submit" class="btn btn-primary btn-block" v-if="stepOne">
+                Continue
+              </button>
+              <button type="submit" class="btn btn-outline-secondary btn-block" v-if="!stepOne">
+                Resend email
+              </button>
             </form>
-            <div style="padding: 1rem 0 1rem 0;">Don't have an account? <router-link to="get-access"><strong>Get Access</strong></router-link></div>
+            <div style="padding: 1rem 0 1rem 0; text-align: center;"><router-link to="map"><strong>Back to Portal</strong></router-link></div>
           </div>
         </div>
       </div>
@@ -57,26 +56,41 @@ import { Component, Vue } from 'vue-property-decorator'
  */
 
 @Component
-export default class LoginModal extends Vue {
+export default class ResetPasswordModal extends Vue {
   private email: string
-  private password: string
-  private passwordError: string
+  private stepOne: boolean
+  private validEmail: boolean
 
   constructor () {
     super()
     this.email = ''
-    this.password = ''
-    this.passwordError = ''
+    this.stepOne = true
+    this.validEmail = false
   }
 
-  private login (): void {
-    this.$authService.login(this.email, this.password).catch((err: Error) => {
-      this.password = ''
-      this.passwordError = err.message
-      setTimeout(() => {
-        this.passwordError = ''
-      }, 3000)
-    })
+  // This function is only necessary as a helper for the WIX sign up system
+  private mounted () {
+    const email = this.$route.query.email || '' // The hell is a <string | (string | null)[]>!?
+    if (typeof email === 'string') { // TODO: see if there is a way around this. Typescript doesn't like the (string | null)[] secondary type definition...
+      this.email = email
+    }
+    // TODO: Find a better way of doing this
+    this.checkEmail(false)
+  }
+
+  private checkEmail (checkLength: boolean) {
+    const regex = new RegExp(/(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/)
+    this.validEmail = !checkLength || (this.email.length > 0 && regex.test(this.email))
+  }
+
+  private resetPassword (): void {
+    // TODO: Find a better way of doing this
+    this.checkEmail(true)
+    if (!this.email) {
+      return
+    }
+    console.log('Sending password reset email...')
+    this.stepOne = false
   }
 }
 </script>
@@ -89,6 +103,8 @@ export default class LoginModal extends Vue {
   }
   .header {
     padding-top: 1rem;
+    text-align: center;
+    width: 100%;
   }
   .modal-mask {
     position: fixed;

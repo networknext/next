@@ -17,6 +17,7 @@ import { Component, Vue } from 'vue-property-decorator'
  */
 
 import { AlertType } from '@/components/types/AlertTypes'
+import { EMAIL_CONFIRMATION_MESSAGE } from './types/Constants'
 
 @Component
 export default class Alert extends Vue {
@@ -67,12 +68,12 @@ export default class Alert extends Vue {
         redirect: window.location.origin,
         connection: 'Username-Password-Authentication'
       })
-      .then((response: any) => {
+      .then(() => {
         this.showSlots = false
         this.setMessage('Verification email was sent successfully. Please check your email for futher instructions.')
         this.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+          this.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
           this.setAlertType(AlertType.INFO)
           this.showSlots = true
         }, 5000)
@@ -84,7 +85,7 @@ export default class Alert extends Vue {
         this.setMessage('Something went wrong sending the verification email. Please try again later.')
         this.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+          this.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
           this.setAlertType(AlertType.INFO)
           this.showSlots = true
         }, 5000)

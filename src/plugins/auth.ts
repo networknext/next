@@ -42,18 +42,14 @@ export class AuthService {
           password: password,
           realm: 'Username-Password-Authentication'
         },
-        (err: Auth0Error | null, result: Auth0DecodedHash) => {
-          if (err) {
-            reject(Error('Wrong username/password'))
-          } else {
-            resolve(result)
-          }
+        (err: Auth0Error | null) => {
+          err ? reject(Error('Wrong username/password')) : resolve()
         }
       )
     )
   }
 
-  public getAccess (email: string, password: string) {
+  public getAccess (firstName: string, lastName: string, email: string, password: string, companyName: string, companyWebsite: string) {
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
       Vue.prototype.$gtag.event('clicked sign up', {
         event_category: 'Account Creation',
@@ -61,17 +57,33 @@ export class AuthService {
       })
     }
     // TODO: this.customClient.signupAndAuthorize doesn't work here for some reason
-    this.customClient.signup({
+    const signUpPromise = new Promise((resolve: any, reject: any) => this.customClient.signup({
       username: email,
       email: email,
       password: password,
       connection: 'Username-Password-Authentication'
     }, (err: Auth0Error | null) => {
-      if (!err) {
+      err ? reject(Error('Auth0 failed to sign up user')) : resolve()
+    }))
+
+    signUpPromise
+      .then(() => {
+        return Vue.prototype.$apiService.processNewSignup({
+          company_name: companyName,
+          company_website: companyWebsite,
+          email: email,
+          first_name: firstName,
+          last_name: lastName
+        })
+      })
+      .then(() => {
         // Once the user successfully signs up, use the username and password to log them in seemlessly
         this.login(email, password)
-      }
-    })
+      })
+      .catch((err: Error) => {
+        console.log('Something went wrong during the sign up process')
+        console.log(err)
+      })
   }
 
   // TODO: This should be an async function instead of the weird nested promise

@@ -10,6 +10,7 @@ import GameConfiguration from '@/components/GameConfiguration.vue'
 import LoginModal from '@/components/LoginModal.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
 import Notifications from '@/components/Notifications.vue'
+import ResetPasswordModal from '@/components/ResetPasswordModal.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
@@ -53,6 +54,11 @@ const routes: Array<RouteConfig> = [
         component: SessionDetails
       }
     ]
+  },
+  {
+    path: '/password-reset',
+    name: 'password-reset',
+    component: ResetPasswordModal
   },
   {
     path: '/get-access',
@@ -145,6 +151,10 @@ const router = new VueRouter({
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // TODO: Make sure all edge cases for illegal routing are caught here
   // TODO: Clean this up. Figure out a better way of handling user role and legal route relationships
+  if (!store.getters.isAnonymous && (to.name === 'login' || to.name === 'get-access')) {
+    next('/map')
+    return
+  }
   if (!store.getters.isAdmin && (to.name === 'supply')) {
     next('/map')
     return
