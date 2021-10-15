@@ -83,7 +83,8 @@
       "new-cap": "off",
       "no-debugger": "off",
       "@typescript-eslint/no-var-requires": "off",
-      "no-useless-escape": "off"
+      "no-useless-escape": "off",
+      "no-control-regex": "off"
     },
     "overrides": [
       {
