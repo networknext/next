@@ -10,14 +10,6 @@ type OptimizeMetrics struct {
 	LongUpdateCount Counter
 }
 
-func NewTestOptimizeMetrics() *OptimizeMetrics {
-	m := new(OptimizeMetrics)
-	m.DurationGauge = new(LocalGauge)
-	m.Invocations = new(LocalCounter)
-	m.LongUpdateCount = new(LocalCounter)
-	return m
-}
-
 var EmptyOptimizeMetrics OptimizeMetrics = OptimizeMetrics{
 	Invocations:     &EmptyCounter{},
 	DurationGauge:   &EmptyGauge{},
@@ -30,16 +22,6 @@ type CostMatrixMetrics struct {
 	LongUpdateCount    Counter
 	Bytes              Gauge
 	WriteResponseError Counter
-}
-
-func NewTestCostMatrixMetrics() *CostMatrixMetrics {
-	return &CostMatrixMetrics{
-		Invocations:        new(LocalCounter),
-		DurationGauge:      new(LocalGauge),
-		LongUpdateCount:    new(LocalCounter),
-		Bytes:              new(LocalGauge),
-		WriteResponseError: new(LocalCounter),
-	}
 }
 
 var EmptyCostMatrixMetrics CostMatrixMetrics = CostMatrixMetrics{
@@ -55,15 +37,6 @@ type RouteMatrixMetrics struct {
 	RelayCount      Gauge
 	RouteCount      Gauge
 	Bytes           Gauge
-}
-
-func NewTestRouteMatrixMetrics() *RouteMatrixMetrics {
-	return &RouteMatrixMetrics{
-		DatacenterCount: new(LocalGauge),
-		RelayCount:      new(LocalGauge),
-		RouteCount:      new(LocalGauge),
-		Bytes:           new(LocalGauge),
-	}
 }
 
 var EmptyRouteMatrixMetrics RouteMatrixMetrics = RouteMatrixMetrics{
@@ -166,5 +139,3 @@ func NewOptimizeMetrics(ctx context.Context, metricsHandler Handler) (*OptimizeM
 
 	return m, nil
 }
-
-//func NewTestingCostMatrixMetrics

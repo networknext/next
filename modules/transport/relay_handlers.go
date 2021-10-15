@@ -58,6 +58,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 		updates, err := unbatchRelayUpdates(body)
 		if err != nil {
 			core.Error("%s: relay update could not unbatch relay updates: %v", request.RemoteAddr, err)
+			params.Metrics.ErrorMetrics.UnbatchFailure.Add(1)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
