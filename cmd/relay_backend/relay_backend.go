@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"sort"
 	"sync"
+	"syscall"
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
