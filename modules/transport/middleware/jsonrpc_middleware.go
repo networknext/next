@@ -13,7 +13,6 @@ import (
 type contextKeys struct {
 	AnonymousCallKey     string
 	RolesKey             string
-	CompanyKey           string
 	CustomerKey          string
 	NewsletterConsentKey string
 	UserKey              string
@@ -22,7 +21,6 @@ type contextKeys struct {
 var Keys contextKeys = contextKeys{
 	AnonymousCallKey:     "anonymous",
 	RolesKey:             "roles",
-	CompanyKey:           "company",
 	CustomerKey:          "customer",
 	NewsletterConsentKey: "newsletter",
 	UserKey:              "user",
@@ -169,8 +167,8 @@ var UnverifiedRole = func(req *http.Request) (bool, error) {
 }
 
 var AssignedToCompanyRole = func(req *http.Request) (bool, error) {
-	requestCompanyCode, ok := req.Context().Value(Keys.CompanyKey).(string)
-	if !ok || requestCompanyCode == "" {
+	requestCustomerCode, ok := req.Context().Value(Keys.CustomerKey).(string)
+	if !ok || requestCustomerCode == "" {
 		return false, nil
 	}
 	return true, nil
@@ -194,4 +192,12 @@ func VerifyAnyRole(req *http.Request, roleFuncs ...RoleFunc) bool {
 		}
 	}
 	return false
+}
+
+func RequestUserInformation(ctx context.Context) interface{} {
+	return ctx.Value(Keys.UserKey)
+}
+
+func RequestUserCustomerCode(ctx context.Context) string {
+	return ctx.Value(Keys.CustomerKey).(string)
 }

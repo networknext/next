@@ -1312,15 +1312,10 @@ type gameConfiguration struct {
 func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
 	var buyer routing.Buyer
+	ctx := r.Context()
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-	if !ok {
-		err := fmt.Errorf("GameConfiguration(): user is not assigned to a company")
-		level.Error(s.Logger).Log("err", err)
-		return err
-	}
-
-	if companyCode == "" {
+	customerCode := middleware.RequestUserCustomerCode(ctx)
+	if customerCode == "" {
 		err = fmt.Errorf("GameConfiguration(): failed to parse company code")
 		level.Error(s.Logger).Log("err", err)
 		return err
@@ -1334,14 +1329,13 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 
 	reply.GameConfiguration.PublicKey = ""
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+	buyer, err = s.Storage.BuyerWithCompanyCode(ctx, customerCode)
 	// Buyer not found
 	if err != nil {
 		return nil
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-
 	return nil
 }
 
@@ -1366,7 +1360,7 @@ func (s *BuyersService) UpdateBuyerInformation(r *http.Request, args *BuyerInfor
 
 	ctx := r.Context()
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateBuyerInformation(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1449,7 +1443,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := r.Context()
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
 		level.Error(s.Logger).Log("err", err)
@@ -1811,7 +1805,7 @@ func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
 		}
 
 		// Grab the user's assigned company if it exists
-		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CompanyKey).(string)
+		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CustomerKey).(string)
 		if !ok || requestCompanyCode == "" {
 			return false, nil
 		}
@@ -2594,7 +2588,7 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 			return &err
 		}
 
-		companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+		companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 		if !ok {
 			err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
@@ -2649,7 +2643,7 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 		return &err
 	}
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		s.Logger.Log("err", fmt.Errorf("StartAnalyticsTrial(): %v", err.Error()))
@@ -2710,7 +2704,7 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *Fe
 		return &err
 	}
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
@@ -2817,7 +2811,7 @@ func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *Fetc
 		return &err
 	}
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))

@@ -50,6 +50,7 @@ type AccountReply struct {
 }
 
 type account struct {
+	Avatar      string             `json:"avatar"`
 	UserID      string             `json:"user_id"`
 	BuyerID     string             `json:"buyer_id"`
 	Seller      bool               `json:"seller"`
@@ -62,10 +63,12 @@ type account struct {
 	Analytics   bool               `json:"analytics"`
 	Billing     bool               `json:"billing"`
 	Trial       bool               `json:"trial"`
+	Verified    bool               `json:"verified"`
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var totalUsers []*management.User
+	ctx := r.Context()
 
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
@@ -92,15 +95,15 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		page++
 	}
 
-	requestUser := r.Context().Value(middleware.Keys.UserKey)
+	requestUser := middleware.RequestUserInformation(ctx)
 	if requestUser == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to parse user", err.Error()))
 		return &err
 	}
 
-	requestCompany, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-	if !ok {
+	requestCompany := middleware.RequestUserCustomerCode(ctx)
+	if requestCompany == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
 		return &err
@@ -225,7 +228,7 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 	}
 
 	// Non admin trying to delete user from another company
-	requestCompanyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	requestCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if (!ok || requestCompanyCode != userCompanyCode) && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("DeleteUserAccount(): %v", err.Error()))
@@ -264,7 +267,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	}
 
 	// Gather request user information
-	userCompanyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	userCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok || userCompanyCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
@@ -420,6 +423,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 	}
 
 	account := account{
+		Avatar:      u.GetPicture(),
 		UserID:      *u.Identities[0].UserID,
 		BuyerID:     buyerID,
 		Seller:      isSeller,
@@ -432,6 +436,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		Analytics:   buyer.Analytics,
 		Billing:     buyer.Billing,
 		Trial:       buyer.Trial,
+		Verified:    u.GetEmailVerified(),
 	}
 
 	return account
@@ -679,7 +684,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 		return &err
 	}
 
-	assignedCompanyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	assignedCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if ok && assignedCompanyCode != "" {
 		err := JSONRPCErrorCodes[int(ERROR_ILLEGAL_OPERATION)]
 		s.Logger.Log("err", fmt.Errorf("SetupCompanyAccount(): %v: User is already assigned to a company. Please reach out to support for further assistance.", err.Error()))
@@ -912,7 +917,7 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 		s.Logger.Log("err", fmt.Errorf("UpdateAutoSignupDomains(): %v", err.Error()))
 		return &err
 	}
-	customerCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UpdateAutoSignupDomains(): %v: Failed to parse customer code", err.Error()))
@@ -1167,6 +1172,44 @@ func (s *AuthService) SlackNotification(r *http.Request, args *GenericSlackNotif
 		s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v: Slack notification type not supported: %s", args.Type, err.Error()))
 		return &err
 	}
+	return nil
+}
+
+type ProcessNewSignupArgs struct {
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
+	Email          string `json:"email"`
+	CompanyName    string `json:"company_name"`
+	CompanyWebsite string `json:"company_website"`
+}
+
+type ProcessNewSignupReply struct {
+}
+
+func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupArgs, reply *ProcessNewSignupReply) error {
+	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
+
+	if err != nil || len(userAccounts.Users) > 1 {
+		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): Failed to look up user account: %s", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		return &err
+	}
+
+	user := userAccounts.Users[0]
+
+	updateUser := &management.User{
+		FamilyName: &args.LastName,
+		GivenName:  &args.FirstName,
+	}
+
+	if err := s.UserManager.Update(user.GetID(), updateUser); err != nil {
+		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to update new user's first and last name", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		return &err
+	}
+
+	// TODO: hook up hubspot integration here....
+
 	return nil
 }
 

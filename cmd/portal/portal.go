@@ -562,7 +562,6 @@ func main() {
 			user := i.Request.Context().Value(middleware.Keys.UserKey)
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-
 				if requestData, ok := claims["https://networknext.com/userData"]; ok {
 					var userRoles []string
 					if roles, ok := requestData.(map[string]interface{})["roles"]; ok {

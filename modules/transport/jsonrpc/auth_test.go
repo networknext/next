@@ -181,7 +181,7 @@ func TestAllAccounts(t *testing.T) {
 
 	t.Run("all - failure", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountsReply
 		err := svc.AllAccounts(req, &jsonrpc.AccountsArgs{}, &reply)
@@ -203,7 +203,7 @@ func TestAllAccounts(t *testing.T) {
 				"email": "test@test.com",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
@@ -226,7 +226,7 @@ func TestAllAccounts(t *testing.T) {
 				"email": "test@test.com",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test-test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test-test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
@@ -398,7 +398,7 @@ func TestUserAccount(t *testing.T) {
 				"sub":   "123",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountReply
@@ -422,7 +422,7 @@ func TestUserAccount(t *testing.T) {
 				"sub":   "123",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
@@ -446,7 +446,7 @@ func TestUserAccount(t *testing.T) {
 				"sub":   "123",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountReply
@@ -462,7 +462,7 @@ func TestUserAccount(t *testing.T) {
 				"sub":   "123",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
@@ -488,7 +488,7 @@ func TestUserAccount(t *testing.T) {
 				"sub":   "123",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
@@ -648,7 +648,7 @@ func TestDeleteAccount(t *testing.T) {
 
 	t.Run("success - same company", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountReply
 		err := svc.DeleteUserAccount(req, &jsonrpc.AccountArgs{UserID: "456"}, &reply)
@@ -822,7 +822,7 @@ func TestAddUserAccount(t *testing.T) {
 
 	t.Run("failure - no buyer", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
@@ -839,7 +839,7 @@ func TestAddUserAccount(t *testing.T) {
 
 	t.Run("success - not registered", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
@@ -862,7 +862,7 @@ func TestAddUserAccount(t *testing.T) {
 
 	t.Run("success - registered", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{
@@ -1361,7 +1361,7 @@ func TestSetupCompanyAccount(t *testing.T) {
 
 	t.Run("failure - assigned", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test-test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test-test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.SetupCompanyAccountReply
 		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test-test-test"}, &reply)
@@ -1655,7 +1655,7 @@ func TestUpdateAutoSignupDomains(t *testing.T) {
 
 	t.Run("failure - no company code", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.UpdateDomainsReply
 		err := svc.UpdateAutoSignupDomains(req, &jsonrpc.UpdateDomainsArgs{}, &reply)
