@@ -355,7 +355,7 @@ func mainReturnWithCode() int {
 
 	port := envvar.Get("PORT", "30001")
 	if port == "" {
-		core.Error("PORT not set: %v", err)
+		core.Error("PORT not set")
 		return 1
 	}
 
