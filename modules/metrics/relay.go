@@ -21,11 +21,19 @@ type RelayBackendStatus struct {
 	RelayCount      int `json:"relay_count"`
 	RouteCount      int `json:"route_count"`
 
+	// Relay Update Information
+	RelayUpdateInvocations        int `json:"relay_update_invocations"`
+	RelayUpdateContentTypeFailure int `json:"relay_update_content_type_failure"`
+	RelayUpdateUnbatchFailure     int `json:"relay_update_unbatch_failure"`
+	RelayUpdateUnmarshalFailure   int `json:"relay_update_unmarshal_failure"`
+	RelayUpdateRelayNotFound      int `json:"relay_update_relay_not_found"`
+
 	// Durations
 	LongCostMatrixUpdates  int     `json:"long_cost_matrix_updates"`
 	LongRouteMatrixUpdates int     `json:"long_route_matrix_updates"`
 	CostMatrixUpdateMs     float64 `json:"cost_matrix_update_ms"`
 	RouteMatrixUpdateMs    float64 `json:"route_matrix_update_ms"`
+	RelayUpdateMs          float64 `json:"relay_update_ms"`
 
 	// Size
 	CostMatrixBytes  int `json:"cost_matrix_bytes"`
@@ -57,15 +65,17 @@ var EmptyRelayUpdateMetrics RelayUpdateMetrics = RelayUpdateMetrics{
 }
 
 type RelayUpdateErrorMetrics struct {
-	UnbatchFailure   Counter
-	UnmarshalFailure Counter
-	RelayNotFound    Counter
+	ContentTypeFailure Counter
+	UnbatchFailure     Counter
+	UnmarshalFailure   Counter
+	RelayNotFound      Counter
 }
 
 var EmptyRelayUpdateErrorMetrics RelayUpdateErrorMetrics = RelayUpdateErrorMetrics{
-	UnbatchFailure:   &EmptyCounter{},
-	UnmarshalFailure: &EmptyCounter{},
-	RelayNotFound:    &EmptyCounter{},
+	ContentTypeFailure: &EmptyCounter{},
+	UnbatchFailure:     &EmptyCounter{},
+	UnmarshalFailure:   &EmptyCounter{},
+	RelayNotFound:      &EmptyCounter{},
 }
 
 func NewRelayBackendMetrics(ctx context.Context, metricsHandler Handler) (*RelayBackendMetrics, error) {
@@ -165,6 +175,17 @@ func NewRelayUpdateMetrics(ctx context.Context, metricsHandler Handler) (*RelayU
 	}
 
 	var em RelayUpdateErrorMetrics
+	em.ContentTypeFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Total relay update content type failure count",
+		ServiceName: "relay_backend",
+		ID:          "relay.update.errors.content_type_failure.count",
+		Unit:        "content_type_failure_failure",
+		Description: "The total number of received updates that had the incorrect type content type",
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	em.UnbatchFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Total relay update unbatch failure count",
 		ServiceName: "relay_backend",

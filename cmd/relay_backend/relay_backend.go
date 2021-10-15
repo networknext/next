@@ -877,11 +877,19 @@ func mainReturnWithCode() int {
 				newStatusData.RelayCount = int(relayBackendMetrics.RouteMatrix.RelayCount.Value())
 				newStatusData.RouteCount = int(relayBackendMetrics.RouteMatrix.RouteCount.Value())
 
+				// Relay Update Information
+				newStatusData.RelayUpdateInvocations = int(relayUpdateMetrics.Invocations.Value())
+				newStatusData.RelayUpdateContentTypeFailure = int(relayUpdateMetrics.ErrorMetrics.ContentTypeFailure.Value())
+				newStatusData.RelayUpdateUnbatchFailure = int(relayUpdateMetrics.ErrorMetrics.UnbatchFailure.Value())
+				newStatusData.RelayUpdateUnmarshalFailure = int(relayUpdateMetrics.ErrorMetrics.UnmarshalFailure.Value())
+				newStatusData.RelayUpdateRelayNotFound = int(relayUpdateMetrics.ErrorMetrics.RelayNotFound.Value())
+
 				// Durations
 				newStatusData.LongCostMatrixUpdates = int(costMatrixMetrics.LongUpdateCount.Value())
 				newStatusData.LongRouteMatrixUpdates = int(optimizeMetrics.LongUpdateCount.Value())
 				newStatusData.CostMatrixUpdateMs = costMatrixMetrics.DurationGauge.Value()
 				newStatusData.RouteMatrixUpdateMs = optimizeMetrics.DurationGauge.Value()
+				newStatusData.RelayUpdateMs = relayUpdateMetrics.DurationGauge.Value()
 
 				// Size
 				newStatusData.CostMatrixBytes = int(costMatrixMetrics.Bytes.Value())
