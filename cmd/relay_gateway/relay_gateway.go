@@ -165,7 +165,7 @@ func mainReturnWithCode() int {
 					// File has changed
 					file, err := os.Open(absPath)
 					if err != nil {
-						core.Error("could not load relay binary at %s: %v", absPath, err)
+						core.Error("could not load database binary at %s: %v", absPath, err)
 						continue
 					}
 
@@ -182,7 +182,7 @@ func mainReturnWithCode() int {
 						continue
 					} else if err != nil {
 						file.Close()
-						core.Error("DecodeBinWrapper() error: %v")
+						core.Error("DecodeBinWrapper() error: %v", err)
 						continue
 					}
 

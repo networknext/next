@@ -50,7 +50,7 @@ func TestGatewayRelayInit(t *testing.T) {
 	assert.Equal(t, pubKey, make([]byte, 32))
 }
 
-func getRelayUpdateHandlerConfig(t *testing.T, relays []routing.Relay) transport.GatewayRelayUpdateHandlerConfig {
+func getGatewayRelayUpdateHandlerConfig(t *testing.T, relays []routing.Relay) transport.GatewayRelayUpdateHandlerConfig {
 	requestChan := make(chan []byte, 10000)
 
 	gatewayMetrics, err := metrics.NewRelayGatewayMetrics(context.Background(), &metrics.LocalHandler{}, "relay_gateway", "relay_gateway", "Relay Gateway", "relay update request")
@@ -75,7 +75,7 @@ func getRelayUpdateHandlerConfig(t *testing.T, relays []routing.Relay) transport
 func TestGatewayRelayUpdate_ContentTypeFailure(t *testing.T) {
 	t.Parallel()
 
-	config := getRelayUpdateHandlerConfig(t, []routing.Relay{})
+	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{})
 
 	svr := httptest.NewServer(http.HandlerFunc(transport.GatewayRelayUpdateHandlerFunc(config)))
 	defer svr.Close()
@@ -91,7 +91,7 @@ func TestGatewayRelayUpdate_ContentTypeFailure(t *testing.T) {
 func TestGatewayRelayUpdate_UnmarshalFailure(t *testing.T) {
 	t.Parallel()
 
-	config := getRelayUpdateHandlerConfig(t, []routing.Relay{})
+	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{})
 
 	svr := httptest.NewServer(http.HandlerFunc(transport.GatewayRelayUpdateHandlerFunc(config)))
 	defer svr.Close()
@@ -120,7 +120,7 @@ func TestGatewayRelayUpdate_UnmarshalFailure(t *testing.T) {
 func TestGatewayRelayUpdate_ExceedMaxRelays(t *testing.T) {
 	t.Parallel()
 
-	config := getRelayUpdateHandlerConfig(t, []routing.Relay{})
+	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{})
 
 	svr := httptest.NewServer(http.HandlerFunc(transport.GatewayRelayUpdateHandlerFunc(config)))
 	defer svr.Close()
@@ -150,7 +150,7 @@ func TestGatewayRelayUpdate_ExceedMaxRelays(t *testing.T) {
 func TestGatewayRelayUpdate_RelayNotFound(t *testing.T) {
 	t.Parallel()
 
-	config := getRelayUpdateHandlerConfig(t, []routing.Relay{})
+	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{})
 
 	svr := httptest.NewServer(http.HandlerFunc(transport.GatewayRelayUpdateHandlerFunc(config)))
 	defer svr.Close()
@@ -198,7 +198,7 @@ func TestGatewayRelayUpdate_Success(t *testing.T) {
 		Version: "2.0.6",
 	}
 
-	config := getRelayUpdateHandlerConfig(t, []routing.Relay{relay1})
+	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1})
 
 	svr := httptest.NewServer(http.HandlerFunc(transport.GatewayRelayUpdateHandlerFunc(config)))
 	defer svr.Close()
