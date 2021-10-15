@@ -194,7 +194,7 @@ func mainReturnWithCode() int {
 
 	maxPacketLoss, err := envvar.GetFloat("RELAY_ROUTER_MAX_PACKET_LOSS", 0)
 	if err != nil {
-		core.Error("failed to parse RELAY_ROUTER_MAX_PACKET_LOSS")
+		core.Error("failed to parse RELAY_ROUTER_MAX_PACKET_LOSS: %v", err)
 		return 1
 	}
 
