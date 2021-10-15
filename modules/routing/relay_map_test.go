@@ -37,7 +37,13 @@ func testRelayData(t *testing.T) *routing.RelayData {
 }
 
 func TestRelayMap_NewRelayMap(t *testing.T) {
+	t.Parallel()
 
+	rmap := routing.NewRelayMap(func(relay routing.RelayData) error {
+		return nil
+	})
+
+	assert.NotNil(t, rmap)
 }
 
 func TestRelayMap_TimeoutLoop(t *testing.T) {
