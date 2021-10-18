@@ -13,9 +13,6 @@
           First Name
         </label>
         <input type="text" class="form-control form-control-sm" id="firstName" v-model="firstName" placeholder="Enter your first name" @change="checkFirstName()"/>
-        <small class="form-text text-muted">
-          This is the company that you would like your account to be assigned to. Case and white space sensitive.
-        </small>
         <small v-for="(error, index) in firstNameErrors" :key="index" class="text-danger">
           {{ error }}
           <br/>
