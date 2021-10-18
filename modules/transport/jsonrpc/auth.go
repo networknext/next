@@ -18,16 +18,17 @@ import (
 )
 
 type AuthService struct {
-	mu               sync.Mutex
-	RoleCache        map[string]*management.Role
-	MailChimpManager notifications.MailChimpHandler
-	JobManager       storage.JobManager
-	RoleManager      storage.RoleManager
-	UserManager      storage.UserManager
-	SlackClient      notifications.SlackClient
-	Storage          storage.Storer
-	Logger           log.Logger
-	LookerSecret     string
+	AuthenticationClient *notifications.Auth0AuthClient
+	mu                   sync.Mutex
+	RoleCache            map[string]*management.Role
+	MailChimpManager     notifications.MailChimpHandler
+	JobManager           storage.JobManager
+	RoleManager          storage.RoleManager
+	UserManager          storage.UserManager
+	SlackClient          notifications.SlackClient
+	Storage              storage.Storer
+	Logger               log.Logger
+	LookerSecret         string
 }
 
 type AccountsArgs struct {
@@ -842,17 +843,47 @@ func (s *AuthService) UpdateAccountDetails(r *http.Request, args *UpdateAccountD
 	return nil
 }
 
+type ResetPasswordEmailArgs struct {
+	Email string `json:"email"`
+}
+
+type ResetPasswordEmailReply struct{}
+
+func (s *AuthService) ResetPasswordEmail(r *http.Request, args *ResetPasswordEmailArgs, reply *ResetPasswordEmailReply) error {
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		s.Logger.Log("err", fmt.Errorf("ResetPasswordEmail(): %v: Email is required", err.Error()))
+		return &err
+	}
+
+	fmt.Println("Sending reset password email....")
+
+	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
+	if err != nil || len(userAccounts.Users) > 1 || len(userAccounts.Users) == 0 {
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("ResetPasswordEmail(): Failed to look up user account: %s", err.Error()))
+		return &err
+	}
+
+	fmt.Println("Found a user account")
+
+	if err = s.AuthenticationClient.SendChangePasswordEmail(args.Email); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("ResetPasswordEmail(): %v: Failed to send reset password email", err.Error()))
+		return &err
+	}
+
+	return nil
+}
+
 type VerifyEmailArgs struct {
 	UserID string `json:"user_id"`
 }
 
-type VerifyEmailReply struct {
-	Sent bool `json:"sent"`
-}
+type VerifyEmailReply struct{}
 
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
-	reply.Sent = false
-
 	if !middleware.VerifyAllRoles(r, middleware.UnverifiedRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("VerifyEmailUrl(): %v: Failed to read user account", err.Error()))
@@ -869,8 +900,6 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
-
-	reply.Sent = true
 
 	return nil
 }
@@ -1187,11 +1216,17 @@ type ProcessNewSignupReply struct {
 }
 
 func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupArgs, reply *ProcessNewSignupReply) error {
-	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
+	message := fmt.Sprintf("%s signed up on the Portal! :tada:\nCompany Name: %s\nCompany Website: %s", args.Email, args.CompanyName, args.CompanyWebsite)
 
-	if err != nil || len(userAccounts.Users) > 1 {
-		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): Failed to look up user account: %s", err.Error()))
+	// If we error here we don't worry about it. Setting up everything is more important and the error shouldn't hinder the rest of the sign up process on the portal side
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to send slack notification", err.Error()))
+	}
+
+	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
+	if err != nil || len(userAccounts.Users) > 1 || len(userAccounts.Users) == 0 {
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): Failed to look up user account: %s", err.Error()))
 		return &err
 	}
 

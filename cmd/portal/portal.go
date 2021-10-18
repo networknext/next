@@ -151,9 +151,10 @@ func main() {
 
 	auth0Issuer := os.Getenv("AUTH0_ISSUER")
 	auth0Domain := os.Getenv("AUTH0_DOMAIN")
+	auth0ClientID := os.Getenv("AUTH0_CLIENTID")
 	manager, err := management.New(
 		auth0Domain,
-		os.Getenv("AUTH0_CLIENTID"),
+		auth0ClientID,
 		os.Getenv("AUTH0_CLIENTSECRET"),
 	)
 	if err != nil {
@@ -389,7 +390,14 @@ func main() {
 		Channel:    channel,
 	}
 
+	authenticationClient, err := notifications.NewAuth0AuthClient(auth0ClientID, auth0Domain)
+	if err != nil {
+		level.Error(logger).Log("err", "failed to create authentication client")
+		os.Exit(1)
+	}
+
 	authservice := &jsonrpc.AuthService{
+		AuthenticationClient: authenticationClient,
 		MailChimpManager: notifications.MailChimpHandler{
 			HTTPHandler: *http.DefaultClient,
 			MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
