@@ -152,6 +152,10 @@ export class JSONRPCService {
     return this.call('AuthService.CustomerViewedTheDocsSlackNotification', args)
   }
 
+  public sendResetPasswordEmail (args: any): Promise<any> {
+    return this.call('AuthService.ResetPasswordEmail', args)
+  }
+
   public sendSDKDownloadSlackNotification (args: any): Promise<any> {
     return this.call('AuthService.CustomerDownloadedSDKSlackNotification', args)
   }

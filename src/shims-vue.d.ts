@@ -32,6 +32,7 @@ declare module '*.vue' {
     updateGameConfiguration (args: any): Promise<any>;
     resendVerificationEmail (args: any): Promise<any>;
     sendDocsViewSlackNotification (args: any): Promise<any>;
+    sendResetPasswordEmail (args: any): Promise<any>;
     sendSDKDownloadSlackNotification (args: any): Promise<any>;
     sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
     sendUE4DownloadNotifications (args: any): Promise<any>;

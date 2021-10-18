@@ -25,6 +25,10 @@
                   placeholder="Email"
                   v-model="email"
                 />
+                <small v-if="emailError !== ''" class="text-danger">
+                  {{ emailError }}
+                  <br/>
+                </small>
                 <br />
                 <input
                   type="password"
@@ -59,17 +63,27 @@ import { Component, Vue } from 'vue-property-decorator'
 @Component
 export default class LoginModal extends Vue {
   private email: string
+  private emailError: string
   private password: string
   private passwordError: string
 
   constructor () {
     super()
     this.email = ''
+    this.emailError = ''
     this.password = ''
     this.passwordError = ''
   }
 
   private login (): void {
+    if (this.email === '') {
+      this.emailError = 'An email address is required'
+      return
+    }
+    if (this.password === '') {
+      this.passwordError = 'A password is required'
+      return
+    }
     this.$authService.login(this.email, this.password).catch((err: Error) => {
       this.password = ''
       this.passwordError = err.message

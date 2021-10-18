@@ -20,7 +20,7 @@
                   {{ stepOne ? 'Enter your email address and we will send you instructions to reset your password.' : `Please check the email address ${email} for instructions to reset your password.` }}
                 </p>
                 <input
-                  type="email"
+                  type="text"
                   class="form-control"
                   id="email-input"
                   placeholder="Email address"
@@ -28,8 +28,8 @@
                   v-model="email"
                   v-if="stepOne"
                 />
-                <small class="text-danger" v-if="!validEmail">
-                  Please enter a valid email address
+                <small class="text-danger" v-if="emailError !== ''">
+                  {{ emailError }}
                   <br/>
                 </small>
               </div>
@@ -58,12 +58,14 @@ import { Component, Vue } from 'vue-property-decorator'
 @Component
 export default class ResetPasswordModal extends Vue {
   private email: string
+  private emailError: string
   private stepOne: boolean
   private validEmail: boolean
 
   constructor () {
     super()
     this.email = ''
+    this.emailError = ''
     this.stepOne = true
     this.validEmail = false
   }
@@ -81,16 +83,25 @@ export default class ResetPasswordModal extends Vue {
   private checkEmail (checkLength: boolean) {
     const regex = new RegExp(/(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/)
     this.validEmail = !checkLength || (this.email.length > 0 && regex.test(this.email))
+    this.emailError = this.validEmail ? '' : 'Please enter a valid email address'
   }
 
   private resetPassword (): void {
+    console.log('Sending password reset email...')
     // TODO: Find a better way of doing this
     this.checkEmail(true)
-    if (!this.email) {
+    if (!this.validEmail) {
       return
     }
-    console.log('Sending password reset email...')
-    this.stepOne = false
+    this.$apiService.sendResetPasswordEmail({ email: this.email })
+      .then(() => {
+        this.stepOne = false
+      })
+      .catch((err: Error) => {
+        // TODO: Show error screen
+        this.emailError = 'The email that was entered is not valid. Please sign up if you haven\'t already'
+        console.log(err)
+      })
   }
 }
 </script>
