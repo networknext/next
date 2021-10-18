@@ -303,7 +303,9 @@ type SessionUpdatePacket struct {
 	Tags                            [MaxTags]uint64
 	Flags                           uint32
 	UserFlags                       uint64
-	DirectRTT                       float32
+	DirectMinRTT                    float32
+    DirectMaxRTT                    float32
+    DirectPrimeRTT                  float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
 	NextRTT                         float32
@@ -428,7 +430,13 @@ func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint64(&packet.UserFlags)
 	}
 
-	stream.SerializeFloat32(&packet.DirectRTT)
+	stream.SerializeFloat32(&packet.DirectMinRTT)
+	// SDK 4.0.18 adds support for min, max, and prime (second to largest) direct RTT
+	// This lets us estimate various percentiles for direct RTT, eg. P90, P99, P50 etc.
+	if core.ProtocolVersionAtLeast(versionMajor, versionMinor, versionPatch, 4, 0, 18) {
+		stream.SerializeFloat32(&packet.DirectMaxRTT)
+		stream.SerializeFloat32(&packet.DirectPrimeRTT)
+	}
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
 

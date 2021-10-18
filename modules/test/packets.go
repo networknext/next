@@ -169,7 +169,9 @@ func (env *TestEnvironment) GenerateSessionUpdatePacket(config SessionUpdatePack
 		NextRTT:                  config.NextRTT,
 		NextJitter:               config.NextJitter,
 		NextPacketLoss:           config.NextPacketLoss,
-		DirectRTT:                config.DirectRTT,
+		DirectMinRTT:             config.DirectRTT,			// todo: upgrade tests support min/max/prime direct RTT
+		DirectMaxRTT:             config.DirectRTT,
+		DirectPrimeRTT:           config.DirectRTT,
 		DirectJitter:             config.DirectJitter,
 		DirectPacketLoss:         config.DirectPacketLoss,
 	}

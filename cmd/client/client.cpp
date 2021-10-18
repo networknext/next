@@ -35,9 +35,9 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+void client_packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
-    (void) client; (void) context; (void) packet_data; (void) packet_bytes;
+    (void) client; (void) context; (void) from; (void) packet_data; (void) packet_bytes;
 }
 
 void generate_packet( uint8_t * packet_data, int & packet_bytes )
@@ -206,7 +206,7 @@ int main()
                 printf( "committed = %s\n", stats->committed ? "true" : "false" );
                 printf( "multipath = %s\n", stats->multipath ? "true" : "false" );
                 printf( "reported = %s\n", stats->reported ? "true" : "false" );
-                printf( "direct rtt = %.2fms\n", stats->direct_rtt );
+                printf( "direct min rtt = %.2fms\n", stats->direct_min_rtt );
                 printf( "direct jitter = %.2fms\n", stats->direct_jitter );
                 printf( "direct packet loss = %.1f%%\n", stats->direct_packet_loss );
             }

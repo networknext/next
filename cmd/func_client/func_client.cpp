@@ -67,9 +67,9 @@ void verify_packet( const uint8_t * packet_data, int packet_bytes )
     }
 }
 
-void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+void client_packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
-    (void) client; (void) context;
+    (void) client; (void) context; (void) from;
 
     if ( packet_bytes <= 32 )
         return;
