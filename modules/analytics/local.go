@@ -2,75 +2,51 @@ package analytics
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/metrics"
 )
 
 type LocalPingStatsWriter struct {
-	Logger log.Logger
-
-	written uint64
+	Metrics *metrics.AnalyticsMetrics
 }
 
 func (writer *LocalPingStatsWriter) Write(ctx context.Context, entries []*PingStatsEntry) error {
-	writer.written++
+	writer.Metrics.EntriesSubmitted.Add(float64(len(entries)))
 
-	if writer.Logger == nil {
-		return errors.New("no logger for local big query writer, can't display entry")
-	}
-
-	level.Info(writer.Logger).Log("msg", "wrote analytics bigquery entries")
+	core.Debug("wrote analytics ping stats entries")
 
 	for i := range entries {
 		entry := entries[i]
-		level.Debug(writer.Logger).Log(fmt.Sprintf("entry %d", i), fmt.Sprintf("%+v", *entry))
+		core.Debug("entry %d: %+v", i, *entry)
 	}
+
+	writer.Metrics.EntriesFlushed.Add(float64(len(entries)))
 
 	return nil
 }
 
-type LocalRelayStatsWriter struct {
-	Logger log.Logger
+// Close() is needed to satisfy the interface
+func (writer *LocalPingStatsWriter) Close() {}
 
-	written uint64
+type LocalRelayStatsWriter struct {
+	Metrics *metrics.AnalyticsMetrics
 }
 
 func (writer *LocalRelayStatsWriter) Write(ctx context.Context, entries []*RelayStatsEntry) error {
-	writer.written++
+	writer.Metrics.EntriesSubmitted.Add(float64(len(entries)))
 
-	if writer.Logger == nil {
-		return errors.New("no logger for local big query writer, can't display entry")
-	}
-
-	level.Info(writer.Logger).Log("msg", "wrote analytics bigquery entries")
+	core.Debug("wrote analytics relay stats entries")
 
 	for i := range entries {
 		entry := entries[i]
-		level.Debug(writer.Logger).Log(fmt.Sprintf("entry %d", i), fmt.Sprintf("%+v", *entry))
+		core.Debug("entry %d: %+v", i, *entry)
 	}
+
+	writer.Metrics.EntriesFlushed.Add(float64(len(entries)))
 
 	return nil
 }
 
-type LocalRouteMatrixStatsWriter struct {
-	Logger log.Logger
-
-	written uint64
-}
-
-func (writer *LocalRouteMatrixStatsWriter) Write(ctx context.Context, entry *RouteMatrixStatsEntry) error {
-	writer.written++
-
-	if writer.Logger == nil {
-		return errors.New("no logger for local big query writer, can't display entry")
-	}
-
-	level.Info(writer.Logger).Log("msg", "wrote analytics bigquery entries")
-
-	level.Debug(writer.Logger).Log("entry", fmt.Sprintf("%+v", *entry))
-
-	return nil
-}
+// Close() is needed to satisfy the interface
+func (writer *LocalRelayStatsWriter) Close() {}

@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"io"
@@ -64,12 +65,17 @@ func main() {
 }
 
 func mainReturnWithCode() int {
-
 	serviceName := "server_backend"
-
 	fmt.Printf("\n%s\n\n", serviceName)
 
-	isDebug, _ := envvar.GetBool("NEXT_DEBUG", false)
+	est, _ := time.LoadLocation("EST")
+	startTime := time.Now().In(est)
+
+	isDebug, err := envvar.GetBool("NEXT_DEBUG", false)
+	if err != nil {
+		core.Error("could not parse NEXT_DEBUG: %v", err)
+		isDebug = false
+	}
 
 	if isDebug {
 		core.Debug("running as debug")
@@ -112,22 +118,6 @@ func mainReturnWithCode() int {
 		core.Error("could not max mind sync metrics: %v", err)
 		return 1
 	}
-
-	// Create a goroutine to update metrics
-	go func() {
-		memoryUsed := func() float64 {
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			return float64(m.Alloc) / (1000.0 * 1000.0)
-		}
-
-		for {
-			backendMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-			backendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
-
-			time.Sleep(time.Second * 10)
-		}
-	}()
 
 	if !envvar.Exists("SERVER_BACKEND_PRIVATE_KEY") {
 		core.Error("SERVER_BACKEND_PRIVATE_KEY not set")
@@ -402,12 +392,6 @@ func mainReturnWithCode() int {
 	var featureConfig config.Config
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
-			Name:        "FEATURE_BILLING",
-			Enum:        config.FEATURE_BILLING,
-			Value:       false,
-			Description: "Inserts BillingEntry types to Google Pub/Sub",
-		},
-		{
 			Name:        "FEATURE_BILLING2",
 			Enum:        config.FEATURE_BILLING2,
 			Value:       true,
@@ -422,16 +406,10 @@ func mainReturnWithCode() int {
 	})
 	featureConfig = envVarConfig
 
-	featureBilling := featureConfig.FeatureEnabled(config.FEATURE_BILLING)
 	featureBilling2 := featureConfig.FeatureEnabled(config.FEATURE_BILLING2)
 
-	// Create local billers
-	var biller billing.Biller = &billing.LocalBiller{
-		Logger:  logger,
-		Metrics: backendMetrics.BillingMetrics,
-	}
+	// Create local biller
 	var biller2 billing.Biller = &billing.LocalBiller{
-		Logger:  logger,
 		Metrics: backendMetrics.BillingMetrics,
 	}
 
@@ -478,23 +456,10 @@ func mainReturnWithCode() int {
 			settings.ByteThreshold = byteThreshold
 			settings.NumGoroutines = runtime.GOMAXPROCS(0)
 
-			if featureBilling {
-
-				billingTopicID := envvar.Get("BILLING_TOPIC_NAME", "billing")
-
-				pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, billingTopicID, clientCount, countThreshold, byteThreshold, &settings)
-				if err != nil {
-					core.Error("could not create pubsub biller: %v", err)
-					return 1
-				}
-
-				biller = pubsub
-			}
-
 			if featureBilling2 {
 				billing2TopicID := envvar.Get("FEATURE_BILLING2_TOPIC_NAME", "billing2")
 
-				pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, logger, gcpProjectID, billing2TopicID, clientCount, countThreshold, byteThreshold, &settings)
+				pubsub, err := billing.NewGooglePubSubBiller(pubsubCtx, backendMetrics.BillingMetrics, gcpProjectID, billing2TopicID, clientCount, countThreshold, byteThreshold, &settings)
 				if err != nil {
 					core.Error("could not create pubsub biller2: %v", err)
 					return 1
@@ -580,7 +545,7 @@ func mainReturnWithCode() int {
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
 	var wgPostSession sync.WaitGroup
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller, biller2, featureBilling, featureBilling2, logger, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller2, featureBilling2, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx, &wgPostSession)
 
 	// Create a server tracker to keep track of which servers are sending updates to this backend
@@ -643,29 +608,184 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	// Fetch the Auth0 Cert and refresh occasionally
 	newKeys, err := middleware.FetchAuth0Cert()
 	if err != nil {
-		core.Error("faild to fetch auth0 cert: %v", err)
-		os.Exit(1)
+		core.Error("failed to fetch auth0 cert: %v", err)
+		return 1
 	}
 	keys = newKeys
 
-	go func() {
-		fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
-		if err != nil {
-			core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
-			os.Exit(1)
-		}
+	fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+	if err != nil {
+		core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
+		return 1
+	}
 
+	go func() {
+		ticker := time.NewTicker(fetchAuthCertInterval)
 		for {
-			newKeys, err := middleware.FetchAuth0Cert()
-			if err != nil {
-				continue
+			select {
+			case <-ticker.C:
+				newKeys, err := middleware.FetchAuth0Cert()
+				if err != nil {
+					continue
+				}
+				keys = newKeys
+			case <-ctx.Done():
+				return
 			}
-			keys = newKeys
-			time.Sleep(fetchAuthCertInterval)
+
 		}
 	}()
+
+	// Setup the status handler info
+
+	statusData := &metrics.ServerBackendStatus{}
+	var statusMutex sync.RWMutex
+
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				backendMetrics.ServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				backendMetrics.ServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+				newStatusData := &metrics.ServerBackendStatus{}
+
+				// Service Information
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+
+				// Service Metrics
+				newStatusData.Goroutines = int(backendMetrics.ServiceMetrics.Goroutines.Value())
+				newStatusData.MemoryAllocated = backendMetrics.ServiceMetrics.MemoryAllocated.Value()
+
+				// Server Init Metrics
+				newStatusData.ServerInitInvocations = int(backendMetrics.ServerInitMetrics.HandlerMetrics.Invocations.Value())
+				newStatusData.ServerInitReadPacketFailure = int(backendMetrics.ServerInitMetrics.ReadPacketFailure.Value())
+				newStatusData.ServerInitBuyerNotFound = int(backendMetrics.ServerInitMetrics.BuyerNotFound.Value())
+				newStatusData.ServerInitBuyerNotActive = int(backendMetrics.ServerInitMetrics.BuyerNotActive.Value())
+				newStatusData.ServerInitSignatureCheckFailed = int(backendMetrics.ServerInitMetrics.SignatureCheckFailed.Value())
+				newStatusData.ServerInitSDKTooOld = int(backendMetrics.ServerInitMetrics.SDKTooOld.Value())
+				newStatusData.ServerInitDatacenterMapNotFound = int(backendMetrics.ServerInitMetrics.DatacenterMapNotFound.Value())
+				newStatusData.ServerInitDatacenterNotFound = int(backendMetrics.ServerInitMetrics.DatacenterNotFound.Value())
+				newStatusData.ServerInitWriteResponseFailure = int(backendMetrics.ServerInitMetrics.WriteResponseFailure.Value())
+
+				// Server Update Metrics
+				newStatusData.ServerUpdateInvocations = int(backendMetrics.ServerUpdateMetrics.HandlerMetrics.Invocations.Value())
+				newStatusData.ServerUpdateReadPacketFailure = int(backendMetrics.ServerUpdateMetrics.ReadPacketFailure.Value())
+				newStatusData.ServerUpdateBuyerNotFound = int(backendMetrics.ServerUpdateMetrics.BuyerNotFound.Value())
+				newStatusData.ServerUpdateBuyerNotLive = int(backendMetrics.ServerUpdateMetrics.BuyerNotLive.Value())
+				newStatusData.ServerUpdateSignatureCheckFailed = int(backendMetrics.ServerUpdateMetrics.SignatureCheckFailed.Value())
+				newStatusData.ServerUpdateSDKTooOld = int(backendMetrics.ServerUpdateMetrics.SDKTooOld.Value())
+				newStatusData.ServerUpdateDatacenterMapNotFound = int(backendMetrics.ServerUpdateMetrics.DatacenterMapNotFound.Value())
+				newStatusData.ServerUpdateDatacenterNotFound = int(backendMetrics.ServerUpdateMetrics.DatacenterNotFound.Value())
+
+				// Session Update Metrics
+				newStatusData.SessionUpdateInvocations = int(backendMetrics.SessionUpdateMetrics.HandlerMetrics.Invocations.Value())
+				newStatusData.SessionUpdateDirectSlices = int(backendMetrics.SessionUpdateMetrics.DirectSlices.Value())
+				newStatusData.SessionUpdateNextSlices = int(backendMetrics.SessionUpdateMetrics.NextSlices.Value())
+				newStatusData.SessionUpdateReadPacketFailure = int(backendMetrics.SessionUpdateMetrics.ReadPacketFailure.Value())
+				newStatusData.SessionUpdateFallbackToDirectUnknownReason = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectUnknownReason.Value())
+				newStatusData.SessionUpdateFallbackToDirectBadRouteToken = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectBadRouteToken.Value())
+				newStatusData.SessionUpdateFallbackToDirectNoNextRouteToContinue = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectNoNextRouteToContinue.Value())
+				newStatusData.SessionUpdateFallbackToDirectPreviousUpdateStillPending = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectPreviousUpdateStillPending.Value())
+				newStatusData.SessionUpdateFallbackToDirectBadContinueToken = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectBadContinueToken.Value())
+				newStatusData.SessionUpdateFallbackToDirectRouteExpired = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectRouteExpired.Value())
+				newStatusData.SessionUpdateFallbackToDirectRouteRequestTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectRouteRequestTimedOut.Value())
+				newStatusData.SessionUpdateFallbackToDirectContinueRequestTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectContinueRequestTimedOut.Value())
+				newStatusData.SessionUpdateFallbackToDirectClientTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectClientTimedOut.Value())
+				newStatusData.SessionUpdateFallbackToDirectUpgradeResponseTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectUpgradeResponseTimedOut.Value())
+				newStatusData.SessionUpdateFallbackToDirectRouteUpdateTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectRouteUpdateTimedOut.Value())
+				newStatusData.SessionUpdateFallbackToDirectPongTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectDirectPongTimedOut.Value())
+				newStatusData.SessionUpdateFallbackToDirectNextPongTimedOut = int(backendMetrics.SessionUpdateMetrics.FallbackToDirectNextPongTimedOut.Value())
+				newStatusData.SessionUpdateBuyerNotFound = int(backendMetrics.SessionUpdateMetrics.BuyerNotFound.Value())
+				newStatusData.SessionUpdateSignatureCheckFailed = int(backendMetrics.SessionUpdateMetrics.SignatureCheckFailed.Value())
+				newStatusData.SessionUpdateClientLocateFailure = int(backendMetrics.SessionUpdateMetrics.ClientLocateFailure.Value())
+				newStatusData.SessionUpdateReadSessionDataFailure = int(backendMetrics.SessionUpdateMetrics.ReadSessionDataFailure.Value())
+				newStatusData.SessionUpdateBadSessionID = int(backendMetrics.SessionUpdateMetrics.BadSessionID.Value())
+				newStatusData.SessionUpdateBadSliceNumber = int(backendMetrics.SessionUpdateMetrics.BadSliceNumber.Value())
+				newStatusData.SessionUpdateBuyerNotLive = int(backendMetrics.SessionUpdateMetrics.BuyerNotLive.Value())
+				newStatusData.SessionUpdateClientPingTimedOut = int(backendMetrics.SessionUpdateMetrics.ClientPingTimedOut.Value())
+				newStatusData.SessionUpdateDatacenterMapNotFound = int(backendMetrics.SessionUpdateMetrics.DatacenterMapNotFound.Value())
+				newStatusData.SessionUpdateDatacenterNotFound = int(backendMetrics.SessionUpdateMetrics.DatacenterNotFound.Value())
+				newStatusData.SessionUpdateDatacenterNotEnabled = int(backendMetrics.SessionUpdateMetrics.DatacenterNotEnabled.Value())
+				newStatusData.SessionUpdateNearRelaysLocateFailure = int(backendMetrics.SessionUpdateMetrics.NearRelaysLocateFailure.Value())
+				newStatusData.SessionUpdateNearRelaysChanged = int(backendMetrics.SessionUpdateMetrics.NearRelaysChanged.Value())
+				newStatusData.SessionUpdateNoRelaysInDatacenter = int(backendMetrics.SessionUpdateMetrics.NoRelaysInDatacenter.Value())
+				newStatusData.SessionUpdateRouteDoesNotExist = int(backendMetrics.SessionUpdateMetrics.RouteDoesNotExist.Value())
+				newStatusData.SessionUpdateRouteSwitched = int(backendMetrics.SessionUpdateMetrics.RouteSwitched.Value())
+				newStatusData.SessionUpdateNextWithoutRouteRelays = int(backendMetrics.SessionUpdateMetrics.NextWithoutRouteRelays.Value())
+				newStatusData.SessionUpdateSDKAborted = int(backendMetrics.SessionUpdateMetrics.SDKAborted.Value())
+				newStatusData.SessionUpdateNoRoute = int(backendMetrics.SessionUpdateMetrics.NoRoute.Value())
+				newStatusData.SessionUpdateMultipathOverload = int(backendMetrics.SessionUpdateMetrics.MultipathOverload.Value())
+				newStatusData.SessionUpdateLatencyWorse = int(backendMetrics.SessionUpdateMetrics.LatencyWorse.Value())
+				newStatusData.SessionUpdateMispredictVeto = int(backendMetrics.SessionUpdateMetrics.MispredictVeto.Value())
+				newStatusData.SessionUpdateWriteResponseFailure = int(backendMetrics.SessionUpdateMetrics.WriteResponseFailure.Value())
+				newStatusData.SessionUpdateStaleRouteMatrix = int(backendMetrics.SessionUpdateMetrics.StaleRouteMatrix.Value())
+
+				// Post Session Metrics
+				newStatusData.PostSessionBillingEntries2Sent = int(backendMetrics.PostSessionMetrics.BillingEntries2Sent.Value())
+				newStatusData.PostSessionBillingEntries2Finished = int(backendMetrics.PostSessionMetrics.BillingEntries2Finished.Value())
+				newStatusData.PostSessionBilling2BufferFull = int(backendMetrics.PostSessionMetrics.Billing2BufferFull.Value())
+				newStatusData.PostSessionPortalEntriesSent = int(backendMetrics.PostSessionMetrics.PortalEntriesSent.Value())
+				newStatusData.PostSessionPortalEntriesFinished = int(backendMetrics.PostSessionMetrics.PortalEntriesFinished.Value())
+				newStatusData.PostSessionPortalBufferFull = int(backendMetrics.PostSessionMetrics.PortalBufferFull.Value())
+				newStatusData.PostSessionVanityMetricsSent = int(backendMetrics.PostSessionMetrics.VanityMetricsSent.Value())
+				newStatusData.PostSessionVanityMetricsFinished = int(backendMetrics.PostSessionMetrics.VanityMetricsFinished.Value())
+				newStatusData.PostSessionVanityBufferFull = int(backendMetrics.PostSessionMetrics.VanityBufferFull.Value())
+				newStatusData.PostSessionBilling2Failure = int(backendMetrics.PostSessionMetrics.Billing2Failure.Value())
+				newStatusData.PostSessionPortalFailure = int(backendMetrics.PostSessionMetrics.PortalFailure.Value())
+				newStatusData.PostSessionVanityMarshalFailure = int(backendMetrics.PostSessionMetrics.VanityMarshalFailure.Value())
+				newStatusData.PostSessionVanityTransmitFailure = int(backendMetrics.PostSessionMetrics.VanityTransmitFailure.Value())
+
+				// Billing Metrics
+				newStatusData.BillingEntries2Submitted = int(backendMetrics.BillingMetrics.Entries2Submitted.Value())
+				newStatusData.BillingEntries2Queued = int(backendMetrics.BillingMetrics.Entries2Queued.Value())
+				newStatusData.BillingEntries2Flushed = int(backendMetrics.BillingMetrics.Entries2Flushed.Value())
+				newStatusData.Billing2PublishFailure = int(backendMetrics.BillingMetrics.ErrorMetrics.Billing2PublishFailure.Value())
+
+				// Route Matrix Metrics
+				newStatusData.RouteMatrixNumRoutes = int(backendMetrics.RouteMatrixNumRoutes.Value())
+				newStatusData.RouteMatrixBytes = int(backendMetrics.RouteMatrixBytes.Value())
+
+				// Error Metrics
+				newStatusData.RouteMatrixReaderNil = int(backendMetrics.ErrorMetrics.RouteMatrixReaderNil.Value())
+				newStatusData.RouteMatrixReadFailure = int(backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Value())
+				newStatusData.RouteMatrixBufferEmpty = int(backendMetrics.ErrorMetrics.RouteMatrixBufferEmpty.Value())
+				newStatusData.RouteMatrixSerializeFailure = int(backendMetrics.ErrorMetrics.RouteMatrixSerializeFailure.Value())
+				newStatusData.BinWrapperEmpty = int(backendMetrics.ErrorMetrics.BinWrapperEmpty.Value())
+				newStatusData.BinWrapperFailure = int(backendMetrics.ErrorMetrics.BinWrapperFailure.Value())
+				newStatusData.StaleRouteMatrix = int(backendMetrics.ErrorMetrics.StaleRouteMatrix.Value())
+
+				statusMutex.Lock()
+				statusData = newStatusData
+				statusMutex.Unlock()
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
+
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
 
 	// Start HTTP server
 	{
@@ -683,6 +803,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/health", transport.HealthHandlerFunc())
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 		router.Handle("/debug/vars", expvar.Handler())
+		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 		serverTrackerHandler := http.HandlerFunc(transport.ServerTrackerHandlerFunc(serverTracker))
 		router.Handle("/servers", middleware.PlainHttpAuthMiddleware(keys, audience, serverTrackerHandler, strings.Split(allowedOrigins, ",")))

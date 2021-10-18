@@ -3,11 +3,8 @@ package transport
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/metrics"
@@ -17,7 +14,6 @@ import (
 
 type PostSessionHandler struct {
 	numGoroutines              int
-	postSessionBillingChannel  chan *billing.BillingEntry
 	postSessionBilling2Channel chan *billing.BillingEntry2
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
@@ -29,21 +25,17 @@ type PostSessionHandler struct {
 	vanityPublisherIndex       int
 	vanityPublishMaxRetries    int
 	useVanityMetrics           bool
-	biller                     billing.Biller
 	biller2                    billing.Biller
-	featureBilling             bool
 	featureBilling2            bool
-	logger                     log.Logger
 	metrics                    *metrics.PostSessionMetrics
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
-	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, useVanityMetrics bool, biller billing.Biller, biller2 billing.Biller,
-	featureBilling bool, featureBilling2 bool, logger log.Logger, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
+	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, useVanityMetrics bool, biller2 billing.Biller,
+	featureBilling2 bool, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
 
 	return &PostSessionHandler{
 		numGoroutines:              numGoroutines,
-		postSessionBillingChannel:  make(chan *billing.BillingEntry, chanBufferSize),
 		postSessionBilling2Channel: make(chan *billing.BillingEntry2, chanBufferSize),
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
@@ -53,42 +45,13 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 		vanityPublishers:           vanityPublishers,
 		vanityPublishMaxRetries:    vanityPublishMaxRetries,
 		useVanityMetrics:           useVanityMetrics,
-		biller:                     biller,
 		biller2:                    biller2,
-		featureBilling:             featureBilling,
 		featureBilling2:            featureBilling2,
-		logger:                     logger,
 		metrics:                    metrics,
 	}
 }
 
 func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.WaitGroup) {
-	if post.featureBilling {
-
-		for i := 0; i < post.numGoroutines; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				for {
-					select {
-					case billingEntry := <-post.postSessionBillingChannel:
-						if err := post.biller.Bill(ctx, billingEntry); err != nil {
-							level.Error(post.logger).Log("msg", "could not submit billing entry", "err", err)
-							post.metrics.BillingFailure.Add(1)
-							continue
-						}
-
-						post.metrics.BillingEntriesFinished.Add(1)
-					case <-ctx.Done():
-						post.biller.FlushBuffer(ctx)
-						post.biller.Close()
-						return
-					}
-				}
-			}()
-		}
-	}
 
 	if post.featureBilling2 {
 
@@ -101,7 +64,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 					select {
 					case billingEntry := <-post.postSessionBilling2Channel:
 						if err := post.biller2.Bill2(ctx, billingEntry); err != nil {
-							level.Error(post.logger).Log("msg", "could not submit billing entry 2", "err", err)
+							core.Error("could not submit billing entry 2: %v", err)
 							post.metrics.Billing2Failure.Add(1)
 							continue
 						}
@@ -127,19 +90,18 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 				case postSessionCountData := <-post.sessionPortalCountsChannel:
 					countBytes, err := WriteSessionCountData(postSessionCountData)
 					if err != nil {
-						core.Debug("could not serialize count data: %v", err)
+						core.Error("could not serialize count data: %v", err)
 						post.metrics.PortalFailure.Add(1)
 						continue
 					}
 
-					portalDataBytes, err := post.TransmitPortalData(ctx, pubsub.TopicPortalCruncherSessionCounts, countBytes)
+					_, err = post.TransmitPortalData(ctx, pubsub.TopicPortalCruncherSessionCounts, countBytes)
 					if err != nil {
-						level.Error(post.logger).Log("msg", "could not update portal counts", "err", err)
+						core.Error("could not update portal counts: %v", err)
 						post.metrics.PortalFailure.Add(1)
 						continue
 					}
 
-					level.Debug(post.logger).Log("type", "session counts", "msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 					post.metrics.PortalEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
@@ -158,19 +120,18 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 				case postSessionPortalData := <-post.sessionPortalDataChannel:
 					sessionBytes, err := WriteSessionPortalData(postSessionPortalData)
 					if err != nil {
-						core.Debug("could not serialize portal data: %v", err)
+						core.Error("could not serialize portal data: %v", err)
 						post.metrics.PortalFailure.Add(1)
 						continue
 					}
 
-					portalDataBytes, err := post.TransmitPortalData(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes)
+					_, err = post.TransmitPortalData(ctx, pubsub.TopicPortalCruncherSessionData, sessionBytes)
 					if err != nil {
-						level.Error(post.logger).Log("msg", "could not update portal data", "err", err)
+						core.Error("could not update portal data: %v", err)
 						post.metrics.PortalFailure.Add(1)
 						continue
 					}
 
-					level.Debug(post.logger).Log("type", "session data", "msg", fmt.Sprintf("published %d bytes to portal cruncher", portalDataBytes))
 					post.metrics.PortalEntriesFinished.Add(1)
 				case <-ctx.Done():
 					return
@@ -193,27 +154,25 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 						emptyVanity := vanity.VanityMetrics{}
 						if extractedMetrics == emptyVanity {
 							// If not on Next, no need to send the metric
-							level.Debug(post.logger).Log("type", "vanity metrics", "msg", "billingEntry not on next, not sending vanity metric")
 							continue
 						}
 
 						// Marshal the metrics
 						metricBinary, err := extractedMetrics.MarshalBinary()
 						if err != nil {
-							level.Error(post.logger).Log("msg", "could not marshal vanity metric", "err", err)
+							core.Error("could not marshal vanity metric: %v", err)
 							post.metrics.VanityMarshalFailure.Add(1)
 							continue
 						}
 
 						// Push the data over ZeroMQ
-						metricBytes, err := post.TransmitVanityMetrics(ctx, pubsub.TopicVanityMetricData, metricBinary)
+						_, err = post.TransmitVanityMetrics(ctx, pubsub.TopicVanityMetricData, metricBinary)
 						if err != nil {
-							level.Error(post.logger).Log("msg", "could not update vanity metrics", "err", err)
+							core.Error("could not update vanity metrics: %v", err)
 							post.metrics.VanityTransmitFailure.Add(1)
 							continue
 						}
 
-						level.Debug(post.logger).Log("type", "vanity metrics", "msg", fmt.Sprintf("published %d bytes to vanity metrics", metricBytes))
 						post.metrics.VanityMetricsFinished.Add(1)
 					case <-ctx.Done():
 						return
@@ -222,16 +181,6 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 			}()
 		}
 	}
-}
-
-func (post *PostSessionHandler) SendBillingEntry(billingEntry *billing.BillingEntry) {
-	select {
-	case post.postSessionBillingChannel <- billingEntry:
-		post.metrics.BillingEntriesSent.Add(1)
-	default:
-		post.metrics.BillingBufferFull.Add(1)
-	}
-
 }
 
 func (post *PostSessionHandler) SendBillingEntry2(billingEntry *billing.BillingEntry2) {
@@ -268,15 +217,10 @@ func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEn
 	select {
 	case post.vanityMetricChannel <- post.ExtractVanityMetrics(billingEntry):
 		post.metrics.VanityMetricsSent.Add(1)
-		level.Info(post.logger).Log("msg", "sent vanity metric")
 	default:
 		post.metrics.VanityBufferFull.Add(1)
 	}
 
-}
-
-func (post *PostSessionHandler) BillingBufferSize() uint64 {
-	return uint64(len(post.postSessionBillingChannel))
 }
 
 func (post *PostSessionHandler) Billing2BufferSize() uint64 {

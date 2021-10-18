@@ -2,6 +2,35 @@ package metrics
 
 import "context"
 
+type AnalyticsPusherStatus struct {
+	// Service Information
+	ServiceName string `json:"service_name"`
+	GitHash     string `json:"git_hash"`
+	Started     string `json:"started"`
+	Uptime      string `json:"uptime"`
+
+	// Metrics
+	Goroutines                   int     `json:"goroutines"`
+	MemoryAllocated              float64 `json:"mb_allocated"`
+	RouteMatrixInvocations       int     `json:"route_matrix_invocations"`
+	RouteMatrixSuccesses         int     `json:"route_matrix_successes"`
+	RouteMatrixDuration          int     `json:"route_matrix_duration"`
+	RouteMatrixLongDurations     int     `json:"route_matrix_long_durations"`
+	PingStatsEntriesReceived     int     `json:"ping_stats_entries_received"`
+	PingStatsEntriesSubmitted    int     `json:"ping_stats_entries_submitted"`
+	PingStatsEntriesFlushed      int     `json:"ping_stats_entries_flushed"`
+	RelayStatsEntriesReceived    int     `json:"relay_stats_entries_received"`
+	RelayStatsEntriesSubmitted   int     `json:"relay_stats_entries_submitted"`
+	RelayStatsEntriesFlushed     int     `json:"relay_stats_entries_flushed"`
+	PingStatusPublishFailures    int     `json:"ping_stats_publish_failures"`
+	RelayStatsPublishFailures    int     `json:"relay_stats_publish_failures"`
+	RouteMatrixReaderNilErrors   int     `json:"route_matrix_reader_nil_errors"`
+	RouteMatrixReadErrors        int     `json:"route_matrix_read_errors"`
+	RouteMatrixBufferEmptyErrors int     `json:"route_matrix_buffer_empty_errors"`
+	RouteMatrixSerializeErrors   int     `json:"route_matrix_serialize_errors"`
+	RouteMatrixStaleErrors       int     `json:"route_matrix_stale_errors"`
+}
+
 type AnalyticsPusherMetrics struct {
 	AnalyticsPusherServiceMetrics *ServiceMetrics
 	RouteMatrixInvocations        Counter
