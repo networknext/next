@@ -7,18 +7,11 @@ import Vue from 'vue'
 export class AuthService {
   private clientID: string
   private domain: string
-  public authClient: Auth0Client
   public customClient: WebAuth
 
   constructor (options: any) {
     this.clientID = options.clientID
     this.domain = options.domain
-    this.authClient = new Auth0Client({
-      client_id: this.clientID,
-      domain: this.domain,
-      cacheLocation: 'localstorage',
-      useRefreshTokens: true
-    })
 
     this.customClient = new WebAuth({
       domain: this.domain,
@@ -88,10 +81,11 @@ export class AuthService {
 
   // TODO: This should be an async function instead of the weird nested promise
   public refreshToken (): Promise<any> {
-    return this.authClient.getTokenSilently({ ignoreCache: true })
-      .then(() => {
-        this.processAuthentication()
+    return new Promise((resolve: any, reject: any) => {
+      this.customClient.checkSession({}, (result: any, err: Auth0Error | null) => {
+        err ? reject(err) : resolve(result)
       })
+    })
   }
 
   public async processAuthentication (): Promise<any> {

@@ -151,11 +151,18 @@ const router = new VueRouter({
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // TODO: Make sure all edge cases for illegal routing are caught here
   // TODO: Clean this up. Figure out a better way of handling user role and legal route relationships
-  if (!store.getters.isAnonymous && (to.name === 'login' || to.name === 'get-access')) {
+
+  // One stop catch all for anonymous users accessing things they shouldn't be
+  if (store.getters.isAnonymous && (to.name !== 'map' && to.name !== 'sessions' && to.name !== 'session-tool')) {
+    store.commit('UPDATE_CURRENT_PAGE', 'map')
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('update')
+    }
     next('/map')
     return
   }
-  if (!store.getters.isAdmin && (to.name === 'supply')) {
+
+  if (!store.getters.isAnonymous && (to.name === 'login' || to.name === 'get-access')) {
     next('/map')
     return
   }
@@ -175,7 +182,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
-  if (!store.getters.isSeller && (to.name === 'supply')) {
+  if (!store.getters.isAdmin && !store.getters.isSeller && (to.name === 'supply')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
@@ -183,7 +190,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
-  if (!store.getters.hasAnalytics && (to.name === 'analytics')) {
+  if (!store.getters.isAdmin && !store.getters.hasAnalytics && (to.name === 'analytics')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
@@ -191,7 +198,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
-  if (!store.getters.hasBilling && (to.name === 'billing')) {
+  if (!store.getters.isAdmin && !store.getters.hasBilling && (to.name === 'billing')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (router.app.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
@@ -200,7 +207,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     return
   }
   // TODO: Add in checks for different parts of the explore page with new roles TBD
-  if (to.name === 'explore') {
+  if (store.getters.isAnonymous && to.name === 'explore') {
     store.commit('UPDATE_CURRENT_PAGE', 'notifications')
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
