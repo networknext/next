@@ -279,6 +279,8 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 			default:
 				errChan <- &ErrUnknownMessage{}
 			}
+
+			errChan <- nil
 		}
 	}()
 
