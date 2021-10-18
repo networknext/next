@@ -7,27 +7,28 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"expvar"
 	"fmt"
-	"runtime"
-
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-
+	"runtime"
+	"sync"
+	"syscall"
 	"time"
 
-	"github.com/go-kit/kit/log/level"
-	"github.com/gorilla/mux"
-
-	"github.com/networknext/backend/modules/backend" // todo: not a good module name
+	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/config"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/metrics"
+	portalcruncher "github.com/networknext/backend/modules/portal_cruncher"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
 
-	portalcruncher "github.com/networknext/backend/modules/portal_cruncher"
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -47,7 +48,11 @@ func mainReturnWithCode() int {
 	serviceName := "portal_cruncher"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
-	ctx := context.Background()
+	est, _ := time.LoadLocation("EST")
+	startTime := time.Now().In(est)
+
+	// Setup the service
+	ctx, cancel := context.WithCancel(context.Background())
 
 	gcpProjectID := backend.GetGCPProjectID()
 
@@ -55,38 +60,38 @@ func mainReturnWithCode() int {
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get logger: %v", err)
 		return 1
 	}
 
 	env, err := backend.GetEnv()
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get env: %v", err)
 		return 1
 	}
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get metrics handler: %v", err)
 		return 1
 	}
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			core.Error("failed to initialize stackdriver profiler: %v", err)
 			return 1
 		}
 	}
 
 	portalCruncherMetrics, err := metrics.NewPortalCruncherMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create portal cruncher metrics", "err", err)
+		core.Error("failed to create portal cruncher metrics: %v", err)
 		return 1
 	}
 
 	btMetrics, err := metrics.NewBigTableMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create bigtable metrics", "err", err)
+		core.Error("failed to create bigtable metrics: %v", err)
 		return 1
 	}
 
@@ -102,62 +107,34 @@ func mainReturnWithCode() int {
 	})
 	featureConfig = envVarConfig
 
-	// Setup the stats print routine
-	{
-		memoryUsed := func() float64 {
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			return float64(m.Alloc) / (1000.0 * 1000.0)
-		}
-
-		go func() {
-			for {
-				portalCruncherMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
-				portalCruncherMetrics.MemoryAllocated.Set(memoryUsed())
-
-				fmt.Printf("-----------------------------\n")
-				fmt.Printf("%d goroutines\n", int(portalCruncherMetrics.Goroutines.Value()))
-				fmt.Printf("%.2f mb allocated\n", portalCruncherMetrics.MemoryAllocated.Value())
-				fmt.Printf("%d messages received\n", int(portalCruncherMetrics.ReceivedMessageCount.Value()))
-				fmt.Printf("%d bigtable success meta writes\n", int(btMetrics.WriteMetaSuccessCount.Value()))
-				fmt.Printf("%d bigtable success slice writes\n", int(btMetrics.WriteSliceSuccessCount.Value()))
-				fmt.Printf("%d bigtable failed meta writes\n", int(btMetrics.WriteMetaFailureCount.Value()))
-				fmt.Printf("%d bigtable failed slice writes\n", int(btMetrics.WriteSliceFailureCount.Value()))
-				fmt.Printf("-----------------------------\n")
-
-				time.Sleep(time.Second * 10)
-			}
-		}()
-	}
-
 	// Start portal cruncher subscriber
 	var portalSubscriber pubsub.Subscriber
 	{
 		cruncherPort := envvar.Get("CRUNCHER_PORT", "5555")
-		if err != nil {
-			level.Error(logger).Log("err", err)
+		if cruncherPort == "" {
+			core.Error("CRUNCHER_PORT not set")
 			return 1
 		}
 
 		receiveBufferSize, err := envvar.GetInt("CRUNCHER_RECEIVE_BUFFER_SIZE", 1000000)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("failed to get CRUNCHER_RECEIVE_BUFFER_SIZE: %v", err)
 			return 1
 		}
 
 		portalCruncherSubscriber, err := pubsub.NewPortalCruncherSubscriber(cruncherPort, int(receiveBufferSize))
 		if err != nil {
-			level.Error(logger).Log("msg", "could not create portal cruncher subscriber", "err", err)
+			core.Error("failed to create portal cruncher subscriber: %v", err)
 			return 1
 		}
 
 		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionData); err != nil {
-			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session data topic", "err", err)
+			core.Error("failed to subscribe to portal cruncher session data topic: %v", err)
 			return 1
 		}
 
 		if err := portalCruncherSubscriber.Subscribe(pubsub.TopicPortalCruncherSessionCounts); err != nil {
-			level.Error(logger).Log("msg", "could not subscribe to portal cruncher session counts topic", "err", err)
+			core.Error("failed to subscribe to portal cruncher session counts topic: %v", err)
 			return 1
 		}
 
@@ -166,31 +143,31 @@ func mainReturnWithCode() int {
 
 	redisPingFrequency, err := envvar.GetDuration("CRUNCHER_REDIS_PING_FREQUENCY", time.Second*30)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse CRUNCHER_REDIS_PING_FREQUENCY: %v", err)
 		return 1
 	}
 
 	redisFlushFrequency, err := envvar.GetDuration("CRUNCHER_REDIS_FLUSH_FREQUENCY", time.Second)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse CRUNCHER_REDIS_FLUSH_FREQUENCY: %v", err)
 		return 1
 	}
 
 	redisFlushCount, err := envvar.GetInt("PORTAL_CRUNCHER_REDIS_FLUSH_COUNT", 1000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse PORTAL_CRUNCHER_REDIS_FLUSH_COUNT: %v", err)
 		return 1
 	}
 
 	redisGoroutineCount, err := envvar.GetInt("CRUNCHER_REDIS_GOROUTINE_COUNT", 5)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse CRUNCHER_REDIS_GOROUTINE_COUNT: %v", err)
 		return 1
 	}
 
 	messageChanSize, err := envvar.GetInt("CRUNCHER_MESSAGE_CHANNEL_SIZE", 10000000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse CRUNCHER_MESSAGE_CHANNEL_SIZE: %v", err)
 		return 1
 	}
 
@@ -198,12 +175,12 @@ func mainReturnWithCode() int {
 	redisPassword := envvar.Get("REDIS_PASSWORD", "")
 	redisMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 10)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse REDIS_MAX_IDLE_CONNS: %v", err)
 		return 1
 	}
 	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse REDIS_MAX_ACTIVE_CONNS: %v", err)
 		return 1
 	}
 
@@ -219,9 +196,12 @@ func mainReturnWithCode() int {
 
 	btGoroutineCount, err := envvar.GetInt("BIGTABLE_CRUNCHER_GOROUTINE_COUNT", 1)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse BIGTABLE_CRUNCHER_GOROUTINE_COUNT: %v", err)
 		return 1
 	}
+
+	btEmulatorOK := envvar.Exists("BIGTABLE_EMULATOR_HOST")
+	btHistoricalPath := envvar.Get("BIGTABLE_HISTORICAL_TXT", "./testdata/bigtable_historical.txt")
 
 	portalCruncher, err := portalcruncher.NewPortalCruncher(ctx,
 		portalSubscriber,
@@ -234,68 +214,152 @@ func mainReturnWithCode() int {
 		btInstanceID,
 		btTableName,
 		btCfName,
+		btEmulatorOK,
+		btHistoricalPath,
 		messageChanSize,
-		logger,
 		portalCruncherMetrics,
 		btMetrics)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to create portal cruncher: %v", err)
 		return 1
 	}
 
 	if err := portalCruncher.PingRedis(); err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("unable to ping redis: %v", err)
 		return 1
 	}
 
+	// Create an error channel for goroutines
 	errChan := make(chan error, 1)
-	go func() {
-		if err := portalCruncher.Start(ctx, redisGoroutineCount, btGoroutineCount, redisPingFrequency, redisFlushFrequency, redisFlushCount, env); err != nil {
-			level.Error(logger).Log("err", err)
-			errChan <- err
-			return
-		}
-	}()
 
-	// Start HTTP server
+	// Create a waitgroup to manage clean shutdown
+	var wg sync.WaitGroup
+
+	// Start the portal cruncher
+	go portalCruncher.Start(ctx, redisGoroutineCount, btGoroutineCount, redisPingFrequency, redisFlushFrequency, redisFlushCount, env, errChan, &wg)
+
+	// Setup the status handler info
+
+	statusData := &metrics.PortalCruncherStatus{}
+	var statusMutex sync.RWMutex
+
 	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
 		go func() {
-			router := mux.NewRouter()
-			router.HandleFunc("/health", transport.HealthHandlerFunc())
-			router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+			for {
+				portalCruncherMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				portalCruncherMetrics.MemoryAllocated.Set(memoryUsed())
 
-			enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-			}
-			if enablePProf {
-				router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
-			}
+				newStatusData := &metrics.PortalCruncherStatus{}
 
-			port, ok := os.LookupEnv("HTTP_PORT")
-			if !ok {
-				level.Error(logger).Log("err", "env var HTTP_PORT must be set")
-				errChan <- err
-				return
-			}
+				// Service Information
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
 
-			err = http.ListenAndServe(":"+port, router)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				errChan <- err
-				return
+				// Service Metrics
+				newStatusData.Goroutines = int(portalCruncherMetrics.Goroutines.Value())
+				newStatusData.MemoryAllocated = portalCruncherMetrics.MemoryAllocated.Value()
+
+				// Cruncher Counts
+				newStatusData.ReceivedMessageCount = int(portalCruncherMetrics.ReceivedMessageCount.Value())
+
+				// Bigtable Counts
+				newStatusData.WriteMetaSuccessCount = int(btMetrics.WriteMetaSuccessCount.Value())
+				newStatusData.WriteSliceSuccessCount = int(btMetrics.WriteSliceSuccessCount.Value())
+
+				// Bigtable Errors
+				newStatusData.WriteMetaFailureCount = int(btMetrics.WriteMetaFailureCount.Value())
+				newStatusData.WriteSliceFailureCount = int(btMetrics.WriteSliceFailureCount.Value())
+
+				statusMutex.Lock()
+				statusData = newStatusData
+				statusMutex.Unlock()
+
+				time.Sleep(time.Second * 10)
 			}
 		}()
 	}
 
-	// Wait for interrupt signal
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
+	// Start HTTP server
+	{
+		port := envvar.Get("HTTP_PORT", "30000")
+		if port == "" {
+			core.Error("HTTP_PORT not set")
+			return 1
+		}
+		fmt.Printf("starting http server on :%s\n", port)
+
+		router := mux.NewRouter()
+		router.HandleFunc("/health", transport.HealthHandlerFunc())
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
+		router.Handle("/debug/vars", expvar.Handler())
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			core.Error("could not parse envvar FEATURE_ENABLE_PPROF: %v", err)
+		}
+		if enablePProf {
+			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
+
+		go func() {
+			err := http.ListenAndServe(":"+port, router)
+			if err != nil {
+				core.Error("failed to start http server: %v", err)
+				errChan <- err
+			}
+		}()
+	}
+
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case <-sigint:
+	case <-termChan: // Exit with an error code of 0 if we receive SIGINT or SIGTERM
+		fmt.Println("Received shutdown signal.")
+
+		cancel()
+		// Wait for essential goroutines to finish up
+		wg.Wait()
+
+		// Close the redis pool connection
+		portalCruncher.CloseRedisPool()
+		// Close Bigtable client
+		portalCruncher.CloseBigTable()
+
+		fmt.Println("Successfully shutdown.")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		// Still let essential goroutines finish even though we got an error
+		cancel()
+		wg.Wait()
+
+		// Close the redis pool connection
+		portalCruncher.CloseRedisPool()
+		// Close Bigtable client
+		portalCruncher.CloseBigTable()
+
 		return 1
 	}
 }
