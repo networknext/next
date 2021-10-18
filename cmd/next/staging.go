@@ -36,7 +36,7 @@ type StagingConfig struct {
 	RelayGateway   StagingServiceConfig `json:"relayGateway"`
 	RelayBackend   StagingServiceConfig `json:"relayBackend"`
 	FakeRelays     StagingServiceConfig `json:"fakeRelays"`
-	RelayFrontend  StagingServiceConfig `json:"relayGateway"`
+	RelayFrontend  StagingServiceConfig `json:"relayFrontend"`
 	RelayPusher    StagingServiceConfig `json:"relayPusher"`
 	PortalCruncher StagingServiceConfig `json:"portalCruncher"`
 	Vanity         StagingServiceConfig `json:"vanity"`
