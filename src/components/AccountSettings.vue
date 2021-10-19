@@ -12,7 +12,7 @@
         <label for="firstName">
           First Name
         </label>
-        <input type="text" class="form-control form-control-sm" id="firstName" v-model="firstName" placeholder="Enter your first name" @change="checkFirstName()"/>
+        <input type="text" class="form-control form-control-sm" id="firstName" v-model="firstName" placeholder="Enter your first name"/>
         <small v-for="(error, index) in firstNameErrors" :key="index" class="text-danger">
           {{ error }}
           <br/>
@@ -22,7 +22,7 @@
         <label for="lastName">
           Last Name
         </label>
-        <input type="text" class="form-control form-control-sm" id="lastName" v-model="lastName" placeholder="Enter your last name" @change="checkLastName()"/>
+        <input type="text" class="form-control form-control-sm" id="lastName" v-model="lastName" placeholder="Enter your last name"/>
         <small v-for="(error, index) in lastNameErrors" :key="index" class="text-danger">
           {{ error }}
           <br/>
@@ -147,12 +147,6 @@ export default class AccountSettings extends Vue {
     return this.companyNameErrors.length === 0 && this.companyCodeErrors.length === 0
   }
 
-  get validUserDetails (): boolean {
-    this.checkFirstName()
-    this.checkLastName()
-    return this.firstNameErrors.length === 0 && this.lastNameErrors.length === 0
-  }
-
   private companyName: string
   private companyNameErrors: Array<string>
 
@@ -227,8 +221,6 @@ export default class AccountSettings extends Vue {
 
     this.companyName = userProfile.companyName || ''
     this.companyCode = userProfile.companyCode || ''
-    this.checkCompanyName()
-    this.checkCompanyCode()
     // this.checkConfirmPassword()
   }
 
@@ -240,13 +232,15 @@ export default class AccountSettings extends Vue {
     this.firstNameErrors = []
     if (this.firstName.length === 0) {
       this.firstNameErrors.push('Please enter your first name')
+      return
     }
 
     if (this.firstName.length > 2048) {
       this.firstNameErrors.push('First name is to long, please enter a name that is less that 2048 characters')
+      return
     }
 
-    const regex = new RegExp('([A-Za-z][^!?<>()\-_=+|[\]{}@#$%^&*;:"\',.`~\\])\w+')
+    const regex = new RegExp('([A-Za-z])')
     if (!regex.test(this.firstName)) {
       this.firstNameErrors.push('A valid first name must include at least one letter')
     }
@@ -256,15 +250,17 @@ export default class AccountSettings extends Vue {
     this.lastNameErrors = []
     if (this.lastName.length === 0) {
       this.lastNameErrors.push('Please enter your last name')
+      return
     }
 
     if (this.lastName.length > 2048) {
       this.lastNameErrors.push('Last name is to long, please enter a name that is less that 2048 characters')
+      return
     }
 
-    const regex = new RegExp('([A-Za-z][^!?<>()\-_=+|[\]{}@#$%^&*;:"\',.`~\\])\w+')
+    const regex = new RegExp('([A-Za-z])')
     if (!regex.test(this.lastName)) {
-      this.firstNameErrors.push('A valid last name must include at least one letter')
+      this.lastNameErrors.push('A valid last name must include at least one letter')
     }
   }
 
@@ -345,7 +341,9 @@ export default class AccountSettings extends Vue {
       last_name: '',
       newsletter: newsletter
     }
-    if (this.validUserDetails && (this.$store.getters.userProfile.firstName !== this.firstName || this.$store.getters.userProfile.lastName !== this.lastName)) {
+    this.checkFirstName()
+    this.checkLastName()
+    if ((this.firstNameErrors.length === 0 && this.lastNameErrors.length === 0) && (this.$store.getters.userProfile.firstName !== this.firstName || this.$store.getters.userProfile.lastName !== this.lastName)) {
       options.first_name = this.firstName
       options.last_name = this.lastName
       changed = true
