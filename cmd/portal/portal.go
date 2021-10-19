@@ -214,7 +214,7 @@ func main() {
 		btCfName = envvar.Get("BIGTABLE_CF_NAME", "")
 
 		// Create a bigtable admin for setup
-		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -239,7 +239,7 @@ func main() {
 		}
 
 		// Create a standard client for writing to the table
-		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, btTableName, logger)
+		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, btTableName)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)

@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/storage"
 )
 
@@ -37,7 +36,7 @@ type StagingConfig struct {
 	RelayGateway   StagingServiceConfig `json:"relayGateway"`
 	RelayBackend   StagingServiceConfig `json:"relayBackend"`
 	FakeRelays     StagingServiceConfig `json:"fakeRelays"`
-	RelayFrontend  StagingServiceConfig `json:"relayGateway"`
+	RelayFrontend  StagingServiceConfig `json:"relayFrontend"`
 	RelayPusher    StagingServiceConfig `json:"relayPusher"`
 	PortalCruncher StagingServiceConfig `json:"portalCruncher"`
 	Vanity         StagingServiceConfig `json:"vanity"`
@@ -517,10 +516,9 @@ func StopStaging() []error {
 func createBigTable() error {
 	ctx := context.Background()
 	gcpProjectID := "network-next-v3-staging"
-	logger := log.NewNopLogger()
 
 	// Create a bigtable instance admin
-	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID, logger)
+	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID)
 	if err != nil {
 		return err
 	}
@@ -547,7 +545,7 @@ func createBigTable() error {
 	}
 
 	// Create a bigtable admin
-	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, InstanceID, logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, InstanceID)
 	if err != nil {
 		return err
 	}
@@ -582,10 +580,9 @@ func createBigTable() error {
 func deleteBigTable() error {
 	ctx := context.Background()
 	gcpProjectID := "network-next-v3-staging"
-	logger := log.NewNopLogger()
 
 	// Create a bigtable instance admin
-	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID, logger)
+	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID)
 	if err != nil {
 		return err
 	}
