@@ -20,7 +20,7 @@ type RelayForwarderStatus struct {
 
 	// Error Metrics
 	ParseURLError    int `json:"parse_url_error"`
-	ForwardPostError int `json:"forward_port_error"`
+	ForwardPostError int `json:"forward_post_error"`
 }
 
 type RelayForwarderMetrics struct {
