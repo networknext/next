@@ -261,10 +261,6 @@ ifndef BIGTABLE_CF_NAME
 export BIGTABLE_CF_NAME = portal-session-history
 endif
 
-ifndef BIGTABLE_WRITE_DELETE_ROW
-export BIGTABLE_WRITE_DELETE_ROW = false
-endif
-
 ifndef BIGTABLE_TABLE_NAME
 export BIGTABLE_TABLE_NAME = portal-session-history
 endif
