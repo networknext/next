@@ -168,6 +168,7 @@ func mainReturnWithCode() int {
 		core.Error("failed to create gcp storage client: %v", err)
 		return 1
 	}
+	defer gcpStorage.Client.Close()
 
 	// Setup http client for maxmind DB file
 	maxmindHttpClient := &http.Client{
