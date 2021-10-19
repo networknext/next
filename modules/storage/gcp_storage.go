@@ -7,8 +7,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/modules/core"
 
 	"cloud.google.com/go/storage"
 	"google.golang.org/api/option"
@@ -16,7 +15,6 @@ import (
 
 type GCPStorage struct {
 	Client *storage.Client
-	Logger log.Logger
 	Bucket *storage.BucketHandle
 }
 
@@ -29,7 +27,7 @@ func (g *GCPStorageError) Error() string {
 }
 
 // Create new GCPStorage client
-func NewGCPStorageClient(ctx context.Context, bucketName string, logger log.Logger, opts ...option.ClientOption) (*GCPStorage, error) {
+func NewGCPStorageClient(ctx context.Context, bucketName string, opts ...option.ClientOption) (*GCPStorage, error) {
 	client, err := storage.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, err
@@ -37,14 +35,12 @@ func NewGCPStorageClient(ctx context.Context, bucketName string, logger log.Logg
 
 	if bucketName == "" {
 		err := fmt.Errorf("NewGCPStorageClient() bucket name is empty or not defined")
-		level.Error(logger).Log("err", err)
 		return nil, err
 	}
 	bucket := client.Bucket(bucketName)
 
 	return &GCPStorage{
 		Client: client,
-		Logger: logger,
 		Bucket: bucket,
 	}, nil
 }
@@ -92,10 +88,11 @@ func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []st
 		runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", name, outputFileName))
 
 		buffer, err := runnable.CombinedOutput()
-		level.Debug(g.Logger).Log("msg", buffer)
 		if err != nil {
-			err = fmt.Errorf("failed to copy file to instance: %v", err)
+			err = fmt.Errorf("failed to copy file to instance %s: %v", name, err)
 			loopError = err
+		} else {
+			core.Debug("CopyFromBytesToRemote() gcloud compute scp output: %v", buffer)
 		}
 	}
 
@@ -124,11 +121,11 @@ func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName str
 	runnable := exec.Command("gsutil", "cp", artifactName, outputLocation)
 	buffer, err := runnable.CombinedOutput()
 
-	level.Debug(g.Logger).Log("msg", buffer)
 	if err != nil {
 		err = fmt.Errorf("failed to copy file to instance: %v", err)
 		return err
 	}
+	core.Debug("CopyFromBucketToLocal() gsutil cp output: %v", buffer)
 
 	return nil
 }
@@ -149,10 +146,11 @@ func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName st
 
 		buffer, err := runnable.CombinedOutput()
 
-		level.Debug(g.Logger).Log("msg", buffer)
 		if err != nil {
 			err = fmt.Errorf("failed to copy file to instance %s: %v", name, err)
 			loopError = err
+		} else {
+			core.Debug("CopyFromBucketToRemote() gcloud compute scp output: %v", buffer)
 		}
 	}
 
