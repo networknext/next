@@ -146,7 +146,9 @@ const AnonymousRoutes = [
   'map',
   'sessions',
   'session-details',
-  'session-tool'
+  'session-tool',
+  'get-access',
+  'login'
 ]
 
 const AnonymousPlusRoutes = [
@@ -155,7 +157,9 @@ const AnonymousPlusRoutes = [
   'session-details',
   'session-tool',
   'user-sessions',
-  'user-tool'
+  'user-tool',
+  'get-access',
+  'login'
 ]
 
 const ViewerRoutes = [
@@ -167,7 +171,9 @@ const ViewerRoutes = [
   'user-tool',
   'downloads',
   'settings',
-  'account-settings'
+  'account-settings',
+  'get-access',
+  'login'
 ]
 
 const OwnerRoutes = [
@@ -184,7 +190,8 @@ const OwnerRoutes = [
   'users',
   'explore',
   'notifications',
-  'get-access'
+  'get-access',
+  'login'
 ]
 
 // Add or remove these to open up beta features
@@ -211,15 +218,6 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   // Close modal if open on map page
   if (to.name === 'session-details' && from.name === 'map') {
     Vue.prototype.$root.$emit('hideModal')
-  }
-
-  if (store.getters.isAdmin) {
-    store.commit('UPDATE_CURRENT_PAGE', to.name)
-    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
-      (window as any).Intercom('update')
-    }
-    next()
-    return
   }
 
   // Anonymous filters

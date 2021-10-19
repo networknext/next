@@ -197,23 +197,6 @@ export default class AccountSettings extends Vue {
   }
 
   private mounted () {
-    this.unwatchProfile = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.userProfile
-      },
-      () => {
-        const storedFirstName: string = this.$store.getters.userProfile.firstName
-        const storedLastName: string = this.$store.getters.userProfile.lastName
-        const storedCompanyName: string = this.$store.getters.userProfile.companyName
-        const storedCompanyCode: string = this.$store.getters.userProfile.companyCode
-
-        this.firstName = this.firstName !== storedFirstName && storedFirstName !== '' ? storedFirstName : this.firstName
-        this.lastName = this.lastName !== storedLastName && storedLastName !== '' ? storedLastName : this.lastName
-        this.companyName = this.companyName !== storedCompanyName && storedCompanyName !== '' ? storedCompanyName : this.companyName
-        this.companyCode = this.companyCode !== storedCompanyCode && storedCompanyCode !== '' ? storedCompanyCode : this.companyCode
-      }
-    )
-
     const userProfile = cloneDeep(this.$store.getters.userProfile)
     this.firstName = userProfile.firstName || ''
     this.lastName = userProfile.lastName || ''
@@ -360,8 +343,9 @@ export default class AccountSettings extends Vue {
     this.$apiService
       .updateAccountDetails(options)
       .then(() => {
-        // TODO: refreshToken returns a promise that should be used to optimize the loading of new tabs
-        this.$authService.refreshToken()
+        return this.$authService.refreshToken()
+      })
+      .then(() => {
         this.$refs.accountResponseAlert.setMessage('Account details updated successfully')
         this.$refs.accountResponseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
@@ -403,7 +387,9 @@ export default class AccountSettings extends Vue {
       .setupCompanyAccount({ company_name: this.companyName, company_code: this.companyCode })
       .then(() => {
         // TODO: refreshToken returns a promise that should be used to optimize the loading of new tabs
-        this.$authService.refreshToken()
+        return this.$authService.refreshToken()
+      })
+      .then(() => {
         this.$refs.companyResponseAlert.setMessage('Account settings updated successfully')
         this.$refs.companyResponseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {

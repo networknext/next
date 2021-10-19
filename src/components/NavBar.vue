@@ -262,7 +262,7 @@ export default class NavBar extends Vue {
 
   private impersonate (companyCode: string): void {
     this.$apiService.impersonate({ company_code: companyCode })
-      .then((response: any) => {
+      .then(() => {
         this.$authService.refreshToken()
       })
       .catch((error: Error) => {

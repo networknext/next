@@ -1,5 +1,4 @@
 import store from '@/store'
-import { Auth0Client } from '@auth0/auth0-spa-js'
 import { Auth0DecodedHash, Auth0Error, WebAuth } from 'auth0-js'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import Vue from 'vue'
@@ -81,11 +80,7 @@ export class AuthService {
 
   // TODO: This should be an async function instead of the weird nested promise
   public refreshToken (): Promise<any> {
-    return new Promise((resolve: any, reject: any) => {
-      this.customClient.checkSession({}, (result: any, err: Auth0Error | null) => {
-        err ? reject(err) : resolve(result)
-      })
-    })
+    return this.processAuthentication()
   }
 
   public async processAuthentication (): Promise<any> {
