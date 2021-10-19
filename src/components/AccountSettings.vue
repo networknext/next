@@ -169,8 +169,6 @@ export default class AccountSettings extends Vue {
   private confirmPassword: string
   private confirmPasswordErrors: Array<string>
 
-  private unwatchProfile: any
-
   constructor () {
     super()
     this.companyName = ''
@@ -205,10 +203,6 @@ export default class AccountSettings extends Vue {
     this.companyName = userProfile.companyName || ''
     this.companyCode = userProfile.companyCode || ''
     // this.checkConfirmPassword()
-  }
-
-  private beforeDestroy () {
-    this.unwatchProfile()
   }
 
   private checkFirstName () {
