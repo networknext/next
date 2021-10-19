@@ -2,6 +2,42 @@ package metrics
 
 import "context"
 
+type RelayPusherStatus struct {
+	// Service Information
+	ServiceName string `json:"service_name"`
+	GitHash     string `json:"git_hash"`
+	Started     string `json:"started"`
+	Uptime      string `json:"uptime"`
+
+	// Service Metrics
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+
+	// Success Metrics
+	MaxmindSuccessfulHTTPCallsISP       int `json:"maxmind_successful_http_calls_isp"`
+	MaxmindSuccessfulHTTPCallsCity      int `json:"maxmind_successful_http_calls_city"`
+	MaxmindSuccessfulISPSCP             int `json:"maxmind_successful_isp_scp"`
+	MaxmindSuccessfulCitySCP            int `json:"maxmind_successful_city_scp"`
+	MaxmindSuccessfulISPStorageUploads  int `json:"maxmind_successful_isp_storage_uploads"`
+	MaxmindSuccessfulCityStorageUploads int `json:"maxmind_successful_isp_city_uploads"`
+
+	// Error Metrics
+	MaxmindHTTPFailureISP           int `json:"maxmind_http_failure_isp"`
+	MaxmindHTTPFailureCity          int `json:"maxmind_http_failure_city"`
+	MaxmindGZIPReadFailure          int `json:"maxmind_gzip_read_failure"`
+	MaxmindTempFileWriteFailure     int `json:"maxmind_temp_file_write_failure"`
+	MaxmindSCPWriteFailure          int `json:"maxmind_scp_write_failure"`
+	MaxmindStorageUploadFailureISP  int `json:"maxmind_storage_upload_failure_isp"`
+	MaxmindStorageUploadFailureCity int `json:"maxmind_storage_upload_failure_city"`
+	DatabaseSCPWriteFailure         int `json:"database_scp_write_failure"`
+
+	// Durations
+	DBBinaryTotalUpdateDurationMs  float64 `json:"db_binary_total_update_duration_ms"`
+	MaxmindDBTotalUpdateDurationMs float64 `json:"maxmind_db_total_update_duration_ms"`
+	MaxmindDBCityUpdateDurationMs  float64 `json:"maxmind_db_city_update_duration_ms"`
+	MaxmindDBISPUpdateDurationMs   float64 `json:"maxmind_db_isp_update_duration_ms"`
+}
+
 // RelayPusherServiceMetrics defines a set of metrics for the beacon insertion service.
 type RelayPusherServiceMetrics struct {
 	ServiceMetrics     *ServiceMetrics
@@ -16,9 +52,10 @@ var EmptyRelayPusherServiceMetrics RelayPusherServiceMetrics = RelayPusherServic
 
 // RelayPusherMetrics defines a set of metrics for monitoring the beacon insertion service.
 type RelayPusherMetrics struct {
-	SuccessfulMaxmindUpdates            Counter
 	MaxmindSuccessfulHTTPCallsISP       Counter
 	MaxmindSuccessfulHTTPCallsCity      Counter
+	MaxmindSuccessfulISPSCP             Counter
+	MaxmindSuccessfulCitySCP            Counter
 	MaxmindSuccessfulISPStorageUploads  Counter
 	MaxmindSuccessfulCityStorageUploads Counter
 	DBBinaryTotalUpdateDuration         Gauge
@@ -30,9 +67,10 @@ type RelayPusherMetrics struct {
 
 // EmptyRelayPusherMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyRelayPusherMetrics RelayPusherMetrics = RelayPusherMetrics{
-	SuccessfulMaxmindUpdates:            &EmptyCounter{},
 	MaxmindSuccessfulHTTPCallsISP:       &EmptyCounter{},
 	MaxmindSuccessfulHTTPCallsCity:      &EmptyCounter{},
+	MaxmindSuccessfulISPSCP:             &EmptyCounter{},
+	MaxmindSuccessfulCitySCP:            &EmptyCounter{},
 	MaxmindSuccessfulISPStorageUploads:  &EmptyCounter{},
 	MaxmindSuccessfulCityStorageUploads: &EmptyCounter{},
 	DBBinaryTotalUpdateDuration:         &EmptyGauge{},
@@ -44,28 +82,26 @@ var EmptyRelayPusherMetrics RelayPusherMetrics = RelayPusherMetrics{
 
 // RelayPusherErrorMetrics defines a set of metrics for recording errors for the beacon insertion service.
 type RelayPusherErrorMetrics struct {
-	MaxmindHTTPFailureISP             Counter
-	MaxmindHTTPFailureCity            Counter
-	MaxmindGZIPReadFailure            Counter
-	MaxmindTempFileWriteFailure       Counter
-	MaxmindSCPWriteFailure            Counter
-	MaxmindStorageUploadFailureISP    Counter
-	MaxmindStorageUploadFailureCity   Counter
-	DatabaseSCPWriteFailure           Counter
-	ServerBackendInstanceCountFailure Counter
+	MaxmindHTTPFailureISP           Counter
+	MaxmindHTTPFailureCity          Counter
+	MaxmindGZIPReadFailure          Counter
+	MaxmindTempFileWriteFailure     Counter
+	MaxmindSCPWriteFailure          Counter
+	MaxmindStorageUploadFailureISP  Counter
+	MaxmindStorageUploadFailureCity Counter
+	DatabaseSCPWriteFailure         Counter
 }
 
 // EmptyRelayPusherErrorMetrics is used for testing when we want to pass in metrics but don't care about their value.
 var EmptyRelayPusherErrorMetrics RelayPusherErrorMetrics = RelayPusherErrorMetrics{
-	MaxmindHTTPFailureISP:             &EmptyCounter{},
-	MaxmindHTTPFailureCity:            &EmptyCounter{},
-	MaxmindGZIPReadFailure:            &EmptyCounter{},
-	MaxmindTempFileWriteFailure:       &EmptyCounter{},
-	MaxmindSCPWriteFailure:            &EmptyCounter{},
-	MaxmindStorageUploadFailureISP:    &EmptyCounter{},
-	MaxmindStorageUploadFailureCity:   &EmptyCounter{},
-	DatabaseSCPWriteFailure:           &EmptyCounter{},
-	ServerBackendInstanceCountFailure: &EmptyCounter{},
+	MaxmindHTTPFailureISP:           &EmptyCounter{},
+	MaxmindHTTPFailureCity:          &EmptyCounter{},
+	MaxmindGZIPReadFailure:          &EmptyCounter{},
+	MaxmindTempFileWriteFailure:     &EmptyCounter{},
+	MaxmindSCPWriteFailure:          &EmptyCounter{},
+	MaxmindStorageUploadFailureISP:  &EmptyCounter{},
+	MaxmindStorageUploadFailureCity: &EmptyCounter{},
+	DatabaseSCPWriteFailure:         &EmptyCounter{},
 }
 
 // NewRelayPusherServiceMetrics creates the metrics that the beacon insertion service will use.
@@ -79,17 +115,6 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 	}
 
 	RelayPusherServiceMetrics.RelayPusherMetrics = &RelayPusherMetrics{}
-
-	RelayPusherServiceMetrics.RelayPusherMetrics.SuccessfulMaxmindUpdates, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Successful IP2Location Updates",
-		ServiceName: "relay_pusher",
-		ID:          "successful_ip_2_location_updates.count",
-		Unit:        "updates",
-		Description: "The total number of successful IP2Location updates in number of updates.",
-	})
-	if err != nil {
-		return nil, err
-	}
 
 	RelayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulHTTPCallsCity, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Successful Maxmind City HTTP GETs",
@@ -108,6 +133,28 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		ID:          "successful_maxmind_http_get_isp.count",
 		Unit:        "calls",
 		Description: "The total number of successful Maxmind HTTP calls for IP to ISP in number of calls.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPSCP, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Successful Maxmind ISP SCP",
+		ServiceName: "relay_pusher",
+		ID:          "successful_maxmind_isp_scp.count",
+		Unit:        "calls",
+		Description: "The total number of successful SCP calls to VMs for the maxmind ISP file.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	RelayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCitySCP, err = metricsHandler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Successful Maxmind City SCP",
+		ServiceName: "relay_pusher",
+		ID:          "successful_maxmind_city_scp.count",
+		Unit:        "calls",
+		Description: "The total number of successful SCP calls to VMs for the maxmind City file.",
 	})
 	if err != nil {
 		return nil, err
@@ -264,17 +311,6 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		ID:          "database_scp_call_failure.count",
 		Unit:        "failures",
 		Description: "The total number of database SCP file copy failures.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	RelayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.ServerBackendInstanceCountFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Server Backend Instance Count Failures",
-		ServiceName: "relay_pusher",
-		ID:          "server_backend_instance_count_failure.count",
-		Unit:        "failures",
-		Description: "The total number of gcloud instance count call failures.",
 	})
 	if err != nil {
 		return nil, err
