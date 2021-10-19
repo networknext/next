@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/storage"
 )
@@ -176,14 +175,13 @@ func DatacenterReverseLookup() {
 // Delete rows from a Bigtable instance based on a prefix
 func DeleteBigtableRows(gcpProjectID, btInstanceID, btTableName, prefix string) {
 	ctx := context.Background()
-	logger := log.NewNopLogger()
 
 	if os.Getenv("BIGTABLE_EMULATOR_HOST") != "" {
 		fmt.Println("Detected Bigtable emulator")
 	}
 
 	// Get a bigtable admin client
-	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
