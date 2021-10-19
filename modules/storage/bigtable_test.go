@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/stretchr/testify/assert"
@@ -28,10 +27,9 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 	checkBigtableEmulation(t)
 
 	ctx := context.Background()
-	logger := log.NewNopLogger()
 
 	t.Run("New Bigtable Instance Admin", func(t *testing.T) {
-		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "", logger)
+		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btInstanceAdmin)
 
@@ -41,7 +39,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 
 	t.Run("New Bigtable Instance Admin with Opts", func(t *testing.T) {
 		opts := option.WithoutAuthentication()
-		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "", logger, opts)
+		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "", opts)
 		assert.NoError(t, err)
 		assert.NotNil(t, btInstanceAdmin)
 
@@ -51,7 +49,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 
 	t.Run("Get Instances", func(t *testing.T) {
 		t.Skip() // Unimplemented feature in emulator
-		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "", logger)
+		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btInstanceAdmin)
 
@@ -65,7 +63,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 	})
 
 	t.Run("Create and Delete Instance", func(t *testing.T) {
-		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "", logger)
+		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btInstanceAdmin)
 
@@ -181,7 +179,7 @@ func TestBigTableInstanceAdmin(t *testing.T) {
 	})
 
 	t.Run("Verify Instance Exists", func(t *testing.T) {
-		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "", logger)
+		btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btInstanceAdmin)
 
@@ -223,10 +221,9 @@ func TestBigTableAdmin(t *testing.T) {
 	checkBigtableEmulation(t)
 
 	ctx := context.Background()
-	logger := log.NewNopLogger()
 
 	t.Run("New Bigtable Admin", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -236,7 +233,7 @@ func TestBigTableAdmin(t *testing.T) {
 
 	t.Run("New Bigtable Admin with Opts", func(t *testing.T) {
 		opts := option.WithoutAuthentication()
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger, opts)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", opts)
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -245,7 +242,7 @@ func TestBigTableAdmin(t *testing.T) {
 	})
 
 	t.Run("Get Table List", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -259,7 +256,7 @@ func TestBigTableAdmin(t *testing.T) {
 	})
 
 	t.Run("Create and Delete Table", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 		tblName := "Test"
@@ -277,7 +274,7 @@ func TestBigTableAdmin(t *testing.T) {
 	})
 
 	t.Run("Create Table That Already Exists", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 		tblName := "Test"
@@ -300,7 +297,7 @@ func TestBigTableAdmin(t *testing.T) {
 	})
 
 	t.Run("Verify Table Exists True", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 		tblName := "Test"
@@ -323,7 +320,7 @@ func TestBigTableAdmin(t *testing.T) {
 	})
 
 	t.Run("Verify Table Exists False", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -341,7 +338,7 @@ func TestBigTableAdmin(t *testing.T) {
 	})
 
 	t.Run("Set Max Age Policy", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 		tblName := "Test"
@@ -369,7 +366,6 @@ func TestBigTable(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	logger := log.NewNopLogger()
 
 	t.Run("New Bigtable No Table", func(t *testing.T) {
 		os.Setenv("BIGTABLE_TABLE_NAME", "")
@@ -377,20 +373,20 @@ func TestBigTable(t *testing.T) {
 
 		t.Run("New Bigtable No Table With Opts", func(t *testing.T) {
 			opts := option.WithoutAuthentication()
-			btClient, err := storage.NewBigTable(ctx, "", "", "", logger, opts)
+			btClient, err := storage.NewBigTable(ctx, "", "", "", opts)
 			assert.EqualError(t, err, "NewBigTable() table name is empty or not defined")
 			assert.Nil(t, btClient)
 		})
 
 		t.Run("New Bigtable No Table Without Opts", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", "", logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", "")
 			assert.EqualError(t, err, "NewBigTable() table name is empty or not defined")
 			assert.Nil(t, btClient)
 		})
 	})
 
 	t.Run("New Bigtable With Table", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -412,7 +408,7 @@ func TestBigTable(t *testing.T) {
 
 		t.Run("New Bigtable With Table With Opts", func(t *testing.T) {
 			opts := option.WithoutAuthentication()
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger, opts)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName, opts)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -421,7 +417,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("New Bigtable With Table Without Opts", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -431,7 +427,7 @@ func TestBigTable(t *testing.T) {
 	})
 
 	t.Run("Get Table", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -452,7 +448,7 @@ func TestBigTable(t *testing.T) {
 		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("Get Table That Exists", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -466,7 +462,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Get Table That Does Not Exist", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -483,7 +479,7 @@ func TestBigTable(t *testing.T) {
 	})
 
 	t.Run("Insert Row Into Table", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -504,7 +500,7 @@ func TestBigTable(t *testing.T) {
 		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("Insert Valid Meta Row Into Table", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -529,7 +525,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Insert Valid Slice Row Into Table", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -554,7 +550,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Insert Invalid Row Into Table", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -576,7 +572,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Insert Invalid Row Into Table 100000 Mutations", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -606,7 +602,7 @@ func TestBigTable(t *testing.T) {
 	})
 
 	t.Run("Write Meta Rows Into Table", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -624,7 +620,7 @@ func TestBigTable(t *testing.T) {
 		}()
 
 		t.Run("Write and Delete Row In Table", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -671,7 +667,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Write Row In Table", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -719,7 +715,7 @@ func TestBigTable(t *testing.T) {
 	})
 
 	t.Run("Insert Session Data Into Table", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -740,7 +736,7 @@ func TestBigTable(t *testing.T) {
 		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("Insert Valid Session Meta Data Into Table", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -759,7 +755,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Insert Valid Session Slice Data Into Table", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -778,7 +774,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Insert Invalid Session Meta Data Into Table", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -797,7 +793,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Insert Invalid Session Slice Data Into Table", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -820,7 +816,7 @@ func TestBigTable(t *testing.T) {
 		tblName, exists := os.LookupEnv("BIGTABLE_TABLE_NAME")
 		if exists {
 			// Delete the table that exists
-			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 			assert.NoError(t, err)
 			assert.NotNil(t, btAdmin)
 
@@ -835,7 +831,7 @@ func TestBigTable(t *testing.T) {
 			defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 		}
 
-		btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+		btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 		assert.NoError(t, err)
 		assert.NotNil(t, btClient)
 
@@ -857,7 +853,7 @@ func TestBigTable(t *testing.T) {
 		tblName, exists := os.LookupEnv("BIGTABLE_TABLE_NAME")
 		if exists {
 			// Delete the table that exists
-			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 			assert.NoError(t, err)
 			assert.NotNil(t, btAdmin)
 
@@ -872,7 +868,7 @@ func TestBigTable(t *testing.T) {
 			defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 		}
 
-		btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+		btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 		assert.NoError(t, err)
 		assert.NotNil(t, btClient)
 
@@ -891,7 +887,7 @@ func TestBigTable(t *testing.T) {
 	})
 
 	t.Run("Get Rows With Prefix", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -912,7 +908,7 @@ func TestBigTable(t *testing.T) {
 		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("Get Meta Rows With Prefix With Opts Success", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -937,7 +933,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Get Slice Rows With Prefix With Opts Success", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -962,7 +958,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Get Meta Rows With Prefix Without Opts Success", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -986,7 +982,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Get Slice Rows With Prefix Without Opts Success", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -1017,7 +1013,7 @@ func TestBigTable(t *testing.T) {
 		}
 		if exists {
 			// Delete the table that exists
-			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 			assert.NoError(t, err)
 			assert.NotNil(t, btAdmin)
 
@@ -1031,7 +1027,7 @@ func TestBigTable(t *testing.T) {
 			defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 		}
 
-		btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+		btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 		assert.NoError(t, err)
 		assert.NotNil(t, btClient)
 
@@ -1048,7 +1044,7 @@ func TestBigTable(t *testing.T) {
 	})
 
 	t.Run("Get Row With Rowkey", func(t *testing.T) {
-		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 		assert.NoError(t, err)
 		assert.NotNil(t, btAdmin)
 
@@ -1069,7 +1065,7 @@ func TestBigTable(t *testing.T) {
 		defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 
 		t.Run("Get Meta Row With Rowkey With Opts Success", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -1093,7 +1089,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Get Slice Row With Rowkey With Opts Success", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -1118,7 +1114,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Get Meta Row With Rowkey Without Opts Success", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -1141,7 +1137,7 @@ func TestBigTable(t *testing.T) {
 		})
 
 		t.Run("Get Slice Row With Rowkey Without Opts Success", func(t *testing.T) {
-			btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+			btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 			assert.NoError(t, err)
 			assert.NotNil(t, btClient)
 
@@ -1172,7 +1168,7 @@ func TestBigTable(t *testing.T) {
 
 		if exists {
 			// Delete the table that exists
-			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "", logger)
+			btAdmin, err := storage.NewBigTableAdmin(ctx, "", "")
 			assert.NoError(t, err)
 			assert.NotNil(t, btAdmin)
 
@@ -1186,7 +1182,7 @@ func TestBigTable(t *testing.T) {
 			defer os.Unsetenv("BIGTABLE_TABLE_NAME")
 		}
 
-		btClient, err := storage.NewBigTable(ctx, "", "", tblName, logger)
+		btClient, err := storage.NewBigTable(ctx, "", "", tblName)
 		assert.NoError(t, err)
 		assert.NotNil(t, btClient)
 

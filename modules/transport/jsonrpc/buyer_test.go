@@ -209,7 +209,7 @@ func TestUserSessions_Binary(t *testing.T) {
 	}
 
 	// Check if table exists and create it if needed
-	btAdmin, err := storage.NewBigTableAdmin(ctx, "local", "localhost:8086", logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, "local", "localhost:8086")
 	assert.NoError(t, err)
 	assert.NotNil(t, btAdmin)
 	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
@@ -227,7 +227,7 @@ func TestUserSessions_Binary(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	btClient, err := storage.NewBigTable(ctx, "local", "localhost:8086", btTableName, logger)
+	btClient, err := storage.NewBigTable(ctx, "local", "localhost:8086", btTableName)
 	assert.Nil(t, err)
 	assert.NotNil(t, btClient)
 
@@ -586,7 +586,7 @@ func TestUserSessions_Serialize(t *testing.T) {
 	}
 
 	// Check if table exists and create it if needed
-	btAdmin, err := storage.NewBigTableAdmin(ctx, "local", "localhost:8086", logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, "local", "localhost:8086")
 	assert.NoError(t, err)
 	assert.NotNil(t, btAdmin)
 	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
@@ -604,7 +604,7 @@ func TestUserSessions_Serialize(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	btClient, err := storage.NewBigTable(ctx, "local", "localhost:8086", btTableName, logger)
+	btClient, err := storage.NewBigTable(ctx, "local", "localhost:8086", btTableName)
 	assert.Nil(t, err)
 	assert.NotNil(t, btClient)
 
@@ -1289,7 +1289,7 @@ func TestSessionDetails_Binary(t *testing.T) {
 	}
 
 	// Check if table exists and create it if needed
-	btAdmin, err := storage.NewBigTableAdmin(ctx, "local", "localhost:8086", logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, "local", "localhost:8086")
 	assert.NoError(t, err)
 	assert.NotNil(t, btAdmin)
 	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
@@ -1307,7 +1307,7 @@ func TestSessionDetails_Binary(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	btClient, err := storage.NewBigTable(ctx, "local", "localhost:8086", btTableName, logger)
+	btClient, err := storage.NewBigTable(ctx, "local", "localhost:8086", btTableName)
 	assert.Nil(t, err)
 	assert.NotNil(t, btClient)
 
@@ -1586,7 +1586,7 @@ func TestSessionDetails_Serialize(t *testing.T) {
 	}
 
 	// Check if table exists and create it if needed
-	btAdmin, err := storage.NewBigTableAdmin(ctx, "local", "localhost:8086", logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, "local", "localhost:8086")
 	assert.NoError(t, err)
 	assert.NotNil(t, btAdmin)
 	btTableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
@@ -1604,7 +1604,7 @@ func TestSessionDetails_Serialize(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	btClient, err := storage.NewBigTable(ctx, "local", "localhost:8086", btTableName, logger)
+	btClient, err := storage.NewBigTable(ctx, "local", "localhost:8086", btTableName)
 	assert.Nil(t, err)
 	assert.NotNil(t, btClient)
 
