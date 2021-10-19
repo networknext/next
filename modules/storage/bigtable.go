@@ -404,22 +404,9 @@ func (bt *BigTable) InsertSessionMetaData(ctx context.Context,
 	cfMap := make(map[string]string)
 	cfMap["meta"] = btCfNames[0]
 
-	// Decide if should write and delete row
-	// or if should just write row and let compaction take care of deleting the row later
-	deleteWrite, err := envvar.GetBool("BIGTABLE_WRITE_DELETE_ROW", false)
-	if err != nil {
+	// Write the row and let compaction take care of deleting old rows later
+	if err := bt.WriteRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
 		return err
-	}
-
-	// A/B testing for above
-	if deleteWrite {
-		if err := bt.WriteAndDeleteRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
-			return err
-		}
-	} else {
-		if err := bt.WriteRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
-			return err
-		}
 	}
 
 	return nil
