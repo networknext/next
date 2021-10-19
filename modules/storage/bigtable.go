@@ -12,8 +12,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/networknext/backend/modules/envvar"
-
 	"cloud.google.com/go/bigtable"
 	"google.golang.org/api/option"
 )
