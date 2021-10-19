@@ -33,21 +33,21 @@ type StagingServiceConfig struct {
 }
 
 type StagingConfig struct {
-	RelayGateway   StagingServiceConfig `json:"relayGateway"`
-	RelayBackend   StagingServiceConfig `json:"relayBackend"`
-	FakeRelays     StagingServiceConfig `json:"fakeRelays"`
-	RelayFrontend  StagingServiceConfig `json:"relayFrontend"`
-	RelayPusher    StagingServiceConfig `json:"relayPusher"`
-	PortalCruncher StagingServiceConfig `json:"portalCruncher"`
+	RelayGateway   StagingServiceConfig `json:"relay_gateway"`
+	RelayBackend   StagingServiceConfig `json:"relay_backend"`
+	FakeRelays     StagingServiceConfig `json:"fake_relays"`
+	RelayFrontend  StagingServiceConfig `json:"relay_frontend"`
+	RelayPusher    StagingServiceConfig `json:"relay_pusher"`
+	PortalCruncher StagingServiceConfig `json:"portal_cruncher"`
 	Vanity         StagingServiceConfig `json:"vanity"`
 	Api            StagingServiceConfig `json:"api"`
 	Analytics      StagingServiceConfig `json:"analytics"`
 	Billing        StagingServiceConfig `json:"billing"`
 	Beacon         StagingServiceConfig `json:"beacon"`
-	BeaconInserter StagingServiceConfig `json:"beaconInserter"`
+	BeaconInserter StagingServiceConfig `json:"beacon_inserter"`
 	Portal         StagingServiceConfig `json:"portal"`
-	ServerBackend  StagingServiceConfig `json:"serverBackend"`
-	FakeServer     StagingServiceConfig `json:"fakeServer"`
+	ServerBackend  StagingServiceConfig `json:"server_backend"`
+	FakeServer     StagingServiceConfig `json:"fake_server"`
 }
 
 var DefaultStagingConfig = StagingConfig{
