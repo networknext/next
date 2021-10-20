@@ -203,6 +203,8 @@ const BetaRoutes = [
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
+  if (to.name === 'session-details' && from.name === 'map') {
+  }
   // Email is verified - catch this event, refresh the user's token and go to the map
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
@@ -213,11 +215,6 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     next('/map')
     return
-  }
-
-  // Close modal if open on map page
-  if (to.name === 'session-details' && from.name === 'map') {
-    Vue.prototype.$root.$emit('hideModal')
   }
 
   // Anonymous filters
@@ -310,6 +307,11 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     }
     next('/settings/account')
     return
+  }
+
+  // Close modal if open on map page
+  if (to.name === 'session-details' && from.name === 'map') {
+    router.app.$root.$emit('hideMapPointsModal')
   }
 
   store.commit('UPDATE_CURRENT_PAGE', to.name)
