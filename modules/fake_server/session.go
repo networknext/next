@@ -58,6 +58,12 @@ const (
 
 	// NearRelayJitterPacketLossChance is the percent change a near relay will use the calculated jitter and packet loss instead of the normal values
 	NearRelayJitterPacketLossChance = 30.0
+
+	// NextBytesMin is the minimum number for the number of kbps sent up/down a network next route
+	NextKbpsMin = 57500
+
+	// NextKbpsRange is the range of NextKbpsMin, that is maximum possible kbps - minimum possible kbps on a network next route
+	NextKbpsRange = 5000
 )
 
 // Session contains the necessary info for the server to keep track of sessions
@@ -97,6 +103,8 @@ type Session struct {
 	nearRelayRTT        []int32
 	nearRelayJitter     []int32
 	nearRelayPacketLoss []int32
+	nextKbpsUp          uint32
+	nextKbpsDown        uint32
 	packetsSent         uint64
 	packetsLost         uint64
 	jitter              float32
@@ -257,6 +265,10 @@ func (session *Session) Advance(response transport.SessionResponsePacket) {
 		session.nextRTT = nextRTT
 		session.nextJitter = session.jitter
 		session.nextPacketLoss = float32(packetLoss)
+
+		// Calculate the kbps up/down the network next route
+		session.nextKbpsUp = uint32(NextKbpsMin + rand.Int31n(NextKbpsRange))
+		session.nextKbpsDown = uint32(NextKbpsMin + rand.Int31n(NextKbpsRange))
 	} else {
 		// The session is taking the direct route, so apply the jitter
 		// and packet loss we calculated above to the direct stats and zero out the next stats
@@ -267,6 +279,10 @@ func (session *Session) Advance(response transport.SessionResponsePacket) {
 		session.nextRTT = 0
 		session.nextJitter = 0
 		session.nextPacketLoss = 0
+
+		// Set the kbps up/down to 0
+		session.nextKbpsUp = 0
+		session.nextKbpsDown = 0
 	}
 
 	// Allow for a random chance on each near relay to use the worse
