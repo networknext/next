@@ -188,6 +188,7 @@ func mainReturnWithCode() int {
 		for {
 			select {
 			case slice := <-publishChan:
+				// TODO: switch to serialization instead of binary encoding
 				sessionBytes, err := slice.MarshalBinary()
 				if err != nil {
 					core.Error("could not marshal binary for slice session id %d", slice.Meta.ID)
