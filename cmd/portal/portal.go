@@ -390,12 +390,9 @@ func main() {
 		Channel:    channel,
 	}
 
+	// If the hubspot API key isn't set, hubspot functionality will be turned off
 	hubspotAPIKey := envvar.Get("HUBSPOT_API_KEY", "")
 	hubspotClient, err := notifications.NewHubSpotClient(hubspotAPIKey, 10*time.Second)
-	if channel == "" {
-		level.Error(logger).Log("err", "failed to create hubspot client. Make sure API key is defined")
-		os.Exit(1)
-	}
 
 	authenticationClient, err := notifications.NewAuth0AuthClient(auth0ClientID, auth0Domain)
 	if err != nil {

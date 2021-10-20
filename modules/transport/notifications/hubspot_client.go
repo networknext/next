@@ -17,10 +17,6 @@ type HubSpotClient struct {
 }
 
 func NewHubSpotClient(APIKey string, timeout time.Duration) (*HubSpotClient, error) {
-	if APIKey == "" || timeout == 0 {
-		return nil, fmt.Errorf("API key and timeout are required")
-	}
-
 	return &HubSpotClient{
 		APIKey:  APIKey,
 		TimeOut: timeout,
@@ -52,6 +48,11 @@ type HubspotCompanyProperties struct {
 
 func (hsc *HubSpotClient) FetchAllCompanyEntries() ([]HubspotCompanyProperties, error) {
 	companies := make([]HubspotCompanyProperties, 0)
+
+	// Hubspot isn't enabled for this env
+	if hsc.APIKey == "" {
+		return companies, nil
+	}
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://api.hubapi.com/crm/v3/objects/companies?limit=10&archived=false&hapikey=%s", hsc.APIKey), nil)
 	if err != nil {
@@ -101,6 +102,11 @@ type CreateDealProperties struct {
 }
 
 func (hsc *HubSpotClient) CreateHubSpotDealEntry(action string) error {
+	// Hubspot isn't enabled for this env
+	if hsc.APIKey == "" {
+		return nil
+	}
+
 	properties := CreateDealProperties{
 		Amount:    "", // To be filled in later
 		DealName:  action,

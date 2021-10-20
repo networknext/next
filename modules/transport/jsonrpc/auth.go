@@ -1030,7 +1030,6 @@ func (s *AuthService) CustomerViewedTheDocsSlackNotification(r *http.Request, ar
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
 		return &err
 	}
-	// TODO: update this in the hubspot PR
 
 	message := fmt.Sprintf("%s Viewed documentation", args.Email)
 
@@ -1065,7 +1064,6 @@ func (s *AuthService) CustomerDownloadedSDKSlackNotification(r *http.Request, ar
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
 		return &err
 	}
-	// TODO: update this in the hubspot PR
 
 	message := fmt.Sprintf("%s downloaded the SDK", args.Email)
 
@@ -1100,7 +1098,6 @@ func (s *AuthService) CustomerEnteredPublicKeySlackNotification(r *http.Request,
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
 		return &err
 	}
-	// TODO: update this in the hubspot PR
 
 	message := fmt.Sprintf("%s entered a public key", args.Email)
 
@@ -1138,7 +1135,6 @@ func (s *AuthService) CustomerDownloadedUE4PluginNotifications(r *http.Request, 
 
 	message := fmt.Sprintf("%s downloaded the UE4 plugin", args.Email)
 
-	// TODO: update this in the hubspot PR
 	if args.CustomerName != "" {
 		message = fmt.Sprintf("%s from %s downloaded the UE4 plugin", args.Email, args.CustomerName)
 	}
@@ -1226,21 +1222,27 @@ func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupAr
 
 	message = fmt.Sprintf("First name: %s<br/>Last name: %s<br/>Company name: %s<br/>Website: %s", args.FirstName, args.LastName, args.CompanyName, args.CompanyWebsite)
 
-	companies, err := s.HubSpotClient.FetchAllCompanyEntries()
-	foundCompany := false
+	if s.HubSpotClient.APIKey != "" {
+		companies, err := s.HubSpotClient.FetchAllCompanyEntries()
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to fetch company entries from hubspot", err.Error()))
+		} else {
+			foundCompany := false
 
-	for _, company := range companies {
-		if company.Name == args.CompanyName || company.Domain == args.CompanyWebsite {
-			foundCompany = true
-			break
+			for _, company := range companies {
+				if company.Name == args.CompanyName || company.Domain == args.CompanyWebsite {
+					foundCompany = true
+					break
+				}
+			}
+
+			// TODO: Figure out what Andrew wants here.
+			if foundCompany {
+
+			} else {
+				// TODO: Generate a new company entry in hubspot
+			}
 		}
-	}
-
-	// TODO: Figure out what Andrew wants here.
-	if foundCompany {
-
-	} else {
-		// TODO: Generate a new company entry in hubspot
 	}
 
 	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
