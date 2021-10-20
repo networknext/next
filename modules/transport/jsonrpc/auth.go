@@ -19,6 +19,7 @@ import (
 
 type AuthService struct {
 	AuthenticationClient *notifications.Auth0AuthClient
+	HubSpotClient        *notifications.HubSpotClient
 	mu                   sync.Mutex
 	RoleCache            map[string]*management.Role
 	MailChimpManager     notifications.MailChimpHandler
@@ -1223,6 +1224,25 @@ func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupAr
 		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to send slack notification", err.Error()))
 	}
 
+	message = fmt.Sprintf("First name: %s<br/>Last name: %s<br/>Company name: %s<br/>Website: %s", args.FirstName, args.LastName, args.CompanyName, args.CompanyWebsite)
+
+	companies, err := s.HubSpotClient.FetchAllCompanyEntries()
+	foundCompany := false
+
+	for _, company := range companies {
+		if company.Name == args.CompanyName || company.Domain == args.CompanyWebsite {
+			foundCompany = true
+			break
+		}
+	}
+
+	// TODO: Figure out what Andrew wants here.
+	if foundCompany {
+
+	} else {
+		// TODO: Generate a new company entry in hubspot
+	}
+
 	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
 	if err != nil || len(userAccounts.Users) > 1 || len(userAccounts.Users) == 0 {
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
@@ -1242,8 +1262,6 @@ func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupAr
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
-
-	// TODO: hook up hubspot integration here....
 
 	return nil
 }

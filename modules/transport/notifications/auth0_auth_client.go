@@ -22,8 +22,6 @@ func NewAuth0AuthClient(clientID string, domain string) (*Auth0AuthClient, error
 		return nil, fmt.Errorf("ClientID and Domain are required")
 	}
 
-	fmt.Println("Returning a new auth0 auth client")
-
 	return &Auth0AuthClient{
 		ClientID: clientID,
 		Domain:   domain,
@@ -31,9 +29,6 @@ func NewAuth0AuthClient(clientID string, domain string) (*Auth0AuthClient, error
 }
 
 func (c *Auth0AuthClient) SendChangePasswordEmail(email string) error {
-	fmt.Println("In SendChangePasswordEmail")
-	fmt.Println(c.ClientID)
-	fmt.Println(c.Domain)
 	url := fmt.Sprintf("https://%s/dbconnections/change_password", c.Domain)
 
 	payloadString := fmt.Sprintf("{\"client_id\": \"%s\",\"email\": \"%s\",\"connection\": \"Username-Password-Authentication\"}", c.ClientID, email)
@@ -49,12 +44,10 @@ func (c *Auth0AuthClient) SendChangePasswordEmail(email string) error {
 	}
 
 	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
+
+	if _, err = ioutil.ReadAll(res.Body); err != nil {
 		return err
 	}
 
-	fmt.Println(res)
-	fmt.Println(string(body))
 	return nil
 }
