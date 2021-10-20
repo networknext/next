@@ -248,16 +248,9 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 
 			switch messageInfo.Topic {
 			case pubsub.TopicPortalCruncherSessionCounts:
-				// First try binary decoding, and upon failure, try serialization
-				// We need to do both because Ghost Army uses binary decoding
 				var sessionCountData transport.SessionCountData
-				if err := sessionCountData.UnmarshalBinary(messageInfo.Message); err != nil {
-
-					sessionCountData = transport.SessionCountData{}
-
-					if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
-						errChan <- &ErrUnmarshalMessage{err: err}
-					}
+				if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
+					errChan <- &ErrUnmarshalMessage{err: err}
 				}
 
 				select {
@@ -269,6 +262,7 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 			case pubsub.TopicPortalCruncherSessionData:
 				// First try binary decoding, and upon failure, try serialization
 				// We need to do both because Ghost Army uses binary decoding
+				// TODO: once Ghost Army uses serialization, remove binary decoding
 				var sessionPortalData transport.SessionPortalData
 				if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
 
