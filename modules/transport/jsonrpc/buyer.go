@@ -180,7 +180,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 	// Only grab the live session on the first request
 	if args.Page == 0 {
 		// Fetch live sessions if there are any
-		liveSessions, err := s.FetchCurrentTopSessions(r, "")
+		liveSessions, err := s.FetchCurrentTopSessions(r, "", false)
 		if err != nil {
 			err = fmt.Errorf("UserSessions() failed to fetch live sessions")
 			level.Error(s.Logger).Log("err", err)
@@ -716,7 +716,7 @@ type TopSessionsReply struct {
 
 // TopSessions generates the top sessions sorted by improved RTT
 func (s *BuyersService) TopSessions(r *http.Request, args *TopSessionsArgs, reply *TopSessionsReply) error {
-	sessions, err := s.FetchCurrentTopSessions(r, args.CompanyCode)
+	sessions, err := s.FetchCurrentTopSessions(r, args.CompanyCode, true)
 	if err != nil {
 		err = fmt.Errorf("TopSessions() failed to fetch top sessions: %v", err)
 		level.Error(s.Logger).Log("err", err)
@@ -1820,7 +1820,7 @@ func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
 	}
 }
 
-func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilter string) ([]transport.SessionMeta, error) {
+func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilter string, anonymise bool) ([]transport.SessionMeta, error) {
 	var err error
 	var topSessionsA []string
 	var topSessionsB []string
@@ -1923,7 +1923,7 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			return sessions, err
 		}
 
-		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) {
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) && anonymise {
 			meta.Anonymise()
 		}
 
