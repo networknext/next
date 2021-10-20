@@ -120,7 +120,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 			select {
 			case <-ctx.Done():
 				return
-			case err := <- cruncher.ReceiveMessage(ctx):
+			case err := <-cruncher.ReceiveMessage(ctx):
 				if err != nil {
 					switch err.(type) {
 					case *ErrChannelFull: // We don't need to stop the portal cruncher if the channel is full
@@ -248,9 +248,16 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 
 			switch messageInfo.Topic {
 			case pubsub.TopicPortalCruncherSessionCounts:
+				// First try binary decoding, and upon failure, try serialization
+				// We need to do both because Ghost Army uses binary decoding
 				var sessionCountData transport.SessionCountData
-				if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
-					errChan <- &ErrUnmarshalMessage{err: err}
+				if err := sessionCountData.UnmarshalBinary(messageInfo.Message); err != nil {
+
+					sessionCountData = transport.SessionCountData{}
+
+					if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
+						errChan <- &ErrUnmarshalMessage{err: err}
+					}
 				}
 
 				select {
@@ -260,9 +267,16 @@ func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error
 				}
 
 			case pubsub.TopicPortalCruncherSessionData:
+				// First try binary decoding, and upon failure, try serialization
+				// We need to do both because Ghost Army uses binary decoding
 				var sessionPortalData transport.SessionPortalData
-				if err := transport.ReadSessionPortalData(&sessionPortalData, messageInfo.Message); err != nil {
-					errChan <- &ErrUnmarshalMessage{err: err}
+				if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
+
+					sessionPortalData = transport.SessionPortalData{}
+
+					if err := transport.ReadSessionPortalData(&sessionPortalData, messageInfo.Message); err != nil {
+						errChan <- &ErrUnmarshalMessage{err: err}
+					}
 				}
 
 				select {
