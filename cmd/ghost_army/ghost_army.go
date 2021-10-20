@@ -8,14 +8,17 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
+	"syscall"
 	"time"
 
+	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/envvar"
+	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
-
-	ghostarmy "github.com/networknext/backend/modules/ghost_army"
 )
 
 const (
@@ -23,52 +26,56 @@ const (
 )
 
 func main() {
+	os.Exit(mainReturnWithCode())
+}
+
+func mainReturnWithCode() int {
 	// this var is just used to catch the situation where ghost army publishes
 	// way too many slices in a given interval. Shouldn't happen anymore but just in case
 
-	var estimatedPeakSessionCount int
-	if v, ok := os.LookupEnv("GHOST_ARMY_PEAK_SESSION_COUNT"); ok {
-		if num, err := strconv.ParseInt(v, 10, 64); err == nil {
-			estimatedPeakSessionCount = int(num)
-		} else {
-			fmt.Printf("could not parse GHOST_ARMY_PEAK_SESSION_COUNT: %v\n", err)
-			os.Exit(1)
-		}
-	} else {
-		fmt.Println("GHOST_ARMY_PEAK_SESSION_COUNT not set")
-		os.Exit(1)
+	if !envvar.Exists("GHOST_ARMY_PEAK_SESSION_COUNT") {
+		core.Error("GHOST_ARMY_PEAK_SESSION_COUNT not set")
+		return 1
 	}
 
-	var infile string
-	if v, ok := os.LookupEnv("GHOST_ARMY_BIN"); ok {
-		infile = v
-	} else {
-		fmt.Println("GHOST_ARMY_BIN not set")
-		os.Exit(1)
+	estimatedPeakSessionCount, err := envvar.GetInt("GHOST_ARMY_PEAK_SESSION_COUNT", 25000)
+	if err != nil {
+		core.Error("could not parse GHOST_ARMY_PEAK_SESSION_COUNT: %v", err)
+		return 1
 	}
 
-	var datacenterCSV string
-	if v, ok := os.LookupEnv("DATACENTERS_CSV"); ok {
-		datacenterCSV = v
-	} else {
-		fmt.Println("DATACENTERS_CSV not set")
-		os.Exit(1)
+	infile := envvar.Get("GHOST_ARMY_BIN", "")
+	if infile == "" {
+		core.Error("GHOST_ARMY_BIN not set")
+		return 1
 	}
 
-	buyerID := ghostarmy.GhostArmyBuyerID(os.Getenv("ENV"))
+	datacenterCSV := envvar.Get("DATACENTERS_CSV", "")
+	if datacenterCSV == "" {
+		core.Error("DATACENTERS_CSV not set")
+		return 1
+	}
+
+	env, err := backend.GetEnv()
+	if err != nil {
+		core.Error("could not get ENV: %v", err)
+		return 1
+	}
+
+	buyerID := ghostarmy.GhostArmyBuyerID(env)
 
 	// parse datacenter csv
 	inputfile, err := os.Open(datacenterCSV)
 	if err != nil {
-		fmt.Printf("could not open '%s': %v\n", datacenterCSV, err)
-		os.Exit(1)
+		core.Error("could not open '%s': %v", datacenterCSV, err)
+		return 1
 	}
 	defer inputfile.Close()
 
 	lines, err := csv.NewReader(inputfile).ReadAll()
 	if err != nil {
-		fmt.Printf("could not read csv data: %v\n", err)
-		os.Exit(1)
+		core.Error("could not read csv data: %v", err)
+		return 1
 	}
 
 	var dcmap ghostarmy.DatacenterMap
@@ -83,17 +90,17 @@ func main() {
 		datacenter.Name = line[0]
 		id, err := strconv.ParseUint(line[1], 10, 64)
 		if err != nil {
-			fmt.Printf("could not parse id for dc %s", datacenter.Name)
+			core.Error("could not parse id for dc %s", datacenter.Name)
 			continue
 		}
 		datacenter.Lat, err = strconv.ParseFloat(line[2], 64)
 		if err != nil {
-			fmt.Printf("could not parse lat for dc %s", datacenter.Name)
+			core.Error("could not parse lat for dc %s", datacenter.Name)
 			continue
 		}
 		datacenter.Long, err = strconv.ParseFloat(line[3], 64)
 		if err != nil {
-			fmt.Printf("could not parse long for dc %s", datacenter.Name)
+			core.Error("could not parse long for dc %s", datacenter.Name)
 			continue
 		}
 
@@ -103,7 +110,7 @@ func main() {
 	// read binary file
 	bin, err := ioutil.ReadFile(infile)
 	if err != nil {
-		fmt.Printf("could not read '%s': %v\n", infile, err)
+		core.Error("could not read '%s': %v", infile, err)
 	}
 
 	// unmarshal
@@ -111,7 +118,7 @@ func main() {
 
 	var numSegments uint64
 	if !encoding.ReadUint64(bin, &index, &numSegments) {
-		fmt.Println("could not read num segments")
+		core.Error("could not read num segments")
 	}
 
 	slices := make([]transport.SessionPortalData, 0)
@@ -119,7 +126,7 @@ func main() {
 	for s := uint64(0); s < numSegments; s++ {
 		var count uint64
 		if !encoding.ReadUint64(bin, &index, &count) {
-			fmt.Println("could not read count")
+			core.Error("could not read count")
 		}
 
 		newSlice := make([]transport.SessionPortalData, count)
@@ -129,7 +136,7 @@ func main() {
 		for i := uint64(0); i < count; i++ {
 			var entry ghostarmy.Entry
 			if !entry.ReadFrom(bin, &index) {
-				fmt.Printf("can't read entry at index %d\n", i)
+				core.Error("can't read entry at index %d", i)
 			}
 
 			entry.Into(&slices[entityIndex], dcmap, buyerID)
@@ -141,38 +148,41 @@ func main() {
 
 	publishChan := make(chan transport.SessionPortalData)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
 
 	portalPublishers := make([]pubsub.Publisher, 0)
 	{
-		fmt.Printf("setting up portal cruncher\n")
+		core.Debug("setting up portal cruncher")
 
 		portalCruncherHosts := envvar.GetList("PORTAL_CRUNCHER_HOSTS", []string{"tcp://127.0.0.1:5555", "tcp://127.0.0.1:5556"})
 
-		postSessionPortalSendBufferSizeString, ok := os.LookupEnv("POST_SESSION_PORTAL_SEND_BUFFER_SIZE")
-		if !ok {
-			fmt.Println("env var POST_SESSION_PORTAL_SEND_BUFFER_SIZE must be set")
-			os.Exit(1)
+		if !envvar.Exists("POST_SESSION_PORTAL_SEND_BUFFER_SIZE") {
+			core.Error("POST_SESSION_PORTAL_SEND_BUFFER_SIZE not set")
+			return 1
 		}
 
-		postSessionPortalSendBufferSize, err := strconv.ParseInt(postSessionPortalSendBufferSizeString, 10, 64)
+		postSessionPortalSendBufferSize, err := envvar.GetInt("POST_SESSION_PORTAL_SEND_BUFFER_SIZE", 1000000)
 		if err != nil {
-			fmt.Printf("could not parse envvar POST_SESSION_PORTAL_SEND_BUFFER_SIZE: %v\n", err)
-			os.Exit(1)
+			core.Error("could not parse envvar POST_SESSION_PORTAL_SEND_BUFFER_SIZE: %v", err)
+			return 1
 		}
 
 		for _, host := range portalCruncherHosts {
 			portalCruncherPublisher, err := pubsub.NewPortalCruncherPublisher(host, int(postSessionPortalSendBufferSize))
 			if err != nil {
-				fmt.Printf("could not create portal cruncher publisher: %v\n", err)
-				os.Exit(1)
+				core.Error("could not create portal cruncher publisher: %v", err)
+				return 1
 			}
 
 			portalPublishers = append(portalPublishers, portalCruncherPublisher)
 		}
 	}
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
 		publisherIndex := 0
 
 		for {
@@ -180,7 +190,7 @@ func main() {
 			case slice := <-publishChan:
 				sessionBytes, err := slice.MarshalBinary()
 				if err != nil {
-					fmt.Printf("could not marshal binary for slice session id %d", slice.Meta.ID)
+					core.Error("could not marshal binary for slice session id %d", slice.Meta.ID)
 					continue
 				}
 
@@ -192,7 +202,10 @@ func main() {
 		}
 	}()
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
 		getLastMidnight := func() time.Time {
 			t := time.Now()
 			year, month, day := t.Date()
@@ -214,57 +227,73 @@ func main() {
 
 		i := 0
 		for {
-			begin := time.Now()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				begin := time.Now()
 
-			// reset if at end of day
-			if sliceBegin >= SecondsInDay {
-				i = 0
-				sliceBegin = currentSecs() // account for any inaccuracy by calling sleep()
-				dateOffset = getLastMidnight()
+				// reset if at end of day
+				if sliceBegin >= SecondsInDay {
+					i = 0
+					sliceBegin = currentSecs() // account for any inaccuracy by calling sleep()
+					dateOffset = getLastMidnight()
+				}
+
+				var interval int64 = 10
+
+				// only useful at 11:50:5x pm - midnight
+				// forces the last batch to be sent within the above interval
+				if sliceBegin+interval > SecondsInDay {
+					interval = SecondsInDay - sliceBegin
+				}
+
+				// seek to the next position slices should be from
+				// mainly useful when starting the program
+				for i < len(slices) && slices[i].Slice.Timestamp.Unix() < sliceBegin {
+					i++
+				}
+
+				before := i
+
+				// only read for the interval, usually 10 seconds
+				for i < len(slices) && slices[i].Slice.Timestamp.Unix() < sliceBegin+interval {
+					slice := slices[i]
+
+					// slice timestamp will be in the range of 0 - SecondsInDay * 3,
+					// so adjust the timestamp by the time the loop was started
+					slice.Slice.Timestamp = dateOffset.Add(time.Second * time.Duration(slice.Slice.Timestamp.Unix()))
+
+					publishChan <- slice
+					i++
+				}
+
+				diff := i - before
+
+				if diff > estimatedPeakSessionCount {
+					core.Debug("sent more than %d slices this interval, num sent = %d, current interval in secs = %d - %d", estimatedPeakSessionCount, diff, sliceBegin, sliceBegin+interval)
+				}
+
+				// increment by the interval
+				sliceBegin += interval
+
+				time.Sleep((time.Second * time.Duration(interval)) - time.Since(begin))
 			}
-
-			var interval int64 = 10
-
-			// only useful at 11:50:5x pm - midnight
-			// forces the last batch to be sent within the above interval
-			if sliceBegin+interval > SecondsInDay {
-				interval = SecondsInDay - sliceBegin
-			}
-
-			// seek to the next position slices should be from
-			// mainly useful when starting the program
-			for i < len(slices) && slices[i].Slice.Timestamp.Unix() < sliceBegin {
-				i++
-			}
-
-			before := i
-
-			// only read for the interval, usually 10 seconds
-			for i < len(slices) && slices[i].Slice.Timestamp.Unix() < sliceBegin+interval {
-				slice := slices[i]
-
-				// slice timestamp will be in the range of 0 - SecondsInDay * 3,
-				// so adjust the timestamp by the time the loop was started
-				slice.Slice.Timestamp = dateOffset.Add(time.Second * time.Duration(slice.Slice.Timestamp.Unix()))
-
-				publishChan <- slice
-				i++
-			}
-
-			diff := i - before
-
-			if diff > estimatedPeakSessionCount {
-				fmt.Printf("sent more than %d slices this interval, num sent = %d, current interval in secs = %d - %d\n", estimatedPeakSessionCount, diff, sliceBegin, sliceBegin+interval)
-			}
-
-			// increment by the interval
-			sliceBegin += interval
-
-			time.Sleep((time.Second * time.Duration(interval)) - time.Since(begin))
 		}
 	}()
 
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
+
+	<-termChan // Exit with an error code of 0 if we receive SIGINT or SIGTERM
+
+	fmt.Println("Received shutdown signal.")
+
+	// Wait for essential goroutines to finish
+	cancel()
+	wg.Wait()
+
+	fmt.Println("Successfully shutdown.")
+	return 0
 }
