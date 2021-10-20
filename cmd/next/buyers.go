@@ -19,6 +19,7 @@ func buyers(env Environment, signed bool) {
 
 	var reply localjsonrpc.BuyersReply
 	if err := makeRPCCall(env, &reply, "OpsService.Buyers", args); err != nil {
+		fmt.Println(err)
 		handleJSONRPCError(env, err)
 		return
 	}

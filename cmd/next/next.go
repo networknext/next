@@ -321,6 +321,7 @@ func refreshAuth(env Environment) error {
 	clientSecret := ""
 	domain := ""
 
+	// TODO: Figure out a better way of doing this
 	switch env.Name {
 	case "prod":
 		audience = "https://portal.networknext.com"
@@ -328,15 +329,15 @@ func refreshAuth(env Environment) error {
 		clientSecret = "EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj"
 		domain = "networknext.auth0.com"
 	case "dev":
-		audience = ""
-		clientID = ""
-		clientSecret = ""
-		domain = "networknext-dev.us.auth0.com"
+		audience = "https://next-dev.networknext.com"
+		clientID = "qUcgJkTEztKAbJirBexzAkau4mXm6n9Q"
+		clientSecret = "XQEeSI3CZLeSEbboMpgla-EmLyOzPqIc1zYKB2qTWQGmvrHvWrLzd5iOXXxkzDdY"
+		domain = "auth-dev.networknext-dev.com"
 	case "local":
-		audience = ""
-		clientID = ""
-		clientSecret = ""
-		domain = "networknext-dev.us.auth0.com"
+		audience = "https://next-local.networknext.com"
+		clientID = "3lxkAg0s0tiaCAeVoe2p61QSGDYJ6MsV"
+		clientSecret = "kTXtSGiH9oDBZqR4G-unfw5Bytjb8fcRoJGCuY3TEiJrdGmVEP8JO74tpNZChBzA"
+		domain = "auth-dev.networknext.com"
 	}
 
 	req, err := http.NewRequest(
