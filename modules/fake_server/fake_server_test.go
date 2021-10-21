@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"net"
 	"testing"
-	"time"
+	// "time"
 
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
@@ -225,41 +225,41 @@ func TestNewFakeServer(t *testing.T) {
 	assert.Equal(t, expectedServer.sendBeaconPackets, actualServer.sendBeaconPackets)
 }
 
-func TestStartLoop(t *testing.T) {
-	server, backendConn, _ := createExpectedFakeServer(t)
-
-	server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
-	assert.NoError(t, err)
-
-	backendRecvReady := make(chan struct{})
-
-	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*200))
-	defer cancelFunc()
-
-	go runTestServerBackend(t, ctx, backendConn, testSendNormalResponse, backendRecvReady)
-	<-backendRecvReady
-
-	err = server.StartLoop(ctx, time.Millisecond*10, 0, 0)
-	assert.NoError(t, err)
-}
-
-// func TestUpdate(t *testing.T) {
+// func TestStartLoop(t *testing.T) {
 // 	server, backendConn, _ := createExpectedFakeServer(t)
 
 // 	server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
 // 	assert.NoError(t, err)
 
-// 	ctx, cancelFunc := context.WithCancel(context.Background())
-// 	defer cancelFunc()
-
 // 	backendRecvReady := make(chan struct{})
+
+// 	ctx, cancelFunc := context.WithDeadline(context.Background(), time.Now().Add(time.Millisecond*200))
+// 	defer cancelFunc()
 
 // 	go runTestServerBackend(t, ctx, backendConn, testSendNormalResponse, backendRecvReady)
 // 	<-backendRecvReady
 
-// 	err = server.update()
+// 	err = server.StartLoop(ctx, time.Millisecond*10, 0, 0)
 // 	assert.NoError(t, err)
 // }
+
+func TestUpdate(t *testing.T) {
+	server, backendConn, _ := createExpectedFakeServer(t)
+
+	server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
+	assert.NoError(t, err)
+
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	backendRecvReady := make(chan struct{})
+
+	go runTestServerBackend(t, ctx, backendConn, testSendNormalResponse, backendRecvReady)
+	<-backendRecvReady
+
+	err = server.update()
+	assert.NoError(t, err)
+}
 
 // func TestSendServerInitPacket(t *testing.T) {
 // 	t.Run("failed to marshal request", func(t *testing.T) {
