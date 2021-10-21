@@ -1,6 +1,6 @@
 <template>
-  <div id="app" :style="{ login: $store.getters.currentPage !== 'login' }">
-    <nav-bar v-if="$store.getters.currentPage !== 'login' && $store.getters.currentPage !== 'get-access'"></nav-bar>
+  <div id="app">
+    <nav-bar></nav-bar>
     <workspace></workspace>
   </div>
 </template>

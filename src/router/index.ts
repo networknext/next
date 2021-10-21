@@ -148,7 +148,8 @@ const AnonymousRoutes = [
   'session-details',
   'session-tool',
   'get-access',
-  'login'
+  'login',
+  'password-reset'
 ]
 
 const AnonymousPlusRoutes = [
@@ -197,8 +198,6 @@ const BetaRoutes = [
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  if (to.name === 'session-details' && from.name === 'map') {
-  }
   // Email is verified - catch this event, refresh the user's token and go to the map
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
