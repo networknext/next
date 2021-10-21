@@ -1,6 +1,7 @@
 import { UserProfile } from '@/components/types/AuthTypes'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { DateFilterType, Filter } from '@/components/types/FilterTypes'
+import router from '@/router'
 import { Auth0DecodedHash } from 'auth0-js'
 import { clone, cloneDeep } from 'lodash'
 import Vue from 'vue'
@@ -141,6 +142,22 @@ const actions = {
           dateRange: DateFilterType.CURRENT_MONTH
         }
         dispatch('updateCurrentFilter', defaultFilter)
+
+        const query = window.location.search
+        if (query.includes('Your%20email%20was%20verified.%20You%20can%20continue%20using%20the%20application.')) {
+          dispatch('toggleIsSignUpTour', true)
+          if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+            setTimeout(() => {
+              Vue.prototype.$gtag.event('Account verified', {
+                event_category: 'Account Creation'
+              })
+            }, 5000)
+          }
+        }
+
+        if (window.location.hash !== '' || query.includes('signup')) {
+          router.push('/map')
+        }
       })
       .catch((error: Error) => {
         console.log('Something went wrong fetching user details')

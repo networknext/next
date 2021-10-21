@@ -93,15 +93,28 @@ export class AuthService {
       }
     }))
 
+    // If user is logged in process the login
     if (authResult) {
       return store.dispatch('processAuthChange', authResult)
     }
+
+    const isReturning = localStorage.returningUser || 'false'
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_TOUR)) {
+      if (!(isReturning === 'true') && store.getters.isAnonymous) {
+        store.commit('TOGGLE_IS_TOUR', true)
+        localStorage.returningUser = true
+      }
+    }
+
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('boot', {
         api_base: process.env.VUE_APP_INTERCOM_BASE_API,
         app_id: process.env.VUE_APP_INTERCOM_ID
       })
     }
+
+    // Generic resolve to still return a promise even though there isn't anything to resolve here
+    return Promise.resolve()
   }
 }
 

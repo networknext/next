@@ -157,9 +157,7 @@ const AnonymousPlusRoutes = [
   'session-details',
   'session-tool',
   'user-sessions',
-  'user-tool',
-  'get-access',
-  'login'
+  'user-tool'
 ]
 
 const ViewerRoutes = [
@@ -171,9 +169,7 @@ const ViewerRoutes = [
   'user-tool',
   'downloads',
   'settings',
-  'account-settings',
-  'get-access',
-  'login'
+  'account-settings'
 ]
 
 const OwnerRoutes = [
@@ -189,9 +185,7 @@ const OwnerRoutes = [
   'config',
   'users',
   'explore',
-  'notifications',
-  'get-access',
-  'login'
+  'notifications'
 ]
 
 // Add or remove these to open up beta features
