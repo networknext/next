@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"math/rand"
 	"net"
+	"sort"
 	"time"
 
 	"github.com/networknext/backend/modules/routing"
@@ -58,6 +59,12 @@ const (
 
 	// NearRelayJitterPacketLossChance is the percent change a near relay will use the calculated jitter and packet loss instead of the normal values
 	NearRelayJitterPacketLossChance = 30.0
+
+	// NextBytesMin is the minimum number for the number of kbps sent up/down a network next route
+	NextKbpsMin = 57500
+
+	// NextKbpsRange is the range of NextKbpsMin, that is maximum possible kbps - minimum possible kbps on a network next route
+	NextKbpsRange = 5000
 )
 
 // Session contains the necessary info for the server to keep track of sessions
@@ -86,7 +93,9 @@ type Session struct {
 	upgraded            bool
 	next                bool
 	committed           bool
-	directRTT           float32
+	directMinRTT        float32
+	directMaxRTT        float32
+	directPrimeRTT      float32
 	directJitter        float32
 	directPacketLoss    float32
 	nextRTT             float32
@@ -97,6 +106,8 @@ type Session struct {
 	nearRelayRTT        []int32
 	nearRelayJitter     []int32
 	nearRelayPacketLoss []int32
+	nextKbpsUp          uint32
+	nextKbpsDown        uint32
 	packetsSent         uint64
 	packetsLost         uint64
 	jitter              float32
@@ -205,13 +216,27 @@ func (session *Session) Advance(response transport.SessionResponsePacket) {
 		session.nearRelayPacketLoss[i] = 0
 	}
 
-	// These are the base RTTs for direct and next, before randomly deciding if we should make them worse
-	directRTT := rand.Float32()*RTTRange + RTTMin
-	nextRTT := rand.Float32()*RTTRange + RTTMin
+	// These are the base RTTs for direct, before randomly deciding if we should make them worse
 
-	if session.highDirectRTT {
-		directRTT += 250.0
+	var directRTTs []float64
+	for i := 0; i < 3; i++ {
+		directRTT := rand.Float64()*RTTRange + RTTMin
+
+		if session.highDirectRTT {
+			directRTT += 250.0
+		}
+
+		directRTTs = append(directRTTs, directRTT)
 	}
+
+	// Decide direct min/prime/max RTT
+	sort.Float64s(directRTTs)
+	session.directMinRTT = float32(directRTTs[0])
+	session.directPrimeRTT = float32(directRTTs[1])
+	session.directMaxRTT = float32(directRTTs[2])
+
+	// Create base RTT for next, before randomly deciding if we should make them worse
+	nextRTT := rand.Float32()*RTTRange + RTTMin
 
 	if session.highNextRTT {
 		nextRTT += 250.0
@@ -250,23 +275,29 @@ func (session *Session) Advance(response transport.SessionResponsePacket) {
 	if session.next {
 		// The session is taking network next, so apply the jitter
 		// and packet loss we calculated above to the next stats
-		session.directRTT = directRTT
 		session.directJitter = rand.Float32()*JitterRange + JitterMin
 		session.directPacketLoss = 0
 
 		session.nextRTT = nextRTT
 		session.nextJitter = session.jitter
 		session.nextPacketLoss = float32(packetLoss)
+
+		// Calculate the kbps up/down the network next route
+		session.nextKbpsUp = uint32(NextKbpsMin + rand.Int31n(NextKbpsRange))
+		session.nextKbpsDown = uint32(NextKbpsMin + rand.Int31n(NextKbpsRange))
 	} else {
 		// The session is taking the direct route, so apply the jitter
 		// and packet loss we calculated above to the direct stats and zero out the next stats
-		session.directRTT = directRTT
 		session.directJitter = session.jitter
 		session.directPacketLoss = float32(packetLoss)
 
 		session.nextRTT = 0
 		session.nextJitter = 0
 		session.nextPacketLoss = 0
+
+		// Set the kbps up/down to 0
+		session.nextKbpsUp = 0
+		session.nextKbpsDown = 0
 	}
 
 	// Allow for a random chance on each near relay to use the worse
