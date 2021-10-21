@@ -203,8 +203,4 @@ export default Vue.extend({})
     font-size: 0.75rem;
     text-transform: uppercase;
   }
-
-  .login {
-    background-color: black;
-  }
 </style>
