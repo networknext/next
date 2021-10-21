@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"math/rand"
 	"net"
+	"sort"
 	"time"
 
 	"github.com/networknext/backend/modules/routing"
@@ -92,7 +93,9 @@ type Session struct {
 	upgraded            bool
 	next                bool
 	committed           bool
-	directRTT           float32
+	directMinRTT        float32
+	directMaxRTT        float32
+	directPrimeRTT      float32
 	directJitter        float32
 	directPacketLoss    float32
 	nextRTT             float32
@@ -213,13 +216,27 @@ func (session *Session) Advance(response transport.SessionResponsePacket) {
 		session.nearRelayPacketLoss[i] = 0
 	}
 
-	// These are the base RTTs for direct and next, before randomly deciding if we should make them worse
-	directRTT := rand.Float32()*RTTRange + RTTMin
-	nextRTT := rand.Float32()*RTTRange + RTTMin
+	// These are the base RTTs for direct, before randomly deciding if we should make them worse
 
-	if session.highDirectRTT {
-		directRTT += 250.0
+	var directRTTs []float64
+	for i := 0; i < 3; i++ {
+		directRTT := rand.Float64()*RTTRange + RTTMin
+
+		if session.highDirectRTT {
+			directRTT += 250.0
+		}
+
+		directRTTs = append(directRTTs, directRTT)
 	}
+
+	// Decide direct min/prime/max RTT
+	sort.Float64s(directRTTs)
+	session.directMinRTT = float32(directRTTs[0])
+	session.directPrimeRTT = float32(directRTTs[1])
+	session.directMaxRTT = float32(directRTTs[2])
+
+	// Create base RTT for next, before randomly deciding if we should make them worse
+	nextRTT := rand.Float32()*RTTRange + RTTMin
 
 	if session.highNextRTT {
 		nextRTT += 250.0
@@ -258,7 +275,6 @@ func (session *Session) Advance(response transport.SessionResponsePacket) {
 	if session.next {
 		// The session is taking network next, so apply the jitter
 		// and packet loss we calculated above to the next stats
-		session.directRTT = directRTT
 		session.directJitter = rand.Float32()*JitterRange + JitterMin
 		session.directPacketLoss = 0
 
@@ -272,7 +288,6 @@ func (session *Session) Advance(response transport.SessionResponsePacket) {
 	} else {
 		// The session is taking the direct route, so apply the jitter
 		// and packet loss we calculated above to the direct stats and zero out the next stats
-		session.directRTT = directRTT
 		session.directJitter = session.jitter
 		session.directPacketLoss = float32(packetLoss)
 

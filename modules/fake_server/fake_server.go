@@ -244,9 +244,9 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session, clientPingTim
 		Tags:                            [transport.MaxTags]uint64{},
 		Flags:                           0,
 		UserFlags:                       0,
-		DirectMinRTT:                    session.directRTT, // todo: might be worth upgrading session to have support for min/max/prime direct RTT?
-		DirectMaxRTT:                    session.directRTT,
-		DirectPrimeRTT:                  session.directRTT,
+		DirectMinRTT:                    session.directMinRTT,
+		DirectMaxRTT:                    session.directMaxRTT,
+		DirectPrimeRTT:                  session.directPrimeRTT,
 		DirectJitter:                    session.directJitter,
 		DirectPacketLoss:                session.directPacketLoss,
 		NextRTT:                         session.nextRTT,
