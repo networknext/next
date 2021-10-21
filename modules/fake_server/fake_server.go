@@ -9,8 +9,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
@@ -23,9 +22,9 @@ type FakeServer struct {
 	buyerID              uint64
 	customerPrivateKey   []byte
 	publicAddress        *net.UDPAddr
-	logger               log.Logger
 	serverRoutePublicKey []byte
 	dcName               string
+	sendBeaconPackets    bool
 
 	conn              *net.UDPConn
 	serverBackendAddr *net.UDPAddr
@@ -34,7 +33,7 @@ type FakeServer struct {
 }
 
 // NewFakeServer returns a fake server with the given parameters.
-func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, beaconAddr *net.UDPAddr, clientCount int, sdkVersion transport.SDKVersion, logger log.Logger, buyerID uint64, customerPrivateKey []byte, dcName string) (*FakeServer, error) {
+func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, beaconAddr *net.UDPAddr, clientCount int, sdkVersion transport.SDKVersion, buyerID uint64, customerPrivateKey []byte, dcName string, sendBeaconPackets bool) (*FakeServer, error) {
 	// We need to use a random address for the server so that
 	// each server instance is uniquely identifiable, so that
 	// the total session count is accurate.
@@ -62,9 +61,9 @@ func NewFakeServer(conn *net.UDPConn, serverBackendAddr *net.UDPAddr, beaconAddr
 		publicAddress:        &randomAddress,
 		buyerID:              buyerID,
 		customerPrivateKey:   customerPrivateKey,
-		logger:               logger,
 		serverRoutePublicKey: routePublicKey,
 		dcName:               dcName,
+		sendBeaconPackets:    sendBeaconPackets,
 		sessions:             make([]Session, clientCount),
 		conn:                 conn,
 		serverBackendAddr:    serverBackendAddr,
@@ -116,20 +115,28 @@ func (server *FakeServer) update() error {
 
 	for i := range server.sessions {
 		if time.Since(server.sessions[i].startTime) > server.sessions[i].duration {
-			level.Debug(server.logger).Log("session", fmt.Sprintf("%016x", server.sessions[i].sessionID), "msg", "session expired")
+			core.Debug("session %016x expired", server.sessions[i].sessionID)
 
+			// Send session update with client ping timeout to write summary slice
 			var err error
+			_, err = server.sendSessionUpdatePacket(server.sessions[i], true)
+			if err != nil {
+				return err
+			}
+
 			server.sessions[i], err = NewSession()
 			if err != nil {
 				return err
 			}
 		}
 
-		if err := server.sendBeaconPacket(server.sessions[i]); err != nil {
-			return err
+		if server.sendBeaconPackets {
+			if err := server.sendBeaconPacket(server.sessions[i]); err != nil {
+				return err
+			}
 		}
 
-		responsePacket, err := server.sendSessionUpdatePacket(server.sessions[i])
+		responsePacket, err := server.sendSessionUpdatePacket(server.sessions[i], false)
 		if err != nil {
 			return err
 		}
@@ -159,7 +166,7 @@ func (server *FakeServer) sendServerInitPacket() error {
 		return err
 	}
 
-	level.Debug(server.logger).Log("msg", "sent server init request packet")
+	core.Debug("sent server init request packet")
 
 	incomingPacketType, incomingPacketData, err := server.readPacket()
 	if err != nil {
@@ -179,7 +186,7 @@ func (server *FakeServer) sendServerInitPacket() error {
 		return fmt.Errorf("failed to init: received a server init response of %d", initResponse.Response)
 	}
 
-	level.Debug(server.logger).Log("msg", "received OK server init response")
+	core.Debug("received OK server init response")
 	return nil
 }
 
@@ -202,12 +209,12 @@ func (server *FakeServer) sendServerUpdatePacket() error {
 		return err
 	}
 
-	level.Debug(server.logger).Log("msg", "sent server update packet")
+	core.Debug("sent server update packet")
 	return nil
 }
 
 // sendSessionUpdatePacket is responsible for sending the session update request packet and receiving the response.
-func (server *FakeServer) sendSessionUpdatePacket(session Session) (transport.SessionResponsePacket, error) {
+func (server *FakeServer) sendSessionUpdatePacket(session Session, clientPingTimedOut bool) (transport.SessionResponsePacket, error) {
 	var sessionResponse transport.SessionResponsePacket
 	sessionResponse.Version = server.sdkVersion
 
@@ -232,14 +239,14 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session) (transport.Se
 		FallbackToDirect:                false,
 		ClientBandwidthOverLimit:        false,
 		ServerBandwidthOverLimit:        false,
-		ClientPingTimedOut:              false,
+		ClientPingTimedOut:              clientPingTimedOut,
 		NumTags:                         0,
 		Tags:                            [transport.MaxTags]uint64{},
 		Flags:                           0,
 		UserFlags:                       0,
-		DirectMinRTT:                    session.directRTT,			// todo: might be worth upgrading session to have support for min/max/prime direct RTT?
-		DirectMaxRTT:                    session.directRTT,
-		DirectPrimeRTT:                  session.directRTT,
+		DirectMinRTT:                    session.directMinRTT,
+		DirectMaxRTT:                    session.directMaxRTT,
+		DirectPrimeRTT:                  session.directPrimeRTT,
 		DirectJitter:                    session.directJitter,
 		DirectPacketLoss:                session.directPacketLoss,
 		NextRTT:                         session.nextRTT,
@@ -250,8 +257,8 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session) (transport.Se
 		NearRelayRTT:                    session.nearRelayRTT,
 		NearRelayJitter:                 session.nearRelayJitter,
 		NearRelayPacketLoss:             session.nearRelayPacketLoss,
-		NextKbpsUp:                      0,
-		NextKbpsDown:                    0,
+		NextKbpsUp:                      session.nextKbpsUp,
+		NextKbpsDown:                    session.nextKbpsDown,
 		PacketsSentClientToServer:       session.packetsSent,
 		PacketsSentServerToClient:       session.packetsSent,
 		PacketsLostClientToServer:       session.packetsLost,
@@ -271,7 +278,12 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session) (transport.Se
 		return sessionResponse, err
 	}
 
-	level.Debug(server.logger).Log("msg", "sent session update request packet")
+	core.Debug("sent session update request packet")
+
+	if clientPingTimedOut {
+		// If the session is expired, no need to receive the response packet
+		return transport.SessionResponsePacket{}, nil
+	}
 
 	incomingPacketType, incomingPacketData, err := server.readPacket()
 	if err != nil {
@@ -286,17 +298,17 @@ func (server *FakeServer) sendSessionUpdatePacket(session Session) (transport.Se
 		return sessionResponse, err
 	}
 
-	level.Debug(server.logger).Log("msg", "received session update response")
+	core.Debug("received session update response")
 
 	switch sessionResponse.RouteType {
 	case routing.RouteTypeDirect:
-		level.Debug(server.logger).Log("session", fmt.Sprintf("%016x", session.sessionID), "msg", "taking direct route")
+		core.Debug("session %016x - taking direct route", session.sessionID)
 
 	case routing.RouteTypeNew:
-		level.Debug(server.logger).Log("session", fmt.Sprintf("%016x", session.sessionID), "msg", "taking network next route")
+		core.Debug("session %016x - taking network next route", session.sessionID)
 
 	case routing.RouteTypeContinue:
-		level.Debug(server.logger).Log("session", fmt.Sprintf("%016x", session.sessionID), "msg", "continuing network next route")
+		core.Debug("session %016x - continuing network next route", session.sessionID)
 	}
 
 	return sessionResponse, nil
