@@ -6,13 +6,13 @@ import Vue from 'vue'
 export class AuthService {
   private clientID: string
   private domain: string
-  public customClient: WebAuth
+  public auth0Client: WebAuth
 
   constructor (options: any) {
     this.clientID = options.clientID
     this.domain = options.domain
 
-    this.customClient = new WebAuth({
+    this.auth0Client = new WebAuth({
       domain: this.domain,
       clientID: this.clientID,
       responseType: 'id_token',
@@ -21,14 +21,14 @@ export class AuthService {
   }
 
   public logout () {
-    this.customClient.logout({
+    this.auth0Client.logout({
       returnTo: window.location.origin + '/map'
     })
   }
 
   public login (username: string, password: string): Promise<any> {
     return new Promise(
-      (resolve: any, reject: any) => this.customClient.login(
+      (resolve: any, reject: any) => this.auth0Client.login(
         {
           username: username,
           password: password,
@@ -48,8 +48,8 @@ export class AuthService {
         event_label: 'Sign up'
       })
     }
-    // TODO: this.customClient.signupAndAuthorize doesn't work here for some reason
-    const signUpPromise = new Promise((resolve: any, reject: any) => this.customClient.signup({
+    // TODO: this.auth0Client.signupAndAuthorize doesn't work here for some reason
+    const signUpPromise = new Promise((resolve: any, reject: any) => this.auth0Client.signup({
       username: email,
       email: email,
       password: password,
@@ -85,7 +85,7 @@ export class AuthService {
 
   public async processAuthentication (): Promise<any> {
     // Auth0 sucks so this is a hack to make the callback of check session resolve as a promise -> undefined if the user is logged out of the result of fetching the local token
-    const authResult: Auth0DecodedHash = await new Promise((resolve: any, reject: any) => this.customClient.checkSession({}, (err: Auth0Error | null, result: Auth0DecodedHash) => {
+    const authResult: Auth0DecodedHash = await new Promise((resolve: any, reject: any) => this.auth0Client.checkSession({}, (err: Auth0Error | null, result: Auth0DecodedHash) => {
       if (err) {
         resolve(undefined)
       } else {
