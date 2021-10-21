@@ -1,6 +1,5 @@
-import { FeatureEnum } from '@/components/types/FeatureTypes'
 import store from '@/store'
-import Vue from 'vue'
+
 export class JSONRPCService {
   private headers: any
 

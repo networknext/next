@@ -93,6 +93,11 @@ Vue.use(JSONRPCPlugin)
 
 Vue.prototype.$authService.processAuthentication()
   .then(() => {
+    const query = window.location.search
+    if (window.location.hash !== '' || query.includes('signup')) {
+      router.push('/map')
+    }
+
     const app = new Vue({
       router,
       store,
