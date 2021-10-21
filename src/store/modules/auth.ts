@@ -1,4 +1,5 @@
 import { UserProfile } from '@/components/types/AuthTypes'
+import { EMAIL_VERIFICATION_URL } from '@/components/types/Constants'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 import { Auth0DecodedHash } from 'auth0-js'
@@ -143,7 +144,7 @@ const actions = {
         dispatch('updateCurrentFilter', defaultFilter)
 
         const query = window.location.search
-        if (query.includes('Your%20email%20was%20verified.%20You%20can%20continue%20using%20the%20application.')) {
+        if (query.includes(EMAIL_VERIFICATION_URL)) {
           dispatch('toggleIsSignUpTour', true)
           if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
             setTimeout(() => {
