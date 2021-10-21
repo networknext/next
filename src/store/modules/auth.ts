@@ -3,7 +3,7 @@ import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 import router from '@/router'
 import { Auth0DecodedHash } from 'auth0-js'
-import { clone, cloneDeep } from 'lodash'
+import { cloneDeep } from 'lodash'
 import Vue from 'vue'
 
 /**
