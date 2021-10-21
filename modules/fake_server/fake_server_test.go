@@ -388,177 +388,177 @@ func TestSendServerInitPacket(t *testing.T) {
 	})
 }
 
-// func TestSendServerUpdatePacket(t *testing.T) {
-// 	t.Run("failed to marshal request", func(t *testing.T) {
-// 		server, _, _ := createExpectedFakeServer(t)
+func TestSendServerUpdatePacket(t *testing.T) {
+	t.Run("failed to marshal request", func(t *testing.T) {
+		server, _, _ := createExpectedFakeServer(t)
 
-// 		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
-// 		assert.NoError(t, err)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
+		assert.NoError(t, err)
 
-// 		// Bad version which would fail to marshal
-// 		server.sdkVersion = transport.SDKVersion{256, 256, 256}
+		// Bad version which would fail to marshal
+		server.sdkVersion = transport.SDKVersion{256, 256, 256}
 
-// 		err = server.sendServerUpdatePacket()
-// 		assert.Error(t, err)
-// 	})
+		err = server.sendServerUpdatePacket()
+		assert.Error(t, err)
+	})
 
-// 	t.Run("failed to send request", func(t *testing.T) {
-// 		server, _, _ := createExpectedFakeServer(t)
+	t.Run("failed to send request", func(t *testing.T) {
+		server, _, _ := createExpectedFakeServer(t)
 
-// 		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
-// 		assert.NoError(t, err)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
+		assert.NoError(t, err)
 
-// 		// Simulate a bad connection
-// 		server.conn = &net.UDPConn{}
+		// Simulate a bad connection
+		server.conn = &net.UDPConn{}
 
-// 		err = server.sendServerUpdatePacket()
-// 		assert.Error(t, err)
-// 	})
+		err = server.sendServerUpdatePacket()
+		assert.Error(t, err)
+	})
 
-// 	t.Run("success", func(t *testing.T) {
-// 		server, backendConn, _ := createExpectedFakeServer(t)
+	t.Run("success", func(t *testing.T) {
+		server, backendConn, _ := createExpectedFakeServer(t)
 
-// 		ctx, cancelFunc := context.WithCancel(context.Background())
-// 		defer cancelFunc()
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
 
-// 		backendRecvReady := make(chan struct{})
+		backendRecvReady := make(chan struct{})
 
-// 		go runTestServerBackend(t, ctx, backendConn, testSendNormalResponse, backendRecvReady)
+		go runTestServerBackend(t, ctx, backendConn, testSendNormalResponse, backendRecvReady)
 
-// 		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
-// 		assert.NoError(t, err)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
+		assert.NoError(t, err)
 
-// 		<-backendRecvReady
+		<-backendRecvReady
 
-// 		err = server.sendServerUpdatePacket()
-// 		assert.NoError(t, err)
-// 	})
-// }
+		err = server.sendServerUpdatePacket()
+		assert.NoError(t, err)
+	})
+}
 
-// func TestSendSessionUpdatePacket(t *testing.T) {
-// 	t.Run("failed to marshal request", func(t *testing.T) {
-// 		server, _, _ := createExpectedFakeServer(t)
+func TestSendSessionUpdatePacket(t *testing.T) {
+	t.Run("failed to marshal request", func(t *testing.T) {
+		server, _, _ := createExpectedFakeServer(t)
 
-// 		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
-// 		assert.NoError(t, err)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
+		assert.NoError(t, err)
 
-// 		// Bad version which would fail to marshal
-// 		server.sdkVersion = transport.SDKVersion{256, 256, 256}
+		// Bad version which would fail to marshal
+		server.sdkVersion = transport.SDKVersion{256, 256, 256}
 
-// 		session, err := NewSession()
-// 		assert.NoError(t, err)
+		session, err := NewSession()
+		assert.NoError(t, err)
 
-// 		_, err = server.sendSessionUpdatePacket(session, false)
-// 		assert.Error(t, err)
-// 	})
+		_, err = server.sendSessionUpdatePacket(session, false)
+		assert.Error(t, err)
+	})
 
-// 	t.Run("failed to send request", func(t *testing.T) {
-// 		server, _, _ := createExpectedFakeServer(t)
+	t.Run("failed to send request", func(t *testing.T) {
+		server, _, _ := createExpectedFakeServer(t)
 
-// 		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
-// 		assert.NoError(t, err)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
+		assert.NoError(t, err)
 
-// 		// Simulate a bad connection
-// 		server.conn = &net.UDPConn{}
+		// Simulate a bad connection
+		server.conn = &net.UDPConn{}
 
-// 		session, err := NewSession()
-// 		assert.NoError(t, err)
+		session, err := NewSession()
+		assert.NoError(t, err)
 
-// 		_, err = server.sendSessionUpdatePacket(session, false)
-// 		assert.Error(t, err)
-// 	})
+		_, err = server.sendSessionUpdatePacket(session, false)
+		assert.Error(t, err)
+	})
 
-// 	t.Run("failed to read response", func(t *testing.T) {
-// 		server, backendConn, _ := createExpectedFakeServer(t)
+	t.Run("failed to read response", func(t *testing.T) {
+		server, backendConn, _ := createExpectedFakeServer(t)
 
-// 		ctx, cancelFunc := context.WithCancel(context.Background())
-// 		defer cancelFunc()
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
 
-// 		backendRecvReady := make(chan struct{})
+		backendRecvReady := make(chan struct{})
 
-// 		// Simulate a bad response
-// 		go runTestServerBackend(t, ctx, backendConn, testSendInvalidResponse, backendRecvReady)
+		// Simulate a bad response
+		go runTestServerBackend(t, ctx, backendConn, testSendInvalidResponse, backendRecvReady)
 
-// 		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
-// 		assert.NoError(t, err)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
+		assert.NoError(t, err)
 
-// 		session, err := NewSession()
-// 		assert.NoError(t, err)
+		session, err := NewSession()
+		assert.NoError(t, err)
 
-// 		<-backendRecvReady
-// 		_, err = server.sendSessionUpdatePacket(session, false)
-// 		assert.Error(t, err)
-// 	})
+		<-backendRecvReady
+		_, err = server.sendSessionUpdatePacket(session, false)
+		assert.Error(t, err)
+	})
 
-// 	t.Run("mismatched response", func(t *testing.T) {
-// 		server, backendConn, _ := createExpectedFakeServer(t)
+	t.Run("mismatched response", func(t *testing.T) {
+		server, backendConn, _ := createExpectedFakeServer(t)
 
-// 		ctx, cancelFunc := context.WithCancel(context.Background())
-// 		defer cancelFunc()
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
 
-// 		backendRecvReady := make(chan struct{})
+		backendRecvReady := make(chan struct{})
 
-// 		// Simulate a mismatched response
-// 		go runTestServerBackend(t, ctx, backendConn, testSendMismatchedResponse, backendRecvReady)
+		// Simulate a mismatched response
+		go runTestServerBackend(t, ctx, backendConn, testSendMismatchedResponse, backendRecvReady)
 
-// 		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
-// 		assert.NoError(t, err)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
+		assert.NoError(t, err)
 
-// 		session, err := NewSession()
-// 		assert.NoError(t, err)
+		session, err := NewSession()
+		assert.NoError(t, err)
 
-// 		<-backendRecvReady
+		<-backendRecvReady
 
-// 		_, err = server.sendSessionUpdatePacket(session, false)
-// 		assert.Error(t, err)
-// 	})
+		_, err = server.sendSessionUpdatePacket(session, false)
+		assert.Error(t, err)
+	})
 
-// 	t.Run("failed to unmarshal response", func(t *testing.T) {
-// 		server, backendConn, _ := createExpectedFakeServer(t)
+	t.Run("failed to unmarshal response", func(t *testing.T) {
+		server, backendConn, _ := createExpectedFakeServer(t)
 
-// 		ctx, cancelFunc := context.WithCancel(context.Background())
-// 		defer cancelFunc()
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
 
-// 		backendRecvReady := make(chan struct{})
+		backendRecvReady := make(chan struct{})
 
-// 		// Simulate an unmarshalable response
-// 		go runTestServerBackend(t, ctx, backendConn, testSendUnmarshalableResponse, backendRecvReady)
+		// Simulate an unmarshalable response
+		go runTestServerBackend(t, ctx, backendConn, testSendUnmarshalableResponse, backendRecvReady)
 
-// 		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
-// 		assert.NoError(t, err)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
+		assert.NoError(t, err)
 
-// 		session, err := NewSession()
-// 		assert.NoError(t, err)
+		session, err := NewSession()
+		assert.NoError(t, err)
 
-// 		<-backendRecvReady
+		<-backendRecvReady
 
-// 		_, err = server.sendSessionUpdatePacket(session, false)
-// 		assert.Error(t, err)
-// 	})
+		_, err = server.sendSessionUpdatePacket(session, false)
+		assert.Error(t, err)
+	})
 
-// 	t.Run("success", func(t *testing.T) {
-// 		server, backendConn, _ := createExpectedFakeServer(t)
+	t.Run("success", func(t *testing.T) {
+		server, backendConn, _ := createExpectedFakeServer(t)
 
-// 		ctx, cancelFunc := context.WithCancel(context.Background())
-// 		defer cancelFunc()
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		defer cancelFunc()
 
-// 		backendRecvReady := make(chan struct{})
+		backendRecvReady := make(chan struct{})
 
-// 		go runTestServerBackend(t, ctx, backendConn, testSendNormalResponse, backendRecvReady)
+		go runTestServerBackend(t, ctx, backendConn, testSendNormalResponse, backendRecvReady)
 
-// 		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
-// 		assert.NoError(t, err)
+		server, err := NewFakeServer(server.conn, server.serverBackendAddr, server.beaconAddr, len(server.sessions), server.sdkVersion, server.buyerID, server.customerPrivateKey, server.dcName, server.sendBeaconPackets)
+		assert.NoError(t, err)
 
-// 		session, err := NewSession()
-// 		assert.NoError(t, err)
+		session, err := NewSession()
+		assert.NoError(t, err)
 
-// 		<-backendRecvReady
+		<-backendRecvReady
 
-// 		responsePacket, err := server.sendSessionUpdatePacket(session, false)
-// 		assert.NoError(t, err)
-// 		assert.NotZero(t, responsePacket)
-// 	})
-// }
+		responsePacket, err := server.sendSessionUpdatePacket(session, false)
+		assert.NoError(t, err)
+		assert.NotZero(t, responsePacket)
+	})
+}
 
 // func TestSendPacket(t *testing.T) {
 // 	t.Run("fail to set write deadline", func(t *testing.T) {
