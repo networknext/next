@@ -380,7 +380,6 @@ export default class AccountSettings extends Vue {
     this.$apiService
       .setupCompanyAccount({ company_name: this.companyName, company_code: this.companyCode })
       .then(() => {
-        // TODO: refreshToken returns a promise that should be used to optimize the loading of new tabs
         return this.$authService.refreshToken()
       })
       .then(() => {
