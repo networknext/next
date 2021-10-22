@@ -608,8 +608,10 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	auth0Domain := os.Getenv("AUTH0_DOMAIN")
+
 	// Fetch the Auth0 Cert and refresh occasionally
-	newKeys, err := middleware.FetchAuth0Cert()
+	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 	if err != nil {
 		core.Error("failed to fetch auth0 cert: %v", err)
 		return 1
@@ -627,7 +629,7 @@ func mainReturnWithCode() int {
 		for {
 			select {
 			case <-ticker.C:
-				newKeys, err := middleware.FetchAuth0Cert()
+				newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 				if err != nil {
 					continue
 				}

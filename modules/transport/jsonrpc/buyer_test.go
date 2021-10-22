@@ -51,7 +51,7 @@ func TestBuyersList(t *testing.T) {
 	t.Run("list - empty", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.BuyerListReply
 		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
@@ -63,7 +63,7 @@ func TestBuyersList(t *testing.T) {
 	t.Run("list - !admin", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.BuyerListReply
 		err := svc.Buyers(req, &jsonrpc.BuyerListArgs{}, &reply)
@@ -990,7 +990,7 @@ func TestTotalSessions(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("all", func(t *testing.T) {
@@ -1078,7 +1078,7 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("all", func(t *testing.T) {
@@ -1154,7 +1154,7 @@ func TestTopSessions(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("all", func(t *testing.T) {
@@ -1366,7 +1366,7 @@ func TestSessionDetails_Binary(t *testing.T) {
 	assert.NoError(t, err)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local-local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
@@ -1386,7 +1386,7 @@ func TestSessionDetails_Binary(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
@@ -1406,7 +1406,7 @@ func TestSessionDetails_Binary(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local-local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
@@ -1431,7 +1431,7 @@ func TestSessionDetails_Binary(t *testing.T) {
 	redisClient.RPush(fmt.Sprintf("ss-%s", sessionID), slice1.RedisString(), slice2.RedisString())
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local-local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
@@ -1452,7 +1452,7 @@ func TestSessionDetails_Binary(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
@@ -1472,7 +1472,7 @@ func TestSessionDetails_Binary(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local-local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
@@ -1663,7 +1663,7 @@ func TestSessionDetails_Serialize(t *testing.T) {
 	assert.NoError(t, err)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local-local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
@@ -1683,7 +1683,7 @@ func TestSessionDetails_Serialize(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
@@ -1703,7 +1703,7 @@ func TestSessionDetails_Serialize(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local-local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
@@ -1728,7 +1728,7 @@ func TestSessionDetails_Serialize(t *testing.T) {
 	redisClient.RPush(fmt.Sprintf("ss-%s", sessionID), slice1.RedisString(), slice2.RedisString())
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local-local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
@@ -1749,7 +1749,7 @@ func TestSessionDetails_Serialize(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 	req = req.WithContext(reqContext)
 
@@ -1769,7 +1769,7 @@ func TestSessionDetails_Serialize(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local-local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
@@ -1857,7 +1857,7 @@ func TestSessionMapPoints(t *testing.T) {
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("filtered - !admin - sameBuyer", func(t *testing.T) {
@@ -1966,7 +1966,7 @@ func TestSessionMap(t *testing.T) {
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("filtered - !admin - sameBuyer", func(t *testing.T) {
@@ -2048,7 +2048,7 @@ func TestGameConfiguration(t *testing.T) {
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("success", func(t *testing.T) {
@@ -2106,7 +2106,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local-local")
 	req = req.WithContext(reqContext)
 
 	t.Run("no public key", func(t *testing.T) {
@@ -2130,7 +2130,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("success - existing buyer", func(t *testing.T) {
@@ -2177,7 +2177,7 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	})
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	req = req.WithContext(reqContext)
 
 	t.Run("fail - not same buyer", func(t *testing.T) {
@@ -2195,7 +2195,7 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	})
 
 	reqContext = req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local-local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local-local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})
