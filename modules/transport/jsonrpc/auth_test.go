@@ -691,17 +691,20 @@ func TestDeleteAccount(t *testing.T) {
 
 func TestAddUserAccount(t *testing.T) {
 	t.Parallel()
-	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
+	var userManager = storage.NewLocalUserManager()
+	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
 
 	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
-		UserManager: userManager,
 		JobManager:  &jobManager,
-		Storage:     &storer,
 		Logger:      logger,
+		RoleCache:   make(map[string]*management.Role),
+		RoleManager: roleManager,
+		Storage:     &storer,
+		UserManager: userManager,
 	}
 
 	roleIDs := []string{
@@ -718,6 +721,24 @@ func TestAddUserAccount(t *testing.T) {
 		"Can see current sessions and the map.",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
+	}
+
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Viewer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
 	}
 
 	IDs := []string{
@@ -881,9 +902,10 @@ func TestAddUserAccount(t *testing.T) {
 
 func TestAllRoles(t *testing.T) {
 	t.Parallel()
-	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
+	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
+	var userManager = storage.NewLocalUserManager()
 
 	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
@@ -904,10 +926,30 @@ func TestAllRoles(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
-		UserManager: userManager,
 		JobManager:  &jobManager,
-		Storage:     &storer,
 		Logger:      logger,
+		RoleCache:   make(map[string]*management.Role),
+		RoleManager: roleManager,
+		Storage:     &storer,
+		UserManager: userManager,
+	}
+
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Viewer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1062,9 +1104,10 @@ func TestUserRoles(t *testing.T) {
 
 func TestUpdateUserRoles(t *testing.T) {
 	t.Parallel()
-	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
+	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
+	var userManager = storage.NewLocalUserManager()
 
 	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
@@ -1103,10 +1146,30 @@ func TestUpdateUserRoles(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
-		UserManager: userManager,
 		JobManager:  &jobManager,
-		Storage:     &storer,
 		Logger:      logger,
+		RoleCache:   make(map[string]*management.Role),
+		RoleManager: roleManager,
+		Storage:     &storer,
+		UserManager: userManager,
+	}
+
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Viewer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1204,9 +1267,10 @@ func TestUpdateUserRoles(t *testing.T) {
 
 func TestSetupCompanyAccount(t *testing.T) {
 	t.Parallel()
-	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
+	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
+	var userManager = storage.NewLocalUserManager()
 
 	IDs := []string{
 		"123",
@@ -1245,10 +1309,30 @@ func TestSetupCompanyAccount(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
-		UserManager: userManager,
 		JobManager:  &jobManager,
-		Storage:     &storer,
 		Logger:      logger,
+		RoleCache:   make(map[string]*management.Role),
+		RoleManager: roleManager,
+		Storage:     &storer,
+		UserManager: userManager,
+	}
+
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Viewer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

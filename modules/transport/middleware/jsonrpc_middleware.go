@@ -199,5 +199,9 @@ func RequestUserInformation(ctx context.Context) interface{} {
 }
 
 func RequestUserCustomerCode(ctx context.Context) string {
-	return ctx.Value(Keys.CustomerKey).(string)
+	customerCode, ok := ctx.Value(Keys.CustomerKey).(string)
+	if !ok {
+		customerCode = ""
+	}
+	return customerCode
 }
