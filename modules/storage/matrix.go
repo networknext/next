@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-//go:generate moq -out matrix_test_mocks.go . MatrixStore
 type MatrixStore interface {
 	SetRelayBackendLiveData(data RelayBackendLiveData) error
 	GetRelayBackendLiveData() ([]RelayBackendLiveData, error)

@@ -319,6 +319,9 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 				return err
 			}
 		}
+	} else {
+		// This is only for situations where Bigtable isn't being used (local dev)
+		reply.Page = MaxBigTableDays
 	}
 
 	// Sort the sessions by timestamp

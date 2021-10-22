@@ -1,15 +1,16 @@
 package storage
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"strconv"
+	"strings"
 	"time"
 	"unicode"
-
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
-
-	"github.com/networknext/backend/modules/envvar"
 
 	"cloud.google.com/go/bigtable"
 	"google.golang.org/api/option"
@@ -17,18 +18,15 @@ import (
 
 type BigTable struct {
 	Client       *bigtable.Client
-	Logger       log.Logger
 	SessionTable *bigtable.Table
 }
 
 type BigTableAdmin struct {
 	Client *bigtable.AdminClient
-	Logger log.Logger
 }
 
 type BigTableInstanceAdmin struct {
 	Client *bigtable.InstanceAdminClient
-	Logger log.Logger
 }
 
 type BigTableError struct {
@@ -41,7 +39,7 @@ func (e *BigTableError) Error() string {
 
 // Creates a new Bigtable object
 // Mainly used for opening tables in the instance
-func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, btTableName string, logger log.Logger, opts ...option.ClientOption) (*BigTable, error) {
+func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, btTableName string, opts ...option.ClientOption) (*BigTable, error) {
 	client, err := bigtable.NewClient(ctx, gcpProjectID, instanceID, opts...)
 	if err != nil {
 		return nil, err
@@ -49,21 +47,19 @@ func NewBigTable(ctx context.Context, gcpProjectID string, instanceID string, bt
 
 	if btTableName == "" {
 		err := fmt.Errorf("NewBigTable() table name is empty or not defined")
-		level.Error(logger).Log("err", err)
 		return nil, err
 	}
 	table := client.Open(btTableName)
 
 	return &BigTable{
 		Client:       client,
-		Logger:       logger,
 		SessionTable: table,
 	}, nil
 }
 
 // Creates a new Bigtable Admin
 // Admins have special abilities like creating and deleting tables
-func NewBigTableAdmin(ctx context.Context, gcpProjectID string, instanceID string, logger log.Logger, opts ...option.ClientOption) (*BigTableAdmin, error) {
+func NewBigTableAdmin(ctx context.Context, gcpProjectID string, instanceID string, opts ...option.ClientOption) (*BigTableAdmin, error) {
 	client, err := bigtable.NewAdminClient(ctx, gcpProjectID, instanceID, opts...)
 	if err != nil {
 		return nil, err
@@ -71,13 +67,12 @@ func NewBigTableAdmin(ctx context.Context, gcpProjectID string, instanceID strin
 
 	return &BigTableAdmin{
 		Client: client,
-		Logger: logger,
 	}, nil
 }
 
 // Creates a new Bigtable Instance Admin
 // Instance Admins have special abilities like creating instances and clusters
-func NewBigTableInstanceAdmin(ctx context.Context, gcpProjectID string, logger log.Logger, opts ...option.ClientOption) (*BigTableInstanceAdmin, error) {
+func NewBigTableInstanceAdmin(ctx context.Context, gcpProjectID string, opts ...option.ClientOption) (*BigTableInstanceAdmin, error) {
 	client, err := bigtable.NewInstanceAdminClient(ctx, gcpProjectID, opts...)
 	if err != nil {
 		return nil, err
@@ -85,7 +80,6 @@ func NewBigTableInstanceAdmin(ctx context.Context, gcpProjectID string, logger l
 
 	return &BigTableInstanceAdmin{
 		Client: client,
-		Logger: logger,
 	}, nil
 }
 
@@ -408,22 +402,9 @@ func (bt *BigTable) InsertSessionMetaData(ctx context.Context,
 	cfMap := make(map[string]string)
 	cfMap["meta"] = btCfNames[0]
 
-	// Decide if should write and delete row
-	// or if should just write row and let compaction take care of deleting the row later
-	deleteWrite, err := envvar.GetBool("BIGTABLE_WRITE_DELETE_ROW", false)
-	if err != nil {
+	// Write the row and let compaction take care of deleting old rows later
+	if err := bt.WriteRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
 		return err
-	}
-
-	// A/B testing for above
-	if deleteWrite {
-		if err := bt.WriteAndDeleteRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
-			return err
-		}
-	} else {
-		if err := bt.WriteRowInTable(ctx, rowKeys, sessionDataMap, cfMap); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -469,7 +450,7 @@ func (bt *BigTable) InsertSessionSliceData(ctx context.Context,
 func (bt *BigTable) GetRowsWithPrefix(ctx context.Context, prefix string, opts ...bigtable.ReadOption) ([]bigtable.Row, error) {
 	// Get a range of all rows starting with a prefix
 	prefixRange := bigtable.PrefixRange(prefix)
-	
+
 	// Create a slice of all the rows to return
 	values := make([]bigtable.Row, 0)
 
@@ -508,4 +489,97 @@ func (bt *BigTable) GetRowWithRowKey(ctx context.Context, rowKey string, opts ..
 	}
 
 	return r, nil
+}
+
+// Loads historical data into bigtable
+// Only should be used during local testing
+func (bt *BigTable) SeedBigtable(ctx context.Context, btCfNames []string, historicalPath string) error {
+	// Load in text file
+	var (
+		file   *os.File
+		part   []byte
+		prefix bool
+		err    error
+	)
+	if file, err = os.Open(historicalPath); err != nil {
+		return fmt.Errorf("SeedBigtable() open file path %s: %v", historicalPath, err)
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	buffer := bytes.NewBuffer(make([]byte, 0))
+	var lines []string
+	for {
+		if part, prefix, err = reader.ReadLine(); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return fmt.Errorf("SeedBigtable() failed to read lines from %s: %v", historicalPath, err)
+		}
+		buffer.Write(part)
+		if !prefix {
+			lines = append(lines, buffer.String())
+			buffer.Reset()
+		}
+	}
+
+	var rowKey string
+	var cfMap map[string]string
+	var colName string
+	for _, line := range lines {
+		// Remove white space from line
+		line = strings.TrimSpace(line)
+
+		// Moving onto next row key
+		if strings.Contains(line, "----------------------------------------") {
+			rowKey = ""
+			cfMap = make(map[string]string)
+			colName = ""
+			continue
+		}
+
+		if rowKey == "" {
+			// Found a new row key
+			rowKey = strings.TrimSpace(line)
+		} else if strings.Contains(line, btCfNames[0]) {
+			// Set the map of column name to the column family name
+			line = strings.TrimSpace(line)
+			words := strings.Split(line, " ")
+			colName = strings.Split(words[0], ":")[1]
+			cfMap[colName] = btCfNames[0]
+		} else if colName != "" {
+			// Get the data for the column name
+
+			// Clean up raw data string
+			rawData := strings.TrimSpace(line)
+			rawData = rawData[1 : len(rawData)-1]
+			strData := strings.Split(rawData, " ")
+
+			// Fill a byte slice with the bytes from the raw data
+			var data []byte
+			var singleByte byte
+			for _, b := range strData {
+				if b != " " {
+					bInt, err := strconv.Atoi(b)
+					if err != nil {
+						return fmt.Errorf("SeedBigtable() could not convert %s to int: %v", b, err)
+					}
+					singleByte = (byte)(bInt)
+					data = append(data, singleByte)
+				}
+			}
+
+			// Create data map of column name to data
+			dataMap := make(map[string][]byte)
+			dataMap[colName] = data
+
+			// Insert into bigtable
+			err := bt.InsertRowInTable(ctx, []string{rowKey}, dataMap, cfMap)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

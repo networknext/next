@@ -2,6 +2,34 @@ package metrics
 
 import "context"
 
+// RelayGatewayStatus defines the metrics reported by the service's status endpoint
+type RelayGatewayStatus struct {
+	// Service Information
+	ServiceName string `json:"service_name"`
+	GitHash     string `json:"git_hash"`
+	Started     string `json:"started"`
+	Uptime      string `json:"uptime"`
+
+	// Service Metrics
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+
+	// Requests
+	UpdateRequestsReceived int `json:"update_requests_received"`
+	UpdateRequestsQueued   int `json:"update_requests_queued"`
+	UpdateRequestsFlushed  int `json:"update_requests_flushed"`
+
+	// Errors
+	UpdateRequestReadPacketFailure         int `json:"update_request_read_packet_failure"`
+	UpdateRequestContentTypeFailure        int `json:"update_request_content_type_failure"`
+	UpdateRequestUnmarshalFailure          int `json:"update_request_unmarshal_failure"`
+	UpdateRequestExceedMaxRelaysError      int `json:"update_request_exceed_max_relays_error"`
+	UpdateRequestRelayNotFoundError        int `json:"update_request_relay_not_found_error"`
+	UpdateResponseMarshalBinaryFailure     int `json:"update_response_marshal_binary_failure"`
+	BatchUpdateRequestMarshalBinaryFailure int `json:"batch_update_request_marshal_binary_failure"`
+	BatchUpdateRequestBackendSendFailure   int `json:"batch_update_request_backend_send_failure"`
+}
+
 type RelayGatewayMetrics struct {
 	HandlerMetrics        *PacketHandlerMetrics
 	GatewayServiceMetrics *ServiceMetrics

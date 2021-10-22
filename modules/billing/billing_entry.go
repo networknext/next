@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	BillingEntryVersion2 = uint32(6)
+	BillingEntryVersion2 = uint32(7)
 
 	MaxBillingEntry2Bytes = 4096
 
@@ -33,7 +33,9 @@ type BillingEntry2 struct {
 	Timestamp           uint32
 	SessionID           uint64
 	SliceNumber         uint32
-	DirectRTT           int32
+	DirectMinRTT        int32
+	DirectMaxRTT        int32
+	DirectPrimeRTT      int32
 	DirectJitter        int32
 	DirectPacketLoss    int32
 	RealPacketLoss      int32
@@ -185,7 +187,19 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		stream.SerializeBits(&entry.SliceNumber, 32)
 	}
 
-	stream.SerializeInteger(&entry.DirectRTT, 0, 1023)
+	stream.SerializeInteger(&entry.DirectMinRTT, 0, 1023)
+
+	/*
+		Version 7
+
+		Includes DirectMaxRTT and DirectPrimeRTT stats from SDK 4.0.18.
+		DirectRTT was changed to DirectMinRTT.
+	*/
+	if entry.Version >= uint32(7) {
+		stream.SerializeInteger(&entry.DirectMaxRTT, 0, 1023)
+		stream.SerializeInteger(&entry.DirectPrimeRTT, 0, 1023)
+	}
+
 	stream.SerializeInteger(&entry.DirectJitter, 0, 255)
 	stream.SerializeInteger(&entry.DirectPacketLoss, 0, 100)
 
@@ -210,7 +224,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 		NOTE: Prior to version 3, these fields were only serialized for slice 0.
 	*/
 
-	if entry.Version >= 3 {
+	if entry.Version >= uint32(3) {
 		if entry.SliceNumber == 0 || entry.Summary {
 
 			stream.SerializeUint64(&entry.DatacenterID)
@@ -488,8 +502,18 @@ func (entry *BillingEntry2) Validate() bool {
 		return false
 	}
 
-	if entry.DirectRTT < 0 || entry.DirectRTT > 1023 {
-		fmt.Printf("invalid direct rtt\n")
+	if entry.DirectMinRTT < 0 || entry.DirectMinRTT > 1023 {
+		fmt.Printf("invalid direct min rtt\n")
+		return false
+	}
+
+	if entry.DirectMaxRTT < 0 || entry.DirectMaxRTT > 1023 {
+		fmt.Printf("invalid direct max rtt\n")
+		return false
+	}
+
+	if entry.DirectPrimeRTT < 0 || entry.DirectPrimeRTT > 1023 {
+		fmt.Printf("invalid direct prime rtt\n")
 		return false
 	}
 
@@ -667,14 +691,34 @@ func (entry *BillingEntry2) ClampEntry() {
 
 	// always
 
-	if entry.DirectRTT < 0 {
-		core.Error("BillingEntry2 DirectRTT (%d) < 0. Clamping to 0.", entry.DirectRTT)
-		entry.DirectRTT = 0
+	if entry.DirectMinRTT < 0 {
+		core.Error("BillingEntry2 DirectMinRTT (%d) < 0. Clamping to 0.", entry.DirectMinRTT)
+		entry.DirectMinRTT = 0
 	}
 
-	if entry.DirectRTT > 1023 {
-		core.Debug("BillingEntry2 DirectRTT (%d) > 1023. Clamping to 1023.", entry.DirectRTT)
-		entry.DirectRTT = 1023
+	if entry.DirectMinRTT > 1023 {
+		core.Debug("BillingEntry2 DirectMinRTT (%d) > 1023. Clamping to 1023.", entry.DirectMinRTT)
+		entry.DirectMinRTT = 1023
+	}
+
+	if entry.DirectMaxRTT < 0 {
+		core.Error("BillingEntry2 DirectMaxRTT (%d) < 0. Clamping to 0.", entry.DirectMaxRTT)
+		entry.DirectMaxRTT = 0
+	}
+
+	if entry.DirectMaxRTT > 1023 {
+		core.Debug("BillingEntry2 DirectMaxRTT (%d) > 1023. Clamping to 1023.", entry.DirectMaxRTT)
+		entry.DirectMaxRTT = 1023
+	}
+
+	if entry.DirectPrimeRTT < 0 {
+		core.Error("BillingEntry2 DirectPrimeRTT (%d) < 0. Clamping to 0.", entry.DirectPrimeRTT)
+		entry.DirectPrimeRTT = 0
+	}
+
+	if entry.DirectPrimeRTT > 1023 {
+		core.Debug("BillingEntry2 DirectPrimeRTT (%d) > 1023. Clamping to 1023.", entry.DirectPrimeRTT)
+		entry.DirectPrimeRTT = 1023
 	}
 
 	if entry.DirectJitter < 0 {
@@ -905,7 +949,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 	e["timestamp"] = int(entry.Timestamp)
 	e["sessionID"] = int(entry.SessionID)
 	e["sliceNumber"] = int(entry.SliceNumber)
-	e["directRTT"] = int(entry.DirectRTT)
+	e["directRTT"] = int(entry.DirectMinRTT) // NOTE: directRTT refers to DirectMinRTT as of version 7
+	e["directMaxRTT"] = int(entry.DirectMaxRTT)
+	e["directPrimeRTT"] = int(entry.DirectPrimeRTT)
 	e["directJitter"] = int(entry.DirectJitter)
 	e["directPacketLoss"] = int(entry.DirectPacketLoss)
 	e["realPacketLoss"] = float64(entry.RealPacketLoss) + float64(entry.RealPacketLoss_Frac)/256.0
