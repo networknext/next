@@ -1220,27 +1220,104 @@ func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupAr
 		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to send slack notification", err.Error()))
 	}
 
-	message = fmt.Sprintf("First name: %s<br/>Last name: %s<br/>Company name: %s<br/>Website: %s", args.FirstName, args.LastName, args.CompanyName, args.CompanyWebsite)
-
 	if s.HubSpotClient.APIKey != "" {
-		companies, err := s.HubSpotClient.FetchAllCompanyEntries()
+		companies, err := s.HubSpotClient.CompanyEntrySearch(args.CompanyName, args.CompanyWebsite)
 		if err != nil {
 			s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to fetch company entries from hubspot", err.Error()))
-		} else {
-			foundCompany := false
+		}
 
-			for _, company := range companies {
-				if company.Name == args.CompanyName || company.Domain == args.CompanyWebsite {
-					foundCompany = true
-					break
+		foundCompanyID := ""
+		if len(companies) != 0 {
+			foundCompanyID = companies[0].ID
+		}
+
+		contacts, err := s.HubSpotClient.ContactEntrySearch(args.FirstName, args.LastName, args.Email)
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to fetch contact entries from hubspot", err.Error()))
+		}
+
+		foundContactID := ""
+		if len(contacts) != 0 {
+			foundContactID = contacts[0].ID
+		}
+
+		message := fmt.Sprintf("First name: %s - Last name: %s - Email: %s - Company name: %s - Website: %s", args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
+
+		// Company and contact do not exist
+		if foundCompanyID == "" && foundContactID == "" {
+			// Create contact and associate it with NewFunnelCo with notes about sign up
+			newContactID, err := s.HubSpotClient.CreateNewContactEntry(args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
+			if err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to add contact entry to hubspot", err.Error()))
+			} else {
+				if err := s.HubSpotClient.AssociateCompanyToContact(notifications.NewFunnelCoID, newContactID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate NewFunnelCo to new contact", err.Error()))
+				}
+				if err := s.HubSpotClient.AssociateContactToCompany(newContactID, notifications.NewFunnelCoID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate new contact to NewFunnelCo", err.Error()))
+				}
+				if err := s.HubSpotClient.CreateCompanyNote(message, notifications.NewFunnelCoID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to NewFunnelCo note", err.Error()))
+				}
+				if err := s.HubSpotClient.CreateContactNote(message, newContactID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create new contact note", err.Error()))
 				}
 			}
+		}
 
-			// TODO: Figure out what Andrew wants here.
-			if foundCompany {
-
+		// Company exists but contact does not
+		if foundCompanyID != "" && foundContactID == "" {
+			// Create contact and associate it to NewFunnelCo with notes about sign up
+			newContactID, err := s.HubSpotClient.CreateNewContactEntry(args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
+			if err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to add contact entry to hubspot", err.Error()))
 			} else {
-				// TODO: Generate a new company entry in hubspot
+				if err := s.HubSpotClient.AssociateCompanyToContact(foundCompanyID, newContactID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate found company to new contact", err.Error()))
+				}
+				if err := s.HubSpotClient.AssociateContactToCompany(newContactID, foundCompanyID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate new contact to found company", err.Error()))
+				}
+				if err := s.HubSpotClient.CreateCompanyNote(message, foundCompanyID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create found company note", err.Error()))
+				}
+				if err := s.HubSpotClient.CreateContactNote(message, newContactID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create new contact note", err.Error()))
+				}
+			}
+		}
+
+		// Company doesn't exist but contact does
+		if foundCompanyID == "" && foundContactID != "" {
+			// Associate contact with NewFunnelCo with note about signup with company name and website
+			if err := s.HubSpotClient.AssociateCompanyToContact(notifications.NewFunnelCoID, foundContactID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate NewFunnelCo to found contact", err.Error()))
+			}
+			if err := s.HubSpotClient.AssociateContactToCompany(foundContactID, notifications.NewFunnelCoID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate found contact to NewFunnelCo", err.Error()))
+			}
+			if err := s.HubSpotClient.CreateCompanyNote(message, notifications.NewFunnelCoID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to NewFunnelCo note", err.Error()))
+			}
+			if err := s.HubSpotClient.CreateContactNote(message, foundContactID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create found contact note", err.Error()))
+			}
+		}
+
+		// Company and contact exist
+		if foundCompanyID != "" && foundContactID != "" {
+			// Associate the company and contact and make notes on both entries about the sign up
+			if err := s.HubSpotClient.AssociateCompanyToContact(foundCompanyID, foundContactID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate found company to found contact", err.Error()))
+			}
+			if err := s.HubSpotClient.AssociateContactToCompany(foundContactID, foundCompanyID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate found contact to found company", err.Error()))
+			}
+			if err := s.HubSpotClient.CreateCompanyNote(message, foundCompanyID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create found company note", err.Error()))
+			}
+			if err := s.HubSpotClient.CreateContactNote(message, foundContactID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create found contact note", err.Error()))
 			}
 		}
 	}
