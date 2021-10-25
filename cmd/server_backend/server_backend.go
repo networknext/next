@@ -800,9 +800,9 @@ func mainReturnWithCode() int {
 			core.Debug("unable to parse ALLOWED_ORIGINS environment variable")
 		}
 
-		audience := envvar.Get("JWT_AUDIENCE", "")
-		if audience == "" {
-			core.Error("unable to parse JWT_AUDIENCE environment variable")
+		auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
+		if auth0Issuer == "" {
+			core.Debug("unable to parse AUTH0_ISSUER environment variable")
 		}
 
 		router := mux.NewRouter()
@@ -812,7 +812,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 		serverTrackerHandler := http.HandlerFunc(transport.ServerTrackerHandlerFunc(serverTracker))
-		router.Handle("/servers", middleware.PlainHttpAuthMiddleware(keys, audience, serverTrackerHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/servers", middleware.PlainHttpAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), serverTrackerHandler, strings.Split(allowedOrigins, ","), auth0Issuer))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
