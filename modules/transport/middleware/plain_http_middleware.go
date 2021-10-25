@@ -3,6 +3,7 @@ package middleware
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	jwtmiddleware "github.com/auth0/go-jwt-middleware"
@@ -52,8 +53,8 @@ type JWKS struct {
 	} `json:"keys"`
 }
 
-func FetchAuth0Cert() (JWKS, error) {
-	resp, err := http.Get("https://networknext.auth0.com/.well-known/jwks.json")
+func FetchAuth0Cert(domain string) (JWKS, error) {
+	resp, err := http.Get(fmt.Sprintf("https://%s/.well-known/jwks.json", domain))
 	if err != nil {
 		return JWKS{}, err
 	}
