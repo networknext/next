@@ -56,7 +56,7 @@ import UserSessions from '@/components/UserSessions.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import { NavigationGuardNext, Route } from 'vue-router'
-import { RELOAD_MESSAGE } from '@/components/types/Constants'
+import { EMAIL_CONFIRMATION_MESSAGE, RELOAD_MESSAGE } from '@/components/types/Constants'
 
 /**
  * This component holds the workspace elements related to the user tool page in the Portal
@@ -88,7 +88,7 @@ export default class UserToolWorkspace extends Vue {
 
   private mounted () {
     if (this.$store.getters.isAnonymousPlus) {
-      this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+      this.$refs.verifyAlert.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
       this.$refs.verifyAlert.setAlertType(AlertType.INFO)
     }
     if (this.$route.path === '/user-tool') {

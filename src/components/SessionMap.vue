@@ -311,7 +311,7 @@ export default class SessionMap extends Vue {
       this.$router.push(`/session-tool/${points[0].source[3]}`)
       return
     }
-    this.$root.$emit('showModal', points)
+    this.$root.$emit('showMapPointsModal', points)
   }
 }
 </script>
