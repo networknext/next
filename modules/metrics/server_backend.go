@@ -390,6 +390,20 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 		return nil, err
 	}
 
+	m.BillingMetrics.SummaryEntries2Submitted, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: "Server Backend Billing Summary Entries 2 Submitted",
+		ServiceName: serviceName,
+		ID:          "billing.summary_entries_submitted_2",
+		Unit:        "entries",
+		Description: "The number of billing summary entries 2 the server_backend has submitted to be published",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BillingMetrics.SummaryEntries2Queued = &EmptyGauge{}
+	m.BillingMetrics.SummaryEntries2Flushed = &EmptyCounter{}
+
 	m.BillingMetrics.ErrorMetrics.Billing2PublishFailure, err = handler.NewCounter(ctx, &Descriptor{
 		DisplayName: "Server Backend Billing 2 Publish Failure",
 		ServiceName: serviceName,
