@@ -306,7 +306,7 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 		}
 	default:
 		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
-			handleRunTimeError(fmt.Sprintf("%v - make sure the env name is set to either 'prod', 'staging', 'nrb', 'dev', or 'local' with\nnext select <env>\n", err), 0)
+			handleRunTimeError(fmt.Sprintf("%v - make sure the env name is set to either 'prod', 'staging', 'dev', or 'local' with\nnext select <env>\n", err), 0)
 		} else {
 			handleRunTimeError(fmt.Sprintf("%s\n\n", msg), 1)
 		}
@@ -316,15 +316,39 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 }
 
 func refreshAuth(env Environment) error {
+	audience := ""
+	clientID := ""
+	clientSecret := ""
+	domain := ""
+
+	// TODO: Figure out a better way of doing this
+	switch env.Name {
+	case "prod":
+		audience = "https://portal.networknext.com"
+		clientID = "6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb"
+		clientSecret = "EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj"
+		domain = "networknext.auth0.com"
+	case "dev":
+		audience = "https://next-dev.networknext.com"
+		clientID = "qUcgJkTEztKAbJirBexzAkau4mXm6n9Q"
+		clientSecret = "XQEeSI3CZLeSEbboMpgla-EmLyOzPqIc1zYKB2qTWQGmvrHvWrLzd5iOXXxkzDdY"
+		domain = "auth-dev.networknext-dev.com"
+	case "local":
+		audience = "https://next-local.networknext.com"
+		clientID = "3lxkAg0s0tiaCAeVoe2p61QSGDYJ6MsV"
+		clientSecret = "kTXtSGiH9oDBZqR4G-unfw5Bytjb8fcRoJGCuY3TEiJrdGmVEP8JO74tpNZChBzA"
+		domain = "auth-dev.networknext.com"
+	}
+
 	req, err := http.NewRequest(
 		http.MethodPost,
-		"https://networknext.auth0.com/oauth/token",
-		strings.NewReader(`{
-				"client_id":"6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb",
-				"client_secret":"EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj",
-				"audience":"https://portal.networknext.com",
+		fmt.Sprintf("https://%s/oauth/token", domain),
+		strings.NewReader(fmt.Sprintf(`{
+				"client_id":"%s",
+				"client_secret":"%s",
+				"audience":"%s",
 				"grant_type":"client_credentials"
-			}`),
+			}`, clientID, clientSecret, audience)),
 	)
 	if err != nil {
 		return err
