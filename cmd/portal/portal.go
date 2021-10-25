@@ -149,9 +149,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	auth0Issuer := os.Getenv("AUTH0_ISSUER")
-	auth0Domain := os.Getenv("AUTH0_DOMAIN")
-	auth0ClientID := os.Getenv("AUTH0_CLIENTID")
+	auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
+	if auth0Issuer == "" {
+		level.Error(logger).Log("envvar", "AUTH0_ISSUER", "not set")
+		os.Exit(1)
+	}
+
+	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
+	if auth0Domain == "" {
+		level.Error(logger).Log("envvar", "AUTH0_DOMAIN", "not set")
+		os.Exit(1)
+	}
+
+	auth0ClientID := envvar.Get("AUTH0_CLIENTID", "")
+	if auth0ClientID == "" {
+		level.Error(logger).Log("envvar", "AUTH0_CLIENTID", "not set")
+		os.Exit(1)
+	}
+
 	manager, err := management.New(
 		auth0Domain,
 		auth0ClientID,
