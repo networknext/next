@@ -32,7 +32,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import { AlertType } from './types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import BuyerFilter from '@/components/BuyerFilter.vue'
-import { RELOAD_MESSAGE } from '@/components/types/Constants'
+import { EMAIL_CONFIRMATION_MESSAGE, RELOAD_MESSAGE } from '@/components/types/Constants'
 
 /**
  * This component displays the total session counts and has all of the associated logic and api calls
@@ -107,7 +107,7 @@ export default class SessionCounts extends Vue {
       }
     )
     if (this.$store.getters.isAnonymousPlus) {
-      this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+      this.$refs.sessionCountAlert.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
       this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
     }
 
@@ -193,7 +193,7 @@ export default class SessionCounts extends Vue {
       this.$refs.sessionCountAlert.setAlertType(AlertType.WARNING)
       setTimeout(() => {
         if (this.$store.getters.isAnonymousPlus) {
-          this.$refs.sessionCountAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+          this.$refs.sessionCountAlert.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
           this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)
         } else {
           this.$refs.sessionCountAlert.resetAlert()

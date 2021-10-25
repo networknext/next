@@ -6,7 +6,7 @@
           v-if="$store.getters.currentPage == 'map' || $store.getters.currentPage == 'sessions'"
         />
         <router-view />
-        <MapPointsModal v-show="showModal" :points="modalPoints"/>
+        <MapPointsModal v-show="showMapPointsModal" :points="modalPoints"/>
       </main>
       <v-tour v-show="$store.getters.currentPage === 'map'" name="mapTour" :steps="mapTourSteps" :options="mapTourOptions" :callbacks="mapTourCallbacks"></v-tour>
     </div>
@@ -15,6 +15,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import LoginModal from '@/components/LoginModal.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
 import SessionCounts from '@/components/SessionCounts.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
@@ -31,6 +32,7 @@ import MapPointsModal from '@/components/MapPointsModal.vue'
 
 @Component({
   components: {
+    LoginModal,
     MapPointsModal,
     MapWorkspace,
     SessionCounts,
@@ -43,7 +45,7 @@ export default class Workspace extends Vue {
   private mapTourSteps: Array<any>
   private mapTourOptions: any
   private mapTourCallbacks: any
-  private showModal: boolean
+  private showMapPointsModal: boolean
   private modalPoints: Array<any>
 
   $refs!: {
@@ -107,7 +109,7 @@ export default class Workspace extends Vue {
       }
     }
 
-    this.showModal = false
+    this.showMapPointsModal = false
     this.modalPoints = []
   }
 
@@ -116,25 +118,26 @@ export default class Workspace extends Vue {
       this.$tours.mapTour.start()
     }
 
-    this.$root.$on('showModal', this.showModalCallback)
-    this.$root.$on('hideModal', this.hideModalCallback)
+    // TODO: Make a modal events bus rather than using the root application bus
+    this.$root.$on('showMapPointsModal', this.showMapPointsModalCallback)
+    this.$root.$on('hideMapPointsModal', this.hideMapPointsModalCallback)
   }
 
   private beforeDestroy () {
-    this.$root.$off('showModal')
-    this.$root.$off('hideModal')
+    this.$root.$off('showMapPointsModal')
+    this.$root.$off('hideMapPointsModal')
   }
 
-  private showModalCallback (points: Array<any>) {
-    if (!this.showModal) {
+  private showMapPointsModalCallback (points: Array<any>) {
+    if (!this.showMapPointsModal) {
       this.modalPoints = points
-      this.showModal = true
+      this.showMapPointsModal = true
     }
   }
 
-  private hideModalCallback () {
-    if (this.showModal) {
-      this.showModal = false
+  private hideMapPointsModalCallback () {
+    if (this.showMapPointsModal) {
+      this.showMapPointsModal = false
     }
   }
 }

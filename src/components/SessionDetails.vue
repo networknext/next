@@ -438,7 +438,7 @@ export default class SessionDetails extends Vue {
 
         setTimeout(() => {
           this.generateCharts()
-          const NNCOLOR = [0, 109, 44]
+          const NNCOLOR = [40, 167, 69]
           const DIRECTCOLOR = [49, 130, 189]
 
           const cellSize = 10

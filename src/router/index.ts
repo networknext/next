@@ -10,9 +10,11 @@ import Billing from '@/components/Billing.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
 import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
+import GetAccessModal from '@/components/GetAccessModal.vue'
+import LoginModal from '@/components/LoginModal.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
 import Notifications from '@/components/Notifications.vue'
-import RouteShader from '@/components/RouteShader.vue'
+import ResetPasswordModal from '@/components/ResetPasswordModal.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
@@ -60,12 +62,23 @@ const routes: Array<RouteConfig> = [
   },
   {
     path: '/get-access',
-    name: 'get-access'
+    name: 'get-access',
+    component: GetAccessModal
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginModal
   },
   {
     path: '/map',
     name: 'map',
     component: MapWorkspace
+  },
+  {
+    path: '/password-reset',
+    name: 'password-reset',
+    component: ResetPasswordModal
   },
   {
     path: '/sessions',
@@ -115,11 +128,6 @@ const routes: Array<RouteConfig> = [
         path: 'users',
         name: 'users',
         component: UserManagement
-      },
-      {
-        path: 'route-shader',
-        name: 'shader',
-        component: RouteShader
       }
     ]
   },
@@ -138,7 +146,10 @@ const AnonymousRoutes = [
   'map',
   'sessions',
   'session-details',
-  'session-tool'
+  'session-tool',
+  'get-access',
+  'login',
+  'password-reset'
 ]
 
 const AnonymousPlusRoutes = [
@@ -175,8 +186,7 @@ const OwnerRoutes = [
   'config',
   'users',
   'explore',
-  'notifications',
-  'get-access'
+  'notifications'
 ]
 
 // Add or remove these to open up beta features
@@ -197,20 +207,6 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     Vue.prototype.$authService.refreshToken()
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     next('/map')
-    return
-  }
-
-  // Close modal if open on map page
-  if (to.name === 'session-details' && from.name === 'map') {
-    Vue.prototype.$root.$emit('hideModal')
-  }
-
-  if (store.getters.isAdmin) {
-    store.commit('UPDATE_CURRENT_PAGE', to.name)
-    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
-      (window as any).Intercom('update')
-    }
-    next()
     return
   }
 
@@ -272,7 +268,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
-  if (!store.getters.hasAnalytics && (to.name === 'analytics')) {
+  if (!store.getters.isAdmin && !store.getters.hasAnalytics && (to.name === 'analytics')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
@@ -280,7 +276,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
-  if (!store.getters.hasBilling && (to.name === 'billing')) {
+  if (!store.getters.isAdmin && !store.getters.hasBilling && (to.name === 'billing')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
@@ -304,6 +300,11 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     }
     next('/settings/account')
     return
+  }
+
+  // Close modal if open on map page
+  if (to.name === 'session-details' && from.name === 'map') {
+    router.app.$root.$emit('hideMapPointsModal')
   }
 
   store.commit('UPDATE_CURRENT_PAGE', to.name)

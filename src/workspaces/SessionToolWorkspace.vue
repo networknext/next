@@ -56,7 +56,7 @@ import { Route, NavigationGuardNext } from 'vue-router'
 
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
-import { RELOAD_MESSAGE } from '@/components/types/Constants'
+import { EMAIL_CONFIRMATION_MESSAGE, RELOAD_MESSAGE } from '@/components/types/Constants'
 /**
  * This component holds the workspace elements related to the session tool in the Portal
  */
@@ -86,7 +86,7 @@ export default class SessionToolWorkspace extends Vue {
 
   private mounted () {
     if (this.$store.getters.isAnonymousPlus) {
-      this.$refs.verifyAlert.setMessage(`Please confirm your email address: ${this.$store.getters.userProfile.email}`)
+      this.$refs.verifyAlert.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
       this.$refs.verifyAlert.setAlertType(AlertType.INFO)
     }
     if (this.$route.path === '/session-tool') {
