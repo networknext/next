@@ -23,6 +23,7 @@ const (
 	ERROR_SLACK_FAILURE               json2.ErrorCode = 9
 	ERROR_NONCE_GENERATION_FAILURE    json2.ErrorCode = 10
 	ERROR_UNKNOWN_NOTIFICATION_TYPE   json2.ErrorCode = 11
+	ERROR_HUBSPOT_FAILURE             json2.ErrorCode = 12
 )
 
 var JSONRPCErrorCodes []json2.Error = []json2.Error{
@@ -108,6 +109,13 @@ var JSONRPCErrorCodes []json2.Error = []json2.Error{
 		Code:    ERROR_UNKNOWN_NOTIFICATION_TYPE,
 		Data: &JSONRPCErrorData{
 			Name: "ERROR_UNKNOWN_NOTIFICATION_TYPE",
+		},
+	},
+	{
+		Message: "HubSpot API send failure",
+		Code:    ERROR_HUBSPOT_FAILURE,
+		Data: &JSONRPCErrorData{
+			Name: "ERROR_HUBSPOT_FAILURE",
 		},
 	},
 }
