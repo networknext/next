@@ -622,9 +622,9 @@ func mainReturnWithCode() int {
 	}
 	keys = newKeys
 
-	fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+	fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
 	if err != nil {
-		core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
+		core.Error("invalid AUTH0_CERT_INTERVAL: %v", err)
 		return 1
 	}
 
