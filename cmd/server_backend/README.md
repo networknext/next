@@ -85,4 +85,4 @@ Debug logs are available by setting `NEXT_DEBUG_LOGS=1`. Otherwise, only error l
 - `METADATA_SYNC_INTERVAL`: The frequency at which to sync the metadata value for shutting down the HTTP server for connection drain. Default `1m`
 - `CONNECTION_DRAIN_METADATA_FIELD`: The key for the metadata value for connection drain. Default `connection-drain`
 - `JWT_AUDIENCE`: The JWT audience necessary for accessing private HTTP endpoints. Default `""`
-- `AUTH_CERT_INTERVAL`: The frequency at which to refresh the Auth0 certifiacte. Default `10m`
+- `AUTH0_CERT_INTERVAL`: The frequency at which to refresh the Auth0 certifiacte. Default `10m`

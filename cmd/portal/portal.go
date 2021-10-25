@@ -447,9 +447,9 @@ func main() {
 	keys = newKeys
 
 	go func() {
-		fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+		fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
 		if err != nil {
-			level.Error(logger).Log("envvar", "AUTH_CERT_INTERVAL", "value", fetchAuthCertInterval, "err", err)
+			level.Error(logger).Log("envvar", "AUTH0_CERT_INTERVAL", "value", fetchAuthCertInterval, "err", err)
 			os.Exit(1)
 		}
 
