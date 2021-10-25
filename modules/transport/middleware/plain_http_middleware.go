@@ -10,20 +10,25 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-func PlainHttpAuthMiddleware(keys JWKS, audience string, next http.Handler, allowedOrigins []string) http.Handler {
-
+func PlainHttpAuthMiddleware(keys JWKS, audiences []string, next http.Handler, allowedOrigins []string, issuer string) http.Handler {
 	mw := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 			claims := token.Claims.(jwt.MapClaims)
 
 			if _, ok := claims["scope"]; !ok {
-				if !claims.VerifyAudience(audience, false) {
-					return nil, errors.New("invalid audience")
+				valid := false
+				for _, audience := range audiences {
+					valid = !claims.VerifyAudience(audience, false)
+					if valid {
+						break
+					}
+				}
+				if !valid {
+					return token, errors.New("Invalid audience.")
 				}
 			}
 
-			iss := "https://networknext.auth0.com/"
-			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(iss, false)
+			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(issuer, false)
 			if !checkIss {
 				return nil, errors.New("invalid issuer")
 			}

@@ -26,8 +26,8 @@ var Keys contextKeys = contextKeys{
 	UserKey:              "user",
 }
 
-func JSONRPCMiddleware(keys JWKS, audience string, next http.Handler, allowedOrigins []string, issuer string) http.Handler {
-	if audience == "" {
+func JSONRPCMiddleware(keys JWKS, audiences []string, next http.Handler, allowedOrigins []string, issuer string) http.Handler {
+	if len(audiences) == 0 {
 		return next
 	}
 
@@ -38,7 +38,14 @@ func JSONRPCMiddleware(keys JWKS, audience string, next http.Handler, allowedOri
 			claims := token.Claims.(jwt.MapClaims)
 
 			if _, ok := claims["scope"]; !ok {
-				if !claims.VerifyAudience(audience, false) {
+				valid := false
+				for _, audience := range audiences {
+					valid = !claims.VerifyAudience(audience, false)
+					if valid {
+						break
+					}
+				}
+				if !valid {
 					return token, errors.New("Invalid audience.")
 				}
 			}
