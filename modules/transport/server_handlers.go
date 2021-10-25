@@ -935,7 +935,7 @@ func SessionGetNearRelays(state *SessionHandlerState) bool {
 		than the default internet route.
 	*/
 
-	directLatency := state.Packet.DirectRTT
+	directLatency := state.Packet.DirectMinRTT
 
 	clientLatitude := state.Output.Location.Latitude
 	clientLongitude := state.Output.Location.Longitude
@@ -976,7 +976,7 @@ func SessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 	routeState := &state.Output.RouteState
 
-	directLatency := int32(math.Ceil(float64(state.Packet.DirectRTT)))
+	directLatency := int32(math.Ceil(float64(state.Packet.DirectMinRTT)))
 	directJitter := int32(math.Ceil(float64(state.Packet.DirectJitter)))
 	directPacketLoss := int32(math.Floor(float64(state.Packet.DirectPacketLoss) + 0.5))
 	nextPacketLoss := int32(math.Floor(float64(state.Packet.NextPacketLoss) + 0.5))
@@ -1120,7 +1120,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, &state.Buyer.RouteShader, &state.Output.RouteState, multipathVetoMap, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
+		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, &state.Buyer.RouteShader, &state.Output.RouteState, multipathVetoMap, &state.Buyer.InternalConfig, int32(state.Packet.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
 			BuildNextTokens(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 		}
 
@@ -1151,7 +1151,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 			state.Metrics.RouteDoesNotExist.Add(1)
 		}
 
-		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectMinRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
 
 		if stayOnNext {
 
@@ -1616,7 +1616,9 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		Timestamp:                       uint32(time.Now().Unix()),
 		SessionID:                       state.Packet.SessionID,
 		SliceNumber:                     state.Packet.SliceNumber,
-		DirectRTT:                       int32(state.Packet.DirectRTT),
+		DirectMinRTT:                    int32(state.Packet.DirectMinRTT),
+		DirectMaxRTT:                    int32(state.Packet.DirectMaxRTT),
+		DirectPrimeRTT:                  int32(state.Packet.DirectPrimeRTT),
 		DirectJitter:                    int32(state.Packet.DirectJitter),
 		DirectPacketLoss:                int32(state.Packet.DirectPacketLoss),
 		RealPacketLoss:                  int32(RealPacketLoss),
@@ -1740,8 +1742,8 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 	*/
 
 	var deltaRTT float32
-	if state.Packet.Next && state.Packet.NextRTT != 0 && state.Packet.DirectRTT >= state.Packet.NextRTT {
-		deltaRTT = state.Packet.DirectRTT - state.Packet.NextRTT
+	if state.Packet.Next && state.Packet.NextRTT != 0 && state.Packet.DirectMinRTT >= state.Packet.NextRTT {
+		deltaRTT = state.Packet.DirectMinRTT - state.Packet.NextRTT
 	}
 
 	/*
@@ -1768,7 +1770,7 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 			DatacenterAlias: state.Datacenter.AliasName,
 			OnNetworkNext:   state.Packet.Next,
 			NextRTT:         float64(state.Packet.NextRTT),
-			DirectRTT:       float64(state.Packet.DirectRTT),
+			DirectRTT:       float64(state.Packet.DirectMinRTT),
 			DeltaRTT:        float64(deltaRTT),
 			Location:        state.Input.Location,
 			ClientAddr:      state.Packet.ClientAddress.String(),
@@ -1789,7 +1791,7 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 				PacketLoss: float64(state.Packet.NextPacketLoss),
 			},
 			Direct: routing.Stats{
-				RTT:        float64(state.Packet.DirectRTT),
+				RTT:        float64(state.Packet.DirectMinRTT),
 				Jitter:     float64(state.Packet.DirectJitter),
 				PacketLoss: float64(state.Packet.DirectPacketLoss),
 			},

@@ -1,26 +1,20 @@
 package portalcruncher
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
-	"github.com/gomodule/redigo/redis"
-
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/ghost_army"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/pubsub"
+
+	"github.com/gomodule/redigo/redis"
 )
 
 type ErrReceiveMessage struct {
@@ -79,8 +73,9 @@ func NewPortalCruncher(
 	btInstanceID string,
 	btTableName string,
 	btCfName string,
+	btEmulatorOK bool,
+	btHistoricalPath string,
 	chanBufferSize int,
-	logger log.Logger,
 	metrics *metrics.PortalCruncherMetrics,
 	btMetrics *metrics.BigTableMetrics,
 ) (*PortalCruncher, error) {
@@ -95,7 +90,7 @@ func NewPortalCruncher(
 	var btCfNames []string
 
 	if useBigtable {
-		btClient, btCfNames, err = SetupBigtable(ctx, gcpProjectID, btInstanceID, btTableName, btCfName, logger)
+		btClient, btCfNames, err = SetupBigtable(ctx, gcpProjectID, btInstanceID, btTableName, btCfName, btEmulatorOK, btHistoricalPath)
 		if err != nil {
 			return nil, err
 		}
@@ -115,10 +110,7 @@ func NewPortalCruncher(
 	}, nil
 }
 
-func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGoroutines int, numBigtableInsertGoroutines int, redisPingDuration time.Duration, redisFlushDuration time.Duration, redisFlushCount int, env string) error {
-	var wg sync.WaitGroup
-	errChan := make(chan error, 1)
-
+func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGoroutines int, numBigtableInsertGoroutines int, redisPingDuration time.Duration, redisFlushDuration time.Duration, redisFlushCount int, env string, errChan chan error, wg *sync.WaitGroup) {
 	// Start the receive goroutine
 	wg.Add(1)
 	go func() {
@@ -128,12 +120,13 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				if err := cruncher.ReceiveMessage(ctx); err != nil {
+			case err := <-cruncher.ReceiveMessage(ctx):
+				if err != nil {
 					switch err.(type) {
 					case *ErrChannelFull: // We don't need to stop the portal cruncher if the channel is full
 						continue
 					default:
+						core.Error("failed to receive message: %v", err)
 						errChan <- err
 						return
 					}
@@ -161,6 +154,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 					pingTime = time.Now()
 
 					if err := cruncher.PingRedis(); err != nil {
+						core.Error("failed to ping redis: %v", err)
 						errChan <- err
 						return
 					}
@@ -222,6 +216,7 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 						btPortalDataBuffer = append(btPortalDataBuffer, portalData)
 
 						if err := cruncher.InsertIntoBigtable(ctx, btPortalDataBuffer, env, ghostArmyBuyerID); err != nil {
+							core.Error("failed to insert data into bigtable: %v", err)
 							errChan <- err
 							return
 						}
@@ -234,80 +229,70 @@ func (cruncher *PortalCruncher) Start(ctx context.Context, numRedisInsertGorouti
 			}()
 		}
 	}
-
-	// Wait until either there is an error or the context is done
-	select {
-	case err := <-errChan:
-		return err
-	case <-ctx.Done():
-		// Let the goroutines finish up
-		wg.Wait()
-		// Close the redis pool
-		cruncher.sessionPool.Close()
-		return ctx.Err()
-	}
 }
 
-func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
+func (cruncher *PortalCruncher) ReceiveMessage(ctx context.Context) <-chan error {
+	errChan := make(chan error)
 
-	case messageInfo := <-cruncher.subscriber.ReceiveMessage():
-		cruncher.metrics.ReceivedMessageCount.Add(1)
+	go func() {
+		select {
+		case <-ctx.Done():
+			errChan <- ctx.Err()
 
-		if messageInfo.Err != nil {
-			return &ErrReceiveMessage{err: messageInfo.Err}
-		}
+		case messageInfo := <-cruncher.subscriber.ReceiveMessage():
+			cruncher.metrics.ReceivedMessageCount.Add(1)
 
-		switch messageInfo.Topic {
-		case pubsub.TopicPortalCruncherSessionCounts:
-			// Try binary decoding first, and upon failure, try serialization
-			// TODO: after Bigtable stores only serialized data, remove binary decoding
-			var sessionCountData transport.SessionCountData
-			if err := sessionCountData.UnmarshalBinary(messageInfo.Message); err != nil {
-				
-				sessionCountData = transport.SessionCountData{}
+			if messageInfo.Err != nil {
+				errChan <- &ErrReceiveMessage{err: messageInfo.Err}
+			}
+
+			switch messageInfo.Topic {
+			case pubsub.TopicPortalCruncherSessionCounts:
+				var sessionCountData transport.SessionCountData
 				if err := transport.ReadSessionCountData(&sessionCountData, messageInfo.Message); err != nil {
-					return &ErrUnmarshalMessage{err: err}
+					errChan <- &ErrUnmarshalMessage{err: err}
 				}
-			}
 
-			select {
-			case cruncher.redisCountMessageChan <- &sessionCountData:
-			default:
-				return &ErrChannelFull{}
-			}
-
-		case pubsub.TopicPortalCruncherSessionData:
-			// Try binary decoding first, and upon failure, try serialization
-			// TODO: after Bigtable stores only serialized data, remove binary decoding
-			var sessionPortalData transport.SessionPortalData
-			if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
-
-				sessionPortalData = transport.SessionPortalData{}
-				if err := transport.ReadSessionPortalData(&sessionPortalData, messageInfo.Message); err != nil {
-					return &ErrUnmarshalMessage{err: err}
+				select {
+				case cruncher.redisCountMessageChan <- &sessionCountData:
+				default:
+					errChan <- &ErrChannelFull{}
 				}
+
+			case pubsub.TopicPortalCruncherSessionData:
+				// First try binary decoding, and upon failure, try serialization
+				// We need to do both because Ghost Army uses binary decoding
+				// TODO: once Ghost Army uses serialization, remove binary decoding
+				var sessionPortalData transport.SessionPortalData
+				if err := sessionPortalData.UnmarshalBinary(messageInfo.Message); err != nil {
+
+					sessionPortalData = transport.SessionPortalData{}
+
+					if err := transport.ReadSessionPortalData(&sessionPortalData, messageInfo.Message); err != nil {
+						errChan <- &ErrUnmarshalMessage{err: err}
+					}
+				}
+
+				select {
+				case cruncher.redisDataMessageChan <- &sessionPortalData:
+				default:
+					errChan <- &ErrChannelFull{}
+				}
+
+				select {
+				case cruncher.btDataMessageChan <- &sessionPortalData:
+				default:
+					errChan <- &ErrChannelFull{}
+				}
+			default:
+				errChan <- &ErrUnknownMessage{}
 			}
 
-			select {
-			case cruncher.redisDataMessageChan <- &sessionPortalData:
-			default:
-				return &ErrChannelFull{}
-			}
-
-			select {
-			case cruncher.btDataMessageChan <- &sessionPortalData:
-			default:
-				return &ErrChannelFull{}
-			}
-		default:
-			return &ErrUnknownMessage{}
+			errChan <- nil
 		}
+	}()
 
-		return nil
-	}
+	return errChan
 }
 
 func (cruncher *PortalCruncher) insertCountDataIntoRedis(redisPortalCountBuffer []*transport.SessionCountData, minutes int64) {
@@ -481,19 +466,23 @@ func (cruncher *PortalCruncher) PingRedis() error {
 	return nil
 }
 
+func (cruncher *PortalCruncher) CloseRedisPool() {
+	cruncher.sessionPool.Close()
+}
+
 func SetupBigtable(ctx context.Context,
 	gcpProjectID string,
 	btInstanceID string,
 	btTableName string,
 	btCfName string,
-	logger log.Logger) (*storage.BigTable, []string, error) {
+	btEmulatorOK bool,
+	btHistoricalPath string) (*storage.BigTable, []string, error) {
 	// Setup Bigtable
-	_, btEmulatorOK := os.LookupEnv("BIGTABLE_EMULATOR_HOST")
 	if btEmulatorOK {
 		// Emulator is used for local testing
 		// Requires that emulator has been started in another terminal to work as intended
 		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected Bigtable emulator host.", "Table Name", btTableName, "Project ID", gcpProjectID, "btInstanceID", btInstanceID)
+		core.Debug("Detected Bigtable emulator host.\n\tTable Name: %s\n\tProject ID: %s\n\tInstance ID: %s", btTableName, gcpProjectID, btInstanceID)
 	}
 
 	if gcpProjectID == "" && !btEmulatorOK {
@@ -503,7 +492,7 @@ func SetupBigtable(ctx context.Context,
 	// Put the column family names in a slice
 	btCfNames := []string{btCfName}
 	// Create a bigtable admin for setup
-	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -515,10 +504,9 @@ func SetupBigtable(ctx context.Context,
 	}
 
 	if !tableExists {
-		level.Debug(logger).Log("msg", "Could not find table in bigtable instance")
 		return nil, nil, fmt.Errorf("SetupBigtable() Could not find table %s in bigtable instance. Create the table before starting the portal cruncher", btTableName)
 	} else {
-		level.Debug(logger).Log("msg", "Found table in bigtable instance")
+		core.Debug("Found the table in the bigtable instance")
 	}
 
 	// Close the admin client
@@ -527,123 +515,18 @@ func SetupBigtable(ctx context.Context,
 	}
 
 	// Create a standard client for writing to the table
-	btClient, err := storage.NewBigTable(ctx, gcpProjectID, btInstanceID, btTableName, logger)
+	btClient, err := storage.NewBigTable(ctx, gcpProjectID, btInstanceID, btTableName)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if btEmulatorOK {
-		if historicalPath, ok := os.LookupEnv("BIGTABLE_HISTORICAL_TXT"); ok {
-			// Check if historical path is valid
-			if _, err := os.Stat(historicalPath); !os.IsNotExist(err) {
-				// Insert historical data into bigtable during local testing
-				level.Info(logger).Log("msg", "Seeding bigtable with historical data.")
-				err = SeedBigtable(ctx, btClient, btCfNames, historicalPath)
-				if err != nil {
-					return nil, nil, err
-				}
-			} else {
-				level.Info(logger).Log("msg", "path", historicalPath, "Does not exist. Skipping over seeding bigtable with historical data")
-			}
-		} else {
-			level.Info(logger).Log("msg", "Could not locate BIGTABLE_HISTORICAL_TXT. Skipping over seeding bigtable with historical data")
+		if err = btClient.SeedBigtable(ctx, btCfNames, btHistoricalPath); err != nil {
+			core.Error("failed to seed BigTable: %v", err)
 		}
 	}
 
 	return btClient, btCfNames, nil
-}
-
-// Loads historical data into bigtable
-// Only should be used during local testing
-func SeedBigtable(ctx context.Context, btClient *storage.BigTable, btCfNames []string, historicalPath string) error {
-	// Load in text file
-	var (
-		file   *os.File
-		part   []byte
-		prefix bool
-		err    error
-	)
-	if file, err = os.Open(historicalPath); err != nil {
-		return fmt.Errorf("SeedBigtable() open file path %s: %v", historicalPath, err)
-	}
-	defer file.Close()
-
-	reader := bufio.NewReader(file)
-	buffer := bytes.NewBuffer(make([]byte, 0))
-	var lines []string
-	for {
-		if part, prefix, err = reader.ReadLine(); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return fmt.Errorf("SeedBigtable() failed to read lines from %s: %v", historicalPath, err)
-		}
-		buffer.Write(part)
-		if !prefix {
-			lines = append(lines, buffer.String())
-			buffer.Reset()
-		}
-	}
-
-	var rowKey string
-	var cfMap map[string]string
-	var colName string
-	for _, line := range lines {
-		// Remove white space from line
-		line = strings.TrimSpace(line)
-
-		// Moving onto next row key
-		if strings.Contains(line, "----------------------------------------") {
-			rowKey = ""
-			cfMap = make(map[string]string)
-			colName = ""
-			continue
-		}
-
-		if rowKey == "" {
-			// Found a new row key
-			rowKey = strings.TrimSpace(line)
-		} else if strings.Contains(line, btCfNames[0]) {
-			// Set the map of column name to the column family name
-			line = strings.TrimSpace(line)
-			words := strings.Split(line, " ")
-			colName = strings.Split(words[0], ":")[1]
-			cfMap[colName] = btCfNames[0]
-		} else if colName != "" {
-			// Get the data for the column name
-
-			// Clean up raw data string
-			rawData := strings.TrimSpace(line)
-			rawData = rawData[1 : len(rawData)-1]
-			strData := strings.Split(rawData, " ")
-
-			// Fill a byte slice with the bytes from the raw data
-			var data []byte
-			var singleByte byte
-			for _, b := range strData {
-				if b != " " {
-					bInt, err := strconv.Atoi(b)
-					if err != nil {
-						return fmt.Errorf("SeedBigtable() could not convert %s to int: %v", b, err)
-					}
-					singleByte = (byte)(bInt)
-					data = append(data, singleByte)
-				}
-			}
-
-			// Create data map of column name to data
-			dataMap := make(map[string][]byte)
-			dataMap[colName] = data
-
-			// Insert into bigtable
-			err := btClient.InsertRowInTable(ctx, []string{rowKey}, dataMap, cfMap)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }
 
 func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortalDataBuffer []*transport.SessionPortalData, env string, ghostArmyBuyerID uint64) error {
@@ -697,4 +580,10 @@ func (cruncher *PortalCruncher) InsertIntoBigtable(ctx context.Context, btPortal
 	}
 
 	return nil
+}
+
+func (cruncher *PortalCruncher) CloseBigTable() {
+	if cruncher.useBigtable {
+		cruncher.btClient.Close()
+	}
 }

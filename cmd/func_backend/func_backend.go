@@ -324,8 +324,8 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	if backend.mode == BACKEND_MODE_DIRECT_STATS {
-		if sessionUpdate.DirectRTT > 0 && sessionUpdate.DirectJitter > 0 && sessionUpdate.DirectPacketLoss > 0 {
-			fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", sessionUpdate.DirectRTT, sessionUpdate.DirectJitter, sessionUpdate.DirectPacketLoss)
+		if sessionUpdate.DirectMinRTT > 0 && sessionUpdate.DirectJitter > 0 && sessionUpdate.DirectPacketLoss > 0 {
+			fmt.Printf("direct rtt = %f, direct jitter = %f, direct packet loss = %f\n", sessionUpdate.DirectMinRTT, sessionUpdate.DirectJitter, sessionUpdate.DirectPacketLoss)
 		}
 	}
 

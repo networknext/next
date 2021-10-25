@@ -50,7 +50,9 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		Timestamp:                       uint32(time.Now().Unix()),
 		SessionID:                       crypto.GenerateSessionID(),
 		SliceNumber:                     5,
-		DirectRTT:                       int32(rand.Intn(1024)),
+		DirectMinRTT:                    int32(rand.Intn(1024)),
+		DirectMaxRTT:                    int32(rand.Intn(1024)),
+		DirectPrimeRTT:                  int32(rand.Intn(1024)),
 		DirectJitter:                    int32(rand.Intn(255)),
 		DirectPacketLoss:                int32(rand.Intn(100)),
 		RealPacketLoss:                  int32(rand.Intn(100)),
@@ -671,23 +673,61 @@ func TestSerializeBillingEntry2_Clamp(t *testing.T) {
 
 	t.Run("test always clamp", func(t *testing.T) {
 
-		t.Run("direct RTT", func(t *testing.T) {
+		t.Run("direct min RTT", func(t *testing.T) {
 			entry = getTestBillingEntry2()
-			entry.DirectRTT = -1
+			entry.DirectMinRTT = -1
 
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
 			assert.NotEmpty(t, data)
 			assert.NoError(t, err)
 			assert.NotEqual(t, entry, readEntry)
-			assert.Equal(t, int32(0), readEntry.DirectRTT)
+			assert.Equal(t, int32(0), readEntry.DirectMinRTT)
 
 			entry = getTestBillingEntry2()
-			entry.DirectRTT = 1024
+			entry.DirectMinRTT = 1024
 			data, readEntry, err = writeReadClampBillingEntry2(entry)
 			assert.NotEmpty(t, data)
 			assert.NoError(t, err)
 			assert.NotEqual(t, entry, readEntry)
-			assert.Equal(t, int32(1023), readEntry.DirectRTT)
+			assert.Equal(t, int32(1023), readEntry.DirectMinRTT)
+		})
+
+		t.Run("direct max RTT", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.DirectMaxRTT = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.DirectMaxRTT)
+
+			entry = getTestBillingEntry2()
+			entry.DirectMaxRTT = 1024
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(1023), readEntry.DirectMaxRTT)
+		})
+
+		t.Run("direct prime RTT", func(t *testing.T) {
+			entry = getTestBillingEntry2()
+			entry.DirectPrimeRTT = -1
+
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(0), readEntry.DirectPrimeRTT)
+
+			entry = getTestBillingEntry2()
+			entry.DirectPrimeRTT = 1024
+			data, readEntry, err = writeReadClampBillingEntry2(entry)
+			assert.NotEmpty(t, data)
+			assert.NoError(t, err)
+			assert.NotEqual(t, entry, readEntry)
+			assert.Equal(t, int32(1023), readEntry.DirectPrimeRTT)
 		})
 
 		t.Run("direct jitter", func(t *testing.T) {

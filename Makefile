@@ -264,10 +264,6 @@ ifndef BIGTABLE_CF_NAME
 export BIGTABLE_CF_NAME = portal-session-history
 endif
 
-ifndef BIGTABLE_WRITE_DELETE_ROW
-export BIGTABLE_WRITE_DELETE_ROW = false
-endif
-
 ifndef BIGTABLE_TABLE_NAME
 export BIGTABLE_TABLE_NAME = portal-session-history
 endif
@@ -290,8 +286,8 @@ ifndef MATRIX_STORE_ADDRESS
 export MATRIX_STORE_ADDRESS = 127.0.0.1:6379
 endif
 
-ifndef FEATURE_NEW_RELAY_BACKEND_ADDRESSES
-export FEATURE_NEW_RELAY_BACKEND_ADDRESSES = 127.0.0.1:30001,127.0.0.1:30002
+ifndef RELAY_BACKEND_ADDRESSES
+export RELAY_BACKEND_ADDRESSES = 127.0.0.1:30001,127.0.0.1:30002
 endif
 
 .PHONY: help
@@ -1379,7 +1375,7 @@ deploy-relay-forwarder-prod:
 .PHONY: build-relay-gateway
 build-relay-gateway:
 	@printf "Building relay gateway... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/gateway.go
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/relay_gateway ./cmd/relay_gateway/relay_gateway.go
 	@printf "done\n"
 
 .PHONY: build-relay-gateway-artifacts-dev

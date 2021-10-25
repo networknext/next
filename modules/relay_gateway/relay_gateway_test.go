@@ -15,7 +15,6 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
 
-	"github.com/go-kit/kit/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,14 +26,12 @@ func TestRelayGateway(t *testing.T) {
 		RelayBackendAddresses: []string{"127.0.0.1:30000"},
 		HTTPTimeout:           time.Second,
 		BatchSize:             1,
-		NumGoroutines:         1,
 	}
 
 	testChan := make(chan []byte, 1)
 	gatewayMetrics := &metrics.EmptyRelayGatewayMetrics
-	logger := log.NewNopLogger()
 
-	g, err := gateway.NewGatewayHTTPClient(cfg, testChan, gatewayMetrics, logger)
+	g, err := gateway.NewGatewayHTTPClient(cfg, testChan, gatewayMetrics)
 	assert.NoError(t, err)
 	assert.NotNil(t, g)
 	assert.Equal(t, cfg, g.Cfg)
@@ -48,10 +45,7 @@ func TestRelayGatewayStart(t *testing.T) {
 		RelayBackendAddresses: []string{"127.0.0.1:30000"},
 		HTTPTimeout:           time.Second,
 		BatchSize:             2,
-		NumGoroutines:         1,
 	}
-
-	logger := log.NewNopLogger()
 
 	// Create relay update request
 	udp, _ := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
@@ -88,11 +82,12 @@ func TestRelayGatewayStart(t *testing.T) {
 		gatewayMetrics, err := metrics.NewRelayGatewayMetrics(ctx, metricsHandler, "relay_gateway_test", "relay_gateway", "Relay Gateway", "relay update request")
 		assert.NoError(t, err)
 
-		g, err := gateway.NewGatewayHTTPClient(cfg, updateChan, gatewayMetrics, logger)
+		g, err := gateway.NewGatewayHTTPClient(cfg, updateChan, gatewayMetrics)
 		assert.NoError(t, err)
 		assert.NotNil(t, g)
 
 		var wg sync.WaitGroup
+		wg.Add(1)
 		// Start the goroutine for receiving messages
 		go g.Start(ctx, &wg)
 
@@ -119,11 +114,12 @@ func TestRelayGatewayStart(t *testing.T) {
 		gatewayMetrics, err := metrics.NewRelayGatewayMetrics(ctx, metricsHandler, "relay_gateway_test", "relay_gateway", "Relay Gateway", "relay update request")
 		assert.NoError(t, err)
 
-		g, err := gateway.NewGatewayHTTPClient(cfg, updateChan, gatewayMetrics, logger)
+		g, err := gateway.NewGatewayHTTPClient(cfg, updateChan, gatewayMetrics)
 		assert.NoError(t, err)
 		assert.NotNil(t, g)
 
 		var wg sync.WaitGroup
+		wg.Add(1)
 		// Start the goroutine for receiving messages
 		go g.Start(ctx, &wg)
 

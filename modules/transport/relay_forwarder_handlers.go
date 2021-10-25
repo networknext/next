@@ -7,16 +7,13 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/metrics"
-
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 )
 
 type RelayForwarderParams struct {
 	GatewayAddr string
 	Metrics     *metrics.RelayForwarderMetrics
-	Logger      log.Logger
 }
 
 /*
@@ -41,7 +38,7 @@ func ForwardPostHandlerFunc(params *RelayForwarderParams) func(w http.ResponseWr
 		// Parse the remote address to get the origin URL
 		origin, err := url.Parse(fmt.Sprintf("//%s", r.RemoteAddr))
 		if err != nil {
-			level.Error(params.Logger).Log("msg", fmt.Sprintf("error parsing request remote addr as URL: %s", r.RemoteAddr), "err", err)
+			core.Error("error parsing request remote addr as URL (%s): %v", r.RemoteAddr, err)
 			w.WriteHeader(http.StatusInternalServerError)
 			params.Metrics.ErrorMetrics.ParseURLError.Add(1)
 			return
@@ -65,7 +62,7 @@ func ForwardPostHandlerFunc(params *RelayForwarderParams) func(w http.ResponseWr
 		// Add an error handler to use our logger
 		reverseProxy.ErrorHandler = func(writer http.ResponseWriter, req *http.Request, err error) {
 			if err != nil {
-				level.Error(params.Logger).Log("msg", "error reaching relay gateway", "err", err)
+				core.Error("error reaching relay gateway: %v", err)
 				writer.WriteHeader(http.StatusInternalServerError)
 				writer.Write([]byte(err.Error()))
 				params.Metrics.ErrorMetrics.ForwardPostError.Add(1)
