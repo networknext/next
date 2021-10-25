@@ -212,14 +212,12 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 
 					sessionIDs = append(sessionIDs, fmt.Sprintf("%016x", session.ID))
 
-					fmt.Println("Fetching buyer for session....")
 					buyer, err := s.Storage.Buyer(r.Context(), session.BuyerID)
 					if err != nil {
 						err = fmt.Errorf("UserSessions() failed to fetch buyer: %v", err)
 						level.Error(s.Logger).Log("err", err)
 						return err
 					}
-					fmt.Println("Fetched buyer for session!")
 
 					if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) || !middleware.VerifyAnyRole(r, middleware.AssignedToCompanyRole) {
 						session.Anonymise()

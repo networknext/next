@@ -608,7 +608,11 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	auth0Domain := os.Getenv("AUTH0_DOMAIN")
+	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
+	if auth0Domain == "" {
+		core.Error("invalid AUTH0_DOMAIN: not set")
+		return 1
+	}
 
 	// Fetch the Auth0 Cert and refresh occasionally
 	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)

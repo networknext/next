@@ -25,3 +25,8 @@ func (lrm *LocalRoleManager) List(opts ...management.ListOption) (r *management.
 
 	return lrm.localRoleList, nil
 }
+
+// Function just for testing (Not part of the Auth0 Role manager interface) - TBD for future use...
+func AddRolesToRoleList(roles []*management.Role, manager *LocalRoleManager) {
+	manager.localRoleList.Roles = roles
+}

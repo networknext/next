@@ -121,7 +121,11 @@ func (hsc *HubSpotClient) CompanyEntrySearch(companyName string, companyWebsite 
 		},
 	}
 
-	hubspotBody, _ := json.Marshal(searchProperties)
+	hubspotBody, err := json.Marshal(searchProperties)
+	if err != nil {
+		return noCompanies, err
+	}
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.hubapi.com/crm/v3/objects/companies/search?hapikey=%s", hsc.APIKey), bytes.NewBuffer(hubspotBody))
 	if err != nil {
 		return noCompanies, err
@@ -174,7 +178,11 @@ func (hsc *HubSpotClient) CreateNewCompanyEntry(companyName string, companyWebsi
 	message := CreateCompanyMessage{
 		Properties: properties,
 	}
-	hubspotBody, _ := json.Marshal(message)
+	hubspotBody, err := json.Marshal(message)
+	if err != nil {
+		return "", err
+	}
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.hubapi.com/crm/v3/objects/companies?hapikey=%s", hsc.APIKey), bytes.NewBuffer(hubspotBody))
 	if err != nil {
 		return "", err
@@ -259,7 +267,11 @@ func (hsc *HubSpotClient) ContactEntrySearch(firstName string, lastName string, 
 		},
 	}
 
-	hubspotBody, _ := json.Marshal(searchProperties)
+	hubspotBody, err := json.Marshal(searchProperties)
+	if err != nil {
+		return noContacts, err
+	}
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.hubapi.com/crm/v3/objects/contacts/search?hapikey=%s", hsc.APIKey), bytes.NewBuffer(hubspotBody))
 	if err != nil {
 		return noContacts, err
@@ -310,7 +322,11 @@ func (hsc *HubSpotClient) CreateNewContactEntry(firstName string, lastName strin
 	message := CreateContactMessage{
 		Properties: properties,
 	}
-	hubspotBody, _ := json.Marshal(message)
+	hubspotBody, err := json.Marshal(message)
+	if err != nil {
+		return "", err
+	}
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.hubapi.com/crm/v3/objects/contacts?hapikey=%s", hsc.APIKey), bytes.NewBuffer(hubspotBody))
 	if err != nil {
 		return "", err
@@ -369,7 +385,7 @@ func (hsc *HubSpotClient) AssociateCompanyToContact(companyID string, contactID 
 
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
-		return errors.New("HubSpot returned non-200 status code")
+		return errors.New(fmt.Sprintf("HubSpot returned non-200 status code: %d", resp.StatusCode))
 	}
 
 	// TODO: Catch response and check if there was a success that way rather than through response code
@@ -396,7 +412,7 @@ func (hsc *HubSpotClient) AssociateContactToCompany(contactID string, companyID 
 
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
-		return errors.New("HubSpot returned non-200 status code")
+		return errors.New(fmt.Sprintf("HubSpot returned non-200 status code: %d", resp.StatusCode))
 	}
 
 	// TODO: Catch response and check if there was a success that way rather than through response code
@@ -432,7 +448,11 @@ func (hsc *HubSpotClient) CreateHubSpotDealEntry(action string) error {
 	message := CreateDealMessage{
 		Properties: properties,
 	}
-	hubspotBody, _ := json.Marshal(message)
+	hubspotBody, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.hubapi.com/crm/v3/objects/deals?hapikey=%s", hsc.APIKey), bytes.NewBuffer(hubspotBody))
 	if err != nil {
 		return err
@@ -446,7 +466,7 @@ func (hsc *HubSpotClient) CreateHubSpotDealEntry(action string) error {
 
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
-		return errors.New("HubSpot returned non-200 status code")
+		return errors.New(fmt.Sprintf("HubSpot returned non-200 status code: %d", resp.StatusCode))
 	}
 
 	// TODO: Catch response and check if there was a success that way rather than through response code
@@ -508,7 +528,11 @@ func (hsc *HubSpotClient) CreateCompanyNote(message string, companyID string) er
 		},
 	}
 
-	hubspotBody, _ := json.Marshal(engagementPayload)
+	hubspotBody, err := json.Marshal(engagementPayload)
+	if err != nil {
+		return err
+	}
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.hubapi.com/engagements/v1/engagements?hapikey=%s", hsc.APIKey), bytes.NewBuffer(hubspotBody))
 	if err != nil {
 		return err
@@ -522,7 +546,7 @@ func (hsc *HubSpotClient) CreateCompanyNote(message string, companyID string) er
 
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
-		return errors.New("HubSpot returned non-200 status code")
+		return errors.New(fmt.Sprintf("HubSpot returned non-200 status code: %d", resp.StatusCode))
 	}
 
 	// TODO: Catch response and check if there was a success that way rather than through response code
@@ -551,7 +575,11 @@ func (hsc *HubSpotClient) CreateContactNote(message string, contactID string) er
 		},
 	}
 
-	hubspotBody, _ := json.Marshal(engagementPayload)
+	hubspotBody, err := json.Marshal(engagementPayload)
+	if err != nil {
+		return err
+	}
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("https://api.hubapi.com/engagements/v1/engagements?hapikey=%s", hsc.APIKey), bytes.NewBuffer(hubspotBody))
 	if err != nil {
 		return err
@@ -565,7 +593,7 @@ func (hsc *HubSpotClient) CreateContactNote(message string, contactID string) er
 
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
-		return errors.New("HubSpot returned non-200 status code")
+		return errors.New(fmt.Sprintf("HubSpot returned non-200 status code: %d", resp.StatusCode))
 	}
 
 	// TODO: Catch response and check if there was a success that way rather than through response code

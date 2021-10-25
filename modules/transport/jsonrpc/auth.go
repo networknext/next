@@ -858,16 +858,12 @@ func (s *AuthService) ResetPasswordEmail(r *http.Request, args *ResetPasswordEma
 		return &err
 	}
 
-	fmt.Println("Sending reset password email....")
-
 	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
-	if err != nil || len(userAccounts.Users) > 1 || len(userAccounts.Users) == 0 {
+	if err != nil || len(userAccounts.Users) != 1 {
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("ResetPasswordEmail(): Failed to look up user account: %s", err.Error()))
 		return &err
 	}
-
-	fmt.Println("Found a user account")
 
 	if err = s.AuthenticationClient.SendChangePasswordEmail(args.Email); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
@@ -1323,7 +1319,7 @@ func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupAr
 	}
 
 	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
-	if err != nil || len(userAccounts.Users) > 1 || len(userAccounts.Users) == 0 {
+	if err != nil || len(userAccounts.Users) != 1 {
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): Failed to look up user account: %s", err.Error()))
 		return &err
