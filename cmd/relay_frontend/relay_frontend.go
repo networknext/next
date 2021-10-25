@@ -107,7 +107,7 @@ func mainReturnWithCode() int {
 	}
 	keys = newKeys
 
-	fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+	fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
 	if err != nil {
 		core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
 		return 1
@@ -118,9 +118,9 @@ func mainReturnWithCode() int {
 		for {
 			select {
 			case <-ticker.C:
-			  newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
-			  if err != nil {
-				  continue
+				newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
+				if err != nil {
+					continue
 				}
 				keys = newKeys
 			case <-ctx.Done():
