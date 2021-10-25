@@ -275,9 +275,9 @@ func mainReturnWithCode() int {
 			core.Debug("unable to parse ALLOWED_ORIGINS environment variable")
 		}
 
-		audience := envvar.Get("JWT_AUDIENCE", "")
-		if audience == "" {
-			core.Error("unable to parse JWT_AUDIENCE environment variable")
+		auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
+		if auth0Issuer == "" {
+			core.Debug("unable to parse AUTH0_ISSUER environment variable")
 		}
 
 		port := envvar.Get("PORT", "30005")
@@ -296,16 +296,16 @@ func mainReturnWithCode() int {
 		// Wrap the following endpoints in auth and CORS middleware
 		// NOTE: the next tool is unaware of CORS and its requests simply pass through
 		costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
-		router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(keys, audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), costMatrixHandler, strings.Split(allowedOrigins, ","), auth0Issuer))
 
 		relaysCsvHandler := http.HandlerFunc(frontendClient.GetRelayBackendHandlerFunc("/relays"))
-		router.Handle("/relays", middleware.PlainHttpAuthMiddleware(keys, audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/relays", middleware.PlainHttpAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), relaysCsvHandler, strings.Split(allowedOrigins, ","), auth0Issuer))
 
 		jsonDashboardHandler := http.HandlerFunc(frontendClient.GetRelayDashboardDataHandlerFunc())
-		router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(keys, audience, jsonDashboardHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), jsonDashboardHandler, strings.Split(allowedOrigins, ","), auth0Issuer))
 
 		jsonDashboardAnalysisHandler := http.HandlerFunc(frontendClient.GetRelayDashboardAnalysisHandlerFunc())
-		router.Handle("/relay_dashboard_analysis", middleware.PlainHttpAuthMiddleware(keys, audience, jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/relay_dashboard_analysis", middleware.PlainHttpAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ","), auth0Issuer))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
