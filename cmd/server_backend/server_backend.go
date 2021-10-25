@@ -608,8 +608,14 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
+	if auth0Domain == "" {
+		core.Error("invalid AUTH0_DOMAIN: not set")
+		return 1
+	}
+
 	// Fetch the Auth0 Cert and refresh occasionally
-	newKeys, err := middleware.FetchAuth0Cert()
+	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 	if err != nil {
 		core.Error("failed to fetch auth0 cert: %v", err)
 		return 1
@@ -627,7 +633,7 @@ func mainReturnWithCode() int {
 		for {
 			select {
 			case <-ticker.C:
-				newKeys, err := middleware.FetchAuth0Cert()
+				newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 				if err != nil {
 					continue
 				}

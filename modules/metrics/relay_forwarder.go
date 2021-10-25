@@ -2,6 +2,27 @@ package metrics
 
 import "context"
 
+// RelayForwarderStatus defines the metrics reported by the service's status endpoint
+type RelayForwarderStatus struct {
+	// Service Information
+	ServiceName string `json:"service_name"`
+	GitHash     string `json:"git_hash"`
+	Started     string `json:"started"`
+	Uptime      string `json:"uptime"`
+
+	// Service Metrics
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+
+	// Handler Metrics
+	Invocations int     `json:"invocations"`
+	DurationMs  float64 `json:"duration_ms"`
+
+	// Error Metrics
+	ParseURLError    int `json:"parse_url_error"`
+	ForwardPostError int `json:"forward_post_error"`
+}
+
 type RelayForwarderMetrics struct {
 	HandlerMetrics          *PacketHandlerMetrics
 	ForwarderServiceMetrics *ServiceMetrics

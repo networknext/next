@@ -25,6 +25,7 @@ var EmptyMaxmindSyncErrorMetrics MaxmindSyncErrorMetrics = MaxmindSyncErrorMetri
 	FailedToSyncISP: &EmptyCounter{},
 }
 
+// BillingStatus defines the metrics reported by the service's status endpoint
 type BillingStatus struct {
 	// Service Information
 	ServiceName string `json:"service_name"`
@@ -33,19 +34,25 @@ type BillingStatus struct {
 	Uptime      string `json:"uptime"`
 
 	// Metrics
-	Goroutines                      int     `json:"goroutines"`
-	MemoryAllocated                 float64 `json:"mb_allocated"`
-	Billing2EntriesReceived         int     `json:"billing_2_entries_received"`
-	Billing2EntriesSubmitted        int     `json:"billing_2_entries_submitted"`
-	Billing2EntriesQueued           int     `json:"billing_2_entries_queued"`
-	Billing2EntriesFlushed          int     `json:"billing_2_entries_flushed"`
-	Billing2SummaryEntriesSubmitted int     `json:"billing_2_summary_entries_submitted"`
-	Billing2SummaryEntriesQueued    int     `json:"billing_2_summary_entries_queued"`
-	Billing2SummaryEntriesFlushed   int     `json:"billing_2_summary_entries_flushed"`
-	Billing2EntriesWithNaN          int     `json:"billing_2_entries_with_nan"`
-	Billing2InvalidEntries          int     `json:"billing_2_invalid_entries"`
-	Billing2ReadFailures            int     `json:"billing_2_read_failures"`
-	Billing2WriteFailures           int     `json:"billing_2_write_failures"`
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+
+	// Billing 2 Session Entries
+	Billing2EntriesReceived  int `json:"billing_2_entries_received"`
+	Billing2EntriesSubmitted int `json:"billing_2_entries_submitted"`
+	Billing2EntriesQueued    int `json:"billing_2_entries_queued"`
+	Billing2EntriesFlushed   int `json:"billing_2_entries_flushed"`
+
+	// Billing 2 Summary Entries
+	Billing2SummaryEntriesSubmitted int `json:"billing_2_summary_entries_submitted"`
+	Billing2SummaryEntriesQueued    int `json:"billing_2_summary_entries_queued"`
+	Billing2SummaryEntriesFlushed   int `json:"billing_2_summary_entries_flushed"`
+
+	// Billing 2 Errors
+	Billing2EntriesWithNaN int `json:"billing_2_entries_with_nan"`
+	Billing2InvalidEntries int `json:"billing_2_invalid_entries"`
+	Billing2ReadFailures   int `json:"billing_2_read_failures"`
+	Billing2WriteFailures  int `json:"billing_2_write_failures"`
 }
 
 type BillingServiceMetrics struct {
@@ -108,6 +115,7 @@ var EmptyBillingErrorMetrics BillingErrorMetrics = BillingErrorMetrics{
 	Billing2RetryLimitReached:  &EmptyCounter{},
 }
 
+// AnalyticsStatus defines the metrics reported by the service's status endpoint
 type AnalyticsStatus struct {
 	// Service Information
 	ServiceName string `json:"service_name"`
@@ -116,16 +124,20 @@ type AnalyticsStatus struct {
 	Uptime      string `json:"uptime"`
 
 	// Metrics
-	Goroutines                 int     `json:"goroutines"`
-	MemoryAllocated            float64 `json:"mb_allocated"`
-	PingStatsEntriesReceived   int     `json:"ping_stats_entries_received"`
-	PingStatsEntriesSubmitted  int     `json:"ping_stats_entries_submitted"`
-	PingStatsEntriesQueued     int     `json:"ping_stats_entries_queued"`
-	PingStatsEntriesFlushed    int     `json:"ping_stats_entries_flushed"`
-	RelayStatsEntriesReceived  int     `json:"relay_stats_entries_received"`
-	RelayStatsEntriesSubmitted int     `json:"relay_stats_entries_submitted"`
-	RelayStatsEntriesQueued    int     `json:"relay_stats_entries_queued"`
-	RelayStatsEntriesFlushed   int     `json:"relay_stats_entries_flushed"`
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+
+	// Ping Stats
+	PingStatsEntriesReceived  int `json:"ping_stats_entries_received"`
+	PingStatsEntriesSubmitted int `json:"ping_stats_entries_submitted"`
+	PingStatsEntriesQueued    int `json:"ping_stats_entries_queued"`
+	PingStatsEntriesFlushed   int `json:"ping_stats_entries_flushed"`
+
+	// Relay Stats
+	RelayStatsEntriesReceived  int `json:"relay_stats_entries_received"`
+	RelayStatsEntriesSubmitted int `json:"relay_stats_entries_submitted"`
+	RelayStatsEntriesQueued    int `json:"relay_stats_entries_queued"`
+	RelayStatsEntriesFlushed   int `json:"relay_stats_entries_flushed"`
 }
 
 type AnalyticsMetrics struct {
@@ -168,6 +180,30 @@ var EmptyAnalyticsServiceMetrics = AnalyticsServiceMetrics{
 	MemoryAllocated:   &EmptyGauge{},
 	PingStatsMetrics:  EmptyAnalyticsMetrics,
 	RelayStatsMetrics: EmptyAnalyticsMetrics,
+}
+
+// PortalCruncherStatus defines the metrics reported by the service's status endpoint
+type PortalCruncherStatus struct {
+	// Service Information
+	ServiceName string `json:"service_name"`
+	GitHash     string `json:"git_hash"`
+	Started     string `json:"started"`
+	Uptime      string `json:"uptime"`
+
+	// Service Metrics
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+
+	// Cruncher Counts
+	ReceivedMessageCount int `json:"received_message_count"`
+
+	// Bigtable Counts
+	WriteMetaSuccessCount  int `json:"big_table_write_meta_success_count"`
+	WriteSliceSuccessCount int `json:"big_table_write_slice_success_count"`
+
+	// Bigtable Errors
+	WriteMetaFailureCount  int `json:"big_table_write_meta_failure_count"`
+	WriteSliceFailureCount int `json:"big_table_write_slice_failure_count"`
 }
 
 type PortalCruncherMetrics struct {
