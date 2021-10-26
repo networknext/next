@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -26,15 +27,19 @@ var Keys contextKeys = contextKeys{
 	UserKey:              "user",
 }
 
-func JSONRPCMiddleware(keys JWKS, audiences []string, next http.Handler, allowedOrigins []string, issuer string) http.Handler {
-	if len(audiences) == 0 {
-		return next
+// Standard Auth0 HTTP authentication middleware. If the endpoint being secured by this middleware is an RPC endpoint, set "useJSONRPC to true"
+func HTTPAuthMiddleware(keys JWKS, audiences []string, next http.Handler, allowedOrigins []string, issuer string, useJSONRPC bool) http.Handler {
+	middlewareOptions := jwtmiddleware.Options{}
+
+	if useJSONRPC {
+		middlewareOptions.UserProperty = Keys.UserKey
 	}
 
+	middlewareOptions.SigningMethod = jwt.SigningMethodRS256
+	middlewareOptions.CredentialsOptional = useJSONRPC
+
 	mw := jwtmiddleware.New(jwtmiddleware.Options{
-		UserProperty: Keys.UserKey,
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-			// Check if OpsService token
 			claims := token.Claims.(jwt.MapClaims)
 
 			if _, ok := claims["scope"]; !ok {
@@ -49,10 +54,10 @@ func JSONRPCMiddleware(keys JWKS, audiences []string, next http.Handler, allowed
 					return token, errors.New("Invalid audience.")
 				}
 			}
-			// Verify 'iss' claim
+
 			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(issuer, false)
 			if !checkIss {
-				return token, errors.New("Invalid issuer.")
+				return nil, errors.New("invalid issuer")
 			}
 
 			cert, err := getPemCert(keys, token)
@@ -63,7 +68,7 @@ func JSONRPCMiddleware(keys JWKS, audiences []string, next http.Handler, allowed
 			return jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
 		},
 		SigningMethod:       jwt.SigningMethodRS256,
-		CredentialsOptional: true,
+		CredentialsOptional: false,
 	})
 
 	return CORSControlHandler(allowedOrigins, mw.Handler(next))
@@ -211,4 +216,47 @@ func RequestUserCustomerCode(ctx context.Context) string {
 		customerCode = ""
 	}
 	return customerCode
+}
+
+type JWKS struct {
+	Keys []struct {
+		Kty string   `json:"kty"`
+		Kid string   `json:"kid"`
+		Use string   `json:"use"`
+		N   string   `json:"n"`
+		E   string   `json:"e"`
+		X5c []string `json:"x5c"`
+	} `json:"keys"`
+}
+
+func FetchAuth0Cert(domain string) (JWKS, error) {
+	resp, err := http.Get(fmt.Sprintf("https://%s/.well-known/jwks.json", domain))
+	if err != nil {
+		return JWKS{}, err
+	}
+	defer resp.Body.Close()
+
+	keys := JWKS{}
+	err = json.NewDecoder(resp.Body).Decode(&keys)
+	if err != nil {
+		return JWKS{}, err
+	}
+
+	return keys, nil
+}
+
+func getPemCert(keys JWKS, token *jwt.Token) (string, error) {
+	cert := ""
+	for k := range keys.Keys {
+		if token.Header["kid"] == keys.Keys[k].Kid {
+			cert = "-----BEGIN CERTIFICATE-----\n" + keys.Keys[k].X5c[0] + "\n-----END CERTIFICATE-----"
+		}
+	}
+
+	if cert == "" {
+		err := errors.New("unable to find appropriate key")
+		return cert, err
+	}
+
+	return cert, nil
 }
