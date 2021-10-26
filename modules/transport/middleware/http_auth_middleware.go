@@ -27,6 +27,17 @@ var Keys contextKeys = contextKeys{
 	UserKey:              "user",
 }
 
+type JWKS struct {
+	Keys []struct {
+		Kty string   `json:"kty"`
+		Kid string   `json:"kid"`
+		Use string   `json:"use"`
+		N   string   `json:"n"`
+		E   string   `json:"e"`
+		X5c []string `json:"x5c"`
+	} `json:"keys"`
+}
+
 // Standard Auth0 HTTP authentication middleware. If the endpoint being secured by this middleware is an RPC endpoint, set "useJSONRPC to true"
 func HTTPAuthMiddleware(keys JWKS, audiences []string, next http.Handler, allowedOrigins []string, issuer string, useJSONRPC bool) http.Handler {
 	middlewareOptions := jwtmiddleware.Options{}
@@ -37,41 +48,54 @@ func HTTPAuthMiddleware(keys JWKS, audiences []string, next http.Handler, allowe
 
 	middlewareOptions.SigningMethod = jwt.SigningMethodRS256
 	middlewareOptions.CredentialsOptional = useJSONRPC
+	middlewareOptions.ValidationKeyGetter = func(token *jwt.Token) (interface{}, error) {
+		claims := token.Claims.(jwt.MapClaims)
 
-	mw := jwtmiddleware.New(jwtmiddleware.Options{
-		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
-			claims := token.Claims.(jwt.MapClaims)
-
-			if _, ok := claims["scope"]; !ok {
-				valid := false
-				for _, audience := range audiences {
-					valid = !claims.VerifyAudience(audience, false)
-					if valid {
-						break
-					}
-				}
-				if !valid {
-					return token, errors.New("Invalid audience.")
+		if _, ok := claims["scope"]; !ok {
+			valid := false
+			for _, audience := range audiences {
+				valid = !claims.VerifyAudience(audience, false)
+				if valid {
+					break
 				}
 			}
-
-			checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(issuer, false)
-			if !checkIss {
-				return nil, errors.New("invalid issuer")
+			if !valid {
+				return token, errors.New("Invalid audience.")
 			}
+		}
 
-			cert, err := getPemCert(keys, token)
-			if err != nil {
-				return nil, err
-			}
+		checkIss := token.Claims.(jwt.MapClaims).VerifyIssuer(issuer, false)
+		if !checkIss {
+			return nil, errors.New("invalid issuer")
+		}
 
-			return jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
-		},
-		SigningMethod:       jwt.SigningMethodRS256,
-		CredentialsOptional: false,
-	})
+		cert, err := getPemCert(keys, token)
+		if err != nil {
+			return nil, err
+		}
+
+		return jwt.ParseRSAPublicKeyFromPEM([]byte(cert))
+	}
+
+	mw := jwtmiddleware.New(middlewareOptions)
 
 	return CORSControlHandler(allowedOrigins, mw.Handler(next))
+}
+
+func getPemCert(keys JWKS, token *jwt.Token) (string, error) {
+	cert := ""
+	for k := range keys.Keys {
+		if token.Header["kid"] == keys.Keys[k].Kid {
+			cert = "-----BEGIN CERTIFICATE-----\n" + keys.Keys[k].X5c[0] + "\n-----END CERTIFICATE-----"
+		}
+	}
+
+	if cert == "" {
+		err := errors.New("unable to find appropriate key")
+		return cert, err
+	}
+
+	return cert, nil
 }
 
 func SetIsAnonymous(r *http.Request, value bool) *http.Request {
@@ -218,17 +242,6 @@ func RequestUserCustomerCode(ctx context.Context) string {
 	return customerCode
 }
 
-type JWKS struct {
-	Keys []struct {
-		Kty string   `json:"kty"`
-		Kid string   `json:"kid"`
-		Use string   `json:"use"`
-		N   string   `json:"n"`
-		E   string   `json:"e"`
-		X5c []string `json:"x5c"`
-	} `json:"keys"`
-}
-
 func FetchAuth0Cert(domain string) (JWKS, error) {
 	resp, err := http.Get(fmt.Sprintf("https://%s/.well-known/jwks.json", domain))
 	if err != nil {
@@ -243,20 +256,4 @@ func FetchAuth0Cert(domain string) (JWKS, error) {
 	}
 
 	return keys, nil
-}
-
-func getPemCert(keys JWKS, token *jwt.Token) (string, error) {
-	cert := ""
-	for k := range keys.Keys {
-		if token.Header["kid"] == keys.Keys[k].Kid {
-			cert = "-----BEGIN CERTIFICATE-----\n" + keys.Keys[k].X5c[0] + "\n-----END CERTIFICATE-----"
-		}
-	}
-
-	if cert == "" {
-		err := errors.New("unable to find appropriate key")
-		return cert, err
-	}
-
-	return cert, nil
 }
