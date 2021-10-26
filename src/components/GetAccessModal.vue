@@ -4,15 +4,6 @@
       <div class="modal-wrapper">
         <div class="card modal-container">
           <div class="card-body">
-            <font-awesome-icon
-              icon="arrow-left"
-              class="fa-w-16 fa-fw back-btn"
-              data-toggle="tooltip"
-              data-placement="bottom"
-              title="Back"
-              v-if="!stepOne"
-              @click="switchSteps(true)"
-            />
             <div class="card-title">
               <div class="row">
                 <div class="col"></div>
@@ -25,7 +16,7 @@
                 <div class="col"></div>
               </div>
             </div>
-            <form @submit.prevent="stepOne ? switchSteps(false) : getAccess()">
+            <form @submit.prevent="stepOne ? switchSteps() : processNewSignup()">
               <div v-if="stepOne" class="form-group">
                 <p style="text-align: center;">
                   Please enter your email and create a secure password to get access to the SDK, documentation and to set up a company account.
@@ -38,8 +29,8 @@
                   autocomplete="off"
                   v-model="email"
                 />
-                <small class="text-danger" v-if="!validEmail">
-                  Please enter a valid email address
+                <small v-if="emailError !== ''" class="text-danger">
+                  {{ emailError }}
                   <br/>
                 </small>
                 <br />
@@ -180,6 +171,7 @@ export default class GetAccessModal extends Vue {
   private companyName: string
   private companyWebsite: string
   private email: string
+  private emailError: string
   private firstName: string
   private lastName: string
   private password: string
@@ -196,6 +188,7 @@ export default class GetAccessModal extends Vue {
     this.companyName = ''
     this.companyWebsite = ''
     this.email = ''
+    this.emailError = ''
     this.firstName = ''
     this.lastName = ''
     this.password = ''
@@ -223,6 +216,7 @@ export default class GetAccessModal extends Vue {
     this.checkWebsite(false)
   }
 
+  // TODO: Add better checks for all check* functions
   private checkCompanyName (checkLength: boolean) {
     this.validCompanyName = !checkLength || this.companyName !== ''
   }
@@ -230,6 +224,7 @@ export default class GetAccessModal extends Vue {
   private checkEmail (checkLength: boolean) {
     const regex = new RegExp(/(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/)
     this.validEmail = !checkLength || (this.email.length > 0 && regex.test(this.email))
+    this.emailError = this.validEmail ? '' : 'Please enter a valid email address'
   }
 
   private checkFirstName (checkLength: boolean) {
@@ -249,7 +244,7 @@ export default class GetAccessModal extends Vue {
     this.validWebsite = !checkLength || this.companyWebsite !== ''
   }
 
-  private getAccess (): void {
+  private processNewSignup (): void {
     // TODO: Find a better way of doing this
     this.checkCompanyName(true)
     this.checkFirstName(true)
@@ -258,26 +253,49 @@ export default class GetAccessModal extends Vue {
     if (!this.validCompanyName || !this.validFirstName || !this.validLastName || !this.validWebsite) {
       return
     }
+
+    // Send this off to the backend to record the new sign up in hubspot and don't wait for the response
+    this.$apiService.processNewSignup({
+      company_name: this.companyName,
+      company_website: this.companyWebsite,
+      email: this.email,
+      first_name: this.firstName,
+      last_name: this.lastName
+    })
+
+    this.$authService.login(this.email, this.password)
+      .catch((err: Error) => {
+        console.log('Something went wrong processing the new sign up information')
+        console.log(err)
+      })
+  }
+
+  private switchSteps () {
+    // TODO: Find a better way of doing this
+    this.checkEmail(true)
+    this.checkPassword(true)
+    if (!this.validEmail || !this.validPassword) {
+      return
+    }
+
     this.$authService.getAccess(
       this.firstName,
       this.lastName,
       this.email,
-      this.password,
-      this.companyName,
-      this.companyWebsite
+      this.password
     )
-  }
-
-  private switchSteps (isFirstStep: boolean) {
-    // TODO: Find a better way of doing this
-    if (!isFirstStep) {
-      this.checkEmail(true)
-      this.checkPassword(true)
-      if (!this.validEmail || !this.validPassword) {
-        return
-      }
-    }
-    this.stepOne = isFirstStep
+      .then(() => {
+        this.stepOne = false
+      })
+      .catch((err: Error) => {
+        console.log('Something went wrong during the sign up process')
+        console.log(err)
+        this.emailError = 'Email has already been used to sign up or is invalid'
+        setTimeout(() => {
+          this.emailError = ''
+        }, 5000)
+        this.stepOne = true
+      })
   }
 }
 </script>

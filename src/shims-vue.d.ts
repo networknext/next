@@ -50,7 +50,7 @@ declare module '*.vue' {
     login (username: string, password: string): Promise<any>;
     logout (): void;
     signUp (): void;
-    getAccess(firstName: string, lastName: string, email: string, password: string, companyName: string, companyWebsite: string): void;
+    getAccess(firstName: string, lastName: string, email: string, password: string): Promise<Error | undefined>;
     refreshToken (): Promise<any>;
   }
 

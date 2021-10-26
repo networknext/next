@@ -41,7 +41,7 @@ export class AuthService {
     )
   }
 
-  public getAccess (firstName: string, lastName: string, email: string, password: string, companyName: string, companyWebsite: string) {
+  public getAccess (firstName: string, lastName: string, email: string, password: string): Promise<Error | undefined> {
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
       Vue.prototype.$gtag.event('clicked sign up', {
         event_category: 'Account Creation',
@@ -49,33 +49,14 @@ export class AuthService {
       })
     }
     // TODO: this.auth0Client.signupAndAuthorize doesn't work here for some reason
-    const signUpPromise = new Promise((resolve: any, reject: any) => this.auth0Client.signup({
+    return new Promise((resolve: any, reject: any) => this.auth0Client.signup({
       username: email,
       email: email,
       password: password,
       connection: 'Username-Password-Authentication'
     }, (err: Auth0Error | null) => {
-      err ? reject(Error('Auth0 failed to sign up user')) : resolve()
+      err ? reject(new Error('Auth0 failed to sign up user')) : resolve()
     }))
-
-    signUpPromise
-      .then(() => {
-        return Vue.prototype.$apiService.processNewSignup({
-          company_name: companyName,
-          company_website: companyWebsite,
-          email: email,
-          first_name: firstName,
-          last_name: lastName
-        })
-      })
-      .then(() => {
-        // Once the user successfully signs up, use the username and password to log them in seemlessly
-        this.login(email, password)
-      })
-      .catch((err: Error) => {
-        console.log('Something went wrong during the sign up process')
-        console.log(err)
-      })
   }
 
   // TODO: This should be an async function instead of the weird nested promise

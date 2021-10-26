@@ -230,7 +230,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     return
   }
 
-  if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && !store.getters.isOwner && ViewerRoutes.indexOf(to.name || '') === -1) {
+  if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && !store.getters.isOwner && !store.getters.isAdmin && ViewerRoutes.indexOf(to.name || '') === -1) {
     store.commit('UPDATE_CURRENT_PAGE', '/map')
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
