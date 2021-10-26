@@ -1,12 +1,12 @@
 <template>
-  <div class="card-body" id="billing-page">
+  <div class="card-body" id="usageDash-page">
     <div class="row">
       <iframe
         class="col"
-        id="billingDash"
-        :src="billingDashURL"
+        id="usageDash"
+        :src="usageDashDashURL"
         style="min-height: 5200px;"
-        v-if="billingDashURL !== ''"
+        v-if="usageDashDashURL !== ''"
         frameborder="0"
       >
       </iframe>
@@ -18,14 +18,14 @@
 import { Component, Vue } from 'vue-property-decorator'
 
 @Component
-export default class Billing extends Vue {
-  private billingDashURL: string
+export default class Usage extends Vue {
+  private usageDashDashURL: string
 
   private unwatchFilter: any
 
   constructor () {
     super()
-    this.billingDashURL = ''
+    this.usageDashDashURL = ''
   }
 
   private mounted () {
@@ -35,23 +35,23 @@ export default class Billing extends Vue {
         return getters.currentFilter
       },
       () => {
-        this.fetchBillingSummary()
+        this.fetchUsageSummary()
       }
     )
 
-    this.fetchBillingSummary()
+    this.fetchUsageSummary()
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
   }
 
-  private fetchBillingSummary () {
-    this.$apiService.fetchBillingSummary({
+  private fetchUsageSummary () {
+    this.$apiService.fetchUsageSummary({
       company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
-        this.billingDashURL = response.url || ''
+        this.usageDashDashURL = response.url || ''
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the billing summary dashboard')

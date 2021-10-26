@@ -6,7 +6,7 @@ import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 import AccountSettings from '@/components/AccountSettings.vue'
 import Analytics from '@/components/Analytics.vue'
-import Billing from '@/components/Billing.vue'
+import Usage from '@/components/Usage.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
 import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
@@ -49,9 +49,9 @@ const routes: Array<RouteConfig> = [
         component: Analytics
       },
       {
-        path: 'billing',
-        name: 'billing',
-        component: Billing
+        path: 'usage',
+        name: 'usage',
+        component: Usage
       },
       {
         path: 'supply',
@@ -191,7 +191,7 @@ const OwnerRoutes = [
 
 // Add or remove these to open up beta features
 const BetaRoutes = [
-  'billing',
+  'usage',
   'supply',
   'analytics'
 ]
@@ -276,7 +276,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     next('/map')
     return
   }
-  if (!store.getters.isAdmin && !store.getters.hasBilling && (to.name === 'billing')) {
+  if (!store.getters.isAdmin && !store.getters.hasBilling && (to.name === 'usage')) {
     store.commit('UPDATE_CURRENT_PAGE', 'map')
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
@@ -286,11 +286,11 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
 
   if (to.name === 'explore') {
-    store.commit('UPDATE_CURRENT_PAGE', 'notifications')
+    store.commit('UPDATE_CURRENT_PAGE', 'usage')
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
       (window as any).Intercom('update')
     }
-    next('/explore/notifications')
+    next('/explore/usage')
     return
   }
   if (to.name === 'settings') {
