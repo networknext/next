@@ -812,7 +812,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 		serverTrackerHandler := http.HandlerFunc(transport.ServerTrackerHandlerFunc(serverTracker))
-		router.Handle("/servers", middleware.PlainHttpAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), serverTrackerHandler, strings.Split(allowedOrigins, ","), auth0Issuer))
+		router.Handle("/servers", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), serverTrackerHandler, strings.Split(allowedOrigins, ","), auth0Issuer, false))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
