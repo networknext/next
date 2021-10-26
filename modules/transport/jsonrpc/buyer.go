@@ -2783,7 +2783,7 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *Fe
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
-func (s *BuyersService) FetchBillingSummaryDashboard(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
+func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
