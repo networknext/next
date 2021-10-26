@@ -41,6 +41,25 @@ var (
 	buildtime string
 )
 
+const (
+	// Prod
+	PROD_AUTH0_AUDIENCE      = "https://portal.networknext.com"
+	PROD_AUTH0_CLIENT_ID     = "6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb"
+	PROD_AUTH0_CLIENT_SECRET = "EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj"
+	PROD_AUTH0_DOMAIN        = "networknext.auth0.com"
+	// Dev
+	DEV_AUTH0_AUDIENCE      = "https://next-dev.networknext.com"
+	DEV_AUTH0_CLIENT_ID     = "qUcgJkTEztKAbJirBexzAkau4mXm6n9Q"
+	DEV_AUTH0_CLIENT_SECRET = "XQEeSI3CZLeSEbboMpgla-EmLyOzPqIc1zYKB2qTWQGmvrHvWrLzd5iOXXxkzDdY"
+	DEV_AUTH0_DOMAIN        = "auth-dev.networknext.com"
+	// Staging TBD
+	// Local Development
+	LOCAL_AUTH0_AUDIENCE      = "https://next-local.networknext.com"
+	LOCAL_AUTH0_CLIENT_ID     = "3lxkAg0s0tiaCAeVoe2p61QSGDYJ6MsV"
+	LOCAL_AUTH0_CLIENT_SECRET = "kTXtSGiH9oDBZqR4G-unfw5Bytjb8fcRoJGCuY3TEiJrdGmVEP8JO74tpNZChBzA"
+	LOCAL_AUTH0_DOMAIN        = "auth-dev.networknext.com"
+)
+
 type arrayFlags []string
 
 func (i *arrayFlags) String() string {
@@ -324,20 +343,20 @@ func refreshAuth(env Environment) error {
 	// TODO: Figure out a better way of doing this
 	switch env.Name {
 	case "prod":
-		audience = "https://portal.networknext.com"
-		clientID = "6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb"
-		clientSecret = "EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj"
-		domain = "networknext.auth0.com"
+		audience = PROD_AUTH0_AUDIENCE
+		clientID = PROD_AUTH0_CLIENT_ID
+		clientSecret = PROD_AUTH0_CLIENT_SECRET
+		domain = PROD_AUTH0_DOMAIN
 	case "dev":
-		audience = "https://next-dev.networknext.com"
-		clientID = "qUcgJkTEztKAbJirBexzAkau4mXm6n9Q"
-		clientSecret = "XQEeSI3CZLeSEbboMpgla-EmLyOzPqIc1zYKB2qTWQGmvrHvWrLzd5iOXXxkzDdY"
-		domain = "auth-dev.networknext-dev.com"
+		audience = DEV_AUTH0_AUDIENCE
+		clientID = DEV_AUTH0_CLIENT_ID
+		clientSecret = DEV_AUTH0_CLIENT_SECRET
+		domain = DEV_AUTH0_DOMAIN
 	case "local":
-		audience = "https://next-local.networknext.com"
-		clientID = "3lxkAg0s0tiaCAeVoe2p61QSGDYJ6MsV"
-		clientSecret = "kTXtSGiH9oDBZqR4G-unfw5Bytjb8fcRoJGCuY3TEiJrdGmVEP8JO74tpNZChBzA"
-		domain = "auth-dev.networknext.com"
+		audience = LOCAL_AUTH0_AUDIENCE
+		clientID = LOCAL_AUTH0_CLIENT_ID
+		clientSecret = LOCAL_AUTH0_CLIENT_SECRET
+		domain = LOCAL_AUTH0_DOMAIN
 	}
 
 	req, err := http.NewRequest(
