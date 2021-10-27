@@ -16,7 +16,7 @@
                 <div class="col"></div>
               </div>
             </div>
-            <form @submit.prevent="stepOne ? switchSteps() : processNewSignup()">
+            <form id="get-access-form" @submit.prevent="stepOne ? switchSteps() : processNewSignup()">
               <div v-if="stepOne" class="form-group">
                 <p style="text-align: center;">
                   Please enter your email and create a secure password to get access to the SDK, documentation and to set up a company account.
@@ -29,7 +29,7 @@
                   autocomplete="off"
                   v-model="email"
                 />
-                <small v-if="emailError !== ''" class="text-danger">
+                <small id="email-error" v-if="emailError !== ''" class="text-danger">
                   {{ emailError }}
                   <br/>
                 </small>
@@ -42,7 +42,7 @@
                   autocomplete="off"
                   v-model="password"
                 />
-                <small class="text-danger" v-if="!validPassword">
+                <small id="password-error" class="text-danger" v-if="!validPassword">
                   Please enter a valid password
                   <br/>
                 </small>
@@ -53,23 +53,23 @@
                   </div>
                   <ul style="padding-left: inherit;">
                     <li>
-                      At least 8 characters <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': password.length >= 8 ? 'green' : 'red', 'width': '2rem'}"/>
+                      At least 8 characters <font-awesome-icon id="length-check" icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': password.length >= 8 ? 'green' : 'red', 'width': '2rem'}"/>
                     </li>
                     <li>
                       At least 3 of the following:
                     </li>
                     <ul>
                       <li>
-                        Lower case letters (a-z) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasLowerCase ? 'green' : 'red', 'width': '2rem'}"/>
+                        Lower case letters (a-z) <font-awesome-icon id="lower-check" icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasLowerCase ? 'green' : 'red', 'width': '2rem'}"/>
                       </li>
                       <li>
-                        Upper case letters (A-Z) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasUpperCase ? 'green' : 'red', 'width': '2rem'}"/>
+                        Upper case letters (A-Z) <font-awesome-icon id="upper-check" icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasUpperCase ? 'green' : 'red', 'width': '2rem'}"/>
                       </li>
                       <li>
-                        Numbers (0-9) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasNumbers ? 'green' : 'red', 'width': '2rem'}"/>
+                        Numbers (0-9) <font-awesome-icon id="number-check" icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasNumbers ? 'green' : 'red', 'width': '2rem'}"/>
                       </li>
                       <li>
-                        Special characters (ex. !@#$%^&*) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasCharacters ? 'green' : 'red', 'width': '2rem'}"/>
+                        Special characters (ex. !@#$%^&*) <font-awesome-icon id="special-check" icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasCharacters ? 'green' : 'red', 'width': '2rem'}"/>
                       </li>
                     </ul>
                   </ul>
@@ -87,8 +87,9 @@
                   autocomplete="off"
                   v-model="firstName"
                 />
-                <small class="text-danger" v-if="!validFirstName">
-                  Please enter your first name
+                <small id="first-name-error" v-if="firstNameError !== ''" class="text-danger">
+                  {{ firstNameError }}
+                  <br/>
                 </small>
                 <br />
                 <input
@@ -99,8 +100,9 @@
                   autocomplete="off"
                   v-model="lastName"
                 />
-                <small class="text-danger" v-if="!validLastName">
-                  Please enter your last name
+                <small id="last-name-error" v-if="lastNameError !== ''" class="text-danger">
+                  {{ lastNameError }}
+                  <br/>
                 </small>
                 <br />
                 <input
@@ -111,8 +113,9 @@
                   autocomplete="off"
                   v-model="companyName"
                 />
-                <small class="text-danger" v-if="!validCompanyName">
-                  Please enter your company's name
+                <small v-if="companyNameError !== ''" class="text-danger">
+                  {{ companyNameError }}
+                  <br/>
                 </small>
                 <br />
                 <input
@@ -123,8 +126,9 @@
                   autocomplete="off"
                   v-model="companyWebsite"
                 />
-                <small class="text-danger" v-if="!validWebsite">
-                  Please enter your company's website
+                <small v-if="companyWebsiteError !== ''" class="text-danger">
+                  {{ companyWebsiteError }}
+                  <br/>
                 </small>
               </div>
               <button type="submit" class="btn btn-primary btn-block">
@@ -149,7 +153,7 @@ import { Component, Vue } from 'vue-property-decorator'
 @Component
 export default class GetAccessModal extends Vue {
   get hasCharacters () {
-    const regex = new RegExp(/([#$%&'*+/=?^_`{|}~-])/)
+    const regex = new RegExp(/([#$%&'*+/=?^!_`{|}~-])/)
     return regex.test(this.password)
   }
 
@@ -169,11 +173,15 @@ export default class GetAccessModal extends Vue {
   }
 
   private companyName: string
+  private companyNameError: string
   private companyWebsite: string
+  private companyWebsiteError: string
   private email: string
   private emailError: string
   private firstName: string
+  private firstNameError: string
   private lastName: string
+  private lastNameError: string
   private password: string
   private stepOne: boolean
   private validCompanyName: boolean
@@ -186,11 +194,15 @@ export default class GetAccessModal extends Vue {
   constructor () {
     super()
     this.companyName = ''
+    this.companyNameError = ''
     this.companyWebsite = ''
+    this.companyWebsiteError = ''
     this.email = ''
     this.emailError = ''
     this.firstName = ''
+    this.firstNameError = ''
     this.lastName = ''
+    this.lastNameError = ''
     this.password = ''
     this.stepOne = true
     this.validCompanyName = false
@@ -218,7 +230,9 @@ export default class GetAccessModal extends Vue {
 
   // TODO: Add better checks for all check* functions
   private checkCompanyName (checkLength: boolean) {
-    this.validCompanyName = !checkLength || this.companyName !== ''
+    const regex = new RegExp(/^[a-zA-Z]+$/)
+    this.validCompanyName = !checkLength || (this.companyName.length > 0 && regex.test(this.companyName))
+    this.companyNameError = this.validCompanyName ? '' : 'Please enter a valid company name'
   }
 
   private checkEmail (checkLength: boolean) {
@@ -228,11 +242,15 @@ export default class GetAccessModal extends Vue {
   }
 
   private checkFirstName (checkLength: boolean) {
-    this.validFirstName = !checkLength || this.firstName !== ''
+    const regex = new RegExp(/^[a-zA-Z]+$/)
+    this.validFirstName = !checkLength || (this.firstName.length > 0 && regex.test(this.firstName))
+    this.firstNameError = this.validFirstName ? '' : 'Please enter a valid first name'
   }
 
   private checkLastName (checkLength: boolean) {
-    this.validLastName = !checkLength || this.lastName !== ''
+    const regex = new RegExp(/^[a-zA-Z]+$/)
+    this.validLastName = !checkLength || (this.lastName.length > 0 && regex.test(this.lastName))
+    this.lastNameError = this.validLastName ? '' : 'Please enter a valid last name'
   }
 
   private checkPassword (checkLength: boolean) {
@@ -241,7 +259,9 @@ export default class GetAccessModal extends Vue {
   }
 
   private checkWebsite (checkLength: boolean) {
-    this.validWebsite = !checkLength || this.companyWebsite !== ''
+    const regex = new RegExp(/((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)/)
+    this.validWebsite = !checkLength || (this.companyWebsite.length > 0 && regex.test(this.companyWebsite))
+    this.companyWebsiteError = this.validWebsite ? '' : 'Please enter a valid website. IE: https://networknext.com'
   }
 
   private processNewSignup (): void {
@@ -279,8 +299,6 @@ export default class GetAccessModal extends Vue {
     }
 
     this.$authService.getAccess(
-      this.firstName,
-      this.lastName,
       this.email,
       this.password
     )

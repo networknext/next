@@ -41,7 +41,7 @@ export class AuthService {
     )
   }
 
-  public getAccess (firstName: string, lastName: string, email: string, password: string): Promise<Error | undefined> {
+  public getAccess (email: string, password: string): Promise<Error | undefined> {
     if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
       Vue.prototype.$gtag.event('clicked sign up', {
         event_category: 'Account Creation',
