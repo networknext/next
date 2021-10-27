@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"expvar"
 	"fmt"
 	"net"
@@ -16,12 +16,12 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/fake_relays"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport"
 
-	"github.com/go-kit/kit/log/level"
 	"github.com/gorilla/mux"
 )
 
@@ -50,19 +50,19 @@ func mainReturnWithCode() int {
 
 	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get logger: %v", err)
 		return 1
 	}
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get metrics handler: %v", err)
 		return 1
 	}
 
 	fakeRelayMetrics, err := metrics.NewFakeRelayMetrics(ctx, metricsHandler, serviceName, "fake_relays", "Fake Relays", "")
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create fake relays metrics", "err", err)
+		core.Error("failed to create fake relays metrics: %v", err)
 		return 1
 	}
 
@@ -70,14 +70,15 @@ func mainReturnWithCode() int {
 	relayPublicKeyStr := envvar.Get("RELAY_PUBLIC_KEY", "8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
 	relayPublicKey, err := base64.StdEncoding.DecodeString(relayPublicKeyStr)
 	if err != nil {
-		level.Error(logger).Log("msg", fmt.Sprintf("could not decode to base64: %s", relayPublicKeyStr), "err", err)
+		core.Error("failed to decode RELAY_PUBLIC_KEY %s to base64: %v", relayPublicKeyStr, err)
 		return 1
 	}
 
 	// Get the number of fake relays to produce
 	numRelays, err := envvar.GetInt("NUM_FAKE_RELAYS", 10)
 	if err != nil {
-		level.Error(logger).Log("msg", "error reading NUM_FAKE_RELAYS as int", "err", err)
+		core.Error("failed to parse NUM_FAKE_RELAYS: %v", err)
+		return 1
 	}
 
 	// Get the Relay Gateway's Load Balancer's IP
@@ -86,22 +87,22 @@ func mainReturnWithCode() int {
 	if gcpProjectID != "" {
 		ip := net.ParseIP(gatewayAddr)
 		if ip == nil {
-			level.Error(logger).Log("msg", fmt.Sprintf("could not parse relay gatway's load balancer's IP: %s", gatewayAddr), "err", err)
+			core.Error("failed to parse the relay gateway's load balancer's IP: %s", gatewayAddr)
 			return 1
 		}
 	}
 
 	// Get the relay update version
-	relayUpdateVersion, err := envvar.GetInt("RELAY_UPDATE_VERSION", 3)
+	relayUpdateVersion, err := envvar.GetInt("RELAY_UPDATE_VERSION", 4)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse RELAY_UPDATE_VERSION: %v", err)
 		return 1
 	}
 
 	// Create all the fake relays
-	relays, err := fake_relays.NewFakeRelays(numRelays, relayPublicKey, gatewayAddr, relayUpdateVersion, logger, fakeRelayMetrics)
+	relays, err := fake_relays.NewFakeRelays(numRelays, relayPublicKey, gatewayAddr, relayUpdateVersion, fakeRelayMetrics)
 	if err != nil {
-		level.Error(logger).Log("msg", "could not create fake relays", "err", err)
+		core.Error("failed to create fake relays: %v", err)
 		return 1
 	}
 
@@ -113,8 +114,9 @@ func mainReturnWithCode() int {
 	}
 
 	// Setup the status handler info
-	var statusData []byte
+	statusData := &metrics.FakeRelayStatus{}
 	var statusMutex sync.RWMutex
+
 	{
 		memoryUsed := func() float64 {
 			var m runtime.MemStats
@@ -127,23 +129,30 @@ func mainReturnWithCode() int {
 				fakeRelayMetrics.FakeRelayServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				fakeRelayMetrics.FakeRelayServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
-				statusDataString := fmt.Sprintf("%s\n", serviceName)
-				statusDataString += fmt.Sprintf("git hash %s\n", sha)
-				statusDataString += fmt.Sprintf("started %s\n", startTime.Format("Mon, 02 Jan 2006 15:04:05 EST"))
-				statusDataString += fmt.Sprintf("uptime %s\n", time.Since(startTime))
+				newStatusData := &metrics.FakeRelayStatus{}
 
-				statusDataString += fmt.Sprintf("%d goroutines\n", int(fakeRelayMetrics.FakeRelayServiceMetrics.Goroutines.Value()))
-				statusDataString += fmt.Sprintf("%.2f mb allocated\n", fakeRelayMetrics.FakeRelayServiceMetrics.MemoryAllocated.Value())
-				statusDataString += fmt.Sprintf("%d update invocations\n", int(fakeRelayMetrics.UpdateInvocations.Value()))
-				statusDataString += fmt.Sprintf("%d successful updates\n", int(fakeRelayMetrics.SuccessfulUpdateInvocations.Value()))
-				statusDataString += fmt.Sprintf("%d marshal binary errors\n", int(fakeRelayMetrics.ErrorMetrics.MarshalBinaryError.Value()))
-				statusDataString += fmt.Sprintf("%d unmarshal binary errors\n", int(fakeRelayMetrics.ErrorMetrics.UnmarshalBinaryError.Value()))
-				statusDataString += fmt.Sprintf("%d update post errors\n", int(fakeRelayMetrics.ErrorMetrics.UpdatePostError.Value()))
-				statusDataString += fmt.Sprintf("%d not OK response errors\n", int(fakeRelayMetrics.ErrorMetrics.NotOKResponseError.Value()))
-				statusDataString += fmt.Sprintf("%d resolve UDP address errors\n", int(fakeRelayMetrics.ErrorMetrics.ResolveUDPAddressError.Value()))
+				// Service Information
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+
+				// Service Metrics
+				newStatusData.Goroutines = int(fakeRelayMetrics.FakeRelayServiceMetrics.Goroutines.Value())
+				newStatusData.MemoryAllocated = fakeRelayMetrics.FakeRelayServiceMetrics.MemoryAllocated.Value()
+
+				// Invocations
+				newStatusData.UpdateInvocations = int(fakeRelayMetrics.UpdateInvocations.Value())
+				newStatusData.SuccessfulUpdateInvocations = int(fakeRelayMetrics.SuccessfulUpdateInvocations.Value())
+
+				// Error Metrics
+				newStatusData.MarshalBinaryError = int(fakeRelayMetrics.ErrorMetrics.MarshalBinaryError.Value())
+				newStatusData.UnmarshalBinaryError = int(fakeRelayMetrics.ErrorMetrics.UnmarshalBinaryError.Value())
+				newStatusData.NotOKResponseError = int(fakeRelayMetrics.ErrorMetrics.NotOKResponseError.Value())
+				newStatusData.ResolveUDPAddressError = int(fakeRelayMetrics.ErrorMetrics.ResolveUDPAddressError.Value())
 
 				statusMutex.Lock()
-				statusData = []byte(statusDataString)
+				statusData = newStatusData
 				statusMutex.Unlock()
 
 				time.Sleep(time.Second * 10)
@@ -152,13 +161,13 @@ func mainReturnWithCode() int {
 	}
 
 	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
 		statusMutex.RLock()
 		data := statusData
 		statusMutex.RUnlock()
-		buffer := bytes.NewBuffer(data)
-		_, err := buffer.WriteTo(w)
-		if err != nil {
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
@@ -166,6 +175,10 @@ func mainReturnWithCode() int {
 	errChan := make(chan error, 1)
 
 	port := envvar.Get("PORT", "30007")
+	if port == "" {
+		core.Error("PORT not set")
+		return 1
+	}
 	fmt.Printf("starting http server on :%s\n", port)
 
 	// Start HTTP server
@@ -180,7 +193,7 @@ func mainReturnWithCode() int {
 
 			err := http.ListenAndServe(":"+port, router)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				core.Error("failed to start http server: %v", err)
 				errChan <- err
 				return
 			}
@@ -193,14 +206,12 @@ func mainReturnWithCode() int {
 
 	select {
 	case <-termChan:
-		level.Debug(logger).Log("msg", "Received shutdown signal")
 		fmt.Println("Received shutdown signal.")
 
 		cancel()
 		// Wait for essential goroutines to finish up
 		wg.Wait()
 
-		level.Debug(logger).Log("msg", "Successfully shutdown")
 		fmt.Println("Successfully shutdown.")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
