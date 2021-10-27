@@ -250,7 +250,10 @@ func createStagingDatabaseBin(numRelays int) {
 	}
 	dbWrapper.SellerMap[seller.ID] = seller
 
-	// Create and fill in 80 datacenters
+	// Save the list of dest datacenters
+	destDatacenters := make(map[uint64]routing.Datacenter)
+
+	// Create and fill in 80 dest datacenters
 	for i := 0; i < 80; i++ {
 		name := fmt.Sprintf("staging.%d", i+1)
 		dc := routing.Datacenter{
@@ -261,6 +264,7 @@ func createStagingDatabaseBin(numRelays int) {
 			DatabaseID: int64(i + 1),
 		}
 		dbWrapper.DatacenterMap[dc.ID] = dc
+		destDatacenters[dc.ID] = dc
 	}
 
 	// Create and fill in fake relays and any additional datacenters
@@ -346,9 +350,12 @@ func createStagingDatabaseBin(numRelays int) {
 			BuyerID:      buyerStagingSeller.ID,
 			DatacenterID: dcID,
 		}
-		// Add the datacenter map to the mapping
-		dcMapsNext[dcID] = dcMapNext
-		dcMapsStagingSeller[dcID] = dcMapStagingSeller
+		// Add the datacenter map per buyer to the mapping
+		// Only include 80 dest datacenters
+		if _, exists := destDatacenters[dcID]; exists {
+			dcMapsNext[dcID] = dcMapNext
+			dcMapsStagingSeller[dcID] = dcMapStagingSeller
+		}
 	}
 
 	// Fill in the datacenter maps for the buyers
