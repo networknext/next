@@ -29,14 +29,14 @@
           <li class="nav-item" v-if="$store.getters.isAdmin">
             <router-link to="/explore/usage" class="nav-link" :class="{ active: $store.getters.currentPage === 'usage'}">Usage</router-link>
           </li>
-          <li class="nav-item">
-            <router-link to="/explore/notifications" class="nav-link" :class="{ active: $store.getters.currentPage === 'notifications'}">Notifications</router-link>
-          </li>
           <li class="nav-item" v-if="$store.getters.isAdmin">
             <router-link to="/explore/analytics" class="nav-link" :class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
           </li>
           <li class="nav-item" v-if="false && $store.getters.isSeller">
             <router-link to="/explore/supply" class="nav-link" :class="{ active: $store.getters.currentPage === 'supply'}">Supplier</router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/explore/notifications" class="nav-link" :class="{ active: $store.getters.currentPage === 'notifications'}">Notifications</router-link>
           </li>
         </ul>
       </div>
