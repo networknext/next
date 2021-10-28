@@ -46,12 +46,12 @@ const (
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
 	EmbeddedUserGroupID      = 3
-	BillingDashURI           = "/embed/dashboards-next/11"
-	AnalyticsDashURI         = "/embed/dashboards-next/12"
 )
 
 var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
+	UsageDashURIs             = [...]string{"/embed/dashboards-next/11", "/embed/dashboards-next/14"}
+	AnalyticsDashURI          = [...]string{"/embed/dashboards-next/12"}
 )
 
 type BuyersService struct {
@@ -2574,49 +2574,45 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	// Grab release notes notifications from cache
 	reply.ReleaseNotesNotifications = s.ReleaseNotesNotificationsCache
 
-	// TODO: Add this back in when we get analytics up and running
-	/*
-		user := r.Context().Value(middleware.Keys.UserKey)
-		if user == nil {
-			err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-			return &err
-		}
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+		return &err
+	}
 
-		claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-		requestID, ok := claims["sub"].(string)
-		if !ok {
-			err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
-			return &err
-		}
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
 
-		companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
-		if !ok {
-			err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
-			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
-			return &err
-		}
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+		s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v", err.Error()))
+		return &err
+	}
 
-		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
+	if err != nil {
+		err = fmt.Errorf("FetchNotifications() failed getting buyer with code: %v", err)
+		level.Error(s.Logger).Log("err", err)
+		return err
+	}
+
+	if buyer.Trial && !buyer.Analytics && middleware.VerifyAnyRole(r, middleware.AdminRole) {
+		nonce, err := GenerateRandomString(16)
 		if err != nil {
-			err = fmt.Errorf("FetchNotifications() failed getting buyer with code: %v", err)
-			level.Error(s.Logger).Log("err", err)
-			return err
+			err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
+			return &err
 		}
 
-
-		if buyer.Trial && !buyer.Analytics {
-			nonce, err := GenerateRandomString(16)
-			if err != nil {
-				err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-				s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
-				return &err
-			}
-
-			reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerSecret, nonce, requestID))
-		}
-	*/
+		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerSecret, nonce, requestID))
+	}
 
 	return nil
 }
@@ -2695,11 +2691,13 @@ type FetchSummaryDashboardArgs struct {
 }
 
 type FetchSummaryDashboardReply struct {
-	URL string `json:"url"`
+	URLs []string `json:"urls"`
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
 func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
+	reply.URLs = make([]string, 0)
+
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 	if !isAdmin && !middleware.VerifyAllRoles(r, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
@@ -2759,26 +2757,28 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *Fe
 	}
 
 	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
-	urlOptions := notifications.LookerURLOptions{
-		Host:            notifications.LOOKER_HOST,
-		Secret:          s.LookerSecret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-		GroupsIds:       []int{EmbeddedUserGroupID},
-		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
-		AccessFilters:   make(map[string]map[string]interface{}),
-		UserAttributes:  make(map[string]interface{}),
-		SessionLength:   3600,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(AnalyticsDashURI),
-		ForceLogout:     true,
-		Nonce:           fmt.Sprintf("\"%s\"", nonce),
-		Time:            time.Now().Unix(),
+	for _, dashURL := range AnalyticsDashURI {
+		urlOptions := notifications.LookerURLOptions{
+			Host:            notifications.LOOKER_HOST,
+			Secret:          s.LookerSecret,
+			ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+			GroupsIds:       []int{EmbeddedUserGroupID},
+			ExternalGroupId: "",
+			Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+			Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+			AccessFilters:   make(map[string]map[string]interface{}),
+			UserAttributes:  make(map[string]interface{}),
+			SessionLength:   3600,
+			EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
+			ForceLogout:     true,
+			Nonce:           fmt.Sprintf("\"%s\"", nonce),
+			Time:            time.Now().Unix(),
+		}
+
+		urlOptions.UserAttributes["customer_code"] = companyCode
+
+		reply.URLs = append(reply.URLs, notifications.BuildLookerURL(urlOptions))
 	}
-
-	urlOptions.UserAttributes["customer_code"] = companyCode
-
-	reply.URL = notifications.BuildLookerURL(urlOptions)
 	return nil
 }
 
@@ -2831,26 +2831,28 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchS
 	}
 
 	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
-	urlOptions := notifications.LookerURLOptions{
-		Host:            notifications.LOOKER_HOST,
-		Secret:          s.LookerSecret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-		GroupsIds:       []int{EmbeddedUserGroupID},
-		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
-		AccessFilters:   make(map[string]map[string]interface{}),
-		UserAttributes:  make(map[string]interface{}),
-		SessionLength:   3600,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(BillingDashURI),
-		ForceLogout:     true,
-		Nonce:           fmt.Sprintf("\"%s\"", nonce),
-		Time:            time.Now().Unix(),
+	for _, dashURL := range UsageDashURIs {
+		urlOptions := notifications.LookerURLOptions{
+			Host:            notifications.LOOKER_HOST,
+			Secret:          s.LookerSecret,
+			ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+			GroupsIds:       []int{EmbeddedUserGroupID},
+			ExternalGroupId: "",
+			Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+			Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+			AccessFilters:   make(map[string]map[string]interface{}),
+			UserAttributes:  make(map[string]interface{}),
+			SessionLength:   86400,
+			EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
+			ForceLogout:     true,
+			Nonce:           fmt.Sprintf("\"%s\"", nonce),
+			Time:            time.Now().Unix(),
+		}
+
+		urlOptions.UserAttributes["customer_code"] = companyCode
+
+		reply.URLs = append(reply.URLs, notifications.BuildLookerURL(urlOptions))
 	}
-
-	urlOptions.UserAttributes["customer_code"] = companyCode
-
-	reply.URL = notifications.BuildLookerURL(urlOptions)
 	return nil
 }
 
