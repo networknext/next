@@ -1531,3 +1531,426 @@ func GetAllSessionBilling2Info(sessionID int64, env Environment) ([]BigQueryBill
 	return rows, nil
 
 }
+
+func dumpSession2Summary(env Environment, sessionID uint64) {
+
+	// make a call for all the relays (there is no relay "singular" endpoint)
+	var relaysReply localjsonrpc.RelaysReply
+	relaysArg := localjsonrpc.RelaysArgs{} // empty args returns all relays
+	if err := makeRPCCall(env, &relaysReply, "OpsService.Relays", relaysArg); err != nil {
+		handleJSONRPCError(env, err)
+	}
+
+	relayNames := make(map[int64]string)
+	for _, relay := range relaysReply.Relays {
+		relayNames[int64(relay.ID)] = relay.Name
+	}
+
+	// make a call for the datacenters
+	var dcsReply localjsonrpc.DatacentersReply
+	dcsArgs := localjsonrpc.DatacentersArgs{}
+	if err := makeRPCCall(env, &dcsReply, "OpsService.Datacenters", dcsArgs); err != nil {
+		handleJSONRPCError(env, err)
+	}
+	dcNames := make(map[int64]string)
+	for _, dc := range dcsReply.Datacenters {
+		dcNames[int64(dc.ID)] = dc.Name
+	}
+
+	rows, err := GetAllSessionBilling2SummaryInfo(int64(sessionID), env)
+
+	var newRows []BigQueryBilling2EntrySummary
+
+	// process returned resultset - wire up relay and datacenter names
+	for index, row := range rows {
+
+		newRows = append(newRows, row)
+
+		newRows[index].DatacenterString = bigquery.NullString{StringVal: dcNames[row.DatacenterID.Int64], Valid: true}
+	}
+
+	bqBilling2SummaryDataEntryCSV := [][]string{{}}
+
+	bqBilling2SummaryDataEntryCSV = append(bqBilling2SummaryDataEntryCSV, []string{
+		"SessionID",
+		"BuyerID",
+		"UserHash",
+		"Datacenter",
+		"StartTimestamp",
+		"Latitude",
+		"Longitude",
+		"ISP",
+		"ConnectionType",
+		"PlatformType",
+		"Tags",
+		"ABTest",
+		"Pro",
+		"SdkVersion",
+		"EnvelopeBytesUp",
+		"EnvelopeBytesDown",
+		"ClientToServerPacketsSent",
+		"ServerToClientPacketsSent",
+		"ClientToServerPacketsLost",
+		"ServerToClientPacketsLost",
+		"ClientToServerPacketsOutOfOrder",
+		"ServerToClientPacketsOutOfOrder",
+		"NearRelayIDs",
+		"NearRelayRTTs",
+		"NearRelayJitters",
+		"NearRelayPacketLosses",
+		"EverOnNext",
+		"SessionDuration",
+		"TotalPriceSum",
+		"EnvelopeBytesUpSum",
+		"EnvelopeBytesDownSum",
+		"DurationOnNext",
+		"ClientAddress",
+	})
+
+	for _, billingEntry := range newRows {
+		// SessionID
+		sessionID := fmt.Sprintf("%016x", uint64(billingEntry.SessionID))
+		// BuyerID
+		buyerID := ""
+		if billingEntry.BuyerID.Valid {
+			buyerID = fmt.Sprintf("%016x", uint64(billingEntry.BuyerID.Int64))
+		}
+		// UserHash
+		userHash := ""
+		if billingEntry.UserHash.Valid {
+			userHash = fmt.Sprintf("%016x", billingEntry.UserHash.Int64)
+		}
+		// Datacenter
+		datacenter := ""
+		if billingEntry.DatacenterString.Valid {
+			datacenter = billingEntry.DatacenterString.StringVal
+		}
+		// StartTimestamp
+		startTimestamp := ""
+		if billingEntry.StartTimestamp.Valid {
+			startTimestamp = billingEntry.StartTimestamp.String()
+		}
+		// Latitude
+		latitude := ""
+		if billingEntry.Latitude.Valid {
+			latitude = fmt.Sprintf("%3.2f", billingEntry.Latitude.Float64)
+		}
+		// Longitude
+		longitude := ""
+		if billingEntry.Longitude.Valid {
+			longitude = fmt.Sprintf("%3.2f", billingEntry.Longitude.Float64)
+		}
+		// ISP
+		isp := ""
+		if billingEntry.ISP.Valid {
+			isp = billingEntry.ISP.StringVal
+		}
+		// ConnectionType
+		connectionType := ""
+		if billingEntry.ConnectionType.Valid {
+			connectionType = fmt.Sprintf("%d", billingEntry.ConnectionType.Int64)
+		}
+		// PlatformType
+		platformType := ""
+		if billingEntry.PlatformType.Valid {
+			platformType = fmt.Sprintf("%d", billingEntry.PlatformType.Int64)
+		}
+		// Tags
+		tags := ""
+		if len(billingEntry.Tags) > 0 {
+			for _, tag := range billingEntry.Tags {
+				tags += fmt.Sprintf("%016x", uint64(tag.Int64)) + ", "
+			}
+			tags = strings.TrimSuffix(tags, ", ")
+		}
+		// ABTest
+		abTest := ""
+		if billingEntry.ABTest.Valid && billingEntry.ABTest.Bool {
+			abTest = "true"
+		}
+		// Pro
+		pro := ""
+		if billingEntry.Pro.Valid && billingEntry.Pro.Bool {
+			pro = fmt.Sprintf("%t", billingEntry.Pro.Bool)
+		}
+		// SdkVersion
+		sdkVersion := ""
+		if billingEntry.SDKVersion.Valid {
+			sdkVersion = billingEntry.SDKVersion.StringVal
+		}
+		// EnvelopeBytesUp
+		envelopeBytesUp := ""
+		if billingEntry.EnvelopeBytesUp.Valid {
+			envelopeBytesUp = fmt.Sprintf("%d", billingEntry.EnvelopeBytesUp.Int64)
+		}
+		// EnvelopeBytesDown
+		envelopeBytesDown := ""
+		if billingEntry.EnvelopeBytesDown.Valid {
+			envelopeBytesDown = fmt.Sprintf("%d", billingEntry.EnvelopeBytesDown.Int64)
+		}
+		// ClientToServerPacketsSent
+		clientToServerPacketsSent := ""
+		if billingEntry.ClientToServerPacketsSent.Valid {
+			clientToServerPacketsSent = fmt.Sprintf("%d", billingEntry.ClientToServerPacketsSent.Int64)
+		}
+		// ServerToClientPacketsSent
+		serverToClientPacketsSent := ""
+		if billingEntry.ServerToClientPacketsSent.Valid {
+			serverToClientPacketsSent = fmt.Sprintf("%d", billingEntry.ServerToClientPacketsSent.Int64)
+		}
+		// ClientToServerPacketsLost
+		clientToServerPacketsLost := ""
+		if billingEntry.ClientToServerPacketsLost.Valid {
+			clientToServerPacketsLost = fmt.Sprintf("%d", billingEntry.ClientToServerPacketsLost.Int64)
+		}
+		// ServerToClientPacketsLost
+		serverToClientPacketsLost := ""
+		if billingEntry.ServerToClientPacketsLost.Valid {
+			serverToClientPacketsLost = fmt.Sprintf("%d", billingEntry.ServerToClientPacketsLost.Int64)
+		}
+		// ClientToServerPacketsOutOfOrder
+		clientToServerPacketsOutOfOrder := ""
+		if billingEntry.ClientToServerPacketsOutOfOrder.Valid {
+			clientToServerPacketsOutOfOrder = fmt.Sprintf("%d", billingEntry.ClientToServerPacketsOutOfOrder.Int64)
+		}
+		// ServerToClientPacketsOutOfOrder
+		serverToClientPacketsOutOfOrder := ""
+		if billingEntry.ServerToClientPacketsOutOfOrder.Valid {
+			serverToClientPacketsOutOfOrder = fmt.Sprintf("%d", billingEntry.ServerToClientPacketsOutOfOrder.Int64)
+		}
+		// NearRelayIDs
+		nearRelayIDs := ""
+		if len(billingEntry.NearRelayIDs) > 0 {
+			for _, relayID := range billingEntry.NearRelayIDs {
+				nearRelayIDs += fmt.Sprintf("%016x", uint64(relayID.Int64)) + ", "
+			}
+			nearRelayIDs = strings.TrimSuffix(nearRelayIDs, ", ")
+		}
+		// NearRelayRTTs
+		nearRelayRTTs := ""
+		if len(billingEntry.NearRelayRTTs) > 0 {
+			for _, relayID := range billingEntry.NearRelayRTTs {
+				nearRelayRTTs += fmt.Sprintf("%d", relayID.Int64) + ", "
+			}
+			nearRelayRTTs = strings.TrimSuffix(nearRelayRTTs, ", ")
+		}
+		// NearRelayJitters
+		nearRelayJitters := ""
+		if len(billingEntry.NearRelayJitters) > 0 {
+			for _, relayID := range billingEntry.NearRelayJitters {
+				nearRelayJitters += fmt.Sprintf("%d", relayID.Int64) + ", "
+			}
+			nearRelayJitters = strings.TrimSuffix(nearRelayJitters, ", ")
+		}
+		// NearRelayPacketLosses
+		nearRelayPacketLosses := ""
+		if len(billingEntry.NearRelayPacketLosses) > 0 {
+			for _, relayID := range billingEntry.NearRelayPacketLosses {
+				nearRelayPacketLosses += fmt.Sprintf("%d", relayID.Int64) + ", "
+			}
+			nearRelayPacketLosses = strings.TrimSuffix(nearRelayPacketLosses, ", ")
+		}
+		// EverOnNext
+		everOnNext := ""
+		if billingEntry.EverOnNext.Valid {
+			everOnNext = fmt.Sprintf("%t", billingEntry.EverOnNext.Bool)
+		}
+		// SessionDuration
+		sessionDuration := ""
+		if billingEntry.SessionDuration.Valid {
+			sessionDuration = fmt.Sprintf("%d", billingEntry.SessionDuration.Int64)
+		}
+		// TotalPriceSum
+		totalPriceSum := ""
+		if billingEntry.TotalPriceSum.Valid {
+			totalPriceSum = fmt.Sprintf("%d", billingEntry.TotalPriceSum.Int64)
+		}
+		// EnvelopeBytesUpSum
+		envelopeBytesUpSum := ""
+		if billingEntry.EnvelopeBytesUpSum.Valid {
+			envelopeBytesUpSum = fmt.Sprintf("%d", billingEntry.EnvelopeBytesUpSum.Int64)
+		}
+		// EnvelopeBytesDownSum
+		envelopeBytesDownSum := ""
+		if billingEntry.EnvelopeBytesDownSum.Valid {
+			envelopeBytesDownSum = fmt.Sprintf("%d", billingEntry.EnvelopeBytesDownSum.Int64)
+		}
+		// DurationOnNext
+		durationOnNext := ""
+		if billingEntry.DurationOnNext.Valid {
+			durationOnNext = fmt.Sprintf("%d", billingEntry.DurationOnNext.Int64)
+		}
+		// ClientAddress
+		clientAddress := ""
+		if billingEntry.ClientAddress.Valid {
+			clientAddress = billingEntry.ClientAddress.StringVal
+		}
+
+		bqBilling2SummaryDataEntryCSV = append(bqBilling2SummaryDataEntryCSV, []string{
+			sessionID,
+			buyerID,
+			userHash,
+			datacenter,
+			startTimestamp,
+			latitude,
+			longitude,
+			isp,
+			connectionType,
+			platformType,
+			tags,
+			abTest,
+			pro,
+			sdkVersion,
+			envelopeBytesUp,
+			envelopeBytesDown,
+			clientToServerPacketsSent,
+			serverToClientPacketsSent,
+			clientToServerPacketsLost,
+			serverToClientPacketsLost,
+			clientToServerPacketsOutOfOrder,
+			serverToClientPacketsOutOfOrder,
+			nearRelayIDs,
+			nearRelayRTTs,
+			nearRelayJitters,
+			nearRelayPacketLosses,
+			everOnNext,
+			sessionDuration,
+			totalPriceSum,
+			envelopeBytesUpSum,
+			envelopeBytesDownSum,
+			durationOnNext,
+			clientAddress,
+		})
+	}
+
+	fileName := "./session-summary-" + fmt.Sprintf("%016x", sessionID) + ".csv"
+	f, err := os.Create(fileName)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Error creating local CSV file %s: %v\n", fileName, err), 1)
+	}
+
+	writer := csv.NewWriter(f)
+	err = writer.WriteAll(bqBilling2SummaryDataEntryCSV)
+	if err != nil {
+		handleRunTimeError(fmt.Sprintf("Error writing local CSV file %s: %v\n", fileName, err), 1)
+	}
+	fmt.Println("CSV file written: ", fileName)
+	return
+
+}
+
+func GetAllSessionBilling2SummaryInfo(sessionID int64, env Environment) ([]BigQueryBilling2EntrySummary, error) {
+
+	ctx := context.Background()
+
+	var rows []BigQueryBilling2EntrySummary
+
+	var dbName string
+	var sql bytes.Buffer
+
+	sql.Write([]byte(`select 
+	sessionID,
+	buyerID,
+	userHash,
+	datacenterID,
+	startTimestamp,
+	latitude,
+	longitude,
+	isp,
+	connectionType,
+	platformType,
+	tags,
+	abTest,
+	pro,
+	sdkVersion,
+	envelopeBytesUp,
+	envelopeBytesDown,
+	clientToServerPacketsSent,
+	serverToClientPacketsSent,
+	clientToServerPacketsLost,
+	serverToClientPacketsLost,
+	clientToServerPacketsOutOfOrder,
+	serverToClientPacketsOutOfOrder,
+	nearRelayIDs,
+	nearRelayRTTs,
+	nearRelayJitters,
+	nearRelayPacketLosses,
+	everOnNext,
+	sessionDuration,
+	totalPriceSum,
+	envelopeBytesUpSum,
+	envelopeBytesDownSum,
+	durationOnNext,
+	clientAddress,
+    from `))
+
+	if env.Name != "prod" && env.Name != "dev" && env.Name != "staging" {
+		fmt.Println("Local/testing functionality TBD.")
+	} else {
+		if env.Name == "prod" {
+			sql.Write([]byte("network-next-v3-prod.prod.billing2_session_summary"))
+			dbName = "network-next-v3-prod"
+
+		} else if env.Name == "staging" {
+			sql.Write([]byte("network-next-v3-staging.staging.billing2_session_summary"))
+			dbName = "network-next-v3-staging"
+		} else if env.Name == "dev" {
+			sql.Write([]byte("network-next-v3-dev.dev.billing2_session_summary"))
+			dbName = "network-next-v3-dev"
+		}
+
+		sql.Write([]byte(" where sessionID = "))
+		sql.Write([]byte(fmt.Sprintf("%d", sessionID)))
+		// a timestamp must be provided although it is not relevant to this query
+		sql.Write([]byte(" and DATE(startTimestamp) >= '1968-05-01'"))
+
+		bqClient, err := bigquery.NewClient(ctx, dbName)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("GetAllSessionBilling2SummaryInfo() failed to create BigQuery client: %v", err), 1)
+			return nil, err
+		}
+		defer bqClient.Close()
+
+		q := bqClient.Query(string(sql.String()))
+
+		job, err := q.Run(ctx)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("GetAllSessionBilling2SummaryInfo() failed to query BigQuery: %v", err), 1)
+			return nil, err
+		}
+
+		status, err := job.Wait(ctx)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("GetAllSessionBilling2SummaryInfo() error waiting for job to complete: %v", err), 1)
+			return nil, err
+		}
+		if err := status.Err(); err != nil {
+			handleRunTimeError(fmt.Sprintf("GetAllSessionBilling2Info() job returned an error: %v", err), 1)
+			return nil, err
+		}
+
+		it, err := job.Read(ctx)
+		if err != nil {
+			handleRunTimeError(fmt.Sprintf("GetAllSessionBilling2SummaryInfo() job.Read() error: %v", err), 1)
+			return nil, err
+		}
+
+		// process result set and load rows
+		for {
+			var rec BigQueryBilling2EntrySummary
+			err := it.Next(&rec)
+
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				handleRunTimeError(fmt.Sprintf("GetAllSessionBilling2SummaryInfo() BigQuery iterator error: %v", err), 1)
+				return nil, err
+			}
+			rows = append(rows, rec)
+		}
+	}
+
+	return rows, nil
+
+}

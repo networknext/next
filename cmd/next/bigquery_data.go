@@ -187,6 +187,44 @@ type BigQueryBilling2Entry struct {
 	StaleRouteMatrix     bigquery.NullBool
 }
 
+// BigQueryBilling2EntrySummary contains 1 row of the BQ billing2_session_summary table
+type BigQueryBilling2EntrySummary struct {
+	SessionID                       int64
+	BuyerID                         bigquery.NullInt64
+	UserHash                        bigquery.NullInt64
+	DatacenterID                    bigquery.NullInt64
+	DatacenterString                bigquery.NullString
+	StartTimestamp                  bigquery.NullTimestamp
+	Latitude                        bigquery.NullFloat64
+	Longitude                       bigquery.NullFloat64
+	ISP                             bigquery.NullString
+	ConnectionType                  bigquery.NullInt64
+	PlatformType                    bigquery.NullInt64
+	Tags                            []bigquery.NullInt64
+	ABTest                          bigquery.NullBool
+	Pro                             bigquery.NullBool
+	SDKVersion                      bigquery.NullString
+	EnvelopeBytesUp                 bigquery.NullInt64
+	EnvelopeBytesDown               bigquery.NullInt64
+	ClientToServerPacketsSent       bigquery.NullInt64
+	ServerToClientPacketsSent       bigquery.NullInt64
+	ClientToServerPacketsLost       bigquery.NullInt64
+	ServerToClientPacketsLost       bigquery.NullInt64
+	ClientToServerPacketsOutOfOrder bigquery.NullInt64
+	ServerToClientPacketsOutOfOrder bigquery.NullInt64
+	NearRelayIDs                    []bigquery.NullInt64
+	NearRelayRTTs                   []bigquery.NullInt64
+	NearRelayJitters                []bigquery.NullInt64
+	NearRelayPacketLosses           []bigquery.NullInt64
+	EverOnNext                      bigquery.NullBool
+	SessionDuration                 bigquery.NullInt64
+	TotalPriceSum                   bigquery.NullInt64
+	EnvelopeBytesUpSum              bigquery.NullInt64
+	EnvelopeBytesDownSum            bigquery.NullInt64
+	DurationOnNext                  bigquery.NullInt64
+	ClientAddress                   bigquery.NullString
+}
+
 // BigQueryRelayPingsEntry contains 1 row of the BQ relay_pings table
 type BigQueryRelayPingsEntry struct {
 	Timestamp  time.Time `bigquery:"timestamp"`
