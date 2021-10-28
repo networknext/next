@@ -840,7 +840,9 @@ func dumpSession2(env Environment, sessionID uint64) {
 		"Timestamp",
 		"SessionID",
 		"SliceNumber",
-		"DirectRTT",
+		"DirectMinRTT",
+		"DirectMaxRTT",
+		"DirectPrimeRTT",
 		"DirectJitter",
 		"DirectPacketLoss",
 		"RealPacketLoss",
@@ -880,6 +882,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 		"EnvelopeBytesUpSum",
 		"EnvelopeBytesDownSum",
 		"DurationOnNext",
+		"StartTimestamp",
 		"NextRTT",
 		"NextJitter",
 		"NextPacketLoss",
@@ -917,8 +920,18 @@ func dumpSession2(env Environment, sessionID uint64) {
 		sessionID := fmt.Sprintf("%016x", uint64(billingEntry.SessionID))
 		// SliceNumber
 		sliceNumber := fmt.Sprintf("%d", billingEntry.SliceNumber)
-		// DirectRTT
-		directRTT := fmt.Sprintf("%d", billingEntry.DirectRTT)
+		// DirectMinRTT
+		directMinRTT := fmt.Sprintf("%d", billingEntry.DirectMinRTT)
+		// DirectMaxRTT
+		directMaxRTT := ""
+		if billingEntry.DirectMaxRTT.Valid {
+			directMaxRTT = fmt.Sprintf("%d", billingEntry.DirectMaxRTT.Int64)
+		}
+		// DirectPrimeRTT
+		directPrimeRTT := ""
+		if billingEntry.DirectPrimeRTT.Valid {
+			directPrimeRTT = fmt.Sprintf("%d", billingEntry.DirectPrimeRTT.Int64)
+		}
 		// DirectJitter
 		directJitter := fmt.Sprintf("%d", billingEntry.DirectJitter)
 		// DirectPacketLoss
@@ -981,6 +994,11 @@ func dumpSession2(env Environment, sessionID uint64) {
 		longitude := ""
 		if billingEntry.Longitude.Valid {
 			longitude = fmt.Sprintf("%3.2f", billingEntry.Longitude.Float64)
+		}
+		// ClientAddress
+		clientAddress := ""
+		if billingEntry.ClientAddress.Valid {
+			clientAddress = billingEntry.ClientAddress.StringVal
 		}
 		// ISP
 		isp := ""
@@ -1082,6 +1100,41 @@ func dumpSession2(env Environment, sessionID uint64) {
 			}
 			nearRelayPacketLosses = strings.TrimSuffix(nearRelayPacketLosses, ", ")
 		}
+		// EverOnNext
+		everOnNext := ""
+		if billingEntry.EverOnNext.Valid {
+			everOnNext = fmt.Sprintf("%t", billingEntry.EverOnNext.Bool)
+		}
+		// SessionDuration
+		sessionDuration := ""
+		if billingEntry.SessionDuration.Valid {
+			sessionDuration = fmt.Sprintf("%d", billingEntry.SessionDuration.Int64)
+		}
+		// TotalPriceSum
+		totalPriceSum := ""
+		if billingEntry.TotalPriceSum.Valid {
+			totalPriceSum = fmt.Sprintf("%d", billingEntry.TotalPriceSum.Int64)
+		}
+		// EnvelopeBytesUpSum
+		envelopeBytesUpSum := ""
+		if billingEntry.EnvelopeBytesUpSum.Valid {
+			envelopeBytesUpSum = fmt.Sprintf("%d", billingEntry.EnvelopeBytesUpSum.Int64)
+		}
+		// EnvelopeBytesDownSum
+		envelopeBytesDownSum := ""
+		if billingEntry.EnvelopeBytesDownSum.Valid {
+			envelopeBytesDownSum = fmt.Sprintf("%d", billingEntry.EnvelopeBytesDownSum.Int64)
+		}
+		// DurationOnNext
+		durationOnNext := ""
+		if billingEntry.DurationOnNext.Valid {
+			durationOnNext = fmt.Sprintf("%d", billingEntry.DurationOnNext.Int64)
+		}
+		// StartTimestamp
+		startTimestamp := ""
+		if billingEntry.StartTimestamp.Valid {
+			startTimestamp = billingEntry.StartTimestamp.String()
+		}
 		// NextRTT
 		nextRTT := ""
 		if billingEntry.NextRTT.Valid {
@@ -1152,6 +1205,16 @@ func dumpSession2(env Environment, sessionID uint64) {
 		if billingEntry.RouteChanged.Valid && billingEntry.RouteChanged.Bool {
 			routeChanged = "true"
 		}
+		// NextBytesUp
+		nextBytesUp := ""
+		if billingEntry.NextBytesUp.Valid {
+			nextBytesUp = fmt.Sprintf("%d", billingEntry.NextBytesUp.Int64)
+		}
+		// NextBytesDown
+		nextBytesDown := ""
+		if billingEntry.NextBytesDown.Valid {
+			nextBytesDown = fmt.Sprintf("%d", billingEntry.NextBytesDown.Int64)
+		}
 		// FallbackToDirect
 		fallbackToDirect := ""
 		if billingEntry.FallbackToDirect.Valid && billingEntry.FallbackToDirect.Bool {
@@ -1212,57 +1275,14 @@ func dumpSession2(env Environment, sessionID uint64) {
 		if billingEntry.StaleRouteMatrix.Valid && billingEntry.StaleRouteMatrix.Bool {
 			staleRouteMatrix = fmt.Sprintf("%t", billingEntry.StaleRouteMatrix.Bool)
 		}
-		// NextBytesUp
-		nextBytesUp := ""
-		if billingEntry.NextBytesUp.Valid {
-			nextBytesUp = fmt.Sprintf("%d", billingEntry.NextBytesUp.Int64)
-		}
-		// NextBytesDown
-		nextBytesDown := ""
-		if billingEntry.NextBytesDown.Valid {
-			nextBytesDown = fmt.Sprintf("%d", billingEntry.NextBytesDown.Int64)
-		}
-		// EverOnNext
-		everOnNext := ""
-		if billingEntry.EverOnNext.Valid {
-			everOnNext = fmt.Sprintf("%t", billingEntry.EverOnNext.Bool)
-		}
-		// SessionDuration
-		sessionDuration := ""
-		if billingEntry.SessionDuration.Valid {
-			sessionDuration = fmt.Sprintf("%d", billingEntry.SessionDuration.Int64)
-		}
-		// TotalPriceSum
-		totalPriceSum := ""
-		if billingEntry.TotalPriceSum.Valid {
-			totalPriceSum = fmt.Sprintf("%d", billingEntry.TotalPriceSum.Int64)
-		}
-		// EnvelopeBytesUpSum
-		envelopeBytesUpSum := ""
-		if billingEntry.EnvelopeBytesUpSum.Valid {
-			envelopeBytesUpSum = fmt.Sprintf("%d", billingEntry.EnvelopeBytesUpSum.Int64)
-		}
-		// EnvelopeBytesDownSum
-		envelopeBytesDownSum := ""
-		if billingEntry.EnvelopeBytesDownSum.Valid {
-			envelopeBytesDownSum = fmt.Sprintf("%d", billingEntry.EnvelopeBytesDownSum.Int64)
-		}
-		// DurationOnNext
-		durationOnNext := ""
-		if billingEntry.DurationOnNext.Valid {
-			durationOnNext = fmt.Sprintf("%d", billingEntry.DurationOnNext.Int64)
-		}
-		// ClientAddress
-		clientAddress := ""
-		if billingEntry.ClientAddress.Valid {
-			clientAddress = billingEntry.ClientAddress.StringVal
-		}
 
 		bqBilling2DataEntryCSV = append(bqBilling2DataEntryCSV, []string{
 			timestamp,
 			sessionID,
 			sliceNumber,
-			directRTT,
+			directMinRTT,
+			directMaxRTT,
+			directPrimeRTT,
 			directJitter,
 			directPacketLoss,
 			realPacketLoss,
@@ -1302,6 +1322,7 @@ func dumpSession2(env Environment, sessionID uint64) {
 			envelopeBytesUpSum,
 			envelopeBytesDownSum,
 			durationOnNext,
+			startTimestamp,
 			nextRTT,
 			nextJitter,
 			nextPacketLoss,
@@ -1434,18 +1455,12 @@ func GetAllSessionBilling2Info(sessionID int64, env Environment) ([]BigQueryBill
 	envelopeBytesDownSum,
 	durationOnNext,
 	clientAddress,
+	startTimestamp,
+	directMaxRTT,
+	directPrimeRTT,
     from `))
 
 	if env.Name != "prod" && env.Name != "dev" && env.Name != "staging" {
-		// env == local (unit test)
-		// env == ""    (e.g. go test -run TestGetAllSessionBillingInfo)
-		// var err error
-		// rows, err = returnLocalTestData(reply)
-		// if err != nil {
-		// 	err = fmt.Errorf("GetAllSessionBilling2Info() error returning local json: %v", err)
-		// 	level.Error(s.Logger).Log("err", err, "GetAllSessionBilling2Info", fmt.Sprintf("%016x", sessionID))
-		// 	return err
-		// }
 		fmt.Println("Local/testing functionality TBD.")
 	} else {
 		if env.Name == "prod" {
@@ -1516,36 +1531,3 @@ func GetAllSessionBilling2Info(sessionID int64, env Environment) ([]BigQueryBill
 	return rows, nil
 
 }
-
-// the test should be ported from jsonrpc/transport/buyers_test.go
-// func returnLocalTestData(reply *GetAllSessionBillingInfoReply) ([]transport.BigQueryBillingEntry, error) {
-// 	var localRow transport.BigQueryBillingEntry
-// 	var rows []transport.BigQueryBillingEntry
-
-// 	bqRow, err := ioutil.ReadFile("../../../testdata/bq_billing_row.json")
-// 	if err != nil {
-// 		err = fmt.Errorf("returnLocalTestData() error opening local testdata file: %v", err)
-// 		return []transport.BigQueryBillingEntry{}, err
-// 	}
-// 	err = json.Unmarshal(bqRow, &localRow)
-// 	if err != nil {
-// 		err = fmt.Errorf("returnLocalTestData() error unmarshalling json from local file: %v", err)
-// 		return []transport.BigQueryBillingEntry{}, err
-// 	}
-
-// 	rows = append(rows, localRow)
-
-// 	return rows, nil
-// }
-
-// func slicesAreEqual(a, b []int64) bool {
-// 	if len(a) != len(b) {
-// 		return false
-// 	}
-// 	for i, v := range a {
-// 		if v != b[i] {
-// 			return false
-// 		}
-// 	}
-// 	return true
-// }

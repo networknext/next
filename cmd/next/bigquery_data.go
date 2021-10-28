@@ -96,7 +96,9 @@ type BigQueryBilling2Entry struct {
 	Timestamp        time.Time
 	SessionID        int64
 	SliceNumber      int64
-	DirectRTT        int64
+	DirectMinRTT     int64
+	DirectMaxRTT     bigquery.NullInt64
+	DirectPrimeRTT   bigquery.NullInt64
 	DirectJitter     int64
 	DirectPacketLoss int64
 	RealPacketLoss   float64
@@ -144,6 +146,7 @@ type BigQueryBilling2Entry struct {
 	EnvelopeBytesUpSum              bigquery.NullInt64
 	EnvelopeBytesDownSum            bigquery.NullInt64
 	DurationOnNext                  bigquery.NullInt64
+	StartTimestamp                  bigquery.NullTimestamp
 
 	// network next only
 
