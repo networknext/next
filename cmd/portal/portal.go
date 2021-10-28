@@ -608,7 +608,12 @@ func main() {
 					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
 						newsletterConsent = consent.(bool)
 					}
-					return middleware.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
+
+					var verified bool
+					if emailVerified, ok := requestData.(map[string]interface{})["verified"]; ok {
+						verified = emailVerified.(bool)
+					}
+					return middleware.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent, verified)
 				}
 			}
 			return middleware.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")

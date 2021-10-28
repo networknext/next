@@ -881,19 +881,13 @@ type VerifyEmailArgs struct {
 type VerifyEmailReply struct{}
 
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
-	if !middleware.VerifyAllRoles(r, middleware.UnverifiedRole) {
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("VerifyEmailUrl(): %v: Failed to read user account", err.Error()))
-		return &err
-	}
-
 	job := &management.Job{
 		UserID: &args.UserID,
 	}
 
 	err := s.JobManager.VerifyEmail(job)
 	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("VerifyEmailUrl(): %v: Failed to generate verification link", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("VerifyEmailUrl(): %v: Failed to generate verification email", err.Error()))
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}

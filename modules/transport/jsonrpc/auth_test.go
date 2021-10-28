@@ -1670,19 +1670,6 @@ func TestSendVerificationEmail(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	t.Run("failure - insufficient privileges", func(t *testing.T) {
-		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
-			Claims: jwt.MapClaims{
-				"email_verified": true,
-			},
-		})
-		req = req.WithContext(reqContext)
-		var reply jsonrpc.VerifyEmailReply
-		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{}, &reply)
-		assert.Error(t, err)
-	})
-
 	t.Run("failure - no ID", func(t *testing.T) {
 		var reply jsonrpc.VerifyEmailReply
 		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{}, &reply)
@@ -1690,13 +1677,6 @@ func TestSendVerificationEmail(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
-			Claims: jwt.MapClaims{
-				"email_verified": false,
-			},
-		})
-		req = req.WithContext(reqContext)
 		var reply jsonrpc.VerifyEmailReply
 		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{UserID: "123"}, &reply)
 		assert.NoError(t, err)
