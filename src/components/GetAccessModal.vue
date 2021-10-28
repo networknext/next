@@ -113,7 +113,7 @@
                   autocomplete="off"
                   v-model="companyName"
                 />
-                <small v-if="companyNameError !== ''" class="text-danger">
+                <small id="company-name-error" v-if="companyNameError !== ''" class="text-danger">
                   {{ companyNameError }}
                   <br/>
                 </small>
@@ -126,7 +126,7 @@
                   autocomplete="off"
                   v-model="companyWebsite"
                 />
-                <small v-if="companyWebsiteError !== ''" class="text-danger">
+                <small id="company-website-error" v-if="companyWebsiteError !== ''" class="text-danger">
                   {{ companyWebsiteError }}
                   <br/>
                 </small>

@@ -313,5 +313,80 @@ describe('GetAccessModal.vue', () => {
     expect(lastNameError.exists()).toBe(false)
   })
 
-  // TODO: add tests for company name, website and success / failure form submission
+  it('displays an error when an invalid company name is submitted', async () => {
+    const wrapper = mount(GetAccessModal, {
+      localVue, mocks, stubs
+    })
+
+    expect(wrapper.exists()).toBe(true)
+
+    wrapper.vm.$data.stepOne = false
+
+    await wrapper.vm.$nextTick()
+
+    const companyNameInput = wrapper.find('#company-name-input')
+    expect(companyNameInput.exists()).toBe(true)
+
+    companyNameInput.setValue('!@#!$@#')
+
+    const form = wrapper.find('#get-access-form')
+    expect(form.exists()).toBe(true)
+
+    const inputElement = <HTMLInputElement>companyNameInput.element
+    expect(inputElement.value).toBe('!@#!$@#')
+
+    await form.trigger('submit')
+
+    let companyNameError = wrapper.find('#company-name-error')
+    expect(companyNameError.text()).toBe('Please enter a valid company name')
+
+    companyNameInput.setValue('Test Company')
+
+    await form.trigger('submit')
+
+    companyNameError = wrapper.find('#company-name-error')
+    expect(companyNameError.exists()).toBe(false)
+  })
+
+  it('displays an error when an invalid company website is submitted', async () => {
+    const wrapper = mount(GetAccessModal, {
+      localVue, mocks, stubs
+    })
+
+    expect(wrapper.exists()).toBe(true)
+
+    wrapper.vm.$data.stepOne = false
+
+    await wrapper.vm.$nextTick()
+
+    const companyWebsiteInput = wrapper.find('#company-website-input')
+    expect(companyWebsiteInput.exists()).toBe(true)
+
+    companyWebsiteInput.setValue('!@#!$@#')
+
+    const form = wrapper.find('#get-access-form')
+    expect(form.exists()).toBe(true)
+
+    const inputElement = <HTMLInputElement>companyWebsiteInput.element
+    expect(inputElement.value).toBe('!@#!$@#')
+
+    await form.trigger('submit')
+
+    let companyWebsiteError = wrapper.find('#company-website-error')
+    expect(companyWebsiteError.text()).toBe('Please enter a valid website. IE: https://networknext.com')
+
+    companyWebsiteInput.setValue('this is a bad website')
+
+    await form.trigger('submit')
+
+    companyWebsiteError = wrapper.find('#company-website-error')
+    expect(companyWebsiteError.text()).toBe('Please enter a valid website. IE: https://networknext.com')
+
+    companyWebsiteInput.setValue('https://networknext.com')
+
+    await form.trigger('submit')
+
+    companyWebsiteError = wrapper.find('#company-website-error')
+    expect(companyWebsiteError.exists()).toBe(false)
+  })
 })
