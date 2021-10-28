@@ -234,4 +234,6 @@ type BigQueryRelayPingsEntry struct {
 	Jitter     float64   `bigquery:"jitter"`
 	PacketLoss float64   `bigquery:"packet_loss"`
 	Routable   bool      `bigquery:"routable"`
+	InstanceID string    `bigquery:"instance_id"`
+	Debug      bool      `bigquery:"debug"`
 }
