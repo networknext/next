@@ -966,6 +966,36 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:       "summary",
+				ShortUsage: "next session summary <session id>",
+				ShortHelp:  "Write all billing2 session summary data for the given ID to a CSV file",
+				FlagSet:    sessionDumpfs,
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) < 1 {
+						handleRunTimeError(fmt.Sprintln("you must supply the session ID in hex format"), 0)
+					}
+
+					var sessionID uint64
+					var err error
+					if sessionDumpfs.NFlag() >= 1 && sessionDumpSignedInt {
+						signed, err := strconv.ParseInt(args[0], 10, 64)
+						if err != nil {
+							handleRunTimeError(fmt.Sprintf("could not convert %s to int64", args[0]), 0)
+						}
+						sessionID = uint64(signed)
+					} else {
+						sessionID, err = strconv.ParseUint(args[0], 16, 64)
+						if err != nil {
+							handleRunTimeError(fmt.Sprintf("could not convert %s to uint64", args[0]), 0)
+						}
+					}
+
+					dumpSession2Summary(env, sessionID)
+
+					return nil
+				},
+			},
 		},
 	}
 
