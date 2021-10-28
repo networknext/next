@@ -187,7 +187,7 @@ var AnonymousRole = func(req *http.Request) (bool, error) {
 
 var UnverifiedRole = func(req *http.Request) (bool, error) {
 	verified, ok := req.Context().Value(Keys.VerifiedKey).(bool)
-	return ok && verified, nil
+	return ok && !verified, nil
 }
 
 var AssignedToCompanyRole = func(req *http.Request) (bool, error) {

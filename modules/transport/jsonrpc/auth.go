@@ -881,6 +881,12 @@ type VerifyEmailArgs struct {
 type VerifyEmailReply struct{}
 
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("ResendVerificationEmail(): %v", err.Error()))
+		return &err
+	}
+
 	job := &management.Job{
 		UserID: &args.UserID,
 	}
