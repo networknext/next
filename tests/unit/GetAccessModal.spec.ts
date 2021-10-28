@@ -312,4 +312,6 @@ describe('GetAccessModal.vue', () => {
     lastNameError = wrapper.find('#last-name-error')
     expect(lastNameError.exists()).toBe(false)
   })
+
+  // TODO: add tests for company name, website and success / failure form submission
 })

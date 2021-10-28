@@ -13,7 +13,6 @@ import GameConfiguration from '@/components/GameConfiguration.vue'
 import GetAccessModal from '@/components/GetAccessModal.vue'
 import LoginModal from '@/components/LoginModal.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
-import Notifications from '@/components/Notifications.vue'
 import ResetPasswordModal from '@/components/ResetPasswordModal.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
@@ -38,11 +37,6 @@ const routes: Array<RouteConfig> = [
     name: 'explore',
     component: ExplorationWorkspace,
     children: [
-      {
-        path: 'notifications',
-        name: 'notifications',
-        component: Notifications
-      },
       {
         path: 'analytics',
         name: 'analytics',
@@ -185,8 +179,7 @@ const OwnerRoutes = [
   'account-settings',
   'config',
   'users',
-  'explore',
-  'notifications'
+  'explore'
 ]
 
 // Add or remove these to open up beta features

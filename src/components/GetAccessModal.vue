@@ -230,7 +230,7 @@ export default class GetAccessModal extends Vue {
 
   // TODO: Add better checks for all check* functions
   private checkCompanyName (checkLength: boolean) {
-    const regex = new RegExp(/^[a-zA-Z]+$/)
+    const regex = new RegExp(/^[a-z ,.'-]+$/i)
     this.validCompanyName = !checkLength || (this.companyName.length > 0 && regex.test(this.companyName))
     this.companyNameError = this.validCompanyName ? '' : 'Please enter a valid company name'
   }
