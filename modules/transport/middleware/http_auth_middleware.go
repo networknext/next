@@ -17,6 +17,7 @@ type contextKeys struct {
 	CustomerKey          string
 	NewsletterConsentKey string
 	UserKey              string
+	VerifiedKey          string
 }
 
 var Keys contextKeys = contextKeys{
@@ -25,6 +26,7 @@ var Keys contextKeys = contextKeys{
 	CustomerKey:          "customer",
 	NewsletterConsentKey: "newsletter",
 	UserKey:              "user",
+	VerifiedKey:          "verified",
 }
 
 type JWKS struct {
@@ -104,20 +106,20 @@ func SetIsAnonymous(r *http.Request, value bool) *http.Request {
 	return r.WithContext(ctx)
 }
 
-func IsAnonymous(r *http.Request) bool {
-	anon, ok := r.Context().Value(Keys.AnonymousCallKey).(bool)
-	return ok && anon
-}
-
-func AddTokenContext(r *http.Request, roles []string, customerCode string, newsletterConsent bool) *http.Request {
+func AddTokenContext(r *http.Request, roles []string, customerCode string, newsletterConsent bool, verified bool) *http.Request {
 	ctx := r.Context()
+
 	if len(roles) > 0 {
 		ctx = context.WithValue(ctx, Keys.RolesKey, roles)
 	}
+
 	if customerCode != "" {
 		ctx = context.WithValue(ctx, Keys.CustomerKey, customerCode)
 	}
+
 	ctx = context.WithValue(ctx, Keys.NewsletterConsentKey, newsletterConsent)
+	ctx = context.WithValue(ctx, Keys.VerifiedKey, verified)
+
 	return r.WithContext(ctx)
 }
 
@@ -183,23 +185,9 @@ var AnonymousRole = func(req *http.Request) (bool, error) {
 	return ok && anon, nil
 }
 
-// Ops checks the request for the appropriate "scope" in the JWT
 var UnverifiedRole = func(req *http.Request) (bool, error) {
-	user := req.Context().Value(Keys.UserKey)
-
-	if user == nil {
-		return false, fmt.Errorf("UnverifiedRole(): failed to fetch user from token")
-	}
-	claims, ok := user.(*jwt.Token).Claims.(jwt.MapClaims)
-
-	if !ok {
-		return false, fmt.Errorf("UnverifiedRole(): failed to fetch verified claim")
-	}
-
-	if verified, ok := claims["email_verified"]; ok && !verified.(bool) {
-		return true, nil
-	}
-	return false, nil
+	verified, ok := req.Context().Value(Keys.VerifiedKey).(bool)
+	return ok && verified, nil
 }
 
 var AssignedToCompanyRole = func(req *http.Request) (bool, error) {
