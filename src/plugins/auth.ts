@@ -15,7 +15,7 @@ export class AuthService {
     this.auth0Client = new WebAuth({
       domain: this.domain,
       clientID: this.clientID,
-      responseType: 'id_token',
+      responseType: 'token id_token',
       redirectUri: window.location.origin + '/map'
     })
   }

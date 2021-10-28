@@ -215,7 +215,9 @@ export default class NotificationsModal extends Vue {
   }
 
   private created () {
-    this.fetchNotifications()
+    if (this.$store.getters.isAdmin || this.$store.getters.isOwner) {
+      this.fetchNotifications()
+    }
   }
 
   private fetchNotifications () {

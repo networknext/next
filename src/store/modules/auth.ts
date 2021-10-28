@@ -73,12 +73,14 @@ const actions = {
     const roles: Array<any> = nnScope.roles || { roles: [] }
     const companyCode: string = nnScope.company_code || nnScope.customer_code || ''
     const newsletterConsent: boolean = nnScope.newsletter || false
+    const verified: boolean = nnScope.verified || false
 
     userProfile.roles = roles
     userProfile.idToken = token
     userProfile.auth0ID = idTokenPayload.sub
     userProfile.companyCode = companyCode
     userProfile.newsletterConsent = newsletterConsent
+    userProfile.verified = verified
 
     dispatch('updateUserProfile', userProfile)
 
@@ -109,7 +111,6 @@ const actions = {
         const userInformation = responses[0].account
 
         userProfile.email = userInformation.email || ''
-        userProfile.verified = userInformation.verified || false
         userProfile.avatar = userInformation.avatar || ''
 
         userProfile.buyerID = userInformation.id || userInformation.buyer_id || '' // TODO: remove the ".id" case after deploy
