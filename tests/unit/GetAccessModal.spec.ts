@@ -57,7 +57,7 @@ describe('GetAccessModal.vue', () => {
     const form = wrapper.find('#get-access-form')
     expect(form.exists()).toBe(true)
 
-    const inputElement = <HTMLInputElement>emailInput.element
+    const inputElement = emailInput.element as HTMLInputElement
     expect(inputElement.value).toBe('this is not a valid email')
 
     await form.trigger('submit')
@@ -105,65 +105,65 @@ describe('GetAccessModal.vue', () => {
 
     await form.trigger('submit')
 
-    expect(wrapper.find('#length-check').attributes()['style'].includes('color: red;')).toBe(true)
-    expect(wrapper.find('#lower-check').attributes()['style'].includes('color: red;')).toBe(true)
-    expect(wrapper.find('#upper-check').attributes()['style'].includes('color: red;')).toBe(true)
-    expect(wrapper.find('#number-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#number-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#special-check').attributes()['style'].includes('color: red;')).toBe(true)
+    expect(wrapper.find('#length-check').attributes().style.includes('color: red;')).toBe(true)
+    expect(wrapper.find('#lower-check').attributes().style.includes('color: red;')).toBe(true)
+    expect(wrapper.find('#upper-check').attributes().style.includes('color: red;')).toBe(true)
+    expect(wrapper.find('#number-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#number-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#special-check').attributes().style.includes('color: red;')).toBe(true)
 
     await passwordInput.setValue('12345678')
 
     await form.trigger('submit')
 
-    expect(wrapper.find('#length-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#length-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#lower-check').attributes()['style'].includes('color: red;')).toBe(true)
-    expect(wrapper.find('#upper-check').attributes()['style'].includes('color: red;')).toBe(true)
-    expect(wrapper.find('#number-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#number-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#special-check').attributes()['style'].includes('color: red;')).toBe(true)
+    expect(wrapper.find('#length-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#length-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#lower-check').attributes().style.includes('color: red;')).toBe(true)
+    expect(wrapper.find('#upper-check').attributes().style.includes('color: red;')).toBe(true)
+    expect(wrapper.find('#number-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#number-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#special-check').attributes().style.includes('color: red;')).toBe(true)
 
     await passwordInput.setValue('a123456789')
 
     await form.trigger('submit')
 
-    expect(wrapper.find('#length-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#length-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#lower-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#lower-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#upper-check').attributes()['style'].includes('color: red;')).toBe(true)
-    expect(wrapper.find('#number-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#number-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#special-check').attributes()['style'].includes('color: red;')).toBe(true)
+    expect(wrapper.find('#length-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#length-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#lower-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#lower-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#upper-check').attributes().style.includes('color: red;')).toBe(true)
+    expect(wrapper.find('#number-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#number-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#special-check').attributes().style.includes('color: red;')).toBe(true)
 
     await passwordInput.setValue('abc123456789!')
 
     await form.trigger('submit')
 
-    expect(wrapper.find('#length-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#length-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#lower-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#lower-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#upper-check').attributes()['style'].includes('color: red;')).toBe(true)
-    expect(wrapper.find('#number-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#number-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#special-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#special-check').attributes()['style'].includes('color: green;')).toBe(true)
+    expect(wrapper.find('#length-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#length-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#lower-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#lower-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#upper-check').attributes().style.includes('color: red;')).toBe(true)
+    expect(wrapper.find('#number-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#number-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#special-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#special-check').attributes().style.includes('color: green;')).toBe(true)
 
     await passwordInput.setValue('Abc123456789!')
 
     await form.trigger('submit')
 
-    expect(wrapper.find('#length-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#length-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#lower-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#lower-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#upper-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#upper-check').attributes()['style'].includes('color: green;')).toBe(true)
-    expect(wrapper.find('#number-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#special-check').attributes()['style'].includes('color: red;')).toBe(false)
-    expect(wrapper.find('#special-check').attributes()['style'].includes('color: green;')).toBe(true)
+    expect(wrapper.find('#length-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#length-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#lower-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#lower-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#upper-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#upper-check').attributes().style.includes('color: green;')).toBe(true)
+    expect(wrapper.find('#number-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#special-check').attributes().style.includes('color: red;')).toBe(false)
+    expect(wrapper.find('#special-check').attributes().style.includes('color: green;')).toBe(true)
 
     wrapper.destroy()
   })
@@ -248,7 +248,7 @@ describe('GetAccessModal.vue', () => {
     const form = wrapper.find('#get-access-form')
     expect(form.exists()).toBe(true)
 
-    const inputElement = <HTMLInputElement>firstNameInput.element
+    const inputElement = firstNameInput.element as HTMLInputElement
     expect(inputElement.value).toBe('!@#!$@#')
 
     await form.trigger('submit')
@@ -290,7 +290,7 @@ describe('GetAccessModal.vue', () => {
     const form = wrapper.find('#get-access-form')
     expect(form.exists()).toBe(true)
 
-    const inputElement = <HTMLInputElement>lastNameInput.element
+    const inputElement = lastNameInput.element as HTMLInputElement
     expect(inputElement.value).toBe('!@#!$@#')
 
     await form.trigger('submit')
@@ -332,7 +332,7 @@ describe('GetAccessModal.vue', () => {
     const form = wrapper.find('#get-access-form')
     expect(form.exists()).toBe(true)
 
-    const inputElement = <HTMLInputElement>companyNameInput.element
+    const inputElement = companyNameInput.element as HTMLInputElement
     expect(inputElement.value).toBe('!@#!$@#')
 
     await form.trigger('submit')
@@ -367,7 +367,7 @@ describe('GetAccessModal.vue', () => {
     const form = wrapper.find('#get-access-form')
     expect(form.exists()).toBe(true)
 
-    const inputElement = <HTMLInputElement>companyWebsiteInput.element
+    const inputElement = companyWebsiteInput.element as HTMLInputElement
     expect(inputElement.value).toBe('!@#!$@#')
 
     await form.trigger('submit')
