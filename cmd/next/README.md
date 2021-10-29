@@ -241,3 +241,7 @@ The third argument is the path you want the route matrix written to. Default is 
 To analyze a route matrix: `next analyze [route matrix file]`
 
 Analyzes the route matrix and produces high level data. The file read in is 'optimize.bin' or the first argument supplied.
+
+## Remaining Functionality
+
+Remaining `next` commands are described in Slab [here](https://networknext.slab.com/posts/next-tool-updates-cuerpgzy).  

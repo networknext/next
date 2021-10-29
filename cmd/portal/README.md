@@ -15,13 +15,13 @@ Scalability: **Vertically**
 
 ### To Run
 
-Run `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n" dev-portal`
+Run `make dev-portal`
 
 ### Logging
 
 Levels are cumulative so if you set `BACKEND_LOG_LEVEL=info` you will get `error` and `warn` too.
 
-The default setting is `warn` when running `make JWT_AUDIENCE="oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n" dev-portal`. To override this you can set your own value by doing `make BACKEND_LOG_LEVEL=debug JWT_AUDIENCE="oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n" dev-portal`.
+The default setting is `warn` when running `make dev-portal`. To override this you can set your own value by doing `make BACKEND_LOG_LEVEL=debug dev-portal`.
 
 ### Environment Variables
 

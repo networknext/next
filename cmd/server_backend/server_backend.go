@@ -205,8 +205,7 @@ func mainReturnWithCode() int {
 
 					// Pointer swap under mutex
 					mmdbMutex.Lock()
-					mmdb.CloseCity()
-					mmdb.CloseISP()
+					// IMPORTANT: Do not close the previous mmdb since it could still be in use
 					mmdb = newMMDB
 					mmdbMutex.Unlock()
 				case <-ctx.Done():

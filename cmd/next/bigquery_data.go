@@ -96,7 +96,9 @@ type BigQueryBilling2Entry struct {
 	Timestamp        time.Time
 	SessionID        int64
 	SliceNumber      int64
-	DirectRTT        int64
+	DirectMinRTT     int64
+	DirectMaxRTT     bigquery.NullInt64
+	DirectPrimeRTT   bigquery.NullInt64
 	DirectJitter     int64
 	DirectPacketLoss int64
 	RealPacketLoss   float64
@@ -144,6 +146,7 @@ type BigQueryBilling2Entry struct {
 	EnvelopeBytesUpSum              bigquery.NullInt64
 	EnvelopeBytesDownSum            bigquery.NullInt64
 	DurationOnNext                  bigquery.NullInt64
+	StartTimestamp                  bigquery.NullTimestamp
 
 	// network next only
 
@@ -184,6 +187,44 @@ type BigQueryBilling2Entry struct {
 	StaleRouteMatrix     bigquery.NullBool
 }
 
+// BigQueryBilling2EntrySummary contains 1 row of the BQ billing2_session_summary table
+type BigQueryBilling2EntrySummary struct {
+	SessionID                       int64
+	BuyerID                         bigquery.NullInt64
+	UserHash                        bigquery.NullInt64
+	DatacenterID                    bigquery.NullInt64
+	DatacenterString                bigquery.NullString
+	StartTimestamp                  bigquery.NullTimestamp
+	Latitude                        bigquery.NullFloat64
+	Longitude                       bigquery.NullFloat64
+	ISP                             bigquery.NullString
+	ConnectionType                  bigquery.NullInt64
+	PlatformType                    bigquery.NullInt64
+	Tags                            []bigquery.NullInt64
+	ABTest                          bigquery.NullBool
+	Pro                             bigquery.NullBool
+	SDKVersion                      bigquery.NullString
+	EnvelopeBytesUp                 bigquery.NullInt64
+	EnvelopeBytesDown               bigquery.NullInt64
+	ClientToServerPacketsSent       bigquery.NullInt64
+	ServerToClientPacketsSent       bigquery.NullInt64
+	ClientToServerPacketsLost       bigquery.NullInt64
+	ServerToClientPacketsLost       bigquery.NullInt64
+	ClientToServerPacketsOutOfOrder bigquery.NullInt64
+	ServerToClientPacketsOutOfOrder bigquery.NullInt64
+	NearRelayIDs                    []bigquery.NullInt64
+	NearRelayRTTs                   []bigquery.NullInt64
+	NearRelayJitters                []bigquery.NullInt64
+	NearRelayPacketLosses           []bigquery.NullInt64
+	EverOnNext                      bigquery.NullBool
+	SessionDuration                 bigquery.NullInt64
+	TotalPriceSum                   bigquery.NullInt64
+	EnvelopeBytesUpSum              bigquery.NullInt64
+	EnvelopeBytesDownSum            bigquery.NullInt64
+	DurationOnNext                  bigquery.NullInt64
+	ClientAddress                   bigquery.NullString
+}
+
 // BigQueryRelayPingsEntry contains 1 row of the BQ relay_pings table
 type BigQueryRelayPingsEntry struct {
 	Timestamp  time.Time `bigquery:"timestamp"`
@@ -193,4 +234,6 @@ type BigQueryRelayPingsEntry struct {
 	Jitter     float64   `bigquery:"jitter"`
 	PacketLoss float64   `bigquery:"packet_loss"`
 	Routable   bool      `bigquery:"routable"`
+	InstanceID string    `bigquery:"instance_id"`
+	Debug      bool      `bigquery:"debug"`
 }
