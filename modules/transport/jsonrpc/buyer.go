@@ -50,8 +50,8 @@ const (
 
 var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
-	UsageDashURIs             = [...]string{"/embed/dashboards-next/11", "/embed/dashboards-next/14"}
-	AnalyticsDashURI          = [...]string{"/embed/dashboards-next/12"}
+	UsageDashURIs             = [...]string{"/embed/dashboards-next/11"}
+	AnalyticsDashURI          = [...]string{"/embed/dashboards-next/14", "/embed/dashboards-next/12"}
 )
 
 type BuyersService struct {
