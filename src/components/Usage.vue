@@ -59,10 +59,10 @@
                 <div class="blue-accent"></div>
               </div>
               <div class="col">
-                336 Bon Air Center<br>
-                Suite 136<br>
-                Greenbrae, CA 94904<br>
-                (310) 775-0041<br>
+                JP Morgan Chase<br>
+                631 Wilshire Blvd Ste A<br>
+                Santa Monica, CA 90401<br>
+                (310) 309-3152<br>
               </div>
               <div class="col"></div>
             </div>
