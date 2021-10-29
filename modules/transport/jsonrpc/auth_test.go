@@ -1672,18 +1672,21 @@ func TestSendVerificationEmail(t *testing.T) {
 
 	t.Run("failure - insufficient privileges", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
-			Claims: jwt.MapClaims{
-				"email_verified": true,
-			},
-		})
+		reqContext = context.WithValue(reqContext, middleware.Keys.VerifiedKey, true)
+
 		req = req.WithContext(reqContext)
+
 		var reply jsonrpc.VerifyEmailReply
 		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{}, &reply)
 		assert.Error(t, err)
 	})
 
 	t.Run("failure - no ID", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, middleware.Keys.VerifiedKey, false)
+
+		req = req.WithContext(reqContext)
+
 		var reply jsonrpc.VerifyEmailReply
 		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{}, &reply)
 		assert.Error(t, err)
@@ -1691,12 +1694,10 @@ func TestSendVerificationEmail(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
-			Claims: jwt.MapClaims{
-				"email_verified": false,
-			},
-		})
+		reqContext = context.WithValue(reqContext, middleware.Keys.VerifiedKey, false)
+
 		req = req.WithContext(reqContext)
+
 		var reply jsonrpc.VerifyEmailReply
 		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{UserID: "123"}, &reply)
 		assert.NoError(t, err)
