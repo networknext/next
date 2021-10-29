@@ -49,7 +49,7 @@ Debug logs are available by setting `NEXT_DEBUG_LOGS=1`. Otherwise, only error l
 - `FEATURE_ENABLE_PPROF`: The feature flag for enabling the pprof http endpoint. Default `false`
 - `BIN_SYNC_INTERVAL`: The frequency to sync the database file from disk. Default `1m`
 - `BIN_PATH`: The full file path for the location of the database file on disk. Default `./database.bin`
-- `JWT_AUDIENCE`: The JWT audience necessary for accessing private HTTP endpoints. Default `""`
+- `JWT_AUDIENCES`: The JWT audiences necessary for accessing private HTTP endpoints. Default `""`
 - `MATRIX_STORE_PASSWORD`: The password for the redis database address. Default `""`
 - `MATRIX_STORE_MAX_IDLE_CONNS`: The max number of idle redis pool connections to the redis database. Default `5`
 - `MATRIX_STORE_MAX_ACTIVE_CONNS`: The max number of active redis pool connections to the redis database. Default `5`
