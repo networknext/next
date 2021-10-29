@@ -2,27 +2,77 @@ import Vue from 'vue'
 import VueRouter, { RouteConfig, Route, NavigationGuardNext } from 'vue-router'
 import store from '@/store'
 
-import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
-import GameConfiguration from '@/components/GameConfiguration.vue'
-import MapWorkspace from '@/workspaces/MapWorkspace.vue'
-import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
-import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
-import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
-import UserManagement from '@/components/UserManagement.vue'
-import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
-import RouteShader from '@/components/RouteShader.vue'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
+
 import AccountSettings from '@/components/AccountSettings.vue'
+import Analytics from '@/components/Analytics.vue'
+import Usage from '@/components/Usage.vue'
+import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
+import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
+import GameConfiguration from '@/components/GameConfiguration.vue'
+import GetAccessModal from '@/components/GetAccessModal.vue'
+import LoginModal from '@/components/LoginModal.vue'
+import MapWorkspace from '@/workspaces/MapWorkspace.vue'
+import ResetPasswordModal from '@/components/ResetPasswordModal.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
+import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
+import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
+import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
+import Supply from '@/components/Supply.vue'
+import UserManagement from '@/components/UserManagement.vue'
 import UserSessions from '@/components/UserSessions.vue'
+import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 
 Vue.use(VueRouter)
 
 // All navigable routes for the Portal
 const routes: Array<RouteConfig> = [
   {
-    path: '/',
+    path: '/downloads',
+    name: 'downloads',
+    component: DownloadsWorkspace
+  },
+  {
+    path: '/explore',
+    name: 'explore',
+    component: ExplorationWorkspace,
+    children: [
+      {
+        path: 'analytics',
+        name: 'analytics',
+        component: Analytics
+      },
+      {
+        path: 'usage',
+        name: 'usage',
+        component: Usage
+      },
+      {
+        path: 'supply',
+        name: 'supply',
+        component: Supply
+      }
+    ]
+  },
+  {
+    path: '/get-access',
+    name: 'get-access',
+    component: GetAccessModal
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginModal
+  },
+  {
+    path: '/map',
     name: 'map',
     component: MapWorkspace
+  },
+  {
+    path: '/password-reset',
+    name: 'password-reset',
+    component: ResetPasswordModal
   },
   {
     path: '/sessions',
@@ -54,11 +104,6 @@ const routes: Array<RouteConfig> = [
     ]
   },
   {
-    path: '/downloads',
-    name: 'downloads',
-    component: DownloadsWorkspace
-  },
-  {
     path: '/settings',
     name: 'settings',
     component: SettingsWorkspace,
@@ -77,17 +122,12 @@ const routes: Array<RouteConfig> = [
         path: 'users',
         name: 'users',
         component: UserManagement
-      }/* ,
-      {
-        path: 'route-shader',
-        name: 'shader',
-        component: RouteShader
-      } */
+      }
     ]
   },
   {
     path: '*',
-    name: 'undefined'
+    name: '404'
   }
 ]
 
@@ -96,22 +136,150 @@ const router = new VueRouter({
   routes
 })
 
+const AnonymousRoutes = [
+  'map',
+  'sessions',
+  'session-details',
+  'session-tool',
+  'get-access',
+  'login',
+  'password-reset'
+]
+
+const AnonymousPlusRoutes = [
+  'map',
+  'sessions',
+  'session-details',
+  'session-tool',
+  'user-sessions',
+  'user-tool'
+]
+
+const ViewerRoutes = [
+  'map',
+  'sessions',
+  'session-details',
+  'session-tool',
+  'user-sessions',
+  'user-tool',
+  'downloads',
+  'settings',
+  'account-settings'
+]
+
+const OwnerRoutes = [
+  'map',
+  'sessions',
+  'session-details',
+  'session-tool',
+  'user-sessions',
+  'user-tool',
+  'downloads',
+  'settings',
+  'account-settings',
+  'config',
+  'users',
+  'explore'
+]
+
+// Add or remove these to open up beta features
+const BetaRoutes = [
+  'usage',
+  'supply',
+  'analytics'
+]
+
+function updateCurrentPage (name: string) {
+  store.commit('UPDATE_CURRENT_PAGE', name)
+  if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+    (window as any).Intercom('update')
+  }
+}
+
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  // TODO: Make sure these are doing what we want them to do.
-  // TODO: store.getters.isAdmin doesn't work here. store.getters shows that everything is initialized correctly but accessing any of the members within getters, doesn't work?!
-  // BUG: Re-routes valid users to the map when it should just refresh the page...
-  if ((!store.getters.isAdmin && !store.getters.isOwner && (to.name === 'users' || to.name === 'game-config')) || to.name === 'undefined') {
-    next('/')
-    store.commit('UPDATE_CURRENT_PAGE', 'map')
+  if (to.name === '404') {
+    updateCurrentPage('/map')
+    next('/map')
+    return
+  }
+  // Email is verified - catch this event, refresh the user's token and go to the map
+  if (to.query.message === 'Your email was verified. You can continue using the application.') {
+    // TODO: refreshToken returns a promise that should be used to optimize page loads. Look into how this effects routing
+    Vue.prototype.$authService.refreshToken()
+    updateCurrentPage('/map')
+    next('/map')
+    return
+  }
+
+  // Anonymous filters
+  if (store.getters.isAnonymous && AnonymousRoutes.indexOf(to.name || '') === -1) {
+    updateCurrentPage('/map')
+    next('/map')
+    return
+  }
+
+  // AnonymousPlus filters
+  if (store.getters.isAnonymousPlus && AnonymousPlusRoutes.indexOf(to.name || '') === -1) {
+    updateCurrentPage('/map')
+    next('/map')
+    return
+  }
+
+  if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && !store.getters.isOwner && !store.getters.isAdmin && ViewerRoutes.indexOf(to.name || '') === -1) {
+    updateCurrentPage('/map')
+    next('/map')
+    return
+  }
+
+  // Owner Filters
+  if (store.getters.Owner && OwnerRoutes.indexOf(to.name || '') === -1) {
+    updateCurrentPage('/map')
+    next('/map')
+    return
+  }
+
+  // If user isn't an admin and they are trying to access beta content block them
+  if (!store.getters.isAdmin && BetaRoutes.indexOf(to.name || '') !== -1) {
+    updateCurrentPage('/map')
+    next('/map')
+    return
+  }
+
+  // Beta / Premium features given to the user at a buyer level
+  if (!store.getters.isSeller && (to.name === 'supply')) {
+    updateCurrentPage('/map')
+    next('/map')
+    return
+  }
+  if (!store.getters.isAdmin && !store.getters.hasAnalytics && (to.name === 'analytics')) {
+    updateCurrentPage('/map')
+    next('/map')
+    return
+  }
+  if (!store.getters.isAdmin && !store.getters.hasBilling && (to.name === 'usage')) {
+    updateCurrentPage('/map')
+    next('/map')
+    return
+  }
+
+  if (to.name === 'explore') {
+    updateCurrentPage('usage')
+    next('/explore/usage')
     return
   }
   if (to.name === 'settings') {
-    store.commit('UPDATE_CURRENT_PAGE', 'account-settings')
+    updateCurrentPage('account-settings')
     next('/settings/account')
     return
   }
-  store.commit('UPDATE_CURRENT_PAGE', to.name)
+
+  // Close modal if open on map page
+  if (to.name === 'session-details' && from.name === 'map') {
+    router.app.$root.$emit('hideMapPointsModal')
+  }
+
+  updateCurrentPage(to.name || '')
   next()
 })
 

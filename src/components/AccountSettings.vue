@@ -1,20 +1,62 @@
 <template>
   <div class="card-body">
     <h5 class="card-title">
-      Account Settings
+      User Details
     </h5>
     <p class="card-text">
       Update user account profile.
     </p>
-    <Alert :message="message" :alertType="alertType" v-if="message !== ''"/>
-    <form @submit.prevent="updateCompanyInformation()">
+    <Alert ref="accountResponseAlert"/>
+    <form @submit.prevent="updateAccountDetails()">
+      <div class="form-group">
+        <label for="firstName">
+          First Name
+        </label>
+        <input type="text" class="form-control form-control-sm" id="firstName" v-model="firstName" placeholder="Enter your first name"/>
+        <small v-for="(error, index) in firstNameErrors" :key="index" class="text-danger">
+          {{ error }}
+          <br/>
+        </small>
+      </div>
+      <div class="form-group">
+        <label for="lastName">
+          Last Name
+        </label>
+        <input type="text" class="form-control form-control-sm" id="lastName" v-model="lastName" placeholder="Enter your last name"/>
+        <small v-for="(error, index) in lastNameErrors" :key="index" class="text-danger">
+          {{ error }}
+          <br/>
+        </small>
+      </div>
+      <div class="form-group">
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent"/>
+          <small>
+            I would like to receive the Network Next newsletter
+          </small>
+        </div>
+      </div>
+      <button id="account-settings-button" type="submit" class="btn btn-primary btn-sm">
+        Update User Details
+      </button>
+      <p class="text-muted text-small mt-2"></p>
+    </form>
+    <hr class="mt-4 mb-4">
+    <h5 class="card-title">
+      Company Details
+    </h5>
+    <p class="card-text">
+      Create or assign yourself to a company account.
+    </p>
+    <Alert ref="companyResponseAlert"/>
+    <form @submit.prevent="setupCompanyAccount()">
       <div class="form-group">
         <label for="companyName">
           Company Name
         </label>
-        <input type="text" class="form-control form-control-sm" id="companyName" v-model="companyName" placeholder="Enter your company name" @change="checkCompanyName()"/>
+        <input :disabled="$store.getters.userProfile.companyName !== ''" type="text" class="form-control form-control-sm" id="companyName" v-model="companyName" placeholder="Enter your company name" @change="checkCompanyName()"/>
         <small class="form-text text-muted">
-          This is the company that you would like your account to be assigned to. Case and white space sensitive.
+          This is the name of the company that you would like your account to be assigned to. This is not necessary for existing company assignment and is case and white space sensitive.
         </small>
         <small v-for="(error, index) in companyNameErrors" :key="index" class="text-danger">
           {{ error }}
@@ -25,22 +67,22 @@
         <label for="companyCode">
           Company Code
         </label>
-        <input type="text" class="form-control form-control-sm" id="companyCode" v-model="companyCode" placeholder="Enter your company code" @change="checkCompanyCode()"/>
+        <input :disabled="$store.getters.userProfile.companyCode !== ''" type="text" class="form-control form-control-sm" id="companyCode" v-model="companyCode" placeholder="Enter your company code" @change="checkCompanyCode()"/>
         <small class="form-text text-muted">
-          This is the unique string associated to your company account and to be used in your company subdomain. Examples: my-test-company, testcompany, test-company
+          This is the unique string associated to your company account and to be used in your company's subdomain. To assign this user account to an existing company, type in your companies existing code. Examples: mycompany, my-company, my-company-name
         </small>
         <small v-for="(error, index) in companyCodeErrors" :key="index" class="text-danger">
           {{ error }}
           <br/>
         </small>
       </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validCompanyInfo">
-        Update Company Settings
+      <button v-if="$store.getters.userProfile.companyCode === '' && $store.getters.userProfile.companyName === ''" id="account-settings-button" type="submit" class="btn btn-primary btn-sm">
+        Setup Company Account
       </button>
       <p class="text-muted text-small mt-2"></p>
     </form>
-    <form @submit.prevent="updateAccountSettings()">
-      <div class="form-group" v-if="false">
+    <form v-if="false">
+      <div class="form-group">
         <label for="newPassword">
           Update Password
         </label>
@@ -63,13 +105,7 @@
           <br/>
         </small>
       </div>
-      <div class="form-check">
-        <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent" @change="checkConfirmPassword()"/>
-        <small>
-          I would like to receive the Network Next newsletter
-        </small>
-      </div>
-      <button type="submit" class="btn btn-primary btn-sm" v-bind:disabled="!validPasswordForm" style="margin-top: 1rem;">
+      <button type="submit" class="btn btn-primary btn-sm" :disabled="!validPasswordForm" style="margin-top: 1rem;" v-if="false">
         Save
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -80,8 +116,8 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from './Alert.vue'
-import { AlertTypes } from './types/AlertTypes'
-import { UserProfile } from './types/AuthTypes'
+import { AlertType } from './types/AlertTypes'
+import { cloneDeep } from 'lodash'
 
 /**
  * This component displays all of the necessary information for the user management tab
@@ -99,95 +135,121 @@ import { UserProfile } from './types/AuthTypes'
   }
 })
 export default class AccountSettings extends Vue {
-  get validCompanyInfo (): boolean {
-    return this.validCompanyName && this.validCompanyCode
+  // Register the alert component to access its set methods
+  $refs!: {
+    companyResponseAlert: Alert;
+    accountResponseAlert: Alert;
   }
 
-  private message: any
-  private alertType: any
+  get validCompanyInfo (): boolean {
+    this.checkCompanyName()
+    this.checkCompanyCode()
+    return this.companyNameErrors.length === 0 && this.companyCodeErrors.length === 0
+  }
+
   private companyName: string
+  private companyNameErrors: Array<string>
+
   private companyCode: string
+  private companyCodeErrors: Array<string>
+
+  private firstName: string
+  private firstNameErrors: Array<string>
+
+  private lastName: string
+  private lastNameErrors: Array<string>
+
+  private newsletterConsent: boolean
+  private AlertType: any
+
   private newPassword: string
-  private confirmPassword: string
-  private unwatch: any
   private validPassword: boolean
   private validPasswordForm: boolean
-  private validCompanyCode: boolean
-  private validCompanyName: boolean
   private newPasswordErrors: Array<string>
-  private companyNameErrors: Array<string>
-  private companyCodeErrors: Array<string>
+  private confirmPassword: string
   private confirmPasswordErrors: Array<string>
-  private newsletterConsent: boolean
 
   constructor () {
     super()
-    this.message = ''
-    this.alertType = AlertTypes.DEFAULT
     this.companyName = ''
+    this.companyNameErrors = []
+
     this.companyCode = ''
+    this.companyCodeErrors = []
+
+    this.firstName = ''
+    this.firstNameErrors = []
+
+    this.lastName = ''
+    this.lastNameErrors = []
+
+    this.newsletterConsent = false
+    this.AlertType = AlertType
+
     this.newPassword = ''
     this.confirmPassword = ''
     this.validPassword = false
     this.validPasswordForm = false
-    this.validCompanyName = false
-    this.validCompanyCode = false
-    this.validCompanyCode = false
-    this.validCompanyName = false
     this.newPasswordErrors = []
-    this.companyNameErrors = []
-    this.companyCodeErrors = []
     this.confirmPasswordErrors = []
-    this.newsletterConsent = false
   }
 
   private mounted () {
-    if (!this.$store.getters.userProfile) {
-      this.unwatch = this.$store.watch(
-        (_, getters: any) => getters.userProfile,
-        (userProfile: any) => {
-          this.checkUserProfile(userProfile)
-        }
-      )
-    } else {
-      this.checkUserProfile(this.$store.getters.userProfile)
-    }
-  }
-
-  private checkUserProfile (userProfile: UserProfile) {
-    if (this.companyName === '') {
-      this.companyName = userProfile.companyName || ''
-    }
-    if (this.companyCode === '') {
-      this.companyCode = userProfile.companyCode || ''
-    }
+    const userProfile = cloneDeep(this.$store.getters.userProfile)
+    this.firstName = userProfile.firstName || ''
+    this.lastName = userProfile.lastName || ''
     this.newsletterConsent = userProfile.newsletterConsent || false
-    this.checkCompanyName()
-    this.checkCompanyCode()
-    this.checkConfirmPassword()
+
+    this.companyName = userProfile.companyName || ''
+    this.companyCode = userProfile.companyCode || ''
+    // this.checkConfirmPassword()
   }
 
-  private destory () {
-    this.unwatch()
+  private checkFirstName () {
+    this.firstNameErrors = []
+    if (this.firstName.length === 0) {
+      this.firstNameErrors.push('Please enter your first name')
+      return
+    }
+
+    if (this.firstName.length > 2048) {
+      this.firstNameErrors.push('First name is to long, please enter a name that is less that 2048 characters')
+      return
+    }
+
+    const regex = new RegExp('([A-Za-z])')
+    if (!regex.test(this.firstName)) {
+      this.firstNameErrors.push('A valid first name must include at least one letter')
+    }
+  }
+
+  private checkLastName () {
+    this.lastNameErrors = []
+    if (this.lastName.length === 0) {
+      this.lastNameErrors.push('Please enter your last name')
+      return
+    }
+
+    if (this.lastName.length > 2048) {
+      this.lastNameErrors.push('Last name is to long, please enter a name that is less that 2048 characters')
+      return
+    }
+
+    const regex = new RegExp('([A-Za-z])')
+    if (!regex.test(this.lastName)) {
+      this.lastNameErrors.push('A valid last name must include at least one letter')
+    }
   }
 
   private checkCompanyName () {
     this.companyNameErrors = []
-    this.validCompanyName = false
-    if (this.companyName.length === 0) {
-      return
-    }
     if (this.companyName.length > 256) {
       this.companyNameErrors.push('Please choose a company name that is at most 256 characters')
-    }
-    if (this.companyNameErrors.length === 0) {
-      this.validCompanyName = true
     }
   }
 
   private checkCompanyCode () {
     this.companyCodeErrors = []
-    this.validCompanyCode = false
     this.companyCode = this.companyCode.toLowerCase()
     if (this.companyCode.length === 0) {
       return
@@ -198,9 +260,6 @@ export default class AccountSettings extends Vue {
     const regex = new RegExp('^([a-z])+(-?[a-z])*$')
     if (!regex.test(this.companyCode)) {
       this.companyCodeErrors.push('Please choose a company code that contains character padded hyphens and no special characters')
-    }
-    if (this.companyCodeErrors.length === 0) {
-      this.validCompanyCode = true
     }
   }
 
@@ -251,49 +310,98 @@ export default class AccountSettings extends Vue {
     }
   }
 
-  private updateCompanyInformation () {
+  private updateAccountDetails () {
+    let changed = false
+    const newsletter = this.$store.getters.userProfile.newsletterConsent
+    const options: any = {
+      first_name: '',
+      last_name: '',
+      newsletter: newsletter
+    }
+    this.checkFirstName()
+    this.checkLastName()
+    if ((this.firstNameErrors.length === 0 && this.lastNameErrors.length === 0) && (this.$store.getters.userProfile.firstName !== this.firstName || this.$store.getters.userProfile.lastName !== this.lastName)) {
+      options.first_name = this.firstName
+      options.last_name = this.lastName
+      changed = true
+    }
+    if (newsletter !== this.newsletterConsent) {
+      options.newsletter = this.newsletterConsent
+      changed = true
+    }
+
+    if (!changed) {
+      return
+    }
+
     this.$apiService
-      .updateCompanyInformation({ company_name: this.companyName, company_code: this.companyCode })
-      .then((response: any) => {
-        this.$authService.refreshToken()
-        this.message = 'Company name updated successfully'
-        this.alertType = AlertTypes.SUCCESS
+      .updateAccountDetails(options)
+      .then(() => {
+        return this.$authService.refreshToken()
+      })
+      .then(() => {
+        this.$refs.accountResponseAlert.setMessage('Account details updated successfully')
+        this.$refs.accountResponseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
+          if (this.$refs.accountResponseAlert) {
+            this.$refs.accountResponseAlert.resetAlert()
+          }
         }, 5000)
       })
       .catch((error: Error) => {
-        console.log('Something went wrong updating the account settings')
+        console.log('Something went wrong updating the user account settings')
         console.log(error)
-        this.message = 'Failed to update company name'
-        this.alertType = AlertTypes.ERROR
+        this.firstName = this.$store.getters.userProfile.firstName
+        this.lastName = this.$store.getters.userProfile.lastName
+        this.newsletterConsent = this.$store.getters.userProfile.newsletterConsent
+        this.$refs.accountResponseAlert.setMessage('Failed to update account details')
+        this.$refs.accountResponseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
+          if (this.$refs.accountResponseAlert) {
+            this.$refs.accountResponseAlert.resetAlert()
+          }
         }, 5000)
       })
   }
 
-  private updateAccountSettings () {
+  private setupCompanyAccount () {
+    // Check for a valid company info form that is not equal to what is currently there. IE someone assigned to a company wants to update their newsletter settings but not change their company info
+    if (!this.validCompanyInfo || (this.$store.getters.userProfile.firstName === '' && this.$store.getters.userProfile.lastName === '')) {
+      this.$refs.companyResponseAlert.setMessage('Please update your first and last name before setting up a company account')
+      this.$refs.companyResponseAlert.setAlertType(AlertType.ERROR)
+      setTimeout(() => {
+        if (this.$refs.companyResponseAlert) {
+          this.$refs.companyResponseAlert.resetAlert()
+        }
+      }, 5000)
+      return
+    }
+
     this.$apiService
-      .updateAccountSettings({ newPassword: this.newPassword, newsletter: this.newsletterConsent })
-      .then((response: any) => {
-        this.message = 'Account settings updated successfully'
-        this.alertType = AlertTypes.SUCCESS
+      .setupCompanyAccount({ company_name: this.companyName, company_code: this.companyCode })
+      .then(() => {
+        return this.$authService.refreshToken()
+      })
+      .then(() => {
+        this.$refs.companyResponseAlert.setMessage('Account settings updated successfully')
+        this.$refs.companyResponseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
+          if (this.$refs.companyResponseAlert) {
+            this.$refs.companyResponseAlert.resetAlert()
+          }
         }, 5000)
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the account settings')
         console.log(error)
-        this.message = 'Failed to update account settings'
-        this.alertType = AlertTypes.ERROR
+        this.companyName = ''
+        this.companyCode = ''
+        this.$refs.companyResponseAlert.setMessage('Failed to update company details')
+        this.$refs.companyResponseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
-          this.message = ''
-          this.alertType = AlertTypes.DEFAULT
+          if (this.$refs.companyResponseAlert) {
+            this.$refs.companyResponseAlert.resetAlert()
+          }
         }, 5000)
       })
   }
@@ -303,4 +411,12 @@ export default class AccountSettings extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+  #account-settings-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #account-settings-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
 </style>

@@ -11,24 +11,19 @@
     "build-local": "vue-cli-service build --mode local",
     "test:unit": "vue-cli-service test:unit",
     "test:unit-dev": "vue-cli-service test:unit --watch",
-    "test:e2e": "vue-cli-service test:e2e",
+    "test:e2e": "vue-cli-service test:e2e --mode local --url=http://127.0.0.1:8080",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "@auth0/auth0-spa-js": "^1.10.0",
-    "@deck.gl/core": "^8.2.3",
-    "@deck.gl/layers": "^8.2.3",
     "@fortawesome/fontawesome-svg-core": "^1.2.29",
     "@fortawesome/free-solid-svg-icons": "^5.13.1",
     "@fortawesome/vue-fontawesome": "^0.1.10",
-    "@types/mapbox-gl": "^1.11.0",
-    "@types/vuelidate": "^0.7.13",
+    "@types/auth0-js": "^9.14.5",
+    "auth0-js": "^9.16.4",
     "bootstrap": "^4.5.0",
     "core-js": "^3.6.5",
-    "deck.gl": "^8.2.3",
     "jquery": "^3.5.1",
     "lodash": "^4.17.19",
-    "mapbox-gl": "^1.11.0",
     "popper.js": "^1.16.1",
     "uplot": "^1.0.11",
     "vue": "^2.6.11",
@@ -37,7 +32,7 @@
     "vue-multiselect": "^2.1.6",
     "vue-property-decorator": "^8.4.2",
     "vue-router": "^3.2.0",
-    "vuelidate": "^0.7.5",
+    "vue-tour": "^1.5.0",
     "vuex": "^3.4.0"
   },
   "devDependencies": {
@@ -45,14 +40,14 @@
     "@types/lodash": "^4.14.157",
     "@typescript-eslint/eslint-plugin": "^2.33.0",
     "@typescript-eslint/parser": "^2.33.0",
-    "@vue/cli-plugin-babel": "~4.4.0",
-    "@vue/cli-plugin-e2e-cypress": "~4.4.0",
-    "@vue/cli-plugin-eslint": "~4.4.0",
-    "@vue/cli-plugin-router": "~4.4.0",
-    "@vue/cli-plugin-typescript": "~4.4.0",
-    "@vue/cli-plugin-unit-jest": "~4.4.0",
-    "@vue/cli-plugin-vuex": "~4.4.0",
-    "@vue/cli-service": "~4.4.0",
+    "@vue/cli-plugin-babel": "~4.5.14",
+    "@vue/cli-plugin-e2e-cypress": "~4.5.14",
+    "@vue/cli-plugin-eslint": "~4.5.14",
+    "@vue/cli-plugin-router": "~4.5.14",
+    "@vue/cli-plugin-typescript": "~4.5.14",
+    "@vue/cli-plugin-unit-jest": "~4.5.14",
+    "@vue/cli-plugin-vuex": "~4.5.14",
+    "@vue/cli-service": "~4.5.14",
     "@vue/eslint-config-standard": "^5.1.2",
     "@vue/eslint-config-typescript": "^5.0.2",
     "@vue/test-utils": "^1.0.3",
@@ -64,7 +59,7 @@
     "eslint-plugin-standard": "^4.0.0",
     "eslint-plugin-vue": "^5.2.3",
     "miragejs": "^0.1.40",
-    "node-sass": "^4.12.0",
+    "node-sass": "4.14.0",
     "sass-loader": "^8.0.2",
     "typescript": "~3.9.3",
     "vue-template-compiler": "^2.6.11"
@@ -85,11 +80,15 @@
     "rules": {
       "@typescript-eslint/camelcase": "off",
       "new-cap": "off",
-      "no-debugger": "off"
+      "no-debugger": "off",
+      "@typescript-eslint/no-var-requires": "off",
+      "no-useless-escape": "off",
+      "no-control-regex": "off"
     },
     "overrides": [
       {
         "files": [
+          "**/src/*.js",
           "**/__tests__/*.{j,t}s?(x)",
           "**/tests/unit/**/*.spec.{j,t}s?(x)"
         ],

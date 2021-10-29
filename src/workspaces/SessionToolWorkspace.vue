@@ -15,8 +15,12 @@
       <h1 class="h2">
         Session Tool
       </h1>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1 hidden">
-        <div class="mr-auto"></div>
+      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
+        <Alert ref="verifyAlert">
+          <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
+            Resend email
+          </a>
+        </Alert>
       </div>
     </div>
     <form class="flow-stats-form" @submit.prevent="fetchSessionDetails()">
@@ -34,15 +38,15 @@
             >
           </div>
           <div class="col-auto">
-            <button class="btn btn-primary" type="submit">
+            <button id="session-tool-button" class="btn btn-primary" type="submit">
               View Stats
             </button>
           </div>
         </div>
       </div>
     </form>
-    <Alert :message="message" :alertType="alertType" v-if="message !== '' && $route.path === '/session-tool'"/>
-    <router-view />
+    <Alert ref="inputAlert"/>
+    <router-view :key="$route.fullPath"/>
   </div>
 </template>
 
@@ -51,7 +55,8 @@ import { Component, Vue } from 'vue-property-decorator'
 import { Route, NavigationGuardNext } from 'vue-router'
 
 import Alert from '@/components/Alert.vue'
-import { AlertTypes } from '@/components/types/AlertTypes'
+import { AlertType } from '@/components/types/AlertTypes'
+import { EMAIL_CONFIRMATION_MESSAGE, RELOAD_MESSAGE } from '@/components/types/Constants'
 /**
  * This component holds the workspace elements related to the session tool in the Portal
  */
@@ -66,33 +71,62 @@ import { AlertTypes } from '@/components/types/AlertTypes'
   }
 })
 export default class SessionToolWorkspace extends Vue {
-  private alertType: string
-  private message: string
+  // Register the alert component to access its set methods
+  $refs!: {
+    verifyAlert: Alert;
+    inputAlert: Alert;
+  }
+
   private searchID: string
 
   constructor () {
     super()
-    this.alertType = ''
     this.searchID = ''
-    this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
-    this.alertType = AlertTypes.INFO
+  }
+
+  private mounted () {
+    if (this.$store.getters.isAnonymousPlus) {
+      this.$refs.verifyAlert.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
+      this.$refs.verifyAlert.setAlertType(AlertType.INFO)
+    }
+    if (this.$route.path === '/session-tool') {
+      this.$refs.inputAlert.setMessage('Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.')
+      this.$refs.inputAlert.setAlertType(AlertType.INFO)
+    }
+
+    // If the network is down, show an error
+    if (this.$store.getters.killLoops) {
+      this.showErrorAlert()
+    }
   }
 
   private created () {
     this.searchID = this.$route.params.pathMatch || ''
+    if (this.searchID !== '') {
+      this.fetchSessionDetails()
+    }
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    this.searchID = ''
-    this.message = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
-    this.alertType = AlertTypes.INFO
+    this.searchID = to.params.pathMatch || ''
+    if (this.searchID === '') {
+      this.$refs.inputAlert.setMessage('Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.')
+      this.$refs.inputAlert.setAlertType(AlertType.INFO)
+    }
     next()
   }
 
   private fetchSessionDetails () {
-    this.message = ''
-    if (this.searchID === '') {
+    if (this.$refs.inputAlert) {
+      this.$refs.inputAlert.resetAlert()
+    }
+    if (this.searchID === '' && this.$route.path !== '/session-tool') {
       this.$router.push({ path: '/session-tool' })
+      return
+    }
+    if (this.searchID === '' && this.$route.path === '/session-tool') {
+      this.$refs.inputAlert.setMessage('Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.')
+      this.$refs.inputAlert.setAlertType(AlertType.INFO)
       return
     }
     const newRoute = `/session-tool/${this.searchID}`
@@ -100,9 +134,23 @@ export default class SessionToolWorkspace extends Vue {
       this.$router.push({ path: newRoute })
     }
   }
+
+  private showErrorAlert () {
+    this.$refs.verifyAlert.toggleSlots(false)
+    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
+  }
 }
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  #session-tool-button {
+    border-color: #009FDF;
+    background-color: #009fdf;
+  }
+  #session-tool-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
 </style>

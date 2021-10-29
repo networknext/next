@@ -7,6 +7,8 @@ agent:
 global_job_config:
   prologue:
     commands:
+      - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
+      - gcloud auth configure-docker -q
       - checkout
       - npm i
 blocks:

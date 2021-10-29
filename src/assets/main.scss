@@ -1,27 +1,27 @@
 .multiselect__tag {
-  background-color: #007bff !important;
+  background-color: #009FDF !important;
 }
 .multiselect__tag-icon::after {
   color: white !important;
 }
 .multiselect__tag-icon:hover {
-  background-color: #007bff !important;
+  background-color: rgb(0, 139, 194) !important;
 }
 .multiselect__element {
   background-color: white !important;
 }
 .multiselect__option--highlight {
-  background-color: #f94a21 !important;
+  background-color: #FF6700 !important;
 }
 .multiselect__option::after {
-  background-color: #f94a21 !important;
+  background-color: #FF6700 !important;
   color: white !important;
 }
 .multiselect__option--highlight::after {
-  background-color: #f94a21 !important;
+  background-color: #FF6700 !important;
 }
 .multiselect__option--selected {
-  background-color: #007bff !important;
+  background-color: #009FDF !important;
   color: white !important;
 }
 .multiselect__option--selected::after {

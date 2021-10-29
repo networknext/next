@@ -9,10 +9,19 @@
 import Vue from 'vue'
 
 import {
+  faArrowLeft,
+  faBell,
   faCheck,
+  faChevronDown,
+  faChevronLeft,
   faCircle,
+  faClipboard,
+  faCreditCard,
   faDownload,
+  faFileAlt,
+  faMinusSquare,
   faPen,
+  faPlusSquare,
   faTimes,
   faTrash
 } from '@fortawesome/free-solid-svg-icons'
@@ -33,10 +42,19 @@ import Workspace from '@/workspaces/Workspace.vue'
  */
 
 const ICONS = [
+  faArrowLeft,
+  faBell,
   faCheck,
+  faChevronDown,
+  faChevronLeft,
   faCircle,
+  faClipboard,
+  faCreditCard,
   faDownload,
+  faFileAlt,
+  faMinusSquare,
   faPen,
+  faPlusSquare,
   faTimes,
   faTrash
 ]
@@ -55,6 +73,7 @@ export default Vue.extend({})
   html, body {
     height: 100%;
     overflow: hidden;
+    font-family: "Montserrat" !important;
   }
   #app {
     position: absolute;

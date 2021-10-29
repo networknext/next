@@ -1,114 +1,101 @@
 import store from '@/store'
-import router from '@/router'
-import { Auth0Client } from '@auth0/auth0-spa-js'
-import { UserProfile } from '@/components/types/AuthTypes.ts'
+import { Auth0DecodedHash, Auth0Error, WebAuth } from 'auth0-js'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
+import Vue from 'vue'
 
 export class AuthService {
   private clientID: string
   private domain: string
-  public authClient: Auth0Client | any
+  public auth0Client: WebAuth
 
   constructor (options: any) {
     this.clientID = options.clientID
     this.domain = options.domain
-    this.authClient = new Auth0Client({
-      client_id: this.clientID,
+
+    this.auth0Client = new WebAuth({
       domain: this.domain,
-      cacheLocation: 'localstorage'
+      clientID: this.clientID,
+      responseType: 'token id_token',
+      redirectUri: window.location.origin + '/map'
     })
-    this.processAuthentication()
   }
 
   public logout () {
-    this.authClient.logout()
-  }
-
-  public login () {
-    this.authClient
-      .loginWithRedirect({
-        connection: 'Username-Password-Authentication',
-        redirect_uri: window.location.origin
-      })
-  }
-
-  public signUp () {
-    this.authClient.loginWithRedirect({
-      connection: 'Username-Password-Authentication',
-      redirect_uri: window.location.origin,
-      screen_hint: 'signup'
+    this.auth0Client.logout({
+      returnTo: window.location.origin + '/map'
     })
   }
 
-  public refreshToken () {
-    this.authClient.getTokenSilently({ ignoreCache: true })
-      .then(() => {
-        this.processAuthentication()
-      })
+  public login (username: string, password: string): Promise<any> {
+    return new Promise(
+      (resolve: any, reject: any) => this.auth0Client.login(
+        {
+          username: username,
+          password: password,
+          realm: 'Username-Password-Authentication'
+        },
+        (err: Auth0Error | null) => {
+          err ? reject(Error('Wrong username/password')) : resolve()
+        }
+      )
+    )
   }
 
-  private async processAuthentication () {
-    const query = window.location.search
+  public getAccess (email: string, password: string): Promise<Error | undefined> {
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      Vue.prototype.$gtag.event('clicked sign up', {
+        event_category: 'Account Creation',
+        event_label: 'Sign up'
+      })
+    }
+    // TODO: this.auth0Client.signupAndAuthorize doesn't work here for some reason
+    return new Promise((resolve: any, reject: any) => this.auth0Client.signup({
+      username: email,
+      email: email,
+      password: password,
+      connection: 'Username-Password-Authentication'
+    }, (err: Auth0Error | null) => {
+      err ? reject(new Error('Auth0 failed to sign up user')) : resolve()
+    }))
+  }
 
-    const isAuthenticated =
-      await this.authClient.isAuthenticated()
-        .catch((error: Error) => {
-          console.log('something went wrong checking auth status')
-          console.log(error)
-        })
-    if (isAuthenticated) {
-      const userProfile: UserProfile = {
-        auth0ID: '',
-        companyCode: '',
-        companyName: '',
-        email: '',
-        idToken: '',
-        name: '',
-        roles: [],
-        verified: false,
-        routeShader: null,
-        pubKey: '',
-        newsletterConsent: false,
-        domains: []
+  // TODO: This should be an async function instead of the weird nested promise
+  public refreshToken (): Promise<any> {
+    return this.processAuthentication()
+  }
+
+  public async processAuthentication (): Promise<any> {
+    // Auth0 sucks so this is a hack to make the callback of check session resolve as a promise -> undefined if the user is logged out of the result of fetching the local token
+    const authResult: Auth0DecodedHash = await new Promise((resolve: any, reject: any) => this.auth0Client.checkSession({}, (err: Auth0Error | null, result: Auth0DecodedHash) => {
+      if (err) {
+        resolve(undefined)
+      } else {
+        resolve(result)
       }
+    }))
 
-      this.authClient
-        .getIdTokenClaims()
-        .then((authResult: any) => {
-          const nnScope = authResult[
-            'https://networknext.com/userData'
-          ]
-          const roles: Array<any> = nnScope.roles || { roles: [] }
-          const companyCode: string = nnScope.company_code || ''
-          const newsletterConsent: boolean = nnScope.newsletter || false
-          const email = authResult.email || ''
-          const token = authResult.__raw
-
-          userProfile.roles = roles
-          userProfile.email = email
-          userProfile.idToken = token
-          userProfile.auth0ID = authResult.sub
-          userProfile.verified = authResult.email_verified
-          userProfile.companyCode = companyCode
-          userProfile.newsletterConsent = newsletterConsent
-
-          store.commit('UPDATE_USER_PROFILE', userProfile)
-          store.commit('UPDATE_CURRENT_FILTER', { companyCode: roles.includes('Admin') ? '' : companyCode })
-        })
-        .catch((error: Error) => {
-          console.log('Something went wrong fetching user details')
-          console.log(error.message)
-        })
-      return
+    // If user is logged in process the login
+    if (authResult) {
+      return store.dispatch('processAuthChange', authResult)
     }
-    if (query.includes('code=') && query.includes('state=')) {
-      await this.authClient.handleRedirectCallback()
-        .catch((error: Error) => {
-          console.log('something went wrong with parsing the redirect callback')
-          console.log(error)
-        })
-      this.processAuthentication()
-      router.push('/')
+
+    const isReturning = localStorage.returningUser || 'false'
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_TOUR)) {
+      if (!(isReturning === 'true') && store.getters.isAnonymous) {
+        store.commit('TOGGLE_IS_TOUR', true)
+        localStorage.returningUser = true
+      }
     }
+
+    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_INTERCOM)) {
+      (window as any).Intercom('boot', {
+        api_base: process.env.VUE_APP_INTERCOM_BASE_API,
+        app_id: process.env.VUE_APP_INTERCOM_ID
+      })
+    }
+
+    // Generic resolve to still return a promise even though there isn't anything to resolve here
+    return Promise.resolve()
   }
 }
 
