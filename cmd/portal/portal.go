@@ -519,12 +519,6 @@ func main() {
 		}
 	}()
 
-	uiDir := os.Getenv("UI_DIR")
-	if uiDir == "" {
-		level.Error(logger).Log("err", "env var UI_DIR must be set")
-		os.Exit(1)
-	}
-
 	relayMap := jsonrpc.NewRelayStatsMap()
 
 	// TODO: b0rked, needs to process a csv file from /relays and this GET
