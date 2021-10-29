@@ -244,4 +244,4 @@ Analyzes the route matrix and produces high level data. The file read in is 'opt
 
 ## Remaining Functionality
 
-Remaining `next` commands are described in Slab (here)[https://networknext.slab.com/posts/next-tool-updates-cuerpgzy].  
+Remaining `next` commands are described in Slab [here](https://networknext.slab.com/posts/next-tool-updates-cuerpgzy).  
