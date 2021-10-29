@@ -58,7 +58,7 @@ AuthHandler = {
         clientID = 'BRvkWHQEyQmCqA7i2IBFOpm7XnDdwkpR';
         break;
       default:
-      clientID = 'oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n';
+      clientID = 'gsBWLNoeWod67itQjOE0uvfCpgIwNH8a';
     }
 
 		this.auth0Client = await createAuth0Client({
