@@ -50,6 +50,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 
 		if request.Header.Get("Content-Type") != "application/octet-stream" {
 			core.Error("%s: relay update unsupported content type", request.RemoteAddr)
+			params.Metrics.ErrorMetrics.ContentTypeFailure.Add(1)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -58,6 +59,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 		updates, err := unbatchRelayUpdates(body)
 		if err != nil {
 			core.Error("%s: relay update could not unbatch relay updates: %v", request.RemoteAddr, err)
+			params.Metrics.ErrorMetrics.UnbatchFailure.Add(1)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}

@@ -46,6 +46,7 @@ func opsRelays(
 
 	relays := []struct {
 		Name                string
+		EgressPriceOverride string
 		MRC                 string
 		Overage             string
 		BWRule              string
@@ -63,7 +64,7 @@ func opsRelays(
 	relaysCSV := [][]string{{}}
 
 	relaysCSV = append(relaysCSV, []string{
-		"Name", "MRC", "Overage", "BW Rule",
+		"Name", "EgressPriceOverride", "MRC", "Overage", "BW Rule",
 		"Term", "Start Date", "End Date", "Type", "Bandwidth", "NIC Speed", "State", "IP Address", "Notes"})
 
 	for _, relay := range reply.Relays {
@@ -99,6 +100,11 @@ func opsRelays(
 
 		if !includeRelay {
 			continue
+		}
+
+		egressPriceOverride := ""
+		if relay.EgressPriceOverride > 0 {
+			egressPriceOverride = fmt.Sprintf("%.2f", relay.EgressPriceOverride.ToCents()/100)
 		}
 
 		mrc := ""
@@ -166,6 +172,7 @@ func opsRelays(
 			if csvOutputFlag {
 				relaysCSV = append(relaysCSV, []string{
 					relay.Name,
+					egressPriceOverride,
 					mrc,
 					overage,
 					bwRule,
@@ -182,6 +189,7 @@ func opsRelays(
 			} else {
 				relays = append(relays, struct {
 					Name                string
+					EgressPriceOverride string
 					MRC                 string
 					Overage             string
 					BWRule              string
@@ -196,6 +204,7 @@ func opsRelays(
 					Notes               string
 				}{
 					relay.Name,
+					egressPriceOverride,
 					mrc,
 					overage,
 					bwRule,
@@ -431,6 +440,7 @@ func addRelayJS(env Environment, r relay) {
 		SSHUser:             r.SSHUser,
 		SSHPort:             r.SSHPort,
 		MaxSessions:         int64(r.MaxSessions),
+		EgressPriceOverride: int64(routing.DollarsToNibblins(r.EgressPriceOverride)),
 		MRC:                 int64(routing.DollarsToNibblins(r.MRC)),
 		Overage:             int64(routing.DollarsToNibblins(r.Overage)),
 		BWRule:              int64(bwRule),

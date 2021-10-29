@@ -149,18 +149,37 @@ func main() {
 		os.Exit(1)
 	}
 
+	auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
+	if auth0Issuer == "" {
+		level.Error(logger).Log("envvar", "AUTH0_ISSUER", "not set")
+		os.Exit(1)
+	}
+
+	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
+	if auth0Domain == "" {
+		level.Error(logger).Log("envvar", "AUTH0_DOMAIN", "not set")
+		os.Exit(1)
+	}
+
+	auth0ClientID := envvar.Get("AUTH0_CLIENTID", "")
+	if auth0ClientID == "" {
+		level.Error(logger).Log("envvar", "AUTH0_CLIENTID", "not set")
+		os.Exit(1)
+	}
+
 	manager, err := management.New(
-		os.Getenv("AUTH_DOMAIN"),
-		os.Getenv("AUTH_CLIENTID"),
-		os.Getenv("AUTH_CLIENTSECRET"),
+		auth0Domain,
+		auth0ClientID,
+		os.Getenv("AUTH0_CLIENTSECRET"),
 	)
 	if err != nil {
 		level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
 
-	var userManager storage.UserManager = manager.User
 	var jobManager storage.JobManager = manager.Job
+	var roleManager storage.RoleManager = manager.Role
+	var userManager storage.UserManager = manager.User
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 
@@ -214,7 +233,7 @@ func main() {
 		btCfName = envvar.Get("BIGTABLE_CF_NAME", "")
 
 		// Create a bigtable admin for setup
-		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID, logger)
+		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -239,7 +258,7 @@ func main() {
 		}
 
 		// Create a standard client for writing to the table
-		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, btTableName, logger)
+		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, btTableName)
 		if err != nil {
 			level.Error(logger).Log("err", err)
 			os.Exit(1)
@@ -386,6 +405,31 @@ func main() {
 		Channel:    channel,
 	}
 
+	// If the hubspot API key isn't set, hubspot functionality will be turned off
+	hubspotAPIKey := envvar.Get("HUBSPOT_API_KEY", "")
+	hubspotClient, err := notifications.NewHubSpotClient(hubspotAPIKey, 10*time.Second)
+
+	authenticationClient, err := notifications.NewAuth0AuthClient(auth0ClientID, auth0Domain)
+	if err != nil {
+		level.Error(logger).Log("err", "failed to create authentication client")
+		os.Exit(1)
+	}
+
+	authservice := &jsonrpc.AuthService{
+		AuthenticationClient: authenticationClient,
+		HubSpotClient:        hubspotClient,
+		MailChimpManager: notifications.MailChimpHandler{
+			HTTPHandler: *http.DefaultClient,
+			MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
+		},
+		Logger:      logger,
+		JobManager:  jobManager,
+		RoleManager: roleManager,
+		UserManager: userManager,
+		SlackClient: slackClient,
+		Storage:     db,
+	}
+
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -410,7 +454,7 @@ func main() {
 		Storage: db,
 	}
 
-	newKeys, err := middleware.FetchAuth0Cert()
+	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 	if err != nil {
 		level.Error(logger).Log("msg", "error fetching auth0 cert", "err", err)
 		os.Exit(1)
@@ -418,19 +462,29 @@ func main() {
 	keys = newKeys
 
 	go func() {
-		fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+		fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
 		if err != nil {
-			level.Error(logger).Log("envvar", "AUTH_CERT_INTERVAL", "value", fetchAuthCertInterval, "err", err)
+			level.Error(logger).Log("envvar", "AUTH0_CERT_INTERVAL", "value", fetchAuthCertInterval, "err", err)
 			os.Exit(1)
 		}
 
 		for {
-			newKeys, err := middleware.FetchAuth0Cert()
+			newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 			if err != nil {
 				continue
 			}
 			keys = newKeys
 			time.Sleep(fetchAuthCertInterval)
+		}
+	}()
+
+	go func() {
+		for {
+			err := authservice.RefreshAuthRolesCache()
+			if err != nil {
+				continue
+			}
+			time.Sleep(time.Hour)
 		}
 	}()
 
@@ -464,12 +518,6 @@ func main() {
 			time.Sleep(fetchReleaseNotesInterval)
 		}
 	}()
-
-	uiDir := os.Getenv("UI_DIR")
-	if uiDir == "" {
-		level.Error(logger).Log("err", "env var UI_DIR must be set")
-		os.Exit(1)
-	}
 
 	relayMap := jsonrpc.NewRelayStatsMap()
 
@@ -536,7 +584,6 @@ func main() {
 			user := i.Request.Context().Value(middleware.Keys.UserKey)
 			if user != nil {
 				claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-
 				if requestData, ok := claims["https://networknext.com/userData"]; ok {
 					var userRoles []string
 					if roles, ok := requestData.(map[string]interface{})["roles"]; ok {
@@ -555,7 +602,12 @@ func main() {
 					if consent, ok := requestData.(map[string]interface{})["newsletter"]; ok {
 						newsletterConsent = consent.(bool)
 					}
-					return middleware.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent)
+
+					var verified bool
+					if emailVerified, ok := requestData.(map[string]interface{})["verified"]; ok {
+						verified = emailVerified.(bool)
+					}
+					return middleware.AddTokenContext(i.Request, userRoles, companyCode, newsletterConsent, verified)
 				}
 			}
 			return middleware.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
@@ -570,18 +622,7 @@ func main() {
 		}, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&configService, "")
-
-		s.RegisterService(&jsonrpc.AuthService{
-			MailChimpManager: notifications.MailChimpHandler{
-				HTTPHandler: *http.DefaultClient,
-				MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
-			},
-			Logger:      logger,
-			UserManager: userManager,
-			JobManager:  jobManager,
-			SlackClient: slackClient,
-			Storage:     db,
-		}, "")
+		s.RegisterService(authservice, "")
 
 		relayFrontEnd, ok := os.LookupEnv("RELAY_FRONTEND")
 		if !ok {
@@ -629,7 +670,7 @@ func main() {
 
 		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
 
-		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second*10)
+		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second*40)
 		if err != nil {
 			level.Error(logger).Log("envvar", "HTTP_TIMEOUT", "value", httpTimeout, "err", err)
 			os.Exit(1)
@@ -637,7 +678,7 @@ func main() {
 
 		r := mux.NewRouter()
 
-		r.Handle("/rpc", middleware.JSONRPCMiddleware(keys, os.Getenv("JWT_AUDIENCE"), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ",")))
+		r.Handle("/rpc", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ","), auth0Issuer, true))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 

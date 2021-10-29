@@ -2,6 +2,34 @@ package metrics
 
 import "context"
 
+// RelayFrontendStatus defines the metrics reported by the service's status endpoint
+type RelayFrontendStatus struct {
+	// Service Information
+	ServiceName string `json:"service_name"`
+	GitHash     string `json:"git_hash"`
+	Started     string `json:"started"`
+	Uptime      string `json:"uptime"`
+
+	// Service Metrics
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+
+	// Invocations
+	MasterSelectInvocations int `json:"master_select_invocations"`
+	CostMatrixInvocations   int `json:"cost_matrix_invocations"`
+	RouteMatrixInvocations  int `json:"route_matrix_invocations"`
+
+	// Success
+	MasterSelectSuccessCount int `json:"master_select_success_count"`
+	CostMatrixSuccessCount   int `json:"cost_matrix_success_count"`
+	RouteMatrixSuccessCount  int `json:"route_matrix_success_count"`
+
+	// Error
+	MasterSelectError int `json:"master_select_error"`
+	CostMatrixError   int `json:"cost_matrix_error"`
+	RouteMatrixError  int `json:"route_matrix_error"`
+}
+
 type RelayFrontendMetrics struct {
 	FrontendServiceMetrics *ServiceMetrics
 	MasterSelect           Counter
