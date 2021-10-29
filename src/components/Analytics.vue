@@ -1,16 +1,18 @@
 <template>
   <div class="card-body" id="analytics-page">
     <div v-for="(url, index) in analyticsDashURLs" :key="index" class="row">
-      <div class="card-body">
-        <iframe
-          class="col"
-          id="analyticsDash"
-          :src="url"
-          style="min-height: 1800px;"
-          v-if="url !== ''"
-          frameborder="0"
-        >
-        </iframe>
+      <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
+        <div class="card-body">
+          <iframe
+            class="col"
+            id="analyticsDash"
+            :src="url"
+            :style="{'min-height': index === 0 ? '3400px' : '4600px'}"
+            v-if="url !== ''"
+            frameborder="0"
+          >
+          </iframe>
+        </div>
       </div>
     </div>
   </div>
