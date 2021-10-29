@@ -512,6 +512,7 @@ type relay struct {
 	SSHUser             string
 	SSHPort             int64
 	MaxSessions         uint32
+	EgressPriceOverride float64
 	MRC                 float64
 	Overage             float64
 	BWRule              string
