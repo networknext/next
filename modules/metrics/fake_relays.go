@@ -2,6 +2,30 @@ package metrics
 
 import "context"
 
+// FakeRelayStatus defines the metrics reported by the service's status endpoint
+type FakeRelayStatus struct {
+	// Service Information
+	ServiceName string `json:"service_name"`
+	GitHash     string `json:"git_hash"`
+	Started     string `json:"started"`
+	Uptime      string `json:"uptime"`
+
+	// Service Metrics
+	Goroutines      int     `json:"goroutines"`
+	MemoryAllocated float64 `json:"mb_allocated"`
+
+	// Invocations
+	UpdateInvocations           int `json:"update_invocations"`
+	SuccessfulUpdateInvocations int `json:"successful_update_invocations"`
+
+	// Error Metrics
+	MarshalBinaryError     int `json:"marshal_binary_error"`
+	UnmarshalBinaryError   int `json:"unmarshal_binary_error"`
+	UpdatePostError        int `json:"update_post_error"`
+	NotOKResponseError     int `json:"not_ok_response_error"`
+	ResolveUDPAddressError int `json:"resolve_udp_address_error"`
+}
+
 type FakeRelayMetrics struct {
 	FakeRelayServiceMetrics     *ServiceMetrics
 	UpdateInvocations           Counter
