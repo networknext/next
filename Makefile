@@ -394,6 +394,10 @@ dev-api: build-api ## runs a local api endpoint service
 dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
 	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
 
+.PHONY: dev-pingdom
+dev-pingdom: build-pingdom ## runs the pulling and publishing of pingdom uptime
+	@PORT=41006 ./dist/pingdom
+
 #####################
 ## ESSENTIAL TOOLS ##
 #####################
@@ -556,6 +560,12 @@ build-vanity: dist
 build-fake-server: dist
 	@printf "Building fake server..."
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
+	@printf "done\n"
+
+.PHONY: build-pingdom
+build-pingdom: dist
+	@printf "Building pingdom..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/pingdom ./cmd/pingdom/pingdom.go
 	@printf "done\n"
 
 .PHONY: deploy-portal-crunchers-dev
