@@ -1,8 +1,6 @@
 package analytics
 
 import (
-	"strconv"
-
 	"cloud.google.com/go/bigquery"
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -13,6 +11,7 @@ const (
 	RelayNamesHashEntryVersion = uint8(1)
 
 	MaxInstanceIDLength    = 64
+	MaxPingStatsEntrySize  = 128
 	MaxRelayStatsEntrySize = 128
 )
 
@@ -31,7 +30,7 @@ type PingStatsEntry struct {
 }
 
 func WritePingStatsEntries(entries []PingStatsEntry) []byte {
-	length := 1 + 8 + len(entries)*(8+8+4+4+4+1+MaxInstanceIDLength+1)
+	length := 1 + 8 + len(entries)*int(MaxRelayStatsEntrySize)
 	data := make([]byte, length)
 
 	index := 0
@@ -50,7 +49,8 @@ func WritePingStatsEntries(entries []PingStatsEntry) []byte {
 		encoding.WriteBool(data, &index, entry.Debug)
 	}
 
-	return data
+	return data[:index]
+
 }
 
 func ReadPingStatsEntries(data []byte) ([]*PingStatsEntry, bool) {
@@ -353,80 +353,5 @@ func (e *RelayStatsEntry) Save() (map[string]bigquery.Value, string, error) {
 		bqEntry["full"] = e.Full
 	}
 
-	return bqEntry, "", nil
-}
-
-type RouteMatrixStatsEntry struct {
-	Timestamp uint64
-	Hash      uint64
-	IDs       []uint64
-}
-
-func WriteRouteMatrixStatsEntry(entry RouteMatrixStatsEntry) []byte {
-
-	length := 1 + 8 + 8 + 4 + (len(entry.IDs) * 8)
-
-	data := make([]byte, length)
-	index := 0
-	encoding.WriteUint8(data, &index, RelayNamesHashEntryVersion)
-	encoding.WriteUint64(data, &index, uint64(entry.Timestamp))
-	encoding.WriteUint64(data, &index, uint64(entry.Hash))
-	encoding.WriteUint32(data, &index, uint32(len(entry.IDs)))
-
-	for _, ids := range entry.IDs {
-		encoding.WriteUint64(data, &index, ids)
-	}
-	return data
-}
-
-func ReadRouteMatrixStatsEntry(data []byte) (*RouteMatrixStatsEntry, bool) {
-	index := 0
-
-	entry := new(RouteMatrixStatsEntry)
-	var version uint8
-	if !encoding.ReadUint8(data, &index, &version) {
-		return nil, false
-	}
-
-	if !encoding.ReadUint64(data, &index, &entry.Timestamp) {
-		return nil, false
-	}
-
-	if !encoding.ReadUint64(data, &index, &entry.Hash) {
-		return nil, false
-	}
-
-	var length uint32
-	if !encoding.ReadUint32(data, &index, &length) {
-		return nil, false
-	}
-
-	entry.IDs = make([]uint64, length)
-
-	for i := range entry.IDs {
-		var id uint64
-		if !encoding.ReadUint64(data, &index, &id) {
-			return nil, false
-		}
-		entry.IDs[i] = id
-	}
-
-	return entry, true
-}
-
-// Save implements the bigquery.ValueSaver interface for an Entry
-// so it can be used in Put()
-func (e *RouteMatrixStatsEntry) Save() (map[string]bigquery.Value, string, error) {
-	bqEntry := make(map[string]bigquery.Value)
-
-	bqEntry["timestamp"] = int(e.Timestamp)
-	bqEntry["down_relay_hash"] = int64(e.Hash)
-
-	idStrings := make([]string, len(e.IDs))
-	for i, id := range e.IDs {
-		idStrings[i] = strconv.FormatUint(id, 10)
-	}
-
-	bqEntry["down_relay_IDs"] = idStrings
 	return bqEntry, "", nil
 }

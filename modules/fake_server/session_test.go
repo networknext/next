@@ -73,7 +73,9 @@ func validateTestSession(t *testing.T, sessionPrevSlice, session Session, respon
 
 	assert.Equal(t, uint64(600), (session.packetsSent+session.packetsLost)*uint64(session.sliceNumber))
 
-	assert.NotZero(t, session.directRTT)
+	assert.NotZero(t, session.directMinRTT)
+	assert.NotZero(t, session.directMaxRTT)
+	assert.NotZero(t, session.directPrimeRTT)
 
 	if response.RouteType == routing.RouteTypeDirect {
 		assert.Equal(t, session.jitter, session.directJitter)
@@ -96,7 +98,9 @@ func validateTestSession(t *testing.T, sessionPrevSlice, session Session, respon
 			assert.Zero(t, session.nextPacketLoss)
 		}
 
-		assert.NotZero(t, session.directRTT)
+		assert.NotZero(t, session.directMinRTT)
+		assert.NotZero(t, session.directMaxRTT)
+		assert.NotZero(t, session.directPrimeRTT)
 		assert.NotZero(t, session.directJitter)
 		assert.Zero(t, session.directPacketLoss)
 	}

@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"sort"
@@ -397,4 +398,21 @@ func DisplayLoadedRelays(relayArray []routing.Relay) {
 		fmt.Printf("\t%s - %s [%x]\n", relayArray[i].Name, relayArray[i].Addr.String(), relayArray[i].ID)
 	}
 	fmt.Printf("\n=======================================\n")
+}
+
+// Helper function to create a random string of a specified length
+// Useful for testing constant string lengths
+// Adapted from: https://stackoverflow.com/a/22892986
+func GenerateRandomStringSequence(length int) string {
+	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+	// Seed randomness
+	rand.Seed(time.Now().UnixNano())
+
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+
+	return string(b)
 }

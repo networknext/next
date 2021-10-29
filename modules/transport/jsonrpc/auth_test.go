@@ -18,51 +18,6 @@ import (
 	"gopkg.in/auth0.v4/management"
 )
 
-// TODO: Uncomment once heiseinbug is found
-/*
-// All tests listed below depend on test@networknext.com being a user in auth0
-func TestAuthMiddleware(t *testing.T) {
-	// JWT obtained from Portal Login Dev SPA (Auth0)
-	// Note: 5 year expiration time (expires on 18 May 2025)
-	// test@networknext.com => Delete this in auth0 and these tests will break
-	jwtSideload := "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik5rWXpOekkwTkVVNVFrSTVNRVF4TURRMk5UWTBNakkzTmpOQlJESkVNa1E0TnpGRFF6QkdRdyJ9.eyJuaWNrbmFtZSI6InRlc3QiLCJuYW1lIjoidGVzdEBuZXR3b3JrbmV4dC5jb20iLCJwaWN0dXJlIjoiaHR0cHM6Ly9zLmdyYXZhdGFyLmNvbS9hdmF0YXIvMmRhNWMwMjU5ZTQ3NmI1MDg0MTBlZWY3ZjI5Zjc1NGE_cz00ODAmcj1wZyZkPWh0dHBzJTNBJTJGJTJGY2RuLmF1dGgwLmNvbSUyRmF2YXRhcnMlMkZ0ZS5wbmciLCJ1cGRhdGVkX2F0IjoiMjAyMC0wNi0yM1QxMzozOToyMS44ODFaIiwiZW1haWwiOiJ0ZXN0QG5ldHdvcmtuZXh0LmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL25ldHdvcmtuZXh0LmF1dGgwLmNvbS8iLCJzdWIiOiJhdXRoMHw1Yjk2ZjYxY2YxNjQyNzIxYWQ4NGVlYjYiLCJhdWQiOiJvUUpIM1lQSGR2WkpueENQbzFJcnR6NVVLaTV6cnI2biIsImlhdCI6MTU5MjkxOTU2NSwiZXhwIjoxNzUwNzA0MzI1LCJub25jZSI6ImRHZFNUWEpRTnpkdE5GcHNjR0Z1YVg1dlQxVlNhVFZXUjJoK2VHdG1hMnB2TkcweFZuNTFZalJJZmc9PSJ9.BvMe5fWJcheGzKmt3nCIeLjMD-C5426cpjtJiR55i7lmbT0k4h8Z2X6rynZ_aKR-gaCTY7FG5gI-Ty9ZY1zboWcIkxaTi0VKQzdMUTYVMXVEK2cQ1NVbph7_RSJhLfgO5y7PkmuMZXJEFdrI_2PkO4b3tOU-vpUHFUPtTsESV79a81kXn2C5j_KkKzCOPZ4zol1aEU3WliaaJNT38iSz3NX9URshrrdCE39JRClx6wbUgrfCGnVtfens-Sg7atijivaOx8IlUGOxLMEciYwBL2aY5EXaa7tp7c8ZvoEEj7uZH2R35fV7eUzACwShU-JLR9oOsNEhS4XO1AzTMtNHQA"
-
-	noopHandler := func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}
-
-	t.Run("skip auth", func(t *testing.T) {
-		authMiddleware := jsonrpc.AuthMiddleware("", http.HandlerFunc(noopHandler), []string{})
-
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		res := httptest.NewRecorder()
-
-		authMiddleware.ServeHTTP(res, req)
-		assert.Equal(t, http.StatusOK, res.Code)
-	})
-
-	t.Run("check auth claims", func(t *testing.T) {
-		authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), []string{})
-
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		req.Header.Add("Authorization", "Bearer "+jwtSideload)
-		res := httptest.NewRecorder()
-
-		authMiddleware.ServeHTTP(res, req)
-		assert.Equal(t, http.StatusOK, res.Code)
-	})
-
-	t.Run("anonymous auth", func(t *testing.T) {
-		authMiddleware := jsonrpc.AuthMiddleware("oQJH3YPHdvZJnxCPo1Irtz5UKi5zrr6n", http.HandlerFunc(noopHandler), []string{})
-
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
-		res := httptest.NewRecorder()
-
-		authMiddleware.ServeHTTP(res, req)
-		assert.Equal(t, http.StatusOK, res.Code)
-	})
-}
-*/
 func TestAllAccounts(t *testing.T) {
 	t.Parallel()
 	var userManager = storage.NewLocalUserManager()
@@ -181,7 +136,7 @@ func TestAllAccounts(t *testing.T) {
 
 	t.Run("all - failure", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountsReply
 		err := svc.AllAccounts(req, &jsonrpc.AccountsArgs{}, &reply)
@@ -203,7 +158,7 @@ func TestAllAccounts(t *testing.T) {
 				"email": "test@test.com",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
@@ -226,7 +181,7 @@ func TestAllAccounts(t *testing.T) {
 				"email": "test@test.com",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test-test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test-test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
@@ -398,7 +353,7 @@ func TestUserAccount(t *testing.T) {
 				"sub":   "123",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountReply
@@ -422,7 +377,7 @@ func TestUserAccount(t *testing.T) {
 				"sub":   "123",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
@@ -446,7 +401,7 @@ func TestUserAccount(t *testing.T) {
 				"sub":   "123",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{})
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountReply
@@ -462,7 +417,7 @@ func TestUserAccount(t *testing.T) {
 				"sub":   "123",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
@@ -488,7 +443,7 @@ func TestUserAccount(t *testing.T) {
 				"sub":   "123",
 			},
 		})
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Admin",
 		})
@@ -648,7 +603,7 @@ func TestDeleteAccount(t *testing.T) {
 
 	t.Run("success - same company", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountReply
 		err := svc.DeleteUserAccount(req, &jsonrpc.AccountArgs{UserID: "456"}, &reply)
@@ -691,17 +646,20 @@ func TestDeleteAccount(t *testing.T) {
 
 func TestAddUserAccount(t *testing.T) {
 	t.Parallel()
-	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
+	var userManager = storage.NewLocalUserManager()
+	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
 
 	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
-		UserManager: userManager,
 		JobManager:  &jobManager,
-		Storage:     &storer,
 		Logger:      logger,
+		RoleCache:   make(map[string]*management.Role),
+		RoleManager: roleManager,
+		Storage:     &storer,
+		UserManager: userManager,
 	}
 
 	roleIDs := []string{
@@ -718,6 +676,24 @@ func TestAddUserAccount(t *testing.T) {
 		"Can see current sessions and the map.",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
+	}
+
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Viewer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
 	}
 
 	IDs := []string{
@@ -822,7 +798,7 @@ func TestAddUserAccount(t *testing.T) {
 
 	t.Run("failure - no buyer", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
@@ -839,7 +815,7 @@ func TestAddUserAccount(t *testing.T) {
 
 	t.Run("success - not registered", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
@@ -862,7 +838,7 @@ func TestAddUserAccount(t *testing.T) {
 
 	t.Run("success - registered", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{
@@ -881,9 +857,10 @@ func TestAddUserAccount(t *testing.T) {
 
 func TestAllRoles(t *testing.T) {
 	t.Parallel()
-	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
+	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
+	var userManager = storage.NewLocalUserManager()
 
 	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
@@ -904,10 +881,30 @@ func TestAllRoles(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
-		UserManager: userManager,
 		JobManager:  &jobManager,
-		Storage:     &storer,
 		Logger:      logger,
+		RoleCache:   make(map[string]*management.Role),
+		RoleManager: roleManager,
+		Storage:     &storer,
+		UserManager: userManager,
+	}
+
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Viewer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1062,9 +1059,10 @@ func TestUserRoles(t *testing.T) {
 
 func TestUpdateUserRoles(t *testing.T) {
 	t.Parallel()
-	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
+	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
+	var userManager = storage.NewLocalUserManager()
 
 	roleIDs := []string{
 		"rol_ScQpWhLvmTKRlqLU",
@@ -1103,10 +1101,30 @@ func TestUpdateUserRoles(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
-		UserManager: userManager,
 		JobManager:  &jobManager,
-		Storage:     &storer,
 		Logger:      logger,
+		RoleCache:   make(map[string]*management.Role),
+		RoleManager: roleManager,
+		Storage:     &storer,
+		UserManager: userManager,
+	}
+
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Viewer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1204,9 +1222,10 @@ func TestUpdateUserRoles(t *testing.T) {
 
 func TestSetupCompanyAccount(t *testing.T) {
 	t.Parallel()
-	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
+	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
+	var userManager = storage.NewLocalUserManager()
 
 	IDs := []string{
 		"123",
@@ -1245,10 +1264,30 @@ func TestSetupCompanyAccount(t *testing.T) {
 	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
-		UserManager: userManager,
 		JobManager:  &jobManager,
-		Storage:     &storer,
 		Logger:      logger,
+		RoleCache:   make(map[string]*management.Role),
+		RoleManager: roleManager,
+		Storage:     &storer,
+		UserManager: userManager,
+	}
+
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Viewer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1361,7 +1400,7 @@ func TestSetupCompanyAccount(t *testing.T) {
 
 	t.Run("failure - assigned", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test-test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test-test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.SetupCompanyAccountReply
 		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test-test-test"}, &reply)
@@ -1588,18 +1627,21 @@ func TestSendVerificationEmail(t *testing.T) {
 
 	t.Run("failure - insufficient privileges", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
-			Claims: jwt.MapClaims{
-				"email_verified": true,
-			},
-		})
+		reqContext = context.WithValue(reqContext, middleware.Keys.VerifiedKey, true)
+
 		req = req.WithContext(reqContext)
+
 		var reply jsonrpc.VerifyEmailReply
 		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{}, &reply)
 		assert.Error(t, err)
 	})
 
 	t.Run("failure - no ID", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, middleware.Keys.VerifiedKey, false)
+
+		req = req.WithContext(reqContext)
+
 		var reply jsonrpc.VerifyEmailReply
 		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{}, &reply)
 		assert.Error(t, err)
@@ -1607,12 +1649,10 @@ func TestSendVerificationEmail(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
-			Claims: jwt.MapClaims{
-				"email_verified": false,
-			},
-		})
+		reqContext = context.WithValue(reqContext, middleware.Keys.VerifiedKey, false)
+
 		req = req.WithContext(reqContext)
+
 		var reply jsonrpc.VerifyEmailReply
 		err := svc.ResendVerificationEmail(req, &jsonrpc.VerifyEmailArgs{UserID: "123"}, &reply)
 		assert.NoError(t, err)
@@ -1655,7 +1695,7 @@ func TestUpdateAutoSignupDomains(t *testing.T) {
 
 	t.Run("failure - no company code", func(t *testing.T) {
 		reqContext := req.Context()
-		reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "test")
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.UpdateDomainsReply
 		err := svc.UpdateAutoSignupDomains(req, &jsonrpc.UpdateDomainsArgs{}, &reply)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
@@ -17,13 +18,18 @@ import (
 )
 
 type AuthService struct {
-	MailChimpManager notifications.MailChimpHandler
-	UserManager      storage.UserManager
-	JobManager       storage.JobManager
-	SlackClient      notifications.SlackClient
-	Storage          storage.Storer
-	Logger           log.Logger
-	LookerSecret     string
+	AuthenticationClient *notifications.Auth0AuthClient
+	HubSpotClient        *notifications.HubSpotClient
+	mu                   sync.Mutex
+	RoleCache            map[string]*management.Role
+	MailChimpManager     notifications.MailChimpHandler
+	JobManager           storage.JobManager
+	RoleManager          storage.RoleManager
+	UserManager          storage.UserManager
+	SlackClient          notifications.SlackClient
+	Storage              storage.Storer
+	Logger               log.Logger
+	LookerSecret         string
 }
 
 type AccountsArgs struct {
@@ -46,6 +52,7 @@ type AccountReply struct {
 }
 
 type account struct {
+	Avatar      string             `json:"avatar"`
 	UserID      string             `json:"user_id"`
 	BuyerID     string             `json:"buyer_id"`
 	Seller      bool               `json:"seller"`
@@ -58,26 +65,12 @@ type account struct {
 	Analytics   bool               `json:"analytics"`
 	Billing     bool               `json:"billing"`
 	Trial       bool               `json:"trial"`
-}
-
-var roleIDs []string = []string{
-	"rol_ScQpWhLvmTKRlqLU",
-	"rol_8r0281hf2oC4cvrD",
-	"rol_YfFrtom32or4vH89",
-}
-var roleNames []string = []string{
-	"Viewer",
-	"Owner",
-	"Admin",
-}
-var roleDescriptions []string = []string{
-	"Can see current sessions and the map.",
-	"Can access and manage everything in an account.",
-	"Can manage the Network Next system, including access to configstore.",
+	Verified    bool               `json:"verified"`
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
 	var totalUsers []*management.User
+	ctx := r.Context()
 
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
@@ -104,15 +97,15 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 		page++
 	}
 
-	requestUser := r.Context().Value(middleware.Keys.UserKey)
+	requestUser := middleware.RequestUserInformation(ctx)
 	if requestUser == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to parse user", err.Error()))
 		return &err
 	}
 
-	requestCompany, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
-	if !ok {
+	requestCompany := middleware.RequestUserCustomerCode(ctx)
+	if requestCompany == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
 		return &err
@@ -237,7 +230,7 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 	}
 
 	// Non admin trying to delete user from another company
-	requestCompanyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	requestCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if (!ok || requestCompanyCode != userCompanyCode) && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("DeleteUserAccount(): %v", err.Error()))
@@ -276,7 +269,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	}
 
 	// Gather request user information
-	userCompanyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	userCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok || userCompanyCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
@@ -319,8 +312,6 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 		}
 	}
 
-	emptyName := ""
-
 	// Create an account for each new email
 	var newUser *management.User
 	for _, e := range emails {
@@ -335,8 +326,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 			newUser = &management.User{
 				Connection:    &connectionID,
 				Email:         &e,
-				Name:          &emptyName,
-				FamilyName:    &emptyName,
+				Name:          &e,
 				EmailVerified: &falseValue,
 				VerifyEmail:   &falseValue,
 				Password:      &pw,
@@ -370,16 +360,9 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 				return &err
 			}
 			roles := []*management.Role{
-				{
-					ID:          &roleIDs[0],
-					Name:        &roleNames[0],
-					Description: &roleDescriptions[0],
-				},
-				{
-					ID:          &roleIDs[1],
-					Name:        &roleNames[1],
-					Description: &roleDescriptions[1],
-				},
+				s.RoleCache["Viewer"],
+				s.RoleCache["Owner"],
+				s.RoleCache["Admin"],
 			}
 			if err := s.UserManager.RemoveRoles(user.GetID(), roles...); err != nil {
 				s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v: Failed to remove exist roles from user account", err.Error()))
@@ -439,6 +422,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 	}
 
 	account := account{
+		Avatar:      u.GetPicture(),
 		UserID:      *u.Identities[0].UserID,
 		BuyerID:     buyerID,
 		Seller:      isSeller,
@@ -451,6 +435,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		Analytics:   buyer.Analytics,
 		Billing:     buyer.Billing,
 		Trial:       buyer.Trial,
+		Verified:    u.GetEmailVerified(),
 	}
 
 	return account
@@ -517,7 +502,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 		isOwner := false
 		for _, role := range userRoles.Roles {
 			// Check if the role is an owner role
-			if *role.ID == roleIDs[1] {
+			if role.GetID() == s.RoleCache["Owner"].GetID() {
 				isOwner = true
 				break
 			}
@@ -564,34 +549,14 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 
 	if middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		reply.Roles = []*management.Role{
-			{
-				ID:          &roleIDs[0],
-				Name:        &roleNames[0],
-				Description: &roleDescriptions[0],
-			},
-			{
-				ID:          &roleIDs[1],
-				Name:        &roleNames[1],
-				Description: &roleDescriptions[1],
-			},
-			{
-				ID:          &roleIDs[2],
-				Name:        &roleNames[2],
-				Description: &roleDescriptions[2],
-			},
+			s.RoleCache["Viewer"],
+			s.RoleCache["Owner"],
+			s.RoleCache["Admin"],
 		}
 	} else {
 		reply.Roles = []*management.Role{
-			{
-				ID:          &roleIDs[0],
-				Name:        &roleNames[0],
-				Description: &roleDescriptions[0],
-			},
-			{
-				ID:          &roleIDs[1],
-				Name:        &roleNames[1],
-				Description: &roleDescriptions[1],
-			},
+			s.RoleCache["Viewer"],
+			s.RoleCache["Owner"],
 		}
 	}
 
@@ -647,16 +612,8 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	}
 
 	removeRoles := []*management.Role{
-		{
-			Name:        &roleNames[0],
-			ID:          &roleIDs[0],
-			Description: &roleDescriptions[0],
-		},
-		{
-			Name:        &roleNames[1],
-			ID:          &roleIDs[1],
-			Description: &roleDescriptions[1],
-		},
+		s.RoleCache["Viewer"],
+		s.RoleCache["Owner"],
 	}
 
 	if len(userRoles.Roles) > 0 {
@@ -726,7 +683,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 		return &err
 	}
 
-	assignedCompanyCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	assignedCompanyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if ok && assignedCompanyCode != "" {
 		err := JSONRPCErrorCodes[int(ERROR_ILLEGAL_OPERATION)]
 		s.Logger.Log("err", fmt.Errorf("SetupCompanyAccount(): %v: User is already assigned to a company. Please reach out to support for further assistance.", err.Error()))
@@ -751,11 +708,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 
 	ctx := r.Context()
 	roles := []*management.Role{
-		{
-			Name:        &roleNames[0],
-			ID:          &roleIDs[0],
-			Description: &roleDescriptions[0],
-		},
+		s.RoleCache["Viewer"],
 	}
 
 	// Check if customer account exists already
@@ -787,11 +740,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 			return &err
 		}
 
-		roles = append(roles, &management.Role{
-			Name:        &roleNames[1],
-			ID:          &roleIDs[1],
-			Description: &roleDescriptions[1],
-		})
+		roles = append(roles, s.RoleCache["Owner"])
 	}
 
 	// Assign the customer code to the user token
@@ -808,16 +757,8 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 	if !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		// Remove existing roles if there are any
 		if err := s.UserManager.RemoveRoles(requestID, []*management.Role{
-			{
-				Name:        &roleNames[0],
-				ID:          &roleIDs[0],
-				Description: &roleDescriptions[0],
-			},
-			{
-				Name:        &roleNames[1],
-				ID:          &roleIDs[1],
-				Description: &roleDescriptions[1],
-			},
+			s.RoleCache["Viewer"],
+			s.RoleCache["Owner"],
 		}...); err != nil {
 			s.Logger.Log("err", fmt.Errorf("SetupCompanyAccount() failed to remove roles: %v", err))
 			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
@@ -900,20 +841,46 @@ func (s *AuthService) UpdateAccountDetails(r *http.Request, args *UpdateAccountD
 	return nil
 }
 
+type ResetPasswordEmailArgs struct {
+	Email string `json:"email"`
+}
+
+type ResetPasswordEmailReply struct{}
+
+func (s *AuthService) ResetPasswordEmail(r *http.Request, args *ResetPasswordEmailArgs, reply *ResetPasswordEmailReply) error {
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		s.Logger.Log("err", fmt.Errorf("ResetPasswordEmail(): %v: Email is required", err.Error()))
+		return &err
+	}
+
+	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
+	if err != nil || len(userAccounts.Users) != 1 {
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("ResetPasswordEmail(): Failed to look up user account: %s", err.Error()))
+		return &err
+	}
+
+	if err = s.AuthenticationClient.SendChangePasswordEmail(args.Email); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("ResetPasswordEmail(): %v: Failed to send reset password email", err.Error()))
+		return &err
+	}
+
+	return nil
+}
+
 type VerifyEmailArgs struct {
 	UserID string `json:"user_id"`
 }
 
-type VerifyEmailReply struct {
-	Sent bool `json:"sent"`
-}
+type VerifyEmailReply struct{}
 
 func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmailArgs, reply *VerifyEmailReply) error {
-	reply.Sent = false
-
-	if !middleware.VerifyAllRoles(r, middleware.UnverifiedRole) {
+	if !middleware.VerifyAnyRole(r, middleware.UnverifiedRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("VerifyEmailUrl(): %v: Failed to read user account", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("ResendVerificationEmail(): %v", err.Error()))
 		return &err
 	}
 
@@ -923,12 +890,10 @@ func (s *AuthService) ResendVerificationEmail(r *http.Request, args *VerifyEmail
 
 	err := s.JobManager.VerifyEmail(job)
 	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("VerifyEmailUrl(): %v: Failed to generate verification link", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("VerifyEmailUrl(): %v: Failed to generate verification email", err.Error()))
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
-
-	reply.Sent = true
 
 	return nil
 }
@@ -975,7 +940,7 @@ func (s *AuthService) UpdateAutoSignupDomains(r *http.Request, args *UpdateDomai
 		s.Logger.Log("err", fmt.Errorf("UpdateAutoSignupDomains(): %v", err.Error()))
 		return &err
 	}
-	customerCode, ok := r.Context().Value(middleware.Keys.CompanyKey).(string)
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		s.Logger.Log("err", fmt.Errorf("UpdateAutoSignupDomains(): %v: Failed to parse customer code", err.Error()))
@@ -1058,7 +1023,6 @@ func (s *AuthService) CustomerViewedTheDocsSlackNotification(r *http.Request, ar
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
 		return &err
 	}
-	// TODO: update this in the hubspot PR
 
 	message := fmt.Sprintf("%s Viewed documentation", args.Email)
 
@@ -1093,7 +1057,6 @@ func (s *AuthService) CustomerDownloadedSDKSlackNotification(r *http.Request, ar
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
 		return &err
 	}
-	// TODO: update this in the hubspot PR
 
 	message := fmt.Sprintf("%s downloaded the SDK", args.Email)
 
@@ -1128,7 +1091,6 @@ func (s *AuthService) CustomerEnteredPublicKeySlackNotification(r *http.Request,
 		s.Logger.Log("err", fmt.Errorf("UserAccount(): %v: Email is required", err.Error()))
 		return &err
 	}
-	// TODO: update this in the hubspot PR
 
 	message := fmt.Sprintf("%s entered a public key", args.Email)
 
@@ -1166,7 +1128,6 @@ func (s *AuthService) CustomerDownloadedUE4PluginNotifications(r *http.Request, 
 
 	message := fmt.Sprintf("%s downloaded the UE4 plugin", args.Email)
 
-	// TODO: update this in the hubspot PR
 	if args.CustomerName != "" {
 		message = fmt.Sprintf("%s from %s downloaded the UE4 plugin", args.Email, args.CustomerName)
 	}
@@ -1230,5 +1191,170 @@ func (s *AuthService) SlackNotification(r *http.Request, args *GenericSlackNotif
 		s.Logger.Log("err", fmt.Errorf("CustomerSignedUpSlackNotification(): %v: Slack notification type not supported: %s", args.Type, err.Error()))
 		return &err
 	}
+	return nil
+}
+
+type ProcessNewSignupArgs struct {
+	FirstName      string `json:"first_name"`
+	LastName       string `json:"last_name"`
+	Email          string `json:"email"`
+	CompanyName    string `json:"company_name"`
+	CompanyWebsite string `json:"company_website"`
+}
+
+type ProcessNewSignupReply struct {
+}
+
+func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupArgs, reply *ProcessNewSignupReply) error {
+	message := fmt.Sprintf("%s signed up on the Portal! :tada:\nCompany Name: %s\nCompany Website: %s", args.Email, args.CompanyName, args.CompanyWebsite)
+
+	// If we error here we don't worry about it. Setting up everything is more important and the error shouldn't hinder the rest of the sign up process on the portal side
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to send slack notification", err.Error()))
+	}
+
+	if s.HubSpotClient.APIKey != "" {
+		companies, err := s.HubSpotClient.CompanyEntrySearch(args.CompanyName, args.CompanyWebsite)
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to fetch company entries from hubspot", err.Error()))
+		}
+
+		foundCompanyID := ""
+		if len(companies) != 0 {
+			foundCompanyID = companies[0].ID
+		}
+
+		contacts, err := s.HubSpotClient.ContactEntrySearch(args.FirstName, args.LastName, args.Email)
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to fetch contact entries from hubspot", err.Error()))
+		}
+
+		foundContactID := ""
+		if len(contacts) != 0 {
+			foundContactID = contacts[0].ID
+		}
+
+		message := fmt.Sprintf("First name: %s - Last name: %s - Email: %s - Company name: %s - Website: %s", args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
+
+		// Company and contact do not exist
+		if foundCompanyID == "" && foundContactID == "" {
+			// Create contact and associate it with NewFunnelCo with notes about sign up
+			newContactID, err := s.HubSpotClient.CreateNewContactEntry(args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
+			if err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to add contact entry to hubspot", err.Error()))
+			} else {
+				if err := s.HubSpotClient.AssociateCompanyToContact(notifications.NewFunnelCoID, newContactID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate NewFunnelCo to new contact", err.Error()))
+				}
+				if err := s.HubSpotClient.AssociateContactToCompany(newContactID, notifications.NewFunnelCoID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate new contact to NewFunnelCo", err.Error()))
+				}
+				if err := s.HubSpotClient.CreateCompanyNote(message, notifications.NewFunnelCoID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to NewFunnelCo note", err.Error()))
+				}
+				if err := s.HubSpotClient.CreateContactNote(message, newContactID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create new contact note", err.Error()))
+				}
+			}
+		}
+
+		// Company exists but contact does not
+		if foundCompanyID != "" && foundContactID == "" {
+			// Create contact and associate it to NewFunnelCo with notes about sign up
+			newContactID, err := s.HubSpotClient.CreateNewContactEntry(args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
+			if err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to add contact entry to hubspot", err.Error()))
+			} else {
+				if err := s.HubSpotClient.AssociateCompanyToContact(foundCompanyID, newContactID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate found company to new contact", err.Error()))
+				}
+				if err := s.HubSpotClient.AssociateContactToCompany(newContactID, foundCompanyID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate new contact to found company", err.Error()))
+				}
+				if err := s.HubSpotClient.CreateCompanyNote(message, foundCompanyID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create found company note", err.Error()))
+				}
+				if err := s.HubSpotClient.CreateContactNote(message, newContactID); err != nil {
+					s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create new contact note", err.Error()))
+				}
+			}
+		}
+
+		// Company doesn't exist but contact does
+		if foundCompanyID == "" && foundContactID != "" {
+			// Associate contact with NewFunnelCo with note about signup with company name and website
+			if err := s.HubSpotClient.AssociateCompanyToContact(notifications.NewFunnelCoID, foundContactID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate NewFunnelCo to found contact", err.Error()))
+			}
+			if err := s.HubSpotClient.AssociateContactToCompany(foundContactID, notifications.NewFunnelCoID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate found contact to NewFunnelCo", err.Error()))
+			}
+			if err := s.HubSpotClient.CreateCompanyNote(message, notifications.NewFunnelCoID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to NewFunnelCo note", err.Error()))
+			}
+			if err := s.HubSpotClient.CreateContactNote(message, foundContactID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create found contact note", err.Error()))
+			}
+		}
+
+		// Company and contact exist
+		if foundCompanyID != "" && foundContactID != "" {
+			// Associate the company and contact and make notes on both entries about the sign up
+			if err := s.HubSpotClient.AssociateCompanyToContact(foundCompanyID, foundContactID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate found company to found contact", err.Error()))
+			}
+			if err := s.HubSpotClient.AssociateContactToCompany(foundContactID, foundCompanyID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to associate found contact to found company", err.Error()))
+			}
+			if err := s.HubSpotClient.CreateCompanyNote(message, foundCompanyID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create found company note", err.Error()))
+			}
+			if err := s.HubSpotClient.CreateContactNote(message, foundContactID); err != nil {
+				s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to create found contact note", err.Error()))
+			}
+		}
+	}
+
+	userAccounts, err := s.UserManager.List(management.Query(fmt.Sprintf(`email:"%s"`, args.Email)))
+	if err != nil || len(userAccounts.Users) != 1 {
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): Failed to look up user account: %s", err.Error()))
+		return &err
+	}
+
+	user := userAccounts.Users[0]
+
+	updateUser := &management.User{
+		FamilyName: &args.LastName,
+		GivenName:  &args.FirstName,
+	}
+
+	if err := s.UserManager.Update(user.GetID(), updateUser); err != nil {
+		s.Logger.Log("err", fmt.Errorf("ProcessNewSignup(): %v: Failed to update new user's first and last name", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
+func (s *AuthService) RefreshAuthRolesCache() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	roleList, err := s.RoleManager.List()
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("RefreshAuthRolesCache(): Failed to refresh role caches: %s", err.Error()))
+		return err
+	}
+
+	roles := roleList.Roles
+
+	s.RoleCache = make(map[string]*management.Role)
+
+	for _, r := range roles {
+		s.RoleCache[r.GetName()] = r
+	}
+
 	return nil
 }

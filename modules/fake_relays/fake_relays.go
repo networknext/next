@@ -11,14 +11,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/networknext/backend/modules/common/helpers"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
-
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 )
 
 const (
@@ -28,7 +25,7 @@ const (
 	MaxMultiplierPercent = 10
 
 	// Chances are 1 in N
-	PLChance = 1000
+	PLChance = 100
 )
 
 // FakeRelay represents a single fake relay that simulates a real relay.
@@ -42,7 +39,6 @@ type FakeRelay struct {
 	relaysToPing    []routing.RelayPingData
 	backendHostname string
 	updateVersion   int
-	logger          log.Logger
 	relayMetrics    *metrics.FakeRelayMetrics
 }
 
@@ -54,7 +50,7 @@ type RouteBase struct {
 }
 
 // NewFakeRelays() creates numRelays fake relays for load testing
-func NewFakeRelays(numRelays int, relayPublicKey []byte, gatewayAddr string, updateVersion int, logger log.Logger, fakeRelayMetrics *metrics.FakeRelayMetrics) ([]*FakeRelay, error) {
+func NewFakeRelays(numRelays int, relayPublicKey []byte, gatewayAddr string, updateVersion int, fakeRelayMetrics *metrics.FakeRelayMetrics) ([]*FakeRelay, error) {
 	relayArr := make([]*FakeRelay, numRelays)
 	// Fill up the relay array with fake relays
 	for i := 0; i < numRelays; i++ {
@@ -70,7 +66,6 @@ func NewFakeRelays(numRelays int, relayPublicKey []byte, gatewayAddr string, upd
 			routeBaseMap:    make(map[uint64]RouteBase),
 			backendHostname: gatewayAddr,
 			updateVersion:   updateVersion,
-			logger:          logger,
 			relayMetrics:    fakeRelayMetrics,
 		}
 	}
@@ -93,11 +88,10 @@ func (relay *FakeRelay) StartLoop(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	// Fake Relays update once a second
-	syncTimer := helpers.NewSyncTimer(1 * time.Second)
+	ticker := time.NewTicker(time.Second)
 
 	var err error
 	for {
-		syncTimer.Run()
 		relay.relayMetrics.UpdateInvocations.Add(1)
 
 		select {
@@ -105,18 +99,18 @@ func (relay *FakeRelay) StartLoop(ctx context.Context, wg *sync.WaitGroup) {
 			// Shutdown signal received
 			err = relay.sendShutdownRequest()
 			if err != nil {
-				level.Error(relay.logger).Log("err", err)
+				core.Error("relay: failed to send shutdown request: %v", err)
 			} else {
 				relay.relayMetrics.SuccessfulUpdateInvocations.Add(1)
 			}
 			relay.state = routing.RelayStateMaintenance
 			return
-		default:
+		case <-ticker.C:
 			if relay.state == routing.RelayStateDisabled {
 				// Send initial update request if Fake Relay is disabled
 				err = relay.sendInitialUpdateRequest()
 				if err != nil {
-					level.Error(relay.logger).Log("err", err)
+					core.Error("relay: failed to send initial update request: %v", err)
 					continue
 				}
 				// Change relay state to enabled
@@ -126,7 +120,7 @@ func (relay *FakeRelay) StartLoop(ctx context.Context, wg *sync.WaitGroup) {
 				// Send standard update request
 				err = relay.sendStandardUpdateRequest()
 				if err != nil {
-					level.Error(relay.logger).Log("err", err)
+					core.Error("relay: failed to send standard update request: %v", err)
 					continue
 				}
 				relay.relayMetrics.SuccessfulUpdateInvocations.Add(1)

@@ -603,6 +603,7 @@ func SessionPre(state *SessionHandlerState) bool {
 
 	if state.Packet.ClientPingTimedOut {
 		core.Debug("client ping timed out")
+		state.Metrics.ClientPingTimedOut.Add(1)
 
 		if state.PostSessionHandler.featureBilling2 {
 			// Unmarshal the session data into the input to verify if we wrote the summary slice in sessionPost()
@@ -617,7 +618,6 @@ func SessionPre(state *SessionHandlerState) bool {
 			state.UnmarshaledSessionData = true
 		}
 
-		state.Metrics.ClientPingTimedOut.Add(1)
 		return true
 	}
 
@@ -625,7 +625,7 @@ func SessionPre(state *SessionHandlerState) bool {
 		state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP, state.Packet.SessionID)
 
 		if err != nil || state.Output.Location == routing.LocationNullIsland {
-			core.Debug("location veto: %s\n", err)
+			core.Error("location veto: %s\n", err)
 			state.Metrics.ClientLocateFailure.Add(1)
 			state.Output.RouteState.LocationVeto = true
 			return true
@@ -935,7 +935,7 @@ func SessionGetNearRelays(state *SessionHandlerState) bool {
 		than the default internet route.
 	*/
 
-	directLatency := state.Packet.DirectRTT
+	directLatency := state.Packet.DirectMinRTT
 
 	clientLatitude := state.Output.Location.Latitude
 	clientLongitude := state.Output.Location.Longitude
@@ -976,7 +976,7 @@ func SessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 
 	routeState := &state.Output.RouteState
 
-	directLatency := int32(math.Ceil(float64(state.Packet.DirectRTT)))
+	directLatency := int32(math.Ceil(float64(state.Packet.DirectMinRTT)))
 	directJitter := int32(math.Ceil(float64(state.Packet.DirectJitter)))
 	directPacketLoss := int32(math.Floor(float64(state.Packet.DirectPacketLoss) + 0.5))
 	nextPacketLoss := int32(math.Floor(float64(state.Packet.NextPacketLoss) + 0.5))
@@ -1107,6 +1107,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 		return
 	}
 
+	var stayOnNext bool
 	var routeChanged bool
 	var routeCost int32
 	var routeNumRelays int32
@@ -1119,7 +1120,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 
 		// currently going direct. should we take network next?
 
-		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, &state.Buyer.RouteShader, &state.Output.RouteState, multipathVetoMap, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
+		if core.MakeRouteDecision_TakeNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, &state.Buyer.RouteShader, &state.Output.RouteState, multipathVetoMap, &state.Buyer.InternalConfig, int32(state.Packet.DirectMinRTT), state.RealPacketLoss, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays, &routeCost, &routeNumRelays, routeRelays[:], &state.RouteDiversity, state.Debug, sliceNumber) {
 			BuildNextTokens(&state.Output, state.Database, &state.Buyer, &state.Packet, routeNumRelays, routeRelays[:routeNumRelays], state.RouteMatrix.RelayIDs, state.RouterPrivateKey, &state.Response)
 		}
 
@@ -1150,7 +1151,7 @@ func SessionMakeRouteDecision(state *SessionHandlerState) {
 			state.Metrics.RouteDoesNotExist.Add(1)
 		}
 
-		stayOnNext, routeChanged := core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
+		stayOnNext, routeChanged = core.MakeRouteDecision_StayOnNetworkNext(state.RouteMatrix.RouteEntries, state.RouteMatrix.FullRelayIndicesSet, state.RouteMatrix.RelayNames, &state.Buyer.RouteShader, &state.Output.RouteState, &state.Buyer.InternalConfig, int32(state.Packet.DirectMinRTT), int32(state.Packet.NextRTT), state.Output.RouteCost, state.RealPacketLoss, state.Packet.NextPacketLoss, state.Output.RouteNumRelays, routeRelays, state.NearRelayIndices[:], state.NearRelayRTTs[:], state.DestRelays[:], &routeCost, &routeNumRelays, routeRelays[:], state.Debug)
 
 		if stayOnNext {
 
@@ -1306,13 +1307,35 @@ func SessionPost(state *SessionHandlerState) {
 	BuildPostRouteRelayData(state)
 
 	/*
+		Determine if we should write the summary slice. Should only happen
+		when the session is finished.
+
+		The end of a session occurs when the client ping times out.
+
+		We always set the output flag to true so that it remains recorded as true on
+		subsequent slices where the client ping has timed out. Instead, we check
+		the input when deciding to write billing entry 2.
+	*/
+
+	if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut {
+		state.Output.WroteSummary = true
+	}
+
+	/*
 		Each slice is 10 seconds long except for the first slice with a given network next route,
 		which is 20 seconds long. Each time we change network next route, we burn the 10 second tail
 		that we pre-bought at the start of the previous route.
+
+		If the route changed on the final session slice, the slice duration
+		should be 10 seconds, not 20 seconds, since the session ended using
+		the previous route.
+
+		Otherwise the first and summary slices will have different values for
+		the envelope bandwidth, total price, etc.
 	*/
 
 	sliceDuration := uint64(billing.BillingSliceSeconds)
-	if state.Input.Initial {
+	if state.Input.Initial && !(state.Output.WroteSummary && state.Input.RouteChanged) {
 		sliceDuration *= 2
 	}
 
@@ -1332,21 +1355,6 @@ func SessionPost(state *SessionHandlerState) {
 	*/
 
 	totalPrice := CalculateTotalPriceNibblins(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
-
-	/*
-		Determine if we should write the summary slice. Should only happen
-		when the session is finished.
-
-		The end of a session occurs when the client ping times out.
-
-		We always set the output flag to true so that it remains recorded as true on
-		subsequent slices where the client ping has timed out. Instead, we check
-		the input when deciding to write billing entry 2.
-	*/
-
-	if state.PostSessionHandler.featureBilling2 && state.Packet.ClientPingTimedOut {
-		state.Output.WroteSummary = true
-	}
 
 	/*
 		Store the cumulative sum of totalPrice, nextEnvelopeBytesUp, and nextEnvelopeBytesDown in
@@ -1442,16 +1450,6 @@ func SessionPost(state *SessionHandlerState) {
 	}
 
 	/*
-		Build billing data and send it to the billing system via pubsub (non-realtime path)
-	*/
-
-	if state.PostSessionHandler.featureBilling {
-		billingEntry := BuildBillingEntry(state, sliceDuration, nextEnvelopeBytesUp, nextEnvelopeBytesDown, totalPrice)
-
-		state.PostSessionHandler.SendBillingEntry(billingEntry)
-	}
-
-	/*
 		Send data to the portal (real-time path)
 	*/
 
@@ -1512,160 +1510,6 @@ func BuildPostNearRelayData(state *SessionHandlerState) {
 		state.PostNearRelayJitter[i] = float32(state.Packet.NearRelayJitter[i])
 		state.PostNearRelayPacketLoss[i] = float32(state.Packet.NearRelayPacketLoss[i])
 	}
-}
-
-func BuildBillingEntry(state *SessionHandlerState, sliceDuration uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin) *billing.BillingEntry {
-
-	/*
-		Calculate the actual amounts of bytes sent up and down along the network next route
-		for the duration of the previous slice (just being reported up from the SDK).
-
-		This is *not* what we bill on.
-	*/
-
-	nextBytesUp, nextBytesDown := CalculateNextBytesUpAndDown(uint64(state.Packet.NextKbpsUp), uint64(state.Packet.NextKbpsDown), sliceDuration)
-
-	/*
-		Calculate the per-relay hop price that sums up to the total price, minus our rake.
-	*/
-
-	routeRelayPrices := CalculateRouteRelaysPrice(int(state.Input.RouteNumRelays), state.PostRouteRelaySellers, state.PostRouteRelayEgressPriceOverride, nextEnvelopeBytesUp, nextEnvelopeBytesDown)
-
-	// todo: not really sure why we transform it like this? seems wasteful
-	nextRelaysPrice := [core.MaxRelaysPerRoute]uint64{}
-	for i := 0; i < core.MaxRelaysPerRoute; i++ {
-		nextRelaysPrice[i] = uint64(routeRelayPrices[i])
-	}
-
-	// todo: not really sure why we need to do this...
-	var routeCost int32 = state.Input.RouteCost
-	if state.Input.RouteCost == math.MaxInt32 {
-		routeCost = 0
-	}
-
-	/*
-		Save the first hop RTT from the client to the first relay in the route.
-
-		This is useful for analysis and saves data science some work.
-	*/
-
-	var nearRelayRTT float32
-	if state.Input.RouteNumRelays > 0 {
-		for i, nearRelayID := range state.PostNearRelayIDs {
-			if nearRelayID == state.Input.RouteRelayIDs[0] {
-				nearRelayRTT = float32(state.PostNearRelayRTT[i])
-				break
-			}
-		}
-	}
-
-	/*
-		If the debug string is set to something by the core routing system, put it in the billing entry.
-	*/
-
-	debugString := ""
-	if state.Debug != nil {
-		debugString = *state.Debug
-	}
-
-	/*
-		Clamp jitter between client and server at 1000.
-
-		It is meaningless beyond that...
-	*/
-
-	if state.Packet.JitterClientToServer > 1000.0 {
-		state.Packet.JitterClientToServer = float32(1000)
-	}
-
-	if state.Packet.JitterServerToClient > 1000.0 {
-		state.Packet.JitterServerToClient = float32(1000)
-	}
-
-	/*
-		Create the billing entry and return it to the caller
-	*/
-
-	billingEntry := billing.BillingEntry{
-		Timestamp:                       uint64(time.Now().Unix()),
-		BuyerID:                         state.Packet.BuyerID,
-		UserHash:                        state.Packet.UserHash,
-		SessionID:                       state.Packet.SessionID,
-		SliceNumber:                     state.Packet.SliceNumber,
-		DirectRTT:                       state.Packet.DirectRTT,
-		DirectJitter:                    state.Packet.DirectJitter,
-		DirectPacketLoss:                state.Packet.DirectPacketLoss,
-		Next:                            state.Packet.Next,
-		NextRTT:                         state.Packet.NextRTT,
-		NextJitter:                      state.Packet.NextJitter,
-		NextPacketLoss:                  state.Packet.NextPacketLoss,
-		NumNextRelays:                   uint8(state.Input.RouteNumRelays),
-		NextRelays:                      state.Input.RouteRelayIDs,
-		TotalPrice:                      uint64(totalPrice),
-		ClientToServerPacketsLost:       state.Packet.PacketsLostClientToServer,
-		ServerToClientPacketsLost:       state.Packet.PacketsLostServerToClient,
-		Committed:                       state.Packet.Committed,
-		Flagged:                         state.Packet.Reported,
-		Multipath:                       state.Input.RouteState.Multipath,
-		Initial:                         state.Input.Initial,
-		NextBytesUp:                     nextBytesUp,
-		NextBytesDown:                   nextBytesDown,
-		EnvelopeBytesUp:                 nextEnvelopeBytesUp,
-		EnvelopeBytesDown:               nextEnvelopeBytesDown,
-		DatacenterID:                    state.Packet.DatacenterID,
-		RTTReduction:                    state.Input.RouteState.ReduceLatency,
-		PacketLossReduction:             state.Input.RouteState.ReducePacketLoss,
-		NextRelaysPrice:                 nextRelaysPrice,
-		Latitude:                        float32(state.Input.Location.Latitude),
-		Longitude:                       float32(state.Input.Location.Longitude),
-		ISP:                             state.Input.Location.ISP,
-		ABTest:                          state.Input.RouteState.ABTest,
-		RouteDecision:                   0, // deprecated
-		ConnectionType:                  uint8(state.Packet.ConnectionType),
-		PlatformType:                    uint8(state.Packet.PlatformType),
-		SDKVersion:                      state.Packet.Version.String(),
-		PacketLoss:                      state.RealPacketLoss,
-		PredictedNextRTT:                float32(routeCost),
-		MultipathVetoed:                 state.Input.RouteState.MultipathOverload,
-		UseDebug:                        state.Buyer.Debug,
-		Debug:                           debugString,
-		FallbackToDirect:                state.Packet.FallbackToDirect,
-		ClientFlags:                     state.Packet.Flags,
-		UserFlags:                       state.Packet.UserFlags,
-		NearRelayRTT:                    nearRelayRTT,
-		PacketsOutOfOrderClientToServer: state.Packet.PacketsOutOfOrderClientToServer,
-		PacketsOutOfOrderServerToClient: state.Packet.PacketsOutOfOrderServerToClient,
-		JitterClientToServer:            state.Packet.JitterClientToServer,
-		JitterServerToClient:            state.Packet.JitterServerToClient,
-		NumNearRelays:                   uint8(state.PostNearRelayCount),
-		NearRelayIDs:                    state.PostNearRelayIDs,
-		NearRelayRTTs:                   state.PostNearRelayRTT,
-		NearRelayJitters:                state.PostNearRelayJitter,
-		NearRelayPacketLosses:           state.PostNearRelayPacketLoss,
-		RelayWentAway:                   state.Input.RouteState.RelayWentAway,
-		RouteLost:                       state.Input.RouteState.RouteLost,
-		NumTags:                         uint8(state.Packet.NumTags),
-		Tags:                            state.Packet.Tags,
-		Mispredicted:                    state.Input.RouteState.Mispredict,
-		Vetoed:                          state.Input.RouteState.Veto,
-		LatencyWorse:                    state.Input.RouteState.LatencyWorse,
-		NoRoute:                         state.Input.RouteState.NoRoute,
-		NextLatencyTooHigh:              state.Input.RouteState.NextLatencyTooHigh,
-		RouteChanged:                    state.Input.RouteChanged,
-		CommitVeto:                      state.Input.RouteState.CommitVeto,
-		RouteDiversity:                  uint32(state.RouteDiversity),
-		LackOfDiversity:                 state.Input.RouteState.LackOfDiversity,
-		Pro:                             state.Buyer.RouteShader.ProMode && !state.Input.RouteState.MultipathRestricted,
-		MultipathRestricted:             state.Input.RouteState.MultipathRestricted,
-		ClientToServerPacketsSent:       state.Packet.PacketsSentClientToServer,
-		ServerToClientPacketsSent:       state.Packet.PacketsSentServerToClient,
-		BuyerNotLive:                    state.BuyerNotLive,
-		UnknownDatacenter:               state.UnknownDatacenter,
-		DatacenterNotEnabled:            state.DatacenterNotEnabled,
-		StaleRouteMatrix:                state.StaleRouteMatrix,
-	}
-
-	return &billingEntry
 }
 
 func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEnvelopeBytesUp uint64, nextEnvelopeBytesDown uint64, totalPrice routing.Nibblin) *billing.BillingEntry2 {
@@ -1731,8 +1575,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 
 	/*
 		Recast near relay RTT, Jitter, and Packet Loss to int32.
-
-		TODO: once buildBillingEntry() is deprecated, modify buildPostNearRelayData() to use int32 instead of float32.
+		We do this here since the portal data requires float level precision.
 	*/
 
 	var NearRelayRTTs [core.MaxNearRelays]int32
@@ -1745,11 +1588,14 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 	}
 
 	/*
-		Calculate the session duration in seconds to include in the summary slice.
+		Calculate the session duration in seconds for the summary slice.
+
+		Slice numbers start at 0, so the length of a session is the
+		summary slice's slice number * 10 seconds.
 	*/
 	var sessionDuration uint32
 	if state.Output.WroteSummary && state.Packet.SliceNumber != 0 {
-		sessionDuration = (state.Packet.SliceNumber - 1) * billing.BillingSliceSeconds
+		sessionDuration = state.Packet.SliceNumber * billing.BillingSliceSeconds
 	}
 
 	/*
@@ -1757,7 +1603,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 	*/
 	var startTime time.Time
 	if state.Output.WroteSummary {
-		secondsToSub := int(sessionDuration) + billing.BillingSliceSeconds
+		secondsToSub := int(sessionDuration)
 		startTime = time.Now().Add(time.Duration(-secondsToSub) * time.Second)
 	}
 
@@ -1770,7 +1616,9 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		Timestamp:                       uint32(time.Now().Unix()),
 		SessionID:                       state.Packet.SessionID,
 		SliceNumber:                     state.Packet.SliceNumber,
-		DirectRTT:                       int32(state.Packet.DirectRTT),
+		DirectMinRTT:                    int32(state.Packet.DirectMinRTT),
+		DirectMaxRTT:                    int32(state.Packet.DirectMaxRTT),
+		DirectPrimeRTT:                  int32(state.Packet.DirectPrimeRTT),
 		DirectJitter:                    int32(state.Packet.DirectJitter),
 		DirectPacketLoss:                int32(state.Packet.DirectPacketLoss),
 		RealPacketLoss:                  int32(RealPacketLoss),
@@ -1894,8 +1742,8 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 	*/
 
 	var deltaRTT float32
-	if state.Packet.Next && state.Packet.NextRTT != 0 && state.Packet.DirectRTT >= state.Packet.NextRTT {
-		deltaRTT = state.Packet.DirectRTT - state.Packet.NextRTT
+	if state.Packet.Next && state.Packet.NextRTT != 0 && state.Packet.DirectMinRTT >= state.Packet.NextRTT {
+		deltaRTT = state.Packet.DirectMinRTT - state.Packet.NextRTT
 	}
 
 	/*
@@ -1922,7 +1770,7 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 			DatacenterAlias: state.Datacenter.AliasName,
 			OnNetworkNext:   state.Packet.Next,
 			NextRTT:         float64(state.Packet.NextRTT),
-			DirectRTT:       float64(state.Packet.DirectRTT),
+			DirectRTT:       float64(state.Packet.DirectMinRTT),
 			DeltaRTT:        float64(deltaRTT),
 			Location:        state.Input.Location,
 			ClientAddr:      state.Packet.ClientAddress.String(),
@@ -1943,7 +1791,7 @@ func BuildPortalData(state *SessionHandlerState) *SessionPortalData {
 				PacketLoss: float64(state.Packet.NextPacketLoss),
 			},
 			Direct: routing.Stats{
-				RTT:        float64(state.Packet.DirectRTT),
+				RTT:        float64(state.Packet.DirectMinRTT),
 				Jitter:     float64(state.Packet.DirectJitter),
 				PacketLoss: float64(state.Packet.DirectPacketLoss),
 			},
