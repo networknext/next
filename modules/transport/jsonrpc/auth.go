@@ -312,8 +312,6 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 		}
 	}
 
-	emptyName := ""
-
 	// Create an account for each new email
 	var newUser *management.User
 	for _, e := range emails {
@@ -328,8 +326,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 			newUser = &management.User{
 				Connection:    &connectionID,
 				Email:         &e,
-				Name:          &emptyName,
-				FamilyName:    &emptyName,
+				Name:          &e,
 				EmailVerified: &falseValue,
 				VerifyEmail:   &falseValue,
 				Password:      &pw,
