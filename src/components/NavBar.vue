@@ -69,9 +69,9 @@
               active:
                 $store.getters.currentPage == 'notifications' ||
                 $store.getters.currentPage == 'analytics' ||
-                $store.getters.currentPage == 'billing'
+                $store.getters.currentPage == 'usage'
             }"
-            v-if="$store.getters.isOwner || $store.getters.isAdmin"
+            v-if="$store.getters.isAdmin"
           >Explore</router-link>
         </li>
         <li class="nav-item text-nowrap">
@@ -89,8 +89,21 @@
           >Settings</router-link>
         </li>
       </ul>
-      <ul class="navbar-nav px-3 w-100">
+      <ul class="navbar-nav px-3 w-100" v-if="portalVersion !== ''">
         <li class="nav-item text-nowrap" style="color: #9a9da0;">{{ portalVersion }}</li>
+      </ul>
+      <ul class="navbar-nav px-2" v-if="$store.getters.isOwner || $store.getters.isAdmin">
+        <a style="cursor: pointer;" @click="openNotificationsModal()">
+          <font-awesome-icon
+            id="status"
+            icon="bell"
+            class="fa-w-16 fa-fw"
+            style="color: white;"
+            data-toggle="tooltip"
+            data-placement="bottom"
+            title="Account Notifications"
+          />
+        </a>
       </ul>
       <ul class="navbar-nav px-1" v-if="!$store.getters.isAnonymous">
         <li class="nav-item text-nowrap" style="color: white;">
@@ -165,6 +178,8 @@ export default class NavBar extends Vue {
 
   private FeatureEnum: any
 
+  private notificationCount: number
+
   constructor () {
     super()
     this.portalVersion = ''
@@ -226,6 +241,8 @@ export default class NavBar extends Vue {
         }
       }
     }
+
+    this.notificationCount = 0
   }
 
   private created () {
@@ -301,6 +318,10 @@ export default class NavBar extends Vue {
         console.log(error)
       })
     }
+  }
+
+  private openNotificationsModal () {
+    this.$root.$emit('showNotificationsModal')
   }
 }
 </script>

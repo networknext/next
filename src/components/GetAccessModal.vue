@@ -4,15 +4,6 @@
       <div class="modal-wrapper">
         <div class="card modal-container">
           <div class="card-body">
-            <font-awesome-icon
-              icon="arrow-left"
-              class="fa-w-16 fa-fw back-btn"
-              data-toggle="tooltip"
-              data-placement="bottom"
-              title="Back"
-              v-if="!stepOne"
-              @click="switchSteps(true)"
-            />
             <div class="card-title">
               <div class="row">
                 <div class="col"></div>
@@ -25,7 +16,7 @@
                 <div class="col"></div>
               </div>
             </div>
-            <form @submit.prevent="stepOne ? switchSteps(false) : getAccess()">
+            <form id="get-access-form" @submit.prevent="stepOne ? switchSteps() : processNewSignup()">
               <div v-if="stepOne" class="form-group">
                 <p style="text-align: center;">
                   Please enter your email and create a secure password to get access to the SDK, documentation and to set up a company account.
@@ -38,8 +29,8 @@
                   autocomplete="off"
                   v-model="email"
                 />
-                <small class="text-danger" v-if="!validEmail">
-                  Please enter a valid email address
+                <small id="email-error" v-if="emailError !== ''" class="text-danger">
+                  {{ emailError }}
                   <br/>
                 </small>
                 <br />
@@ -51,7 +42,7 @@
                   autocomplete="off"
                   v-model="password"
                 />
-                <small class="text-danger" v-if="!validPassword">
+                <small id="password-error" class="text-danger" v-if="!validPassword">
                   Please enter a valid password
                   <br/>
                 </small>
@@ -62,23 +53,23 @@
                   </div>
                   <ul style="padding-left: inherit;">
                     <li>
-                      At least 8 characters <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': password.length >= 8 ? 'green' : 'red', 'width': '2rem'}"/>
+                      At least 8 characters <font-awesome-icon id="length-check" icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': password.length >= 8 ? 'green' : 'red', 'width': '2rem'}"/>
                     </li>
                     <li>
                       At least 3 of the following:
                     </li>
                     <ul>
                       <li>
-                        Lower case letters (a-z) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasLowerCase ? 'green' : 'red', 'width': '2rem'}"/>
+                        Lower case letters (a-z) <font-awesome-icon id="lower-check" icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasLowerCase ? 'green' : 'red', 'width': '2rem'}"/>
                       </li>
                       <li>
-                        Upper case letters (A-Z) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasUpperCase ? 'green' : 'red', 'width': '2rem'}"/>
+                        Upper case letters (A-Z) <font-awesome-icon id="upper-check" icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasUpperCase ? 'green' : 'red', 'width': '2rem'}"/>
                       </li>
                       <li>
-                        Numbers (0-9) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasNumbers ? 'green' : 'red', 'width': '2rem'}"/>
+                        Numbers (0-9) <font-awesome-icon id="number-check" icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasNumbers ? 'green' : 'red', 'width': '2rem'}"/>
                       </li>
                       <li>
-                        Special characters (ex. !@#$%^&*) <font-awesome-icon icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasCharacters ? 'green' : 'red', 'width': '2rem'}"/>
+                        Special characters (ex. !@#$%^&*) <font-awesome-icon id="special-check" icon="check" class="fa-w-16 fa-fw" :style="{'padding-left': '.5rem', 'color': hasCharacters ? 'green' : 'red', 'width': '2rem'}"/>
                       </li>
                     </ul>
                   </ul>
@@ -96,8 +87,9 @@
                   autocomplete="off"
                   v-model="firstName"
                 />
-                <small class="text-danger" v-if="!validFirstName">
-                  Please enter your first name
+                <small id="first-name-error" v-if="firstNameError !== ''" class="text-danger">
+                  {{ firstNameError }}
+                  <br/>
                 </small>
                 <br />
                 <input
@@ -108,8 +100,9 @@
                   autocomplete="off"
                   v-model="lastName"
                 />
-                <small class="text-danger" v-if="!validLastName">
-                  Please enter your last name
+                <small id="last-name-error" v-if="lastNameError !== ''" class="text-danger">
+                  {{ lastNameError }}
+                  <br/>
                 </small>
                 <br />
                 <input
@@ -120,8 +113,9 @@
                   autocomplete="off"
                   v-model="companyName"
                 />
-                <small class="text-danger" v-if="!validCompanyName">
-                  Please enter your company's name
+                <small id="company-name-error" v-if="companyNameError !== ''" class="text-danger">
+                  {{ companyNameError }}
+                  <br/>
                 </small>
                 <br />
                 <input
@@ -132,8 +126,9 @@
                   autocomplete="off"
                   v-model="companyWebsite"
                 />
-                <small class="text-danger" v-if="!validWebsite">
-                  Please enter your company's website
+                <small id="company-website-error" v-if="companyWebsiteError !== ''" class="text-danger">
+                  {{ companyWebsiteError }}
+                  <br/>
                 </small>
               </div>
               <button type="submit" class="btn btn-primary btn-block">
@@ -158,7 +153,7 @@ import { Component, Vue } from 'vue-property-decorator'
 @Component
 export default class GetAccessModal extends Vue {
   get hasCharacters () {
-    const regex = new RegExp(/([#$%&'*+/=?^_`{|}~-])/)
+    const regex = new RegExp(/([#$%&'*+/=?^!_`{|}~-])/)
     return regex.test(this.password)
   }
 
@@ -178,10 +173,15 @@ export default class GetAccessModal extends Vue {
   }
 
   private companyName: string
+  private companyNameError: string
   private companyWebsite: string
+  private companyWebsiteError: string
   private email: string
+  private emailError: string
   private firstName: string
+  private firstNameError: string
   private lastName: string
+  private lastNameError: string
   private password: string
   private stepOne: boolean
   private validCompanyName: boolean
@@ -194,10 +194,15 @@ export default class GetAccessModal extends Vue {
   constructor () {
     super()
     this.companyName = ''
+    this.companyNameError = ''
     this.companyWebsite = ''
+    this.companyWebsiteError = ''
     this.email = ''
+    this.emailError = ''
     this.firstName = ''
+    this.firstNameError = ''
     this.lastName = ''
+    this.lastNameError = ''
     this.password = ''
     this.stepOne = true
     this.validCompanyName = false
@@ -223,21 +228,29 @@ export default class GetAccessModal extends Vue {
     this.checkWebsite(false)
   }
 
+  // TODO: Add better checks for all check* functions
   private checkCompanyName (checkLength: boolean) {
-    this.validCompanyName = !checkLength || this.companyName !== ''
+    const regex = new RegExp(/^[a-z ,.'-]+$/i)
+    this.validCompanyName = !checkLength || (this.companyName.length > 0 && regex.test(this.companyName))
+    this.companyNameError = this.validCompanyName ? '' : 'Please enter a valid company name'
   }
 
   private checkEmail (checkLength: boolean) {
     const regex = new RegExp(/(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/)
     this.validEmail = !checkLength || (this.email.length > 0 && regex.test(this.email))
+    this.emailError = this.validEmail ? '' : 'Please enter a valid email address'
   }
 
   private checkFirstName (checkLength: boolean) {
-    this.validFirstName = !checkLength || this.firstName !== ''
+    const regex = new RegExp(/^[a-zA-Z]+$/)
+    this.validFirstName = !checkLength || (this.firstName.length > 0 && regex.test(this.firstName))
+    this.firstNameError = this.validFirstName ? '' : 'Please enter a valid first name'
   }
 
   private checkLastName (checkLength: boolean) {
-    this.validLastName = !checkLength || this.lastName !== ''
+    const regex = new RegExp(/^[a-zA-Z]+$/)
+    this.validLastName = !checkLength || (this.lastName.length > 0 && regex.test(this.lastName))
+    this.lastNameError = this.validLastName ? '' : 'Please enter a valid last name'
   }
 
   private checkPassword (checkLength: boolean) {
@@ -246,10 +259,12 @@ export default class GetAccessModal extends Vue {
   }
 
   private checkWebsite (checkLength: boolean) {
-    this.validWebsite = !checkLength || this.companyWebsite !== ''
+    const regex = new RegExp(/((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)/)
+    this.validWebsite = !checkLength || (this.companyWebsite.length > 0 && regex.test(this.companyWebsite))
+    this.companyWebsiteError = this.validWebsite ? '' : 'Please enter a valid website. IE: https://networknext.com'
   }
 
-  private getAccess (): void {
+  private processNewSignup (): void {
     // TODO: Find a better way of doing this
     this.checkCompanyName(true)
     this.checkFirstName(true)
@@ -258,26 +273,47 @@ export default class GetAccessModal extends Vue {
     if (!this.validCompanyName || !this.validFirstName || !this.validLastName || !this.validWebsite) {
       return
     }
-    this.$authService.getAccess(
-      this.firstName,
-      this.lastName,
-      this.email,
-      this.password,
-      this.companyName,
-      this.companyWebsite
-    )
+
+    // Send this off to the backend to record the new sign up in hubspot and don't wait for the response
+    this.$apiService.processNewSignup({
+      company_name: this.companyName,
+      company_website: this.companyWebsite,
+      email: this.email,
+      first_name: this.firstName,
+      last_name: this.lastName
+    })
+
+    this.$authService.login(this.email, this.password)
+      .catch((err: Error) => {
+        console.log('Something went wrong processing the new sign up information')
+        console.log(err)
+      })
   }
 
-  private switchSteps (isFirstStep: boolean) {
+  private switchSteps () {
     // TODO: Find a better way of doing this
-    if (!isFirstStep) {
-      this.checkEmail(true)
-      this.checkPassword(true)
-      if (!this.validEmail || !this.validPassword) {
-        return
-      }
+    this.checkEmail(true)
+    this.checkPassword(true)
+    if (!this.validEmail || !this.validPassword) {
+      return
     }
-    this.stepOne = isFirstStep
+
+    this.$authService.getAccess(
+      this.email,
+      this.password
+    )
+      .then(() => {
+        this.stepOne = false
+      })
+      .catch((err: Error) => {
+        console.log('Something went wrong during the sign up process')
+        console.log(err)
+        this.emailError = 'Email has already been used to sign up or is invalid'
+        setTimeout(() => {
+          this.emailError = ''
+        }, 5000)
+        this.stepOne = true
+      })
   }
 }
 </script>

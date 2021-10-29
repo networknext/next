@@ -15,7 +15,7 @@ declare module '*.vue' {
     fetchSessionDetails (args: any): Promise<any>;
     fetchTopSessions (args: any): Promise<any>;
     fetchAllBuyers (): Promise<any>;
-    fetchBillingSummary(args: any): Promise<any>;
+    fetchUsageSummary(args: any): Promise<any>;
     fetchAnalyticsSummary(args: any): Promise<any>;
     fetchUserSessions (args: any): Promise<any>;
     fetchAllRoles (): Promise<any>;
@@ -49,8 +49,7 @@ declare module '*.vue' {
   export interface VueAuthService {
     login (username: string, password: string): Promise<any>;
     logout (): void;
-    signUp (): void;
-    getAccess(firstName: string, lastName: string, email: string, password: string, companyName: string, companyWebsite: string): void;
+    getAccess(email: string, password: string): Promise<Error | undefined>;
     refreshToken (): Promise<any>;
   }
 

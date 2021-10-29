@@ -100,7 +100,6 @@ describe('UserManagement.vue', () => {
         }
       })
       const wrapper = shallowMount(SessionCounts, { localVue, store })
-
     })
   })
 })
