@@ -625,7 +625,7 @@ func SessionPre(state *SessionHandlerState) bool {
 		state.Output.Location, err = state.IpLocator.LocateIP(state.Packet.ClientAddress.IP, state.Packet.SessionID)
 
 		if err != nil || state.Output.Location == routing.LocationNullIsland {
-			core.Debug("location veto: %s\n", err)
+			core.Error("location veto: %s\n", err)
 			state.Metrics.ClientLocateFailure.Add(1)
 			state.Output.RouteState.LocationVeto = true
 			return true
