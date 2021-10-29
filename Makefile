@@ -22,7 +22,6 @@ COMMITMESSAGE ?= $(shell git log -1 --pretty=%B | tr '\n' ' ')
 CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
-PORTAL_DIR=./cmd/portal
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
@@ -357,7 +356,7 @@ dev-server: build-sdk build-server  ## runs a local server
 
 .PHONY: dev-portal
 dev-portal: build-portal ## runs a local portal
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist RELAY_FRONTEND=http://localhost:30005 ./dist/portal
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local RELAY_FRONTEND=http://localhost:30005 ./dist/portal
 
 .PHONY: dev-beacon
 dev-beacon: build-beacon ## runs a local beacon
