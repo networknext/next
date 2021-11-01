@@ -147,6 +147,8 @@
 
 #define NEXT_MAX_SESSION_UPDATE_RETRIES                                10
 
+#define NEXT_PASSTHROUGH_PACKET                                         0
+
 #define NEXT_ROUTE_REQUEST_PACKET                                     100
 #define NEXT_ROUTE_RESPONSE_PACKET                                    101
 #define NEXT_CLIENT_TO_SERVER_PACKET                                  102
@@ -7018,7 +7020,7 @@ void next_client_internal_block_and_receive_packet( next_client_internal_t * cli
         return;
 #endif // #if NEXT_DEVELOPMENT
 
-    if ( packet_data[0] != 0 )
+    if ( packet_data[0] != NEXT_PASSTHROUGH_PACKET )
     {
         next_client_internal_process_network_next_packet( client, &from, packet_data, packet_bytes, packet_receive_time );
     }
@@ -8159,7 +8161,7 @@ void next_client_send_packet_direct( next_client_t * client, const uint8_t * pac
     }
 
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
-    buffer[0] = 0;
+    buffer[0] = NEXT_PASSTHROUGH_PACKET;
     memcpy( buffer + 1, packet_data, packet_bytes );
     next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 1 );
     client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
@@ -12445,7 +12447,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
          return;
 #endif // #if NEXT_DEVELOPMENT
 
-    if ( packet_data[0] != 0 )
+    if ( packet_data[0] != NEXT_PASSTHROUGH_PACKET )
     {
         next_server_internal_process_network_next_packet( server, &from, packet_data, packet_bytes );
     }
@@ -13579,7 +13581,7 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     }
 
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
-    buffer[0] = 0;
+    buffer[0] = NEXT_PASSTHROUGH_PACKET;
     memcpy( buffer + 1, packet_data, packet_bytes );
     next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
 }
