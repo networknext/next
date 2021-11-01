@@ -56,7 +56,7 @@ func HTTPAuthMiddleware(keys JWKS, audiences []string, next http.Handler, allowe
 		if _, ok := claims["scope"]; !ok {
 			valid := false
 			for _, audience := range audiences {
-				valid = !claims.VerifyAudience(audience, false)
+				valid = claims.VerifyAudience(audience, false)
 				if valid {
 					break
 				}
