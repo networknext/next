@@ -99,17 +99,17 @@ func mainReturnWithCode() int {
 	// Create an error chan for exiting from goroutines
 	errChan := make(chan error, 1)
 
-	// Fetch the Auth0 Cert and refresh occasionally
-	newKeys, err := middleware.FetchAuth0Cert()
+	auth0Domain := os.Getenv("AUTH0_DOMAIN")
+	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 	if err != nil {
 		core.Error("failed to fetch auth0 cert: %v", err)
 		return 1
 	}
 	keys = newKeys
 
-	fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+	fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
 	if err != nil {
-		core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
+		core.Error("invalid AUTH0_CERT_INTERVAL: %v", err)
 		return 1
 	}
 
@@ -118,7 +118,7 @@ func mainReturnWithCode() int {
 		for {
 			select {
 			case <-ticker.C:
-				newKeys, err := middleware.FetchAuth0Cert()
+				newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 				if err != nil {
 					continue
 				}
@@ -126,7 +126,6 @@ func mainReturnWithCode() int {
 			case <-ctx.Done():
 				return
 			}
-
 		}
 	}()
 
@@ -276,9 +275,9 @@ func mainReturnWithCode() int {
 			core.Debug("unable to parse ALLOWED_ORIGINS environment variable")
 		}
 
-		audience := envvar.Get("JWT_AUDIENCE", "")
-		if audience == "" {
-			core.Error("unable to parse JWT_AUDIENCE environment variable")
+		auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
+		if auth0Issuer == "" {
+			core.Debug("unable to parse AUTH0_ISSUER environment variable")
 		}
 
 		port := envvar.Get("PORT", "30005")
@@ -297,16 +296,16 @@ func mainReturnWithCode() int {
 		// Wrap the following endpoints in auth and CORS middleware
 		// NOTE: the next tool is unaware of CORS and its requests simply pass through
 		costMatrixHandler := http.HandlerFunc(frontendClient.GetCostMatrixHandlerFunc())
-		router.Handle("/cost_matrix", middleware.PlainHttpAuthMiddleware(keys, audience, costMatrixHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/cost_matrix", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), costMatrixHandler, strings.Split(allowedOrigins, ","), auth0Issuer, false))
 
 		relaysCsvHandler := http.HandlerFunc(frontendClient.GetRelayBackendHandlerFunc("/relays"))
-		router.Handle("/relays", middleware.PlainHttpAuthMiddleware(keys, audience, relaysCsvHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/relays", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), relaysCsvHandler, strings.Split(allowedOrigins, ","), auth0Issuer, false))
 
 		jsonDashboardHandler := http.HandlerFunc(frontendClient.GetRelayDashboardDataHandlerFunc())
-		router.Handle("/relay_dashboard_data", middleware.PlainHttpAuthMiddleware(keys, audience, jsonDashboardHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/relay_dashboard_data", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), jsonDashboardHandler, strings.Split(allowedOrigins, ","), auth0Issuer, false))
 
 		jsonDashboardAnalysisHandler := http.HandlerFunc(frontendClient.GetRelayDashboardAnalysisHandlerFunc())
-		router.Handle("/relay_dashboard_analysis", middleware.PlainHttpAuthMiddleware(keys, audience, jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/relay_dashboard_analysis", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), jsonDashboardAnalysisHandler, strings.Split(allowedOrigins, ","), auth0Issuer, false))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {

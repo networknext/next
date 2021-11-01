@@ -20,7 +20,7 @@ func TestRoleVerification(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	reqContext := req.Context()
-	reqContext = context.WithValue(reqContext, middleware.Keys.CompanyKey, "local")
+	reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "local")
 	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 		"Admin",
 	})

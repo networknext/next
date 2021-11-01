@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
@@ -19,18 +18,17 @@ import (
 func TestFakeNewRelays(t *testing.T) {
 	t.Parallel()
 
-	logger := log.NewNopLogger()
 	fakeRelayMetrics := metrics.EmptyFakeRelayMetrics
 
 	t.Run("failed to resolve udp address", func(t *testing.T) {
-		relays, err := NewFakeRelays(100000, []byte{}, "", 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(100000, []byte{}, "", 4, fakeRelayMetrics)
 		assert.Error(t, err)
 		assert.Equal(t, fmt.Errorf("error resolving UDP address: address 65536: invalid port\n"), err)
 		assert.Equal(t, 0, len(relays))
 	})
 
 	t.Run("success", func(t *testing.T) {
-		relays, err := NewFakeRelays(1, []byte{}, "", 3, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, []byte{}, "", 3, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.NotNil(t, relays)
 		assert.Equal(t, 1, len(relays))
@@ -40,13 +38,12 @@ func TestFakeNewRelays(t *testing.T) {
 func TestSendRequests(t *testing.T) {
 	t.Parallel()
 
-	logger := log.NewNopLogger()
 	fakeRelayMetrics := metrics.EmptyFakeRelayMetrics
 	relayPublicKey, err := base64.StdEncoding.DecodeString("8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
 	assert.NoError(t, err)
 
 	t.Run("shutdown marshal error", func(t *testing.T) {
-		relays, err := NewFakeRelays(1, relayPublicKey, "", 2, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, "", 2, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 
@@ -67,7 +64,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -89,7 +86,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -99,7 +96,7 @@ func TestSendRequests(t *testing.T) {
 	})
 
 	t.Run("initial update request marshal error", func(t *testing.T) {
-		relays, err := NewFakeRelays(1, relayPublicKey, "", 2, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, "", 2, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 
@@ -120,7 +117,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -142,7 +139,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 3, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 3, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -167,7 +164,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -177,7 +174,7 @@ func TestSendRequests(t *testing.T) {
 	})
 
 	t.Run("standard update request marshal error", func(t *testing.T) {
-		relays, err := NewFakeRelays(1, relayPublicKey, "", 2, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, "", 2, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 
@@ -198,7 +195,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -220,7 +217,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -245,7 +242,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, logger, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])
@@ -256,12 +253,11 @@ func TestSendRequests(t *testing.T) {
 }
 
 func TestSimulatedPingStats(t *testing.T) {
-	logger := log.NewNopLogger()
 	fakeRelayMetrics := metrics.EmptyFakeRelayMetrics
 	relayPublicKey, err := base64.StdEncoding.DecodeString("8hUCRvzKh2aknL9RErM/Vj22+FGJW0tWMRz5KlHKryE=")
 	assert.NoError(t, err)
 
-	relays, err := NewFakeRelays(1, relayPublicKey, "", 4, logger, fakeRelayMetrics)
+	relays, err := NewFakeRelays(1, relayPublicKey, "", 4, fakeRelayMetrics)
 	assert.NoError(t, err)
 
 	// Seed the RNG

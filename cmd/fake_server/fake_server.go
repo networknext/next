@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -12,14 +11,16 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
-	"github.com/go-kit/kit/log/level"
-	"github.com/gorilla/mux"
 	"github.com/networknext/backend/modules/backend"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/fake_server"
 	"github.com/networknext/backend/modules/transport"
+
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -37,53 +38,56 @@ func main() {
 
 func mainReturnWithCode() int {
 	serviceName := "fake_server"
-	fmt.Printf("fake_server: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 
 	gcpProjectID := backend.GetGCPProjectID()
 
-	logger, err := backend.GetLogger(ctx, gcpProjectID, serviceName)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
 	env, err := backend.GetEnv()
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to get env: %v", err)
 		return 1
 	}
 
 	if gcpProjectID != "" {
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
-			level.Error(logger).Log("msg", "failed to initialze StackDriver profiler", "err", err)
+			core.Error("failed to initialze StackDriver profiler: %v", err)
 			return 1
 		}
 	}
 
 	if !envvar.Exists("NEXT_CUSTOMER_PUBLIC_KEY") {
-		level.Error(logger).Log("err", errors.New("NEXT_CUSTOMER_PUBLIC_KEY not set"))
+		core.Error("NEXT_CUSTOMER_PUBLIC_KEY not set")
 		return 1
 	}
 
 	customerPublicKey, err := envvar.GetBase64("NEXT_CUSTOMER_PUBLIC_KEY", nil)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse NEXT_CUSTOMER_PUBLIC_KEY: %v", err)
 		return 1
 	}
 	customerID := binary.LittleEndian.Uint64(customerPublicKey[:8])
 
 	if !envvar.Exists("NEXT_CUSTOMER_PRIVATE_KEY") {
-		level.Error(logger).Log("err", errors.New("NEXT_CUSTOMER_PRIVATE_KEY not set"))
+		core.Error("NEXT_CUSTOMER_PRIVATE_KEY not set")
 		return 1
 	}
 
 	customerPrivateKey, err := envvar.GetBase64("NEXT_CUSTOMER_PRIVATE_KEY", nil)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse NEXT_CUSTOMER_PRIVATE_KEY: %v", err)
 		return 1
 	}
+
+	httpPort := envvar.Get("PORT", "50001")
+	if httpPort == "" {
+		core.Error("PORT not set")
+		return 1
+	}
+
+	// Setup an err channel to exit from goroutines
+	errChan := make(chan error, 1)
 
 	// Start HTTP server
 	{
@@ -92,12 +96,10 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
 
 		go func() {
-			httpPort := envvar.Get("PORT", "50001")
-
 			err := http.ListenAndServe(":"+httpPort, router)
 			if err != nil {
-				level.Error(logger).Log("err", err)
-				return
+				core.Error("failed to start http server: %v", err)
+				errChan <- err
 			}
 		}()
 	}
@@ -106,64 +108,81 @@ func mainReturnWithCode() int {
 
 	readBuffer, err := envvar.GetInt("READ_BUFFER", 100000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse READ_BUFFER: %v", err)
 		return 1
 	}
 
 	writeBuffer, err := envvar.GetInt("WRITE_BUFFER", 100000)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse WRITE_BUFFER: %v", err)
 		return 1
 	}
 
-	serverBackendAddress, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	var serverBackendAddress *net.UDPAddr
+	if !envvar.Exists("SERVER_BACKEND_ADDRESS") {
+		serverBackendAddress, err = net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+		if err != nil {
+			core.Error("failed to resolve default server backend udp address 127.0.0.1:40000: %v", err)
+			return 1
+		}
+	} else {
+		serverBackendAddress, err = envvar.GetAddress("SERVER_BACKEND_ADDRESS", serverBackendAddress)
+		if err != nil {
+			core.Error("failed to get SERVER_BACKEND_ADDRESS: %v", err)
+			return 1
+		}
+	}
+
+	sendBeaconPackets, err := envvar.GetBool("SEND_NEXT_BEACON_PACKETS", false)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse SEND_NEXT_BEACON_PACKETS: %v", err)
 		return 1
 	}
 
-	serverBackendAddress, err = envvar.GetAddress("SERVER_BACKEND_ADDRESS", serverBackendAddress)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	beaconAddress, err := net.ResolveUDPAddr("udp", "127.0.0.1:35000")
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
-	}
-
-	beaconAddress, err = envvar.GetAddress("NEXT_BEACON_ADDRESS", beaconAddress)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		return 1
+	var beaconAddress *net.UDPAddr
+	if !envvar.Exists("NEXT_BEACON_ADDRESS") {
+		beaconAddress, err = net.ResolveUDPAddr("udp", "127.0.0.1:35000")
+		if err != nil {
+			core.Error("failed to resolve default beacon udp address 127.0.0.1:35000: %v", err)
+			return 1
+		}
+	} else {
+		beaconAddress, err = envvar.GetAddress("NEXT_BEACON_ADDRESS", beaconAddress)
+		if err != nil {
+			core.Error("failed to get NEXT_BEACON_ADDRESS: %v", err)
+			return 1
+		}
 	}
 
 	numClients, err := envvar.GetInt("NUM_CLIENTS", 400)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse NUM_CLIENTS: %v", err)
 		return 1
 	}
 
 	maxClientsPerServer, err := envvar.GetInt("MAX_CLIENTS_PER_SERVER", 200)
 	if err != nil {
-		level.Error(logger).Log("err", err)
+		core.Error("failed to parse MAX_CLIENTS_PER_SERVER: %v", err)
 		return 1
 	}
 
 	numServers := int(math.Ceil(float64(numClients) / float64(maxClientsPerServer)))
 
-	level.Info(logger).Log("server_count", numServers, "client_count", numClients, "msg", "starting fake server")
+	core.Debug("starting %s with %d servers and %d clients per server", serviceName, numServers, numClients)
 
 	// Seed the random number generator so we get different session data each run
 	rand.Seed(time.Now().Unix())
 
 	var numClientsMutex sync.Mutex
 
-	errChan := make(chan error, 1)
+	var wg sync.WaitGroup
+
 	for i := 0; i < numServers; i++ {
+		wg.Add(1)
+
 		go func() {
+			defer wg.Done()
+
 			numClientsMutex.Lock()
 			clients := numClients
 
@@ -177,7 +196,7 @@ func mainReturnWithCode() int {
 
 			lp, err := lc.ListenPacket(ctx, "udp", "0.0.0.0:0")
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				core.Error("failed to listen for udp packets: %v", err)
 				errChan <- err
 				return
 			}
@@ -186,13 +205,13 @@ func mainReturnWithCode() int {
 			defer conn.Close()
 
 			if err := conn.SetReadBuffer(readBuffer); err != nil {
-				level.Error(logger).Log("msg", "could not set connection read buffer size", "err", err)
+				core.Error("could not set connection read buffer size: %v", err)
 				errChan <- err
 				return
 			}
 
 			if err := conn.SetWriteBuffer(writeBuffer); err != nil {
-				level.Error(logger).Log("msg", "could not set connection write buffer size", "err", err)
+				core.Error("could not set connection write buffer size: %v", err)
 				errChan <- err
 				return
 			}
@@ -207,30 +226,37 @@ func mainReturnWithCode() int {
 				dcName = "local"
 			}
 
-			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, beaconAddress, clients, transport.SDKVersionLatest, logger, customerID, customerPrivateKey, dcName)
+			server, err := fake_server.NewFakeServer(conn, serverBackendAddress, beaconAddress, clients, transport.SDKVersionLatest, customerID, customerPrivateKey, dcName, sendBeaconPackets)
 			if err != nil {
-				level.Error(logger).Log("err", err)
+				core.Error("failed to start fake server: %v", err)
 				errChan <- err
 				return
 			}
 
 			if err := server.StartLoop(ctx, time.Second*10, readBuffer, writeBuffer); err != nil {
-				level.Error(logger).Log("err", err)
-				fmt.Printf("Error: %v\n", err)
+				core.Error("error during fake server operation: %v", err)
 				errChan <- err
 				return
 			}
 		}()
 	}
 
-	// Wait for interrupt signal
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
 	select {
-	case <-sigint:
+	case <-termChan: // Exit with an error code of 0 if we receive SIGINT or SIGTERM
+		fmt.Println("Received shutdown signal.")
+
+		cancel()
+		wg.Wait()
+
+		fmt.Println("Successfully shutdown.")
 		return 0
 	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		cancel()
+		wg.Wait()
 		return 1
 	}
 }

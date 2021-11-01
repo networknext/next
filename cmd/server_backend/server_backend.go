@@ -205,8 +205,7 @@ func mainReturnWithCode() int {
 
 					// Pointer swap under mutex
 					mmdbMutex.Lock()
-					mmdb.CloseCity()
-					mmdb.CloseISP()
+					// IMPORTANT: Do not close the previous mmdb since it could still be in use
 					mmdb = newMMDB
 					mmdbMutex.Unlock()
 				case <-ctx.Done():
@@ -608,17 +607,23 @@ func mainReturnWithCode() int {
 		}
 	}
 
+	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
+	if auth0Domain == "" {
+		core.Error("invalid AUTH0_DOMAIN: not set")
+		return 1
+	}
+
 	// Fetch the Auth0 Cert and refresh occasionally
-	newKeys, err := middleware.FetchAuth0Cert()
+	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 	if err != nil {
 		core.Error("failed to fetch auth0 cert: %v", err)
 		return 1
 	}
 	keys = newKeys
 
-	fetchAuthCertInterval, err := envvar.GetDuration("AUTH_CERT_INTERVAL", time.Minute*10)
+	fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
 	if err != nil {
-		core.Error("invalid AUTH_CERT_INTERVAL: %v", err)
+		core.Error("invalid AUTH0_CERT_INTERVAL: %v", err)
 		return 1
 	}
 
@@ -627,7 +632,7 @@ func mainReturnWithCode() int {
 		for {
 			select {
 			case <-ticker.C:
-				newKeys, err := middleware.FetchAuth0Cert()
+				newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 				if err != nil {
 					continue
 				}
@@ -794,9 +799,9 @@ func mainReturnWithCode() int {
 			core.Debug("unable to parse ALLOWED_ORIGINS environment variable")
 		}
 
-		audience := envvar.Get("JWT_AUDIENCE", "")
-		if audience == "" {
-			core.Error("unable to parse JWT_AUDIENCE environment variable")
+		auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
+		if auth0Issuer == "" {
+			core.Debug("unable to parse AUTH0_ISSUER environment variable")
 		}
 
 		router := mux.NewRouter()
@@ -806,7 +811,7 @@ func mainReturnWithCode() int {
 		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 		serverTrackerHandler := http.HandlerFunc(transport.ServerTrackerHandlerFunc(serverTracker))
-		router.Handle("/servers", middleware.PlainHttpAuthMiddleware(keys, audience, serverTrackerHandler, strings.Split(allowedOrigins, ",")))
+		router.Handle("/servers", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), serverTrackerHandler, strings.Split(allowedOrigins, ","), auth0Issuer, false))
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
