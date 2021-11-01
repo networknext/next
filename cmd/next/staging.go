@@ -45,7 +45,7 @@ type StagingConfig struct {
 	Billing        StagingServiceConfig `json:"billing"`
 	Beacon         StagingServiceConfig `json:"beacon"`
 	BeaconInserter StagingServiceConfig `json:"beacon_inserter"`
-	Portal         StagingServiceConfig `json:"portal"`
+	Portal         StagingServiceConfig `json:"portal_backend"`
 	ServerBackend  StagingServiceConfig `json:"server_backend"`
 	FakeServer     StagingServiceConfig `json:"fake_server"`
 }
@@ -649,7 +649,7 @@ func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
 	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-mig", false, config.Beacon))
 	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-inserter-mig", false, config.BeaconInserter))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-mig", false, config.Portal))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-backend-mig", false, config.Portal))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", true, config.ServerBackend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("fake-server-mig", true, config.FakeServer))
 

@@ -43,10 +43,10 @@ var (
 
 const (
 	// Prod
-	PROD_AUTH0_AUDIENCE      = "https://portal.networknext.com"
+	PROD_AUTH0_AUDIENCE      = "https://next-prod.networknext.com"
 	PROD_AUTH0_CLIENT_ID     = "6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb"
 	PROD_AUTH0_CLIENT_SECRET = "EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj"
-	PROD_AUTH0_DOMAIN        = "networknext.auth0.com"
+	PROD_AUTH0_DOMAIN        = "auth.networknext.com"
 	// Dev
 	DEV_AUTH0_AUDIENCE      = "https://next-dev.networknext.com"
 	DEV_AUTH0_CLIENT_ID     = "qUcgJkTEztKAbJirBexzAkau4mXm6n9Q"
