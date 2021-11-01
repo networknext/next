@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/storage"
 )
 
@@ -34,26 +33,28 @@ type StagingServiceConfig struct {
 }
 
 type StagingConfig struct {
-	RelayGateway   StagingServiceConfig `json:"relayGateway"`
-	RelayBackend   StagingServiceConfig `json:"relayBackend"`
-	FakeRelays     StagingServiceConfig `json:"fakeRelays"`
-	RelayFrontend  StagingServiceConfig `json:"relayGateway"`
-	RelayPusher    StagingServiceConfig `json:"relayPusher"`
-	PortalCruncher StagingServiceConfig `json:"portalCruncher"`
-	Vanity         StagingServiceConfig `json:"vanity"`
-	Api            StagingServiceConfig `json:"api"`
-	Analytics      StagingServiceConfig `json:"analytics"`
-	Billing        StagingServiceConfig `json:"billing"`
-	Beacon         StagingServiceConfig `json:"beacon"`
-	BeaconInserter StagingServiceConfig `json:"beaconInserter"`
-	Portal         StagingServiceConfig `json:"portal"`
-	ServerBackend  StagingServiceConfig `json:"serverBackend"`
-	FakeServer     StagingServiceConfig `json:"fakeServer"`
+	RelayGateway    StagingServiceConfig `json:"relay_gateway"`
+	RelayBackend    StagingServiceConfig `json:"relay_backend"`
+	FakeRelays      StagingServiceConfig `json:"fake_relays"`
+	RelayFrontend   StagingServiceConfig `json:"relay_frontend"`
+	RelayPusher     StagingServiceConfig `json:"relay_pusher"`
+	PortalCruncher  StagingServiceConfig `json:"portal_cruncher"`
+	Vanity          StagingServiceConfig `json:"vanity"`
+	Api             StagingServiceConfig `json:"api"`
+	AnalyticsPusher StagingServiceConfig `json:"analytics_pusher"`
+	Analytics       StagingServiceConfig `json:"analytics"`
+	Billing         StagingServiceConfig `json:"billing"`
+	Beacon          StagingServiceConfig `json:"beacon"`
+	BeaconInserter  StagingServiceConfig `json:"beacon_inserter"`
+	PortalBackend   StagingServiceConfig `json:"portal_backend"`
+	PortalFrontend  StagingServiceConfig `json:"portal_frontend"`
+	ServerBackend   StagingServiceConfig `json:"server_backend"`
+	FakeServer      StagingServiceConfig `json:"fake_server"`
 }
 
 var DefaultStagingConfig = StagingConfig{
 	RelayGateway: StagingServiceConfig{
-		Cores: 4,
+		Cores: 2,
 		Count: -1,
 	},
 
@@ -78,18 +79,23 @@ var DefaultStagingConfig = StagingConfig{
 	},
 
 	PortalCruncher: StagingServiceConfig{
-		Cores: 8,
+		Cores: 10,
 		Count: 4,
 	},
 
 	Vanity: StagingServiceConfig{
-		Cores: 4,
+		Cores: 1,
 		Count: 4,
 	},
 
 	Api: StagingServiceConfig{
 		Cores: 1,
 		Count: -1,
+	},
+
+	AnalyticsPusher: StagingServiceConfig{
+		Cores: 1,
+		Count: 1,
 	},
 
 	Analytics: StagingServiceConfig{
@@ -112,8 +118,13 @@ var DefaultStagingConfig = StagingConfig{
 		Count: -1,
 	},
 
-	Portal: StagingServiceConfig{
-		Cores: 16,
+	PortalBackend: StagingServiceConfig{
+		Cores: 8,
+		Count: -1,
+	},
+
+	PortalFrontend: StagingServiceConfig{
+		Cores: 1,
 		Count: -1,
 	},
 
@@ -517,10 +528,9 @@ func StopStaging() []error {
 func createBigTable() error {
 	ctx := context.Background()
 	gcpProjectID := "network-next-v3-staging"
-	logger := log.NewNopLogger()
 
 	// Create a bigtable instance admin
-	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID, logger)
+	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID)
 	if err != nil {
 		return err
 	}
@@ -547,7 +557,7 @@ func createBigTable() error {
 	}
 
 	// Create a bigtable admin
-	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, InstanceID, logger)
+	btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, InstanceID)
 	if err != nil {
 		return err
 	}
@@ -582,10 +592,9 @@ func createBigTable() error {
 func deleteBigTable() error {
 	ctx := context.Background()
 	gcpProjectID := "network-next-v3-staging"
-	logger := log.NewNopLogger()
 
 	// Create a bigtable instance admin
-	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID, logger)
+	btInstanceAdmin, err := storage.NewBigTableInstanceAdmin(ctx, gcpProjectID)
 	if err != nil {
 		return err
 	}
@@ -645,6 +654,7 @@ func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("vanity", config.Vanity))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("relay-pusher", config.RelayPusher))
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("fake-relays", config.FakeRelays))
+	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("analytics-pusher", config.AnalyticsPusher))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-gateway-mig", false, config.RelayGateway))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-frontend-mig", false, config.RelayFrontend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("api-mig", false, config.Api))
@@ -652,89 +662,10 @@ func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
 	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-mig", false, config.Beacon))
 	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-inserter-mig", false, config.BeaconInserter))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-mig", false, config.Portal))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-backend-mig", false, config.PortalBackend))
+	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-frontend-mig", false, config.PortalFrontend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", true, config.ServerBackend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("fake-server-mig", true, config.FakeServer))
 
 	return instanceGroups
 }
-
-// func resizeStaging(config StagingConfig) error {
-// 	// Scale down the number of servers based on how many run on a single VM and enforce a proportion of 200 clients per server
-// 	serverCount := int(math.Ceil(float64(config.Client.Count / 200 / config.Server.ServersPerVM)))
-// 	if serverCount == 0 && config.Client.Count > 0 {
-// 		serverCount = 1
-// 	}
-
-// 	clientMIGCount, err := getClientMIGCount()
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	if config.Client.Count < config.Client.ClientsPerVM {
-// 		return fmt.Errorf("must run at least %d clients", config.Client.ClientsPerVM)
-// 	}
-
-// 	if config.Client.Count > MaxVMsPerMIG*clientMIGCount*config.Client.ClientsPerVM {
-// 		return fmt.Errorf("cannot run more than %d clients", config.Client.Count)
-// 	}
-
-// 	// We need to stop the servers and clients first so that a change to the server backend mig
-// 	// will keep the servers and clients evenly distributed
-// 	fmt.Println("stopping clients...")
-// 	for i := 1; i <= clientMIGCount; i++ {
-// 		if err := resizeMIG(fmt.Sprintf("load-test-clients-%d", i), 0); err != nil {
-// 			return err
-// 		}
-// 	}
-
-// 	fmt.Println("stopping servers...")
-// 	if err := resizeMIG("load-test-server-mig", 0); err != nil {
-// 		return err
-// 	}
-
-// 	fmt.Printf("resizing to %d server backends...\n", config.ServerBackend.Count)
-// 	if err := resizeMIG("server-backend4-mig", config.ServerBackend.Count); err != nil {
-// 		return err
-// 	}
-
-// 	// Wait for the server backend mig to stabilize so that the created servers and clients will connect evenly
-// 	if err := waitForMIGStable("server-backend4-mig"); err != nil {
-// 		return err
-// 	}
-
-// 	fmt.Printf("resizing to %d servers (%d instances)...\n", serverCount*config.Server.ServersPerVM, serverCount)
-// 	if err := resizeMIG("load-test-server-mig", serverCount); err != nil {
-// 		return err
-// 	}
-
-// 	// Wait for the load test server mig to stabilize so that the created clients will connect evenly
-// 	if err := waitForMIGStable("load-test-server-mig"); err != nil {
-// 		return err
-// 	}
-
-// 	fmt.Printf("resizing to %d clients (%d instances)...\n", config.Client.Count*config.Client.ClientsPerVM, config.Client.Count)
-
-// 	// Scale down the number of clients based on how many run on a single VM
-// 	runningClientCount := config.Client.Count / config.Client.ClientsPerVM
-
-// 	var clientRunCount int
-// 	for runningClientCount > 0 {
-// 		clientRunCount++
-
-// 		var overflowClientCount int
-// 		if runningClientCount > MaxVMsPerMIG {
-// 			overflowClientCount = runningClientCount - MaxVMsPerMIG
-// 			runningClientCount = MaxVMsPerMIG
-// 		}
-
-// 		if err := resizeMIG(fmt.Sprintf("load-test-clients-%d", clientRunCount), runningClientCount); err != nil {
-// 			return err
-// 		}
-
-// 		runningClientCount -= MaxVMsPerMIG
-// 		runningClientCount += overflowClientCount
-// 	}
-
-// 	return nil
-// }

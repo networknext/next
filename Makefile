@@ -22,7 +22,6 @@ COMMITMESSAGE ?= $(shell git log -1 --pretty=%B | tr '\n' ' ')
 CURRENT_DIR = $(shell pwd -P)
 DEPLOY_DIR = ./deploy
 DIST_DIR = ./dist
-PORTAL_DIR=./cmd/portal
 ARTIFACT_BUCKET = gs://development_artifacts
 ARTIFACT_BUCKET_STAGING = gs://staging_artifacts
 ARTIFACT_BUCKET_PROD = gs://prod_artifacts
@@ -178,14 +177,17 @@ ifndef RELAY_STORE_ADDRESS
 export RELAY_STORE_ADDRESS = 127.0.0.1:6379
 endif
 
-ifndef AUTH_DOMAIN
-export AUTH_DOMAIN = networknext.auth0.com
+ifndef AUTH0_DOMAIN
+export AUTH0_DOMAIN = networknext-dev.us.auth0.com
 endif
-ifndef AUTH_CLIENTID
-export AUTH_CLIENTID = KxEiJeUh5tE1cZrI64GXHs455XcxRDKX
+ifndef AUTH0_CLIENTID
+export AUTH0_CLIENTID = 4j7UFJkp3x7rk5RudzxC6gToSes6dIn6
 endif
-ifndef AUTH_CLIENTSECRET
-export AUTH_CLIENTSECRET = d6w4zWBUT07UQlpDIA52pBMDukeuhvWJjCEnHWkkkZypd453qRn4e18Nz84GkfkO
+ifndef AUTH0_CLIENTSECRET
+export AUTH0_CLIENTSECRET = q5bMLiO8BoXcIy1CFe-sxy2eOYfn0IU0ByBZeeQkpckhV6_sQFR22EBDioyubwb6
+endif
+ifndef AUTH0_ISSUER
+export AUTH0_ISSUER = https://auth-dev.networknext.com/
 endif
 
 ifndef GOOGLE_FIRESTORE_SYNC_INTERVAL
@@ -261,10 +263,6 @@ ifndef BIGTABLE_CF_NAME
 export BIGTABLE_CF_NAME = portal-session-history
 endif
 
-ifndef BIGTABLE_WRITE_DELETE_ROW
-export BIGTABLE_WRITE_DELETE_ROW = false
-endif
-
 ifndef BIGTABLE_TABLE_NAME
 export BIGTABLE_TABLE_NAME = portal-session-history
 endif
@@ -305,7 +303,7 @@ dist:
 
 # Always run sqlite3
 export FEATURE_POSTGRESQL=false
-export JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL
+export JWT_AUDIENCES=S4WGLze2EZCPG9MeZ5509BedlWlHZGFt,kFffnEmuwB3DNfKO8tDnxV1hqQXLbnaZ
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/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
 export SLACK_CHANNEL=portal-test
 export LOOKER_SECRET=d61764ff20f99e672af3ec7fde75531a790acdb6d58bf46dbe55dac06a6019c0
@@ -318,19 +316,19 @@ dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
 
 .PHONY: dev-relay-backend-1
 dev-relay-backend-1: build-relay-backend ## runs a local relay backend
-	@PORT=30001 JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL ./dist/relay_backend
+	@PORT=30001 ./dist/relay_backend
 
 .PHONY: dev-relay-backend-2
 dev-relay-backend-2: build-relay-backend ## runs a local relay backend
-	@PORT=30002 JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL ./dist/relay_backend
+	@PORT=30002 ./dist/relay_backend
 
 .PHONY: dev-debug-relay-backend
 dev-debug-relay-backend: build-relay-backend ## runs a local debug relay backend
-	@PORT=30003 JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL ./dist/relay_backend
+	@PORT=30003 ./dist/relay_backend
 
 .PHONY: dev-relay-frontend
 dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
-	@PORT=30005 JWT_AUDIENCE=Kx0mbNIMZtMNA71vf9iatCp3N6qi1GfL ./dist/relay_frontend
+	@PORT=30005 ./dist/relay_frontend
 
 .PHONY: dev-server-backend
 dev-server-backend: build-server-backend ## runs a local server backend
@@ -358,7 +356,7 @@ dev-server: build-sdk build-server  ## runs a local server
 
 .PHONY: dev-portal
 dev-portal: build-portal ## runs a local portal
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local UI_DIR=./cmd/portal/dist RELAY_FRONTEND=http://localhost:30005 ./dist/portal
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local RELAY_FRONTEND=http://localhost:30005 ./dist/portal
 
 .PHONY: dev-beacon
 dev-beacon: build-beacon ## runs a local beacon

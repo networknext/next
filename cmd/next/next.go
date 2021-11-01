@@ -41,6 +41,25 @@ var (
 	buildtime string
 )
 
+const (
+	// Prod
+	PROD_AUTH0_AUDIENCE      = "https://next-prod.networknext.com"
+	PROD_AUTH0_CLIENT_ID     = "6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb"
+	PROD_AUTH0_CLIENT_SECRET = "EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj"
+	PROD_AUTH0_DOMAIN        = "auth.networknext.com"
+	// Dev
+	DEV_AUTH0_AUDIENCE      = "https://next-dev.networknext.com"
+	DEV_AUTH0_CLIENT_ID     = "qUcgJkTEztKAbJirBexzAkau4mXm6n9Q"
+	DEV_AUTH0_CLIENT_SECRET = "XQEeSI3CZLeSEbboMpgla-EmLyOzPqIc1zYKB2qTWQGmvrHvWrLzd5iOXXxkzDdY"
+	DEV_AUTH0_DOMAIN        = "auth-dev.networknext.com"
+	// Staging TBD
+	// Local Development
+	LOCAL_AUTH0_AUDIENCE      = "https://next-local.networknext.com"
+	LOCAL_AUTH0_CLIENT_ID     = "3lxkAg0s0tiaCAeVoe2p61QSGDYJ6MsV"
+	LOCAL_AUTH0_CLIENT_SECRET = "kTXtSGiH9oDBZqR4G-unfw5Bytjb8fcRoJGCuY3TEiJrdGmVEP8JO74tpNZChBzA"
+	LOCAL_AUTH0_DOMAIN        = "auth-dev.networknext.com"
+)
+
 type arrayFlags []string
 
 func (i *arrayFlags) String() string {
@@ -306,7 +325,7 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 		}
 	default:
 		if env.Name != "local" && env.Name != "dev" && env.Name != "prod" {
-			handleRunTimeError(fmt.Sprintf("%v - make sure the env name is set to either 'prod', 'staging', 'nrb', 'dev', or 'local' with\nnext select <env>\n", err), 0)
+			handleRunTimeError(fmt.Sprintf("%v - make sure the env name is set to either 'prod', 'staging', 'dev', or 'local' with\nnext select <env>\n", err), 0)
 		} else {
 			handleRunTimeError(fmt.Sprintf("%s\n\n", msg), 1)
 		}
@@ -316,15 +335,39 @@ func handleJSONRPCErrorCustom(env Environment, err error, msg string) {
 }
 
 func refreshAuth(env Environment) error {
+	audience := ""
+	clientID := ""
+	clientSecret := ""
+	domain := ""
+
+	// TODO: Figure out a better way of doing this
+	switch env.Name {
+	case "prod":
+		audience = PROD_AUTH0_AUDIENCE
+		clientID = PROD_AUTH0_CLIENT_ID
+		clientSecret = PROD_AUTH0_CLIENT_SECRET
+		domain = PROD_AUTH0_DOMAIN
+	case "dev":
+		audience = DEV_AUTH0_AUDIENCE
+		clientID = DEV_AUTH0_CLIENT_ID
+		clientSecret = DEV_AUTH0_CLIENT_SECRET
+		domain = DEV_AUTH0_DOMAIN
+	case "local":
+		audience = LOCAL_AUTH0_AUDIENCE
+		clientID = LOCAL_AUTH0_CLIENT_ID
+		clientSecret = LOCAL_AUTH0_CLIENT_SECRET
+		domain = LOCAL_AUTH0_DOMAIN
+	}
+
 	req, err := http.NewRequest(
 		http.MethodPost,
-		"https://networknext.auth0.com/oauth/token",
-		strings.NewReader(`{
-				"client_id":"6W6PCgPc6yj6tzO9PtW6IopmZAWmltgb",
-				"client_secret":"EPZEHccNbjqh_Zwlc5cSFxvxFQHXZ990yjo6RlADjYWBz47XZMf-_JjVxcMW-XDj",
-				"audience":"https://portal.networknext.com",
+		fmt.Sprintf("https://%s/oauth/token", domain),
+		strings.NewReader(fmt.Sprintf(`{
+				"client_id":"%s",
+				"client_secret":"%s",
+				"audience":"%s",
 				"grant_type":"client_credentials"
-			}`),
+			}`, clientID, clientSecret, audience)),
 	)
 	if err != nil {
 		return err
@@ -469,6 +512,7 @@ type relay struct {
 	SSHUser             string
 	SSHPort             int64
 	MaxSessions         uint32
+	EgressPriceOverride float64
 	MRC                 float64
 	Overage             float64
 	BWRule              string
@@ -919,6 +963,36 @@ func main() {
 					} else {
 						dumpSession(env, sessionID)
 					}
+
+					return nil
+				},
+			},
+			{
+				Name:       "summary",
+				ShortUsage: "next session summary <session id>",
+				ShortHelp:  "Write all billing2 session summary data for the given ID to a CSV file",
+				FlagSet:    sessionDumpfs,
+				Exec: func(ctx context.Context, args []string) error {
+					if len(args) < 1 {
+						handleRunTimeError(fmt.Sprintln("you must supply the session ID in hex format"), 0)
+					}
+
+					var sessionID uint64
+					var err error
+					if sessionDumpfs.NFlag() >= 1 && sessionDumpSignedInt {
+						signed, err := strconv.ParseInt(args[0], 10, 64)
+						if err != nil {
+							handleRunTimeError(fmt.Sprintf("could not convert %s to int64", args[0]), 0)
+						}
+						sessionID = uint64(signed)
+					} else {
+						sessionID, err = strconv.ParseUint(args[0], 16, 64)
+						if err != nil {
+							handleRunTimeError(fmt.Sprintf("could not convert %s to uint64", args[0]), 0)
+						}
+					}
+
+					dumpSession2Summary(env, sessionID)
 
 					return nil
 				},
