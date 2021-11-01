@@ -2,6 +2,7 @@ import { createLocalVue, mount } from '@vue/test-utils'
 import Vuex from 'vuex'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import Alert from '@/components/Alert.vue'
+import { EMAIL_CONFIRMATION_MESSAGE } from '@/components/types/Constants'
 
 describe('SessionToolWorkspace.vue', () => {
   const localVue = createLocalVue()
@@ -77,7 +78,7 @@ describe('SessionToolWorkspace.vue', () => {
     expect(wrapper.find('button').text()).toBe('View Stats')
 
     // Check for an info alert
-    expect(wrapper.findAllComponents(Alert).at(0).text()).toContain('Please confirm your email address: test@test.com')
+    expect(wrapper.findAllComponents(Alert).at(0).text()).toContain(`${EMAIL_CONFIRMATION_MESSAGE} test@test.com`)
     expect(wrapper.findAllComponents(Alert).at(0).text()).toContain('Resend email')
     expect(wrapper.findAllComponents(Alert).at(1).text()).toBe('Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.')
     wrapper.destroy()

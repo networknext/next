@@ -123,7 +123,7 @@ export default class DownloadsWorkspace extends Vue {
   }
 
   private mounted () {
-    if (this.$store.getters.isSignUpTour && this.$route.name === 'downloads' && this.$tours.downloadsTour && !this.$tours.downloadsTour.isRunning) {
+    if (this.$store.getters.isSignUpTour && this.$tours.downloadsTour && !this.$tours.downloadsTour.isRunning && !this.$store.getters.finishedSignUpTours.includes('downloads')) {
       this.$tours.downloadsTour.start()
     }
   }

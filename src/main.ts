@@ -7,7 +7,7 @@ import store from './store'
 import 'bootstrap'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import { JSONRPCPlugin } from './plugins/jsonrpc'
-import { AuthPlugin } from './plugins/auth'
+import { AuthPlugin, AuthService } from './plugins/auth'
 import VueGtag from 'vue-gtag'
 import { FlagPlugin } from './plugins/flags'
 import { FeatureEnum, Flag } from './components/types/FeatureTypes'
@@ -91,46 +91,13 @@ Vue.use(AuthPlugin, {
 
 Vue.use(JSONRPCPlugin)
 
-// This is VERY hacky. It would be much better to do this within the router but going that route (no pun intended) mounts half the app before hitting the redirect which is funky
-// TODO: Look into a lifecycle hook that handles this better...
-if (window.location.pathname === '/get-access') {
-  Vue.prototype.$authService.signUp(window.location.search.split('?email=')[1])
-} else {
-  Vue.prototype.$authService.processAuthentication().then(() => {
+Vue.prototype.$authService.processAuthentication()
+  .then(() => {
     const query = window.location.search
-    if (query.includes('Your%20email%20was%20verified.%20You%20can%20continue%20using%20the%20application.')) {
-      store.commit('TOGGLE_IS_SIGN_UP_TOUR', true)
-      if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-        setTimeout(() => {
-          Vue.prototype.$gtag.event('Account verified', {
-            event_category: 'Account Creation'
-          })
-        }, 5000)
-      }
-    }
-
-    if (query.includes('signup')) {
-      setTimeout(() => {
-        if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-          Vue.prototype.$gtag.event('Auth0 account created', {
-            event_category: 'Account Creation'
-          })
-        }
-        Vue.prototype.$apiService.sendSignUpSlackNotification({ email: store.getters.userProfile.email })
-      }, 5000)
-    }
-
-    if (query.includes('code=') && query.includes('state=')) {
+    if (window.location.hash !== '' || query.includes('signup')) {
       router.push('/map')
     }
 
-    const isReturning = localStorage.returningUser || 'false'
-    if (Vue.prototype.$flagService.isEnabled(FeatureEnum.FEATURE_TOUR)) {
-      if (!(isReturning === 'true') && store.getters.isAnonymous) {
-        store.commit('TOGGLE_IS_TOUR', true)
-        localStorage.returningUser = true
-      }
-    }
     const app = new Vue({
       router,
       store,
@@ -143,4 +110,8 @@ if (window.location.pathname === '/get-access') {
       win.app = app
     }
   })
-}
+  .catch((err: Error) => {
+    console.log('Something went wrong processing login')
+    console.log(err)
+    Vue.prototype.$authService.logout()
+  })

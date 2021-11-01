@@ -80,13 +80,13 @@
           </tr>
         </tbody>
         <tbody>
-          <tr v-for="(session, index) in sessions" v-bind:key="index">
+          <tr v-for="(session, index) in sessions" :key="index">
             <td>
               <font-awesome-icon
                 id="status"
                 icon="circle"
                 class="fa-w-16 fa-fw"
-                v-bind:class="{
+                :class="{
                   'text-success': session.on_network_next,
                   'text-primary': !session.on_network_next
                 }"
@@ -94,15 +94,15 @@
             </td>
             <td>
               <router-link
-                v-bind:to="`/session-tool/${session.id}`"
+                :to="`/session-tool/${session.id}`"
                 class="text-dark fixed-width"
-                v-bind:data-intercom="index"
-                v-bind:data-tour="index"
+                :data-intercom="index"
+                :data-tour="index"
               >{{ session.id }}</router-link>
             </td>
             <td v-if="!$store.getters.isAnonymous">
               <router-link
-                v-bind:to="`/user-tool/${session.user_hash}`"
+                :to="`/user-tool/${session.user_hash}`"
                 class="text-dark fixed-width"
               >{{ session.user_hash }}</router-link>
             </td>
@@ -122,7 +122,7 @@
             <td class="text-right">
               <span
                 v-if="session.delta_rtt > 0 && session.on_network_next"
-                v-bind:class="{
+                :class="{
                   'text-success': session.delta_rtt >= 5,
                   'text-warning': session.delta_rtt >= 2 && session.delta_rtt < 5,
                   'text-danger': session.delta_rtt < 2 && session.delta_rtt > 0

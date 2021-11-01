@@ -1,16 +1,20 @@
 <template>
   <div class="card-body" id="analytics-page">
-    <h5 class="card-title">Analytics Dashboard</h5>
-    <p class="card-text">
-      One stop shop for analytics information
-    </p>
-    <iframe
-      id="analyticsDash"
-      :src="analyticsDashURL"
-      v-if="showSummary"
-      frameborder="0"
-    >
-    </iframe>
+    <div v-for="(url, index) in analyticsDashURLs" :key="index" class="row">
+      <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
+        <div class="card-body">
+          <iframe
+            class="col"
+            id="analyticsDash"
+            :src="url"
+            :style="{'min-height': index === 0 ? '3400px' : '4600px'}"
+            v-if="url !== ''"
+            frameborder="0"
+          >
+          </iframe>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -19,24 +23,17 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class Analytics extends Vue {
-  private analyticsDashURL: string
-  private showSummary: boolean
+  private analyticsDashURLs: Array<string>
 
   private unwatchFilter: any
 
-  private startDate: string
-  private endDate: string
-
   constructor () {
     super()
-    this.analyticsDashURL = ''
-    this.showSummary = false
-
-    this.startDate = ''
-    this.endDate = ''
+    this.analyticsDashURLs = []
   }
 
   private mounted () {
+    // This is only necessary for admins - when the filter changes, grab the new analytics URL
     this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
         return getters.currentFilter
@@ -47,6 +44,11 @@ export default class Analytics extends Vue {
     )
 
     this.fetchAnalyticsSummary()
+
+    const usageDashElement = document.getElementById('usageDash')
+    if (usageDashElement) {
+      usageDashElement.addEventListener('dashboard:run:complete', this.iframeTimeoutHandler)
+    }
   }
 
   private beforeDestroy () {
@@ -58,15 +60,17 @@ export default class Analytics extends Vue {
       company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
-        this.analyticsDashURL = response.url || ''
-        if (this.analyticsDashURL !== '') {
-          this.showSummary = true
-        }
+        this.analyticsDashURLs = response.urls || []
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the analytics summary dashboard')
         console.log(error)
       })
+  }
+
+  private iframeTimeoutHandler () {
+    // TODO: Look for a status of error or stopped and display a refresh page message....
+    console.log('An iframe timed out we should add an alert to refresh the page!')
   }
 }
 </script>

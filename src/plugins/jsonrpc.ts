@@ -1,6 +1,5 @@
-import { FeatureEnum } from '@/components/types/FeatureTypes'
 import store from '@/store'
-import Vue from 'vue'
+
 export class JSONRPCService {
   private headers: any
 
@@ -88,12 +87,12 @@ export class JSONRPCService {
     return this.call('BuyersService.Buyers', {})
   }
 
-  public fetchBillingSummary (args: any): Promise<any> {
-    return this.call('BuyersService.FetchBillingSummaryDashboard', args)
-  }
-
   public fetchAnalyticsSummary (args: any): Promise<any> {
     return this.call('BuyersService.FetchAnalyticsSummaryDashboard', args)
+  }
+
+  public fetchUsageSummary (args: any): Promise<any> {
+    return this.call('BuyersService.FetchUsageSummaryDashboard', args)
   }
 
   public fetchUserSessions (args: any): Promise<any> {
@@ -148,12 +147,12 @@ export class JSONRPCService {
     return this.call('ConfigService.AllFeatureFlags', {})
   }
 
-  public sendSignUpSlackNotification (args: any): Promise<any> {
-    return this.call('AuthService.CustomerSignedUpSlackNotification', args)
-  }
-
   public sendDocsViewSlackNotification (args: any): Promise<any> {
     return this.call('AuthService.CustomerViewedTheDocsSlackNotification', args)
+  }
+
+  public sendResetPasswordEmail (args: any): Promise<any> {
+    return this.call('AuthService.ResetPasswordEmail', args)
   }
 
   public sendSDKDownloadSlackNotification (args: any): Promise<any> {
@@ -178,6 +177,10 @@ export class JSONRPCService {
 
   public fetchLookerURL (): Promise<any> {
     return this.call('BuyersService.FetchLookerURL', {})
+  }
+
+  public processNewSignup (args: any): Promise<any> {
+    return this.call('AuthService.ProcessNewSignup', args)
   }
 }
 

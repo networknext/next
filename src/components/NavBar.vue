@@ -13,7 +13,7 @@
           <router-link
             to="/map"
             class="nav-link"
-            v-bind:class="{ active: $store.getters.currentPage == 'map' }"
+            :class="{ active: $store.getters.currentPage == 'map' }"
             data-test="mapLink"
           >Map</router-link>
         </li>
@@ -22,7 +22,7 @@
             to="/sessions"
             class="nav-link"
             data-intercom="sessions"
-            v-bind:class="{ active: $store.getters.currentPage == 'sessions' }"
+            :class="{ active: $store.getters.currentPage == 'sessions' }"
             data-test="sessionsLink"
             data-tour="sessionsLink"
           >Sessions</router-link>
@@ -31,7 +31,7 @@
           <router-link
             to="/session-tool"
             class="nav-link"
-            v-bind:class="{
+            :class="{
               active:
                 $store.getters.currentPage == 'session-tool' ||
                 $store.getters.currentPage == 'session-details'
@@ -43,7 +43,7 @@
           <router-link
             to="/user-tool"
             class="nav-link"
-            v-bind:class="{
+            :class="{
               active:
                 $store.getters.currentPage == 'user-tool' ||
                 $store.getters.currentPage == 'user-sessions'
@@ -57,7 +57,7 @@
             class="nav-link"
             data-intercom="downloads"
             data-tour="downloadsLink"
-            v-bind:class="{ active: $store.getters.currentPage == 'downloads' }"
+            :class="{ active: $store.getters.currentPage == 'downloads' }"
             v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
           >Downloads</router-link>
         </li>
@@ -65,20 +65,20 @@
           <router-link
             to="/explore"
             class="nav-link"
-            v-bind:class="{
+            :class="{
               active:
                 $store.getters.currentPage == 'notifications' ||
                 $store.getters.currentPage == 'analytics' ||
-                $store.getters.currentPage == 'billing'
+                $store.getters.currentPage == 'usage'
             }"
-            v-if="$store.getters.isOwner || $store.getters.isAdmin"
+            v-if="$store.getters.isAdmin"
           >Explore</router-link>
         </li>
         <li class="nav-item text-nowrap">
           <router-link
             to="/settings"
             class="nav-link"
-            v-bind:class="{
+            :class="{
               active:
                 $store.getters.currentPage == 'account-settings' ||
                 $store.getters.currentPage == 'config' ||
@@ -89,8 +89,21 @@
           >Settings</router-link>
         </li>
       </ul>
-      <ul class="navbar-nav px-3 w-100">
+      <ul class="navbar-nav px-3 w-100" v-if="portalVersion !== ''">
         <li class="nav-item text-nowrap" style="color: #9a9da0;">{{ portalVersion }}</li>
+      </ul>
+      <ul class="navbar-nav px-2" v-if="$store.getters.isOwner || $store.getters.isAdmin">
+        <a style="cursor: pointer;" @click="openNotificationsModal()">
+          <font-awesome-icon
+            id="status"
+            icon="bell"
+            class="fa-w-16 fa-fw"
+            style="color: white;"
+            data-toggle="tooltip"
+            data-placement="bottom"
+            title="Account Notifications"
+          />
+        </a>
       </ul>
       <ul class="navbar-nav px-1" v-if="!$store.getters.isAnonymous">
         <li class="nav-item text-nowrap" style="color: white;">
@@ -99,7 +112,7 @@
       </ul>
       <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
-          <a data-test="loginButton" class="login btn-sm btn-primary" href="#" @click="login()">Log in</a>
+          <router-link to="login" data-test="loginButton" class="login btn-sm btn-primary">Log in</router-link>
         </li>
       </ul>
       <ul class="navbar-nav px-3" v-if="$flagService.isEnabled(FeatureEnum.FEATURE_IMPERSONATION) && $store.getters.isAdmin">
@@ -109,7 +122,7 @@
             <option
               :value="buyer.company_code"
               v-for="buyer in allBuyers"
-              v-bind:key="buyer.company_code"
+              :key="buyer.company_code"
               :selected="buyer.company_code === companyCode"
             >{{ buyer.company_name }}</option>
           </select>
@@ -117,13 +130,7 @@
       </ul>
       <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap" data-tour="signUpButton">
-          <a
-            data-test="signUpButton"
-            data-intercom="signUpButton"
-            class="signup btn-sm btn-primary"
-            href="#"
-            @click="signUp()"
-          >Get Access</a>
+          <router-link to="get-access" data-test="signUpButton" class="signup btn-sm btn-primary">Get Access</router-link>
         </li>
       </ul>
       <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
@@ -170,6 +177,8 @@ export default class NavBar extends Vue {
   private downloadLinkTourCallbacks: any
 
   private FeatureEnum: any
+
+  private notificationCount: number
 
   constructor () {
     super()
@@ -232,6 +241,8 @@ export default class NavBar extends Vue {
         }
       }
     }
+
+    this.notificationCount = 0
   }
 
   private created () {
@@ -262,27 +273,13 @@ export default class NavBar extends Vue {
     )
   }
 
-  private login (): void {
-    this.$authService.login()
-  }
-
   private logout (): void {
     this.$authService.logout()
   }
 
-  private signUp (): void {
-    if (process.env.VUE_APP_MODE === 'prod') {
-      this.$gtag.event('clicked sign up', {
-        event_category: 'Account Creation',
-        event_label: 'Sign up'
-      })
-    }
-    this.$authService.signUp()
-  }
-
   private impersonate (companyCode: string): void {
     this.$apiService.impersonate({ company_code: companyCode })
-      .then((response: any) => {
+      .then(() => {
         this.$authService.refreshToken()
       })
       .catch((error: Error) => {
@@ -321,6 +318,10 @@ export default class NavBar extends Vue {
         console.log(error)
       })
     }
+  }
+
+  private openNotificationsModal () {
+    this.$root.$emit('showNotificationsModal')
   }
 }
 </script>

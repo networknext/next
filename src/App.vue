@@ -9,6 +9,7 @@
 import Vue from 'vue'
 
 import {
+  faArrowLeft,
   faBell,
   faCheck,
   faChevronDown,
@@ -41,6 +42,7 @@ import Workspace from '@/workspaces/Workspace.vue'
  */
 
 const ICONS = [
+  faArrowLeft,
   faBell,
   faCheck,
   faChevronDown,

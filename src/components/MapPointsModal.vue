@@ -41,13 +41,13 @@
                   </tr>
                 </tbody>
                 <tbody>
-                  <tr v-for="(point, index) in points" v-bind:key="index">
+                  <tr v-for="(point, index) in points" :key="index">
                     <td>
                       <font-awesome-icon
                         id="status"
                         icon="circle"
                         class="fa-w-16 fa-fw"
-                        v-bind:class="{
+                        :class="{
                           'text-success': point.source[2],
                           'text-primary': !point.source[2]
                         }"
@@ -55,7 +55,7 @@
                     </td>
                     <td v-if="point.source[3]">
                       <router-link
-                        v-bind:to="`/session-tool/${point.source[3]}`"
+                        :to="`/session-tool/${point.source[3]}`"
                         class="text-dark fixed-width"
                       >{{ point.source[3] }}</router-link>
                     </td>
@@ -70,7 +70,7 @@
             </div>
           </div>
           <div class="card-footer">
-            <button class="btn btn-xs btn-primary modal-default-button" style="max-height: 40px; width: 100px;" @click="$root.$emit('hideModal')">
+            <button class="btn btn-xs btn-primary modal-default-button" style="max-height: 40px; width: 100px;" @click="$root.$emit('hideMapPointsModal')">
               Close
             </button>
           </div>
@@ -84,7 +84,7 @@
 import { Component, Vue, Prop } from 'vue-property-decorator'
 
 /**
- * This component opens up a generic modal
+ * This component opens up a modal for picking from nested map points
  */
 
 /**
@@ -92,18 +92,8 @@ import { Component, Vue, Prop } from 'vue-property-decorator'
  */
 
 @Component
-export default class GenericModal extends Vue {
+export default class MapPointsModal extends Vue {
   @Prop({ default: () => { return [] } }) readonly points!: Array<any>
-  private showModal: boolean
-
-  constructor () {
-    super()
-    this.showModal = false
-  }
-
-  public toggleModal (toggle: boolean) {
-    this.showModal = toggle
-  }
 }
 </script>
 

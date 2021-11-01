@@ -129,7 +129,7 @@
                     User Hash
                   </dt>
                   <dd>
-                    <router-link v-bind:to="`/user-tool/${meta.user_hash}`" class="text-dark">{{ meta.user_hash }}</router-link>
+                    <router-link :to="`/user-tool/${meta.user_hash}`" class="text-dark">{{ meta.user_hash }}</router-link>
                   </dd>
                 </div>
                 <div v-if="(!$store.getters.isAnonymous && meta.buyer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
@@ -438,7 +438,7 @@ export default class SessionDetails extends Vue {
 
         setTimeout(() => {
           this.generateCharts()
-          const NNCOLOR = [0, 109, 44]
+          const NNCOLOR = [40, 167, 69]
           const DIRECTCOLOR = [49, 130, 189]
 
           const cellSize = 10

@@ -1,5 +1,6 @@
 export interface UserProfile {
   auth0ID: string;
+  avatar: string;
   buyerID: string;
   seller: boolean;
   companyCode: string;

@@ -31,6 +31,6 @@ COMMAND="cd /portal && sudo gsutil cp ${bucket}/portal-dist.${env}.tar.gz artifa
 
 while IFS= read -r vm; do
   printf "Deploying Frontend code to ${vm}... \n"
-  gcloud compute --project network-next-v3-${env} ssh --zone us-central1-a ${vm} -- ${COMMAND}
-  printf "done\n"
+  gcloud compute --project network-next-v3-${env} ssh --ssh-flag="-n" --zone us-central1-a ${vm} -- ${COMMAND}
+  printf "done\n\n"
 done <<< "$VMs"

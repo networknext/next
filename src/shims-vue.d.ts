@@ -15,7 +15,7 @@ declare module '*.vue' {
     fetchSessionDetails (args: any): Promise<any>;
     fetchTopSessions (args: any): Promise<any>;
     fetchAllBuyers (): Promise<any>;
-    fetchBillingSummary(args: any): Promise<any>;
+    fetchUsageSummary(args: any): Promise<any>;
     fetchAnalyticsSummary(args: any): Promise<any>;
     fetchUserSessions (args: any): Promise<any>;
     fetchAllRoles (): Promise<any>;
@@ -31,12 +31,13 @@ declare module '*.vue' {
     updateRouteShader (args: any): Promise<any>;
     updateGameConfiguration (args: any): Promise<any>;
     resendVerificationEmail (args: any): Promise<any>;
-    sendSignUpSlackNotification (args: any): Promise<any>;
     sendDocsViewSlackNotification (args: any): Promise<any>;
+    sendResetPasswordEmail (args: any): Promise<any>;
     sendSDKDownloadSlackNotification (args: any): Promise<any>;
     sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
     sendUE4DownloadNotifications (args: any): Promise<any>;
     startAnalyticsTrial (): Promise<any>;
+    processNewSignup (args: any): Promise<any>;
   }
 
   export class VueJSONRPCServicePlugin {
@@ -46,9 +47,9 @@ declare module '*.vue' {
   }
 
   export interface VueAuthService {
+    login (username: string, password: string): Promise<any>;
     logout (): void;
-    login (): void;
-    signUp (): void;
+    getAccess(email: string, password: string): Promise<Error | undefined>;
     refreshToken (): Promise<any>;
   }
 
