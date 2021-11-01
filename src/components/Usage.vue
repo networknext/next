@@ -7,7 +7,7 @@
             class="col"
             id="usageDash"
             :src="url"
-            :style="{'min-height': index === 0 ? '2300px' : '3400px'}"
+            style="min-height: 2500px;"
             v-show="url !== ''"
             frameborder="0"
           >
