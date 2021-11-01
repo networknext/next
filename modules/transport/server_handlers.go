@@ -610,7 +610,7 @@ func SessionPre(state *SessionHandlerState) bool {
 			err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
 
 			if err != nil {
-				core.Debug("could not read session data:\n\n%s\n", err)
+				core.Error("SessionPre(): ClientPingTimedOut: could not read session data for buyer %016x:\n\n%s\n", state.Buyer.ID, err)
 				state.Metrics.ReadSessionDataFailure.Add(1)
 				return true
 			}
@@ -651,7 +651,7 @@ func SessionPre(state *SessionHandlerState) bool {
 			err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
 
 			if err != nil {
-				core.Debug("could not read session data:\n\n%s\n", err)
+				core.Error("SessionPre(): could not read session data for buyer %016x:\n\n%s\n", state.Buyer.ID, err)
 				state.Metrics.ReadSessionDataFailure.Add(1)
 			} else {
 				state.Output.Location = state.Input.Location
@@ -735,7 +735,7 @@ func SessionUpdateExistingSession(state *SessionHandlerState) {
 		err := UnmarshalSessionData(&state.Input, state.Packet.SessionData[:])
 
 		if err != nil {
-			core.Debug("could not read session data:\n\n%s\n", err)
+			core.Error("SessionUpdateExistingSession(): could not read session data for buyer %016x:\n\n%s\n", state.Buyer.ID, err)
 			state.Metrics.ReadSessionDataFailure.Add(1)
 			return
 		}
