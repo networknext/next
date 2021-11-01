@@ -24,6 +24,8 @@ while getopts 'b:a:h' flag; do
   esac
 done
 
+sudo apt-get update
+
 # check for nginx and install if necessary
 REQUIRED_PKG="nginx"
 PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
