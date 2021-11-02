@@ -10,7 +10,6 @@ import (
 	"hash/fnv"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -34,6 +33,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/notifications"
 
@@ -45,14 +45,10 @@ const (
 	MapPointByteCacheVersion = uint8(1)
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
-	EmbeddedUserGroupID      = 3
-	LOOKER_SESSION_TIMEOUT   = 86400
 )
 
 var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
-	UsageDashURIs             = [...]string{"/embed/dashboards-next/11"}
-	AnalyticsDashURI          = [...]string{"/embed/dashboards-next/14", "/embed/dashboards-next/12"}
 )
 
 type BuyersService struct {
@@ -88,7 +84,7 @@ type BuyersService struct {
 	Storage storage.Storer
 	Logger  log.Logger
 
-	LookerSecret string
+	LookerClient *looker.LookerClient
 
 	SlackClient notifications.SlackClient
 }
@@ -2605,14 +2601,7 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	}
 
 	if buyer.Trial && !buyer.Analytics && middleware.VerifyAnyRole(r, middleware.AdminRole) {
-		nonce, err := GenerateRandomString(16)
-		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("FetchNotifications(): %v: Failed to generate nonce", err.Error()))
-			return &err
-		}
-
-		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerSecret, nonce, requestID))
+		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(requestID))
 	}
 
 	return nil
@@ -2687,58 +2676,55 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 	return nil
 }
 
-type FetchSummaryDashboardArgs struct {
+type FetchAnalyticsCategoriesArgs struct {
 	CompanyCode string `json:"company_code"`
 }
 
-type FetchSummaryDashboardReply struct {
-	URLs []string `json:"urls"`
+type FetchAnalyticsCategoriesReply struct {
+	Categories []looker.AnalyticsCategory `json:"categories"`
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
-func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
-	reply.URLs = make([]string, 0)
+func (s *BuyersService) FetchAnalyticsCategories(r *http.Request, args *FetchAnalyticsCategoriesArgs, reply *FetchAnalyticsCategoriesReply) error {
+	reply.Categories = make([]looker.AnalyticsCategory, 0)
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 	if !isAdmin && !middleware.VerifyAllRoles(r, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
 		return &err
 	}
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
-	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
 		return &err
 	}
 
 	// Admin's will be able to search any company's billing info
 	if isAdmin {
-		companyCode = args.CompanyCode
+		customerCode = args.CompanyCode
 	}
 
+	hasAnalytics := false
 	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
-		companyCode = "esl"
+		customerCode = "esl"
 	} else {
-		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
 		if err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v: Failed to fetch buyer", err.Error()))
+			s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v: Failed to fetch buyer", err.Error()))
 			return &err
 		}
 
-		if !buyer.Analytics && !isAdmin {
-			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-			s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
-			return &err
-		}
+		hasAnalytics = buyer.Analytics
 	}
 
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
 		return &err
 	}
 
@@ -2746,45 +2732,32 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *Fe
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v: Failed to parse user ID", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v: Failed to parse user ID", err.Error()))
 		return &err
 	}
 
-	nonce, err := GenerateRandomString(16)
+	categories, err := s.LookerClient.GenerateAnalyticsCategories(requestID, customerCode, (hasAnalytics || isAdmin))
 	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v: Failed to generate nonce", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v: Failed to generate analytics dashboard categories", err.Error()))
 		return &err
 	}
 
-	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
-	for _, dashURL := range AnalyticsDashURI {
-		urlOptions := notifications.LookerURLOptions{
-			Host:            notifications.LOOKER_HOST,
-			Secret:          s.LookerSecret,
-			ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-			GroupsIds:       []int{EmbeddedUserGroupID},
-			ExternalGroupId: "",
-			Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-			Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
-			AccessFilters:   make(map[string]map[string]interface{}),
-			UserAttributes:  make(map[string]interface{}),
-			SessionLength:   LOOKER_SESSION_TIMEOUT,
-			EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
-			ForceLogout:     true,
-			Nonce:           fmt.Sprintf("\"%s\"", nonce),
-			Time:            time.Now().Unix(),
-		}
+	reply.Categories = categories
 
-		urlOptions.UserAttributes["customer_code"] = companyCode
-
-		reply.URLs = append(reply.URLs, notifications.BuildLookerURL(urlOptions))
-	}
 	return nil
 }
 
+type FetchUsageDashboardArgs struct {
+	CompanyCode string `json:"company_code"`
+}
+
+type FetchUsageDashboardReply struct {
+	URL string `json:"url"`
+}
+
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
-func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
+func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDashboardArgs, reply *FetchUsageDashboardReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
@@ -2808,14 +2781,7 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchS
 		return &err
 	}
 
-	nonce, err := GenerateRandomString(16)
-	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v: Failed to generate nonce", err.Error()))
-		return &err
-	}
-
-	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
@@ -2824,36 +2790,22 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchS
 
 	// Admin's will be able to search any company's billing info
 	if isAdmin {
-		companyCode = args.CompanyCode
+		customerCode = args.CompanyCode
 	}
 
 	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
-		companyCode = "esl"
+		customerCode = "esl"
 	}
 
-	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
-	for _, dashURL := range UsageDashURIs {
-		urlOptions := notifications.LookerURLOptions{
-			Host:            notifications.LOOKER_HOST,
-			Secret:          s.LookerSecret,
-			ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-			GroupsIds:       []int{EmbeddedUserGroupID},
-			ExternalGroupId: "",
-			Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-			Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
-			AccessFilters:   make(map[string]map[string]interface{}),
-			UserAttributes:  make(map[string]interface{}),
-			SessionLength:   LOOKER_SESSION_TIMEOUT,
-			EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
-			ForceLogout:     true,
-			Nonce:           fmt.Sprintf("\"%s\"", nonce),
-			Time:            time.Now().Unix(),
-		}
-
-		urlOptions.UserAttributes["customer_code"] = companyCode
-
-		reply.URLs = append(reply.URLs, notifications.BuildLookerURL(urlOptions))
+	usageDashURL, err := s.LookerClient.GenerateUsageDashboardURL(requestID, customerCode)
+	if err != nil {
+		// TODO: make a looker error code
+		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+		s.Logger.Log("err", fmt.Errorf("FetchUsageDashboard(): %v", err.Error()))
+		return &err
 	}
+
+	reply.URL = usageDashURL
 	return nil
 }
 

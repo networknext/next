@@ -34,6 +34,7 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/notifications"
 )
@@ -376,6 +377,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	lookerHost, ok := os.LookupEnv("LOOKER_HOST")
+	if !ok {
+		level.Error(logger).Log("err", "env var LOOKER_SECRET must be set")
+		os.Exit(1)
+	}
+
+	lookerClient, err := looker.NewLookerClient(lookerHost, lookerSecret)
+	if err != nil {
+		level.Error(logger).Log("err", "failed to create looker client")
+		os.Exit(1)
+	}
+
 	githubAccessToken, ok := os.LookupEnv("GITHUB_ACCESS_TOKEN")
 	if !ok {
 		level.Error(logger).Log("err", "env var GITHUB_ACCESS_TOKEN must be set")
@@ -437,6 +450,7 @@ func main() {
 		BigTable:               btClient,
 		BigTableMetrics:        btMetrics,
 		Logger:                 logger,
+		LookerClient:           lookerClient,
 		RedisPoolTopSessions:   redisPoolTopSessions,
 		RedisPoolSessionMeta:   redisPoolSessionMeta,
 		RedisPoolSessionSlices: redisPoolSessionSlices,
@@ -444,7 +458,6 @@ func main() {
 		Storage:                db,
 		Env:                    env,
 		Metrics:                serviceMetrics,
-		LookerSecret:           lookerSecret,
 		GithubClient:           githubClient,
 		SlackClient:            slackClient,
 	}
