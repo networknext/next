@@ -1,14 +1,14 @@
 <template>
   <div class="card-body" id="usageDash-page">
-    <div v-for="(url, index) in usageDashDashURLs" :key="index" class="row">
+    <div class="row">
       <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
         <div class="card-body">
           <iframe
             class="col"
             id="usageDash"
-            :src="url"
+            :src="usageDashURL"
             style="min-height: 2500px;"
-            v-show="url !== ''"
+            v-show="usageDashURL !== ''"
             frameborder="0"
           >
           </iframe>
@@ -134,19 +134,36 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { DateTime } from 'luxon'
 
 @Component
 export default class Usage extends Vue {
-  private usageDashDashURLs: Array<string>
+  private dateString: string
+  private usageDashURL: string
 
   private unwatchFilter: any
 
   constructor () {
     super()
-    this.usageDashDashURLs = []
+    this.dateString = ''
+    this.usageDashURL = ''
   }
 
   private mounted () {
+    const now = DateTime.now()
+    const currentDateString = `${now.year}-${now.month - 1}`
+
+    // Check URL date and set to default if empty
+    this.dateString = (this.$route.params.pathMatch || '') === '' ? currentDateString : this.$route.params.pathMatch
+
+    if (this.dateString !== currentDateString) {
+      const passedInDate = this.dateString.split('-')
+      // check for invalid date
+      if (parseInt(passedInDate[0]) > now.year || (parseInt(passedInDate[0]) === now.year && parseInt(passedInDate[1]) > now.month)) {
+        this.dateString = currentDateString
+      }
+    }
+
     // This is only necessary for admins - when the filter changes, grab the new billing URL
     this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
@@ -159,12 +176,7 @@ export default class Usage extends Vue {
 
     this.fetchUsageSummary()
 
-    const usageDashElement = document.getElementById('usageDash')
-    if (usageDashElement) {
-      usageDashElement.addEventListener('dashboard:run:complete', this.iframeTimeoutHandler)
-    }
-
-    // TODO: Add more hooks here to optimize what the user sees while the dashes load...
+    // TODO: Figure out a way to hook into iframe lifecycle to optimize showing and hiding dash
   }
 
   private beforeDestroy () {
@@ -173,20 +185,16 @@ export default class Usage extends Vue {
 
   private fetchUsageSummary () {
     this.$apiService.fetchUsageSummary({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      date_string: this.dateString
     })
       .then((response: any) => {
-        this.usageDashDashURLs = response.urls || []
+        this.usageDashURL = response.url || ''
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the billing summary dashboard')
         console.log(error)
       })
-  }
-
-  private iframeTimeoutHandler () {
-    // TODO: Look for a status of error or stopped and display a refresh page message....
-    console.log('An iframe timed out we should add an alert to refresh the page!')
   }
 }
 </script>

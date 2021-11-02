@@ -45,7 +45,13 @@ const routes: Array<RouteConfig> = [
       {
         path: 'usage',
         name: 'usage',
-        component: Usage
+        component: Usage,
+        children: [
+          {
+            path: '*',
+            name: 'invoice'
+          }
+        ]
       },
       {
         path: 'supply',
@@ -185,6 +191,7 @@ const OwnerRoutes = [
 // Add or remove these to open up beta features
 const BetaRoutes = [
   'usage',
+  'invoice',
   'supply',
   'analytics'
 ]
