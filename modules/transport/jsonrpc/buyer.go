@@ -46,6 +46,7 @@ const (
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
 	EmbeddedUserGroupID      = 3
+	LOOKER_SESSION_TIMEOUT   = 86400
 )
 
 var (
@@ -2768,7 +2769,7 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *Fe
 			Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
 			AccessFilters:   make(map[string]map[string]interface{}),
 			UserAttributes:  make(map[string]interface{}),
-			SessionLength:   3600,
+			SessionLength:   LOOKER_SESSION_TIMEOUT,
 			EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
 			ForceLogout:     true,
 			Nonce:           fmt.Sprintf("\"%s\"", nonce),
@@ -2842,7 +2843,7 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchS
 			Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
 			AccessFilters:   make(map[string]map[string]interface{}),
 			UserAttributes:  make(map[string]interface{}),
-			SessionLength:   86400,
+			SessionLength:   LOOKER_SESSION_TIMEOUT,
 			EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
 			ForceLogout:     true,
 			Nonce:           fmt.Sprintf("\"%s\"", nonce),
