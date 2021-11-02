@@ -1,17 +1,28 @@
 <template>
-  <div class="card-body" id="analytics-page">
-    <div v-for="(url, index) in analyticsDashURLs" :key="index" class="row">
-      <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
-        <div class="card-body">
-          <iframe
-            class="col"
-            id="analyticsDash"
-            :src="url"
-            :style="{'min-height': index === 0 ? '3400px' : '4600px'}"
-            v-if="url !== ''"
-            frameborder="0"
-          >
-          </iframe>
+  <div class="card-body" v-if="categories.length > 0">
+    <div class="card" style="margin-bottom: 250px;">
+      <div class="card-header">
+        <ul class="nav nav-tabs card-header-tabs">
+          <li class="nav-item" v-for="(category, index) in categories" :key="index" @click="selectCategory(index)">
+            <a class="nav-link" :class="{ active: index === selectedCategoryIndex }">{{ category.name }}</a>
+          </li>
+        </ul>
+      </div>
+      <div class="card-body" id="analytics-page">
+        <div class="row">
+          <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
+            <div class="card-body">
+              <iframe
+                class="col"
+                id="analyticsDash"
+                :src="categories[selectedCategoryIndex].url"
+                style="min-height: 3400px;"
+                v-show="categories[selectedCategoryIndex].url !== ''"
+                frameborder="0"
+              >
+              </iframe>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -23,13 +34,15 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class Analytics extends Vue {
-  private analyticsDashURLs: Array<string>
+  private categories: Array<any>
+  private selectedCategoryIndex: number
 
   private unwatchFilter: any
 
   constructor () {
     super()
-    this.analyticsDashURLs = []
+    this.categories = []
+    this.selectedCategoryIndex = 0
   }
 
   private mounted () {
@@ -39,38 +52,32 @@ export default class Analytics extends Vue {
         return getters.currentFilter
       },
       () => {
-        this.fetchAnalyticsSummary()
+        this.fetchAnalyticsCategories()
       }
     )
 
-    this.fetchAnalyticsSummary()
-
-    const usageDashElement = document.getElementById('usageDash')
-    if (usageDashElement) {
-      usageDashElement.addEventListener('dashboard:run:complete', this.iframeTimeoutHandler)
-    }
+    this.fetchAnalyticsCategories()
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
   }
 
-  private fetchAnalyticsSummary () {
-    this.$apiService.fetchAnalyticsSummary({
+  private fetchAnalyticsCategories () {
+    this.$apiService.fetchAnalyticsCategories({
       company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
-        this.analyticsDashURLs = response.urls || []
+        this.categories = response.categories || []
       })
       .catch((error: Error) => {
-        console.log('There was an issue fetching the analytics summary dashboard')
+        console.log('There was an issue fetching the analytics dashboard categories')
         console.log(error)
       })
   }
 
-  private iframeTimeoutHandler () {
-    // TODO: Look for a status of error or stopped and display a refresh page message....
-    console.log('An iframe timed out we should add an alert to refresh the page!')
+  private selectCategory (index: number) {
+    this.selectedCategoryIndex = index
   }
 }
 </script>

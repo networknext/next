@@ -1,14 +1,14 @@
 <template>
   <div class="card-body" id="usageDash-page">
-    <div v-for="(url, index) in usageDashDashURLs" :key="index" class="row">
+    <div class="row">
       <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
         <div class="card-body">
           <iframe
             class="col"
             id="usageDash"
-            :src="url"
+            :src="usageDashDashURL"
             style="min-height: 2500px;"
-            v-show="url !== ''"
+            v-show="usageDashDashURL !== ''"
             frameborder="0"
           >
           </iframe>
@@ -137,13 +137,13 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class Usage extends Vue {
-  private usageDashDashURLs: Array<string>
+  private usageDashDashURL: string
 
   private unwatchFilter: any
 
   constructor () {
     super()
-    this.usageDashDashURLs = []
+    this.usageDashDashURL = ''
   }
 
   private mounted () {
@@ -158,13 +158,6 @@ export default class Usage extends Vue {
     )
 
     this.fetchUsageSummary()
-
-    const usageDashElement = document.getElementById('usageDash')
-    if (usageDashElement) {
-      usageDashElement.addEventListener('dashboard:run:complete', this.iframeTimeoutHandler)
-    }
-
-    // TODO: Add more hooks here to optimize what the user sees while the dashes load...
   }
 
   private beforeDestroy () {
@@ -176,17 +169,12 @@ export default class Usage extends Vue {
       company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
-        this.usageDashDashURLs = response.urls || []
+        this.usageDashDashURL = response.url || ''
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the billing summary dashboard')
         console.log(error)
       })
-  }
-
-  private iframeTimeoutHandler () {
-    // TODO: Look for a status of error or stopped and display a refresh page message....
-    console.log('An iframe timed out we should add an alert to refresh the page!')
   }
 }
 </script>
