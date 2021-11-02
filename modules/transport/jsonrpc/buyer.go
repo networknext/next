@@ -46,11 +46,12 @@ const (
 	MaxHistoricalSessions    = 100
 	MaxBigTableDays          = 10
 	EmbeddedUserGroupID      = 3
+	LOOKER_SESSION_TIMEOUT   = 86400
+	UsageDashURL             = "/embed/dashboards-next/11"
 )
 
 var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
-	UsageDashURIs             = [...]string{"/embed/dashboards-next/11"}
 	AnalyticsDashURI          = [...]string{"/embed/dashboards-next/14", "/embed/dashboards-next/12"}
 )
 
@@ -2688,6 +2689,7 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 
 type FetchSummaryDashboardArgs struct {
 	CompanyCode string `json:"company_code"`
+	DateString  string `json:"date_string"`
 }
 
 type FetchSummaryDashboardReply struct {
@@ -2768,7 +2770,7 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *Fe
 			Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
 			AccessFilters:   make(map[string]map[string]interface{}),
 			UserAttributes:  make(map[string]interface{}),
-			SessionLength:   3600,
+			SessionLength:   LOOKER_SESSION_TIMEOUT,
 			EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
 			ForceLogout:     true,
 			Nonce:           fmt.Sprintf("\"%s\"", nonce),
@@ -2782,8 +2784,17 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *Fe
 	return nil
 }
 
+type FetchUsageDashboardArgs struct {
+	CompanyCode string `json:"company_code"`
+	DateString  string `json:"date_string"`
+}
+
+type FetchUsageDashboardReply struct {
+	URL string `json:"url"`
+}
+
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
-func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
+func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchUsageDashboardArgs, reply *FetchUsageDashboardReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
@@ -2830,29 +2841,33 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchS
 		companyCode = "esl"
 	}
 
-	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
-	for _, dashURL := range UsageDashURIs {
-		urlOptions := notifications.LookerURLOptions{
-			Host:            notifications.LOOKER_HOST,
-			Secret:          s.LookerSecret,
-			ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
-			GroupsIds:       []int{EmbeddedUserGroupID},
-			ExternalGroupId: "",
-			Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-			Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
-			AccessFilters:   make(map[string]map[string]interface{}),
-			UserAttributes:  make(map[string]interface{}),
-			SessionLength:   86400,
-			EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
-			ForceLogout:     true,
-			Nonce:           fmt.Sprintf("\"%s\"", nonce),
-			Time:            time.Now().Unix(),
-		}
-
-		urlOptions.UserAttributes["customer_code"] = companyCode
-
-		reply.URLs = append(reply.URLs, notifications.BuildLookerURL(urlOptions))
+	dashURL := UsageDashURL
+	if args.DateString != "" {
+		dashURL = fmt.Sprintf("%s?Billing+Period=%s", dashURL, args.DateString)
 	}
+
+	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
+	urlOptions := notifications.LookerURLOptions{
+		Host:            notifications.LOOKER_HOST,
+		Secret:          s.LookerSecret,
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		GroupsIds:       []int{EmbeddedUserGroupID},
+		ExternalGroupId: "",
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+		AccessFilters:   make(map[string]map[string]interface{}),
+		UserAttributes:  make(map[string]interface{}),
+		SessionLength:   LOOKER_SESSION_TIMEOUT,
+		EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
+		ForceLogout:     true,
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Time:            time.Now().Unix(),
+	}
+
+	urlOptions.UserAttributes["customer_code"] = companyCode
+
+	reply.URL = notifications.BuildLookerURL(urlOptions)
+
 	return nil
 }
 
