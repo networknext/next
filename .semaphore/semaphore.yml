@@ -8,6 +8,7 @@ global_job_config:
   prologue:
     commands:
       - checkout
+      - sem-version node 14
       - npm i
 blocks:
   - name: Linting
