@@ -2681,69 +2681,11 @@ type FetchAnalyticsCategoriesArgs struct {
 }
 
 type FetchAnalyticsCategoriesReply struct {
-	Categories []looker.AnalyticsCategory `json:"categories"`
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
 func (s *BuyersService) FetchAnalyticsCategories(r *http.Request, args *FetchAnalyticsCategoriesArgs, reply *FetchAnalyticsCategoriesReply) error {
-	reply.Categories = make([]looker.AnalyticsCategory, 0)
-
-	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
-	if !isAdmin && !middleware.VerifyAllRoles(r, middleware.OwnerRole) {
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
-		return &err
-	}
-
-	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
-		return &err
-	}
-
-	// Admin's will be able to search any company's billing info
-	if isAdmin {
-		customerCode = args.CompanyCode
-	}
-
-	hasAnalytics := false
-	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
-		customerCode = "esl"
-	} else {
-		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
-		if err != nil {
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v: Failed to fetch buyer", err.Error()))
-			return &err
-		}
-
-		hasAnalytics = buyer.Analytics
-	}
-
-	user := r.Context().Value(middleware.Keys.UserKey)
-	if user == nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
-		return &err
-	}
-
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	requestID, ok := claims["sub"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v: Failed to parse user ID", err.Error()))
-		return &err
-	}
-
-	categories, err := s.LookerClient.GenerateAnalyticsCategories(requestID, customerCode, (hasAnalytics || isAdmin))
-	if err != nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v: Failed to generate analytics dashboard categories", err.Error()))
-		return &err
-	}
-
-	reply.Categories = categories
+	// TODO: implement with storer...
 
 	return nil
 }

@@ -6,10 +6,13 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/looker"
 )
 
 type Storer interface {
 	Customer(ctx context.Context, code string) (routing.Customer, error)
+
+	CustomerByID(ctx context.Context, id int64) (routing.Customer, error)
 
 	Customers(ctx context.Context) []routing.Customer
 
@@ -175,4 +178,103 @@ type Storer interface {
 
 	// UpdateDatabaseBinFileMetaData updates the specified field in an database_bin_meta table
 	UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error
+
+	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+	GetAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory
+
+	// GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
+	GetPremiumAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory
+
+	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+	GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) (looker.AnalyticsDashboardCategory, error)
+
+	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+	GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) (looker.AnalyticsDashboardCategory, error)
+
+	// AddAnalyticsDashboardCategory adds a new dashboard category
+	AddAnalyticsDashboardCategory(ctx context.Context, label string, isPremium bool) error
+
+	// RemoveAnalyticsDashboardCategory remove a dashboard category by ID
+	RemoveAnalyticsDashboardCategoryByID(ctx context.Context, id int64) error
+
+	// RemoveAnalyticsDashboardCategory remove a dashboard category by label
+	RemoveAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) error
+
+	// UpdateAnalyticsDashboardCategory update a dashboard category label by id
+	UpdateAnalyticsDashboardCategoryLabelByID(ctx context.Context, id int64, newLabel string) error
+
+	// UpdateAnalyticsDashboardCategory update a dashboard category label by old label
+	UpdateAnalyticsDashboardCategoryLabelByLabel(ctx context.Context, oldLabel string, newLabel string) error
+
+	// UpdateAnalyticsDashboardCategoryPremiumByID update a dashboard category premium status by ID
+	UpdateAnalyticsDashboardCategoryPremiumByID(ctx context.Context, isPremium bool, id int64) error
+
+	// UpdateAnalyticsDashboardCategoryPremiumByLabel update a dashboard category premium status by label
+	UpdateAnalyticsDashboardCategoryPremiumByLabel(ctx context.Context, isPremium bool, label string) error
+
+	// GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
+	GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) []looker.AnalyticsDashboard
+
+	// GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
+	GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) []looker.AnalyticsDashboard
+
+	// GetPremiumAnalyticsDashboards get all premium looker dashboards
+	GetPremiumAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
+
+	// GetFreeAnalyticsDashboards get all free looker dashboards
+	GetFreeAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
+
+	// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+	GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
+
+	// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+	GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
+
+	// GetAnalyticsDashboardByID get looker dashboard by id
+	GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.AnalyticsDashboard, error)
+
+	// GetAnalyticsDashboardByName get looker dashboard by name
+	GetAnalyticsDashboardByName(ctx context.Context, name string) (looker.AnalyticsDashboard, error)
+
+	// GetAnalyticsDashboardByLookerID get looker dashboard by looker id
+	GetAnalyticsDashboardByLookerID(ctx context.Context, id string) (looker.AnalyticsDashboard, error)
+
+	// AddAnalyticsDashboard adds a new dashboard
+	AddAnalyticsDashboard(ctx context.Context, name string, lookerID string, isDiscover bool, customerID int64, categoryID int64) error
+
+	// RemoveAnalyticsDashboardByID remove looker dashboard by id
+	RemoveAnalyticsDashboardByID(ctx context.Context, id int64) error
+
+	// RemoveAnalyticsDashboardByName remove looker dashboard by name
+	RemoveAnalyticsDashboardByName(ctx context.Context, name string) error
+
+	// RemoveAnalyticsDashboardByLookerID remove looker dashboard by looker id
+	RemoveAnalyticsDashboardByLookerID(ctx context.Context, id string) error
+
+	// UpdateAnalyticsDashboardNameByID update looker dashboard looker id by dashboard id
+	UpdateAnalyticsDashboardNameByID(ctx context.Context, name string, id int64) error
+
+	// UpdateAnalyticsDashboardNameByName update looker dashboard looker id by dashboard id
+	UpdateAnalyticsDashboardNameByName(ctx context.Context, newName string, oldName string) error
+
+	// UpdateAnalyticsDashboardNameByLookerID update looker dashboard looker id by dashboard id
+	UpdateAnalyticsDashboardNameByLookerID(ctx context.Context, name string, lookerID string) error
+
+	// UpdateAnalyticsDashboardLookerIDByID update looker dashboard looker id by dashboard id
+	UpdateAnalyticsDashboardLookerIDByID(ctx context.Context, lookerID string, id int64) error
+
+	// UpdateAnalyticsDashboardLookerIDByName update looker dashboard looker id by dashboard id
+	UpdateAnalyticsDashboardLookerIDByName(ctx context.Context, LookerID string, name string) error
+
+	// UpdateAnalyticsDashboardLookerIDByLookerID update looker dashboard looker id by dashboard id
+	UpdateAnalyticsDashboardLookerIDByLookerID(ctx context.Context, newLookerID string, oldLookerID string) error
+
+	// UpdateAnalyticsDashboardDiscoveryByID update a dashboard discovery status by ID
+	UpdateAnalyticsDashboardDiscoveryByID(ctx context.Context, isDiscovery bool, id int64) error
+
+	// UpdateAnalyticsDashboardDiscoveryByName update a dashboard discovery status by ID
+	UpdateAnalyticsDashboardDiscoveryByName(ctx context.Context, isDiscovery bool, name string) error
+
+	// UpdateAnalyticsDashboardDiscoveryByLookerID update a dashboard discovery status by ID
+	UpdateAnalyticsDashboardDiscoveryByLookerID(ctx context.Context, isDiscovery bool, lookerID string) error
 }

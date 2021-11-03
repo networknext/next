@@ -19,24 +19,6 @@ const (
 	USAGE_DASH_URL         = "/embed/dashboards-next/11"
 )
 
-var (
-	// TODO: these need to come from storage at some point
-	AnalyticsCategories = [...]AnalyticsCategory{
-		{
-			ID:      0,
-			Name:    "General",
-			Premium: false,
-			DashURL: "/embed/dashboards-next/14",
-		},
-		{
-			ID:      1,
-			Name:    "Premium",
-			Premium: true,
-			DashURL: "/embed/dashboards-next/12",
-		},
-	}
-)
-
 type LookerClient struct {
 	HostURL string
 	Secret  string
@@ -54,12 +36,19 @@ func NewLookerClient(hostURL string, secret string) (*LookerClient, error) {
 }
 
 // TODO: Get these from storage at some point
-type AnalyticsCategory struct {
-	ID       int32  `json:",omitempty"`
-	Name     string `json:"name"`
-	Premium  bool   `json:",omitempty"`
-	DashURL  string `json:",omitempty"`
-	EmbedURL string `json:"url"`
+type AnalyticsDashboardCategory struct {
+	ID      int64
+	Label   string
+	Premium bool
+}
+
+type AnalyticsDashboard struct {
+	ID          int64
+	Name        string
+	Discovery   bool
+	DashboardID string
+	CompanyCode string
+	Category    AnalyticsDashboardCategory
 }
 
 type LookerURLOptions struct {
@@ -179,46 +168,9 @@ func (l *LookerClient) GenerateUsageDashboardURL(userID string, customerCode str
 	return BuildLookerURL(urlOptions), nil
 }
 
-func (l *LookerClient) GenerateAnalyticsCategories(userID string, customerCode string, showPremium bool) ([]AnalyticsCategory, error) {
-	categories := make([]AnalyticsCategory, 0)
-
-	nonce, err := GenerateRandomString(16)
-	if err != nil {
-		return categories, err
-	}
-
-	for _, category := range AnalyticsCategories {
-		if !showPremium && category.Premium {
-			continue
-		}
-
-		newCategory := AnalyticsCategory{}
-		newCategory.Name = category.Name
-
-		urlOptions := LookerURLOptions{
-			Host:            l.HostURL,
-			Secret:          l.Secret,
-			ExternalUserId:  fmt.Sprintf("\"%s\"", userID),
-			GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
-			ExternalGroupId: "",
-			Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-			Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
-			AccessFilters:   make(map[string]map[string]interface{}),
-			UserAttributes:  make(map[string]interface{}),
-			SessionLength:   LOOKER_SESSION_TIMEOUT,
-			EmbedURL:        "/login/embed/" + url.QueryEscape(category.DashURL),
-			ForceLogout:     true,
-			Nonce:           fmt.Sprintf("\"%s\"", nonce),
-			Time:            time.Now().Unix(),
-		}
-
-		urlOptions.UserAttributes["customer_code"] = customerCode
-
-		newCategory.EmbedURL = BuildLookerURL(urlOptions)
-		categories = append(categories, newCategory)
-	}
-
-	return categories, nil
+func (l *LookerClient) GenerateAnalyticsCategories(userID string, customerCode string, showPremium bool) error {
+	// TODO: Implement with storer
+	return nil
 }
 
 func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {

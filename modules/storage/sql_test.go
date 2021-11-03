@@ -16,6 +16,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -479,6 +480,91 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, 1, len(checkDCMaps))
 		assert.Equal(t, dcMap.BuyerID, checkDCMaps[outerDatacenter.ID].BuyerID)
 		assert.Equal(t, dcMap.DatacenterID, checkDCMaps[outerDatacenter.ID].DatacenterID)
+	})
+
+	t.Run("AddAnalyticsDashboardCategory", func(t *testing.T) {
+		category := looker.AnalyticsDashboardCategory{
+			Label:   "Test Category",
+			Premium: false,
+		}
+
+		err := db.AddAnalyticsDashboardCategory(ctx, category.Label, category.Premium)
+		assert.NoError(t, err)
+
+		dashboardCategories := db.GetAnalyticsDashboardCategories(ctx)
+
+		assert.Equal(t, 1, len(dashboardCategories))
+		assert.Equal(t, category.Label, dashboardCategories[0].Label)
+		assert.Equal(t, category.Premium, dashboardCategories[0].Premium)
+
+		category2 := looker.AnalyticsDashboardCategory{
+			Label:   "Another Test Category",
+			Premium: true,
+		}
+
+		err = db.AddAnalyticsDashboardCategory(ctx, category2.Label, category2.Premium)
+		assert.NoError(t, err)
+
+		dashboardCategories = db.GetAnalyticsDashboardCategories(ctx)
+
+		assert.Equal(t, 2, len(dashboardCategories))
+		assert.Equal(t, category.Label, dashboardCategories[0].Label)
+		assert.Equal(t, category.Premium, dashboardCategories[0].Premium)
+		assert.Equal(t, category2.Label, dashboardCategories[1].Label)
+		assert.Equal(t, category2.Premium, dashboardCategories[1].Premium)
+	})
+
+	t.Run("AddAnalyticsDashboard", func(t *testing.T) {
+		dashboard := looker.AnalyticsDashboard{
+			Name:        "Test Dashboard",
+			Discovery:   false,
+			DashboardID: "10",
+		}
+
+		customers := db.Customers(ctx)
+		dashboardCategories := db.GetAnalyticsDashboardCategories(ctx)
+
+		err := db.AddAnalyticsDashboard(ctx, dashboard.Name, dashboard.DashboardID, dashboard.Discovery, customers[0].DatabaseID, dashboardCategories[0].ID)
+		assert.NoError(t, err)
+
+		dashboards := db.GetAnalyticsDashboards(ctx)
+
+		assert.Equal(t, 1, len(dashboards))
+		assert.Equal(t, dashboard.Name, dashboards[0].Name)
+		assert.Equal(t, dashboard.Discovery, dashboards[0].Discovery)
+		assert.Equal(t, dashboard.DashboardID, dashboards[0].DashboardID)
+		assert.Equal(t, customers[0].Code, dashboards[0].CompanyCode)
+		assert.Equal(t, dashboardCategories[0].ID, dashboards[0].Category.ID)
+		assert.Equal(t, dashboardCategories[0].Label, dashboards[0].Category.Label)
+		assert.Equal(t, dashboardCategories[0].Premium, dashboards[0].Category.Premium)
+
+		dashboard2 := looker.AnalyticsDashboard{
+			Name:        "Another Test Dashboard",
+			Discovery:   true,
+			DashboardID: "15",
+		}
+
+		err = db.AddAnalyticsDashboard(ctx, dashboard2.Name, dashboard2.DashboardID, dashboard2.Discovery, customers[0].DatabaseID, dashboardCategories[0].ID)
+		assert.NoError(t, err)
+
+		dashboards = db.GetAnalyticsDashboards(ctx)
+
+		assert.Equal(t, 2, len(dashboards))
+		assert.Equal(t, dashboard.Name, dashboards[0].Name)
+		assert.Equal(t, dashboard.Discovery, dashboards[0].Discovery)
+		assert.Equal(t, dashboard.DashboardID, dashboards[0].DashboardID)
+		assert.Equal(t, customers[0].Code, dashboards[0].CompanyCode)
+		assert.Equal(t, dashboardCategories[0].ID, dashboards[0].Category.ID)
+		assert.Equal(t, dashboardCategories[0].Label, dashboards[0].Category.Label)
+		assert.Equal(t, dashboardCategories[0].Premium, dashboards[0].Category.Premium)
+
+		assert.Equal(t, dashboard2.Name, dashboards[1].Name)
+		assert.Equal(t, dashboard2.Discovery, dashboards[1].Discovery)
+		assert.Equal(t, dashboard2.DashboardID, dashboards[1].DashboardID)
+		assert.Equal(t, customers[0].Code, dashboards[1].CompanyCode)
+		assert.Equal(t, dashboardCategories[0].ID, dashboards[1].Category.ID)
+		assert.Equal(t, dashboardCategories[0].Label, dashboards[1].Category.Label)
+		assert.Equal(t, dashboardCategories[0].Premium, dashboards[1].Category.Premium)
 	})
 }
 
