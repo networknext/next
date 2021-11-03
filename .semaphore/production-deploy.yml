@@ -10,6 +10,7 @@ global_job_config:
       - gcloud auth activate-service-account --key-file=/home/semaphore/gcp-service-account.json
       - gcloud auth configure-docker -q
       - checkout
+      - sem-version node 14
       - npm i
 blocks:
   - name: Build & Publish Artifacts
