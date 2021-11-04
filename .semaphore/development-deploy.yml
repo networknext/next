@@ -36,14 +36,6 @@ blocks:
           commands:
             - make build-analytics-artifacts-dev
             - make publish-analytics-artifacts-dev
-        - name: Beacon
-          commands:
-            - make build-beacon-artifacts-dev
-            - make publish-beacon-artifacts-dev
-        - name: Beacon Inserter
-          commands:
-            - make build-beacon-inserter-artifacts-dev
-            - make publish-beacon-inserter-artifacts-dev
         - name: API
           commands:
             - make build-api-artifacts-dev
@@ -100,6 +92,10 @@ blocks:
           commands:
             - make build-relay-pusher-artifacts-dev
             - make publish-relay-pusher-artifacts-dev
+        - name: Pingdom
+          commands:
+            - make build-pingdom-artifacts-dev
+            - make publish-pingdom-artifacts-dev
 
       secrets:
         - name: google-cloud-platform

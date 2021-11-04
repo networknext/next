@@ -394,6 +394,10 @@ dev-api: build-api ## runs a local api endpoint service
 dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
 	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
 
+.PHONY: dev-pingdom
+dev-pingdom: build-pingdom ## runs the pulling and publishing of pingdom uptime
+	@PORT=41006 ./dist/pingdom
+
 #####################
 ## ESSENTIAL TOOLS ##
 #####################
@@ -558,6 +562,12 @@ build-fake-server: dist
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
 	@printf "done\n"
 
+.PHONY: build-pingdom
+build-pingdom: dist
+	@printf "Building pingdom..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/pingdom ./cmd/pingdom/pingdom.go
+	@printf "done\n"
+
 .PHONY: deploy-portal-crunchers-dev
 deploy-portal-crunchers-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
@@ -571,6 +581,10 @@ deploy-vanity-dev:
 .PHONY: deploy-analytics-pusher-dev
 deploy-analytics-pusher-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t analytics-pusher -n analytics_pusher -b gs://development_artifacts
+
+.PHONY: deploy-pingdom-dev
+deploy-pingdom-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t pingdom -n pingdom -b gs://development_artifacts
 
 .PHONY: deploy-portal-crunchers-staging
 deploy-portal-crunchers-staging:
@@ -590,6 +604,10 @@ deploy-vanity-staging:
 deploy-analytics-pusher-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t analytics-pusher -n analytics_pusher -b gs://staging_artifacts
 
+.PHONY: deploy-pingdom-staging
+deploy-pingdom-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t pingdom -n pingdom -b gs://staging_artifacts
+
 .PHONY: deploy-portal-crunchers-prod
 deploy-portal-crunchers-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
@@ -607,6 +625,10 @@ deploy-vanity-prod:
 .PHONY: deploy-analytics-pusher-prod
 deploy-analytics-pusher-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t analytics-pusher -n analytics_pusher -b gs://prod_artifacts
+
+.PHONY: deploy-pingdom-prod
+deploy-pingdom-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t pingdom -n pingdom -b gs://prod_artifacts
 
 .PHONY: build-fake-server-artifacts-staging
 build-fake-server-artifacts-staging: build-fake-server
@@ -651,6 +673,10 @@ build-vanity-artifacts-dev: build-vanity
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay
 	./deploy/build-artifacts.sh -e dev -s relay
+
+.PHONY: build-pingdom-artifacts-dev
+build-pingdom-artifacts-dev: build-pingdom
+	./deploy/build-artifacts.sh -e dev -s pingdom
 
 .PHONY: build-portal-artifacts-dev
 build-portal-artifacts-dev: build-portal
@@ -700,6 +726,10 @@ build-vanity-artifacts-staging: build-vanity
 build-relay-artifacts-staging: build-relay
 	./deploy/build-artifacts.sh -e staging -s relay
 
+.PHONY: build-pingdom-artifacts-staging
+build-pingdom-artifacts-staging: build-pingdom
+	./deploy/build-artifacts.sh -e staging -s pingdom
+
 .PHONY: build-portal-artifacts-staging
 build-portal-artifacts-staging: build-portal
 	./deploy/build-artifacts.sh -e staging -s portal -b $(ARTIFACT_BUCKET_STAGING)
@@ -748,6 +778,10 @@ build-vanity-artifacts-prod: build-vanity
 build-relay-artifacts-prod: build-relay
 	./deploy/build-artifacts.sh -e prod -s relay
 
+.PHONY: build-pingdom-artifacts-prod
+build-pingdom-artifacts-prod: build-pingdom
+	./deploy/build-artifacts.sh -e prod -s pingdom
+
 .PHONY: build-portal-artifacts-prod
 build-portal-artifacts-prod: build-portal
 	./deploy/build-artifacts.sh -e prod -s portal -b $(ARTIFACT_BUCKET_PROD)
@@ -791,6 +825,10 @@ publish-vanity-artifacts-dev:
 .PHONY: publish-relay-artifacts-dev
 publish-relay-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay
+
+.PHONY: publish-pingdom-artifacts-dev
+publish-pingdom-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s pingdom
 
 .PHONY: publish-portal-artifacts-dev
 publish-portal-artifacts-dev:
@@ -839,6 +877,10 @@ publish-vanity-artifacts-staging:
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay
+
+.PHONY: publish-pingdom-artifacts-staging
+publish-pingdom-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s pingdom
 
 .PHONY: publish-portal-artifacts-staging
 publish-portal-artifacts-staging:
@@ -907,6 +949,10 @@ publish-analytics-artifacts-prod:
 .PHONY: publish-relay-artifacts-prod
 publish-relay-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay
+
+.PHONY: publish-pingdom-artifacts-prod
+publish-pingdom-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s pingdom
 
 .PHONY: publish-portal-artifacts-prod
 publish-portal-artifacts-prod:
@@ -1443,7 +1489,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-pingdom build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
