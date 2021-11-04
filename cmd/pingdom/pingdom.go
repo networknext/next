@@ -53,13 +53,10 @@ func mainReturnWithCode() int {
 	}
 
 	gcpProjectID := backend.GetGCPProjectID()
-	// if gcpProjectID == "" {
-	// 	core.Error("pingdom must be run in the cloud because requires BigQuery read/write access")
-	// 	return 1
-	// }
-
-	// DEBUG
-	gcpProjectID = "network-next-v3-dev"
+	if gcpProjectID == "" {
+		core.Error("pingdom must be run in the cloud because requires BigQuery read/write access")
+		return 1
+	}
 
 	logger := log.NewNopLogger()
 
@@ -77,8 +74,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// DEBUG: change to !=
-	if gcpProjectID == "" {
+	if gcpProjectID != "" {
 		// Stackdriver Profiler
 		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
 			core.Error("failed to initialze StackDriver profiler: %v", err)
@@ -86,8 +82,7 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	// DEBUG: set default value to ""
-	pingdomApiToken := envvar.Get("PINGDOM_API_TOKEN", "nEVIN5R8WjzcRDEO6FA6wMwjBgla63NqNbqZ2dX-D8TTtPUF_3sGAqg_d0db2OPxkdCdMh8")
+	pingdomApiToken := envvar.Get("PINGDOM_API_TOKEN", "")
 	if pingdomApiToken == "" {
 		core.Error("PINGDOM_API_TOKEN not set")
 		return 1
@@ -99,15 +94,13 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// DEBUG: set default value to ""
-	bqDatasetName := envvar.Get("GOOGLE_BIGQUERY_DATASET_PINGDOM", "dev")
+	bqDatasetName := envvar.Get("GOOGLE_BIGQUERY_DATASET_PINGDOM", "")
 	if bqDatasetName == "" {
 		core.Error("GOOGLE_BIGQUERY_DATASET_PINGDOM not set")
 		return 1
 	}
 
-	// DEBUG: set default value to ""
-	bqTableName := envvar.Get("GOOGLE_BIGQUERY_TABLE_PINGDOM", "pingdom")
+	bqTableName := envvar.Get("GOOGLE_BIGQUERY_TABLE_PINGDOM", "")
 	if bqTableName == "" {
 		core.Error("GOOGLE_BIGQUERY_TABLE_PINGDOM not set")
 		return 1
@@ -125,15 +118,13 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// DEBUG: set default value to ""
-	portalHostname := envvar.Get("PORTAL_HOSTNAME", "portal.networknext.com")
+	portalHostname := envvar.Get("PORTAL_HOSTNAME", "")
 	if portalHostname == "" {
 		core.Error("PORTAL_HOSTNAME not set")
 		return 1
 	}
 
-	// DEBUG: set default value to ""
-	serverBackendHostname := envvar.Get("SERVER_BACKEND_HOSTNAME", "server_backend.prod.networknext.com")
+	serverBackendHostname := envvar.Get("SERVER_BACKEND_HOSTNAME", "")
 	if serverBackendHostname == "" {
 		core.Error("SERVER_BACKEND_HOSTNAME not set")
 		return 1
