@@ -175,7 +175,7 @@ create table analytics_dashboard_categories (
 create table analytics_dashboards (
   id integer primary key autoincrement,
   dashboard_name varchar not null,
-  looker_dashboard_id varchar not null,
+  looker_dashboard_id integer not null,
   discovery boolean not null,
   customer_id integer not null,
   category_id integer not null,

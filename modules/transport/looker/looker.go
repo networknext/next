@@ -43,12 +43,12 @@ type AnalyticsDashboardCategory struct {
 }
 
 type AnalyticsDashboard struct {
-	ID          int64
-	Name        string
-	Discovery   bool
-	DashboardID string
-	CompanyCode string
-	Category    AnalyticsDashboardCategory
+	ID           int64
+	Name         string
+	Discovery    bool
+	DashboardID  int64
+	CustomerCode string
+	Category     AnalyticsDashboardCategory
 }
 
 type LookerURLOptions struct {

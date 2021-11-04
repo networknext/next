@@ -625,6 +625,12 @@ func (m *InMemory) GetPremiumAnalyticsDashboardCategories(ctx context.Context) [
 	return categories
 }
 
+// GetFreeAnalyticsDashboardCategories returns all free Looker dashboard categories
+func (m *InMemory) GetFreeAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+	return categories
+}
+
 // GetAnalyticsDashboardCategories returns all Looker dashboard categories
 func (m *InMemory) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) (looker.AnalyticsDashboardCategory, error) {
 	category := looker.AnalyticsDashboardCategory{}
@@ -653,24 +659,9 @@ func (m *InMemory) RemoveAnalyticsDashboardCategoryByLabel(ctx context.Context, 
 
 }
 
-// UpdateAnalyticsDashboardCategory update a dashboard category label by id
-func (m *InMemory) UpdateAnalyticsDashboardCategoryLabelByID(ctx context.Context, id int64, newLabel string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardCategory not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardCategory update a dashboard category label by old label
-func (m *InMemory) UpdateAnalyticsDashboardCategoryLabelByLabel(ctx context.Context, oldLabel string, newLabel string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardCategory not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardCategoryPremiumByID update a dashboard category premium status by ID
-func (m *InMemory) UpdateAnalyticsDashboardCategoryPremiumByID(ctx context.Context, isPremium bool, id int64) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardCategoryPremiumByID not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardCategoryPremiumByLabel update a dashboard category premium status by label
-func (m *InMemory) UpdateAnalyticsDashboardCategoryPremiumByLabel(ctx context.Context, isPremium bool, label string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardCategoryPremiumByLabel not implemented in InMemory storer")
+// UpdateAnalyticsDashboardCategoryByID update dashboard category by ID
+func (m *InMemory) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateAnalyticsDashboardCategoryByID not implemented in InMemory storer")
 }
 
 // GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
@@ -709,6 +700,12 @@ func (m *InMemory) GetAnalyticsDashboards(ctx context.Context) []looker.Analytic
 	return dashboards
 }
 
+// GetAnalyticsDashboardsByLookerID get looker dashboard by looker id
+func (m *InMemory) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) []looker.AnalyticsDashboard {
+	dashboards := []looker.AnalyticsDashboard{}
+	return dashboards
+}
+
 // GetAnalyticsDashboardByID get looker dashboard by id
 func (m *InMemory) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.AnalyticsDashboard, error) {
 	dashboard := looker.AnalyticsDashboard{}
@@ -721,14 +718,8 @@ func (m *InMemory) GetAnalyticsDashboardByName(ctx context.Context, name string)
 	return dashboard, fmt.Errorf("GetAnalyticsDashboardByName not implemented in InMemory storer")
 }
 
-// GetAnalyticsDashboardByLookerID get looker dashboard by looker id
-func (m *InMemory) GetAnalyticsDashboardByLookerID(ctx context.Context, id string) (looker.AnalyticsDashboard, error) {
-	dashboard := looker.AnalyticsDashboard{}
-	return dashboard, fmt.Errorf("GetAnalyticsDashboardByLookerID not implemented in InMemory storer")
-}
-
 // AddAnalyticsDashboard adds a new dashboard
-func (m *InMemory) AddAnalyticsDashboard(ctx context.Context, name string, lookerID string, isDiscover bool, customerID int64, categoryID int64) error {
+func (m *InMemory) AddAnalyticsDashboard(ctx context.Context, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
 	return fmt.Errorf("AddAnalyticsDashboard not implemented in InMemory storer")
 }
 
@@ -742,52 +733,7 @@ func (m *InMemory) RemoveAnalyticsDashboardByName(ctx context.Context, name stri
 	return fmt.Errorf("RemoveAnalyticsDashboardByName not implemented in InMemory storer")
 }
 
-// RemoveAnalyticsDashboardByLookerID remove looker dashboard by looker id
-func (m *InMemory) RemoveAnalyticsDashboardByLookerID(ctx context.Context, id string) error {
-	return fmt.Errorf("RemoveAnalyticsDashboardByLookerID not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardNameByID update looker dashboard looker id by dashboard id
-func (m *InMemory) UpdateAnalyticsDashboardNameByID(ctx context.Context, name string, id int64) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardNameByID not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardNameByName update looker dashboard looker id by dashboard id
-func (m *InMemory) UpdateAnalyticsDashboardNameByName(ctx context.Context, newName string, oldName string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardNameByName not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardNameByLookerID update looker dashboard looker id by dashboard id
-func (m *InMemory) UpdateAnalyticsDashboardNameByLookerID(ctx context.Context, name string, lookerID string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardNameByLookerID not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardLookerIDByID update looker dashboard looker id by dashboard id
-func (m *InMemory) UpdateAnalyticsDashboardLookerIDByID(ctx context.Context, lookerID string, id int64) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardLookerIDByID not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardLookerIDByName update looker dashboard looker id by dashboard id
-func (m *InMemory) UpdateAnalyticsDashboardLookerIDByName(ctx context.Context, LookerID string, name string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardLookerIDByName not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardLookerIDByLookerID update looker dashboard looker id by dashboard id
-func (m *InMemory) UpdateAnalyticsDashboardLookerIDByLookerID(ctx context.Context, newLookerID string, oldLookerID string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardLookerIDByLookerID not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardDiscoveryByID update a dashboard discovery status by ID
-func (m *InMemory) UpdateAnalyticsDashboardDiscoveryByID(ctx context.Context, isDiscovery bool, id int64) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardDiscoveryByID not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardDiscoveryByName update a dashboard discovery status by ID
-func (m *InMemory) UpdateAnalyticsDashboardDiscoveryByName(ctx context.Context, isDiscovery bool, name string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardDiscoveryByName not implemented in InMemory storer")
-}
-
-// UpdateAnalyticsDashboardDiscoveryByLookerID update a dashboard discovery status by ID
-func (m *InMemory) UpdateAnalyticsDashboardDiscoveryByLookerID(ctx context.Context, isDiscovery bool, lookerID string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardDiscoveryByLookerID not implemented in InMemory storer")
+// UpdateAnalyticsDashboardByID update looker dashboard looker id by dashboard id
+func (m *InMemory) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateAnalyticsDashboardByID not implemented in InMemory storer")
 }

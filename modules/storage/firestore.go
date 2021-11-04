@@ -2397,8 +2397,14 @@ func (fs *Firestore) GetAnalyticsDashboardCategories(ctx context.Context) []look
 	return categories
 }
 
-// GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
+// GetPremiumAnalyticsDashboardCategories returns all premium Looker dashboard categories
 func (fs *Firestore) GetPremiumAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+	return categories
+}
+
+// GetFreeAnalyticsDashboardCategories returns all free Looker dashboard categories
+func (fs *Firestore) GetFreeAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
 	return categories
 }
@@ -2431,24 +2437,9 @@ func (fs *Firestore) RemoveAnalyticsDashboardCategoryByLabel(ctx context.Context
 
 }
 
-// UpdateAnalyticsDashboardCategory update a dashboard category label by id
-func (fs *Firestore) UpdateAnalyticsDashboardCategoryLabelByID(ctx context.Context, id int64, newLabel string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardCategory not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardCategory update a dashboard category label by old label
-func (fs *Firestore) UpdateAnalyticsDashboardCategoryLabelByLabel(ctx context.Context, oldLabel string, newLabel string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardCategory not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardCategoryPremiumByID update a dashboard category premium status by ID
-func (fs *Firestore) UpdateAnalyticsDashboardCategoryPremiumByID(ctx context.Context, isPremium bool, id int64) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardCategoryPremiumByID not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardCategoryPremiumByLabel update a dashboard category premium status by label
-func (fs *Firestore) UpdateAnalyticsDashboardCategoryPremiumByLabel(ctx context.Context, isPremium bool, label string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardCategoryPremiumByLabel not implemented in Firestore storer")
+// UpdateAnalyticsDashboardCategoryByID update dashboard category by ID
+func (fs *Firestore) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateAnalyticsDashboardCategoryByID not implemented in Firestore storer")
 }
 
 // GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
@@ -2481,6 +2472,12 @@ func (fs *Firestore) GetDiscoveryAnalyticsDashboards(ctx context.Context) []look
 	return dashboards
 }
 
+// GetAnalyticsDashboardsByLookerID get looker dashboards by looker id
+func (fs *Firestore) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) []looker.AnalyticsDashboard {
+	dashboards := []looker.AnalyticsDashboard{}
+	return dashboards
+}
+
 // GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
 func (fs *Firestore) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
@@ -2499,14 +2496,8 @@ func (fs *Firestore) GetAnalyticsDashboardByName(ctx context.Context, name strin
 	return dashboard, fmt.Errorf("GetAnalyticsDashboardByName not implemented in Firestore storer")
 }
 
-// GetAnalyticsDashboardByLookerID get looker dashboard by looker id
-func (fs *Firestore) GetAnalyticsDashboardByLookerID(ctx context.Context, id string) (looker.AnalyticsDashboard, error) {
-	dashboard := looker.AnalyticsDashboard{}
-	return dashboard, fmt.Errorf("GetAnalyticsDashboardByLookerID not implemented in Firestore storer")
-}
-
 // AddAnalyticsDashboard adds a new dashboard
-func (fs *Firestore) AddAnalyticsDashboard(ctx context.Context, name string, lookerID string, isDiscover bool, customerID int64, categoryID int64) error {
+func (fs *Firestore) AddAnalyticsDashboard(ctx context.Context, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
 	return fmt.Errorf("AddAnalyticsDashboard not implemented in Firestore storer")
 }
 
@@ -2520,52 +2511,7 @@ func (fs *Firestore) RemoveAnalyticsDashboardByName(ctx context.Context, name st
 	return fmt.Errorf("RemoveAnalyticsDashboardByName not implemented in Firestore storer")
 }
 
-// RemoveAnalyticsDashboardByLookerID remove looker dashboard by looker id
-func (fs *Firestore) RemoveAnalyticsDashboardByLookerID(ctx context.Context, id string) error {
-	return fmt.Errorf("RemoveAnalyticsDashboardByLookerID not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardNameByID update looker dashboard looker id by dashboard id
-func (fs *Firestore) UpdateAnalyticsDashboardNameByID(ctx context.Context, name string, id int64) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardNameByID not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardNameByName update looker dashboard looker id by dashboard id
-func (fs *Firestore) UpdateAnalyticsDashboardNameByName(ctx context.Context, newName string, oldName string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardNameByName not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardNameByLookerID update looker dashboard looker id by dashboard id
-func (fs *Firestore) UpdateAnalyticsDashboardNameByLookerID(ctx context.Context, name string, lookerID string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardNameByLookerID not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardLookerIDByID update looker dashboard looker id by dashboard id
-func (fs *Firestore) UpdateAnalyticsDashboardLookerIDByID(ctx context.Context, lookerID string, id int64) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardLookerIDByID not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardLookerIDByName update looker dashboard looker id by dashboard id
-func (fs *Firestore) UpdateAnalyticsDashboardLookerIDByName(ctx context.Context, LookerID string, name string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardLookerIDByName not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardLookerIDByLookerID update looker dashboard looker id by dashboard id
-func (fs *Firestore) UpdateAnalyticsDashboardLookerIDByLookerID(ctx context.Context, newLookerID string, oldLookerID string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardLookerIDByLookerID not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardDiscoveryByID update a dashboard discovery status by ID
-func (fs *Firestore) UpdateAnalyticsDashboardDiscoveryByID(ctx context.Context, isDiscovery bool, id int64) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardDiscoveryByID not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardDiscoveryByName update a dashboard discovery status by ID
-func (fs *Firestore) UpdateAnalyticsDashboardDiscoveryByName(ctx context.Context, isDiscovery bool, name string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardDiscoveryByName not implemented in Firestore storer")
-}
-
-// UpdateAnalyticsDashboardDiscoveryByLookerID update a dashboard discovery status by ID
-func (fs *Firestore) UpdateAnalyticsDashboardDiscoveryByLookerID(ctx context.Context, isDiscovery bool, lookerID string) error {
-	return fmt.Errorf("UpdateAnalyticsDashboardDiscoveryByLookerID not implemented in Firestore storer")
+// UpdateAnalyticsDashboardByID update looker dashboard looker id by dashboard id
+func (fs *Firestore) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateAnalyticsDashboardByID not implemented in Firestore storer")
 }

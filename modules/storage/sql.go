@@ -3899,7 +3899,75 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) []looker.Ana
 
 // GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
 func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
+	var sql bytes.Buffer
+	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
+
+	sql.Write([]byte("select id, tab_label, premium "))
+	sql.Write([]byte("from analytics_dashboard_categories where premium = true"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error", "err", err)
+		return []looker.AnalyticsDashboardCategory{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&category.ID,
+			&category.Label,
+			&category.Premium,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboardCategories(): error parsing returned row", "err", err)
+			return []looker.AnalyticsDashboardCategory{}
+		}
+
+		categories = append(categories, category)
+	}
+
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
+	return categories
+}
+
+// GetFreeAnalyticsDashboardCategories returns all Looker dashboard categories
+func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
+	var sql bytes.Buffer
+	category := looker.AnalyticsDashboardCategory{}
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+
+	sql.Write([]byte("select id, tab_label, premium "))
+	sql.Write([]byte("from analytics_dashboard_categories where premium = false"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error", "err", err)
+		return []looker.AnalyticsDashboardCategory{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&category.ID,
+			&category.Label,
+			&category.Premium,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboardCategories(): error parsing returned row", "err", err)
+			return []looker.AnalyticsDashboardCategory{}
+		}
+
+		categories = append(categories, category)
+	}
+
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
 	return categories
 }
 
@@ -3949,8 +4017,46 @@ func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) 
 
 // GetAnalyticsDashboardCategories returns all Looker dashboard categories
 func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) (looker.AnalyticsDashboardCategory, error) {
+	var querySQL bytes.Buffer
+	var row *sql.Row
+	var err error
+
 	category := looker.AnalyticsDashboardCategory{}
-	return category, nil
+	retryCount := 0
+
+	querySQL.Write([]byte("select id, tab_label, premium from analytics_dashboard_categories where tab_label = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), label)
+		err = row.Scan(
+			&category.ID,
+			&category.Label,
+			&category.Premium,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
+	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardCategoryByLabel() connection with the database timed out!")
+		return looker.AnalyticsDashboardCategory{}, err
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardCategoryByLabel() no rows were returned!")
+		return looker.AnalyticsDashboardCategory{}, &DoesNotExistError{resourceType: "analytics dashboard category", resourceRef: label}
+	case nil:
+		return category, nil
+	default:
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardCategoryByLabel() QueryRow returned an error: %v", err)
+		return looker.AnalyticsDashboardCategory{}, err
+	}
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
@@ -3987,62 +4093,400 @@ func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, label string, 
 
 // RemoveAnalyticsDashboardCategory remove a dashboard category by ID
 func (db *SQL) RemoveAnalyticsDashboardCategoryByID(ctx context.Context, id int64) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("delete from analytics_dashboard_categories where id = $1"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		id,
+	)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing analytics dashboard category", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
 	return nil
 }
 
 // RemoveAnalyticsDashboardCategory remove a dashboard category by label
 func (db *SQL) RemoveAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) error {
-	return nil
+	var sql bytes.Buffer
 
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("delete from analytics_dashboard_categories where tab_label = $1"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		label,
+	)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing analytics dashboard category", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
+	return nil
 }
 
-// UpdateAnalyticsDashboardCategory update a dashboard category label by id
-func (db *SQL) UpdateAnalyticsDashboardCategoryLabelByID(ctx context.Context, id int64, newLabel string) error {
-	return nil
-}
+// UpdateAnalyticsDashboardCategoryByID update dashboard category by id
+func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int64, field string, value interface{}) error {
+	var updateSQL bytes.Buffer
+	var args []interface{}
 
-// UpdateAnalyticsDashboardCategory update a dashboard category label by old label
-func (db *SQL) UpdateAnalyticsDashboardCategoryLabelByLabel(ctx context.Context, oldLabel string, newLabel string) error {
-	return nil
-}
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
-// UpdateAnalyticsDashboardCategoryPremiumByID update a dashboard category premium status by ID
-func (db *SQL) UpdateAnalyticsDashboardCategoryPremiumByID(ctx context.Context, isPremium bool, id int64) error {
-	return nil
-}
+	switch field {
+	case "Label":
+		label, ok := value.(string)
+		if !ok || label == "" {
+			return fmt.Errorf("%v is not a valid string or empty", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboard_categories set tab_label=$1 where id=$2"))
+		args = append(args, label, id)
 
-// UpdateAnalyticsDashboardCategoryPremiumByLabel update a dashboard category premium status by label
-func (db *SQL) UpdateAnalyticsDashboardCategoryPremiumByLabel(ctx context.Context, isPremium bool, label string) error {
+	case "Premium":
+		premium, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboard_categories set premium=$1 where id=$2"))
+		args = append(args, premium, id)
+
+	default:
+		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
+
+	}
+
+	result, err := ExecRetry(ctx, db, updateSQL, args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying relay record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
 	return nil
 }
 
 // GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
 func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) []looker.AnalyticsDashboard {
-	dashboards := make([]looker.AnalyticsDashboard, 0)
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards where category_id = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql, id)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		return []looker.AnalyticsDashboard{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.DashboardID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			fmt.Println(err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		dashboards = append(dashboards, dashboard)
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
 	return dashboards
 }
 
 // GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
 func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) []looker.AnalyticsDashboard {
-	dashboards := make([]looker.AnalyticsDashboard, 0)
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		return []looker.AnalyticsDashboard{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.DashboardID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			fmt.Println(err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		if dashboard.Category.Label == label {
+			dashboards = append(dashboards, dashboard)
+		}
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
 	return dashboards
 }
 
 // GetPremiumAnalyticsDashboards get all premium looker dashboards
 func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
-	dashboards := make([]looker.AnalyticsDashboard, 0)
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		return []looker.AnalyticsDashboard{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.DashboardID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			fmt.Println(err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		if dashboard.Category.Premium {
+			dashboards = append(dashboards, dashboard)
+		}
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
 	return dashboards
 }
 
 // GetFreeAnalyticsDashboards get all free looker dashboards
 func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
-	dashboards := make([]looker.AnalyticsDashboard, 0)
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards where discovery = false"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		return []looker.AnalyticsDashboard{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.DashboardID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			fmt.Println(err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		if !dashboard.Category.Premium {
+			dashboards = append(dashboards, dashboard)
+		}
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
 	return dashboards
 }
 
 // GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
 func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
-	dashboards := make([]looker.AnalyticsDashboard, 0)
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards where discovery = true"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		return []looker.AnalyticsDashboard{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.DashboardID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			fmt.Println(err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		dashboards = append(dashboards, dashboard)
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
 	return dashboards
 }
 
@@ -4081,15 +4525,10 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDas
 			return []looker.AnalyticsDashboard{}
 		}
 
-		fmt.Println(customerID)
-
 		customer, err := db.CustomerByID(ctx, customerID)
 		if err != nil {
 			return []looker.AnalyticsDashboard{}
 		}
-
-		fmt.Println(customer)
-		fmt.Println(categoryID)
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
@@ -4097,9 +4536,63 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDas
 			return []looker.AnalyticsDashboard{}
 		}
 
-		fmt.Println(category)
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
 
-		dashboard.CompanyCode = customer.Code
+		dashboards = append(dashboards, dashboard)
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards
+}
+
+// GetAnalyticsDashboardsByLookerID get looker dashboards by looker id
+func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) []looker.AnalyticsDashboard {
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards where looker_dashboard_id = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql, id)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		return []looker.AnalyticsDashboard{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.DashboardID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			fmt.Println(err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		dashboard.CustomerCode = customer.Code
 		dashboard.Category = category
 
 		dashboards = append(dashboards, dashboard)
@@ -4111,24 +4604,132 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDas
 
 // GetAnalyticsDashboardByID get looker dashboard by id
 func (db *SQL) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.AnalyticsDashboard, error) {
+	var querySQL bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	var row *sql.Row
+	var err error
+
 	dashboard := looker.AnalyticsDashboard{}
-	return dashboard, nil
+	retryCount := 0
+
+	querySQL.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id from analytics_dashboards where id = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), id)
+		err = row.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.DashboardID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
+	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardByID() connection with the database timed out!")
+		return looker.AnalyticsDashboard{}, err
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardByID() no rows were returned!")
+		return looker.AnalyticsDashboard{}, &DoesNotExistError{resourceType: "analytics dashboard id", resourceRef: id}
+	case nil:
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			fmt.Println(err)
+			return looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		return dashboard, nil
+	default:
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardByID() QueryRow returned an error: %v", err)
+		return looker.AnalyticsDashboard{}, err
+	}
 }
 
 // GetAnalyticsDashboardByName get looker dashboard by name
 func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (looker.AnalyticsDashboard, error) {
-	dashboard := looker.AnalyticsDashboard{}
-	return dashboard, nil
-}
+	var querySQL bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	var row *sql.Row
+	var err error
 
-// GetAnalyticsDashboardByLookerID get looker dashboard by looker id
-func (db *SQL) GetAnalyticsDashboardByLookerID(ctx context.Context, id string) (looker.AnalyticsDashboard, error) {
 	dashboard := looker.AnalyticsDashboard{}
-	return dashboard, nil
+	retryCount := 0
+
+	querySQL.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id from analytics_dashboards where dashboard_name = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), name)
+		err = row.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.DashboardID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
+	switch err {
+	case context.Canceled:
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardByName() connection with the database timed out!")
+		return looker.AnalyticsDashboard{}, err
+	case sql.ErrNoRows:
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardByName() no rows were returned!")
+		return looker.AnalyticsDashboard{}, &DoesNotExistError{resourceType: "analytics dashboard name", resourceRef: name}
+	case nil:
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			fmt.Println(err)
+			return looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		return dashboard, nil
+	default:
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardByName() QueryRow returned an error: %v", err)
+		return looker.AnalyticsDashboard{}, err
+	}
 }
 
 // AddAnalyticsDashboard adds a new dashboard
-func (db *SQL) AddAnalyticsDashboard(ctx context.Context, name string, lookerID string, isDiscover bool, customerID int64, categoryID int64) error {
+func (db *SQL) AddAnalyticsDashboard(ctx context.Context, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
 	var sql bytes.Buffer
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4161,60 +4762,176 @@ func (db *SQL) AddAnalyticsDashboard(ctx context.Context, name string, lookerID 
 
 // RemoveAnalyticsDashboardByID remove looker dashboard by id
 func (db *SQL) RemoveAnalyticsDashboardByID(ctx context.Context, id int64) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("delete from analytics_dashboards where id = $1"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		id,
+	)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing analytics dashboard", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
 	return nil
 }
 
 // RemoveAnalyticsDashboardByName remove looker dashboard by name
 func (db *SQL) RemoveAnalyticsDashboardByName(ctx context.Context, name string) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("delete from analytics_dashboards where dashboard_name = $1"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		name,
+	)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing analytics dashboard", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
 	return nil
 }
 
 // RemoveAnalyticsDashboardByLookerID remove looker dashboard by looker id
 func (db *SQL) RemoveAnalyticsDashboardByLookerID(ctx context.Context, id string) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("delete from analytics_dashboards where looker_dashboard_id = $1"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		id,
+	)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error removing analytics dashboard", "err", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
 	return nil
 }
 
-// UpdateAnalyticsDashboardNameByID update looker dashboard looker id by dashboard id
-func (db *SQL) UpdateAnalyticsDashboardNameByID(ctx context.Context, name string, id int64) error {
-	return nil
-}
+// UpdateAnalyticsDashboardByID update dashboard by id
+func (db *SQL) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field string, value interface{}) error {
+	var updateSQL bytes.Buffer
+	var args []interface{}
 
-// UpdateAnalyticsDashboardNameByName update looker dashboard looker id by dashboard id
-func (db *SQL) UpdateAnalyticsDashboardNameByName(ctx context.Context, newName string, oldName string) error {
-	return nil
-}
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
 
-// UpdateAnalyticsDashboardNameByLookerID update looker dashboard looker id by dashboard id
-func (db *SQL) UpdateAnalyticsDashboardNameByLookerID(ctx context.Context, name string, lookerID string) error {
-	return nil
-}
+	switch field {
+	case "Name":
+		name, ok := value.(string)
+		if !ok || name == "" {
+			return fmt.Errorf("%v is not a valid string or is empty", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboards set dashboard_name=$1 where id=$2"))
+		args = append(args, name, id)
 
-// UpdateAnalyticsDashboardLookerIDByID update looker dashboard looker id by dashboard id
-func (db *SQL) UpdateAnalyticsDashboardLookerIDByID(ctx context.Context, lookerID string, id int64) error {
-	return nil
-}
+	case "DashboardID":
+		dashID, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int64 value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboards set looker_dashboard_id=$1 where id=$2"))
+		args = append(args, dashID, id)
 
-// UpdateAnalyticsDashboardLookerIDByName update looker dashboard looker id by dashboard id
-func (db *SQL) UpdateAnalyticsDashboardLookerIDByName(ctx context.Context, LookerID string, name string) error {
-	return nil
-}
+	case "Discovery":
+		isDiscovery, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboards set discovery=$1 where id=$2"))
+		args = append(args, isDiscovery, id)
 
-// UpdateAnalyticsDashboardLookerIDByLookerID update looker dashboard looker id by dashboard id
-func (db *SQL) UpdateAnalyticsDashboardLookerIDByLookerID(ctx context.Context, newLookerID string, oldLookerID string) error {
-	return nil
-}
+	case "CustomerCode":
+		customerCode, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
 
-// UpdateAnalyticsDashboardDiscoveryByID update a dashboard discovery status by ID
-func (db *SQL) UpdateAnalyticsDashboardDiscoveryByID(ctx context.Context, isDiscovery bool, id int64) error {
-	return nil
-}
+		customer, err := db.Customer(ctx, customerCode)
+		if err != nil {
+			return &DoesNotExistError{resourceType: "customer", resourceRef: customerCode}
+		}
 
-// UpdateAnalyticsDashboardDiscoveryByName update a dashboard discovery status by ID
-func (db *SQL) UpdateAnalyticsDashboardDiscoveryByName(ctx context.Context, isDiscovery bool, name string) error {
-	return nil
-}
+		updateSQL.Write([]byte("update analytics_dashboards set customer_id=$1 where id=$2"))
+		args = append(args, customer.DatabaseID, id)
 
-// UpdateAnalyticsDashboardDiscoveryByLookerID update a dashboard discovery status by ID
-func (db *SQL) UpdateAnalyticsDashboardDiscoveryByLookerID(ctx context.Context, isDiscovery bool, lookerID string) error {
+	case "Category":
+		categoryID, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int64 value", value)
+		}
+
+		updateSQL.Write([]byte("update analytics_dashboards set category_id=$1 where id=$2"))
+		args = append(args, categoryID, id)
+
+	default:
+		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
+
+	}
+
+	result, err := ExecRetry(ctx, db, updateSQL, args...)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "error modifying relay record", "err", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		return err
+	}
+	if rows != 1 {
+		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		return err
+	}
+
 	return nil
 }
