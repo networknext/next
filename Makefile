@@ -662,6 +662,10 @@ build-vanity-artifacts-dev: build-vanity
 build-relay-artifacts-dev: build-relay
 	./deploy/build-artifacts.sh -e dev -s relay
 
+.PHONY: build-pingdom-artifacts-dev
+build-pingdom-artifacts-dev: build-pingdom
+	./deploy/build-artifacts.sh -e dev -s pingdom
+
 .PHONY: build-portal-artifacts-dev
 build-portal-artifacts-dev: build-portal
 	./deploy/build-artifacts.sh -e dev -s portal -b $(ARTIFACT_BUCKET)
@@ -709,6 +713,10 @@ build-vanity-artifacts-staging: build-vanity
 .PHONY: build-relay-artifacts-staging
 build-relay-artifacts-staging: build-relay
 	./deploy/build-artifacts.sh -e staging -s relay
+
+.PHONY: build-pingdom-artifacts-staging
+build-pingdom-artifacts-staging: build-pingdom
+	./deploy/build-artifacts.sh -e staging -s pingdom
 
 .PHONY: build-portal-artifacts-staging
 build-portal-artifacts-staging: build-portal
@@ -758,6 +766,10 @@ build-vanity-artifacts-prod: build-vanity
 build-relay-artifacts-prod: build-relay
 	./deploy/build-artifacts.sh -e prod -s relay
 
+.PHONY: build-pingdom-artifacts-prod
+build-pingdom-artifacts-prod: build-pingdom
+	./deploy/build-artifacts.sh -e prod -s pingdom
+
 .PHONY: build-portal-artifacts-prod
 build-portal-artifacts-prod: build-portal
 	./deploy/build-artifacts.sh -e prod -s portal -b $(ARTIFACT_BUCKET_PROD)
@@ -801,6 +813,10 @@ publish-vanity-artifacts-dev:
 .PHONY: publish-relay-artifacts-dev
 publish-relay-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay
+
+.PHONY: publish-pingdom-artifacts-dev
+publish-pingdom-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s pingdom
 
 .PHONY: publish-portal-artifacts-dev
 publish-portal-artifacts-dev:
@@ -849,6 +865,10 @@ publish-vanity-artifacts-staging:
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay
+
+.PHONY: publish-pingdom-artifacts-staging
+publish-pingdom-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s pingdom
 
 .PHONY: publish-portal-artifacts-staging
 publish-portal-artifacts-staging:
@@ -917,6 +937,10 @@ publish-analytics-artifacts-prod:
 .PHONY: publish-relay-artifacts-prod
 publish-relay-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay
+
+.PHONY: publish-pingdom-artifacts-prod
+publish-pingdom-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s pingdom
 
 .PHONY: publish-portal-artifacts-prod
 publish-portal-artifacts-prod:
@@ -1453,7 +1477,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-pingdom build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
