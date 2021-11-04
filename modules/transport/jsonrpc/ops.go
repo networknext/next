@@ -21,6 +21,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 )
 
@@ -1764,5 +1765,39 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Datacenter type", args.Field)
 	}
 
+	return nil
+}
+
+type FetchAnalyticsDashboardCategoriesArgs struct{}
+
+type FetchAnalyticsDashboardCategoriesReply struct {
+	Categories []looker.AnalyticsDashboardCategory `json:"categories"`
+}
+
+func (s *OpsService) FetchAnalyticsDashboardCategories(r *http.Request, args *FetchAnalyticsDashboardCategoriesArgs, reply *FetchAnalyticsDashboardCategoriesReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
+		return &err
+	}
+
+	reply.Categories = s.Storage.GetAnalyticsDashboardCategories(r.Context())
+	return nil
+}
+
+type FetchAllAnalyticsDashboardsArgs struct{}
+
+type FetchAllAnalyticsDashboardsReply struct {
+	Dashboards []looker.AnalyticsDashboard `json:"dashboards"`
+}
+
+func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAnalyticsDashboardsArgs, reply *FetchAllAnalyticsDashboardsReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
+		return &err
+	}
+
+	reply.Dashboards = s.Storage.GetAnalyticsDashboards(r.Context())
 	return nil
 }

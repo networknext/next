@@ -2676,16 +2676,60 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 	return nil
 }
 
-type FetchAnalyticsCategoriesArgs struct {
+type FetchAnalyticsDashboardsArgs struct {
 	CompanyCode string `json:"company_code"`
 }
 
-type FetchAnalyticsCategoriesReply struct {
+type FetchAnalyticsDashboardsReply struct {
+	Dashboards map[string][]looker.AnalyticsDashboard `json:"dashboards"`
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
-func (s *BuyersService) FetchAnalyticsCategories(r *http.Request, args *FetchAnalyticsCategoriesArgs, reply *FetchAnalyticsCategoriesReply) error {
-	// TODO: implement with storer...
+func (s *BuyersService) FetchAnalyticsCategories(r *http.Request, args *FetchAnalyticsDashboardsArgs, reply *FetchAnalyticsDashboardsReply) error {
+	reply.Dashboards = make(map[string][]looker.AnalyticsDashboard, 0)
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		return &err
+	}
+
+	// Admin's will be able to search any company's billing info
+	if isAdmin {
+		customerCode = args.CompanyCode
+	}
+
+	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
+		customerCode = "esl"
+	}
+	dashboards := s.Storage.GetAnalyticsDashboards(r.Context())
+
+	// Loop through all dashboards and build a map keyed on the dash category with a value of a dash array specific to the customer code
+	for _, dash := range dashboards {
+		if dash.CustomerCode == customerCode {
+			_, ok := reply.Dashboards[dash.Category.Label]
+			if !ok {
+				reply.Dashboards[dash.Category.Label] = make([]looker.AnalyticsDashboard, 0)
+			}
+			reply.Dashboards[dash.Category.Label] = append(reply.Dashboards[dash.Category.Label], dash)
+		}
+	}
 
 	return nil
 }
