@@ -36,14 +36,6 @@ blocks:
           commands:
             - make build-analytics-artifacts-dev
             - make publish-analytics-artifacts-dev
-        - name: Beacon
-          commands:
-            - make build-beacon-artifacts-dev
-            - make publish-beacon-artifacts-dev
-        - name: Beacon Inserter
-          commands:
-            - make build-beacon-inserter-artifacts-dev
-            - make publish-beacon-inserter-artifacts-dev
         - name: API
           commands:
             - make build-api-artifacts-dev

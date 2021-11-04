@@ -36,14 +36,6 @@ blocks:
           commands:
             - make build-billing-artifacts-staging
             - make publish-billing-artifacts-staging
-        - name: Beacon
-          commands:
-            - make build-beacon-artifacts-staging
-            - make publish-beacon-artifacts-staging
-        - name: Beacon Inserter
-          commands:
-            - make build-beacon-inserter-artifacts-staging
-            - make publish-beacon-inserter-artifacts-staging
         - name: Analytics Pusher
           commands:
             - make build-analytics-pusher-artifacts-staging

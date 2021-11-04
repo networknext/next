@@ -28,14 +28,6 @@ blocks:
           commands:
             - make build-billing-artifacts-prod
             - make publish-billing-artifacts-prod
-        - name: Beacon
-          commands:
-            - make build-beacon-artifacts-prod
-            - make publish-beacon-artifacts-prod
-        - name: Beacon Inserter
-          commands:
-            - make build-beacon-inserter-artifacts-prod
-            - make publish-beacon-inserter-artifacts-prod
         - name: Analytics Pusher
           commands:
             - make build-analytics-pusher-artifacts-prod
