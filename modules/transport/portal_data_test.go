@@ -5,28 +5,11 @@ import (
 	"testing"
 	"time"
 
-	// "github.com/networknext/backend/modules/encoding"
+	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/stretchr/testify/assert"
 )
-
-// Helper function to create a random string of a specified length
-// Useful for testing constant string lengths
-// Adapted from: https://stackoverflow.com/a/22892986
-func generateRandomStringSequence(length int) string {
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-	// Seed randomness
-	rand.Seed(time.Now().UnixNano())
-
-	b := make([]rune, length)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-
-	return string(b)
-}
 
 func testSessionCountData() transport.SessionCountData {
 	// Seed randomness
@@ -78,7 +61,7 @@ func testRelayHop() transport.RelayHop {
 	data := transport.RelayHop{
 		Version: transport.RelayHopVersion,
 		ID:      rand.Uint64(),
-		Name:    generateRandomStringSequence(rand.Intn(routing.MaxRelayNameLength)),
+		Name:    backend.GenerateRandomStringSequence(rand.Intn(routing.MaxRelayNameLength)),
 	}
 
 	return data
@@ -130,7 +113,7 @@ func testNearRelayPortalData() transport.NearRelayPortalData {
 	data := transport.NearRelayPortalData{
 		Version:     transport.NearRelayPortalDataVersion,
 		ID:          rand.Uint64(),
-		Name:        generateRandomStringSequence(rand.Intn(routing.MaxRelayNameLength)),
+		Name:        backend.GenerateRandomStringSequence(rand.Intn(routing.MaxRelayNameLength)),
 		ClientStats: testRoutingStats(),
 	}
 
@@ -171,14 +154,14 @@ func testLocation() routing.Location {
 	rand.Seed(time.Now().UnixNano())
 
 	return routing.Location{
-		Continent:   generateRandomStringSequence(rand.Intn(routing.MaxContinentLength - 1)),
-		Country:     generateRandomStringSequence(rand.Intn(routing.MaxCountryLength - 1)),
-		CountryCode: generateRandomStringSequence(rand.Intn(routing.MaxCountryCodeLength - 1)),
-		Region:      generateRandomStringSequence(rand.Intn(routing.MaxRegionLength - 1)),
-		City:        generateRandomStringSequence(rand.Intn(routing.MaxCityLength - 1)),
+		Continent:   backend.GenerateRandomStringSequence(rand.Intn(routing.MaxContinentLength - 1)),
+		Country:     backend.GenerateRandomStringSequence(rand.Intn(routing.MaxCountryLength - 1)),
+		CountryCode: backend.GenerateRandomStringSequence(rand.Intn(routing.MaxCountryCodeLength - 1)),
+		Region:      backend.GenerateRandomStringSequence(rand.Intn(routing.MaxRegionLength - 1)),
+		City:        backend.GenerateRandomStringSequence(rand.Intn(routing.MaxCityLength - 1)),
 		Latitude:    rand.Float32(),
 		Longitude:   rand.Float32(),
-		ISP:         generateRandomStringSequence(rand.Intn(routing.MaxISPNameLength - 1)),
+		ISP:         backend.GenerateRandomStringSequence(rand.Intn(routing.MaxISPNameLength - 1)),
 		ASN:         rand.Int(),
 	}
 }
@@ -201,17 +184,17 @@ func testSessionMeta() transport.SessionMeta {
 		Version:         transport.SessionMetaVersion,
 		ID:              rand.Uint64(),
 		UserHash:        rand.Uint64(),
-		DatacenterName:  generateRandomStringSequence(rand.Intn(transport.MaxDatacenterNameLength)),
-		DatacenterAlias: generateRandomStringSequence(rand.Intn(transport.MaxDatacenterNameLength)),
+		DatacenterName:  backend.GenerateRandomStringSequence(rand.Intn(transport.MaxDatacenterNameLength)),
+		DatacenterAlias: backend.GenerateRandomStringSequence(rand.Intn(transport.MaxDatacenterNameLength)),
 		OnNetworkNext:   true,
 		NextRTT:         rand.Float64(),
 		DirectRTT:       rand.Float64(),
 		DeltaRTT:        rand.Float64(),
 		Location:        testLocation(),
-		ClientAddr:      generateRandomStringSequence(rand.Intn(transport.MaxAddressLength - 1)),
-		ServerAddr:      generateRandomStringSequence(rand.Intn(transport.MaxAddressLength - 1)),
+		ClientAddr:      backend.GenerateRandomStringSequence(rand.Intn(transport.MaxAddressLength - 1)),
+		ServerAddr:      backend.GenerateRandomStringSequence(rand.Intn(transport.MaxAddressLength - 1)),
 		Hops:            hops,
-		SDK:             generateRandomStringSequence(rand.Intn(transport.MaxSDKVersionLength - 1)),
+		SDK:             backend.GenerateRandomStringSequence(rand.Intn(transport.MaxSDKVersionLength - 1)),
 		Connection:      uint8(rand.Intn(256)),
 		NearbyRelays:    nearRelays,
 		Platform:        uint8(rand.Intn(256)),
