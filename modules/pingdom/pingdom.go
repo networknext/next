@@ -157,8 +157,6 @@ func (pc *PingdomClient) GetUptimeForIDs(ctx context.Context, portalID int, serv
 				return
 			}
 
-			core.Debug("portal summary (%d)\n\t%+v\n", len(portalSummary), portalSummary)
-
 			var latestPortalTimestamp int64
 			var portalUptimePercentage float64
 			var completeHour bool
