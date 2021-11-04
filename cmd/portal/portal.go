@@ -8,8 +8,9 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -20,16 +21,12 @@ import (
 	"golang.org/x/oauth2"
 	"gopkg.in/auth0.v4/management"
 
-	gcplogging "cloud.google.com/go/logging"
-	"cloud.google.com/go/profiler"
-
 	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 
-	"github.com/networknext/backend/modules/backend" // todo: not a good name for a module
+	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/config"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
-	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
@@ -52,63 +49,29 @@ const (
 )
 
 func main() {
-	fmt.Printf("portal: Git Hash: %s - Commit: %s\n", sha, commitMessage)
+	os.Exit(mainReturnWithCode())
+}
 
-	ctx := context.Background()
+func mainReturnWithCode() int {
+	serviceName := "portal"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
-	// Configure logging
-	logger := log.NewLogfmtLogger(os.Stdout)
+	// TODO: uncomment for status handler
+	// est, _ := time.LoadLocation("EST")
+	// startTime := time.Now().In(est)
 
-	// Stackdriver Logging
-	{
-		var enableSDLogging bool
-		enableSDLoggingString, ok := os.LookupEnv("ENABLE_STACKDRIVER_LOGGING")
-		if ok {
-			var err error
-			enableSDLogging, err = strconv.ParseBool(enableSDLoggingString)
-			if err != nil {
-				level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_LOGGING", "msg", "could not parse", "err", err)
-				os.Exit(1)
-			}
-		}
+	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
-		if enableSDLogging {
-			if projectID, ok := os.LookupEnv("GOOGLE_PROJECT_ID"); ok {
-				loggingClient, err := gcplogging.NewClient(ctx, projectID)
-				if err != nil {
-					level.Error(logger).Log("err", err)
-					os.Exit(1)
-				}
+	logger := log.NewNopLogger()
 
-				logger = logging.NewStackdriverLogger(loggingClient, "portal")
-			}
-		}
-	}
+	// Setup the service
+	gcpProjectID := backend.GetGCPProjectID()
+	gcpOK := gcpProjectID != ""
 
-	{
-		switch os.Getenv("BACKEND_LOG_LEVEL") {
-		case "none":
-			logger = level.NewFilter(logger, level.AllowNone())
-		case level.ErrorValue().String():
-			logger = level.NewFilter(logger, level.AllowError())
-		case level.WarnValue().String():
-			logger = level.NewFilter(logger, level.AllowWarn())
-		case level.InfoValue().String():
-			logger = level.NewFilter(logger, level.AllowInfo())
-		case level.DebugValue().String():
-			logger = level.NewFilter(logger, level.AllowDebug())
-		default:
-			logger = level.NewFilter(logger, level.AllowWarn())
-		}
-
-		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
-	}
-
-	// Get env
-	env, ok := os.LookupEnv("ENV")
-	if !ok {
-		level.Error(logger).Log("err", "ENV not set")
-		os.Exit(1)
+	env, err := backend.GetEnv()
+	if err != nil {
+		core.Error("error getting env: %v", err)
+		return 1
 	}
 
 	// Get redis connections
@@ -116,85 +79,79 @@ func main() {
 	redisPassword := envvar.Get("REDIS_PASSWORD", "")
 	redisMaxIdleConns, err := envvar.GetInt("REDIS_MAX_IDLE_CONNS", 5)
 	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
+		core.Error("failed to parse REDIS_MAX_IDLE_CONNS: %v", err)
+		return 1
 	}
 	redisMaxActiveConns, err := envvar.GetInt("REDIS_MAX_ACTIVE_CONNS", 64)
 	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
+		core.Error("failed to parse REDIS_MAX_ACTIVE_CONNS: %v", err)
+		return 1
 	}
 
 	redisPoolTopSessions := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolTopSessions); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_TOP_SESSIONS", "err", err)
-		os.Exit(1)
+		core.Error("failed to validate redis pool for top sessions: %v", err)
+		return 1
 	}
 
 	redisPoolSessionMap := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionMap); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_MAP", "err", err)
-		os.Exit(1)
+		core.Error("failed to validate redis pool for session map: %v", err)
+		return 1
 	}
 
 	redisPoolSessionMeta := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionMeta); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_META", "err", err)
-		os.Exit(1)
+		core.Error("failed to validate redis pool for session meta: %v", err)
+		return 1
 	}
 
 	redisPoolSessionSlices := storage.NewRedisPool(redisHostname, redisPassword, redisMaxIdleConns, redisMaxActiveConns)
 	if err := storage.ValidateRedisPool(redisPoolSessionSlices); err != nil {
-		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
-		os.Exit(1)
+		core.Error("failed to validate redis pool for session slices: %v", err)
+		return 1
 	}
 
+	// Get Auth0 config
 	auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
 	if auth0Issuer == "" {
-		level.Error(logger).Log("envvar", "AUTH0_ISSUER", "not set")
-		os.Exit(1)
+		core.Error("AUTH0_ISSUER not set")
+		return 1
 	}
 
 	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
 	if auth0Domain == "" {
-		level.Error(logger).Log("envvar", "AUTH0_DOMAIN", "not set")
-		os.Exit(1)
+		core.Error("AUTH0_DOMAIN not set")
+		return 1
 	}
 
 	auth0ClientID := envvar.Get("AUTH0_CLIENTID", "")
 	if auth0ClientID == "" {
-		level.Error(logger).Log("envvar", "AUTH0_CLIENTID", "not set")
-		os.Exit(1)
+		core.Error("AUTH0_CLIENTID not set")
+		return 1
 	}
+
+	auth0ClientSecret := envvar.Get("AUTH0_CLIENTSECRET", "")
 
 	manager, err := management.New(
 		auth0Domain,
 		auth0ClientID,
-		os.Getenv("AUTH0_CLIENTSECRET"),
+		auth0ClientSecret,
 	)
 	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
+		core.Error("failed to create Auth0 manager: %v", err)
+		return 1
 	}
 
 	var jobManager storage.JobManager = manager.Job
 	var roleManager storage.RoleManager = manager.Role
 	var userManager storage.UserManager = manager.User
 
-	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
-
 	db, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
+		core.Error("failed to create storer: %v", err)
+		return 1
 	}
-
-	// switch db.(type) {
-	// case *storage.SQL:
-	// 	if env == "local" {
-	// 		err = storage.SeedSQLStorage(ctx, db)
-	// 	}
-	// }
 
 	// Setup feature config for bigtable
 	var featureConfig config.Config
@@ -215,7 +172,7 @@ func main() {
 		// Emulator is used for local testing
 		// Requires that emulator has been started in another terminal to work as intended
 		gcpProjectID = "local"
-		level.Info(logger).Log("msg", "Detected bigtable emulator host")
+		core.Debug("detected bigtable emulator host")
 	}
 
 	useBigtable := featureConfig.FeatureEnabled(config.FEATURE_BIGTABLE) && (gcpOK || btEmulatorOK)
@@ -235,83 +192,60 @@ func main() {
 		// Create a bigtable admin for setup
 		btAdmin, err := storage.NewBigTableAdmin(ctx, gcpProjectID, btInstanceID)
 		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
+			core.Error("failed to create bigtable admin: %v", err)
+			return 1
 		}
 
 		// Check if the table exists in the instance
 		tableExists, err := btAdmin.VerifyTableExists(ctx, btTableName)
 		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
+			core.Error("failed to verify if bigtable table %s exists: %v", btTableName, err)
+			return 1
 		}
 
 		if !tableExists {
-			level.Error(logger).Log("table", btTableName, "err", "Table does not exist in Bigtable instance. Create the table before starting the portal")
-			os.Exit(1)
+			core.Error("Table %s does not exist in Bigtable instance. Create the table before starting the portal", btTableName)
+			return 1
 		}
 
 		// Close the admin client
 		if err = btAdmin.Close(); err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
+			core.Error("failed to close the bigtable admin: %v", err)
+			return 1
 		}
 
 		// Create a standard client for writing to the table
 		btClient, err = storage.NewBigTable(ctx, gcpProjectID, btInstanceID, btTableName)
 		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
+			core.Error("failed to create bigtable client: %v", err)
+			return 1
 		}
 	}
 
 	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
 	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
+		core.Error("failed to get metrics handler: %v", err)
+		return 1
 	}
 
 	btMetrics, err := metrics.NewBigTableMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create bigtable metrics", "err", err)
-		os.Exit(1)
+		core.Error("failed to create bigtable metrics: %v", err)
+		return 1
 	}
 
-	// Configure all GCP related services if the GOOGLE_PROJECT_ID is set
-	// GCP VMs actually get populated with the GOOGLE_APPLICATION_CREDENTIALS
-	// on creation so we can use that for the default then
 	if gcpOK {
 		// Stackdriver Profiler
-		{
-			var enableSDProfiler bool
-			enableSDProfilerString, ok := os.LookupEnv("ENABLE_STACKDRIVER_PROFILER")
-			if ok {
-				enableSDProfiler, err = strconv.ParseBool(enableSDProfilerString)
-				if err != nil {
-					level.Error(logger).Log("envvar", "ENABLE_STACKDRIVER_PROFILER", "msg", "could not parse", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			if enableSDProfiler {
-				// Set up StackDriver profiler
-				if err := profiler.Start(profiler.Config{
-					Service:        "portal",
-					ServiceVersion: env,
-					ProjectID:      gcpProjectID,
-					MutexProfiling: true,
-				}); err != nil {
-					level.Error(logger).Log("msg", "Failed to initialze StackDriver profiler", "err", err)
-					os.Exit(1)
-				}
-			}
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+			core.Error("failed to initialze StackDriver profiler: %v", err)
+			return 1
 		}
 	}
 
 	// if env == "local" {
 	// 	if err = storage.SeedStorage(ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
 	// 		level.Error(logger).Log("err", err)
-	// 		os.Exit(1)
+	// 		return 1
 	// 	}
 	// }
 	// We're not using the route matrix in the portal anymore, because RouteSelection()
@@ -326,7 +260,7 @@ func main() {
 	// 		syncInterval, err := time.ParseDuration(rmsyncinterval)
 	// 		if err != nil {
 	// 			level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
-	// 			os.Exit(1)
+	// 			return 1
 	// 		}
 
 	// 		go func() {
@@ -366,19 +300,20 @@ func main() {
 
 	serviceMetrics, err := metrics.NewBuyerEndpointMetrics(ctx, metricsHandler)
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to create service metrics", "err", err)
-		os.Exit(1)
+		core.Error("failed to create service metrics: %v", err)
+		return 1
 	}
 
-	lookerSecret, ok := os.LookupEnv("LOOKER_SECRET")
-	if !ok {
-		level.Error(logger).Log("err", "env var LOOKER_SECRET must be set")
-		os.Exit(1)
+	lookerSecret := envvar.Get("LOOKER_SECRET", "")
+	if lookerSecret == "" {
+		core.Error("LOOKER_SECRET not set")
+		return 1
 	}
 
-	githubAccessToken, ok := os.LookupEnv("GITHUB_ACCESS_TOKEN")
-	if !ok {
-		level.Error(logger).Log("err", "env var GITHUB_ACCESS_TOKEN must be set")
+	githubAccessToken := envvar.Get("GITHUB_ACCESS_TOKEN", "")
+	if githubAccessToken == "" {
+		core.Error("GITHUB_ACCESS_TOKEN not set")
+		return 1
 	}
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubAccessToken},
@@ -389,14 +324,14 @@ func main() {
 
 	webHookUrl := envvar.Get("SLACK_WEBHOOK_URL", "")
 	if webHookUrl == "" {
-		level.Error(logger).Log("err", "env var SLACK_WEBHOOK_URL must be set")
-		os.Exit(1)
+		core.Error("SLACK_WEBHOOK_URL not set")
+		return 1
 	}
 
 	channel := envvar.Get("SLACK_CHANNEL", "")
 	if channel == "" {
-		level.Error(logger).Log("err", "env var SLACK_CHANNEL must be set")
-		os.Exit(1)
+		core.Error("SLACK_CHANNEL not set")
+		return 1
 	}
 
 	slackClient := notifications.SlackClient{
@@ -411,10 +346,11 @@ func main() {
 
 	authenticationClient, err := notifications.NewAuth0AuthClient(auth0ClientID, auth0Domain)
 	if err != nil {
-		level.Error(logger).Log("err", "failed to create authentication client")
-		os.Exit(1)
+		core.Error("failed to create authentication client: %v", err)
+		return 1
 	}
 
+	// Create auth service
 	authservice := &jsonrpc.AuthService{
 		AuthenticationClient: authenticationClient,
 		HubSpotClient:        hubspotClient,
@@ -430,7 +366,7 @@ func main() {
 		Storage:     db,
 	}
 
-	// Generate Sessions Map Points periodically
+	// Create buyer service
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
 		BigTableCfName:         btCfName,
@@ -454,68 +390,107 @@ func main() {
 		Storage: db,
 	}
 
+	// Setup error channel with wait group to exit from goroutines
+	errChan := make(chan error, 1)
+	wg := &sync.WaitGroup{}
+
 	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
 	if err != nil {
-		level.Error(logger).Log("msg", "error fetching auth0 cert", "err", err)
-		os.Exit(1)
+		core.Error("failed to fetch auth0 cert: %v", err)
+		return 1
 	}
 	keys = newKeys
 
-	go func() {
-		fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
-		if err != nil {
-			level.Error(logger).Log("envvar", "AUTH0_CERT_INTERVAL", "value", fetchAuthCertInterval, "err", err)
-			os.Exit(1)
-		}
+	fetchAuthCertInterval, err := envvar.GetDuration("AUTH0_CERT_INTERVAL", time.Minute*10)
+	if err != nil {
+		core.Error("failed to parse AUTH0_CERT_INTERVAL: %v", err)
+		return 1
+	}
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(fetchAuthCertInterval)
 		for {
-			newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
-			if err != nil {
-				continue
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
+				if err != nil {
+					core.Error("failed to fetch auth0 cert: %v", err)
+					continue
+				}
+				keys = newKeys
 			}
-			keys = newKeys
-			time.Sleep(fetchAuthCertInterval)
 		}
 	}()
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(time.Hour)
 		for {
-			err := authservice.RefreshAuthRolesCache()
-			if err != nil {
-				continue
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				err := authservice.RefreshAuthRolesCache()
+				if err != nil {
+					core.Error("failed to refresh auth roles cache: %v", err)
+					continue
+				}
 			}
-			time.Sleep(time.Hour)
 		}
 	}()
 
-	go func() {
-		mapGenInterval, err := envvar.GetDuration("SESSION_MAP_INTERVAL", time.Second*1)
-		if err != nil {
-			level.Error(logger).Log("envvar", "SESSION_MAP_INTERVAL", "value", mapGenInterval, "err", err)
-			os.Exit(1)
-		}
+	mapGenInterval, err := envvar.GetDuration("SESSION_MAP_INTERVAL", time.Second*1)
+	if err != nil {
+		core.Error("failed to parse SESSION_MAP_INTERVAL: %v", err)
+		return 1
+	}
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(mapGenInterval)
 		for {
-			if err := buyerService.GenerateMapPointsPerBuyer(ctx); err != nil {
-				level.Error(logger).Log("msg", "error generating sessions map points", "err", err)
-				os.Exit(1)
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := buyerService.GenerateMapPointsPerBuyer(ctx); err != nil {
+					core.Error("failed to generate session map points")
+					errChan <- err
+					return
+				}
 			}
-			time.Sleep(mapGenInterval)
 		}
 	}()
 
-	go func() {
-		fetchReleaseNotesInterval, err := envvar.GetDuration("RELEASE_NOTES_INTERVAL", time.Second*30)
-		if err != nil {
-			level.Error(logger).Log("envvar", "RELEASE_NOTES_INTERVAL", "value", fetchReleaseNotesInterval, "err", err)
-			os.Exit(1)
-		}
+	fetchReleaseNotesInterval, err := envvar.GetDuration("RELEASE_NOTES_INTERVAL", time.Second*30)
+	if err != nil {
+		core.Error("failed to parse RELEASE_NOTES_INTERVAL: %v", err)
+		return 1
+	}
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(fetchReleaseNotesInterval)
 		for {
-			if err := buyerService.FetchReleaseNotes(ctx); err != nil {
-				level.Error(logger).Log("msg", "error fetching today's release notes", "err", err)
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := buyerService.FetchReleaseNotes(ctx); err != nil {
+					core.Error("failed to fetch today's release notes: %v", err)
+				}
 			}
-			time.Sleep(fetchReleaseNotesInterval)
 		}
 	}()
 
@@ -570,15 +545,14 @@ func main() {
 	// 	}
 	// }()
 
-	go func() {
-		port, ok := os.LookupEnv("PORT")
-		if !ok {
-			level.Error(logger).Log("err", "env var PORT must be set")
-			os.Exit(1)
-		}
+	port := envvar.Get("PORT", "")
+	if port == "" {
+		core.Error("PORT not set")
+		return 1
+	}
 
-		level.Info(logger).Log("msg", fmt.Sprintf("Starting portal on port %s", port))
-
+	// Start HTTP Server
+	{
 		s := rpc.NewServer()
 		s.RegisterInterceptFunc(func(i *rpc.RequestInfo) *http.Request {
 			user := i.Request.Context().Value(middleware.Keys.UserKey)
@@ -624,34 +598,27 @@ func main() {
 		s.RegisterService(&configService, "")
 		s.RegisterService(authservice, "")
 
-		relayFrontEnd, ok := os.LookupEnv("RELAY_FRONTEND")
-		if !ok {
-			level.Error(logger).Log("err", "RELAY_FRONTEND environment variable not set")
-			os.Exit(1)
+		relayFrontEnd := envvar.Get("RELAY_FRONTEND", "")
+		if relayFrontEnd == "" {
+			core.Error("RELAY_FRONTEND not set")
+			return 1
 		}
 
-		relayGateway, ok := os.LookupEnv("RELAY_GATEWAY")
-		if !ok {
-			level.Error(logger).Log("err", "RELAY_GATEWAY environment variable not set")
-			os.Exit(1)
+		relayGateway := envvar.Get("RELAY_GATEWAY", "")
+		if relayGateway == "" {
+			core.Error("RELAY_GATEWAY not set")
+			return 1
 		}
 
-		relayForwarder, ok := os.LookupEnv("RELAY_FORWARDER")
-		if !ok {
-			level.Error(logger).Log("err", "RELAY_FORWARDER environment variable not set")
-			os.Exit(1)
+		relayForwarder := envvar.Get("RELAY_FORWARDER", "")
+		if relayForwarder == "" {
+			core.Error("RELAY_FORWARDER not set")
 		}
 
-		env, ok := os.LookupEnv("ENV")
-		if !ok {
-			level.Error(logger).Log("err", "ENV environment variable not set")
-			os.Exit(1)
-		}
-
-		mondayApiKey, ok := os.LookupEnv("MONDAY_API_KEY")
-		if !ok {
-			level.Error(logger).Log("err", "MONDAY_API_KEY environment variable not set")
-			os.Exit(1)
+		mondayApiKey := envvar.Get("MONDAY_API_KEY", "")
+		if mondayApiKey == "" {
+			core.Error("MONDAY_API_KEY not set")
+			return 1
 		}
 
 		s.RegisterService(&jsonrpc.RelayFleetService{
@@ -668,12 +635,12 @@ func main() {
 			Logger: logger,
 		}, "")
 
-		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+		allowedOrigins := envvar.Get("ALLOWED_ORIGINS", "")
 
 		httpTimeout, err := envvar.GetDuration("HTTP_TIMEOUT", time.Second*40)
 		if err != nil {
-			level.Error(logger).Log("envvar", "HTTP_TIMEOUT", "value", httpTimeout, "err", err)
-			os.Exit(1)
+			core.Error("failed to parse HTTP_TIMEOUT: %v", err)
+			return 1
 		}
 
 		r := mux.NewRouter()
@@ -684,44 +651,61 @@ func main() {
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			core.Error("failed to parse FEATURE_ENABLE_PPROF: %v", err)
 		}
 		if enablePProf {
 			r.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 		}
 
-		level.Info(logger).Log("addr", ":"+port)
+		fmt.Printf("starting http server on port %s\n", port)
 
-		// If the port is set to 443 then build the certificates and run a TLS-enabled HTTP server
-		if port == "443" {
-			cert, err := tls.X509KeyPair(transport.TLSCertificate, transport.TLSPrivateKey)
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
+		go func() {
+			// If the port is set to 443 then build the certificates and run a TLS-enabled HTTP server
+			if port == "443" {
+				cert, err := tls.X509KeyPair(transport.TLSCertificate, transport.TLSPrivateKey)
+				if err != nil {
+					core.Error("failed to create TSL cert: %v", err)
+					errChan <- err
+				}
+
+				server := &http.Server{
+					Addr:      ":" + port,
+					TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}},
+					Handler:   r,
+				}
+
+				err = server.ListenAndServeTLS("", "")
+				if err != nil {
+					core.Error("failed to start TLS-enabled HTTP server: %v", err)
+					errChan <- err
+				}
+			} else {
+				// Fall through to running on any other port defined with TLS disabled
+				err = http.ListenAndServe(":"+port, r)
+				if err != nil {
+					core.Error("failed to start HTTP server: %v", err)
+					errChan <- err
+				}
 			}
+		}()
+	}
 
-			server := &http.Server{
-				Addr:      ":" + port,
-				TLSConfig: &tls.Config{Certificates: []tls.Certificate{cert}},
-				Handler:   r,
-			}
+	// Wait for shutdown signal
+	termChan := make(chan os.Signal, 1)
+	signal.Notify(termChan, os.Interrupt, syscall.SIGTERM)
 
-			err = server.ListenAndServeTLS("", "")
-			if err != nil {
-				level.Error(logger).Log("err", err)
-				os.Exit(1)
-			}
-		}
+	select {
+	case <-termChan:
+		fmt.Println("received shutdown signal")
+		ctxCancelFunc()
 
-		// Fall through to running on any other port defined with TLS disabled
-		err = http.ListenAndServe(":"+port, r)
-		if err != nil {
-			level.Error(logger).Log("err", err)
-			os.Exit(1)
-		}
-	}()
+		// Wait for essential goroutines to finish up
+		wg.Wait()
 
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
+		fmt.Println("successfully shutdown")
+		return 0
+	case <-errChan: // Exit with an error code of 1 if we receive any errors from goroutines
+		ctxCancelFunc()
+		return 1
+	}
 }
