@@ -32,12 +32,16 @@
 
 // #define NEXT_EXPERIMENTAL 1
 
+#ifndef NEXT_PACKET_TAGGING
+#define NEXT_PACKET_TAGGING                                       1
+#endif // #if NEXT_PACKET_TAGGING
+
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.0.17"
+    #define NEXT_VERSION_FULL                              "4.0.18"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                                0
-    #define NEXT_VERSION_PATCH_INT                               17
+    #define NEXT_VERSION_PATCH_INT                               18
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -239,7 +243,9 @@ struct next_client_stats_t
     NEXT_BOOL reported;
     NEXT_BOOL fallback_to_direct;
     NEXT_BOOL high_frequency_pings;
-    float direct_rtt;
+    float direct_min_rtt;
+    float direct_max_rtt;
+    float direct_prime_rtt;         // second largest direct rtt value seen in the last 10 second interval. for approximating P99 etc.
     float direct_jitter;
     float direct_packet_loss;
     float next_rtt;
@@ -307,7 +313,9 @@ struct next_server_stats_t
     NEXT_BOOL multipath;
     NEXT_BOOL reported;
     NEXT_BOOL fallback_to_direct;
-    float direct_rtt;
+    float direct_min_rtt;
+    float direct_max_rtt;
+    float direct_prime_rtt;
     float direct_jitter;
     float direct_packet_loss;
     float next_rtt;
