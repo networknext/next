@@ -2,8 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"expvar"
+	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -11,9 +17,20 @@ import (
 	"github.com/networknext/backend/modules/backend"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/pingdom"
+	"github.com/networknext/backend/modules/transport"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/go-kit/kit/log"
+	"github.com/gorilla/mux"
+)
+
+var (
+	buildtime     string
+	commitMessage string
+	sha           string
+	tag           string
 )
 
 func main() {
@@ -21,13 +38,17 @@ func main() {
 }
 
 func mainReturnWithCode() int {
+	serviceName := "pingdom"
+	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
+
+	est, _ := time.LoadLocation("EST")
+	startTime := time.Now().In(est)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// DEBUG: set default value to ""
-	pingdomApiToken := envvar.Get("PINGDOM_API_TOKEN", "nEVIN5R8WjzcRDEO6FA6wMwjBgla63NqNbqZ2dX-D8TTtPUF_3sGAqg_d0db2OPxkdCdMh8")
-	if pingdomApiToken == "" {
-		core.Error("PINGDOM_API_TOKEN not set")
+	env, err := backend.GetEnv()
+	if err != nil {
+		core.Error("error getting env: %v", err)
 		return 1
 	}
 
@@ -39,6 +60,38 @@ func mainReturnWithCode() int {
 
 	// DEBUG
 	gcpProjectID = "network-next-v3-dev"
+
+	logger := log.NewNopLogger()
+
+	// Get metrics handler
+	metricsHandler, err := backend.GetMetricsHandler(ctx, logger, gcpProjectID)
+	if err != nil {
+		core.Error("failed to get metrics handler: %v", err)
+		return 1
+	}
+
+	// Create pingdom metrics
+	pingdomMetrics, err := metrics.NewPingdomMetrics(ctx, metricsHandler, serviceName, "pingdom", "Pingdom")
+	if err != nil {
+		core.Error("failed to create pingdom metrics: %v", err)
+		return 1
+	}
+
+	// DEBUG: change to !=
+	if gcpProjectID == "" {
+		// Stackdriver Profiler
+		if err := backend.InitStackDriverProfiler(gcpProjectID, serviceName, env); err != nil {
+			core.Error("failed to initialze StackDriver profiler: %v", err)
+			return 1
+		}
+	}
+
+	// DEBUG: set default value to ""
+	pingdomApiToken := envvar.Get("PINGDOM_API_TOKEN", "nEVIN5R8WjzcRDEO6FA6wMwjBgla63NqNbqZ2dX-D8TTtPUF_3sGAqg_d0db2OPxkdCdMh8")
+	if pingdomApiToken == "" {
+		core.Error("PINGDOM_API_TOKEN not set")
+		return 1
+	}
 
 	bqClient, err := bigquery.NewClient(context.Background(), gcpProjectID)
 	if err != nil {
@@ -66,7 +119,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	pingdomClient, err := pingdom.NewPingdomClient(pingdomApiToken, bqClient, gcpProjectID, bqDatasetName, bqTableName, chanSize)
+	pingdomClient, err := pingdom.NewPingdomClient(pingdomApiToken, pingdomMetrics, bqClient, gcpProjectID, bqDatasetName, bqTableName, chanSize)
 	if err != nil {
 		core.Error("failed to create pingdom client: %v", err)
 		return 1
@@ -114,6 +167,98 @@ func mainReturnWithCode() int {
 	// Start the goroutine for inserting uptime data to BigQuery
 	wg.Add(1)
 	go pingdomClient.WriteLoop(ctx, &wg)
+
+	// Setup the status handler info
+	statusData := &metrics.PingdomStatus{}
+	var statusMutex sync.RWMutex
+
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				pingdomMetrics.PingdomServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
+				pingdomMetrics.PingdomServiceMetrics.MemoryAllocated.Set(memoryUsed())
+
+				newStatusData := &metrics.PingdomStatus{}
+
+				// Service Information
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+
+				// Service Metrics
+				newStatusData.Goroutines = int(pingdomMetrics.PingdomServiceMetrics.Goroutines.Value())
+				newStatusData.MemoryAllocated = pingdomMetrics.PingdomServiceMetrics.MemoryAllocated.Value()
+
+				// Success Metrics
+				newStatusData.CreatePingdomUptime = int(pingdomMetrics.CreatePingdomUptime.Value())
+				newStatusData.BigQueryWriteSuccess = int(pingdomMetrics.BigQueryWriteSuccess.Value())
+
+				// Error Metrics
+				newStatusData.PingdomAPICallFailure = int(pingdomMetrics.ErrorMetrics.PingdomAPICallFailure.Value())
+				newStatusData.BigQueryReadFailure = int(pingdomMetrics.ErrorMetrics.BigQueryReadFailure.Value())
+				newStatusData.BigQueryWriteFailure = int(pingdomMetrics.ErrorMetrics.BigQueryWriteFailure.Value())
+				newStatusData.BadSummaryPerformanceRequest = int(pingdomMetrics.ErrorMetrics.BadSummaryPerformanceRequest.Value())
+
+				statusMutex.Lock()
+				statusData = newStatusData
+				statusMutex.Unlock()
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
+
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
+	// Start HTTP server
+	{
+		port := envvar.Get("PORT", "41006")
+		if port == "" {
+			core.Error("PORT not set")
+			return 1
+		}
+
+		fmt.Printf("starting http server on port %s\n", port)
+
+		router := mux.NewRouter()
+		router.HandleFunc("/health", transport.HealthHandlerFunc())
+		router.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, []string{}))
+		router.HandleFunc("/status", serveStatusFunc).Methods("GET")
+		router.Handle("/debug/vars", expvar.Handler())
+
+		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
+		if err != nil {
+			core.Error("could not parse FEATURE_ENABLE_PPROF: %v", err)
+		}
+		if enablePProf {
+			router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+		}
+
+		go func() {
+			err := http.ListenAndServe(":"+port, router)
+			if err != nil {
+				core.Error("error starting http server: %v", err)
+				errChan <- err
+			}
+		}()
+	}
 
 	// Wait for shutdown signal
 	termChan := make(chan os.Signal, 1)

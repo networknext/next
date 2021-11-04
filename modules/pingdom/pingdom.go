@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/metrics"
 
 	"cloud.google.com/go/bigquery"
 	gopingdom "github.com/russellcardullo/go-pingdom/pingdom"
@@ -36,8 +37,9 @@ func (entry *PingdomUptime) Save() (map[string]bigquery.Value, string, error) {
 }
 
 type PingdomClient struct {
-	client     *gopingdom.Client
-	uptimeChan chan *PingdomUptime
+	client         *gopingdom.Client
+	pingdomMetrics *metrics.PingdomMetrics
+	uptimeChan     chan *PingdomUptime
 
 	bqClient      *bigquery.Client
 	tableInserter *bigquery.Inserter
@@ -46,7 +48,7 @@ type PingdomClient struct {
 	tableName     string
 }
 
-func NewPingdomClient(apiToken string, bqClient *bigquery.Client, gcpProjectID string, datasetName string, tableName string, chanSize int) (*PingdomClient, error) {
+func NewPingdomClient(apiToken string, pingdomMetrics *metrics.PingdomMetrics, bqClient *bigquery.Client, gcpProjectID string, datasetName string, tableName string, chanSize int) (*PingdomClient, error) {
 	client, err := gopingdom.NewClientWithConfig(gopingdom.ClientConfig{
 		APIToken: apiToken,
 	})
@@ -63,13 +65,14 @@ func NewPingdomClient(apiToken string, bqClient *bigquery.Client, gcpProjectID s
 	tableInserter := bqClient.Dataset(datasetName).Table(tableName).Inserter()
 
 	return &PingdomClient{
-		client:        client,
-		uptimeChan:    uptimeChan,
-		bqClient:      bqClient,
-		tableInserter: tableInserter,
-		gcpProjectID:  gcpProjectID,
-		datasetName:   datasetName,
-		tableName:     tableName,
+		client:         client,
+		pingdomMetrics: pingdomMetrics,
+		uptimeChan:     uptimeChan,
+		bqClient:       bqClient,
+		tableInserter:  tableInserter,
+		gcpProjectID:   gcpProjectID,
+		datasetName:    datasetName,
+		tableName:      tableName,
 	}, nil
 }
 
@@ -77,6 +80,7 @@ func NewPingdomClient(apiToken string, bqClient *bigquery.Client, gcpProjectID s
 func (pc *PingdomClient) GetIDForHostname(hostname string) (int, error) {
 	checks, err := pc.client.Checks.List()
 	if err != nil {
+		pc.pingdomMetrics.ErrorMetrics.PingdomAPICallFailure.Add(1)
 		return -1, fmt.Errorf("GetIDForHostname(): failed to get pingdom checks: %v", err)
 	}
 
@@ -97,6 +101,7 @@ func (pc *PingdomClient) GetLatestTimestamp(ctx context.Context) (int64, error) 
 	q := pc.bqClient.Query(latestTimestampQuery)
 	it, err := q.Read(ctx)
 	if err != nil {
+		pc.pingdomMetrics.ErrorMetrics.BigQueryReadFailure.Add(1)
 		return 0, fmt.Errorf("GetLatestTimestamp(): failed to read from BigQuery using query %s: %v", latestTimestampQuery, err)
 	}
 
@@ -224,6 +229,7 @@ func (pc *PingdomClient) GetUptimeForIDs(ctx context.Context, portalID int, serv
 			}
 
 			pc.uptimeChan <- uptime
+			pc.pingdomMetrics.CreatePingdomUptime.Add(1)
 		}
 	}
 }
@@ -244,10 +250,12 @@ func (pc *PingdomClient) WriteLoop(ctx context.Context, wg *sync.WaitGroup) {
 			uptimeBuffer = append(uptimeBuffer, uptime)
 
 			if err := pc.tableInserter.Put(context.Background(), uptimeBuffer); err != nil {
+				pc.pingdomMetrics.ErrorMetrics.BigQueryWriteFailure.Add(float64(len(uptimeBuffer)))
 				core.Error("failed to write pingdom uptime to BigQuery: %v", err)
 				continue
 			}
 
+			pc.pingdomMetrics.BigQueryWriteSuccess.Add(float64(len(uptimeBuffer)))
 			uptimeBuffer = uptimeBuffer[:0]
 		}
 	}
@@ -282,6 +290,7 @@ func (pc *PingdomClient) getSummary(id int, latestTimestamp int64) ([]gopingdom.
 
 	req, err := pc.client.NewRequest("GET", "/summary.performance/"+strconv.Itoa(id), perfRequest)
 	if err != nil {
+		pc.pingdomMetrics.ErrorMetrics.BadSummaryPerformanceRequest.Add(1)
 		err = fmt.Errorf("getSummary(): invalid summary performance request: %v", err)
 		return []gopingdom.SummaryPerformanceSummary{}, err
 	}
@@ -290,6 +299,7 @@ func (pc *PingdomClient) getSummary(id int, latestTimestamp int64) ([]gopingdom.
 
 	_, err = pc.client.Do(req, summary)
 	if err != nil {
+		pc.pingdomMetrics.ErrorMetrics.PingdomAPICallFailure.Add(1)
 		err = fmt.Errorf("getSummary(): failed to get summary performance map: %v", err)
 		return []gopingdom.SummaryPerformanceSummary{}, err
 	}
