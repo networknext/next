@@ -36,14 +36,6 @@ blocks:
           commands:
             - make build-billing-artifacts-staging
             - make publish-billing-artifacts-staging
-        - name: Beacon
-          commands:
-            - make build-beacon-artifacts-staging
-            - make publish-beacon-artifacts-staging
-        - name: Beacon Inserter
-          commands:
-            - make build-beacon-inserter-artifacts-staging
-            - make publish-beacon-inserter-artifacts-staging
         - name: Analytics Pusher
           commands:
             - make build-analytics-pusher-artifacts-staging
@@ -88,14 +80,6 @@ blocks:
           commands:
             - make build-server-backend-artifacts-staging
             - make publish-server-backend-artifacts-staging
-        - name: Debug Server Backend
-          commands:
-            - make build-debug-server-backend-artifacts-staging
-            - make publish-debug-server-backend-artifacts-staging
-        - name: Debug Relay Backend
-          commands:
-            - make build-debug-relay-backend-artifacts-staging
-            - make publish-debug-relay-backend-artifacts-staging
         - name: Fake Relays
           commands:
             - make build-fake-relays-artifacts-staging
@@ -116,5 +100,9 @@ blocks:
           commands:
             - make build-relay-pusher-artifacts-staging
             - make publish-relay-pusher-artifacts-staging
+        - name: Pingdom
+          commands:
+            - make build-pingdom-artifacts-staging
+            - make publish-pingdom-artifacts-staging
       secrets:
         - name: google-cloud-platform-staging
