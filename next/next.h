@@ -33,7 +33,7 @@
 // #define NEXT_EXPERIMENTAL 1
 
 #ifndef NEXT_PACKET_TAGGING
-#define NEXT_PACKET_TAGGING                                       1
+#define NEXT_PACKET_TAGGING                                       0
 #endif // #if NEXT_PACKET_TAGGING
 
 #if !defined(NEXT_DEVELOPMENT)
