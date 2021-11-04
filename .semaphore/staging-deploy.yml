@@ -116,5 +116,9 @@ blocks:
           commands:
             - make build-relay-pusher-artifacts-staging
             - make publish-relay-pusher-artifacts-staging
+        - name: Pingdom
+          commands:
+            - make build-pingdom-artifacts-staging
+            - make publish-pingdom-artifacts-staging
       secrets:
         - name: google-cloud-platform-staging

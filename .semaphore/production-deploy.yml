@@ -100,5 +100,9 @@ blocks:
           commands:
             - make build-relay-pusher-artifacts-prod
             - make publish-relay-pusher-artifacts-prod
+        - name: Pingdom
+          commands:
+            - make build-pingdom-artifacts-prod
+            - make publish-pingdom-artifacts-prod
       secrets:
         - name: google-cloud-platform-prod
