@@ -80,14 +80,6 @@ blocks:
           commands:
             - make build-server-backend-artifacts-staging
             - make publish-server-backend-artifacts-staging
-        - name: Debug Server Backend
-          commands:
-            - make build-debug-server-backend-artifacts-staging
-            - make publish-debug-server-backend-artifacts-staging
-        - name: Debug Relay Backend
-          commands:
-            - make build-debug-relay-backend-artifacts-staging
-            - make publish-debug-relay-backend-artifacts-staging
         - name: Fake Relays
           commands:
             - make build-fake-relays-artifacts-staging
