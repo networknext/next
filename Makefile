@@ -582,6 +582,10 @@ deploy-vanity-dev:
 deploy-analytics-pusher-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t analytics-pusher -n analytics_pusher -b gs://development_artifacts
 
+.PHONY: deploy-pingdom-dev
+deploy-pingdom-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t pingdom -n pingdom -b gs://development_artifacts
+
 .PHONY: deploy-portal-crunchers-staging
 deploy-portal-crunchers-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t portal-cruncher -n portal_cruncher -b gs://staging_artifacts
@@ -600,6 +604,10 @@ deploy-vanity-staging:
 deploy-analytics-pusher-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t analytics-pusher -n analytics_pusher -b gs://staging_artifacts
 
+.PHONY: deploy-pingdom-staging
+deploy-pingdom-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t pingdom -n pingdom -b gs://staging_artifacts
+
 .PHONY: deploy-portal-crunchers-prod
 deploy-portal-crunchers-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
@@ -617,6 +625,10 @@ deploy-vanity-prod:
 .PHONY: deploy-analytics-pusher-prod
 deploy-analytics-pusher-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t analytics-pusher -n analytics_pusher -b gs://prod_artifacts
+
+.PHONY: deploy-pingdom-prod
+deploy-pingdom-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t pingdom -n pingdom -b gs://prod_artifacts
 
 .PHONY: build-fake-server-artifacts-staging
 build-fake-server-artifacts-staging: build-fake-server
