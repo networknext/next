@@ -371,7 +371,6 @@ func mainReturnWithCode() int {
 		BigTableCfName:         btCfName,
 		BigTable:               btClient,
 		BigTableMetrics:        btMetrics,
-		Logger:                 logger,
 		RedisPoolTopSessions:   redisPoolTopSessions,
 		RedisPoolSessionMeta:   redisPoolSessionMeta,
 		RedisPoolSessionSlices: redisPoolSessionSlices,
