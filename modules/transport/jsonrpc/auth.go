@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
