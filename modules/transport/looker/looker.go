@@ -72,6 +72,10 @@ type LookerURLOptions struct {
 	LastName        string                            //optional
 }
 
+func (l *LookerClient) FetchCurrentLookerDashboards() {
+	// TODO: Use looker API to pull down all currently started looker dashboard IDs to be used in the admin tool UI
+}
+
 func BuildLookerURL(urlOptions LookerURLOptions) string {
 	// TODO: Verify logic below, this came from here: https://github.com/looker/looker_embed_sso_examples/pull/36 and is NOT an official implementation. That being said, be careful changing it because it works :P
 	jsonPerms, _ := json.Marshal(urlOptions.Permissions)

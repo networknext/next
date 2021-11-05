@@ -3866,7 +3866,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) []looker.Ana
 	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
 
-	sql.Write([]byte("select id, tab_label, premium "))
+	sql.Write([]byte("select id, tab_label, premium, admin_only "))
 	sql.Write([]byte("from analytics_dashboard_categories"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -3884,6 +3884,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) []looker.Ana
 			&category.ID,
 			&category.Label,
 			&category.Premium,
+			&category.Admin,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetAnalyticsDashboardCategories(): error parsing returned row", "err", err)
@@ -3980,7 +3981,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) 
 	category := looker.AnalyticsDashboardCategory{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, tab_label, premium from analytics_dashboard_categories where id = $1"))
+	querySQL.Write([]byte("select id, tab_label, premium, admin_only from analytics_dashboard_categories where id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -3991,6 +3992,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) 
 			&category.ID,
 			&category.Label,
 			&category.Premium,
+			&category.Admin,
 		)
 		switch err {
 		case context.Canceled:
@@ -4024,7 +4026,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 	category := looker.AnalyticsDashboardCategory{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, tab_label, premium from analytics_dashboard_categories where tab_label = $1"))
+	querySQL.Write([]byte("select id, tab_label, premium, admin_only from analytics_dashboard_categories where tab_label = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -4035,6 +4037,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 			&category.ID,
 			&category.Label,
 			&category.Premium,
+			&category.Admin,
 		)
 		switch err {
 		case context.Canceled:
@@ -4311,7 +4314,6 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			fmt.Println(err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4367,7 +4369,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			fmt.Println(err)
+
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4425,7 +4427,6 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) []looker.Analy
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			fmt.Println(err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4483,7 +4484,6 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) []looker.Analytic
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			fmt.Println(err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4541,7 +4541,6 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.Ana
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			fmt.Println(err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4597,7 +4596,6 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDas
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			fmt.Println(err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4653,7 +4651,6 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			fmt.Println(err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4716,7 +4713,6 @@ func (db *SQL) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			fmt.Println(err)
 			return looker.AnalyticsDashboard{}, err
 		}
 
@@ -4779,7 +4775,6 @@ func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (lo
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			fmt.Println(err)
 			return looker.AnalyticsDashboard{}, err
 		}
 

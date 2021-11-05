@@ -52,6 +52,10 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 
+		if err := db.AddAnalyticsDashboardCategory(ctx, "System", true, false); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
 		generalCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "General")
 		if err != nil {
 			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
@@ -68,6 +72,11 @@ func SeedSQLStorage(
 		}
 
 		discoveryCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Discovery")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
+		systemCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "System")
 		if err != nil {
 			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
 		}
@@ -91,6 +100,9 @@ func SeedSQLStorage(
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
 			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 18, true, nextCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Relay Status", 20, false, nextCustomer.DatabaseID, systemCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
 		}

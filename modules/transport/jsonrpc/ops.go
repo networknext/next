@@ -1805,3 +1805,34 @@ func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAna
 	reply.Dashboards = s.Storage.GetAnalyticsDashboards(r.Context())
 	return nil
 }
+
+type AdminDashboard struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type FetchAdminDashboardsArgs struct{}
+
+type FetchAdminDashboardsReply struct {
+	Dashboards []AdminDashboard `json:"dashboards"`
+}
+
+func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashboardsArgs, reply *FetchAdminDashboardsReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
+		return &err
+	}
+
+	dashboards := s.Storage.GetAdminAnalyticsDashboards(r.Context())
+
+	// TODO: Hook up looker client for ops service and pass back dashbaord name with url
+	for _, dashboard := range dashboards {
+		reply.Dashboards = append(reply.Dashboards, AdminDashboard{
+			Name: dashboard.Name,
+			URL:  "",
+		})
+	}
+
+	return nil
+}
