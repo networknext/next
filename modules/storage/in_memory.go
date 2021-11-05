@@ -559,6 +559,7 @@ func (m *InMemory) AddInternalConfig(ctx context.Context, internalConfig core.In
 			m.localBuyers[idx] = buyer
 
 			buyerExists = true
+			break
 		}
 	}
 
@@ -570,7 +571,151 @@ func (m *InMemory) AddInternalConfig(ctx context.Context, internalConfig core.In
 }
 
 func (m *InMemory) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateInternalConfig not yet impemented in InMemory storer")
+	var buyerExists bool
+	var buyer routing.Buyer
+	var idx int
+
+	for i, localBuyer := range m.localBuyers {
+		if localBuyer.ID == buyerID {
+
+			buyer = localBuyer
+			idx = i
+			buyerExists = true
+			break
+		}
+	}
+
+	if !buyerExists {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
+	}
+
+	switch field {
+	case "RouteSelectThreshold":
+		routeSelectThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RouteSelectThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RouteSelectThreshold = routeSelectThreshold
+	case "RouteSwitchThreshold":
+		routeSwitchThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RouteSwitchThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RouteSwitchThreshold = routeSwitchThreshold
+	case "MaxLatencyTradeOff":
+		maxLatencyTradeOff, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MaxLatencyTradeOff: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.MaxLatencyTradeOff = maxLatencyTradeOff
+	case "RTTVeto_Default":
+		rttVetoDefault, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RTTVeto_Default: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RTTVeto_Default = rttVetoDefault
+	case "RTTVeto_PacketLoss":
+		rttVetoPacketLoss, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RTTVeto_PacketLoss: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RTTVeto_PacketLoss = rttVetoPacketLoss
+	case "RTTVeto_Multipath":
+		rttVetoMultipath, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RTTVeto_Multipath: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RTTVeto_Multipath = rttVetoMultipath
+	case "MultipathOverloadThreshold":
+		multipathOverloadThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MultipathOverloadThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.MultipathOverloadThreshold = multipathOverloadThreshold
+	case "TryBeforeYouBuy":
+		tryBeforeYouBuy, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("TryBeforeYouBuy: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.TryBeforeYouBuy = tryBeforeYouBuy
+	case "ForceNext":
+		forceNext, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ForceNext: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.ForceNext = forceNext
+	case "LargeCustomer":
+		largeCustomer, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("LargeCustomer: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.LargeCustomer = largeCustomer
+	case "Uncommitted":
+		uncommitted, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Uncommitted: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.Uncommitted = uncommitted
+	case "HighFrequencyPings":
+		highFrequencyPings, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("HighFrequencyPings: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.HighFrequencyPings = highFrequencyPings
+	case "MaxRTT":
+		maxRTT, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MaxRTT: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.MaxRTT = maxRTT
+	case "RouteDiversity":
+		routeDiversity, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RouteDiversity: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RouteDiversity = routeDiversity
+	case "MultipathThreshold":
+		multipathThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MultipathThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.MultipathThreshold = multipathThreshold
+	case "EnableVanityMetrics":
+		enableVanityMetrics, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("EnableVanityMetrics: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.EnableVanityMetrics = enableVanityMetrics
+	case "ReducePacketLossMinSliceNumber":
+		reducePacketLossMinSliceNumber, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("ReducePacketLossMinSliceNumber: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.ReducePacketLossMinSliceNumber = reducePacketLossMinSliceNumber
+	default:
+		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
+	}
+
+	m.localBuyers[idx] = buyer
+
+	return nil
 }
 
 func (m *InMemory) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {

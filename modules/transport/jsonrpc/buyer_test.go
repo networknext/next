@@ -1693,3 +1693,85 @@ func TestJSAddInternalConfig(t *testing.T) {
 		assert.Equal(t, ic.ReducePacketLossMinSliceNumber, int32(reply.InternalConfig.ReducePacketLossMinSliceNumber))
 	})
 }
+
+func TestUpdateInternalConfig(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("invalid hex buyer id", func(t *testing.T) {
+		var reply jsonrpc.UpdateInternalConfigReply
+		err := svc.UpdateInternalConfig(req, &jsonrpc.UpdateInternalConfigArgs{HexBuyerID: "badHexBuyerID"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid buyer id", func(t *testing.T) {
+		var reply jsonrpc.UpdateInternalConfigReply
+		err := svc.UpdateInternalConfig(req, &jsonrpc.UpdateInternalConfigArgs{BuyerID: 0, Field: "RouteSelectThreshold", Value: "1"}, &reply)
+		assert.Error(t, err)
+	})
+
+	storer.AddInternalConfig(context.Background(), core.NewInternalConfig(), 1)
+
+	int32Fields := []string{"RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
+		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
+		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold",
+		"ReducePacketLossMinSliceNumber"}
+
+	boolFields := []string{"TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted",
+		"HighFrequencyPings", "EnableVanityMetrics"}
+
+	t.Run("invalid int32 fields", func(t *testing.T) {
+		for _, field := range int32Fields {
+			var reply jsonrpc.UpdateInternalConfigReply
+			err := svc.UpdateInternalConfig(req, &jsonrpc.UpdateInternalConfigArgs{BuyerID: 1, Field: field, Value: "a"}, &reply)
+			assert.EqualError(t, fmt.Errorf("Value: %v is not a valid integer type", "a"), err.Error())
+		}
+	})
+
+	t.Run("invalid bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			var reply jsonrpc.UpdateInternalConfigReply
+			err := svc.UpdateInternalConfig(req, &jsonrpc.UpdateInternalConfigArgs{BuyerID: 1, Field: field, Value: "a"}, &reply)
+			assert.EqualError(t, fmt.Errorf("Value: %v is not a valid boolean type", "a"), err.Error())
+		}
+	})
+
+	t.Run("unknown field", func(t *testing.T) {
+		var reply jsonrpc.UpdateInternalConfigReply
+		err := svc.UpdateInternalConfig(req, &jsonrpc.UpdateInternalConfigArgs{BuyerID: 1, Field: "unknown", Value: "a"}, &reply)
+		assert.EqualError(t, fmt.Errorf("Field '%v' does not exist on the InternalConfig type", "unknown"), err.Error())
+	})
+
+	t.Run("success int32 fields", func(t *testing.T) {
+		for _, field := range int32Fields {
+			var reply jsonrpc.UpdateInternalConfigReply
+			err := svc.UpdateInternalConfig(req, &jsonrpc.UpdateInternalConfigArgs{BuyerID: 1, Field: field, Value: "1"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			var reply jsonrpc.UpdateInternalConfigReply
+			err := svc.UpdateInternalConfig(req, &jsonrpc.UpdateInternalConfigArgs{BuyerID: 1, Field: field, Value: "true"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+}

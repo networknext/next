@@ -1036,3 +1036,107 @@ func TestInMemoryAddInternalConfig(t *testing.T) {
 		assert.Equal(t, newConfig, actual)
 	})
 }
+
+func TestUpdateInternalConfig(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	int32Fields := []string{"RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
+	"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
+	"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold",
+	"ReducePacketLossMinSliceNumber"}
+
+	boolFields:= []string{"TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted",
+		"HighFrequencyPings", "EnableVanityMetrics"}
+
+	t.Run("buyer does not exist", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		err := inMemory.UpdateInternalConfig(ctx, 0, "", "")
+		assert.EqualError(t, err, "buyer with reference 0 not found")
+	})
+
+	t.Run("failed int32 fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID:             1,
+			InternalConfig: core.NewInternalConfig(),
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range int32Fields {
+			err := inMemory.UpdateInternalConfig(ctx, expected.ID, field, float64(-1))
+			assert.EqualError(t, fmt.Errorf("%s: %v is not a valid int32 type (%T)", field, float64(-1), float64(-1)), err.Error())
+		}
+	})
+
+	t.Run("failed bool fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID:             1,
+			InternalConfig: core.NewInternalConfig(),
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range boolFields {
+			err := inMemory.UpdateInternalConfig(ctx, expected.ID, field, float64(-1))
+			assert.EqualError(t, fmt.Errorf("%s: %v is not a valid boolean type (%T)", field, float64(-1), float64(-1)), err.Error())
+		}
+	})
+
+	t.Run("unknown field", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID:             1,
+			InternalConfig: core.NewInternalConfig(),
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		err = inMemory.UpdateInternalConfig(ctx, expected.ID, "unknown", float64(-1))
+		assert.EqualError(t, fmt.Errorf("Field '%v' does not exist on the InternalConfig type", "unknown"), err.Error())
+	})
+
+	t.Run("success int32 fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID:             1,
+			InternalConfig: core.NewInternalConfig(),
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range int32Fields {
+			err := inMemory.UpdateInternalConfig(ctx, expected.ID, field, int32(1))
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success bool fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID:             1,
+			InternalConfig: core.NewInternalConfig(),
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range boolFields {
+			err := inMemory.UpdateInternalConfig(ctx, expected.ID, field, true)
+			assert.NoError(t, err)
+		}
+	})
+}
