@@ -384,7 +384,7 @@ func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersR
 type CustomersArgs struct{}
 
 type CustomersReply struct {
-	Customers []customer
+	Customers []customer `json:"customers"`
 }
 
 type customer struct {
@@ -396,9 +396,13 @@ type customer struct {
 }
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("Customers(): %v", err.Error()))
+		return &err
+	}
 
 	customers := s.Storage.Customers(r.Context())
-
 	for _, c := range customers {
 
 		buyerID := ""

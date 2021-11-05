@@ -37,18 +37,20 @@ func NewLookerClient(hostURL string, secret string) (*LookerClient, error) {
 
 // TODO: Get these from storage at some point
 type AnalyticsDashboardCategory struct {
-	ID      int64
-	Label   string
-	Premium bool
+	ID      int64  `json:"id"`
+	Label   string `json:"label"`
+	Premium bool   `json:"premium"`
+	Admin   bool   `json:"admin"`
 }
 
 type AnalyticsDashboard struct {
-	ID           int64
-	Name         string
-	Discovery    bool
-	DashboardID  int64
-	CustomerCode string
-	Category     AnalyticsDashboardCategory
+	ID           int64                      `json:"id"`
+	Name         string                     `json:"name"`
+	Admin        bool                       `json:"admin"`
+	Discovery    bool                       `json:"discovery"`
+	DashboardID  int64                      `json:"dashboard_id"`
+	CustomerCode string                     `json:"customer_code"`
+	Category     AnalyticsDashboardCategory `json:"category"`
 }
 
 type LookerURLOptions struct {

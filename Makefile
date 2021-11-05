@@ -303,7 +303,7 @@ dist:
 
 # Always run sqlite3
 export FEATURE_POSTGRESQL=false
-export JWT_AUDIENCES=S4WGLze2EZCPG9MeZ5509BedlWlHZGFt,kFffnEmuwB3DNfKO8tDnxV1hqQXLbnaZ
+export JWT_AUDIENCES=S4WGLze2EZCPG9MeZ5509BedlWlHZGFt,dJFD1rg3Zd8PYhAXbIb0UCKFJk7IE4ho
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/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
 export SLACK_CHANNEL=portal-test
 export LOOKER_SECRET=d61764ff20f99e672af3ec7fde75531a790acdb6d58bf46dbe55dac06a6019c0

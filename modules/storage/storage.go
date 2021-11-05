@@ -195,7 +195,7 @@ type Storer interface {
 	GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) (looker.AnalyticsDashboardCategory, error)
 
 	// AddAnalyticsDashboardCategory adds a new dashboard category
-	AddAnalyticsDashboardCategory(ctx context.Context, label string, isPremium bool) error
+	AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool) error
 
 	// RemoveAnalyticsDashboardCategory remove a dashboard category by ID
 	RemoveAnalyticsDashboardCategoryByID(ctx context.Context, id int64) error
@@ -220,6 +220,9 @@ type Storer interface {
 
 	// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
 	GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
+
+	// GetAdminAnalyticsDashboards get all admin looker dashboards
+	GetAdminAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
 
 	// GetAnalyticsDashboardByLookerID get looker dashboard by looker id
 	GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) []looker.AnalyticsDashboard

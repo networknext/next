@@ -4060,19 +4060,19 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, label string, isPremium bool) error {
+func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool) error {
 	var sql bytes.Buffer
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	sql.Write([]byte("insert into analytics_dashboard_categories (tab_label, premium) values ($1, $2)"))
+	sql.Write([]byte("insert into analytics_dashboard_categories (tab_label, premium, admin_only) values ($1, $2, $3)"))
 
 	result, err := ExecRetry(
 		ctx,
 		db,
 		sql,
-		label, isPremium,
+		label, isPremium, isAdmin,
 	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error adding analytics dashboard category", "err", err)
@@ -4180,6 +4180,14 @@ func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int6
 		updateSQL.Write([]byte("update analytics_dashboard_categories set premium=$1 where id=$2"))
 		args = append(args, premium, id)
 
+	case "Admin":
+		admin, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboard_categories set admin_only=$1 where id=$2"))
+		args = append(args, admin, id)
+
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
 
@@ -4202,6 +4210,63 @@ func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int6
 	}
 
 	return nil
+}
+
+// GetAdminAnalyticsDashboards get all admin looker dashboards
+func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		return []looker.AnalyticsDashboard{}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.DashboardID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			return []looker.AnalyticsDashboard{}
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}
+		}
+
+		if category.Admin {
+			dashboard.CustomerCode = customer.Code
+			dashboard.Category = category
+
+			dashboards = append(dashboards, dashboard)
+		}
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards
 }
 
 // GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id

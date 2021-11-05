@@ -644,7 +644,7 @@ func (m *InMemory) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, lab
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (m *InMemory) AddAnalyticsDashboardCategory(ctx context.Context, label string, isPremium bool) error {
+func (m *InMemory) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool) error {
 	return fmt.Errorf("AddAnalyticsDashboardCategory not implemented in InMemory storer")
 }
 
@@ -696,6 +696,12 @@ func (m *InMemory) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker
 
 // GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
 func (m *InMemory) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards
+}
+
+// GetAdminAnalyticsDashboards get all admin looker dashboards
+func (m *InMemory) GetAdminAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
 	return dashboards
 }

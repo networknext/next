@@ -2422,7 +2422,7 @@ func (fs *Firestore) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, l
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (fs *Firestore) AddAnalyticsDashboardCategory(ctx context.Context, label string, isPremium bool) error {
+func (fs *Firestore) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool) error {
 	return fmt.Errorf("AddAnalyticsDashboardCategory not implemented in Firestore storer")
 }
 
@@ -2468,6 +2468,12 @@ func (fs *Firestore) GetFreeAnalyticsDashboards(ctx context.Context) []looker.An
 
 // GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
 func (fs *Firestore) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards
+}
+
+// GetAdminAnalyticsDashboards get all admin looker dashboards
+func (fs *Firestore) GetAdminAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
 	return dashboards
 }

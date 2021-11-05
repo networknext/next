@@ -36,6 +36,42 @@ func SeedSQLStorage(
 	// only seed if we're using sqlite3
 	if !pgsql {
 
+		if err := db.AddAnalyticsDashboardCategory(ctx, "General", false, false); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		if err := db.AddAnalyticsDashboardCategory(ctx, "Regional", false, true); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		if err := db.AddAnalyticsDashboardCategory(ctx, "Platform", false, true); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		if err := db.AddAnalyticsDashboardCategory(ctx, "Discovery", false, true); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		generalCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "General")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
+		regionalCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Regional")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
+		_, err = db.GetAnalyticsDashboardCategoryByLabel(ctx, "Platform")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
+		discoveryCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Discovery")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
 		// Add customers
 		// fmt.Println("Adding customers")
 		if err := db.AddCustomer(ctx, routing.Customer{
@@ -46,12 +82,32 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddCustomer() err: %w", err)
 		}
 
+		nextCustomer, err := db.Customer(ctx, "next")
+		if err == nil {
+			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, nextCustomer.DatabaseID, generalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 12, false, nextCustomer.DatabaseID, regionalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 18, true, nextCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+		}
+
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Happy Path",
 			Code:                   "happypath",
 			AutomaticSignInDomains: "happypath.com",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
+		}
+
+		happyPathCustomer, err := db.Customer(ctx, "happypath")
+		if err == nil {
+			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, happyPathCustomer.DatabaseID, generalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
 		}
 
 		if err := db.AddCustomer(ctx, routing.Customer{
