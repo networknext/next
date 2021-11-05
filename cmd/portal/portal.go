@@ -358,7 +358,6 @@ func mainReturnWithCode() int {
 			HTTPHandler: *http.DefaultClient,
 			MembersURI:  fmt.Sprintf("https://%s.api.mailchimp.com/3.0/lists/%s/members", MAILCHIMP_SERVER_PREFIX, MAILCHIMP_LIST_ID),
 		},
-		Logger:      logger,
 		JobManager:  jobManager,
 		RoleManager: roleManager,
 		UserManager: userManager,
