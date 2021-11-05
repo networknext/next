@@ -1527,14 +1527,6 @@ func TestInternalConfig(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	// middleware.SetIsAnonymous(req, true)
-
-	// t.Run("anonymous role", func(t *testing.T) {
-	// 	var reply jsonrpc.InternalConfigReply
-	// 	err := svc.InternalConfig(req, &jsonrpc.InternalConfigArg{}, &reply)
-	// 	assert.NoError(t, err)
-	// })
-
 	middleware.SetIsAnonymous(req, false)
 
 	t.Run("invalid buyer id", func(t *testing.T) {
@@ -1578,6 +1570,111 @@ func TestInternalConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, ic.RouteSelectThreshold, int32(reply.InternalConfig.RouteSelectThreshold))
+		assert.Equal(t, ic.RouteSwitchThreshold, int32(reply.InternalConfig.RouteSwitchThreshold))
+		assert.Equal(t, ic.MaxLatencyTradeOff, int32(reply.InternalConfig.MaxLatencyTradeOff))
+		assert.Equal(t, ic.RTTVeto_Default, int32(reply.InternalConfig.RTTVeto_Default))
+		assert.Equal(t, ic.RTTVeto_Multipath, int32(reply.InternalConfig.RTTVeto_Multipath))
+		assert.Equal(t, ic.RTTVeto_PacketLoss, int32(reply.InternalConfig.RTTVeto_PacketLoss))
+		assert.Equal(t, ic.MultipathOverloadThreshold, int32(reply.InternalConfig.MultipathOverloadThreshold))
+		assert.Equal(t, ic.TryBeforeYouBuy, reply.InternalConfig.TryBeforeYouBuy)
+		assert.Equal(t, ic.ForceNext, reply.InternalConfig.ForceNext)
+		assert.Equal(t, ic.LargeCustomer, reply.InternalConfig.LargeCustomer)
+		assert.Equal(t, ic.Uncommitted, reply.InternalConfig.Uncommitted)
+		assert.Equal(t, ic.MaxRTT, int32(reply.InternalConfig.MaxRTT))
+		assert.Equal(t, ic.HighFrequencyPings, reply.InternalConfig.HighFrequencyPings)
+		assert.Equal(t, ic.RouteDiversity, int32(reply.InternalConfig.RouteDiversity))
+		assert.Equal(t, ic.MultipathThreshold, int32(reply.InternalConfig.MultipathThreshold))
+		assert.Equal(t, ic.EnableVanityMetrics, reply.InternalConfig.EnableVanityMetrics)
+		assert.Equal(t, ic.ReducePacketLossMinSliceNumber, int32(reply.InternalConfig.ReducePacketLossMinSliceNumber))
+	})
+}
+
+func TestJSAddInternalConfig(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("invalid buyer id", func(t *testing.T) {
+		var reply jsonrpc.JSAddInternalConfigReply
+		err := svc.JSAddInternalConfig(req, &jsonrpc.JSAddInternalConfigArgs{BuyerID: "badBuyerID"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("buyer does not exist", func(t *testing.T) {
+		var reply jsonrpc.JSAddInternalConfigReply
+		err := svc.JSAddInternalConfig(req, &jsonrpc.JSAddInternalConfigArgs{BuyerID: "0"}, &reply)
+		assert.Error(t, err)
+	})
+
+	ic := core.InternalConfig{
+		RouteSelectThreshold:           2,
+		RouteSwitchThreshold:           5,
+		MaxLatencyTradeOff:             20,
+		RTTVeto_Default:                -10,
+		RTTVeto_Multipath:              -20,
+		RTTVeto_PacketLoss:             -30,
+		MultipathOverloadThreshold:     500,
+		TryBeforeYouBuy:                false,
+		ForceNext:                      false,
+		LargeCustomer:                  false,
+		Uncommitted:                    false,
+		MaxRTT:                         300,
+		HighFrequencyPings:             true,
+		RouteDiversity:                 0,
+		MultipathThreshold:             25,
+		EnableVanityMetrics:            false,
+		ReducePacketLossMinSliceNumber: 0,
+	}
+
+	jsIC := jsonrpc.JSInternalConfig{
+		RouteSelectThreshold:           int64(ic.RouteSelectThreshold + 1),
+		RouteSwitchThreshold:           int64(ic.RouteSwitchThreshold),
+		MaxLatencyTradeOff:             int64(ic.MaxLatencyTradeOff),
+		RTTVeto_Default:                int64(ic.RTTVeto_Default),
+		RTTVeto_Multipath:              int64(ic.RTTVeto_Multipath),
+		RTTVeto_PacketLoss:             int64(ic.RTTVeto_PacketLoss),
+		MultipathOverloadThreshold:     int64(ic.MultipathOverloadThreshold),
+		TryBeforeYouBuy:                ic.TryBeforeYouBuy,
+		ForceNext:                      ic.ForceNext,
+		LargeCustomer:                  ic.LargeCustomer,
+		Uncommitted:                    ic.Uncommitted,
+		MaxRTT:                         int64(ic.MaxRTT),
+		HighFrequencyPings:             ic.HighFrequencyPings,
+		RouteDiversity:                 int64(ic.RouteDiversity),
+		MultipathThreshold:             int64(ic.MultipathThreshold),
+		EnableVanityMetrics:            ic.EnableVanityMetrics,
+		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
+	}
+
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local-Local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey, InternalConfig: ic})
+
+	t.Run("success", func(t *testing.T) {
+		var jsReply jsonrpc.JSAddInternalConfigReply
+		err := svc.JSAddInternalConfig(req, &jsonrpc.JSAddInternalConfigArgs{BuyerID: "2", InternalConfig: jsIC}, &jsReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.InternalConfigReply
+		err = svc.InternalConfig(req, &jsonrpc.InternalConfigArg{BuyerID: "2"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, ic.RouteSelectThreshold+1, int32(reply.InternalConfig.RouteSelectThreshold))
 		assert.Equal(t, ic.RouteSwitchThreshold, int32(reply.InternalConfig.RouteSwitchThreshold))
 		assert.Equal(t, ic.MaxLatencyTradeOff, int32(reply.InternalConfig.MaxLatencyTradeOff))
 		assert.Equal(t, ic.RTTVeto_Default, int32(reply.InternalConfig.RTTVeto_Default))

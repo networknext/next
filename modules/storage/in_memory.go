@@ -551,7 +551,22 @@ func (m *InMemory) RouteShader(ctx context.Context, buyerID uint64) (core.RouteS
 }
 
 func (m *InMemory) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
-	return fmt.Errorf("AddInternalConfig not yet impemented in InMemory storer")
+	var buyerExists bool
+
+	for idx, buyer := range m.localBuyers {
+		if buyer.ID == buyerID {
+			buyer.InternalConfig = internalConfig
+			m.localBuyers[idx] = buyer
+
+			buyerExists = true
+		}
+	}
+
+	if !buyerExists {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
+	}
+
+	return nil
 }
 
 func (m *InMemory) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {

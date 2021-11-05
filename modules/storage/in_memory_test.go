@@ -1001,3 +1001,38 @@ func TestInMemoryInternalConfig(t *testing.T) {
 		assert.Equal(t, core.NewInternalConfig(), actual)
 	})
 }
+
+func TestInMemoryAddInternalConfig(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	t.Run("buyer does not exist", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		err := inMemory.AddInternalConfig(ctx, core.NewInternalConfig(), 0)
+		assert.EqualError(t, err, "buyer with reference 0 not found")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID:             1,
+			InternalConfig: core.NewInternalConfig(),
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		newConfig := core.NewInternalConfig()
+		newConfig.RouteDiversity = 3
+
+		err = inMemory.AddInternalConfig(ctx, newConfig, expected.ID)
+		assert.NoError(t, err)
+
+		actual, err := inMemory.InternalConfig(ctx, expected.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, newConfig, actual)
+	})
+}
