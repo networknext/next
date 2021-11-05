@@ -2,8 +2,10 @@ package storage_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -952,5 +954,50 @@ func TestInMemorySetDatacenter(t *testing.T) {
 		datacenterInStorage, err := inMemory.Datacenter(ctx, datacenter.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, datacenter, datacenterInStorage)
+	})
+}
+
+func TestInMemoryInternalConfig(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	t.Run("buyer does not exist", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		actual, err := inMemory.InternalConfig(ctx, 0)
+		assert.Equal(t, core.InternalConfig{}, actual)
+		assert.EqualError(t, err, "buyer with reference 0 not found")
+	})
+
+	t.Run("buyer does not have internal config", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		actual, err := inMemory.InternalConfig(ctx, expected.ID)
+		assert.Equal(t, core.InternalConfig{}, actual)
+		assert.EqualError(t, fmt.Errorf("InternalConfig with reference %016x not found", expected.ID), err.Error())
+	})
+
+	t.Run("success", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID:             1,
+			InternalConfig: core.NewInternalConfig(),
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		actual, err := inMemory.InternalConfig(ctx, expected.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, core.NewInternalConfig(), actual)
 	})
 }

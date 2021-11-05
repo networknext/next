@@ -533,7 +533,17 @@ func (m *InMemory) SetSequenceNumber(ctx context.Context, value int64) error {
 }
 
 func (m *InMemory) InternalConfig(ctx context.Context, buyerID uint64) (core.InternalConfig, error) {
-	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not impemented in InMemory storer"))
+	buyer, err := m.Buyer(ctx, buyerID)
+	if err != nil {
+		return core.InternalConfig{}, err
+	}
+
+	emptyInternalConfig := core.InternalConfig{}
+	if buyer.InternalConfig == emptyInternalConfig {
+		return core.InternalConfig{}, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	return buyer.InternalConfig, nil
 }
 
 func (m *InMemory) RouteShader(ctx context.Context, buyerID uint64) (core.RouteShader, error) {
