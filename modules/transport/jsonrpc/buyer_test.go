@@ -1775,3 +1775,51 @@ func TestUpdateInternalConfig(t *testing.T) {
 		}
 	})
 }
+
+func TestRemoveInternalConfig(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("invalid buyer id", func(t *testing.T) {
+		var reply jsonrpc.RemoveInternalConfigReply
+		err := svc.RemoveInternalConfig(req, &jsonrpc.RemoveInternalConfigArg{BuyerID: "badBuyerID"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("unknown buyer id", func(t *testing.T) {
+		var reply jsonrpc.RemoveInternalConfigReply
+		err := svc.RemoveInternalConfig(req, &jsonrpc.RemoveInternalConfigArg{BuyerID: "0"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("remove from buyer without internal config", func(t *testing.T) {
+		var reply jsonrpc.RemoveInternalConfigReply
+		err := svc.RemoveInternalConfig(req, &jsonrpc.RemoveInternalConfigArg{BuyerID: "1"}, &reply)
+		assert.NoError(t, err)
+	})
+
+	storer.AddInternalConfig(context.Background(), core.NewInternalConfig(), 1)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RemoveInternalConfigReply
+		err := svc.RemoveInternalConfig(req, &jsonrpc.RemoveInternalConfigArg{BuyerID: "1"}, &reply)
+		assert.NoError(t, err)
+	})
+}

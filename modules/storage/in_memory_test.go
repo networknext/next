@@ -1043,11 +1043,11 @@ func TestUpdateInternalConfig(t *testing.T) {
 	ctx := context.Background()
 
 	int32Fields := []string{"RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
-	"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
-	"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold",
-	"ReducePacketLossMinSliceNumber"}
+		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
+		"MultipathOverloadThreshold", "MaxRTT", "RouteDiversity", "MultipathThreshold",
+		"ReducePacketLossMinSliceNumber"}
 
-	boolFields:= []string{"TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted",
+	boolFields := []string{"TryBeforeYouBuy", "ForceNext", "LargeCustomer", "Uncommitted",
 		"HighFrequencyPings", "EnableVanityMetrics"}
 
 	t.Run("buyer does not exist", func(t *testing.T) {
@@ -1138,5 +1138,41 @@ func TestUpdateInternalConfig(t *testing.T) {
 			err := inMemory.UpdateInternalConfig(ctx, expected.ID, field, true)
 			assert.NoError(t, err)
 		}
+	})
+}
+
+func TestRemoveInternalConfig(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	t.Run("buyer does not exist", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		err := inMemory.RemoveInternalConfig(ctx, 0)
+		assert.EqualError(t, err, "buyer with reference 0 not found")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID:             1,
+			InternalConfig: core.NewInternalConfig(),
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		ic, err := inMemory.InternalConfig(ctx, expected.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, core.NewInternalConfig(), ic)
+
+		err = inMemory.RemoveInternalConfig(ctx, expected.ID)
+		assert.NoError(t, err)
+
+		ic, err = inMemory.InternalConfig(ctx, expected.ID)
+		assert.Error(t, err)
+		assert.Equal(t, core.InternalConfig{}, ic)
 	})
 }
