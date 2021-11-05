@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis"
-	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
