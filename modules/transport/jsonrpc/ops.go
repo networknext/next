@@ -71,12 +71,6 @@ func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
 		return errors.New("unable to read relay stats version")
 	}
 
-	/*
-		if version != routing.VersionNumberRelayMap {
-			return fmt.Errorf("incorrect relay map version number: %d", version)
-		}
-	*/
-
 	var count uint64
 	if !encoding.ReadUint64(data, &index, &count) {
 		return errors.New("unable to read relay stats count")
@@ -167,8 +161,8 @@ type OpsService struct {
 
 	Logger log.Logger
 
-	// TODO: remove RelayMay
-	RelayMap *RelayStatsMap
+	LookerClient         *looker.LookerClient
+	LookerDashboardCache []looker.LookerDashboard
 }
 
 type CurrentReleaseArgs struct{}
@@ -1789,10 +1783,19 @@ func (s *OpsService) FetchAnalyticsDashboardCategories(r *http.Request, args *Fe
 	return nil
 }
 
+type AnalyticsDashboard struct {
+	ID          int32                             `json:"id"`
+	Name        string                            `json:"name"`
+	Category    looker.AnalyticsDashboardCategory `json:"category"`
+	Customers   []customer                        `json:"customers"`
+	DashboardID int32                             `json:"dashboard_id"`
+	Discovery   bool                              `json:"discovery"`
+}
+
 type FetchAllAnalyticsDashboardsArgs struct{}
 
 type FetchAllAnalyticsDashboardsReply struct {
-	Dashboards []looker.AnalyticsDashboard `json:"dashboards"`
+	Dashboards map[string]AnalyticsDashboard `json:"dashboards"`
 }
 
 func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAnalyticsDashboardsArgs, reply *FetchAllAnalyticsDashboardsReply) error {
@@ -1802,7 +1805,36 @@ func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAna
 		return &err
 	}
 
-	reply.Dashboards = s.Storage.GetAnalyticsDashboards(r.Context())
+	ctx := r.Context()
+
+	reply.Dashboards = make(map[string]AnalyticsDashboard, 0)
+
+	dashboards := s.Storage.GetAnalyticsDashboards(ctx)
+
+	for _, d := range dashboards {
+		dashboardInfo, ok := reply.Dashboards[d.Name]
+		if !ok {
+			dashboardInfo = AnalyticsDashboard{
+				ID:          int32(d.ID),
+				Name:        d.Name,
+				Category:    d.Category,
+				Customers:   make([]customer, 0),
+				DashboardID: int32(d.DashboardID),
+				Discovery:   d.Discovery,
+			}
+		}
+
+		dbCustomer, err := s.Storage.Customer(ctx, d.CustomerCode)
+		if err == nil {
+			dashboardInfo.Customers = append(dashboardInfo.Customers, customer{
+				Code: dbCustomer.Code,
+				Name: dbCustomer.Name,
+			})
+		}
+
+		reply.Dashboards[d.Name] = dashboardInfo
+	}
+
 	return nil
 }
 
@@ -1834,5 +1866,32 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 		})
 	}
 
+	return nil
+}
+
+type FetchAllLookerDashboardsArgs struct{}
+
+type FetchAllLookerDashboardsReply struct {
+	Dashboards []looker.LookerDashboard `json:"dashboards"`
+}
+
+func (s *OpsService) FetchAllLookerDashboards(r *http.Request, args *FetchAllLookerDashboardsArgs, reply *FetchAllLookerDashboardsReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchAllLookerDashboards(): %v", err.Error()))
+		return &err
+	}
+
+	reply.Dashboards = s.LookerDashboardCache
+	return nil
+}
+
+func (s *OpsService) RefreshLookerDashboardCache() error {
+	dashboards, err := s.LookerClient.FetchCurrentLookerDashboards()
+	if err != nil {
+		return err
+	}
+
+	s.LookerDashboardCache = dashboards
 	return nil
 }

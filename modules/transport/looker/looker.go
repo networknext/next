@@ -11,31 +11,48 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/looker-open-source/sdk-codegen/go/rtl"
+	v4 "github.com/looker-open-source/sdk-codegen/go/sdk/v4"
 )
 
 const (
 	LOOKER_SESSION_TIMEOUT = 86400
 	EMBEDDED_USER_GROUP_ID = 3
 	USAGE_DASH_URL         = "/embed/dashboards-next/11"
+	BASE_URL               = "https://networknextexternal.cloud.looker.com"
+	API_VERSION            = "4.0"
+	API_TIMEOUT            = 300
 )
 
 type LookerClient struct {
-	HostURL string
-	Secret  string
+	HostURL     string
+	Secret      string
+	APISettings rtl.ApiSettings
 }
 
-func NewLookerClient(hostURL string, secret string) (*LookerClient, error) {
+func NewLookerClient(hostURL string, secret string, clientID string, apiSecret string) (*LookerClient, error) {
 	if hostURL == "" || secret == "" {
 		return nil, fmt.Errorf("Host and Secret are required")
 	}
 
+	// TODO: Pull these in from environment in portal.go and swap creds for a dedicated API user
+	settings := rtl.ApiSettings{
+		ClientId:     clientID,
+		ClientSecret: apiSecret,
+		ApiVersion:   API_VERSION,
+		VerifySsl:    true,
+		Timeout:      API_TIMEOUT, // TODO: 5 minute timeout is excesive but is good for now
+		BaseUrl:      BASE_URL,
+	}
+
 	return &LookerClient{
-		HostURL: hostURL,
-		Secret:  secret,
+		HostURL:     hostURL,
+		Secret:      secret,
+		APISettings: settings,
 	}, nil
 }
 
-// TODO: Get these from storage at some point
 type AnalyticsDashboardCategory struct {
 	ID      int64  `json:"id"`
 	Label   string `json:"label"`
@@ -72,8 +89,37 @@ type LookerURLOptions struct {
 	LastName        string                            //optional
 }
 
-func (l *LookerClient) FetchCurrentLookerDashboards() {
-	// TODO: Use looker API to pull down all currently started looker dashboard IDs to be used in the admin tool UI
+// TODO: this into a cache to be speed up frontend calls -> ID to name mapping is helpful
+type LookerDashboard struct {
+	ID    int32  `json:"id"`
+	Title string `json:"title"`
+}
+
+func (l *LookerClient) FetchCurrentLookerDashboards() ([]LookerDashboard, error) {
+	dashboardList := make([]LookerDashboard, 0)
+
+	lookerSession := rtl.NewAuthSession(l.APISettings)
+
+	// New instance of LookerSDK
+	sdk := v4.NewLookerSDK(lookerSession)
+
+	// List all Dashboards in Looker
+	dashboards, err := sdk.SearchDashboards(v4.RequestSearchDashboards{}, nil)
+	if err != nil {
+		return dashboardList, err
+	}
+	for _, d := range dashboards {
+		intID, err := strconv.Atoi(*d.Id)
+		if err != nil {
+			continue
+		}
+		dashboardList = append(dashboardList, LookerDashboard{
+			ID:    int32(intID),
+			Title: *d.Title,
+		})
+	}
+
+	return dashboardList, nil
 }
 
 func BuildLookerURL(urlOptions LookerURLOptions) string {
