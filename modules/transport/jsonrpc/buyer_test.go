@@ -34,12 +34,18 @@ func TestBuyersList(t *testing.T) {
 	t.Parallel()
 	var storer = storage.InMemory{}
 
-	storer.AddCustomer(context.Background(), routing.Customer{Name: "Local", Code: "local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local"})
-	storer.AddCustomer(context.Background(), routing.Customer{Name: "Local Local", Code: "local-local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local"})
-	storer.AddCustomer(context.Background(), routing.Customer{Name: "Local Local Local", Code: "local-local-local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 3, CompanyCode: "local-local-local"})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Name: "Local", Code: "local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(context.Background(), routing.Customer{Name: "Local Local", Code: "local-local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(context.Background(), routing.Customer{Name: "Local Local Local", Code: "local-local-local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 3, CompanyCode: "local-local-local"})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		Storage: &storer,
@@ -133,14 +139,22 @@ func TestUserSessions_Serialize(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	storer.AddBuyer(ctx, buyer0)
-	storer.AddBuyer(ctx, buyer7)
-	storer.AddBuyer(ctx, buyer8)
-	storer.AddBuyer(ctx, buyer9)
-	storer.AddCustomer(ctx, customer0)
-	storer.AddCustomer(ctx, customer7)
-	storer.AddCustomer(ctx, customer8)
-	storer.AddCustomer(ctx, customer9)
+	err := storer.AddBuyer(ctx, buyer0)
+	assert.NoError(t, err)
+	err = storer.AddBuyer(ctx, buyer7)
+	assert.NoError(t, err)
+	err = storer.AddBuyer(ctx, buyer8)
+	assert.NoError(t, err)
+	err = storer.AddBuyer(ctx, buyer9)
+	assert.NoError(t, err)
+	err = storer.AddCustomer(ctx, customer0)
+	assert.NoError(t, err)
+	err = storer.AddCustomer(ctx, customer7)
+	assert.NoError(t, err)
+	err = storer.AddCustomer(ctx, customer8)
+	assert.NoError(t, err)
+	err = storer.AddCustomer(ctx, customer9)
+	assert.NoError(t, err)
 
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 5, 5)
@@ -152,8 +166,8 @@ func TestUserSessions_Serialize(t *testing.T) {
 	userID2 := fmt.Sprintf("%d", rawUserID2)
 
 	hash1 := fnv.New64a()
-	_, err := hash1.Write([]byte(userID1))
-	assert.Nil(t, err)
+	_, err = hash1.Write([]byte(userID1))
+	assert.NoError(t, err)
 	userHash1 := hash1.Sum64()
 
 	hash2 := fnv.New64a()
@@ -497,9 +511,12 @@ func TestDatacenterMaps(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	storer.AddBuyer(ctx, buyer)
-	storer.AddCustomer(ctx, customer)
-	storer.AddDatacenter(ctx, datacenter)
+	err := storer.AddBuyer(ctx, buyer)
+	assert.NoError(t, err)
+	err = storer.AddCustomer(ctx, customer)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(ctx, datacenter)
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		Storage: &storer,
@@ -583,13 +600,19 @@ func TestTotalSessions(t *testing.T) {
 
 	ctx := context.Background()
 
-	storer.AddCustomer(ctx, routing.Customer{Code: "local", Name: "Local"})
-	storer.AddCustomer(ctx, routing.Customer{Code: "local-local", Name: "Local Local"})
-	storer.AddCustomer(ctx, routing.Customer{Code: "local-local-local", Name: "Local Local Local"})
+	err := storer.AddCustomer(ctx, routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(ctx, routing.Customer{Code: "local-local", Name: "Local Local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(ctx, routing.Customer{Code: "local-local-local", Name: "Local Local Local"})
+	assert.NoError(t, err)
 
-	storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
-	storer.AddBuyer(ctx, routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey})
-	storer.AddBuyer(ctx, routing.Buyer{ID: 3, CompanyCode: "local-local-local", PublicKey: pubkey})
+	err = storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(ctx, routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(ctx, routing.Buyer{ID: 3, CompanyCode: "local-local-local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolTopSessions:   redisPool,
@@ -669,13 +692,19 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 
 	ctx := context.Background()
 
-	storer.AddCustomer(ctx, routing.Customer{Code: "local", Name: "Local"})
-	storer.AddCustomer(ctx, routing.Customer{Code: "local-local", Name: "Local Local"})
-	storer.AddCustomer(ctx, routing.Customer{Code: "local-local-local", Name: "Local Local Local"})
+	err := storer.AddCustomer(ctx, routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(ctx, routing.Customer{Code: "local-local", Name: "Local Local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(ctx, routing.Customer{Code: "local-local-local", Name: "Local Local Local"})
+	assert.NoError(t, err)
 
-	storer.AddBuyer(ctx, routing.Buyer{ID: 0, CompanyCode: "local", PublicKey: pubkey})
-	storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local-local", PublicKey: pubkey})
-	storer.AddBuyer(ctx, routing.Buyer{ID: 2, CompanyCode: "local-local-local", PublicKey: pubkey})
+	err = storer.AddBuyer(ctx, routing.Buyer{ID: 0, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local-local", PublicKey: pubkey})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(ctx, routing.Buyer{ID: 2, CompanyCode: "local-local-local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolTopSessions:   redisPool,
@@ -746,10 +775,14 @@ func TestTopSessions(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 333, DeltaRTT: 150, BuyerID: 111}.RedisString(), time.Hour)
 
 	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, CompanyCode: "local", PublicKey: pubkey})
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, CompanyCode: "local-local", PublicKey: pubkey})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, CompanyCode: "local-local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
@@ -1130,10 +1163,14 @@ func TestSessionMapPoints(t *testing.T) {
 	redisClient.HSet(fmt.Sprintf("d-%s-%d", buyerID1, minutes), sessionID3, points[2].RedisString())
 
 	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, CompanyCode: "local", PublicKey: pubkey})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, CompanyCode: "local-local", PublicKey: pubkey})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, CompanyCode: "local-local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
@@ -1143,7 +1180,7 @@ func TestSessionMapPoints(t *testing.T) {
 		Storage:                &storer,
 	}
 
-	err := svc.GenerateMapPointsPerBuyer(context.Background())
+	err = svc.GenerateMapPointsPerBuyer(context.Background())
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1237,10 +1274,14 @@ func TestSessionMap(t *testing.T) {
 	redisClient.HSet(fmt.Sprintf("d-%s-%d", buyerID1, minutes), sessionID3, points[2].RedisString())
 
 	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, CompanyCode: "local", PublicKey: pubkey})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, CompanyCode: "local-local", PublicKey: pubkey})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, CompanyCode: "local-local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
@@ -1250,7 +1291,7 @@ func TestSessionMap(t *testing.T) {
 		Storage:                &storer,
 	}
 
-	err := svc.GenerateMapPointsPerBuyer(context.Background())
+	err = svc.GenerateMapPointsPerBuyer(context.Background())
 	assert.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1321,8 +1362,10 @@ func TestGameConfiguration(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolTopSessions:   redisPool,
@@ -1370,9 +1413,12 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	redisServer, _ := miniredis.Run()
 	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
 	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey, Live: true})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey, Live: true})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolTopSessions:   redisPool,
@@ -1455,8 +1501,10 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
@@ -1514,8 +1562,10 @@ func TestInternalConfig(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
@@ -1561,8 +1611,10 @@ func TestInternalConfig(t *testing.T) {
 		ReducePacketLossMinSliceNumber: 0,
 	}
 
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local-Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey, InternalConfig: ic})
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local-Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey, InternalConfig: ic})
+	assert.NoError(t, err)
 
 	t.Run("success", func(t *testing.T) {
 		var reply jsonrpc.InternalConfigReply
@@ -1595,8 +1647,10 @@ func TestJSAddInternalConfig(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
@@ -1662,8 +1716,10 @@ func TestJSAddInternalConfig(t *testing.T) {
 		ReducePacketLossMinSliceNumber: int64(ic.ReducePacketLossMinSliceNumber),
 	}
 
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local-Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey, InternalConfig: ic})
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local-Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey, InternalConfig: ic})
+	assert.NoError(t, err)
 
 	t.Run("success", func(t *testing.T) {
 		var jsReply jsonrpc.JSAddInternalConfigReply
@@ -1700,8 +1756,10 @@ func TestUpdateInternalConfig(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
@@ -1727,7 +1785,8 @@ func TestUpdateInternalConfig(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	storer.AddInternalConfig(context.Background(), core.NewInternalConfig(), 1)
+	err = storer.AddInternalConfig(context.Background(), core.NewInternalConfig(), 1)
+	assert.NoError(t, err)
 
 	int32Fields := []string{"RouteSelectThreshold", "RouteSwitchThreshold", "MaxLatencyTradeOff",
 		"RTTVeto_Default", "RTTVeto_PacketLoss", "RTTVeto_Multipath",
@@ -1782,8 +1841,10 @@ func TestRemoveInternalConfig(t *testing.T) {
 	var storer = storage.InMemory{}
 
 	pubkey := make([]byte, 4)
-	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
@@ -1815,11 +1876,334 @@ func TestRemoveInternalConfig(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	storer.AddInternalConfig(context.Background(), core.NewInternalConfig(), 1)
+	err = storer.AddInternalConfig(context.Background(), core.NewInternalConfig(), 1)
+	assert.NoError(t, err)
 
 	t.Run("success", func(t *testing.T) {
 		var reply jsonrpc.RemoveInternalConfigReply
 		err := svc.RemoveInternalConfig(req, &jsonrpc.RemoveInternalConfigArg{BuyerID: "1"}, &reply)
 		assert.NoError(t, err)
+	})
+}
+
+func TestRouteShader(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("invalid buyer id", func(t *testing.T) {
+		var reply jsonrpc.RouteShaderReply
+		err := svc.RouteShader(req, &jsonrpc.RouteShaderArg{BuyerID: "badBuyerID"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("no route shader", func(t *testing.T) {
+		var reply jsonrpc.RouteShaderReply
+		err := svc.RouteShader(req, &jsonrpc.RouteShaderArg{BuyerID: "1"}, &reply)
+		assert.Error(t, err)
+	})
+
+	rs := core.NewRouteShader()
+
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local-Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey, RouteShader: rs})
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RouteShaderReply
+		err := svc.RouteShader(req, &jsonrpc.RouteShaderArg{BuyerID: "2"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, rs.DisableNetworkNext, reply.RouteShader.DisableNetworkNext)
+		assert.Equal(t, rs.SelectionPercent, int(reply.RouteShader.SelectionPercent))
+		assert.Equal(t, rs.ABTest, reply.RouteShader.ABTest)
+		assert.Equal(t, rs.ProMode, reply.RouteShader.ProMode)
+		assert.Equal(t, rs.ReduceLatency, reply.RouteShader.ReduceLatency)
+		assert.Equal(t, rs.ReduceJitter, reply.RouteShader.ReduceJitter)
+		assert.Equal(t, rs.ReducePacketLoss, reply.RouteShader.ReducePacketLoss)
+		assert.Equal(t, rs.Multipath, reply.RouteShader.Multipath)
+		assert.Equal(t, rs.AcceptableLatency, int32(reply.RouteShader.AcceptableLatency))
+		assert.Equal(t, rs.LatencyThreshold, int32(reply.RouteShader.LatencyThreshold))
+		assert.Equal(t, rs.AcceptablePacketLoss, float32(reply.RouteShader.AcceptablePacketLoss))
+		assert.Equal(t, rs.BandwidthEnvelopeUpKbps, int32(reply.RouteShader.BandwidthEnvelopeUpKbps))
+		assert.Equal(t, rs.BandwidthEnvelopeDownKbps, int32(reply.RouteShader.BandwidthEnvelopeDownKbps))
+		assert.Equal(t, len(rs.BannedUsers), len(reply.RouteShader.BannedUsers))
+		assert.Equal(t, rs.PacketLossSustained, float32(reply.RouteShader.PacketLossSustained))
+	})
+}
+
+func TestJSAddRouteShader(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("invalid buyer id", func(t *testing.T) {
+		var reply jsonrpc.JSAddRouteShaderReply
+		err := svc.JSAddRouteShader(req, &jsonrpc.JSAddRouteShaderArgs{BuyerID: "badBuyerID"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("buyer does not exist", func(t *testing.T) {
+		var reply jsonrpc.JSAddRouteShaderReply
+		err := svc.JSAddRouteShader(req, &jsonrpc.JSAddRouteShaderArgs{BuyerID: "0"}, &reply)
+		assert.Error(t, err)
+	})
+
+	rs := core.NewRouteShader()
+
+	jsRS := jsonrpc.JSRouteShader{
+		DisableNetworkNext:        true,
+		SelectionPercent:          int64(rs.SelectionPercent),
+		ABTest:                    rs.ABTest,
+		ProMode:                   rs.ProMode,
+		ReduceLatency:             rs.ReduceLatency,
+		ReduceJitter:              rs.ReduceJitter,
+		ReducePacketLoss:          rs.ReducePacketLoss,
+		Multipath:                 rs.Multipath,
+		AcceptableLatency:         int64(rs.AcceptableLatency),
+		LatencyThreshold:          int64(rs.LatencyThreshold),
+		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
+		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
+		BannedUsers:               make(map[string]bool),
+		PacketLossSustained:       float64(rs.PacketLossSustained),
+	}
+
+	err = storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local-Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey, RouteShader: rs})
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var jsReply jsonrpc.JSAddRouteShaderReply
+		err := svc.JSAddRouteShader(req, &jsonrpc.JSAddRouteShaderArgs{BuyerID: "2", RouteShader: jsRS}, &jsReply)
+		assert.NoError(t, err)
+
+		var reply jsonrpc.RouteShaderReply
+		err = svc.RouteShader(req, &jsonrpc.RouteShaderArg{BuyerID: "2"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, rs.DisableNetworkNext, !reply.RouteShader.DisableNetworkNext)
+		assert.Equal(t, rs.SelectionPercent, int(reply.RouteShader.SelectionPercent))
+		assert.Equal(t, rs.ABTest, reply.RouteShader.ABTest)
+		assert.Equal(t, rs.ProMode, reply.RouteShader.ProMode)
+		assert.Equal(t, rs.ReduceLatency, reply.RouteShader.ReduceLatency)
+		assert.Equal(t, rs.ReduceJitter, reply.RouteShader.ReduceJitter)
+		assert.Equal(t, rs.ReducePacketLoss, reply.RouteShader.ReducePacketLoss)
+		assert.Equal(t, rs.Multipath, reply.RouteShader.Multipath)
+		assert.Equal(t, rs.AcceptableLatency, int32(reply.RouteShader.AcceptableLatency))
+		assert.Equal(t, rs.LatencyThreshold, int32(reply.RouteShader.LatencyThreshold))
+		assert.Equal(t, rs.AcceptablePacketLoss, float32(reply.RouteShader.AcceptablePacketLoss))
+		assert.Equal(t, rs.BandwidthEnvelopeUpKbps, int32(reply.RouteShader.BandwidthEnvelopeUpKbps))
+		assert.Equal(t, rs.BandwidthEnvelopeDownKbps, int32(reply.RouteShader.BandwidthEnvelopeDownKbps))
+		assert.Equal(t, len(rs.BannedUsers), len(reply.RouteShader.BannedUsers))
+		assert.Equal(t, rs.PacketLossSustained, float32(reply.RouteShader.PacketLossSustained))
+	})
+}
+
+func TestRemoveRouteShader(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("invalid buyer id", func(t *testing.T) {
+		var reply jsonrpc.RemoveRouteShaderReply
+		err := svc.RemoveRouteShader(req, &jsonrpc.RemoveRouteShaderArg{BuyerID: "badBuyerID"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("unknown buyer id", func(t *testing.T) {
+		var reply jsonrpc.RemoveRouteShaderReply
+		err := svc.RemoveRouteShader(req, &jsonrpc.RemoveRouteShaderArg{BuyerID: "0"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("remove from buyer without internal config", func(t *testing.T) {
+		var reply jsonrpc.RemoveRouteShaderReply
+		err := svc.RemoveRouteShader(req, &jsonrpc.RemoveRouteShaderArg{BuyerID: "1"}, &reply)
+		assert.NoError(t, err)
+	})
+
+	err = storer.AddRouteShader(context.Background(), core.NewRouteShader(), 1)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RemoveRouteShaderReply
+		err := svc.RemoveRouteShader(req, &jsonrpc.RemoveRouteShaderArg{BuyerID: "1"}, &reply)
+		assert.NoError(t, err)
+	})
+}
+
+func TestUpdateRouteShader(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("invalid hex buyer id", func(t *testing.T) {
+		var reply jsonrpc.UpdateRouteShaderReply
+		err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{HexBuyerID: "badHexBuyerID"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid buyer id", func(t *testing.T) {
+		var reply jsonrpc.UpdateRouteShaderReply
+		err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 0, Field: "SelectionPercent", Value: "1"}, &reply)
+		assert.Error(t, err)
+	})
+
+	err = storer.AddRouteShader(context.Background(), core.NewRouteShader(), 1)
+	assert.NoError(t, err)
+
+	intFields := []string{"SelectionPercent"}
+
+	int32Fields := []string{"AcceptableLatency", "LatencyThreshold", "BandwidthEnvelopeUpKbps",
+		"BandwidthEnvelopeDownKbps"}
+
+	boolFields := []string{"DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
+		"ReduceJitter", "ReducePacketLoss", "Multipath"}
+
+	float32Fields := []string{"AcceptablePacketLoss", "PacketLossSustained"}
+
+	t.Run("invalid int fields", func(t *testing.T) {
+		for _, field := range intFields {
+			var reply jsonrpc.UpdateRouteShaderReply
+			err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 1, Field: field, Value: "a"}, &reply)
+			assert.EqualError(t, fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid integer type", "a"), err.Error())
+		}
+	})
+
+	t.Run("invalid int32 fields", func(t *testing.T) {
+		for _, field := range int32Fields {
+			var reply jsonrpc.UpdateRouteShaderReply
+			err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 1, Field: field, Value: "a"}, &reply)
+			assert.EqualError(t, fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid integer type", "a"), err.Error())
+		}
+	})
+
+	t.Run("invalid bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			var reply jsonrpc.UpdateRouteShaderReply
+			err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 1, Field: field, Value: "a"}, &reply)
+			assert.EqualError(t, fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid boolean type", "a"), err.Error())
+		}
+	})
+
+	t.Run("invalid float32 fields", func(t *testing.T) {
+		for _, field := range float32Fields {
+			var reply jsonrpc.UpdateRouteShaderReply
+			err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 1, Field: field, Value: "a"}, &reply)
+			assert.EqualError(t, fmt.Errorf("BuyersService.UpdateRouteShader Value: %v is not a valid float type", "a"), err.Error())
+		}
+	})
+
+	t.Run("unknown field", func(t *testing.T) {
+		var reply jsonrpc.UpdateRouteShaderReply
+		err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 1, Field: "unknown", Value: "a"}, &reply)
+		assert.EqualError(t, fmt.Errorf("Field '%v' does not exist on the RouteShader type", "unknown"), err.Error())
+	})
+
+	t.Run("success int fields", func(t *testing.T) {
+		for _, field := range intFields {
+			var reply jsonrpc.UpdateRouteShaderReply
+			err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 1, Field: field, Value: "1"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success int32 fields", func(t *testing.T) {
+		for _, field := range int32Fields {
+			var reply jsonrpc.UpdateRouteShaderReply
+			err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 1, Field: field, Value: "1"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			var reply jsonrpc.UpdateRouteShaderReply
+			err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 1, Field: field, Value: "true"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success float32 fields", func(t *testing.T) {
+		for _, field := range float32Fields {
+			var reply jsonrpc.UpdateRouteShaderReply
+			err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 1, Field: field, Value: "1"}, &reply)
+			assert.NoError(t, err)
+		}
 	})
 }

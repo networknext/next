@@ -547,7 +547,34 @@ func (m *InMemory) InternalConfig(ctx context.Context, buyerID uint64) (core.Int
 }
 
 func (m *InMemory) RouteShader(ctx context.Context, buyerID uint64) (core.RouteShader, error) {
-	return core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in InMemory storer"))
+	buyer, err := m.Buyer(ctx, buyerID)
+	if err != nil {
+		return core.RouteShader{}, err
+	}
+
+	rs := buyer.RouteShader
+
+	isEmptyRouteShader := (!rs.DisableNetworkNext &&
+		rs.SelectionPercent == 0 &&
+		!rs.ABTest &&
+		!rs.ReduceLatency &&
+		!rs.ReduceJitter &&
+		!rs.ReducePacketLoss &&
+		!rs.Multipath &&
+		!rs.ProMode &&
+		rs.AcceptableLatency == 0 &&
+		rs.LatencyThreshold == 0 &&
+		rs.AcceptablePacketLoss == 0 &&
+		rs.BandwidthEnvelopeUpKbps == 0 &&
+		rs.BandwidthEnvelopeDownKbps == 0 &&
+		len(rs.BannedUsers) == 0 &&
+		rs.PacketLossSustained == 0)
+
+	if isEmptyRouteShader {
+		return core.RouteShader{}, &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	return buyer.RouteShader, nil
 }
 
 func (m *InMemory) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
@@ -739,15 +766,171 @@ func (m *InMemory) RemoveInternalConfig(ctx context.Context, buyerID uint64) err
 }
 
 func (m *InMemory) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
-	return fmt.Errorf("AddRouteShader not yet impemented in InMemory storer")
+	var buyerExists bool
+
+	for idx, buyer := range m.localBuyers {
+		if buyer.ID == buyerID {
+			buyer.RouteShader = routeShader
+			m.localBuyers[idx] = buyer
+
+			buyerExists = true
+			break
+		}
+	}
+
+	if !buyerExists {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
+	}
+
+	return nil
 }
 
 func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateRouteShader not yet impemented in InMemory storer")
+	var buyerExists bool
+	var buyer routing.Buyer
+	var idx int
+
+	for i, localBuyer := range m.localBuyers {
+		if localBuyer.ID == buyerID {
+
+			buyer = localBuyer
+			idx = i
+			buyerExists = true
+			break
+		}
+	}
+
+	if !buyerExists {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
+	}
+
+	switch field {
+	case "ABTest":
+		abTest, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ABTest: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.ABTest = abTest
+	case "AcceptableLatency":
+		acceptableLatency, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("AcceptableLatency: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.AcceptableLatency = acceptableLatency
+	case "AcceptablePacketLoss":
+		acceptablePacketLoss, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("AcceptablePacketLoss: %v is not a valid float32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.AcceptablePacketLoss = acceptablePacketLoss
+	case "BandwidthEnvelopeDownKbps":
+		bandwidthEnvelopeDownKbps, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("BandwidthEnvelopeDownKbps: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.BandwidthEnvelopeDownKbps = bandwidthEnvelopeDownKbps
+	case "BandwidthEnvelopeUpKbps":
+		bandwidthEnvelopeUpKbps, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("BandwidthEnvelopeUpKbps: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.BandwidthEnvelopeUpKbps = bandwidthEnvelopeUpKbps
+	case "DisableNetworkNext":
+		disableNetworkNext, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("DisableNetworkNext: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.DisableNetworkNext = disableNetworkNext
+	case "LatencyThreshold":
+		latencyThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("LatencyThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.LatencyThreshold = latencyThreshold
+	case "Multipath":
+		multipath, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Multipath: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.Multipath = multipath
+	case "ProMode":
+		proMode, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ProMode: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.ProMode = proMode
+	case "ReduceLatency":
+		reduceLatency, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ReduceLatency: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.ReduceLatency = reduceLatency
+	case "ReducePacketLoss":
+		reducePacketLoss, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ReducePacketLoss: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.ReducePacketLoss = reducePacketLoss
+	case "ReduceJitter":
+		reduceJitter, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ReduceJitter: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.ReduceJitter = reduceJitter
+	case "SelectionPercent":
+		selectionPercent, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("SelectionPercent: %v is not a valid int type (%T)", value, value)
+		}
+
+		buyer.RouteShader.SelectionPercent = selectionPercent
+	case "PacketLossSustained":
+		packetLossSustained, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("PacketLossSustained: %v is not a valid float32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.PacketLossSustained = packetLossSustained
+	default:
+		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
+
+	}
+
+	m.localBuyers[idx] = buyer
+
+	return nil
 }
 
 func (m *InMemory) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
-	return fmt.Errorf("RemoveRouteShader not yet impemented in InMemory storer")
+	var buyerExists bool
+
+	for idx, buyer := range m.localBuyers {
+		if buyer.ID == buyerID {
+			buyer.RouteShader = core.RouteShader{}
+			m.localBuyers[idx] = buyer
+
+			buyerExists = true
+			break
+		}
+	}
+
+	if !buyerExists {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
+	}
+
+	return nil
 }
 
 func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
