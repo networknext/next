@@ -578,23 +578,16 @@ func (m *InMemory) RouteShader(ctx context.Context, buyerID uint64) (core.RouteS
 }
 
 func (m *InMemory) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
-	var buyerExists bool
-
 	for idx, buyer := range m.localBuyers {
 		if buyer.ID == buyerID {
 			buyer.InternalConfig = internalConfig
 			m.localBuyers[idx] = buyer
 
-			buyerExists = true
-			break
+			return nil
 		}
 	}
 
-	if !buyerExists {
-		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
-	}
-
-	return nil
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
 }
 
 func (m *InMemory) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
@@ -746,43 +739,29 @@ func (m *InMemory) UpdateInternalConfig(ctx context.Context, buyerID uint64, fie
 }
 
 func (m *InMemory) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
-	var buyerExists bool
-
 	for idx, buyer := range m.localBuyers {
 		if buyer.ID == buyerID {
 			buyer.InternalConfig = core.InternalConfig{}
 			m.localBuyers[idx] = buyer
 
-			buyerExists = true
-			break
+			return nil
 		}
 	}
 
-	if !buyerExists {
-		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
-	}
-
-	return nil
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
 }
 
 func (m *InMemory) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
-	var buyerExists bool
-
 	for idx, buyer := range m.localBuyers {
 		if buyer.ID == buyerID {
 			buyer.RouteShader = routeShader
 			m.localBuyers[idx] = buyer
 
-			buyerExists = true
-			break
+			return nil
 		}
 	}
 
-	if !buyerExists {
-		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
-	}
-
-	return nil
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
 }
 
 func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
@@ -914,23 +893,16 @@ func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, field 
 }
 
 func (m *InMemory) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
-	var buyerExists bool
-
 	for idx, buyer := range m.localBuyers {
 		if buyer.ID == buyerID {
 			buyer.RouteShader = core.RouteShader{}
 			m.localBuyers[idx] = buyer
 
-			buyerExists = true
-			break
+			return nil
 		}
 	}
 
-	if !buyerExists {
-		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
-	}
-
-	return nil
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
 }
 
 func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
@@ -938,15 +910,39 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 }
 
 func (m *InMemory) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	return fmt.Errorf(("AddBannedUser not yet impemented in InMemory storer"))
+	routeShader, err := m.RouteShader(ctx, buyerID)
+	if err != nil {
+		return err
+	}
+
+	routeShader.BannedUsers[userID] = true
+
+	err = m.AddRouteShader(ctx, routeShader, buyerID)
+
+	return err
 }
 
 func (m *InMemory) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	return fmt.Errorf(("RemoveBannedUser not yet impemented in InMemory storer"))
+	routeShader, err := m.RouteShader(ctx, buyerID)
+	if err != nil {
+		return err
+	}
+
+	if _, exists := routeShader.BannedUsers[userID]; exists {
+		delete(routeShader.BannedUsers, userID)
+		return m.AddRouteShader(ctx, routeShader, buyerID)
+	}
+
+	return nil
 }
 
 func (m *InMemory) BannedUsers(ctx context.Context, buyerID uint64) (map[uint64]bool, error) {
-	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not yet impemented in InMemory storer"))
+	routeShader, err := m.RouteShader(ctx, buyerID)
+	if err != nil {
+		return map[uint64]bool{}, err
+	}
+
+	return routeShader.BannedUsers, nil
 }
 
 func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {

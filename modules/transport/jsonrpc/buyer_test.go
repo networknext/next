@@ -2073,7 +2073,7 @@ func TestRemoveRouteShader(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("remove from buyer without internal config", func(t *testing.T) {
+	t.Run("remove from buyer without route shader", func(t *testing.T) {
 		var reply jsonrpc.RemoveRouteShaderReply
 		err := svc.RemoveRouteShader(req, &jsonrpc.RemoveRouteShaderArg{BuyerID: "1"}, &reply)
 		assert.NoError(t, err)
@@ -2205,5 +2205,171 @@ func TestUpdateRouteShader(t *testing.T) {
 			err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 1, Field: field, Value: "1"}, &reply)
 			assert.NoError(t, err)
 		}
+	})
+}
+
+func TestGetBannedUsers(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("unknown buyer id", func(t *testing.T) {
+		var reply jsonrpc.GetBannedUserReply
+		err := svc.GetBannedUsers(req, &jsonrpc.GetBannedUserArg{BuyerID: 0}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("get from buyer without route shader", func(t *testing.T) {
+		var reply jsonrpc.GetBannedUserReply
+		err := svc.GetBannedUsers(req, &jsonrpc.GetBannedUserArg{BuyerID: 1}, &reply)
+		assert.Error(t, err)
+	})
+
+	err = storer.AddRouteShader(context.Background(), core.NewRouteShader(), 1)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.GetBannedUserReply
+		err := svc.GetBannedUsers(req, &jsonrpc.GetBannedUserArg{BuyerID: 1}, &reply)
+		assert.NoError(t, err)
+		assert.Zero(t, len(reply.BannedUsers))
+	})
+}
+
+func TestAddBannedUser(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("unknown buyer id", func(t *testing.T) {
+		var reply jsonrpc.BannedUserReply
+		err := svc.AddBannedUser(req, &jsonrpc.BannedUserArgs{BuyerID: 0}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("add banned user to buyer without route shader", func(t *testing.T) {
+		var reply jsonrpc.BannedUserReply
+		err := svc.AddBannedUser(req, &jsonrpc.BannedUserArgs{BuyerID: 1, UserID: 0}, &reply)
+		assert.Error(t, err)
+	})
+
+	err = storer.AddRouteShader(context.Background(), core.NewRouteShader(), 1)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.BannedUserReply
+		err := svc.AddBannedUser(req, &jsonrpc.BannedUserArgs{BuyerID: 1, UserID: 0}, &reply)
+		assert.NoError(t, err)
+
+		var userReply jsonrpc.GetBannedUserReply
+		err = svc.GetBannedUsers(req, &jsonrpc.GetBannedUserArg{BuyerID: 1}, &userReply)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(userReply.BannedUsers))
+	})
+}
+
+func TestRemoveBannedUser(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("unknown buyer id", func(t *testing.T) {
+		var reply jsonrpc.BannedUserReply
+		err := svc.RemoveBannedUser(req, &jsonrpc.BannedUserArgs{BuyerID: 0}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("remove banned user from buyer without route shader", func(t *testing.T) {
+		var reply jsonrpc.BannedUserReply
+		err := svc.RemoveBannedUser(req, &jsonrpc.BannedUserArgs{BuyerID: 1, UserID: 0}, &reply)
+		assert.Error(t, err)
+	})
+
+	err = storer.AddRouteShader(context.Background(), core.NewRouteShader(), 1)
+	assert.NoError(t, err)
+
+	t.Run("remove banned user that is not banned from buyer", func(t *testing.T) {
+		var reply jsonrpc.BannedUserReply
+		err := svc.RemoveBannedUser(req, &jsonrpc.BannedUserArgs{BuyerID: 1, UserID: 0}, &reply)
+		assert.NoError(t, err)
+
+		var userReply jsonrpc.GetBannedUserReply
+		err = svc.GetBannedUsers(req, &jsonrpc.GetBannedUserArg{BuyerID: 1}, &userReply)
+		assert.NoError(t, err)
+		assert.Zero(t, len(userReply.BannedUsers))
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var addUserReply jsonrpc.BannedUserReply
+		err := svc.AddBannedUser(req, &jsonrpc.BannedUserArgs{BuyerID: 1, UserID: 0}, &addUserReply)
+		assert.NoError(t, err)
+
+		var userReply jsonrpc.GetBannedUserReply
+		err = svc.GetBannedUsers(req, &jsonrpc.GetBannedUserArg{BuyerID: 1}, &userReply)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(userReply.BannedUsers))
+
+		var reply jsonrpc.BannedUserReply
+		err = svc.RemoveBannedUser(req, &jsonrpc.BannedUserArgs{BuyerID: 1, UserID: 0}, &reply)
+		assert.NoError(t, err)
+
+		userReply = jsonrpc.GetBannedUserReply{}
+		err = svc.GetBannedUsers(req, &jsonrpc.GetBannedUserArg{BuyerID: 1}, &userReply)
+		assert.NoError(t, err)
+		assert.Zero(t, len(userReply.BannedUsers))
 	})
 }
