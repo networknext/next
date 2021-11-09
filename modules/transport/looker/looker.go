@@ -65,7 +65,7 @@ type AnalyticsDashboard struct {
 	Name         string                     `json:"name"`
 	Admin        bool                       `json:"admin"`
 	Discovery    bool                       `json:"discovery"`
-	DashboardID  int64                      `json:"dashboard_id"`
+	LookerID     int64                      `json:"looker_id"`
 	CustomerCode string                     `json:"customer_code"`
 	Category     AnalyticsDashboardCategory `json:"category"`
 }

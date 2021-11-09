@@ -4192,7 +4192,7 @@ func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int6
 		args = append(args, admin, id)
 
 	default:
-		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
+		return fmt.Errorf("field '%v' does not exist on the analytics dashboard category type", field)
 
 	}
 
@@ -4240,7 +4240,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) []looker.Analyti
 		err = rows.Scan(
 			&dashboard.ID,
 			&dashboard.Name,
-			&dashboard.DashboardID,
+			&dashboard.LookerID,
 			&dashboard.Discovery,
 			&customerID,
 			&categoryID,
@@ -4297,7 +4297,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 		err = rows.Scan(
 			&dashboard.ID,
 			&dashboard.Name,
-			&dashboard.DashboardID,
+			&dashboard.LookerID,
 			&dashboard.Discovery,
 			&customerID,
 			&categoryID,
@@ -4352,7 +4352,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 		err = rows.Scan(
 			&dashboard.ID,
 			&dashboard.Name,
-			&dashboard.DashboardID,
+			&dashboard.LookerID,
 			&dashboard.Discovery,
 			&customerID,
 			&categoryID,
@@ -4410,7 +4410,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) []looker.Analy
 		err = rows.Scan(
 			&dashboard.ID,
 			&dashboard.Name,
-			&dashboard.DashboardID,
+			&dashboard.LookerID,
 			&dashboard.Discovery,
 			&customerID,
 			&categoryID,
@@ -4467,7 +4467,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) []looker.Analytic
 		err = rows.Scan(
 			&dashboard.ID,
 			&dashboard.Name,
-			&dashboard.DashboardID,
+			&dashboard.LookerID,
 			&dashboard.Discovery,
 			&customerID,
 			&categoryID,
@@ -4524,7 +4524,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.Ana
 		err = rows.Scan(
 			&dashboard.ID,
 			&dashboard.Name,
-			&dashboard.DashboardID,
+			&dashboard.LookerID,
 			&dashboard.Discovery,
 			&customerID,
 			&categoryID,
@@ -4579,7 +4579,7 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDas
 		err = rows.Scan(
 			&dashboard.ID,
 			&dashboard.Name,
-			&dashboard.DashboardID,
+			&dashboard.LookerID,
 			&dashboard.Discovery,
 			&customerID,
 			&categoryID,
@@ -4634,7 +4634,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 		err = rows.Scan(
 			&dashboard.ID,
 			&dashboard.Name,
-			&dashboard.DashboardID,
+			&dashboard.LookerID,
 			&dashboard.Discovery,
 			&customerID,
 			&categoryID,
@@ -4685,7 +4685,7 @@ func (db *SQL) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.
 		err = row.Scan(
 			&dashboard.ID,
 			&dashboard.Name,
-			&dashboard.DashboardID,
+			&dashboard.LookerID,
 			&dashboard.Discovery,
 			&customerID,
 			&categoryID,
@@ -4747,7 +4747,7 @@ func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (lo
 		err = row.Scan(
 			&dashboard.ID,
 			&dashboard.Name,
-			&dashboard.DashboardID,
+			&dashboard.LookerID,
 			&dashboard.Discovery,
 			&customerID,
 			&categoryID,
@@ -4933,7 +4933,7 @@ func (db *SQL) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field
 		updateSQL.Write([]byte("update analytics_dashboards set dashboard_name=$1 where id=$2"))
 		args = append(args, name, id)
 
-	case "DashboardID":
+	case "LookerID":
 		dashID, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("%v is not a valid int64 value", value)
