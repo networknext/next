@@ -34,6 +34,7 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/notifications"
 )
@@ -148,38 +149,6 @@ func main() {
 		level.Error(logger).Log("envvar", "REDIS_HOST_SESSION_SLICES", "err", err)
 		os.Exit(1)
 	}
-
-	auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
-	if auth0Issuer == "" {
-		level.Error(logger).Log("envvar", "AUTH0_ISSUER", "not set")
-		os.Exit(1)
-	}
-
-	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
-	if auth0Domain == "" {
-		level.Error(logger).Log("envvar", "AUTH0_DOMAIN", "not set")
-		os.Exit(1)
-	}
-
-	auth0ClientID := envvar.Get("AUTH0_CLIENTID", "")
-	if auth0ClientID == "" {
-		level.Error(logger).Log("envvar", "AUTH0_CLIENTID", "not set")
-		os.Exit(1)
-	}
-
-	manager, err := management.New(
-		auth0Domain,
-		auth0ClientID,
-		os.Getenv("AUTH0_CLIENTSECRET"),
-	)
-	if err != nil {
-		level.Error(logger).Log("err", err)
-		os.Exit(1)
-	}
-
-	var jobManager storage.JobManager = manager.Job
-	var roleManager storage.RoleManager = manager.Role
-	var userManager storage.UserManager = manager.User
 
 	gcpProjectID, gcpOK := os.LookupEnv("GOOGLE_PROJECT_ID")
 
@@ -308,62 +277,6 @@ func main() {
 		}
 	}
 
-	// if env == "local" {
-	// 	if err = storage.SeedStorage(ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
-	// 		level.Error(logger).Log("err", err)
-	// 		os.Exit(1)
-	// 	}
-	// }
-	// We're not using the route matrix in the portal anymore, because RouteSelection()
-	// is commented out in the ops service.
-
-	// routeMatrix := &routing.RouteMatrix{}
-	// var routeMatrixMutex sync.RWMutex
-
-	// {
-	// 	if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
-	// 		rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
-	// 		syncInterval, err := time.ParseDuration(rmsyncinterval)
-	// 		if err != nil {
-	// 			level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
-	// 			os.Exit(1)
-	// 		}
-
-	// 		go func() {
-	// 			for {
-	// 				newRouteMatrix := &routing.RouteMatrix{}
-	// 				var matrixReader io.Reader
-
-	// 				// Default to reading route matrix from file
-	// 				if f, err := os.Open(uri); err == nil {
-	// 					matrixReader = f
-	// 				}
-
-	// 				// Prefer to get it remotely if possible
-	// 				if r, err := http.Get(uri); err == nil {
-	// 					matrixReader = r.Body
-	// 				}
-
-	// 				// Don't swap route matrix if we fail to read
-	// 				_, err := newRouteMatrix.ReadFrom(matrixReader)
-	// 				if err != nil {
-	// 					level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
-	// 					time.Sleep(syncInterval)
-	// 					continue
-	// 				}
-
-	// 				// Swap the route matrix pointer to the new one
-	// 				// This double buffered route matrix approach makes the route matrix lockless
-	// 				routeMatrixMutex.Lock()
-	// 				routeMatrix = newRouteMatrix
-	// 				routeMatrixMutex.Unlock()
-
-	// 				time.Sleep(syncInterval)
-	// 			}
-	// 		}()
-	// 	}
-	// }
-
 	serviceMetrics, err := metrics.NewBuyerEndpointMetrics(ctx, metricsHandler)
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create service metrics", "err", err)
@@ -373,6 +286,19 @@ func main() {
 	lookerSecret, ok := os.LookupEnv("LOOKER_SECRET")
 	if !ok {
 		level.Error(logger).Log("err", "env var LOOKER_SECRET must be set")
+		os.Exit(1)
+	}
+
+	lookerHost, ok := os.LookupEnv("LOOKER_HOST")
+	if !ok {
+		level.Error(logger).Log("err", "env var LOOKER_SECRET must be set")
+		os.Exit(1)
+	}
+
+	// Leave the looker clientID and api secret blank here because we don't want API access within the buyer service
+	lookerClient, err := looker.NewLookerClient(lookerHost, lookerSecret, "", "")
+	if err != nil {
+		level.Error(logger).Log("err", "failed to create looker client")
 		os.Exit(1)
 	}
 
@@ -409,6 +335,38 @@ func main() {
 	hubspotAPIKey := envvar.Get("HUBSPOT_API_KEY", "")
 	hubspotClient, err := notifications.NewHubSpotClient(hubspotAPIKey, 10*time.Second)
 
+	auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
+	if auth0Issuer == "" {
+		level.Error(logger).Log("envvar", "AUTH0_ISSUER", "not set")
+		os.Exit(1)
+	}
+
+	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
+	if auth0Domain == "" {
+		level.Error(logger).Log("envvar", "AUTH0_DOMAIN", "not set")
+		os.Exit(1)
+	}
+
+	auth0ClientID := envvar.Get("AUTH0_CLIENTID", "")
+	if auth0ClientID == "" {
+		level.Error(logger).Log("envvar", "AUTH0_CLIENTID", "not set")
+		os.Exit(1)
+	}
+
+	manager, err := management.New(
+		auth0Domain,
+		auth0ClientID,
+		os.Getenv("AUTH0_CLIENTSECRET"),
+	)
+	if err != nil {
+		level.Error(logger).Log("err", err)
+		os.Exit(1)
+	}
+
+	var jobManager storage.JobManager = manager.Job
+	var roleManager storage.RoleManager = manager.Role
+	var userManager storage.UserManager = manager.User
+
 	authenticationClient, err := notifications.NewAuth0AuthClient(auth0ClientID, auth0Domain)
 	if err != nil {
 		level.Error(logger).Log("err", "failed to create authentication client")
@@ -437,6 +395,7 @@ func main() {
 		BigTable:               btClient,
 		BigTableMetrics:        btMetrics,
 		Logger:                 logger,
+		LookerClient:           lookerClient,
 		RedisPoolTopSessions:   redisPoolTopSessions,
 		RedisPoolSessionMeta:   redisPoolSessionMeta,
 		RedisPoolSessionSlices: redisPoolSessionSlices,
@@ -444,7 +403,6 @@ func main() {
 		Storage:                db,
 		Env:                    env,
 		Metrics:                serviceMetrics,
-		LookerSecret:           lookerSecret,
 		GithubClient:           githubClient,
 		SlackClient:            slackClient,
 	}
@@ -452,6 +410,19 @@ func main() {
 	configService := jsonrpc.ConfigService{
 		Logger:  logger,
 		Storage: db,
+	}
+
+	// TODO: Pull these in from environment
+	lookerClient.APISettings.ClientId = "QXG3cfyWd8xqsVnT7QbT"
+	lookerClient.APISettings.ClientSecret = "JT2BpTYNc7fybyHNGs3S24g7"
+
+	opsService := jsonrpc.OpsService{
+		Logger:               logger,
+		Release:              tag,
+		BuildTime:            buildtime,
+		Storage:              db,
+		LookerClient:         lookerClient,
+		LookerDashboardCache: make([]looker.LookerDashboard, 0),
 	}
 
 	newKeys, err := middleware.FetchAuth0Cert(auth0Domain)
@@ -519,56 +490,14 @@ func main() {
 		}
 	}()
 
-	relayMap := jsonrpc.NewRelayStatsMap()
-
-	// TODO: b0rked, needs to process a csv file from /relays and this GET
-	//       needs to be auth'd...
-	// go func() {
-	// 	relayStatsURL := os.Getenv("RELAY_STATS_URI")
-	// 	fmt.Printf("RELAY_STATS_URI: %s\n", relayStatsURL)
-
-	// 	sleepInterval := time.Second
-	// 	if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
-	// 		if si, err := time.ParseDuration(siStr); err == nil {
-	// 			sleepInterval = si
-	// 		} else {
-	// 			level.Error(logger).Log("msg", "could not parse stats sync sleep interval", "err", err)
-	// 		}
-	// 	}
-
-	// 	for {
-	// 		time.Sleep(sleepInterval)
-
-	// 		res, err := http.Get(relayStatsURL)
-	// 		if err != nil {
-	// 			level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
-	// 			continue
-	// 		}
-
-	// 		if res.StatusCode != http.StatusOK {
-	// 			level.Error(logger).Log("msg", "bad relay_stats request")
-	// 			continue
-	// 		}
-
-	// 		if res.ContentLength == -1 {
-	// 			level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
-	// 			res.Body.Close()
-	// 			continue
-	// 		}
-
-	// 		data, err := ioutil.ReadAll(res.Body)
-	// 		if err != nil {
-	// 			level.Error(logger).Log("msg", "unable to read response body", "err", err)
-	// 			res.Body.Close()
-	// 			continue
-	// 		}
-	// 		res.Body.Close()
-
-	// 		if err := relayMap.ReadAndSwap(data); err != nil {
-	// 			level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
-	// 		}
-	// 	}
-	// }()
+	go func() {
+		for {
+			if err := opsService.RefreshLookerDashboardCache(); err != nil {
+				level.Error(logger).Log("msg", "error refreshing looker dashboard cacche", "err", err)
+			}
+			time.Sleep(time.Minute)
+		}
+	}()
 
 	go func() {
 		port, ok := os.LookupEnv("PORT")
@@ -612,14 +541,9 @@ func main() {
 			}
 			return middleware.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
 		})
+
 		s.RegisterCodec(json2.NewCodec(), "application/json")
-		s.RegisterService(&jsonrpc.OpsService{
-			Logger:    logger,
-			Release:   tag,
-			BuildTime: buildtime,
-			Storage:   db,
-			RelayMap:  &relayMap,
-		}, "")
+		s.RegisterService(&opsService, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&configService, "")
 		s.RegisterService(authservice, "")

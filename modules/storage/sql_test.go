@@ -16,6 +16,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -1746,5 +1747,438 @@ func TestDatabaseBinMetaData(t *testing.T) {
 		assert.Equal(t, "Brian Cohen", checkMetaData2.DatabaseBinFileAuthor)
 		assert.Equal(t, testTime2.Format("01/02/06"), checkMetaData2.DatabaseBinFileCreationTime.Format("01/02/06"))
 
+	})
+}
+
+func TestAnalyticsDashboards(t *testing.T) {
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	// db, err := storage.NewSQLStorage(ctx, logger)
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	assert.NoError(t, err)
+
+	categories := db.GetAnalyticsDashboardCategories(ctx)
+	for _, category := range categories {
+		err := db.RemoveAnalyticsDashboardCategoryByID(ctx, category.ID)
+		assert.NoError(t, err)
+	}
+
+	dashbaords := db.GetAnalyticsDashboards(ctx)
+	for _, dashboard := range dashbaords {
+		err := db.RemoveAnalyticsDashboardByID(ctx, dashboard.ID)
+		assert.NoError(t, err)
+	}
+
+	err = db.AddCustomer(ctx, routing.Customer{
+		Code: "test-company",
+		Name: "Test Company",
+	})
+	assert.NoError(t, err)
+
+	err = db.AddCustomer(ctx, routing.Customer{
+		Code: "another-test-company",
+		Name: "Another Test Company",
+	})
+	assert.NoError(t, err)
+
+	customers := db.Customers(ctx)
+
+	t.Run("AddAnalyticsDashboardCategory", func(t *testing.T) {
+		category := looker.AnalyticsDashboardCategory{
+			Label:   "Test Category",
+			Premium: false,
+		}
+
+		err := db.AddAnalyticsDashboardCategory(ctx, category.Label, category.Admin, category.Premium)
+		assert.NoError(t, err)
+
+		dashboardCategories := db.GetAnalyticsDashboardCategories(ctx)
+
+		assert.Equal(t, 1, len(dashboardCategories))
+		assert.Equal(t, category.Label, dashboardCategories[0].Label)
+		assert.Equal(t, category.Premium, dashboardCategories[0].Premium)
+
+		category2 := looker.AnalyticsDashboardCategory{
+			Label:   "Another Test Category",
+			Premium: true,
+		}
+
+		err = db.AddAnalyticsDashboardCategory(ctx, category2.Label, category2.Admin, category2.Premium)
+		assert.NoError(t, err)
+
+		dashboardCategories = db.GetAnalyticsDashboardCategories(ctx)
+
+		assert.Equal(t, 2, len(dashboardCategories))
+		assert.Equal(t, category.Label, dashboardCategories[0].Label)
+		assert.Equal(t, category.Premium, dashboardCategories[0].Premium)
+		assert.Equal(t, category2.Label, dashboardCategories[1].Label)
+		assert.Equal(t, category2.Premium, dashboardCategories[1].Premium)
+
+		dbCategory, err := db.GetAnalyticsDashboardCategoryByID(ctx, dashboardCategories[0].ID)
+		assert.NoError(t, err)
+		assert.Equal(t, dashboardCategories[0].ID, dbCategory.ID)
+		assert.Equal(t, dashboardCategories[0].Label, dbCategory.Label)
+		assert.Equal(t, dashboardCategories[0].Premium, dbCategory.Premium)
+
+		dbCategory, err = db.GetAnalyticsDashboardCategoryByLabel(ctx, dashboardCategories[0].Label)
+		assert.NoError(t, err)
+		assert.Equal(t, dashboardCategories[0].ID, dbCategory.ID)
+		assert.Equal(t, dashboardCategories[0].Label, dbCategory.Label)
+		assert.Equal(t, dashboardCategories[0].Premium, dbCategory.Premium)
+
+		dashboardCategories = db.GetFreeAnalyticsDashboardCategories(ctx)
+		assert.Equal(t, 1, len(dashboardCategories))
+		assert.Equal(t, category.Label, dashboardCategories[0].Label)
+		assert.Equal(t, category.Premium, dashboardCategories[0].Premium)
+
+		dashboardCategories = db.GetPremiumAnalyticsDashboardCategories(ctx)
+		assert.Equal(t, 1, len(dashboardCategories))
+		assert.Equal(t, category2.Label, dashboardCategories[0].Label)
+		assert.Equal(t, category2.Premium, dashboardCategories[0].Premium)
+	})
+
+	t.Run("AddAnalyticsDashboard", func(t *testing.T) {
+		dashboard := looker.AnalyticsDashboard{
+			Name:        "Test Dashboard",
+			Discovery:   false,
+			DashboardID: 10,
+		}
+
+		dashboardCategories := db.GetAnalyticsDashboardCategories(ctx)
+
+		err := db.AddAnalyticsDashboard(ctx, dashboard.Name, dashboard.DashboardID, dashboard.Discovery, customers[0].DatabaseID, dashboardCategories[0].ID)
+		assert.NoError(t, err)
+
+		dashboards := db.GetAnalyticsDashboards(ctx)
+
+		assert.Equal(t, 1, len(dashboards))
+		assert.Equal(t, dashboard.Name, dashboards[0].Name)
+		assert.Equal(t, dashboard.Discovery, dashboards[0].Discovery)
+		assert.Equal(t, dashboard.DashboardID, dashboards[0].DashboardID)
+		assert.Equal(t, customers[0].Code, dashboards[0].CustomerCode)
+		assert.Equal(t, dashboardCategories[0].ID, dashboards[0].Category.ID)
+		assert.Equal(t, dashboardCategories[0].Label, dashboards[0].Category.Label)
+		assert.Equal(t, dashboardCategories[0].Premium, dashboards[0].Category.Premium)
+
+		dashboard2 := looker.AnalyticsDashboard{
+			Name:        "Another Test Dashboard",
+			Discovery:   true,
+			DashboardID: 15,
+		}
+
+		err = db.AddAnalyticsDashboard(ctx, dashboard2.Name, dashboard2.DashboardID, dashboard2.Discovery, customers[0].DatabaseID, dashboardCategories[1].ID)
+		assert.NoError(t, err)
+
+		dashboards = db.GetAnalyticsDashboards(ctx)
+
+		assert.Equal(t, 2, len(dashboards))
+		assert.Equal(t, dashboard.Name, dashboards[0].Name)
+		assert.Equal(t, dashboard.Discovery, dashboards[0].Discovery)
+		assert.Equal(t, dashboard.DashboardID, dashboards[0].DashboardID)
+		assert.Equal(t, customers[0].Code, dashboards[0].CustomerCode)
+		assert.Equal(t, dashboardCategories[0].ID, dashboards[0].Category.ID)
+		assert.Equal(t, dashboardCategories[0].Label, dashboards[0].Category.Label)
+		assert.Equal(t, dashboardCategories[0].Premium, dashboards[0].Category.Premium)
+
+		assert.Equal(t, dashboard2.Name, dashboards[1].Name)
+		assert.Equal(t, dashboard2.Discovery, dashboards[1].Discovery)
+		assert.Equal(t, dashboard2.DashboardID, dashboards[1].DashboardID)
+		assert.Equal(t, customers[0].Code, dashboards[1].CustomerCode)
+		assert.Equal(t, dashboardCategories[1].ID, dashboards[1].Category.ID)
+		assert.Equal(t, dashboardCategories[1].Label, dashboards[1].Category.Label)
+		assert.Equal(t, dashboardCategories[1].Premium, dashboards[1].Category.Premium)
+
+		dashboards = db.GetFreeAnalyticsDashboards(ctx)
+		assert.Equal(t, 1, len(dashboards))
+
+		dashboards = db.GetPremiumAnalyticsDashboards(ctx)
+		assert.Equal(t, 1, len(dashboards))
+
+		dashboards = db.GetDiscoveryAnalyticsDashboards(ctx)
+		assert.Equal(t, 1, len(dashboards))
+
+		dashboards = db.GetAnalyticsDashboardsByCategoryID(ctx, dashboardCategories[0].ID)
+
+		assert.Equal(t, 1, len(dashboards))
+		assert.Equal(t, dashboard.Name, dashboards[0].Name)
+		assert.Equal(t, dashboard.Discovery, dashboards[0].Discovery)
+		assert.Equal(t, dashboard.DashboardID, dashboards[0].DashboardID)
+		assert.Equal(t, customers[0].Code, dashboards[0].CustomerCode)
+		assert.Equal(t, dashboardCategories[0].ID, dashboards[0].Category.ID)
+		assert.Equal(t, dashboardCategories[0].Label, dashboards[0].Category.Label)
+		assert.Equal(t, dashboardCategories[0].Premium, dashboards[0].Category.Premium)
+
+		dashboards = db.GetAnalyticsDashboardsByCategoryID(ctx, dashboardCategories[1].ID)
+		assert.Equal(t, 1, len(dashboards))
+
+		assert.Equal(t, dashboard2.Name, dashboards[0].Name)
+		assert.Equal(t, dashboard2.Discovery, dashboards[0].Discovery)
+		assert.Equal(t, dashboard2.DashboardID, dashboards[0].DashboardID)
+		assert.Equal(t, customers[0].Code, dashboards[0].CustomerCode)
+		assert.Equal(t, dashboardCategories[1].ID, dashboards[0].Category.ID)
+		assert.Equal(t, dashboardCategories[1].Label, dashboards[0].Category.Label)
+		assert.Equal(t, dashboardCategories[1].Premium, dashboards[0].Category.Premium)
+
+		dashboards = db.GetAnalyticsDashboardsByCategoryLabel(ctx, dashboardCategories[1].Label)
+		assert.Equal(t, 1, len(dashboards))
+
+		dashboards = db.GetAnalyticsDashboardsByCategoryLabel(ctx, dashboardCategories[0].Label)
+		assert.Equal(t, 1, len(dashboards))
+
+		dbDashboard, err := db.GetAnalyticsDashboardByID(ctx, dashboards[0].ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, dashboard.Name, dbDashboard.Name)
+		assert.Equal(t, dashboard.Discovery, dbDashboard.Discovery)
+		assert.Equal(t, dashboard.DashboardID, dbDashboard.DashboardID)
+		assert.Equal(t, customers[0].Code, dbDashboard.CustomerCode)
+		assert.Equal(t, dashboardCategories[0].ID, dbDashboard.Category.ID)
+		assert.Equal(t, dashboardCategories[0].Label, dbDashboard.Category.Label)
+		assert.Equal(t, dashboardCategories[0].Premium, dbDashboard.Category.Premium)
+
+		dbDashboard, err = db.GetAnalyticsDashboardByName(ctx, dashboard.Name)
+		assert.NoError(t, err)
+
+		assert.Equal(t, dashboard.Name, dbDashboard.Name)
+		assert.Equal(t, dashboard.Discovery, dbDashboard.Discovery)
+		assert.Equal(t, dashboard.DashboardID, dbDashboard.DashboardID)
+		assert.Equal(t, customers[0].Code, dbDashboard.CustomerCode)
+		assert.Equal(t, dashboardCategories[0].ID, dbDashboard.Category.ID)
+		assert.Equal(t, dashboardCategories[0].Label, dbDashboard.Category.Label)
+		assert.Equal(t, dashboardCategories[0].Premium, dbDashboard.Category.Premium)
+	})
+
+	t.Run("RemoveAnalyticsDashboards", func(t *testing.T) {
+
+		dashboards := db.GetAnalyticsDashboards(ctx)
+		assert.Equal(t, 2, len(dashboards))
+
+		removedDashboard := dashboards[0]
+		removedDashboardCustomer, err := db.Customer(ctx, removedDashboard.CustomerCode)
+		assert.NoError(t, err)
+
+		err = db.RemoveAnalyticsDashboardByID(ctx, dashboards[0].ID)
+		assert.NoError(t, err)
+
+		dashboards = db.GetAnalyticsDashboards(ctx)
+		assert.Equal(t, 1, len(dashboards))
+
+		assert.NotEqual(t, removedDashboard.ID, dashboards[0].ID)
+		assert.NotEqual(t, removedDashboard.Name, dashboards[0].Name)
+		assert.NotEqual(t, removedDashboard.DashboardID, dashboards[0].DashboardID)
+		assert.NotEqual(t, removedDashboard.Category.ID, dashboards[0].Category.ID)
+		assert.NotEqual(t, removedDashboard.Category.Label, dashboards[0].Category.Label)
+		assert.NotEqual(t, removedDashboard.Category.Premium, dashboards[0].Category.Premium)
+
+		err = db.AddAnalyticsDashboard(ctx, removedDashboard.Name, removedDashboard.DashboardID, removedDashboard.Discovery, removedDashboardCustomer.DatabaseID, removedDashboard.Category.ID)
+		assert.NoError(t, err)
+
+		dashboards = db.GetAnalyticsDashboards(ctx)
+		assert.Equal(t, 2, len(dashboards))
+
+		err = db.RemoveAnalyticsDashboardByName(ctx, dashboards[1].Name)
+		assert.NoError(t, err)
+
+		dashboards = db.GetAnalyticsDashboards(ctx)
+		assert.Equal(t, 1, len(dashboards))
+
+		assert.NotEqual(t, removedDashboard.ID, dashboards[0].ID)
+		assert.NotEqual(t, removedDashboard.Name, dashboards[0].Name)
+		assert.NotEqual(t, removedDashboard.DashboardID, dashboards[0].DashboardID)
+		assert.NotEqual(t, removedDashboard.Category.ID, dashboards[0].Category.ID)
+		assert.NotEqual(t, removedDashboard.Category.Label, dashboards[0].Category.Label)
+		assert.NotEqual(t, removedDashboard.Category.Premium, dashboards[0].Category.Premium)
+
+	})
+
+	t.Run("RemoveAnalyticsCategories", func(t *testing.T) {
+
+		categories := db.GetAnalyticsDashboardCategories(ctx)
+		assert.Equal(t, 2, len(categories))
+
+		dashboards := db.GetAnalyticsDashboards(ctx)
+		assert.Equal(t, 1, len(dashboards))
+
+		assert.Equal(t, dashboards[0].Category.ID, categories[1].ID)
+		assert.Equal(t, dashboards[0].Category.Label, categories[1].Label)
+		assert.Equal(t, dashboards[0].Category.Premium, categories[1].Premium)
+
+		err := db.RemoveAnalyticsDashboardCategoryByID(ctx, dashboards[0].Category.ID)
+		assert.Error(t, err)
+
+		removedCategory := categories[0]
+
+		err = db.RemoveAnalyticsDashboardCategoryByID(ctx, removedCategory.ID)
+		assert.NoError(t, err)
+
+		categories = db.GetAnalyticsDashboardCategories(ctx)
+		assert.Equal(t, 1, len(categories))
+
+		assert.NotEqual(t, categories[0].ID, removedCategory.ID)
+		assert.NotEqual(t, categories[0].Label, removedCategory.Label)
+		assert.NotEqual(t, categories[0].Premium, removedCategory.Premium)
+
+		err = db.AddAnalyticsDashboardCategory(ctx, removedCategory.Label, removedCategory.Admin, removedCategory.Premium)
+		assert.NoError(t, err)
+
+		categories = db.GetAnalyticsDashboardCategories(ctx)
+		assert.Equal(t, 2, len(categories))
+
+		err = db.RemoveAnalyticsDashboardCategoryByLabel(ctx, dashboards[0].Category.Label)
+		assert.Error(t, err)
+
+		err = db.RemoveAnalyticsDashboardCategoryByLabel(ctx, removedCategory.Label)
+		assert.NoError(t, err)
+
+		categories = db.GetAnalyticsDashboardCategories(ctx)
+		assert.Equal(t, 1, len(categories))
+
+		assert.NotEqual(t, categories[0].ID, removedCategory.ID)
+		assert.NotEqual(t, categories[0].Label, removedCategory.Label)
+		assert.NotEqual(t, categories[0].Premium, removedCategory.Premium)
+	})
+
+	t.Run("UpdateAnalyticsDashboards", func(t *testing.T) {
+
+		dashboards := db.GetAnalyticsDashboards(ctx)
+
+		updatedDashboard := dashboards[0]
+
+		assert.NotEqual(t, int64(120), updatedDashboard.DashboardID)
+
+		err := db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "DashboardID", int64(120))
+		assert.NoError(t, err)
+
+		dashboard, err := db.GetAnalyticsDashboardByID(ctx, updatedDashboard.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, int64(120), dashboard.DashboardID)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "Name", "This is the new dashboard name")
+		assert.NoError(t, err)
+
+		dashboard, err = db.GetAnalyticsDashboardByID(ctx, updatedDashboard.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "This is the new dashboard name", dashboard.Name)
+
+		isDiscovery := !dashboard.Discovery
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "Discovery", isDiscovery)
+		assert.NoError(t, err)
+
+		dashboard, err = db.GetAnalyticsDashboardByID(ctx, updatedDashboard.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, isDiscovery, dashboard.Discovery)
+
+		customers := db.Customers(ctx)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "CustomerCode", customers[1].Code)
+		assert.NoError(t, err)
+
+		dashboard, err = db.GetAnalyticsDashboardByID(ctx, updatedDashboard.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, customers[1].Code, dashboard.CustomerCode)
+
+		err = db.AddAnalyticsDashboardCategory(ctx, "My Test Category", false, false)
+		assert.NoError(t, err)
+
+		categories := db.GetAnalyticsDashboardCategories(ctx)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "Category", categories[1].ID)
+		assert.NoError(t, err)
+
+		dashboard, err = db.GetAnalyticsDashboardByID(ctx, updatedDashboard.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, categories[1].ID, dashboard.Category.ID)
+		assert.Equal(t, categories[1].Label, dashboard.Category.Label)
+		assert.Equal(t, categories[1].Premium, dashboard.Category.Premium)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "Name", "")
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "Name", nil)
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "DashboardID", "")
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "DashboardID", nil)
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "CompanyCode", "")
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "CompanyCode", nil)
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "CompanyCode", "not a valid customer code")
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "Category", nil)
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardByID(ctx, updatedDashboard.ID, "Category", int64(12343523452))
+		assert.Error(t, err)
+	})
+
+	t.Run("UpdateAnalyticsCategories", func(t *testing.T) {
+
+		categories := db.GetAnalyticsDashboardCategories(ctx)
+
+		updatedCategory := categories[0]
+
+		assert.NotEqual(t, "New Category Label", updatedCategory.Label)
+
+		err := db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Label", "New Category Label")
+		assert.NoError(t, err)
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "New Category Label", category.Label)
+
+		isPremium := !updatedCategory.Premium
+
+		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Premium", isPremium)
+		assert.NoError(t, err)
+
+		category, err = db.GetAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, isPremium, category.Premium)
+
+		isAdmin := !updatedCategory.Admin
+
+		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Admin", isAdmin)
+		assert.NoError(t, err)
+
+		category, err = db.GetAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID)
+		assert.NoError(t, err)
+
+		assert.Equal(t, isAdmin, category.Admin)
+
+		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Label", "")
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Label", nil)
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Premium", "Not a boolean")
+		assert.Error(t, err)
+
+		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Premium", nil)
+		assert.Error(t, err)
 	})
 }
