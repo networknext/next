@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"time"
 
@@ -946,7 +948,111 @@ func (m *InMemory) BannedUsers(ctx context.Context, buyerID uint64) (map[uint64]
 }
 
 func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateBuyer not impemented in InMemory storer")
+	var buyerExists bool
+	var buyer routing.Buyer
+	var idx int
+
+	for i, localBuyer := range m.localBuyers {
+		if localBuyer.ID == buyerID {
+
+			buyer = localBuyer
+			idx = i
+			buyerExists = true
+			break
+		}
+	}
+
+	if !buyerExists {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
+	}
+
+	switch field {
+	case "Live":
+		live, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Live: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.Live = live
+	case "Debug":
+		debug, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Debug: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.Debug = debug
+	case "Analytics":
+		analytics, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Analytics: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.Analytics = analytics
+	case "Billing":
+		billing, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Billing: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.Billing = billing
+	case "Trial":
+		trial, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Trial: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.Trial = trial
+	case "ExoticLocationFee":
+		exoticLocationFee, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("ExoticLocationFee: %v is not a valid float64 type (%T)", value, value)
+		}
+
+		buyer.ExoticLocationFee = exoticLocationFee
+	case "StandardLocationFee":
+		standardLocationFee, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("StandardLocationFee: %v is not a valid float64 type (%T)", value, value)
+		}
+
+		buyer.StandardLocationFee = standardLocationFee
+	case "ShortName":
+		shortName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("ShortName: %v is not a valid string type (%T)", value, value)
+		}
+
+		buyer.ShortName = shortName
+	case "PublicKey":
+		pubKey, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("PublicKey: %v is not a valid string type (%T)", value, value)
+		}
+
+		// Changing the public key also requires changing the ID field and fixing any
+		// extant datacenter maps for this buyer
+		newPublicKey, err := base64.StdEncoding.DecodeString(pubKey)
+		if err != nil {
+			return fmt.Errorf("PublicKey: failed to decode string public key: %v", err)
+		}
+
+		if len(newPublicKey) != crypto.KeySize+8 {
+			return fmt.Errorf("PublicKey: public key is not the correct length: %d", len(newPublicKey))
+		}
+
+		newBuyerID := binary.LittleEndian.Uint64(newPublicKey[:8])
+
+		buyer.ID = newBuyerID
+		buyer.PublicKey = newPublicKey
+
+		// TODO: datacenter maps for this buyer must be updated with the new buyer ID
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Buyer type", field)
+	}
+
+	m.localBuyers[idx] = buyer
+
+	return nil
 }
 
 func (m *InMemory) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {

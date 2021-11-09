@@ -1637,3 +1637,146 @@ func TestInMemoryBannedUsers(t *testing.T) {
 		assert.Zero(t, len(bannedUsers))
 	})
 }
+
+func TestInMemoryUpdateBuyer(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	stringFields := []string{"ShortName", "PublicKey"}
+
+	boolFields := []string{"Live", "Debug", "Analytics", "Billing", "Trial"}
+
+	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee"}
+
+	t.Run("buyer does not exist", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		err := inMemory.UpdateRouteShader(ctx, 0, "", "")
+		assert.EqualError(t, err, "buyer with reference 0 not found")
+	})
+
+	t.Run("failed string fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range stringFields {
+			err := inMemory.UpdateBuyer(ctx, expected.ID, field, float64(-1))
+			assert.EqualError(t, fmt.Errorf("%s: %v is not a valid string type (%T)", field, float64(-1), float64(-1)), err.Error())
+		}
+	})
+
+	t.Run("failed bool fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range boolFields {
+			err := inMemory.UpdateBuyer(ctx, expected.ID, field, float64(-1))
+			assert.EqualError(t, fmt.Errorf("%s: %v is not a valid boolean type (%T)", field, float64(-1), float64(-1)), err.Error())
+		}
+	})
+
+	t.Run("failed float64 fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range float64Fields {
+			err := inMemory.UpdateBuyer(ctx, expected.ID, field, "a")
+			assert.EqualError(t, fmt.Errorf("%s: %v is not a valid float64 type (%T)", field, "a", "a"), err.Error())
+		}
+	})
+
+	t.Run("bad public key", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		err = inMemory.UpdateBuyer(ctx, expected.ID, "PublicKey", "a")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "PublicKey: failed to decode string public key")
+	})
+
+	t.Run("success bool fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range boolFields {
+			err := inMemory.UpdateBuyer(ctx, expected.ID, field, false)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success float64 fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range float64Fields {
+			err := inMemory.UpdateBuyer(ctx, expected.ID, field, float64(1))
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success string fields - short name", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		err = inMemory.UpdateBuyer(ctx, expected.ID, "ShortName", "a")
+		assert.NoError(t, err)
+	})
+
+	t.Run("success string fields - public key", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		publicKey := "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g=="
+		err = inMemory.UpdateBuyer(ctx, expected.ID, "PublicKey", publicKey)
+		assert.NoError(t, err)
+	})
+}

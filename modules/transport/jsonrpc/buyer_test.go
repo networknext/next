@@ -2373,3 +2373,134 @@ func TestRemoveBannedUser(t *testing.T) {
 		assert.Zero(t, len(userReply.BannedUsers))
 	})
 }
+
+func TestBuyer(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("unknown buyer id", func(t *testing.T) {
+		var reply jsonrpc.BuyerReply
+		err := svc.Buyer(req, &jsonrpc.BuyerArg{BuyerID: 0}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.BuyerReply
+		err := svc.Buyer(req, &jsonrpc.BuyerArg{BuyerID: 1}, &reply)
+		assert.NoError(t, err)
+		assert.NotNil(t, reply.Buyer)
+		assert.Equal(t, uint64(1), reply.Buyer.ID)
+	})
+}
+
+func TestUpdateBuyer(t *testing.T) {
+	redisServer, _ := miniredis.Run()
+	redisPool := storage.NewRedisPool(redisServer.Addr(), "", 1, 1)
+	var storer = storage.InMemory{}
+
+	pubkey := make([]byte, 4)
+	err := storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.BuyersService{
+		RedisPoolSessionMap:    redisPool,
+		RedisPoolSessionMeta:   redisPool,
+		RedisPoolSessionSlices: redisPool,
+		RedisPoolTopSessions:   redisPool,
+		Storage:                &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	middleware.SetIsAnonymous(req, false)
+
+	t.Run("invalid hex buyer id", func(t *testing.T) {
+		var reply jsonrpc.UpdateRouteShaderReply
+		err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{HexBuyerID: "badHexBuyerID"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid buyer id", func(t *testing.T) {
+		var reply jsonrpc.UpdateRouteShaderReply
+		err := svc.UpdateRouteShader(req, &jsonrpc.UpdateRouteShaderArgs{BuyerID: 0, Field: "SelectionPercent", Value: "1"}, &reply)
+		assert.Error(t, err)
+	})
+
+	err = storer.AddRouteShader(context.Background(), core.NewRouteShader(), 1)
+	assert.NoError(t, err)
+
+	boolFields := []string{"Live", "Debug", "Analytics", "Billing", "Trial"}
+
+	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee"}
+
+	t.Run("invalid public key", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerReply
+		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "PublicKey", Value: "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/"}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			var reply jsonrpc.UpdateBuyerReply
+			err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: field, Value: "a"}, &reply)
+			assert.EqualError(t, fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", "a"), err.Error())
+		}
+	})
+
+	t.Run("invalid float64 fields", func(t *testing.T) {
+		for _, field := range float64Fields {
+			var reply jsonrpc.UpdateBuyerReply
+			err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: field, Value: "a"}, &reply)
+			assert.EqualError(t, fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid float64 type", "a"), err.Error())
+		}
+	})
+
+	t.Run("success bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			var reply jsonrpc.UpdateBuyerReply
+			err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: field, Value: "true"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success float64 fields", func(t *testing.T) {
+		for _, field := range float64Fields {
+			var reply jsonrpc.UpdateBuyerReply
+			err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: field, Value: "1"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success short name", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerReply
+		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "ShortName", Value: "short-name"}, &reply)
+		assert.NoError(t, err)
+	})
+
+	t.Run("success public key", func(t *testing.T) {
+		var reply jsonrpc.UpdateBuyerReply
+		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "PublicKey", Value: "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g=="}, &reply)
+		assert.NoError(t, err)
+	})
+}
