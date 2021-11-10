@@ -3949,7 +3949,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) []looker
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "GetFreeAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []looker.AnalyticsDashboardCategory{}
 	}
 	defer rows.Close()
@@ -3961,7 +3961,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) []looker
 			&category.Premium,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboardCategories(): error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "GetFreeAnalyticsDashboardCategories(): error parsing returned row", "err", err)
 			return []looker.AnalyticsDashboardCategory{}
 		}
 
@@ -4231,7 +4231,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) []looker.Analyti
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "GetAdminAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []looker.AnalyticsDashboard{}
 	}
 	defer rows.Close()
@@ -4246,7 +4246,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) []looker.Analyti
 			&categoryID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "GetAdminAnalyticsDashboards(): error parsing returned row", "err", err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4288,7 +4288,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql, id)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardsByCategoryID(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []looker.AnalyticsDashboard{}
 	}
 	defer rows.Close()
@@ -4303,7 +4303,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 			&categoryID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "GetAnalyticsDashboardsByCategoryID(): error parsing returned row", "err", err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4328,7 +4328,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 }
 
 // GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
-func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) []looker.AnalyticsDashboard {
+func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) ([]looker.AnalyticsDashboard, error) {
 	var sql bytes.Buffer
 	var customerID int64
 	var categoryID int64
@@ -4343,8 +4343,8 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboard{}
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardsByCategoryLabel(): QueryMultipleRowsRetry returned an error", "err", err)
+		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
 
@@ -4358,19 +4358,19 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 			&categoryID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboard{}
+			level.Error(db.Logger).Log("during", "GetAnalyticsDashboardsByCategoryLabel(): error parsing returned row", "err", err)
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		customer, err := db.CustomerByID(ctx, customerID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
 
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		dashboard.CustomerCode = customer.Code
@@ -4382,7 +4382,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 	}
 
 	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
-	return dashboards
+	return dashboards, nil
 }
 
 // GetPremiumAnalyticsDashboards get all premium looker dashboards
@@ -4401,7 +4401,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) []looker.Analy
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []looker.AnalyticsDashboard{}
 	}
 	defer rows.Close()
@@ -4416,7 +4416,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) []looker.Analy
 			&categoryID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboards(): error parsing returned row", "err", err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4458,7 +4458,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) []looker.Analytic
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "GetFreeAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []looker.AnalyticsDashboard{}
 	}
 	defer rows.Close()
@@ -4473,7 +4473,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) []looker.Analytic
 			&categoryID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "GetFreeAnalyticsDashboards(): error parsing returned row", "err", err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4515,7 +4515,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.Ana
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "GetDiscoveryAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []looker.AnalyticsDashboard{}
 	}
 	defer rows.Close()
@@ -4530,7 +4530,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.Ana
 			&categoryID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "GetDiscoveryAnalyticsDashboards(): error parsing returned row", "err", err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4625,7 +4625,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql, id)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardsByLookerID(): QueryMultipleRowsRetry returned an error", "err", err)
 		return []looker.AnalyticsDashboard{}
 	}
 	defer rows.Close()
@@ -4640,7 +4640,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 			&categoryID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			level.Error(db.Logger).Log("during", "GetAnalyticsDashboardsByLookerID(): error parsing returned row", "err", err)
 			return []looker.AnalyticsDashboard{}
 		}
 
@@ -4973,8 +4973,7 @@ func (db *SQL) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field
 		args = append(args, categoryID, id)
 
 	default:
-		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
-
+		return fmt.Errorf("field '%v' does not exist on the analytics dashboard type", field)
 	}
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)

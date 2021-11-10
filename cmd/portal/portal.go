@@ -291,7 +291,7 @@ func main() {
 
 	lookerHost, ok := os.LookupEnv("LOOKER_HOST")
 	if !ok {
-		level.Error(logger).Log("err", "env var LOOKER_SECRET must be set")
+		level.Error(logger).Log("err", "env var LOOKER_HOST must be set")
 		os.Exit(1)
 	}
 

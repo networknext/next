@@ -122,6 +122,34 @@ func (l *LookerClient) FetchCurrentLookerDashboards() ([]LookerDashboard, error)
 	return dashboardList, nil
 }
 
+func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, userID string, customerCode string) (string, error) {
+	nonce, err := GenerateRandomString(16)
+	if err != nil {
+		return "", err
+	}
+
+	urlOptions := LookerURLOptions{
+		Host:            l.HostURL,
+		Secret:          l.Secret,
+		ExternalUserId:  fmt.Sprintf("\"%s\"", userID),
+		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
+		ExternalGroupId: "",
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+		AccessFilters:   make(map[string]map[string]interface{}),
+		UserAttributes:  make(map[string]interface{}),
+		SessionLength:   LOOKER_SESSION_TIMEOUT,
+		EmbedURL:        "/login/embed/" + url.QueryEscape(fmt.Sprintf("/embed/dashboards-next/%s", id)),
+		ForceLogout:     true,
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Time:            time.Now().Unix(),
+	}
+
+	urlOptions.UserAttributes["customer_code"] = customerCode
+
+	return BuildLookerURL(urlOptions), nil
+}
+
 func BuildLookerURL(urlOptions LookerURLOptions) string {
 	// TODO: Verify logic below, this came from here: https://github.com/looker/looker_embed_sso_examples/pull/36 and is NOT an official implementation. That being said, be careful changing it because it works :P
 	jsonPerms, _ := json.Marshal(urlOptions.Permissions)

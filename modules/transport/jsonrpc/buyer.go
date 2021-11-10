@@ -2690,7 +2690,7 @@ func (s *BuyersService) FetchAnalyticsCategories(r *http.Request, args *FetchAna
 
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
 		return &err
 	}
 
@@ -2699,14 +2699,14 @@ func (s *BuyersService) FetchAnalyticsCategories(r *http.Request, args *FetchAna
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
 		return &err
 	}
 
 	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchLookerURL(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
 		return &err
 	}
 
@@ -2718,7 +2718,12 @@ func (s *BuyersService) FetchAnalyticsCategories(r *http.Request, args *FetchAna
 	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
 		customerCode = "esl"
 	}
-	dashboards := s.Storage.GetAnalyticsDashboards(r.Context())
+	dashboards, err := s.Storage.GetAnalyticsDashboards(r.Context())
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
 
 	// Loop through all dashboards and build a map keyed on the dash category with a value of a dash array specific to the customer code
 	for _, dash := range dashboards {

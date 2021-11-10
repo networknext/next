@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/networknext/backend/modules/crypto"
@@ -1779,7 +1780,14 @@ func (s *OpsService) FetchAnalyticsDashboardCategories(r *http.Request, args *Fe
 		return &err
 	}
 
-	reply.Categories = s.Storage.GetAnalyticsDashboardCategories(r.Context())
+	categories, err := s.Storage.GetAnalyticsDashboardCategories(r.Context())
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsDashboardCategories(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	reply.Categories = categories
 	return nil
 }
 
@@ -1827,12 +1835,16 @@ func (s *OpsService) DeleteAnalyticsDashboardCategory(r *http.Request, args *Del
 		return &err
 	}
 
-	fmt.Println(args.ID)
-
 	ctx := r.Context()
 
 	// Remove dashboards with this category to take care of FK issues
-	dashboards := s.Storage.GetAnalyticsDashboardsByCategoryID(ctx, int64(args.ID))
+	dashboards, err := s.Storage.GetAnalyticsDashboardsByCategoryID(ctx, int64(args.ID))
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("DeleteAnalyticsDashboardCategory(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
 	for _, d := range dashboards {
 		if err := s.Storage.RemoveAnalyticsDashboardByID(ctx, d.ID); err != nil {
 			s.Logger.Log("err", fmt.Errorf("DeleteAnalyticsDashboardCategory(): %v", err.Error()))
@@ -1940,7 +1952,12 @@ func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAna
 
 	reply.Dashboards = make(map[string]AnalyticsDashboard, 0)
 
-	dashboards := s.Storage.GetAnalyticsDashboards(ctx)
+	dashboards, err := s.Storage.GetAnalyticsDashboards(ctx)
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsDashboards(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
 
 	for _, d := range dashboards {
 		dashboardInfo, ok := reply.Dashboards[d.Name]
@@ -2198,17 +2215,40 @@ type FetchAdminDashboardsReply struct {
 func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashboardsArgs, reply *FetchAdminDashboardsReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
 		return &err
 	}
 
-	dashboards := s.Storage.GetAdminAnalyticsDashboards(r.Context())
+	dashboards, err := s.Storage.GetAdminAnalyticsDashboards(r.Context())
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
 
-	// TODO: Hook up looker client for ops service and pass back dashbaord name with url
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
 	for _, dashboard := range dashboards {
+		lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, "")
+		if err != nil {
+			continue
+		}
 		reply.Dashboards = append(reply.Dashboards, AdminDashboard{
 			Name: dashboard.Name,
-			URL:  "",
+			URL:  lookerURL,
 		})
 	}
 

@@ -180,13 +180,13 @@ type Storer interface {
 	UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error
 
 	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
-	GetAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory
+	GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error)
 
 	// GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
-	GetPremiumAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory
+	GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error)
 
 	// GetFreeAnalyticsDashboardCategories returns all Looker dashboard categories
-	GetFreeAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory
+	GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error)
 
 	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
 	GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) (looker.AnalyticsDashboardCategory, error)
@@ -207,28 +207,28 @@ type Storer interface {
 	UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int64, field string, value interface{}) error
 
 	// GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
-	GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) []looker.AnalyticsDashboard
+	GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboard, error)
 
 	// GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
-	GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) []looker.AnalyticsDashboard
+	GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) ([]looker.AnalyticsDashboard, error)
 
 	// GetPremiumAnalyticsDashboards get all premium looker dashboards
-	GetPremiumAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
+	GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
 
 	// GetFreeAnalyticsDashboards get all free looker dashboards
-	GetFreeAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
+	GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
 
 	// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
-	GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
+	GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
 
 	// GetAdminAnalyticsDashboards get all admin looker dashboards
-	GetAdminAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
+	GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
 
 	// GetAnalyticsDashboardByLookerID get looker dashboard by looker id
-	GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) []looker.AnalyticsDashboard
+	GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) ([]looker.AnalyticsDashboard, error)
 
 	// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
-	GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard
+	GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
 
 	// GetAnalyticsDashboardByID get looker dashboard by id
 	GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.AnalyticsDashboard, error)

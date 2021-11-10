@@ -614,21 +614,21 @@ func (m *InMemory) UpdateDatabaseBinFileMetaData(ctx context.Context, fileMeta r
 }
 
 // GetAnalyticsDashboardCategories returns all Looker dashboard categories
-func (m *InMemory) GetAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
+func (m *InMemory) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
-	return categories
+	return categories, fmt.Errorf("GetAnalyticsDashboardCategories not implemented in InMemory storer")
 }
 
 // GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
-func (m *InMemory) GetPremiumAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
+func (m *InMemory) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
-	return categories
+	return categories, fmt.Errorf("GetPremiumAnalyticsDashboardCategories not implemented in InMemory storer")
 }
 
 // GetFreeAnalyticsDashboardCategories returns all free Looker dashboard categories
-func (m *InMemory) GetFreeAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
+func (m *InMemory) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
-	return categories
+	return categories, fmt.Errorf("GetFreeAnalyticsDashboardCategories not implemented in InMemory storer")
 }
 
 // GetAnalyticsDashboardCategories returns all Looker dashboard categories
@@ -665,51 +665,51 @@ func (m *InMemory) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id 
 }
 
 // GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
-func (m *InMemory) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) []looker.AnalyticsDashboard {
+func (m *InMemory) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
-	return dashboards
+	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByCategoryID not implemented in InMemory storer")
 }
 
 // GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
-func (m *InMemory) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) []looker.AnalyticsDashboard {
+func (m *InMemory) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
-	return dashboards
+	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByCategoryLabel not implemented in InMemory storer")
 }
 
 // GetPremiumAnalyticsDashboards get all premium looker dashboards
-func (m *InMemory) GetPremiumAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+func (m *InMemory) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
-	return dashboards
+	return dashboards, fmt.Errorf("GetPremiumAnalyticsDashboards not implemented in InMemory storer")
 }
 
 // GetFreeAnalyticsDashboards get all free looker dashboards
-func (m *InMemory) GetFreeAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+func (m *InMemory) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
-	return dashboards
+	return dashboards, fmt.Errorf("GetFreeAnalyticsDashboards not implemented in InMemory storer")
 }
 
 // GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
-func (m *InMemory) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+func (m *InMemory) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
-	return dashboards
+	return dashboards, fmt.Errorf("GetDiscoveryAnalyticsDashboards not implemented in InMemory storer")
 }
 
 // GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
-func (m *InMemory) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+func (m *InMemory) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
-	return dashboards
+	return dashboards, fmt.Errorf("GetAnalyticsDashboards not implemented in InMemory storer")
 }
 
 // GetAdminAnalyticsDashboards get all admin looker dashboards
-func (m *InMemory) GetAdminAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+func (m *InMemory) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
-	return dashboards
+	return dashboards, fmt.Errorf("GetAdminAnalyticsDashboards not implemented in InMemory storer")
 }
 
 // GetAnalyticsDashboardsByLookerID get looker dashboard by looker id
-func (m *InMemory) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) []looker.AnalyticsDashboard {
+func (m *InMemory) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) ([]looker.AnalyticsDashboard, error) {
 	dashboards := []looker.AnalyticsDashboard{}
-	return dashboards
+	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByLookerID not implemented in InMemory storer")
 }
 
 // GetAnalyticsDashboardByID get looker dashboard by id
