@@ -181,7 +181,12 @@ func (m *InMemory) Customer(ctx context.Context, code string) (routing.Customer,
 }
 
 func (m *InMemory) CustomerByID(ctx context.Context, id int64) (routing.Customer, error) {
-	return routing.Customer{}, fmt.Errorf("AddAnalyticsDashboard not implemented in InMemory storer")
+	for _, customer := range m.localCustomers {
+		if customer.DatabaseID == id {
+			return customer, nil
+		}
+	}
+	return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: id}
 }
 
 func (m *InMemory) Customers(ctx context.Context) []routing.Customer {
