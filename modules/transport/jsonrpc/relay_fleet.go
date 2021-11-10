@@ -24,6 +24,13 @@ import (
 	"github.com/networknext/backend/modules/transport/middleware"
 )
 
+const (
+	DevDatabaseBinGCPBucketName     = "dev_database_bin"
+	StagingDatabaseBinGCPBucketName = "staging_database_bin"
+	ProdDatabaseBinGCPBucketName    = "prod_database_bin"
+	LocalDatabaseBinGCPBucketName   = "happy_path_testing"
+)
+
 // RelayFleetService provides access to real-time data provided by the endpoints
 // mounted on the relay_frontend (/relays, /cost_matrix (tbd), etc.).
 type RelayFleetService struct {
@@ -632,17 +639,16 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 		return err
 	}
 
-	// should come from env var?
 	bucketName := "gs://"
 	switch rfs.Env {
 	case "dev":
-		bucketName += "dev_database_bin"
+		bucketName += DevDatabaseBinGCPBucketName
 	case "prod":
-		bucketName += "prod_database_bin"
+		bucketName += StagingDatabaseBinGCPBucketName
 	case "staging":
-		bucketName += "staging_database_bin"
+		bucketName += ProdDatabaseBinGCPBucketName
 	case "local":
-		bucketName += "happy_path_testing"
+		bucketName += LocalDatabaseBinGCPBucketName
 	}
 
 	// enforce target file name, copy in /tmp has random numbers appended
