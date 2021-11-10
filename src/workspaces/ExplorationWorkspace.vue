@@ -18,7 +18,7 @@
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
       </div>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="$store.getters.currentPage === 'usage' || $store.getters.currentPage === 'analytics'" style="max-width: 400px;">
+      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="$store.getters.currentPage === 'usage' || $store.getters.currentPage === 'analytics' || $store.getters.currentPage === 'discovery'" style="max-width: 400px;">
         <div class="mr-auto"></div>
         <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" />
       </div>
@@ -26,11 +26,14 @@
     <div class="card" style="margin-bottom: 250px;">
       <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
-          <li class="nav-item" v-if="$store.getters.isAdmin">
+          <li class="nav-item" v-if="$store.getters.hasBilling && $store.getters.isAdmin">
             <router-link to="/explore/usage" class="nav-link" :class="{ active: $store.getters.currentPage === 'usage'}">Usage</router-link>
           </li>
           <li class="nav-item" v-if="$store.getters.isAdmin">
             <router-link to="/explore/analytics" class="nav-link" :class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
+          </li>
+          <li class="nav-item" v-if="($store.getters.hasAnalytics && !$store.getters.isAdmin) || ($store.getters.isAdmin && filterBuyerHasAnalytics)">
+            <router-link to="/explore/discovery" class="nav-link" :class="{ active: $store.getters.currentPage === 'discovery'}">Discovery</router-link>
           </li>
           <li class="nav-item" v-if="false && $store.getters.isSeller">
             <router-link to="/explore/supply" class="nav-link" :class="{ active: $store.getters.currentPage === 'supply'}">Supplier</router-link>
@@ -66,6 +69,20 @@ import { ANALYTICS_TRIAL_SIGNUP_RESPONSE, RELOAD_MESSAGE } from '@/components/ty
   }
 })
 export default class ExplorationWorkspace extends Vue {
+  get filterBuyerHasAnalytics () {
+    const buyers: Array<any> = this.$store.getters.allBuyers || []
+    const filterCode: string = this.$store.getters.currentFilter.companyCode
+    let foundBuyer = null
+    for (let i = 0; i < buyers.length; i++) {
+      if (buyers[i].company_code === filterCode) {
+        foundBuyer = buyers[i]
+        break
+      }
+    }
+
+    return foundBuyer ? foundBuyer.analytics : false
+  }
+
   // Register the alert component to access its set methods
   $refs!: {
     verifyAlert: Alert;

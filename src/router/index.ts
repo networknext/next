@@ -6,7 +6,7 @@ import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 import AccountSettings from '@/components/AccountSettings.vue'
 import Analytics from '@/components/Analytics.vue'
-import Usage from '@/components/Usage.vue'
+import Discovery from '@/components/Discovery.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
 import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
@@ -19,6 +19,7 @@ import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
 import Supply from '@/components/Supply.vue'
+import Usage from '@/components/Usage.vue'
 import UserManagement from '@/components/UserManagement.vue'
 import UserSessions from '@/components/UserSessions.vue'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
@@ -41,6 +42,11 @@ const routes: Array<RouteConfig> = [
         path: 'analytics',
         name: 'analytics',
         component: Analytics
+      },
+      {
+        path: 'discovery',
+        name: 'discovery',
+        component: Discovery
       },
       {
         path: 'usage',
@@ -178,15 +184,16 @@ const OwnerRoutes = [
   'settings',
   'account-settings',
   'config',
-  'users',
-  'explore'
+  'users'
 ]
 
 // Add or remove these to open up beta features
 const BetaRoutes = [
+  'explore',
   'usage',
   'supply',
-  'analytics'
+  'analytics',
+  'discovery'
 ]
 
 function updateCurrentPage (name: string) {

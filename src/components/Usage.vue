@@ -1,19 +1,15 @@
 <template>
   <div class="card-body" id="usageDash-page">
     <div class="row">
-      <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
-        <div class="card-body">
-          <iframe
-            class="col"
-            id="usageDash"
-            :src="usageDashDashURL"
-            style="min-height: 2500px;"
-            v-show="usageDashDashURL !== ''"
-            frameborder="0"
-          >
-          </iframe>
-        </div>
-      </div>
+      <iframe
+        class="col"
+        id="usageDash"
+        :src="usageDashDashURL"
+        style="min-height: 2500px;"
+        v-show="usageDashDashURL !== ''"
+        frameborder="0"
+      >
+      </iframe>
     </div>
     <div class="row">
       <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">

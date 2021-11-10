@@ -1,28 +1,26 @@
 <template>
-  <div class="card-body" v-if="categories.length > 0">
-    <div class="card" style="margin-bottom: 250px;">
-      <div class="card-header">
-        <ul class="nav nav-tabs card-header-tabs">
-          <li class="nav-item" v-for="(category, index) in categories" :key="index" @click="selectCategory(index)">
-            <a class="nav-link" :class="{ active: index === selectedCategoryIndex }">{{ category.name }}</a>
-          </li>
-        </ul>
-      </div>
-      <div class="card-body" id="analytics-page">
+  <div class="card-body">
+    <h3 v-if="tabs.length === 0">No dashboards available</h3>
+    <div class="card" style="margin-bottom: 250px;" v-if="tabs.length > 0">
+      <div class="card-body">
         <div class="row">
-          <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
-            <div class="card-body">
-              <iframe
-                class="col"
-                id="analyticsDash"
-                :src="categories[selectedCategoryIndex].url"
-                style="min-height: 3400px;"
-                v-show="categories[selectedCategoryIndex].url !== ''"
-                frameborder="0"
-              >
-              </iframe>
-            </div>
-          </div>
+          <ul>
+            <li v-for="(tab, tabIndex) in tabs" :key="tabIndex" @click="selectTab(tabIndex)">
+              <a :class="{ active: tabIndex === selectedTabIndex }">{{ tab }}</a>
+              <div class="blue-accent"></div>
+            </li>
+          </ul>
+        </div>
+        <div class="row" v-for="(url, urlIndex) in urls" :key="urlIndex">
+          <iframe
+            class="col"
+            :id="`discoveryDashboard-${index}`"
+            :src="url"
+            style="min-height: 2500px;"
+            v-show="url !== ''"
+            frameborder="0"
+          >
+          </iframe>
         </div>
       </div>
     </div>
@@ -34,15 +32,18 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class Analytics extends Vue {
-  private categories: Array<any>
-  private selectedCategoryIndex: number
+  private dashboards: any
+  private selectedTabIndex: number
+  private tabs: Array<string>
+  private urls: Array<string>
 
   private unwatchFilter: any
 
   constructor () {
     super()
-    this.categories = []
-    this.selectedCategoryIndex = 0
+    this.selectedTabIndex = -1
+    this.tabs = []
+    this.urls = []
   }
 
   private mounted () {
@@ -52,23 +53,26 @@ export default class Analytics extends Vue {
         return getters.currentFilter
       },
       () => {
-        this.fetchAnalyticsCategories()
+        this.fetchAnalyticsDashboards()
       }
     )
 
-    this.fetchAnalyticsCategories()
+    this.fetchAnalyticsDashboards()
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
   }
 
-  private fetchAnalyticsCategories () {
-    this.$apiService.fetchAnalyticsCategories({
+  private fetchAnalyticsDashboards () {
+    this.$apiService.fetchAnalyticsDashboards({
       company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
-        this.categories = response.categories || []
+        console.log(response)
+        this.dashboards = response.dashboards || []
+        this.tabs = Object.keys(this.dashboards)
+        this.selectTab(0)
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the analytics dashboard categories')
@@ -76,12 +80,18 @@ export default class Analytics extends Vue {
       })
   }
 
-  private selectCategory (index: number) {
-    this.selectedCategoryIndex = index
+  private selectTab (index: number) {
+    this.selectedTabIndex = index
+    this.urls = this.dashboards[this.tabs[index]]
   }
 }
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
+  .blue-accent {
+    border-bottom: solid #009FDF;
+    width: 2.2rem;
+    padding-bottom: 2px;
+  }
 </style>

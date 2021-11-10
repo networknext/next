@@ -16,7 +16,7 @@ declare module '*.vue' {
     fetchTopSessions (args: any): Promise<any>;
     fetchAllBuyers (): Promise<any>;
     fetchUsageSummary(args: any): Promise<any>;
-    fetchAnalyticsCategories(args: any): Promise<any>;
+    fetchAnalyticsDashboards(args: any): Promise<any>;
     fetchUserSessions (args: any): Promise<any>;
     fetchAllRoles (): Promise<any>;
     fetchAllAccounts (): Promise<any>;
@@ -38,6 +38,7 @@ declare module '*.vue' {
     sendUE4DownloadNotifications (args: any): Promise<any>;
     startAnalyticsTrial (): Promise<any>;
     processNewSignup (args: any): Promise<any>;
+    fetchDiscoveryDashboards (args: any): Promise<any>;
   }
 
   export class VueJSONRPCServicePlugin {

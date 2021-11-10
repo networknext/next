@@ -87,8 +87,8 @@ export class JSONRPCService {
     return this.call('BuyersService.Buyers', {})
   }
 
-  public fetchAnalyticsCategories (args: any): Promise<any> {
-    return this.call('BuyersService.FetchAnalyticsCategories', args)
+  public fetchAnalyticsDashboards (args: any): Promise<any> {
+    return this.call('BuyersService.FetchAnalyticsDashboards', args)
   }
 
   public fetchUsageSummary (args: any): Promise<any> {
@@ -181,6 +181,10 @@ export class JSONRPCService {
 
   public processNewSignup (args: any): Promise<any> {
     return this.call('AuthService.ProcessNewSignup', args)
+  }
+
+  public fetchDiscoveryDashboards (args: any): Promise<any> {
+    return this.call('BuyersService.FetchDiscoveryDashboards', args)
   }
 }
 
