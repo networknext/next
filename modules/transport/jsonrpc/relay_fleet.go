@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -253,7 +254,7 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 	case "AnalyticsPusher":
 		serviceURI = rfs.AnalyticsPusherURI + "/status"
 	case "Api":
-		serviceURI = rfs.ApiURI + "/status"
+		serviceURI = fmt.Sprintf("https://%s/status", rfs.ApiURI)
 	case "Billing":
 		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.BillingMIG)
 		if err != nil {
@@ -275,19 +276,19 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 		}
 		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
 	case "PortalCruncher":
-		serviceURI = rfs.PortalCruncherURI + "/status"
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.PortalCruncherURI)
 	case "RelayBackend":
-		serviceURI = rfs.RelayFrontendURI + "/master_status"
+		serviceURI = fmt.Sprintf("http://%s/master_status", rfs.RelayFrontendURI)
 	case "RelayForwarder":
 		if rfs.RelayForwarderURI != "" {
-			serviceURI = rfs.RelayForwarderURI + "/status"
+			serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayForwarderURI)
 		}
 	case "RelayFrontend":
-		serviceURI = rfs.RelayFrontendURI + "/status"
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayFrontendURI)
 	case "RelayGateway":
-		serviceURI = rfs.RelayGatewayURI + "/status"
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayGatewayURI)
 	case "RelayPusher":
-		serviceURI = rfs.RelayPusherURI + "/status"
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayPusherURI)
 	case "ServerBackend":
 		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.ServerBackendMIG)
 		if err != nil {
@@ -299,7 +300,7 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 		}
 		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
 	case "Vanity":
-		serviceURI = rfs.VanityURI + "/status"
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.VanityURI)
 	default:
 		err = fmt.Errorf("service %s does not exist", serviceName)
 	}

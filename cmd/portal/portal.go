@@ -654,21 +654,76 @@ func mainReturnWithCode() int {
 		s.RegisterService(&configService, "")
 		s.RegisterService(authservice, "")
 
-		relayFrontEnd := envvar.Get("RELAY_FRONTEND", "")
-		if relayFrontEnd == "" {
-			core.Error("RELAY_FRONTEND not set")
+		analyticsMIG := envvar.Get("ANALYTICS_MIG", "")
+		if analyticsMIG == "" {
+			core.Error("ANALYTICS_MIG not set")
 			return 1
 		}
 
-		relayGateway := envvar.Get("RELAY_GATEWAY", "")
-		if relayGateway == "" {
-			core.Error("RELAY_GATEWAY not set")
+		analyticsPusherURI := envvar.Get("ANALYTICS_PUSHER_URI", "")
+		if analyticsPusherURI == "" {
+			core.Error("ANALYTICS_PUSHER_URI not set")
 			return 1
 		}
 
-		relayForwarder := envvar.Get("RELAY_FORWARDER", "")
-		if relayForwarder == "" {
-			core.Error("RELAY_FORWARDER not set")
+		apiURI := envvar.Get("API_URI", "")
+		if apiURI == "" {
+			core.Error("API_URI not set")
+			return 1
+		}
+
+		billingMIG := envvar.Get("BILLING_MIG", "")
+		if billingMIG == "" {
+			core.Error("BILLING_MIG not set")
+			return 1
+		}
+
+		portalBackendMIG := envvar.Get("PORTAL_BACKEND_MIG", "")
+		if portalBackendMIG == "" {
+			core.Error("PORTAL_BACKEND_MIG not set")
+			return 1
+		}
+
+		portalCruncherURI := envvar.Get("PORTAL_CRUNCHER_URI", "")
+		if portalCruncherURI == "" {
+			core.Error("PORTAL_CRUNCHER_URI not set")
+			return 1
+		}
+
+		relayForwarderURI := envvar.Get("RELAY_FORWARDER_URI", "")
+		if relayForwarderURI == "" {
+			core.Error("RELAY_FORWARDER_URI not set")
+			// Don't return here because the forwarder does not exist in every env
+		}
+
+		relayFrontendURI := envvar.Get("RELAY_FRONTEND_URI", "")
+		if relayFrontendURI == "" {
+			core.Error("RELAY_FRONTEND_URI not set")
+			return 1
+		}
+
+		relayGatewayURI := envvar.Get("RELAY_GATEWAY_URI", "")
+		if relayGatewayURI == "" {
+			core.Error("RELAY_GATEWAY_URI not set")
+			return 1
+		}
+
+		relayPusherURI := envvar.Get("RELAY_PUSHER_URI", "")
+		if relayPusherURI == "" {
+			core.Error("RELAY_PUSHER_URI not set")
+			return 1
+		}
+
+		serverBackendMIG := envvar.Get("SERVER_BACKEND_MIG", "")
+		if serverBackendMIG == "" {
+			core.Error("SERVER_BACKEND_MIG not set")
+			return 1
+		}
+
+		vanityURI := envvar.Get("VANITY_URI", "")
+		if vanityURI == "" {
+			core.Error("VANITY_URI not set")
+			return 1
 		}
 
 		mondayApiKey := envvar.Get("MONDAY_API_KEY", "")
@@ -678,12 +733,21 @@ func mainReturnWithCode() int {
 		}
 
 		s.RegisterService(&jsonrpc.RelayFleetService{
-			RelayFrontendURI:  relayFrontEnd,
-			RelayGatewayURI:   relayGateway,
-			RelayForwarderURI: relayForwarder,
-			Storage:           db,
-			Env:               env,
-			MondayApiKey:      mondayApiKey,
+			AnalyticsMIG:       analyticsMIG,
+			AnalyticsPusherURI: analyticsPusherURI,
+			ApiURI:             apiURI,
+			BillingMIG:         billingMIG,
+			PortalBackendMIG:   portalBackendMIG,
+			PortalCruncherURI:  portalCruncherURI,
+			RelayForwarderURI:  relayForwarderURI,
+			RelayFrontendURI:   relayFrontendURI,
+			RelayGatewayURI:    relayGatewayURI,
+			RelayPusherURI:     relayPusherURI,
+			ServerBackendMIG:   serverBackendMIG,
+			VanityURI:          vanityURI,
+			Storage:            db,
+			Env:                env,
+			MondayApiKey:       mondayApiKey,
 		}, "")
 
 		s.RegisterService(&jsonrpc.LiveServerService{}, "")
