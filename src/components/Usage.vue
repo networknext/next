@@ -1,19 +1,15 @@
 <template>
   <div class="card-body" id="usageDash-page">
-    <div v-for="(url, index) in usageDashDashURLs" :key="index" class="row">
-      <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
-        <div class="card-body">
-          <iframe
-            class="col"
-            id="usageDash"
-            :src="url"
-            style="min-height: 2500px;"
-            v-show="url !== ''"
-            frameborder="0"
-          >
-          </iframe>
-        </div>
-      </div>
+    <div v-for="(url, index) in usageDashDashURLs" :key="index" class="row" style="margin-bottom: 2rem;">
+      <iframe
+        class="col"
+        id="usageDash"
+        :src="url"
+        style="min-height: 2500px;"
+        v-show="url !== ''"
+        frameborder="0"
+      >
+      </iframe>
     </div>
     <div class="row">
       <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
