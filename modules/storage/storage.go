@@ -6,10 +6,13 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/looker"
 )
 
 type Storer interface {
 	Customer(ctx context.Context, code string) (routing.Customer, error)
+
+	CustomerByID(ctx context.Context, id int64) (routing.Customer, error)
 
 	Customers(ctx context.Context) []routing.Customer
 
@@ -175,4 +178,73 @@ type Storer interface {
 
 	// UpdateDatabaseBinFileMetaData updates the specified field in an database_bin_meta table
 	UpdateDatabaseBinFileMetaData(context.Context, routing.DatabaseBinFileMetaData) error
+
+	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+	GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error)
+
+	// GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
+	GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error)
+
+	// GetFreeAnalyticsDashboardCategories returns all Looker dashboard categories
+	GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error)
+
+	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+	GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) (looker.AnalyticsDashboardCategory, error)
+
+	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+	GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) (looker.AnalyticsDashboardCategory, error)
+
+	// AddAnalyticsDashboardCategory adds a new dashboard category
+	AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool) error
+
+	// RemoveAnalyticsDashboardCategory remove a dashboard category by ID
+	RemoveAnalyticsDashboardCategoryByID(ctx context.Context, id int64) error
+
+	// RemoveAnalyticsDashboardCategory remove a dashboard category by label
+	RemoveAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) error
+
+	// UpdateAnalyticsDashboardByID update a dashboard category label by id
+	UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int64, field string, value interface{}) error
+
+	// GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
+	GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboard, error)
+
+	// GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
+	GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) ([]looker.AnalyticsDashboard, error)
+
+	// GetPremiumAnalyticsDashboards get all premium looker dashboards
+	GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
+
+	// GetFreeAnalyticsDashboards get all free looker dashboards
+	GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
+
+	// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+	GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
+
+	// GetAdminAnalyticsDashboards get all admin looker dashboards
+	GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
+
+	// GetAnalyticsDashboardByLookerID get looker dashboard by looker id
+	GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) ([]looker.AnalyticsDashboard, error)
+
+	// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+	GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
+
+	// GetAnalyticsDashboardByID get looker dashboard by id
+	GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.AnalyticsDashboard, error)
+
+	// GetAnalyticsDashboardByName get looker dashboard by name
+	GetAnalyticsDashboardByName(ctx context.Context, name string) (looker.AnalyticsDashboard, error)
+
+	// AddAnalyticsDashboard adds a new dashboard
+	AddAnalyticsDashboard(ctx context.Context, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error
+
+	// RemoveAnalyticsDashboardByID remove looker dashboard by id
+	RemoveAnalyticsDashboardByID(ctx context.Context, id int64) error
+
+	// RemoveAnalyticsDashboardByName remove looker dashboard by name
+	RemoveAnalyticsDashboardByName(ctx context.Context, name string) error
+
+	// UpdateAnalyticsDashboardByID update looker dashboard looker id by dashboard id
+	UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field string, value interface{}) error
 }
