@@ -11,12 +11,14 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport/middleware"
@@ -25,13 +27,22 @@ import (
 // RelayFleetService provides access to real-time data provided by the endpoints
 // mounted on the relay_frontend (/relays, /cost_matrix (tbd), etc.).
 type RelayFleetService struct {
-	RelayFrontendURI  string
-	RelayGatewayURI   string
-	RelayForwarderURI string
-	Logger            log.Logger
-	Storage           storage.Storer
-	Env               string
-	MondayApiKey      string
+	AnalyticsMIG       string
+	AnalyticsPusherURI string
+	ApiURI             string
+	BillingMIG         string
+	PortalBackendMIG   string
+	PortalCruncherURI  string
+	RelayForwarderURI  string
+	RelayFrontendURI   string
+	RelayGatewayURI    string
+	RelayPusherURI     string
+	ServerBackendMIG   string
+	VanityURI          string
+	Logger             log.Logger
+	Storage            storage.Storer
+	Env                string
+	MondayApiKey       string
 }
 
 // RelayFleetEntry represents a line in the CSV file provided
@@ -224,24 +235,66 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 	var serviceURI string
 	var err error
 	switch serviceName {
-	case "RelayGateway":
-		serviceURI = rfs.RelayGatewayURI + "/status"
-	case "RelayFrontEnd":
-		serviceURI = rfs.RelayFrontendURI + "/status"
-	case "RelayBackEnd":
+	case "Analytics":
+		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.AnalyticsMIG)
+		if err != nil {
+			return serviceURI, err
+		}
+		instanceInternalIP, err := rfs.GetIPAddressForInstanceName(healthyInstanceName)
+		if err != nil {
+			return serviceURI, err
+		}
+		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
+	case "AnalyticsPusher":
+		serviceURI = rfs.AnalyticsPusherURI + "/status"
+	case "Api":
+		serviceURI = rfs.ApiURI + "/status"
+	case "Billing":
+		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.BillingMIG)
+		if err != nil {
+			return serviceURI, err
+		}
+		instanceInternalIP, err := rfs.GetIPAddressForInstanceName(healthyInstanceName)
+		if err != nil {
+			return serviceURI, err
+		}
+		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
+	case "PortalBackend":
+		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.PortalBackendMIG)
+		if err != nil {
+			return serviceURI, err
+		}
+		instanceInternalIP, err := rfs.GetIPAddressForInstanceName(healthyInstanceName)
+		if err != nil {
+			return serviceURI, err
+		}
+		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
+	case "PortalCruncher":
+		serviceURI = rfs.PortalCruncherURI + "/status"
+	case "RelayBackend":
 		serviceURI = rfs.RelayFrontendURI + "/master_status"
 	case "RelayForwarder":
 		if rfs.RelayForwarderURI != "" {
 			serviceURI = rfs.RelayForwarderURI + "/status"
 		}
+	case "RelayFrontend":
+		serviceURI = rfs.RelayFrontendURI + "/status"
+	case "RelayGateway":
+		serviceURI = rfs.RelayGatewayURI + "/status"
 	case "RelayPusher":
+		serviceURI = rfs.RelayPusherURI + "/status"
 	case "ServerBackend":
-	case "Billing":
-	case "Analytics":
-	case "Api":
-	case "PortalCruncher":
-	case "Portal":
+		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.ServerBackendMIG)
+		if err != nil {
+			return serviceURI, err
+		}
+		instanceInternalIP, err := rfs.GetIPAddressForInstanceName(healthyInstanceName)
+		if err != nil {
+			return serviceURI, err
+		}
+		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
 	case "Vanity":
+		serviceURI = rfs.VanityURI + "/status"
 	default:
 		err = fmt.Errorf("service %s does not exist", serviceName)
 	}
@@ -249,22 +302,87 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 	return serviceURI, err
 }
 
+// Gets the first healthy instance in a MIG in GCP
+func (rfs *RelayFleetService) GetHealthyInstanceInMIG(migName string) (string, error) {
+	var gcpProjectID string
+	switch rfs.Env {
+	case "prod":
+		gcpProjectID = "network-next-v3-prod"
+	case "staging":
+		gcpProjectID = "network-next-v3-staging"
+	case "dev":
+		gcpProjectID = "network-next-v3-dev"
+	case "local":
+		// For local env, mig name is the local IP address
+		return migName, nil
+	default:
+		err := fmt.Errorf("GetHealthyInstanceInMIG(): env %s not supported", rfs.Env)
+		return "", err
+	}
+
+	cmd := exec.Command("gcloud", "compute", "instance-groups", "managed", "list-instances", migName, "--format", "value(instance)", "--filter", "healthy", "--project", gcpProjectID, "--zone", "us-central1-a")
+	buffer, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+
+	migInstanceNames := strings.Split(string(buffer), "\n")
+
+	// Using the method above causes an empty string to be added at the end of the slice - remove it
+	if len(migInstanceNames) > 0 {
+		migInstanceNames = migInstanceNames[:len(migInstanceNames)-1]
+	}
+
+	if len(migInstanceNames) == 0 {
+		return "", fmt.Errorf("no healthy instances in %s MIG", migName)
+	}
+
+	return migInstanceNames[0], nil
+}
+
+// Gets the internal IP address for an instance in GCP
+func (rfs *RelayFleetService) GetIPAddressForInstanceName(instanceName string) (string, error) {
+	var gcpProjectID string
+	switch rfs.Env {
+	case "prod":
+		gcpProjectID = "network-next-v3-prod"
+	case "staging":
+		gcpProjectID = "network-next-v3-staging"
+	case "dev":
+		gcpProjectID = "network-next-v3-dev"
+	case "local":
+		// For local env, instance name is the local IP address
+		return instanceName, nil
+	default:
+		err := fmt.Errorf("GetIPAddressForInstanceName(): env %s not supported", rfs.Env)
+		return "", err
+	}
+
+	cmd := exec.Command("gcloud", "compute", "instances", "describe", instanceName, "--format", "get(networkInterfaces[0].networkIP)", "--project", gcpProjectID, "--zone", "us-central1-a")
+	buffer, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+
+	return string(buffer), nil
+}
+
 type AdminFrontPageArgs struct {
 	ServiceName string `json:"serviceName"`
 }
 
 var ServiceStatusList = []string{
+	"Analytics",
+	"AnalyticsPusher",
+	"Api",
+	"Billing",
+	"PortalBackend",
+	"PortalCruncher",
+	"RelayBackend",
+	"RelayFrontend",
 	"RelayGateway",
-	"RelayFrontEnd",
-	"RelayBackEnd",
-	"RelayForwarder",
 	"RelayPusher",
 	"ServerBackend",
-	"Billing",
-	"Analytics",
-	"Api",
-	"PortalCruncher",
-	"Portal",
 	"Vanity",
 	"RelayDashboardAnalysis",
 }
@@ -340,7 +458,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 			response, err := client.Do(req)
 			if err != nil {
-				err = fmt.Errorf("AdminFrontPage() error getting relay_frontend/status: %w", err)
+				err = fmt.Errorf("AdminFrontPage() error getting status for service %s (%s): %v", args.ServiceName, serviceURI, err)
 				rfs.Logger.Log("err", err)
 				return err
 			}
@@ -348,16 +466,93 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 			b, err := ioutil.ReadAll(response.Body)
 			if err != nil {
-				err := fmt.Errorf("AdminFrontPage() error parsing relay_frontend/status: %v", err)
+				err := fmt.Errorf("AdminFrontPage() error parsing status for service %s (%s): %v", args.ServiceName, serviceURI, err)
 				rfs.Logger.Log("err", err)
 				return err
 			}
 
-			serviceStatusText := strings.Split(string(b), "\n")
-			// remove the first line, it contains the service name
-			reply.ServiceStatusText = append(reply.ServiceStatusText, serviceStatusText[1:len(serviceStatusText)-1]...)
-			reply.SelectedService = args.ServiceName
+			var fields reflect.Type
+			var values reflect.Value
 
+			// Unmarshal the status into the corresponding service's status struct
+			switch args.ServiceName {
+			case "Analytics":
+				var status metrics.AnalyticsStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+
+			case "AnalyticsPusher":
+				var status metrics.AnalyticsPusherStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "Api":
+				var status metrics.APIStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "Billing":
+				var status metrics.BillingStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "PortalBackend":
+				var status metrics.PortalStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "PortalCruncher":
+				var status metrics.PortalCruncherStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "RelayBackend":
+				var status metrics.RelayBackendStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "RelayForwarder":
+				var status metrics.RelayForwarderStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "RelayFrontend":
+				var status metrics.RelayFrontendStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "RelayGateway":
+				var status metrics.RelayGatewayStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "RelayPusher":
+				var status metrics.RelayPusherStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "ServerBackend":
+				var status metrics.ServerBackendStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "Vanity":
+				var status metrics.VanityStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			default:
+				err := fmt.Errorf("AdminFrontPage() service %s does not have status", args.ServiceName)
+				rfs.Logger.Log("err", err)
+				return err
+			}
+
+			for i := 0; i < fields.NumField(); i++ {
+				reply.ServiceStatusText = append(reply.ServiceStatusText, fmt.Sprintf("%s: %s", fields.Field(i).Name, values.Field(i)))
+			}
+
+			reply.SelectedService = args.ServiceName
 		}
 
 	}

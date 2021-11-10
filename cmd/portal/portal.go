@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -56,9 +58,8 @@ func mainReturnWithCode() int {
 	serviceName := "portal"
 	fmt.Printf("%s: Git Hash: %s - Commit: %s\n", serviceName, sha, commitMessage)
 
-	// TODO: uncomment for status handler
-	// est, _ := time.LoadLocation("EST")
-	// startTime := time.Now().In(est)
+	est, _ := time.LoadLocation("EST")
+	startTime := time.Now().In(est)
 
 	ctx, ctxCancelFunc := context.WithCancel(context.Background())
 
@@ -492,6 +493,63 @@ func mainReturnWithCode() int {
 		}
 	}()
 
+	// Setup the status handler info
+	statusData := &metrics.PortalStatus{}
+	var statusMutex sync.RWMutex
+
+	{
+		memoryUsed := func() float64 {
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			return float64(m.Alloc) / (1000.0 * 1000.0)
+		}
+
+		go func() {
+			for {
+				newStatusData := &metrics.PortalStatus{}
+
+				// Service Information
+				newStatusData.ServiceName = serviceName
+				newStatusData.GitHash = sha
+				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
+				newStatusData.Uptime = time.Since(startTime).String()
+
+				// Service Metrics
+				newStatusData.Goroutines = runtime.NumGoroutine()
+				newStatusData.MemoryAllocated = memoryUsed()
+
+				// Bigtable Counts
+				newStatusData.ReadMetaSuccessCount = int(btMetrics.ReadMetaSuccessCount.Value())
+				newStatusData.ReadSliceSuccessCount = int(btMetrics.ReadSliceSuccessCount.Value())
+
+				// Bigtable Errors
+				newStatusData.ReadMetaFailureCount = int(btMetrics.ReadMetaFailureCount.Value())
+				newStatusData.ReadSliceFailureCount = int(btMetrics.ReadSliceFailureCount.Value())
+
+				// BuyerEndpoint Errors
+				newStatusData.NoSlicesFailure = int(serviceMetrics.NoSlicesFailure.Value())
+
+				statusMutex.Lock()
+				statusData = newStatusData
+				statusMutex.Unlock()
+
+				time.Sleep(time.Second * 10)
+			}
+		}()
+	}
+
+	serveStatusFunc := func(w http.ResponseWriter, r *http.Request) {
+		statusMutex.RLock()
+		data := statusData
+		statusMutex.RUnlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(data); err != nil {
+			core.Error("could not write status data to json: %v\n%+v", err, data)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+
 	relayMap := jsonrpc.NewRelayStatsMap()
 
 	// TODO: b0rked, needs to process a csv file from /relays and this GET
@@ -646,6 +704,7 @@ func mainReturnWithCode() int {
 		r.Handle("/rpc", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ","), auth0Issuer, true))
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
+		r.HandleFunc("/status", serveStatusFunc).Methods("GET")
 
 		enablePProf, err := envvar.GetBool("FEATURE_ENABLE_PPROF", false)
 		if err != nil {
