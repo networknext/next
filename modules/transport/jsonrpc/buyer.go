@@ -2799,7 +2799,7 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboards(r *http.Request, args *F
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsFetchAnalyticsSummaryDashboardsSummaryDashboard(): %v: Failed to parse user ID", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboards(): %v: Failed to parse user ID", err.Error()))
 		return &err
 	}
 
