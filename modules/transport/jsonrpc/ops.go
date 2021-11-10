@@ -1926,7 +1926,7 @@ func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *Upd
 	return nil
 }
 
-type AnalyticsDashboard struct {
+type AnalyticsDashboardMap struct {
 	IDs       []int32                           `json:"ids"`
 	Name      string                            `json:"name"`
 	Category  looker.AnalyticsDashboardCategory `json:"category"`
@@ -1938,7 +1938,7 @@ type AnalyticsDashboard struct {
 type FetchAllAnalyticsDashboardsArgs struct{}
 
 type FetchAllAnalyticsDashboardsReply struct {
-	Dashboards map[string]AnalyticsDashboard `json:"dashboards"`
+	Dashboards map[string]AnalyticsDashboardMap `json:"dashboards"`
 }
 
 func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAnalyticsDashboardsArgs, reply *FetchAllAnalyticsDashboardsReply) error {
@@ -1950,7 +1950,7 @@ func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAna
 
 	ctx := r.Context()
 
-	reply.Dashboards = make(map[string]AnalyticsDashboard, 0)
+	reply.Dashboards = make(map[string]AnalyticsDashboardMap, 0)
 
 	dashboards, err := s.Storage.GetAnalyticsDashboards(ctx)
 	if err != nil {
@@ -1962,7 +1962,7 @@ func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAna
 	for _, d := range dashboards {
 		dashboardInfo, ok := reply.Dashboards[d.Name]
 		if !ok {
-			dashboardInfo = AnalyticsDashboard{
+			dashboardInfo = AnalyticsDashboardMap{
 				IDs:       make([]int32, 0),
 				Name:      d.Name,
 				Category:  d.Category,

@@ -66,7 +66,7 @@ func SeedSQLStorage(
 			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
 		}
 
-		_, err = db.GetAnalyticsDashboardCategoryByLabel(ctx, "Platform")
+		platformCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Platform")
 		if err != nil {
 			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
 		}
@@ -93,16 +93,7 @@ func SeedSQLStorage(
 
 		nextCustomer, err := db.Customer(ctx, "next")
 		if err == nil {
-			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, nextCustomer.DatabaseID, generalCategory.ID); err != nil {
-				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
-			}
-			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 12, false, nextCustomer.DatabaseID, regionalCategory.ID); err != nil {
-				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
-			}
-			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 18, true, nextCustomer.DatabaseID, discoveryCategory.ID); err != nil {
-				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
-			}
-			if err := db.AddAnalyticsDashboard(ctx, "Relay Status", 20, false, nextCustomer.DatabaseID, systemCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, "Relay Stats", 11, false, nextCustomer.DatabaseID, systemCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
 		}
@@ -130,12 +121,47 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddCustomer() err: %w", err)
 		}
 
+		ghostCustomer, err := db.Customer(ctx, "ghost-army")
+		if err == nil {
+			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 11, false, ghostCustomer.DatabaseID, generalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 11, false, ghostCustomer.DatabaseID, regionalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Platform Analytics", 11, false, ghostCustomer.DatabaseID, platformCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 11, true, ghostCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+		}
+
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Local",
 			Code:                   "local",
 			AutomaticSignInDomains: "",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
+		}
+
+		localCustomer, err := db.Customer(ctx, "local")
+		if err == nil {
+			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 11, false, localCustomer.DatabaseID, generalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 11, false, localCustomer.DatabaseID, regionalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Platform Analytics", 11, false, localCustomer.DatabaseID, platformCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 11, true, localCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Another Discovery!", 11, true, localCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
 		}
 
 		// retrieve entities so we can get the database-assigned keys
@@ -163,7 +189,7 @@ func SeedSQLStorage(
 			Live:        true,
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
-			Analytics:   false,
+			Analytics:   true,
 			Billing:     true,
 			Debug:       true,
 			Trial:       true,
