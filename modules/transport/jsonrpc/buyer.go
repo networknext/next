@@ -49,10 +49,13 @@ const (
 	LOOKER_SESSION_TIMEOUT   = 86400
 )
 
+// Saving these for later
+// AnalyticsDashURIs         = [...]string{"/embed/dashboards-next/14", "/embed/dashboards-next/12", "/embed/dashboards-next/18"}
+
 var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
 	UsageDashURIs             = [...]string{"/embed/dashboards-next/11"}
-	AnalyticsDashURI          = [...]string{"/embed/dashboards-next/14", "/embed/dashboards-next/12"}
+	AnalyticsDashURIs         = [...]string{"/embed/dashboards-next/18"}
 )
 
 type BuyersService struct {
@@ -2746,20 +2749,20 @@ type FetchSummaryDashboardReply struct {
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
-func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
+func (s *BuyersService) FetchAnalyticsSummaryDashboards(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
 	reply.URLs = make([]string, 0)
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 	if !isAdmin && !middleware.VerifyAllRoles(r, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboards(): %v", err.Error()))
 		return &err
 	}
 
 	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboards(): %v", err.Error()))
 		return &err
 	}
 
@@ -2774,13 +2777,13 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *Fe
 		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
 		if err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v: Failed to fetch buyer", err.Error()))
+			s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboards(): %v: Failed to fetch buyer", err.Error()))
 			return &err
 		}
 
 		if !buyer.Analytics && !isAdmin {
 			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-			s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+			s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboards(): %v", err.Error()))
 			return &err
 		}
 	}
@@ -2788,7 +2791,7 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *Fe
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboards(): %v", err.Error()))
 		return &err
 	}
 
@@ -2796,19 +2799,19 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboard(r *http.Request, args *Fe
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v: Failed to parse user ID", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsFetchAnalyticsSummaryDashboardsSummaryDashboard(): %v: Failed to parse user ID", err.Error()))
 		return &err
 	}
 
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboard(): %v: Failed to generate nonce", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsSummaryDashboards(): %v: Failed to generate nonce", err.Error()))
 		return &err
 	}
 
 	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
-	for _, dashURL := range AnalyticsDashURI {
+	for _, dashURL := range AnalyticsDashURIs {
 		urlOptions := notifications.LookerURLOptions{
 			Host:            notifications.LOOKER_HOST,
 			Secret:          s.LookerSecret,
