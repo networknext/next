@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -46,7 +45,6 @@ type RelayFleetService struct {
 	RelayPusherURI     string
 	ServerBackendMIG   string
 	VanityURI          string
-	Logger             log.Logger
 	Storage            storage.Storer
 	Env                string
 	MondayApiKey       string
@@ -83,7 +81,7 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 	response, err := client.Do(req)
 	if err != nil {
 		err = fmt.Errorf("RelayFleet() error getting relays.csv: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	defer response.Body.Close()
@@ -92,7 +90,7 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 	relayData, err := reader.ReadAll()
 	if err != nil {
 		err = fmt.Errorf("RelayFleet() could not parse relays csv file from %s: %v", uri, err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -146,7 +144,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 	if args.XAxisRelayFilter == "" || args.YAxisRelayFilter == "" {
 		err := fmt.Errorf("a filter must be supplied for each axis")
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -162,7 +160,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	response, err := client.Do(req)
 	if err != nil {
 		err = fmt.Errorf("RelayDashboardJson() error getting fleet relay json: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	defer response.Body.Close()
@@ -170,14 +168,14 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	byteValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	json.Unmarshal(byteValue, &fullDashboard)
 	if len(fullDashboard.Relays) == 0 {
 		err := fmt.Errorf("RelayDashboardJson() relay backend returned an empty dashboard file")
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -198,7 +196,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 	if len(filteredDashboard.Relays) == 0 {
 		err := fmt.Errorf("no matches found for x-axis query string")
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -223,7 +221,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 	if len(filteredDashboard.Stats) == 0 {
 		err := fmt.Errorf("no matches found for y-axis query string")
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -418,7 +416,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		req, err := http.NewRequest("GET", uri, nil)
 		if err != nil {
 			err = fmt.Errorf("AdminFrontPage() error setting up NewRequest(): %w", err)
-			rfs.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		req.Header.Set("Authorization", authHeader)
@@ -426,7 +424,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		response, err := client.Do(req)
 		if err != nil {
 			err = fmt.Errorf("AdminFrontPage() error getting fleet relay dashboard analysis: %w", err)
-			rfs.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		defer response.Body.Close()
@@ -434,7 +432,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		byteValue, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			err = fmt.Errorf("AdminFrontPage() error reading /relay_dashboard_analysis HTTP response body: %w", err)
-			rfs.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -453,7 +451,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		serviceURI, err := rfs.GetServiceURI(args.ServiceName)
 		if err != nil {
 			err = fmt.Errorf("AdminFrontPage() error getting service status URI: %w", err)
-			rfs.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		} else if serviceURI == "" {
 			reply.ServiceStatusText = []string{fmt.Sprintf("%s has no status endpoint defined", args.ServiceName)}
@@ -466,7 +464,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 			response, err := client.Do(req)
 			if err != nil {
 				err = fmt.Errorf("AdminFrontPage() error getting status for service %s (%s): %v", args.ServiceName, serviceURI, err)
-				rfs.Logger.Log("err", err)
+				core.Error("%v", err)
 				return err
 			}
 			defer response.Body.Close()
@@ -474,7 +472,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 			b, err := ioutil.ReadAll(response.Body)
 			if err != nil {
 				err := fmt.Errorf("AdminFrontPage() error parsing status for service %s (%s): %v", args.ServiceName, serviceURI, err)
-				rfs.Logger.Log("err", err)
+				core.Error("%v", err)
 				return err
 			}
 
@@ -551,7 +549,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 				values = reflect.ValueOf(status)
 			default:
 				err := fmt.Errorf("AdminFrontPage() service %s does not have status", args.ServiceName)
-				rfs.Logger.Log("err", err)
+				core.Error("%v", err)
 				return err
 			}
 
@@ -598,14 +596,15 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	if requestUser == nil {
 		errCode := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		err := fmt.Errorf("AdminBinFileHandler() error getting userid: %v", errCode)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		rfs.Logger.Log("err", fmt.Errorf("AdminBinFileHandler(): %v: Failed to parse user ID", err.Error()))
+
+		core.Error("AdminBinFileHandler(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
@@ -614,7 +613,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	dbWrapper, err := rfs.BinFileGenerator(r.Context(), requestEmail)
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error generating database.bin file: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		reply.Message = err.Error()
 		return err
 	}
@@ -625,7 +624,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	tempFile, err := ioutil.TempFile("", "database.bin")
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error writing database.bin to temporary file: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		reply.Message = err.Error()
 		return err
 	}
@@ -634,7 +633,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	_, err = tempFile.Write(buffer.Bytes())
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error writing database.bin to filesystem: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		reply.Message = err.Error()
 		return err
 	}
@@ -660,7 +659,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	err = gsutilCpCommand.Run()
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error copying database.bin to %s: %v", bucketName, err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		reply.Message = err.Error()
 	} else {
 		reply.Message = "success!"
@@ -674,7 +673,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	err = rfs.Storage.UpdateDatabaseBinFileMetaData(r.Context(), metaData)
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error writing bin file metadata to db: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		reply.Message = err.Error()
 	}
 
@@ -698,7 +697,7 @@ func (rfs *RelayFleetService) NextBinFileHandler(
 	dbWrapper, err := rfs.BinFileGenerator(r.Context(), "next")
 	if err != nil {
 		err := fmt.Errorf("BinFileHandler() error generating database.bin file: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -724,7 +723,7 @@ func (rfs *RelayFleetService) NextBinFileCommitTimeStamp(
 	err := rfs.Storage.UpdateDatabaseBinFileMetaData(r.Context(), metaData)
 	if err != nil {
 		err := fmt.Errorf("NextBinFileCommitTimeStamp() error writing bin file metadata to db: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -806,7 +805,7 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		err = fmt.Errorf("NextCostMatrixHandler() error creating new request: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	req.Header.Set("Authorization", authHeader)
@@ -814,7 +813,7 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 	response, err := client.Do(req)
 	if err != nil {
 		err = fmt.Errorf("NextCostMatrixHandler() error getting cost matrix: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	defer response.Body.Close()
@@ -822,7 +821,7 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 	byteValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		err = fmt.Errorf("NextCostMatrixHandler() error reading /cost_matrix HTTP response body: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 

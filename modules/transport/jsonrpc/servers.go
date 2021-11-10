@@ -10,7 +10,6 @@ import (
 )
 
 type LiveServerService struct {
-	Logger log.Logger
 }
 
 type LiveServerArgs struct {
@@ -37,7 +36,7 @@ func (lss *LiveServerService) LiveServers(r *http.Request, args *LiveServerArgs,
 		response, err := client.Do(req)
 		if err != nil {
 			err = fmt.Errorf("LiveServers() error getting servers json: %v", err)
-			lss.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 

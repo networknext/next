@@ -681,15 +681,12 @@ func mainReturnWithCode() int {
 			RelayFrontendURI:  relayFrontEnd,
 			RelayGatewayURI:   relayGateway,
 			RelayForwarderURI: relayForwarder,
-			Logger:            logger,
 			Storage:           db,
 			Env:               env,
 			MondayApiKey:      mondayApiKey,
 		}, "")
 
-		s.RegisterService(&jsonrpc.LiveServerService{
-			Logger: logger,
-		}, "")
+		s.RegisterService(&jsonrpc.LiveServerService{}, "")
 
 		allowedOrigins := envvar.Get("ALLOWED_ORIGINS", "")
 
