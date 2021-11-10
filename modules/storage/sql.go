@@ -3861,7 +3861,7 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 }
 
 // GetAnalyticsDashboardCategories returns all Looker dashboard categories
-func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
+func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
 	var sql bytes.Buffer
 	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
@@ -3875,7 +3875,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) []looker.Ana
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboardCategory{}
+		return []looker.AnalyticsDashboardCategory{}, err
 	}
 	defer rows.Close()
 
@@ -3888,18 +3888,18 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) []looker.Ana
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetAnalyticsDashboardCategories(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboardCategory{}
+			return []looker.AnalyticsDashboardCategory{}, err
 		}
 
 		categories = append(categories, category)
 	}
 
 	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
-	return categories
+	return categories, nil
 }
 
 // GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
-func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
+func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
 	var sql bytes.Buffer
 	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
@@ -3913,7 +3913,7 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) []loo
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboardCategory{}
+		return []looker.AnalyticsDashboardCategory{}, err
 	}
 	defer rows.Close()
 
@@ -3925,18 +3925,18 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) []loo
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboardCategories(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboardCategory{}
+			return []looker.AnalyticsDashboardCategory{}, err
 		}
 
 		categories = append(categories, category)
 	}
 
 	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
-	return categories
+	return categories, nil
 }
 
 // GetFreeAnalyticsDashboardCategories returns all Looker dashboard categories
-func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) []looker.AnalyticsDashboardCategory {
+func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
 	var sql bytes.Buffer
 	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
@@ -3950,7 +3950,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) []looker
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetFreeAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboardCategory{}
+		return []looker.AnalyticsDashboardCategory{}, err
 	}
 	defer rows.Close()
 
@@ -3962,14 +3962,14 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) []looker
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetFreeAnalyticsDashboardCategories(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboardCategory{}
+			return []looker.AnalyticsDashboardCategory{}, err
 		}
 
 		categories = append(categories, category)
 	}
 
 	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
-	return categories
+	return categories, nil
 }
 
 // GetAnalyticsDashboardCategories returns all Looker dashboard categories
@@ -4216,7 +4216,7 @@ func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int6
 }
 
 // GetAdminAnalyticsDashboards get all admin looker dashboards
-func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	var sql bytes.Buffer
 	var customerID int64
 	var categoryID int64
@@ -4232,7 +4232,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) []looker.Analyti
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetAdminAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboard{}
+		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
 
@@ -4247,17 +4247,17 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) []looker.Analyti
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetAdminAnalyticsDashboards(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		customer, err := db.CustomerByID(ctx, customerID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		if category.Admin {
@@ -4269,11 +4269,11 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) []looker.Analyti
 	}
 
 	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
-	return dashboards
+	return dashboards, nil
 }
 
 // GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
-func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) []looker.AnalyticsDashboard {
+func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboard, error) {
 	var sql bytes.Buffer
 	var customerID int64
 	var categoryID int64
@@ -4289,7 +4289,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql, id)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardsByCategoryID(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboard{}
+		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
 
@@ -4304,17 +4304,17 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetAnalyticsDashboardsByCategoryID(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		customer, err := db.CustomerByID(ctx, customerID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		dashboard.CustomerCode = customer.Code
@@ -4324,7 +4324,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 	}
 
 	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
-	return dashboards
+	return dashboards, nil
 }
 
 // GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
@@ -4386,7 +4386,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 }
 
 // GetPremiumAnalyticsDashboards get all premium looker dashboards
-func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	var sql bytes.Buffer
 	var customerID int64
 	var categoryID int64
@@ -4402,7 +4402,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) []looker.Analy
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboard{}
+		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
 
@@ -4417,17 +4417,17 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) []looker.Analy
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboards(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		customer, err := db.CustomerByID(ctx, customerID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		dashboard.CustomerCode = customer.Code
@@ -4439,11 +4439,11 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) []looker.Analy
 	}
 
 	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
-	return dashboards
+	return dashboards, nil
 }
 
 // GetFreeAnalyticsDashboards get all free looker dashboards
-func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	var sql bytes.Buffer
 	var customerID int64
 	var categoryID int64
@@ -4459,7 +4459,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) []looker.Analytic
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetFreeAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboard{}
+		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
 
@@ -4474,17 +4474,17 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) []looker.Analytic
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetFreeAnalyticsDashboards(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		customer, err := db.CustomerByID(ctx, customerID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		dashboard.CustomerCode = customer.Code
@@ -4496,11 +4496,11 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) []looker.Analytic
 	}
 
 	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
-	return dashboards
+	return dashboards, nil
 }
 
 // GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
-func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	var sql bytes.Buffer
 	var customerID int64
 	var categoryID int64
@@ -4516,7 +4516,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.Ana
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetDiscoveryAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboard{}
+		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
 
@@ -4531,17 +4531,17 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.Ana
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetDiscoveryAnalyticsDashboards(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		customer, err := db.CustomerByID(ctx, customerID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		dashboard.CustomerCode = customer.Code
@@ -4551,11 +4551,11 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) []looker.Ana
 	}
 
 	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
-	return dashboards
+	return dashboards, nil
 }
 
 // GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
-func (db *SQL) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDashboard {
+func (db *SQL) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	var sql bytes.Buffer
 	var customerID int64
 	var categoryID int64
@@ -4571,7 +4571,7 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDas
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboard{}
+		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
 
@@ -4586,17 +4586,17 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDas
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetAnalyticsDashboards(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		customer, err := db.CustomerByID(ctx, customerID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		dashboard.CustomerCode = customer.Code
@@ -4606,11 +4606,11 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) []looker.AnalyticsDas
 	}
 
 	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
-	return dashboards
+	return dashboards, nil
 }
 
 // GetAnalyticsDashboardsByLookerID get looker dashboards by looker id
-func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) []looker.AnalyticsDashboard {
+func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) ([]looker.AnalyticsDashboard, error) {
 	var sql bytes.Buffer
 	var customerID int64
 	var categoryID int64
@@ -4626,7 +4626,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql, id)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "GetAnalyticsDashboardsByLookerID(): QueryMultipleRowsRetry returned an error", "err", err)
-		return []looker.AnalyticsDashboard{}
+		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
 
@@ -4641,17 +4641,17 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetAnalyticsDashboardsByLookerID(): error parsing returned row", "err", err)
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		customer, err := db.CustomerByID(ctx, customerID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
 		if err != nil {
-			return []looker.AnalyticsDashboard{}
+			return []looker.AnalyticsDashboard{}, err
 		}
 
 		dashboard.CustomerCode = customer.Code
@@ -4661,7 +4661,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 	}
 
 	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
-	return dashboards
+	return dashboards, nil
 }
 
 // GetAnalyticsDashboardByID get looker dashboard by id
