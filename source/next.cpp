@@ -5201,12 +5201,14 @@ int next_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint64
     if ( *type == NEXT_PING_PACKET || *type == NEXT_PONG_PACKET || *type == NEXT_ROUTE_RESPONSE_PACKET || *type == NEXT_CONTINUE_RESPONSE_PACKET )
     {
         // second highest bit must be set
-        next_assert( packet_sequence & ( 1ULL << 62 ) );
+        if ( !( packet_sequence & ( 1ULL << 62 ) ) )
+            return NEXT_ERROR;
     }
     else
     {
         // second highest bit must be clear
-        next_assert( ( packet_sequence & ( 1ULL << 62 ) ) == 0 );
+        if ( packet_sequence & ( 1ULL << 62 ) )
+            return NEXT_ERROR;
     }
 
 
@@ -5236,7 +5238,7 @@ int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64
     if ( direction == NEXT_DIRECTION_SERVER_TO_CLIENT )
     {
         // high bit must be set
-        if ( !( packet_sequence & ( 1ULL <<  63) ) )
+        if ( !( packet_sequence & ( 1ULL << 63 ) ) )
         {
             return NEXT_ERROR;
         }
@@ -5253,12 +5255,18 @@ int next_read_header( int direction, uint8_t * type, uint64_t * sequence, uint64
     if ( packet_type == NEXT_PING_PACKET || packet_type == NEXT_PONG_PACKET || packet_type == NEXT_ROUTE_RESPONSE_PACKET || packet_type == NEXT_CONTINUE_RESPONSE_PACKET )
     {
         // second highest bit must be set
-        next_assert( packet_sequence & ( 1ULL << 62 ) );
+        if ( !( packet_sequence & ( 1ULL << 62 ) ) )
+        {
+            return NEXT_ERROR;
+        }
     }
     else
     {
         // second highest bit must be clear
-        next_assert( ( packet_sequence & ( 1ULL << 62 ) ) == 0 );
+        if ( packet_sequence & ( 1ULL << 62 ) )
+        {
+            return NEXT_ERROR;
+        }
     }
 
     const uint8_t * additional = p;
