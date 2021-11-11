@@ -4,9 +4,9 @@
       <iframe
         class="col"
         id="usageDash"
+        style="min-height: 1000px;"
         :src="usageDashDashURL"
-        style="min-height: 2500px;"
-        v-show="usageDashDashURL !== ''"
+        v-if="usageDashDashURL !== ''"
         frameborder="0"
       >
       </iframe>
@@ -154,15 +154,29 @@ export default class Usage extends Vue {
     )
 
     this.fetchUsageSummary()
+
+    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
+    window.removeEventListener('message', this.resizeIframes)
+  }
+
+  private resizeIframes (event: any) {
+    const iframe = document.getElementById('usageDash') as HTMLIFrameElement
+    if (iframe && event.source === iframe.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
+      const eventData = JSON.parse(event.data)
+      if (eventData.type === 'page:properties:changed') {
+        iframe.height = eventData.height + 50
+      }
+    }
   }
 
   private fetchUsageSummary () {
     this.$apiService.fetchUsageSummary({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      origin: window.location.origin
     })
       .then((response: any) => {
         this.usageDashDashURL = response.url || ''

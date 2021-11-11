@@ -14,6 +14,7 @@
           <iframe
             class="col"
             id="analyticsDashboard"
+            style="min-height: 1000px;"
             :src="url"
             v-if="url !== ''"
             frameborder="0"
@@ -32,7 +33,6 @@ import { Component, Vue } from 'vue-property-decorator'
 export default class Analytics extends Vue {
   private dashboards: any
   private domain: string
-  private heights: Array<number>
   private selectedTabIndex: number
   private tabs: Array<string>
   private urls: Array<string>
@@ -42,7 +42,6 @@ export default class Analytics extends Vue {
   constructor () {
     super()
     this.domain = window.location.origin
-    this.heights = []
     this.selectedTabIndex = -1
     this.tabs = []
     this.urls = []
@@ -71,7 +70,7 @@ export default class Analytics extends Vue {
 
   private resizeIframes (event: any) {
     const iframes = document.querySelectorAll('#analyticsDashboard')
-    iframes.forEach((frame: any, index: number) => {
+    iframes.forEach((frame: any) => {
       if (event.source === frame.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
         const eventData = JSON.parse(event.data)
         if (eventData.type === 'page:properties:changed') {
@@ -83,14 +82,14 @@ export default class Analytics extends Vue {
 
   private fetchAnalyticsDashboards () {
     this.$apiService.fetchAnalyticsDashboards({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      origin: window.location.origin
     })
       .then((response: any) => {
         this.dashboards = response.dashboards || []
         this.tabs = Object.keys(this.dashboards)
         this.selectedTabIndex = 0
         this.urls = this.dashboards[this.tabs[0]]
-        this.heights = new Array(this.urls.length)
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the analytics dashboard categories')
@@ -104,11 +103,11 @@ export default class Analytics extends Vue {
     }
     this.selectedTabIndex = index
     this.urls = this.dashboards[this.tabs[index]]
-    this.heights = new Array(this.urls.length)
 
     // TODO: This is a bit wasteful because we are making multiple URLs when we only need the one specific to the selected tab. Make a refresh endpoint that will just reload the tab
     this.$apiService.fetchAnalyticsDashboards({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      origin: window.location.origin
     })
       .then((response: any) => {
         this.dashboards = response.dashboards || []
@@ -125,7 +124,10 @@ export default class Analytics extends Vue {
 <style scoped lang="scss">
   ul {
     list-style-type: none;
-    margin: 0;
+    margin-left: 1rem;
+    margin-bottom: 0;
+    margin-right: 0;
+    margin-top: 0;
     padding: 0;
     overflow: hidden;
   }

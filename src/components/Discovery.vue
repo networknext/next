@@ -5,9 +5,9 @@
         <div class="card-body">
           <iframe
             class="col"
-            :id="`discoveryDashboard-${index}`"
+            id="discoveryDashboard"
             :src="url"
-            style="min-height: 2500px;"
+            style="min-height: 1000px;"
             v-show="url !== ''"
             frameborder="0"
           >
@@ -44,15 +44,31 @@ export default class Disccovery extends Vue {
     )
 
     this.fetchDiscoveryDashboards()
+
+    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
+    window.removeEventListener('message', this.resizeIframes)
+  }
+
+  private resizeIframes (event: any) {
+    const iframes = document.querySelectorAll('#discoveryDashboard')
+    iframes.forEach((frame: any) => {
+      if (event.source === frame.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
+        const eventData = JSON.parse(event.data)
+        if (eventData.type === 'page:properties:changed') {
+          frame.height = eventData.height + 50
+        }
+      }
+    })
   }
 
   private fetchDiscoveryDashboards () {
     this.$apiService.fetchDiscoveryDashboards({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      origin: window.location.origin
     })
       .then((response: any) => {
         this.urls = response.urls || []
