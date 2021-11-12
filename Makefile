@@ -306,8 +306,13 @@ export JWT_AUDIENCES=S4WGLze2EZCPG9MeZ5509BedlWlHZGFt,dJFD1rg3Zd8PYhAXbIb0UCKFJk
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/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
 export SLACK_CHANNEL=portal-test
 export LOOKER_SECRET=d61764ff20f99e672af3ec7fde75531a790acdb6d58bf46dbe55dac06a6019c0
+export LOOKER_HOST=networknextexternal.cloud.looker.com
 export GITHUB_ACCESS_TOKEN=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
 export RELEASE_NOTES_INTERVAL=30s
+
+# TODO: Change these to a permanent API user in looker
+export LOOKER_API_CLIENT_ID=QXG3cfyWd8xqsVnT7QbT
+export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
