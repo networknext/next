@@ -72,6 +72,12 @@ type buyer struct {
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Buyers(): %v", err.Error())
+		return &err
+	}
+
 	for _, b := range s.Storage.Buyers(r.Context()) {
 		c, err := s.Storage.Customer(r.Context(), b.CompanyCode)
 		if err != nil {
@@ -118,6 +124,12 @@ type JSAddBuyerArgs struct {
 type JSAddBuyerReply struct{}
 
 func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JSAddBuyerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("JSAddBuyer(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -169,6 +181,12 @@ type RemoveBuyerArgs struct {
 type RemoveBuyerReply struct{}
 
 func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *RemoveBuyerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveBuyer(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -224,6 +242,12 @@ type seller struct {
 }
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Sellers(): %v", err.Error())
+		return &err
+	}
+
 	for _, localSeller := range s.Storage.Sellers(r.Context()) {
 
 		reply.Sellers = append(reply.Sellers, seller{
@@ -300,6 +324,12 @@ type JSAddCustomerArgs struct {
 type JSAddCustomerReply struct{}
 
 func (s *OpsService) JSAddCustomer(r *http.Request, args *JSAddCustomerArgs, reply *JSAddCustomerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("JSAddCustomer(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -324,6 +354,12 @@ type AddCustomerArgs struct {
 type AddCustomerReply struct{}
 
 func (s *OpsService) AddCustomer(r *http.Request, args *AddCustomerArgs, reply *AddCustomerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveBuyer(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -344,6 +380,11 @@ type CustomerReply struct {
 }
 
 func (s *OpsService) Customer(r *http.Request, arg *CustomerArg, reply *CustomerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Customer(): %v", err.Error())
+		return &err
+	}
 
 	var c routing.Customer
 	var err error
@@ -367,6 +408,11 @@ type SellerReply struct {
 }
 
 func (s *OpsService) Seller(r *http.Request, arg *SellerArg, reply *SellerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Seller(): %v", err.Error())
+		return &err
+	}
 
 	var seller routing.Seller
 	var err error
@@ -391,6 +437,12 @@ type JSAddSellerArgs struct {
 type JSAddSellerReply struct{}
 
 func (s *OpsService) JSAddSeller(r *http.Request, args *JSAddSellerArgs, reply *JSAddSellerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("JSAddSeller(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -418,6 +470,12 @@ type AddSellerArgs struct {
 type AddSellerReply struct{}
 
 func (s *OpsService) AddSeller(r *http.Request, args *AddSellerArgs, reply *AddSellerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddSeller(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -437,6 +495,12 @@ type RemoveSellerArgs struct {
 type RemoveSellerReply struct{}
 
 func (s *OpsService) RemoveSeller(r *http.Request, args *RemoveSellerArgs, reply *RemoveSellerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveSeller(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -458,6 +522,12 @@ type SetCustomerLinkArgs struct {
 type SetCustomerLinkReply struct{}
 
 func (s *OpsService) SetCustomerLink(r *http.Request, args *SetCustomerLinkArgs, reply *SetCustomerLinkReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("SetCustomerLink(): %v", err.Error())
+		return &err
+	}
+
 	if args.CustomerName == "" {
 		err := errors.New("SetCustomerLink() error: customer name empty")
 		core.Error("%v", err)
@@ -556,6 +626,11 @@ type relay struct {
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Relays(): %v", err.Error())
+		return &err
+	}
 
 	for _, r := range s.Storage.Relays(r.Context()) {
 		relay := relay{
@@ -651,6 +726,11 @@ type RelayEgressPriceOverrideReply struct {
 }
 
 func (s *OpsService) RelaysWithEgressPriceOverride(r *http.Request, args *RelayEgressPriceOverrideArgs, reply *RelayEgressPriceOverrideReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RelaysWithEgressPriceOverride(): %v", err.Error())
+		return &err
+	}
 
 	for _, r := range s.Storage.Relays(r.Context()) {
 
@@ -711,6 +791,12 @@ type AddRelayArgs struct {
 type AddRelayReply struct{}
 
 func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddRelay(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -752,6 +838,12 @@ type JSAddRelayArgs struct {
 type JSAddRelayReply struct{}
 
 func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JSAddRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("JSAddRelay(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -850,6 +942,12 @@ type RemoveRelayArgs struct {
 type RemoveRelayReply struct{}
 
 func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *RemoveRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveRelay(): %v", err.Error())
+		return &err
+	}
+
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.Relay error: %w", err)
@@ -886,6 +984,11 @@ type RelayNameUpdateReply struct {
 }
 
 func (s *OpsService) RelayNameUpdate(r *http.Request, args *RelayNameUpdateArgs, reply *RelayNameUpdateReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RelayNameUpdate(): %v", err.Error())
+		return &err
+	}
 
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
@@ -912,6 +1015,11 @@ type RelayStateUpdateReply struct {
 }
 
 func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArgs, reply *RelayStateUpdateReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RelayStateUpdate(): %v", err.Error())
+		return &err
+	}
 
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
@@ -939,6 +1047,11 @@ type RelayPublicKeyUpdateReply struct {
 }
 
 func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyUpdateArgs, reply *RelayPublicKeyUpdateReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RelayPublicKeyUpdate(): %v", err.Error())
+		return &err
+	}
 
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
@@ -972,6 +1085,11 @@ type RelayNICSpeedUpdateReply struct {
 }
 
 func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpdateArgs, reply *RelayNICSpeedUpdateReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RelayNICSpeedUpdate(): %v", err.Error())
+		return &err
+	}
 
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
@@ -999,6 +1117,11 @@ type DatacenterReply struct {
 }
 
 func (s *OpsService) Datacenter(r *http.Request, arg *DatacenterArg, reply *DatacenterReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Datacenter(): %v", err.Error())
+		return &err
+	}
 
 	var datacenter routing.Datacenter
 	var err error
@@ -1032,6 +1155,12 @@ type datacenter struct {
 }
 
 func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *DatacentersReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Datacenters(): %v", err.Error())
+		return &err
+	}
+
 	for _, d := range s.Storage.Datacenters(r.Context()) {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:      d.Name,
@@ -1066,6 +1195,12 @@ type AddDatacenterArgs struct {
 type AddDatacenterReply struct{}
 
 func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, reply *AddDatacenterReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddDatacenter(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -1088,6 +1223,12 @@ type JSAddDatacenterArgs struct {
 type JSAddDatacenterReply struct{}
 
 func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs, reply *JSAddDatacenterReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("JSAddDatacenter(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -1125,6 +1266,12 @@ type RemoveDatacenterArgs struct {
 type RemoveDatacenterReply struct{}
 
 func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArgs, reply *RemoveDatacenterReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveDatacenter(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -1149,6 +1296,11 @@ type ListDatacenterMapsReply struct {
 
 // A zero DatacenterID returns a list of all maps.
 func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("ListDatacenterMaps(): %v", err.Error())
+		return &err
+	}
 
 	dcm := s.Storage.ListDatacenterMaps(r.Context(), args.DatacenterID)
 
@@ -1212,6 +1364,11 @@ type CheckRelayIPAddressReply struct {
 // CheckRelayIPAddress is used by the Admin tool when recommissioning a relay to ensure the
 // selected IP address "matches" the HexID (which was derived from its original IP address).
 func (s *OpsService) CheckRelayIPAddress(r *http.Request, args *CheckRelayIPAddressArgs, reply *CheckRelayIPAddressReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CheckRelayIPAddress(): %v", err.Error())
+		return &err
+	}
 
 	internalIDFromHexID, err := strconv.ParseUint(args.HexID, 16, 64)
 	if err != nil {
@@ -1245,6 +1402,11 @@ type UpdateRelayArgs struct {
 type UpdateRelayReply struct{}
 
 func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *UpdateRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateRelay(): %v", err.Error())
+		return &err
+	}
 
 	relayID := args.RelayID
 	var err error
@@ -1274,6 +1436,12 @@ type GetRelayReply struct {
 }
 
 func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("GetRelay(): %v", err.Error())
+		return &err
+	}
+
 	routingRelay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("Error retrieving relay ID %016x: %v", args.RelayID, err)
@@ -1327,6 +1495,11 @@ type ModifyRelayFieldArgs struct {
 type ModifyRelayFieldReply struct{}
 
 func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArgs, reply *ModifyRelayFieldReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("ModifyRelayField(): %v", err.Error())
+		return &err
+	}
 
 	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
@@ -1445,6 +1618,12 @@ type UpdateCustomerArgs struct {
 type UpdateCustomerReply struct{}
 
 func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, reply *UpdateCustomerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateCustomer(): %v", err.Error())
+		return &err
+	}
+
 	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
 		return nil
 	}
@@ -1473,6 +1652,12 @@ type RemoveCustomerArgs struct {
 type RemoveCustomerReply struct{}
 
 func (s *OpsService) RemoveCustomer(r *http.Request, args *RemoveCustomerArgs, reply *RemoveCustomerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveCustomer(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -1488,8 +1673,10 @@ type UpdateSellerArgs struct {
 type UpdateSellerReply struct{}
 
 func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply *UpdateSellerReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateSeller(): %v", err.Error())
+		return &err
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -1550,7 +1737,9 @@ type ResetSellerEgressPriceOverrideReply struct{}
 
 func (s *OpsService) ResetSellerEgressPriceOverride(r *http.Request, args *ResetSellerEgressPriceOverrideArgs, reply *ResetSellerEgressPriceOverrideReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
-		return nil
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("ResetSellerEgressPriceOverride(): %v", err.Error())
+		return &err
 	}
 
 	// Iterate through relays and reset egress price override for this seller's relays
@@ -1585,8 +1774,10 @@ type UpdateDatacenterArgs struct {
 type UpdateDatacenterReply struct{}
 
 func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArgs, reply *UpdateDatacenterReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateDatacenter(): %v", err.Error())
+		return &err
 	}
 
 	dcID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
@@ -1621,7 +1812,13 @@ type FetchAnalyticsDashboardCategoriesReply struct {
 func (s *OpsService) FetchAnalyticsDashboardCategories(r *http.Request, args *FetchAnalyticsDashboardCategoriesArgs, reply *FetchAnalyticsDashboardCategoriesReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("FetchAnalyticsCategories(): %v", err.Error())
+		core.Error("FetchAnalyticsDashboardCategories(): %v", err.Error())
+		return &err
+	}
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("FetchAnalyticsDashboardCategories(): %v", err.Error())
 		return &err
 	}
 
@@ -1798,7 +1995,7 @@ type FetchAllAnalyticsDashboardsReply struct {
 func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAnalyticsDashboardsArgs, reply *FetchAllAnalyticsDashboardsReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("FetchAnalyticsCategories(): %v", err.Error())
+		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -1900,7 +2097,7 @@ type DeleteAnalyticsDashboardsReply struct{}
 func (s *OpsService) DeleteAnalyticsDashboards(r *http.Request, args *DeleteAnalyticsDashboardsArgs, reply *DeleteAnalyticsDashboardsReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("DeleteDashboards(): %v", err.Error())
+		core.Error("DeleteAnalyticsDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -1913,7 +2110,7 @@ func (s *OpsService) DeleteAnalyticsDashboards(r *http.Request, args *DeleteAnal
 	wasError := false
 	for _, id := range args.IDs {
 		if err := s.Storage.RemoveAnalyticsDashboardByID(ctx, int64(id)); err != nil {
-			core.Error("DeleteDashboards(): %v", err.Error())
+			core.Error("DeleteAnalyticsDashboards(): %v", err.Error())
 			wasError = true
 			continue
 		}
