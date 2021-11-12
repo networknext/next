@@ -7,8 +7,8 @@ RUN mkdir /app
 ADD . /app/
 WORKDIR /app
 
-RUN make build-test-func
+RUN make build-test-func4
 
 ENV test=test_direct_default
 
-CMD go run ./cmd/func_tests/func_tests.go ${test}
+CMD go run ./cmd/func_tests4/func_tests4.go ${test}
