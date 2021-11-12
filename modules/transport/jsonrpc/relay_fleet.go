@@ -11,27 +11,44 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-kit/kit/log"
+	"github.com/networknext/backend/modules/core"
+	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport/middleware"
 )
 
+const (
+	DevDatabaseBinGCPBucketName     = "dev_database_bin"
+	StagingDatabaseBinGCPBucketName = "staging_database_bin"
+	ProdDatabaseBinGCPBucketName    = "prod_database_bin"
+	LocalDatabaseBinGCPBucketName   = "happy_path_testing"
+)
+
 // RelayFleetService provides access to real-time data provided by the endpoints
 // mounted on the relay_frontend (/relays, /cost_matrix (tbd), etc.).
 type RelayFleetService struct {
-	RelayFrontendURI  string
-	RelayGatewayURI   string
-	RelayForwarderURI string
-	Logger            log.Logger
-	Storage           storage.Storer
-	Env               string
-	MondayApiKey      string
+	AnalyticsMIG       string
+	AnalyticsPusherURI string
+	ApiURI             string
+	BillingMIG         string
+	PortalBackendMIG   string
+	PortalCruncherURI  string
+	RelayForwarderURI  string
+	RelayFrontendURI   string
+	RelayGatewayURI    string
+	RelayPusherURI     string
+	ServerBackendMIG   string
+	VanityURI          string
+	Storage            storage.Storer
+	Env                string
+	MondayApiKey       string
 }
 
 // RelayFleetEntry represents a line in the CSV file provided
@@ -65,7 +82,7 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 	response, err := client.Do(req)
 	if err != nil {
 		err = fmt.Errorf("RelayFleet() error getting relays.csv: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	defer response.Body.Close()
@@ -74,7 +91,7 @@ func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, 
 	relayData, err := reader.ReadAll()
 	if err != nil {
 		err = fmt.Errorf("RelayFleet() could not parse relays csv file from %s: %v", uri, err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -128,7 +145,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 	if args.XAxisRelayFilter == "" || args.YAxisRelayFilter == "" {
 		err := fmt.Errorf("a filter must be supplied for each axis")
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -144,7 +161,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	response, err := client.Do(req)
 	if err != nil {
 		err = fmt.Errorf("RelayDashboardJson() error getting fleet relay json: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	defer response.Body.Close()
@@ -152,14 +169,14 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	byteValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		err = fmt.Errorf("RelayDashboardJson() error getting reading HTTP response body: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	json.Unmarshal(byteValue, &fullDashboard)
 	if len(fullDashboard.Relays) == 0 {
 		err := fmt.Errorf("RelayDashboardJson() relay backend returned an empty dashboard file")
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -180,7 +197,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 	if len(filteredDashboard.Relays) == 0 {
 		err := fmt.Errorf("no matches found for x-axis query string")
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -205,7 +222,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 
 	if len(filteredDashboard.Stats) == 0 {
 		err := fmt.Errorf("no matches found for y-axis query string")
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -224,24 +241,66 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 	var serviceURI string
 	var err error
 	switch serviceName {
-	case "RelayGateway":
-		serviceURI = rfs.RelayGatewayURI + "/status"
-	case "RelayFrontEnd":
-		serviceURI = rfs.RelayFrontendURI + "/status"
-	case "RelayBackEnd":
-		serviceURI = rfs.RelayFrontendURI + "/master_status"
+	case "Analytics":
+		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.AnalyticsMIG)
+		if err != nil {
+			return serviceURI, err
+		}
+		instanceInternalIP, err := rfs.GetIPAddressForInstanceName(healthyInstanceName)
+		if err != nil {
+			return serviceURI, err
+		}
+		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
+	case "AnalyticsPusher":
+		serviceURI = rfs.AnalyticsPusherURI + "/status"
+	case "Api":
+		serviceURI = fmt.Sprintf("https://%s/status", rfs.ApiURI)
+	case "Billing":
+		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.BillingMIG)
+		if err != nil {
+			return serviceURI, err
+		}
+		instanceInternalIP, err := rfs.GetIPAddressForInstanceName(healthyInstanceName)
+		if err != nil {
+			return serviceURI, err
+		}
+		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
+	case "PortalBackend":
+		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.PortalBackendMIG)
+		if err != nil {
+			return serviceURI, err
+		}
+		instanceInternalIP, err := rfs.GetIPAddressForInstanceName(healthyInstanceName)
+		if err != nil {
+			return serviceURI, err
+		}
+		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
+	case "PortalCruncher":
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.PortalCruncherURI)
+	case "RelayBackend":
+		serviceURI = fmt.Sprintf("http://%s/master_status", rfs.RelayFrontendURI)
 	case "RelayForwarder":
 		if rfs.RelayForwarderURI != "" {
-			serviceURI = rfs.RelayForwarderURI + "/status"
+			serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayForwarderURI)
 		}
+	case "RelayFrontend":
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayFrontendURI)
+	case "RelayGateway":
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayGatewayURI)
 	case "RelayPusher":
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.RelayPusherURI)
 	case "ServerBackend":
-	case "Billing":
-	case "Analytics":
-	case "Api":
-	case "PortalCruncher":
-	case "Portal":
+		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.ServerBackendMIG)
+		if err != nil {
+			return serviceURI, err
+		}
+		instanceInternalIP, err := rfs.GetIPAddressForInstanceName(healthyInstanceName)
+		if err != nil {
+			return serviceURI, err
+		}
+		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
 	case "Vanity":
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.VanityURI)
 	default:
 		err = fmt.Errorf("service %s does not exist", serviceName)
 	}
@@ -249,22 +308,87 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 	return serviceURI, err
 }
 
+// Gets the first healthy instance in a MIG in GCP
+func (rfs *RelayFleetService) GetHealthyInstanceInMIG(migName string) (string, error) {
+	var gcpProjectID string
+	switch rfs.Env {
+	case "prod":
+		gcpProjectID = "network-next-v3-prod"
+	case "staging":
+		gcpProjectID = "network-next-v3-staging"
+	case "dev":
+		gcpProjectID = "network-next-v3-dev"
+	case "local":
+		// For local env, mig name is the local IP address
+		return migName, nil
+	default:
+		err := fmt.Errorf("GetHealthyInstanceInMIG(): env %s not supported", rfs.Env)
+		return "", err
+	}
+
+	cmd := exec.Command("gcloud", "compute", "instance-groups", "managed", "list-instances", migName, "--format", "value(instance)", "--filter", "healthy", "--project", gcpProjectID, "--zone", "us-central1-a")
+	buffer, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+
+	migInstanceNames := strings.Split(string(buffer), "\n")
+
+	// Using the method above causes an empty string to be added at the end of the slice - remove it
+	if len(migInstanceNames) > 0 {
+		migInstanceNames = migInstanceNames[:len(migInstanceNames)-1]
+	}
+
+	if len(migInstanceNames) == 0 {
+		return "", fmt.Errorf("no healthy instances in %s MIG", migName)
+	}
+
+	return migInstanceNames[0], nil
+}
+
+// Gets the internal IP address for an instance in GCP
+func (rfs *RelayFleetService) GetIPAddressForInstanceName(instanceName string) (string, error) {
+	var gcpProjectID string
+	switch rfs.Env {
+	case "prod":
+		gcpProjectID = "network-next-v3-prod"
+	case "staging":
+		gcpProjectID = "network-next-v3-staging"
+	case "dev":
+		gcpProjectID = "network-next-v3-dev"
+	case "local":
+		// For local env, instance name is the local IP address
+		return instanceName, nil
+	default:
+		err := fmt.Errorf("GetIPAddressForInstanceName(): env %s not supported", rfs.Env)
+		return "", err
+	}
+
+	cmd := exec.Command("gcloud", "compute", "instances", "describe", instanceName, "--format", "get(networkInterfaces[0].networkIP)", "--project", gcpProjectID, "--zone", "us-central1-a")
+	buffer, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+
+	return string(buffer), nil
+}
+
 type AdminFrontPageArgs struct {
 	ServiceName string `json:"serviceName"`
 }
 
 var ServiceStatusList = []string{
+	"Analytics",
+	"AnalyticsPusher",
+	"Api",
+	"Billing",
+	"PortalBackend",
+	"PortalCruncher",
+	"RelayBackend",
+	"RelayFrontend",
 	"RelayGateway",
-	"RelayFrontEnd",
-	"RelayBackEnd",
-	"RelayForwarder",
 	"RelayPusher",
 	"ServerBackend",
-	"Billing",
-	"Analytics",
-	"Api",
-	"PortalCruncher",
-	"Portal",
 	"Vanity",
 	"RelayDashboardAnalysis",
 }
@@ -293,7 +417,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		req, err := http.NewRequest("GET", uri, nil)
 		if err != nil {
 			err = fmt.Errorf("AdminFrontPage() error setting up NewRequest(): %w", err)
-			rfs.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		req.Header.Set("Authorization", authHeader)
@@ -301,7 +425,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		response, err := client.Do(req)
 		if err != nil {
 			err = fmt.Errorf("AdminFrontPage() error getting fleet relay dashboard analysis: %w", err)
-			rfs.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		defer response.Body.Close()
@@ -309,7 +433,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		byteValue, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			err = fmt.Errorf("AdminFrontPage() error reading /relay_dashboard_analysis HTTP response body: %w", err)
-			rfs.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -328,7 +452,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 		serviceURI, err := rfs.GetServiceURI(args.ServiceName)
 		if err != nil {
 			err = fmt.Errorf("AdminFrontPage() error getting service status URI: %w", err)
-			rfs.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		} else if serviceURI == "" {
 			reply.ServiceStatusText = []string{fmt.Sprintf("%s has no status endpoint defined", args.ServiceName)}
@@ -340,24 +464,101 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 
 			response, err := client.Do(req)
 			if err != nil {
-				err = fmt.Errorf("AdminFrontPage() error getting relay_frontend/status: %w", err)
-				rfs.Logger.Log("err", err)
+				err = fmt.Errorf("AdminFrontPage() error getting status for service %s (%s): %v", args.ServiceName, serviceURI, err)
+				core.Error("%v", err)
 				return err
 			}
 			defer response.Body.Close()
 
 			b, err := ioutil.ReadAll(response.Body)
 			if err != nil {
-				err := fmt.Errorf("AdminFrontPage() error parsing relay_frontend/status: %v", err)
-				rfs.Logger.Log("err", err)
+				err := fmt.Errorf("AdminFrontPage() error parsing status for service %s (%s): %v", args.ServiceName, serviceURI, err)
+				core.Error("%v", err)
 				return err
 			}
 
-			serviceStatusText := strings.Split(string(b), "\n")
-			// remove the first line, it contains the service name
-			reply.ServiceStatusText = append(reply.ServiceStatusText, serviceStatusText[1:len(serviceStatusText)-1]...)
-			reply.SelectedService = args.ServiceName
+			var fields reflect.Type
+			var values reflect.Value
 
+			// Unmarshal the status into the corresponding service's status struct
+			switch args.ServiceName {
+			case "Analytics":
+				var status metrics.AnalyticsStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+
+			case "AnalyticsPusher":
+				var status metrics.AnalyticsPusherStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "Api":
+				var status metrics.APIStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "Billing":
+				var status metrics.BillingStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "PortalBackend":
+				var status metrics.PortalStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "PortalCruncher":
+				var status metrics.PortalCruncherStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "RelayBackend":
+				var status metrics.RelayBackendStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "RelayForwarder":
+				var status metrics.RelayForwarderStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "RelayFrontend":
+				var status metrics.RelayFrontendStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "RelayGateway":
+				var status metrics.RelayGatewayStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "RelayPusher":
+				var status metrics.RelayPusherStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "ServerBackend":
+				var status metrics.ServerBackendStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "Vanity":
+				var status metrics.VanityStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			default:
+				err := fmt.Errorf("AdminFrontPage() service %s does not have status", args.ServiceName)
+				core.Error("%v", err)
+				return err
+			}
+
+			for i := 0; i < fields.NumField(); i++ {
+				reply.ServiceStatusText = append(reply.ServiceStatusText, fmt.Sprintf("%s: %s", fields.Field(i).Name, values.Field(i)))
+			}
+
+			reply.SelectedService = args.ServiceName
 		}
 
 	}
@@ -396,14 +597,15 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	if requestUser == nil {
 		errCode := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		err := fmt.Errorf("AdminBinFileHandler() error getting userid: %v", errCode)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		rfs.Logger.Log("err", fmt.Errorf("AdminBinFileHandler(): %v: Failed to parse user ID", err.Error()))
+
+		core.Error("AdminBinFileHandler(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
@@ -412,7 +614,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	dbWrapper, err := rfs.BinFileGenerator(r.Context(), requestEmail)
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error generating database.bin file: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		reply.Message = err.Error()
 		return err
 	}
@@ -423,7 +625,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	tempFile, err := ioutil.TempFile("", "database.bin")
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error writing database.bin to temporary file: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		reply.Message = err.Error()
 		return err
 	}
@@ -432,22 +634,21 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	_, err = tempFile.Write(buffer.Bytes())
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error writing database.bin to filesystem: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		reply.Message = err.Error()
 		return err
 	}
 
-	// should come from env var?
 	bucketName := "gs://"
 	switch rfs.Env {
 	case "dev":
-		bucketName += "dev_database_bin"
+		bucketName += DevDatabaseBinGCPBucketName
 	case "prod":
-		bucketName += "prod_database_bin"
+		bucketName += StagingDatabaseBinGCPBucketName
 	case "staging":
-		bucketName += "staging_database_bin"
+		bucketName += ProdDatabaseBinGCPBucketName
 	case "local":
-		bucketName += "happy_path_testing"
+		bucketName += LocalDatabaseBinGCPBucketName
 	}
 
 	// enforce target file name, copy in /tmp has random numbers appended
@@ -459,7 +660,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	err = gsutilCpCommand.Run()
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error copying database.bin to %s: %v", bucketName, err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		reply.Message = err.Error()
 	} else {
 		reply.Message = "success!"
@@ -473,7 +674,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	err = rfs.Storage.UpdateDatabaseBinFileMetaData(r.Context(), metaData)
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error writing bin file metadata to db: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		reply.Message = err.Error()
 	}
 
@@ -497,7 +698,7 @@ func (rfs *RelayFleetService) NextBinFileHandler(
 	dbWrapper, err := rfs.BinFileGenerator(r.Context(), "next")
 	if err != nil {
 		err := fmt.Errorf("BinFileHandler() error generating database.bin file: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -523,7 +724,7 @@ func (rfs *RelayFleetService) NextBinFileCommitTimeStamp(
 	err := rfs.Storage.UpdateDatabaseBinFileMetaData(r.Context(), metaData)
 	if err != nil {
 		err := fmt.Errorf("NextBinFileCommitTimeStamp() error writing bin file metadata to db: %v", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -605,7 +806,7 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		err = fmt.Errorf("NextCostMatrixHandler() error creating new request: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	req.Header.Set("Authorization", authHeader)
@@ -613,7 +814,7 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 	response, err := client.Do(req)
 	if err != nil {
 		err = fmt.Errorf("NextCostMatrixHandler() error getting cost matrix: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	defer response.Body.Close()
@@ -621,7 +822,7 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 	byteValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		err = fmt.Errorf("NextCostMatrixHandler() error reading /cost_matrix HTTP response body: %w", err)
-		rfs.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
