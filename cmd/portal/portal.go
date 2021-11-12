@@ -344,7 +344,6 @@ func mainReturnWithCode() int {
 	}
 
 	configService := jsonrpc.ConfigService{
-		Logger:  logger,
 		Storage: db,
 	}
 
