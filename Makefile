@@ -439,6 +439,8 @@ build-load-test-client: dist build-sdk4
 	@printf "done\n"
 endif
 
+########################
+
 .PHONY: build-functional-server4
 build-functional-server4: build-sdk4
 	@printf "Building functional server 4... "
@@ -488,6 +490,47 @@ run-test-func4-parallel:
 
 .PHONY: test-func4-parallel
 test-func4-parallel: dist build-test-func4-parallel run-test-func4-parallel ## runs functional tests in parallel
+
+#######################
+
+.PHONY: build-functional-server5
+build-functional-server5: build-sdk5
+	@printf "Building functional server 5... "
+	@$(CXX) -Isdk5/include -o $(DIST_DIR)/func_server5 ./cmd/func_server5/func_server5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-functional-client5
+build-functional-client5: build-sdk5
+	@printf "Building functional client 5... "
+	@$(CXX) -Isdk5/include -o $(DIST_DIR)/func_client5 ./cmd/func_client5/func_client5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-functional5
+build-functional5: build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests5
+
+.PHONY: build-functional-backend5
+build-functional-backend5: dist
+	@printf "Building functional backend 5... " ; \
+	$(GO) build -o ./dist/func_backend5 ./cmd/func_backend5/*.go ; \
+	printf "done\n" ; \
+
+.PHONY: build-functional-tests5
+build-functional-tests5: dist
+	@printf "Building functional tests 5... " ; \
+	$(GO) build -o ./dist/func_tests5 ./cmd/func_tests5/*.go ; \
+	printf "done\n" ; \
+
+.PHONY: build-test-func5
+build-test-func5: clean dist build-sdk5 build-reference-relay build-functional-server5 build-functional-client5 build-functional-backend5 build-functional-tests5
+
+.PHONY: run-test-func5
+run-test-func5:
+	@printf "\nRunning functional tests 5...\n\n" ; \
+	$(GO) run ./cmd/func_tests5/func_tests5.go $(tests) ; \
+	printf "\ndone\n\n"
+
+.PHONY: test-func5
+test-func5: build-test-func5 run-test-func5 ## runs functional tests
 
 #######################
 
@@ -1496,7 +1539,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-pingdom build-functional4 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client4 build-server4 build-pingdom build-functional4 build-functional5 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
