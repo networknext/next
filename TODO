@@ -1,0 +1,68 @@
+DONE
+
+	Fix the backend packets
+
+	Heisenbug in test_relay_manager (?!)
+
+	It was benign and timing related. Fixed.
+
+	Setup a new repo called "sdk5"
+
+	Submodule "sdk5" into the backend repo.
+
+	Apply read/peek header no assert fixes to sdk4
+
+	Remove the "chonkle" branch entirely from sdk repo
+
+TODO
+
+	--------------
+
+	Get the sdk5 building under backend repo
+
+	--------------
+
+	Implement ref_backend5
+
+	--------------
+
+	Implement func_test5
+
+	--------------
+
+	Work on getting func tests passing ---> direct packets, upgraded etc.
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+	
+
+	--------------
+
+	Get the client and server working with upgraded direct
+
+	--------------
+
+	Get the magic working end-to-end from the backend, down to client and server across multiple minutes.
+
+	--------------
+
+	Update the backend to support the new packet types and format
+
+	--------------
+
+	Update the relay to support the new packet types and format
+
+	--------------
+
+	Implement key rotation for router private/public keypair. Having it fixed is a huge risk.
+
+	--------------
