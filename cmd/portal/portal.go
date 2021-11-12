@@ -269,7 +269,7 @@ func mainReturnWithCode() int {
 	hubspotAPIKey := envvar.Get("HUBSPOT_API_KEY", "")
 	hubspotClient, err := notifications.NewHubSpotClient(hubspotAPIKey, 10*time.Second)
 
-		// Get Auth0 config
+	// Get Auth0 config
 	auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
 	if auth0Issuer == "" {
 		core.Error("AUTH0_ISSUER not set")
@@ -349,13 +349,13 @@ func mainReturnWithCode() int {
 
 	lookerAPIClientID := envvar.Get("LOOKER_API_CLIENT_ID", "")
 	if lookerAPIClientID == "" {
-		core.Error("LOOKER_API_CLIENT_ID not set"
+		core.Error("LOOKER_API_CLIENT_ID not set")
 		return 1
 	}
 
 	lookerAPIClientSecret := envvar.Get("LOOKER_API_CLIENT_SECRET", "")
 	if lookerAPIClientSecret == "" {
-		core.Error("LOOKER_API_CLIENT_SECRET not set"
+		core.Error("LOOKER_API_CLIENT_SECRET not set")
 		return 1
 	}
 
@@ -489,6 +489,7 @@ func mainReturnWithCode() int {
 			case <-ticker.C:
 				if err := opsService.RefreshLookerDashboardCache(); err != nil {
 					core.Error("could not refresh looker dasbhoard cache: %v", err)
+				}
 			}
 		}
 	}()
