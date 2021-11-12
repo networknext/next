@@ -439,6 +439,21 @@ build-load-test-client: dist build-sdk4
 	@printf "done\n"
 endif
 
+.PHONY: build-functional-server4
+build-functional-server4: build-sdk4
+	@printf "Building functional server 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server4 ./cmd/func_server4/func_server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-functional-client4
+build-functional-client4: build-sdk4
+	@printf "Building functional client 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client4 ./cmd/func_client4/func_client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-functional4
+build-functional4: build-functional-client4 build-functional-server4 build-functional-backend4 build-functional-tests4
+
 .PHONY: build-functional-backend4
 build-functional-backend4: dist
 	@printf "Building functional backend 4... " ; \
@@ -1003,21 +1018,6 @@ build-server: build-sdk4
 	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-functional-server4
-build-functional-server4: build-sdk4
-	@printf "Building functional server 4... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server4 ./cmd/func_server4/func_server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-functional-client4
-build-functional-client4: build-sdk4
-	@printf "Building functional client 4... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client4 ./cmd/func_client4/func_client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-functional4
-build-functional4: build-functional-client4 build-functional-server4 build-functional-backend4 build-functional-tests4
-
 .PHONY: build-client
 build-client: build-sdk4
 	@printf "Building client... "
@@ -1496,7 +1496,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-pingdom build-functional build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-pingdom build-functional4 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
