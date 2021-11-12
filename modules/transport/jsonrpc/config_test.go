@@ -14,8 +14,6 @@ func TestFlagList(t *testing.T) {
 	t.Parallel()
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.ConfigService{
 		Storage: &storer,
 	}
