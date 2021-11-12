@@ -439,33 +439,33 @@ build-load-test-client: dist build-sdk4
 	@printf "done\n"
 endif
 
-.PHONY: build-functional-backend
-build-functional-backend: dist
-	@printf "Building functional backend... " ; \
-	$(GO) build -o ./dist/func_backend ./cmd/func_backend/*.go ; \
+.PHONY: build-functional-backend4
+build-functional-backend4: dist
+	@printf "Building functional backend 4... " ; \
+	$(GO) build -o ./dist/func_backend4 ./cmd/func_backend4/*.go ; \
 	printf "done\n" ; \
 
-.PHONY: build-functional-tests
-build-functional-tests: dist
-	@printf "Building functional tests... " ; \
-	$(GO) build -o ./dist/func_tests ./cmd/func_tests/*.go ; \
+.PHONY: build-functional-tests4
+build-functional-tests4: dist
+	@printf "Building functional tests 4... " ; \
+	$(GO) build -o ./dist/func_tests4 ./cmd/func_tests4/*.go ; \
 	printf "done\n" ; \
 
-.PHONY: build-test-func
-build-test-func: clean dist build-sdk4 build-reference-relay build-functional-server build-functional-client build-functional-backend build-functional-tests
+.PHONY: build-test-func4
+build-test-func4: clean dist build-sdk4 build-reference-relay build-functional-server4 build-functional-client4 build-functional-backend4 build-functional-tests4
 
-.PHONY: run-test-func
-run-test-func:
-	@printf "\nRunning functional tests...\n\n" ; \
-	$(GO) run ./cmd/func_tests/func_tests.go $(tests) ; \
+.PHONY: run-test-func4
+run-test-func4:
+	@printf "\nRunning functional tests 4...\n\n" ; \
+	$(GO) run ./cmd/func_tests4/func_tests4.go $(tests) ; \
 	printf "\ndone\n\n"
 
-.PHONY: test-func
-test-func: build-test-func run-test-func ## runs functional tests
+.PHONY: test-func4
+test-func4: build-test-func4 run-test-func4 ## runs functional tests
 
-.PHONY: build-test-func-parallel
-build-test-func-parallel: dist
-	@docker build -t func_tests -f ./cmd/func_tests/Dockerfile .
+.PHONY: build-test-func-parallel4
+build-test-func-parallel4: dist
+	@docker build -t func_tests -f ./cmd/func_tests4/Dockerfile .
 
 .PHONY: run-test-func-parallel
 run-test-func-parallel:
@@ -1003,20 +1003,20 @@ build-server: build-sdk4
 	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-functional-server
-build-functional-server: build-sdk4
-	@printf "Building functional server... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+.PHONY: build-functional-server4
+build-functional-server4: build-sdk4
+	@printf "Building functional server 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server4 ./cmd/func_server4/func_server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-functional-client
-build-functional-client: build-sdk4
-	@printf "Building functional client... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+.PHONY: build-functional-client4
+build-functional-client4: build-sdk4
+	@printf "Building functional client 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client4 ./cmd/func_client4/func_client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-functional
-build-functional: build-functional-client build-functional-server build-functional-backend build-functional-tests
+.PHONY: build-functional4
+build-functional4: build-functional-client4 build-functional-server4 build-functional-backend4 build-functional-tests4
 
 .PHONY: build-client
 build-client: build-sdk4
