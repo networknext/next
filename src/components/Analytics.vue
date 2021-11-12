@@ -1,6 +1,11 @@
 <template>
   <div class="card-body">
-    <h3 v-if="tabs.length === 0">No dashboards available</h3>
+    <h5 class="card-title">
+      Analytic Dashboards
+    </h5>
+    <p class="card-text">
+      Currated dashboards that provide a look into your data
+    </p>
     <div class="card" v-if="tabs.length > 0">
       <div class="card-body">
         <div class="row border-bottom mb-3">
@@ -88,6 +93,9 @@ export default class Analytics extends Vue {
       .then((response: any) => {
         this.dashboards = response.dashboards || []
         this.tabs = Object.keys(this.dashboards)
+        this.tabs.sort((a: string, b: string) => {
+          return (a === 'General' || b === 'General') ? 1 : 0
+        })
         this.selectedTabIndex = 0
         this.urls = this.dashboards[this.tabs[0]]
       })

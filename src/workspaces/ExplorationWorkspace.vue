@@ -29,7 +29,7 @@
           <li class="nav-item" v-if="$store.getters.hasBilling && $store.getters.isAdmin">
             <router-link to="/explore/usage" class="nav-link" :class="{ active: $store.getters.currentPage === 'usage'}">Usage</router-link>
           </li>
-          <li class="nav-item" v-if="$store.getters.isAdmin">
+          <li class="nav-item" v-if="$store.getters.hasAnalytics && $store.getters.isAdmin">
             <router-link to="/explore/analytics" class="nav-link" :class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
           </li>
           <li class="nav-item" v-if="($store.getters.hasAnalytics && !$store.getters.isAdmin) || ($store.getters.isAdmin && filterBuyerHasAnalytics)">

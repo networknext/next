@@ -1,5 +1,11 @@
 <template>
   <div class="card-body" id="discoveryDashboards-page">
+    <h5 class="card-title">
+      Discovery Dashboards
+    </h5>
+    <p class="card-text">
+      Interesting one off dashboards that are created by the Network Next datascience team
+    </p>
     <div class="row" v-for="(url, index) in urls" :key="index">
       <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
         <div class="card-body">
