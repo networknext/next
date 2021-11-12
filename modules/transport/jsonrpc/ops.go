@@ -1393,6 +1393,65 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 	return nil
 }
 
+type GetRelayArgs struct {
+	RelayID uint64
+}
+
+type GetRelayReply struct {
+	Relay relay
+}
+
+func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("GetRelay(): %v", err.Error())
+		return &err
+	}
+
+	routingRelay, err := s.Storage.Relay(r.Context(), args.RelayID)
+	if err != nil {
+		err = fmt.Errorf("Error retrieving relay ID %016x: %v", args.RelayID, err)
+		core.Error("%v", err)
+		return err
+	}
+
+	relay := relay{
+		ID:                  routingRelay.ID,
+		SignedID:            routingRelay.SignedID,
+		Name:                routingRelay.Name,
+		Addr:                routingRelay.Addr.String(),
+		InternalAddr:        routingRelay.InternalAddr.String(),
+		Latitude:            float64(routingRelay.Datacenter.Location.Latitude),
+		Longitude:           float64(routingRelay.Datacenter.Location.Longitude),
+		NICSpeedMbps:        routingRelay.NICSpeedMbps,
+		IncludedBandwidthGB: routingRelay.IncludedBandwidthGB,
+		ManagementAddr:      routingRelay.ManagementAddr,
+		SSHUser:             routingRelay.SSHUser,
+		SSHPort:             routingRelay.SSHPort,
+		State:               routingRelay.State.String(),
+		PublicKey:           base64.StdEncoding.EncodeToString(routingRelay.PublicKey),
+		MaxSessionCount:     routingRelay.MaxSessions,
+		SellerName:          routingRelay.Seller.Name,
+		EgressPriceOverride: routingRelay.EgressPriceOverride,
+		MRC:                 routingRelay.MRC,
+		Overage:             routingRelay.Overage,
+		BWRule:              routingRelay.BWRule,
+		ContractTerm:        routingRelay.ContractTerm,
+		StartDate:           routingRelay.StartDate,
+		EndDate:             routingRelay.EndDate,
+		Type:                routingRelay.Type,
+		Notes:               routingRelay.Notes,
+		DatabaseID:          routingRelay.DatabaseID,
+		DatacenterID:        routingRelay.Datacenter.ID,
+		BillingSupplier:     routingRelay.BillingSupplier,
+		Version:             routingRelay.Version,
+	}
+
+	reply.Relay = relay
+
+	return nil
+}
+
 type ModifyRelayFieldArgs struct {
 	RelayID uint64
 	Field   string
