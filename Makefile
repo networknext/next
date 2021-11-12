@@ -415,13 +415,13 @@ ifeq ($(OS),darwin)
 .PHONY: build-load-test-server
 build-load-test-server: dist build-sdk4
 	@printf "Building load test server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 else
 .PHONY: build-load-test-server
 build-load-test-server: dist build-sdk4
 	@printf "Building load test server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 endif
 
@@ -429,13 +429,13 @@ ifeq ($(OS),darwin)
 .PHONY: build-load-test-client
 build-load-test-client: dist build-sdk4
 	@printf "Building load test client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 else
 .PHONY: build-load-test-client
 build-load-test-client: dist build-sdk4
 	@printf "Building load test client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 endif
 
@@ -491,7 +491,12 @@ dev-fake-server: build-fake-server ## runs a fake server that simulates 2 server
 
 $(DIST_DIR)/$(SDKNAME4).so: dist
 	@printf "Building sdk4... "
-	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME4).so ./sdk/source/*.cpp $(LDFLAGS)
+	@$(CXX) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDKNAME4).so ./sdk4/source/*.cpp $(LDFLAGS)
+	@printf "done\n"
+
+$(DIST_DIR)/$(SDKNAME5).so: dist
+	@printf "Building sdk5... "
+	@$(CXX) -fPIC -Isdk5/include -shared -o $(DIST_DIR)/$(SDKNAME5).so ./sdk5/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-sdk4
@@ -995,19 +1000,19 @@ publish-bootstrap-script-prod-debug:
 .PHONY: build-server
 build-server: build-sdk4
 	@printf "Building server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-server
 build-functional-server: build-sdk4
 	@printf "Building functional server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
 build-functional-client: build-sdk4
 	@printf "Building functional client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
@@ -1016,7 +1021,7 @@ build-functional: build-functional-client build-functional-server build-function
 .PHONY: build-client
 build-client: build-sdk4
 	@printf "Building client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-next
