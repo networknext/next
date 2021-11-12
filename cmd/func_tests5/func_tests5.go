@@ -355,19 +355,14 @@ func test_passthrough() {
 
 	client_counters := read_client_counters(client_stderr.String())
 
-	totalPacketsSent := client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT]
-	totalPacketsReceived := client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] + client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT]
-
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_PASSTHROUGH] > 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_PASSTHROUGH] > 0)
+	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_PASSTHROUGH] > 50*60)
+	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_PASSTHROUGH] == client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_PASSTHROUGH])
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, nil, totalPacketsSent >= 50*60)
-	client_check(client_counters, client_stdout, server_stdout, nil, totalPacketsReceived == totalPacketsSent)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
 	client_check(client_counters, client_stdout, server_stdout, nil, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
