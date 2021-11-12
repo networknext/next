@@ -478,16 +478,16 @@ run-test-func4:
 .PHONY: test-func4
 test-func4: build-test-func4 run-test-func4 ## runs functional tests
 
-.PHONY: build-test-func-parallel4
-build-test-func-parallel4: dist
+.PHONY: build-test-func4-parallel
+build-test-func4-parallel: dist
 	@docker build -t func_tests -f ./cmd/func_tests4/Dockerfile .
 
-.PHONY: run-test-func-parallel
-run-test-func-parallel:
-	@./scripts/test-func-parallel.sh
+.PHONY: run-test-func4-parallel
+run-test-func4-parallel:
+	@./scripts/test-func4-parallel.sh
 
-.PHONY: test-func-parallel
-test-func-parallel: dist build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
+.PHONY: test-func4-parallel
+test-func4-parallel: dist build-test-func4-parallel run-test-func4-parallel ## runs functional tests in parallel
 
 #######################
 
