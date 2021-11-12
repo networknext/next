@@ -311,6 +311,10 @@ export LOOKER_HOST=networknextexternal.cloud.looker.com
 export GITHUB_ACCESS_TOKEN=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
 export RELEASE_NOTES_INTERVAL=30s
 
+# TODO: Change these to a permanent API user in looker
+export LOOKER_API_CLIENT_ID=QXG3cfyWd8xqsVnT7QbT
+export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
+
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
 	@PORT=30000 ./dist/relay_gateway
