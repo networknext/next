@@ -1,6 +1,6 @@
 /*
    Network Next. You control the network.
-   Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
+   Copyright © 2017 - 2022 Network Next, Inc. All rights reserved.
 */
 
 package main
@@ -19,9 +19,9 @@ import (
 
 const (
 	relayBin   = "./dist/reference_relay"
-	backendBin = "./dist/func_backend"
-	clientBin  = "./dist/func_client"
-	serverBin  = "./dist/func_server"
+	backendBin = "./dist/func_backend4"
+	clientBin  = "./dist/func_client4"
+	serverBin  = "./dist/func_server4"
 )
 
 func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
