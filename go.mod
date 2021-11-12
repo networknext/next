@@ -46,6 +46,7 @@ require (
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/rjeczalik/notify v0.9.2
 	github.com/rs/cors v1.7.0
+	github.com/russellcardullo/go-pingdom v1.3.0 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.5.1

@@ -12,7 +12,8 @@ else
 	CXX = g++-8
 endif
 
-SDKNAME = libnext
+SDKNAME4 = libnext4
+SDKNAME5 = libnext5
 
 TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 SHA ?= $(shell git rev-parse --short HEAD)
@@ -74,7 +75,6 @@ export MONDAY_API_KEY = eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjExNDIwOTg2NCwidWlkIjoxMzk
 endif
 
 ifndef RELAY_ADDRESS
-#export RELAY_ADDRESS = 127.0.0.1
 export RELAY_ADDRESS = 127.0.0.1:35000
 endif
 
@@ -129,7 +129,6 @@ export BACKEND_LOG_LEVEL = warn
 endif
 
 ifndef ROUTE_MATRIX_URI
-# export ROUTE_MATRIX_URI = http://127.0.0.1:30000/route_matrix
 export ROUTE_MATRIX_URI = http://127.0.0.1:30005/route_matrix
 endif
 
@@ -356,7 +355,7 @@ dev-clients: build-client  ## runs 10 local clients
 	@./scripts/client-spawner.sh -n 10
 
 .PHONY: dev-server
-dev-server: build-sdk build-server  ## runs a local server
+dev-server: build-sdk4 build-server  ## runs a local server
 	@./dist/server
 
 .PHONY: dev-portal
@@ -399,6 +398,10 @@ dev-api: build-api ## runs a local api endpoint service
 dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
 	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
 
+.PHONY: dev-pingdom
+dev-pingdom: build-pingdom ## runs the pulling and publishing of pingdom uptime
+	@PORT=41006 ./dist/pingdom
+
 #####################
 ## ESSENTIAL TOOLS ##
 #####################
@@ -415,29 +418,29 @@ build-analytics: dist
 
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-server
-build-load-test-server: dist build-sdk
+build-load-test-server: dist build-sdk4
 	@printf "Building load test server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 else
 .PHONY: build-load-test-server
-build-load-test-server: dist build-sdk
+build-load-test-server: dist build-sdk4
 	@printf "Building load test server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 endif
 
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-client
-build-load-test-client: dist build-sdk
+build-load-test-client: dist build-sdk4
 	@printf "Building load test client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 else
 .PHONY: build-load-test-client
-build-load-test-client: dist build-sdk
+build-load-test-client: dist build-sdk4
 	@printf "Building load test client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 endif
 
@@ -454,7 +457,7 @@ build-functional-tests: dist
 	printf "done\n" ; \
 
 .PHONY: build-test-func
-build-test-func: clean dist build-sdk build-reference-relay build-functional-server build-functional-client build-functional-backend build-functional-tests
+build-test-func: clean dist build-sdk4 build-reference-relay build-functional-server build-functional-client build-functional-backend build-functional-tests
 
 .PHONY: run-test-func
 run-test-func:
@@ -491,13 +494,21 @@ dev-mock-relay: ## runs a local mock relay
 dev-fake-server: build-fake-server ## runs a fake server that simulates 2 servers and 400 clients locally
 	@HTTP_PORT=50001 UDP_PORT=50000 ./dist/fake_server
 
-$(DIST_DIR)/$(SDKNAME).so: dist
-	@printf "Building sdk... "
-	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/*.cpp $(LDFLAGS)
+$(DIST_DIR)/$(SDKNAME4).so: dist
+	@printf "Building sdk4... "
+	@$(CXX) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDKNAME4).so ./sdk4/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-sdk
-build-sdk: $(DIST_DIR)/$(SDKNAME).so
+$(DIST_DIR)/$(SDKNAME5).so: dist
+	@printf "Building sdk5... "
+	@$(CXX) -fPIC -Isdk5/include -shared -o $(DIST_DIR)/$(SDKNAME5).so ./sdk5/source/*.cpp $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-sdk4
+build-sdk4: $(DIST_DIR)/$(SDKNAME4).so
+
+.PHONY: build-sdk5
+build-sdk5: $(DIST_DIR)/$(SDKNAME5).so
 
 PHONY: build-portal-cruncher
 build-portal-cruncher:
@@ -563,6 +574,12 @@ build-fake-server: dist
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
 	@printf "done\n"
 
+.PHONY: build-pingdom
+build-pingdom: dist
+	@printf "Building pingdom..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/pingdom ./cmd/pingdom/pingdom.go
+	@printf "done\n"
+
 .PHONY: deploy-portal-crunchers-dev
 deploy-portal-crunchers-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
@@ -576,6 +593,10 @@ deploy-vanity-dev:
 .PHONY: deploy-analytics-pusher-dev
 deploy-analytics-pusher-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t analytics-pusher -n analytics_pusher -b gs://development_artifacts
+
+.PHONY: deploy-pingdom-dev
+deploy-pingdom-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t pingdom -n pingdom -b gs://development_artifacts
 
 .PHONY: deploy-portal-crunchers-staging
 deploy-portal-crunchers-staging:
@@ -595,6 +616,10 @@ deploy-vanity-staging:
 deploy-analytics-pusher-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t analytics-pusher -n analytics_pusher -b gs://staging_artifacts
 
+.PHONY: deploy-pingdom-staging
+deploy-pingdom-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t pingdom -n pingdom -b gs://staging_artifacts
+
 .PHONY: deploy-portal-crunchers-prod
 deploy-portal-crunchers-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
@@ -612,6 +637,10 @@ deploy-vanity-prod:
 .PHONY: deploy-analytics-pusher-prod
 deploy-analytics-pusher-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t analytics-pusher -n analytics_pusher -b gs://prod_artifacts
+
+.PHONY: deploy-pingdom-prod
+deploy-pingdom-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t pingdom -n pingdom -b gs://prod_artifacts
 
 .PHONY: build-fake-server-artifacts-staging
 build-fake-server-artifacts-staging: build-fake-server
@@ -656,6 +685,10 @@ build-vanity-artifacts-dev: build-vanity
 .PHONY: build-relay-artifacts-dev
 build-relay-artifacts-dev: build-relay
 	./deploy/build-artifacts.sh -e dev -s relay
+
+.PHONY: build-pingdom-artifacts-dev
+build-pingdom-artifacts-dev: build-pingdom
+	./deploy/build-artifacts.sh -e dev -s pingdom
 
 .PHONY: build-portal-artifacts-dev
 build-portal-artifacts-dev: build-portal
@@ -705,6 +738,10 @@ build-vanity-artifacts-staging: build-vanity
 build-relay-artifacts-staging: build-relay
 	./deploy/build-artifacts.sh -e staging -s relay
 
+.PHONY: build-pingdom-artifacts-staging
+build-pingdom-artifacts-staging: build-pingdom
+	./deploy/build-artifacts.sh -e staging -s pingdom
+
 .PHONY: build-portal-artifacts-staging
 build-portal-artifacts-staging: build-portal
 	./deploy/build-artifacts.sh -e staging -s portal -b $(ARTIFACT_BUCKET_STAGING)
@@ -753,6 +790,10 @@ build-vanity-artifacts-prod: build-vanity
 build-relay-artifacts-prod: build-relay
 	./deploy/build-artifacts.sh -e prod -s relay
 
+.PHONY: build-pingdom-artifacts-prod
+build-pingdom-artifacts-prod: build-pingdom
+	./deploy/build-artifacts.sh -e prod -s pingdom
+
 .PHONY: build-portal-artifacts-prod
 build-portal-artifacts-prod: build-portal
 	./deploy/build-artifacts.sh -e prod -s portal -b $(ARTIFACT_BUCKET_PROD)
@@ -796,6 +837,10 @@ publish-vanity-artifacts-dev:
 .PHONY: publish-relay-artifacts-dev
 publish-relay-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay
+
+.PHONY: publish-pingdom-artifacts-dev
+publish-pingdom-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s pingdom
 
 .PHONY: publish-portal-artifacts-dev
 publish-portal-artifacts-dev:
@@ -844,6 +889,10 @@ publish-vanity-artifacts-staging:
 .PHONY: publish-relay-artifacts-staging
 publish-relay-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay
+
+.PHONY: publish-pingdom-artifacts-staging
+publish-pingdom-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s pingdom
 
 .PHONY: publish-portal-artifacts-staging
 publish-portal-artifacts-staging:
@@ -913,6 +962,10 @@ publish-analytics-artifacts-prod:
 publish-relay-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay
 
+.PHONY: publish-pingdom-artifacts-prod
+publish-pingdom-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s pingdom
+
 .PHONY: publish-portal-artifacts-prod
 publish-portal-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal
@@ -950,30 +1003,30 @@ publish-bootstrap-script-prod-debug:
 	@printf "done\n"
 
 .PHONY: build-server
-build-server: build-sdk
+build-server: build-sdk4
 	@printf "Building server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-server
-build-functional-server: build-sdk
+build-functional-server: build-sdk4
 	@printf "Building functional server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional-client
-build-functional-client: build-sdk
+build-functional-client: build-sdk4
 	@printf "Building functional client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-functional
 build-functional: build-functional-client build-functional-server build-functional-backend build-functional-tests
 
 .PHONY: build-client
-build-client: build-sdk
+build-client: build-sdk4
 	@printf "Building client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-next
@@ -1448,14 +1501,18 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-pingdom build-functional build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
 
-.PHONY: update-sdk
-update-sdk:
+.PHONY: update-sdk4
+update-sdk4:
 	git submodule update --remote --merge sdk
+
+.PHONY: update-sdk5
+update-sdk5:
+	git submodule update --remote --merge sdk5
 
 .PHONY: clean
 clean: ## cleans everything
