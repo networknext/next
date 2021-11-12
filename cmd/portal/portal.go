@@ -33,6 +33,7 @@ import (
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/notifications"
 )
@@ -112,41 +113,6 @@ func mainReturnWithCode() int {
 		core.Error("failed to validate redis pool for session slices: %v", err)
 		return 1
 	}
-
-	// Get Auth0 config
-	auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
-	if auth0Issuer == "" {
-		core.Error("AUTH0_ISSUER not set")
-		return 1
-	}
-
-	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
-	if auth0Domain == "" {
-		core.Error("AUTH0_DOMAIN not set")
-		return 1
-	}
-
-	auth0ClientID := envvar.Get("AUTH0_CLIENTID", "")
-	if auth0ClientID == "" {
-		core.Error("AUTH0_CLIENTID not set")
-		return 1
-	}
-
-	auth0ClientSecret := envvar.Get("AUTH0_CLIENTSECRET", "")
-
-	manager, err := management.New(
-		auth0Domain,
-		auth0ClientID,
-		auth0ClientSecret,
-	)
-	if err != nil {
-		core.Error("failed to create Auth0 manager: %v", err)
-		return 1
-	}
-
-	var jobManager storage.JobManager = manager.Job
-	var roleManager storage.RoleManager = manager.Role
-	var userManager storage.UserManager = manager.User
 
 	db, err := backend.GetStorer(ctx, logger, gcpProjectID, env)
 	if err != nil {
@@ -243,62 +209,6 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	// if env == "local" {
-	// 	if err = storage.SeedStorage(ctx, db, relayPublicKey, customerID, customerPublicKey); err != nil {
-	// 		level.Error(logger).Log("err", err)
-	// 		return 1
-	// 	}
-	// }
-	// We're not using the route matrix in the portal anymore, because RouteSelection()
-	// is commented out in the ops service.
-
-	// routeMatrix := &routing.RouteMatrix{}
-	// var routeMatrixMutex sync.RWMutex
-
-	// {
-	// 	if uri, ok := os.LookupEnv("ROUTE_MATRIX_URI"); ok {
-	// 		rmsyncinterval := os.Getenv("ROUTE_MATRIX_SYNC_INTERVAL")
-	// 		syncInterval, err := time.ParseDuration(rmsyncinterval)
-	// 		if err != nil {
-	// 			level.Error(logger).Log("envvar", "ROUTE_MATRIX_SYNC_INTERVAL", "value", rmsyncinterval, "err", err)
-	// 			return 1
-	// 		}
-
-	// 		go func() {
-	// 			for {
-	// 				newRouteMatrix := &routing.RouteMatrix{}
-	// 				var matrixReader io.Reader
-
-	// 				// Default to reading route matrix from file
-	// 				if f, err := os.Open(uri); err == nil {
-	// 					matrixReader = f
-	// 				}
-
-	// 				// Prefer to get it remotely if possible
-	// 				if r, err := http.Get(uri); err == nil {
-	// 					matrixReader = r.Body
-	// 				}
-
-	// 				// Don't swap route matrix if we fail to read
-	// 				_, err := newRouteMatrix.ReadFrom(matrixReader)
-	// 				if err != nil {
-	// 					level.Warn(logger).Log("matrix", "route", "op", "read", "envvar", "ROUTE_MATRIX_URI", "value", uri, "err", err, "msg", "forcing empty route matrix to avoid stale routes")
-	// 					time.Sleep(syncInterval)
-	// 					continue
-	// 				}
-
-	// 				// Swap the route matrix pointer to the new one
-	// 				// This double buffered route matrix approach makes the route matrix lockless
-	// 				routeMatrixMutex.Lock()
-	// 				routeMatrix = newRouteMatrix
-	// 				routeMatrixMutex.Unlock()
-
-	// 				time.Sleep(syncInterval)
-	// 			}
-	// 		}()
-	// 	}
-	// }
-
 	serviceMetrics, err := metrics.NewBuyerEndpointMetrics(ctx, metricsHandler)
 	if err != nil {
 		core.Error("failed to create service metrics: %v", err)
@@ -311,11 +221,25 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	lookerHost := envvar.Get("LOOKER_HOST", "")
+	if lookerHost == "" {
+		core.Error("LOOKER_HOST not set")
+		return 1
+	}
+
+	// Leave the looker clientID and api secret blank here because we don't want API access within the buyer service
+	lookerClient, err := looker.NewLookerClient(lookerHost, lookerSecret, "", "")
+	if err != nil {
+		core.Error("failed to create looker client: %v", err)
+		return 1
+	}
+
 	githubAccessToken := envvar.Get("GITHUB_ACCESS_TOKEN", "")
 	if githubAccessToken == "" {
 		core.Error("GITHUB_ACCESS_TOKEN not set")
 		return 1
 	}
+
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubAccessToken},
 	)
@@ -345,6 +269,41 @@ func mainReturnWithCode() int {
 	hubspotAPIKey := envvar.Get("HUBSPOT_API_KEY", "")
 	hubspotClient, err := notifications.NewHubSpotClient(hubspotAPIKey, 10*time.Second)
 
+		// Get Auth0 config
+	auth0Issuer := envvar.Get("AUTH0_ISSUER", "")
+	if auth0Issuer == "" {
+		core.Error("AUTH0_ISSUER not set")
+		return 1
+	}
+
+	auth0Domain := envvar.Get("AUTH0_DOMAIN", "")
+	if auth0Domain == "" {
+		core.Error("AUTH0_DOMAIN not set")
+		return 1
+	}
+
+	auth0ClientID := envvar.Get("AUTH0_CLIENTID", "")
+	if auth0ClientID == "" {
+		core.Error("AUTH0_CLIENTID not set")
+		return 1
+	}
+
+	auth0ClientSecret := envvar.Get("AUTH0_CLIENTSECRET", "")
+
+	manager, err := management.New(
+		auth0Domain,
+		auth0ClientID,
+		auth0ClientSecret,
+	)
+	if err != nil {
+		core.Error("failed to create Auth0 manager: %v", err)
+		return 1
+	}
+
+	var jobManager storage.JobManager = manager.Job
+	var roleManager storage.RoleManager = manager.Role
+	var userManager storage.UserManager = manager.User
+
 	authenticationClient, err := notifications.NewAuth0AuthClient(auth0ClientID, auth0Domain)
 	if err != nil {
 		core.Error("failed to create authentication client: %v", err)
@@ -372,6 +331,7 @@ func mainReturnWithCode() int {
 		BigTableCfName:         btCfName,
 		BigTable:               btClient,
 		BigTableMetrics:        btMetrics,
+		LookerClient:           lookerClient,
 		RedisPoolTopSessions:   redisPoolTopSessions,
 		RedisPoolSessionMeta:   redisPoolSessionMeta,
 		RedisPoolSessionSlices: redisPoolSessionSlices,
@@ -379,7 +339,6 @@ func mainReturnWithCode() int {
 		Storage:                db,
 		Env:                    env,
 		Metrics:                serviceMetrics,
-		LookerSecret:           lookerSecret,
 		GithubClient:           githubClient,
 		SlackClient:            slackClient,
 	}
@@ -387,6 +346,32 @@ func mainReturnWithCode() int {
 	configService := jsonrpc.ConfigService{
 		Logger:  logger,
 		Storage: db,
+	}
+
+	lookerAPIClientID := envvar.Get("LOOKER_API_CLIENT_ID", "")
+	if lookerAPIClientID == "" {
+		core.Error("LOOKER_API_CLIENT_ID not set"
+		return 1
+	}
+
+	lookerAPIClientSecret := envvar.Get("LOOKER_API_CLIENT_SECRET", "")
+	if lookerAPIClientSecret == "" {
+		core.Error("LOOKER_API_CLIENT_SECRET not set"
+		return 1
+	}
+
+	lookerClient, err = looker.NewLookerClient(lookerHost, lookerSecret, lookerAPIClientID, lookerAPIClientSecret)
+	if err != nil {
+		core.Error("failed to create looker client: %v", err)
+		return 1
+	}
+
+	opsService := jsonrpc.OpsService{
+		Release:              tag,
+		BuildTime:            buildtime,
+		Storage:              db,
+		LookerClient:         lookerClient,
+		LookerDashboardCache: make([]looker.LookerDashboard, 0),
 	}
 
 	// Setup error channel with wait group to exit from goroutines
@@ -493,6 +478,22 @@ func mainReturnWithCode() int {
 		}
 	}()
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(time.Minute)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := opsService.RefreshLookerDashboardCache(); err != nil {
+					core.Error("could not refresh looker dasbhoard cache: %v", err)
+			}
+		}
+	}()
+
 	// Setup the status handler info
 	statusData := &metrics.PortalStatus{}
 	var statusMutex sync.RWMutex
@@ -550,57 +551,6 @@ func mainReturnWithCode() int {
 		}
 	}
 
-	relayMap := jsonrpc.NewRelayStatsMap()
-
-	// TODO: b0rked, needs to process a csv file from /relays and this GET
-	//       needs to be auth'd...
-	// go func() {
-	// 	relayStatsURL := os.Getenv("RELAY_STATS_URI")
-	// 	fmt.Printf("RELAY_STATS_URI: %s\n", relayStatsURL)
-
-	// 	sleepInterval := time.Second
-	// 	if siStr, ok := os.LookupEnv("RELAY_STATS_SYNC_SLEEP_INTERVAL"); ok {
-	// 		if si, err := time.ParseDuration(siStr); err == nil {
-	// 			sleepInterval = si
-	// 		} else {
-	// 			level.Error(logger).Log("msg", "could not parse stats sync sleep interval", "err", err)
-	// 		}
-	// 	}
-
-	// 	for {
-	// 		time.Sleep(sleepInterval)
-
-	// 		res, err := http.Get(relayStatsURL)
-	// 		if err != nil {
-	// 			level.Error(logger).Log("msg", "unable to get relay stats", "err", err)
-	// 			continue
-	// 		}
-
-	// 		if res.StatusCode != http.StatusOK {
-	// 			level.Error(logger).Log("msg", "bad relay_stats request")
-	// 			continue
-	// 		}
-
-	// 		if res.ContentLength == -1 {
-	// 			level.Error(logger).Log("msg", fmt.Sprintf("relay_stats content length invalid: %d\n", res.ContentLength))
-	// 			res.Body.Close()
-	// 			continue
-	// 		}
-
-	// 		data, err := ioutil.ReadAll(res.Body)
-	// 		if err != nil {
-	// 			level.Error(logger).Log("msg", "unable to read response body", "err", err)
-	// 			res.Body.Close()
-	// 			continue
-	// 		}
-	// 		res.Body.Close()
-
-	// 		if err := relayMap.ReadAndSwap(data); err != nil {
-	// 			level.Error(logger).Log("msg", "unable to read relay stats map", "err", err)
-	// 		}
-	// 	}
-	// }()
-
 	port := envvar.Get("PORT", "")
 	if port == "" {
 		core.Error("PORT not set")
@@ -642,14 +592,9 @@ func mainReturnWithCode() int {
 			}
 			return middleware.SetIsAnonymous(i.Request, i.Request.Header.Get("Authorization") == "")
 		})
+
 		s.RegisterCodec(json2.NewCodec(), "application/json")
-		s.RegisterService(&jsonrpc.OpsService{
-			Logger:    logger,
-			Release:   tag,
-			BuildTime: buildtime,
-			Storage:   db,
-			RelayMap:  &relayMap,
-		}, "")
+		s.RegisterService(&opsService, "")
 		s.RegisterService(&buyerService, "")
 		s.RegisterService(&configService, "")
 		s.RegisterService(authservice, "")
