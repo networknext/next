@@ -1206,7 +1206,7 @@ type ProcessNewSignupReply struct {
 }
 
 func (s *AuthService) ProcessNewSignup(r *http.Request, args *ProcessNewSignupArgs, reply *ProcessNewSignupReply) error {
-	message := fmt.Sprintf("%s signed up on the Portal! :tada:\nCompany Name: %s\nCompany Website: %s", args.Email, args.CompanyName, args.CompanyWebsite)
+	message := fmt.Sprintf("%s %s signed up on the Portal! :tada:\nEmail: %s\nCompany Name: %s\nCompany Website: %s", args.FirstName, args.LastName, args.Email, args.CompanyName, args.CompanyWebsite)
 
 	// If we error here we don't worry about it. Setting up everything is more important and the error shouldn't hinder the rest of the sign up process on the portal side
 	if err := s.SlackClient.SendInfo(message); err != nil {
