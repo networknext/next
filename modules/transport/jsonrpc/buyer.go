@@ -89,6 +89,9 @@ type BuyersService struct {
 	SlackClient notifications.SlackClient
 }
 
+// ===============================================================================================================
+// Portal UI Related Functions
+
 type FlushSessionsArgs struct{}
 
 type FlushSessionsReply struct{}
@@ -1270,6 +1273,169 @@ func (s *BuyersService) SessionMapByte(r *http.Request, args *MapPointsArgs, rep
 	return nil
 }
 
+// SameBuyerRole checks the JWT for the correct passed in buyerID
+func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
+	return func(req *http.Request) (bool, error) {
+		if middleware.VerifyAnyRole(req, middleware.AdminRole, middleware.OpsRole) {
+			return true, nil
+		}
+		if middleware.VerifyAllRoles(req, middleware.AnonymousRole) {
+			return false, nil
+		}
+		if companyCode == "" {
+			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
+		}
+
+		// Grab the user's assigned company if it exists
+		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CustomerKey).(string)
+		if !ok || requestCompanyCode == "" {
+			return false, nil
+		}
+
+		return companyCode == requestCompanyCode, nil
+	}
+}
+
+func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilter string, anonymise bool) ([]transport.SessionMeta, error) {
+	var err error
+	var topSessionsA []string
+	var topSessionsB []string
+
+	sessions := make([]transport.SessionMeta, 0)
+
+	minutes := time.Now().Unix() / 60
+
+	topSessionsClient := s.RedisPoolTopSessions.Get()
+	defer topSessionsClient.Close()
+
+	// get the top session IDs globally or for a buyer from the sorted set
+	switch companyCodeFilter {
+	case "":
+		// Get top sessions from the past 2 minutes sorted by greatest to least improved RTT
+		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A: %v", err)
+			core.Error("%v", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A")
+			return sessions, err
+		}
+		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B: %v", err)
+			core.Error("%v", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B")
+			return sessions, err
+		}
+	default:
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(companyCodeFilter)) {
+			err := fmt.Errorf("FetchCurrentTopSessions(): %v", ErrInsufficientPrivileges)
+			core.Error("%v", err)
+			return sessions, err
+		}
+
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCodeFilter)
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting buyer with code: %v", err)
+			core.Error("%v", err)
+			return sessions, err
+		}
+		buyerID := fmt.Sprintf("%016x", buyer.ID)
+
+		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
+			core.Error("%v", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x", buyerID)
+			return sessions, err
+		}
+		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
+			core.Error("%v", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x", buyerID)
+			return sessions, err
+		}
+	}
+
+	sessionMetaClient := s.RedisPoolSessionMeta.Get()
+	defer sessionMetaClient.Close()
+
+	sessionIDsRetreivedMap := make(map[string]bool)
+	for _, sessionID := range topSessionsA {
+		sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
+		sessionIDsRetreivedMap[sessionID] = true
+	}
+	for _, sessionID := range topSessionsB {
+		if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
+			sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
+			sessionIDsRetreivedMap[sessionID] = true
+		}
+	}
+	sessionMetaClient.Flush()
+
+	var sessionMetasNext []transport.SessionMeta
+	var sessionMetasDirect []transport.SessionMeta
+	var meta transport.SessionMeta
+	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
+		metaString, err := redis.String(sessionMetaClient.Receive())
+		if err != nil && err != redis.ErrNil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
+			core.Error("%v", err)
+			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta")
+			return sessions, err
+		}
+
+		splitMetaStrings := strings.Split(metaString, "|")
+		if err := meta.ParseRedisString(splitMetaStrings); err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to parse redis string into meta: %v", err)
+			core.Error("%v: redisString: %s", err, metaString)
+			continue
+		}
+
+		buyer, err := s.Storage.Buyer(r.Context(), meta.BuyerID)
+		if err != nil {
+			err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
+			core.Error("%v", err)
+			return sessions, err
+		}
+
+		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) && anonymise {
+			meta.Anonymise()
+		}
+
+		// Split the sessions metas into two slices so we can sort them separately.
+		// This is necessary because if we were to force sessions next, then sorting
+		// by improvement won't always put next sessions on top.
+		if meta.OnNetworkNext {
+			sessionMetasNext = append(sessionMetasNext, meta)
+		} else {
+			sessionMetasDirect = append(sessionMetasDirect, meta)
+		}
+	}
+
+	// These sorts are necessary because we are combining two ZREVRANGEs from two separate minute buckets.
+	sort.Slice(sessionMetasNext, func(i, j int) bool {
+		return sessionMetasNext[i].DeltaRTT > sessionMetasNext[j].DeltaRTT
+	})
+
+	sort.Slice(sessionMetasDirect, func(i, j int) bool {
+		return sessionMetasDirect[i].DirectRTT > sessionMetasDirect[j].DirectRTT
+	})
+
+	sessionMetas := append(sessionMetasNext, sessionMetasDirect...)
+
+	if len(sessionMetas) > TopSessionsSize {
+		sessions = sessionMetas[:TopSessionsSize]
+		return sessions, err
+	}
+
+	sessions = sessionMetas
+	return sessions, err
+}
+
+// ===============================================================================================================
+// Buyer Related Functions
+
 type GameConfigurationArgs struct {
 	NewPublicKey string `json:"new_public_key"`
 }
@@ -1550,6 +1716,100 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 	return nil
 }
 
+type BuyerArg struct {
+	BuyerID uint64
+}
+
+type BuyerReply struct {
+	Buyer routing.Buyer
+}
+
+func (s *BuyersService) Buyer(r *http.Request, arg *BuyerArg, reply *BuyerReply) error {
+
+	var b routing.Buyer
+	var err error
+
+	b, err = s.Storage.Buyer(r.Context(), arg.BuyerID)
+	if err != nil {
+		err = fmt.Errorf("Buyer() error retrieving buyer for ID %016x: %v", arg.BuyerID, err)
+		core.Error("%v", err)
+		return err
+	}
+
+	reply.Buyer = b
+
+	return nil
+}
+
+type UpdateBuyerArgs struct {
+	BuyerID    uint64 `json:"buyerID"`
+	HexBuyerID string `json:"hexBuyerID"` // needed for external (non-go) clients
+	Field      string `json:"field"`
+	Value      string `json:"value"`
+}
+
+type UpdateBuyerReply struct{}
+
+func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, reply *UpdateBuyerReply) error {
+	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
+		return nil
+	}
+
+	var buyerID uint64
+	var err error
+	if args.BuyerID != 0 {
+		buyerID = args.BuyerID
+	} else {
+		buyerID, err = strconv.ParseUint(args.HexBuyerID, 16, 64)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateBuyer could not parse hexBuyerID: %s", args.HexBuyerID)
+		}
+	}
+
+	// sort out the value type here (comes from the next tool and javascript UI as a string)
+	switch args.Field {
+	case "Live", "Debug", "Analytics", "Billing", "Trial":
+		newValue, err := strconv.ParseBool(args.Value)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", args.Value)
+		}
+
+		err = s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
+			core.Error("%v", err)
+			return err
+		}
+	case "ExoticLocationFee", "StandardLocationFee":
+		newValue, err := strconv.ParseFloat(args.Value, 64)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid float64 type", args.Value)
+		}
+
+		err = s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
+			core.Error("%v", err)
+			return err
+		}
+	case "ShortName", "PublicKey":
+		err := s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
+			core.Error("%v", err)
+			return err
+		}
+
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Buyer type", args.Field)
+	}
+
+	return nil
+}
+
+// ===============================================================================================================
+// Datacenter Related Functions
+
 type DatacenterMapsArgs struct {
 	ID    uint64 `json:"buyer_id"`
 	HexID string `json:"hexBuyerID"`
@@ -1723,165 +1983,8 @@ func (s *BuyersService) AddDatacenterMap(r *http.Request, args *AddDatacenterMap
 
 }
 
-// SameBuyerRole checks the JWT for the correct passed in buyerID
-func (s *BuyersService) SameBuyerRole(companyCode string) middleware.RoleFunc {
-	return func(req *http.Request) (bool, error) {
-		if middleware.VerifyAnyRole(req, middleware.AdminRole, middleware.OpsRole) {
-			return true, nil
-		}
-		if middleware.VerifyAllRoles(req, middleware.AnonymousRole) {
-			return false, nil
-		}
-		if companyCode == "" {
-			return false, fmt.Errorf("SameBuyerRole(): buyerID is required")
-		}
-
-		// Grab the user's assigned company if it exists
-		requestCompanyCode, ok := req.Context().Value(middleware.Keys.CustomerKey).(string)
-		if !ok || requestCompanyCode == "" {
-			return false, nil
-		}
-
-		return companyCode == requestCompanyCode, nil
-	}
-}
-
-func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilter string, anonymise bool) ([]transport.SessionMeta, error) {
-	var err error
-	var topSessionsA []string
-	var topSessionsB []string
-
-	sessions := make([]transport.SessionMeta, 0)
-
-	minutes := time.Now().Unix() / 60
-
-	topSessionsClient := s.RedisPoolTopSessions.Get()
-	defer topSessionsClient.Close()
-
-	// get the top session IDs globally or for a buyer from the sorted set
-	switch companyCodeFilter {
-	case "":
-		// Get top sessions from the past 2 minutes sorted by greatest to least improved RTT
-		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A: %v", err)
-			core.Error("%v", err)
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A")
-			return sessions, err
-		}
-		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("s-%d", minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B: %v", err)
-			core.Error("%v", err)
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B")
-			return sessions, err
-		}
-	default:
-		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(companyCodeFilter)) {
-			err := fmt.Errorf("FetchCurrentTopSessions(): %v", ErrInsufficientPrivileges)
-			core.Error("%v", err)
-			return sessions, err
-		}
-
-		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCodeFilter)
-		if err != nil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting buyer with code: %v", err)
-			core.Error("%v", err)
-			return sessions, err
-		}
-		buyerID := fmt.Sprintf("%016x", buyer.ID)
-
-		topSessionsA, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes-1), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x: %v", buyerID, err)
-			core.Error("%v", err)
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions A for buyer ID %016x", buyerID)
-			return sessions, err
-		}
-		topSessionsB, err = redis.Strings(topSessionsClient.Do("ZREVRANGE", fmt.Sprintf("sc-%s-%d", buyerID, minutes), "0", fmt.Sprintf("%d", TopSessionsSize)))
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x: %v", buyerID, err)
-			core.Error("%v", err)
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions B for buyer ID %016x", buyerID)
-			return sessions, err
-		}
-	}
-
-	sessionMetaClient := s.RedisPoolSessionMeta.Get()
-	defer sessionMetaClient.Close()
-
-	sessionIDsRetreivedMap := make(map[string]bool)
-	for _, sessionID := range topSessionsA {
-		sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-		sessionIDsRetreivedMap[sessionID] = true
-	}
-	for _, sessionID := range topSessionsB {
-		if _, ok := sessionIDsRetreivedMap[sessionID]; !ok {
-			sessionMetaClient.Send("GET", fmt.Sprintf("sm-%s", sessionID))
-			sessionIDsRetreivedMap[sessionID] = true
-		}
-	}
-	sessionMetaClient.Flush()
-
-	var sessionMetasNext []transport.SessionMeta
-	var sessionMetasDirect []transport.SessionMeta
-	var meta transport.SessionMeta
-	for i := 0; i < len(sessionIDsRetreivedMap); i++ {
-		metaString, err := redis.String(sessionMetaClient.Receive())
-		if err != nil && err != redis.ErrNil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta: %v", err)
-			core.Error("%v", err)
-			err = fmt.Errorf("FetchCurrentTopSessions() failed getting top sessions meta")
-			return sessions, err
-		}
-
-		splitMetaStrings := strings.Split(metaString, "|")
-		if err := meta.ParseRedisString(splitMetaStrings); err != nil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed to parse redis string into meta: %v", err)
-			core.Error("%v: redisString: %s", err, metaString)
-			continue
-		}
-
-		buyer, err := s.Storage.Buyer(r.Context(), meta.BuyerID)
-		if err != nil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
-			core.Error("%v", err)
-			return sessions, err
-		}
-
-		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) && anonymise {
-			meta.Anonymise()
-		}
-
-		// Split the sessions metas into two slices so we can sort them separately.
-		// This is necessary because if we were to force sessions next, then sorting
-		// by improvement won't always put next sessions on top.
-		if meta.OnNetworkNext {
-			sessionMetasNext = append(sessionMetasNext, meta)
-		} else {
-			sessionMetasDirect = append(sessionMetasDirect, meta)
-		}
-	}
-
-	// These sorts are necessary because we are combining two ZREVRANGEs from two separate minute buckets.
-	sort.Slice(sessionMetasNext, func(i, j int) bool {
-		return sessionMetasNext[i].DeltaRTT > sessionMetasNext[j].DeltaRTT
-	})
-
-	sort.Slice(sessionMetasDirect, func(i, j int) bool {
-		return sessionMetasDirect[i].DirectRTT > sessionMetasDirect[j].DirectRTT
-	})
-
-	sessionMetas := append(sessionMetasNext, sessionMetasDirect...)
-
-	if len(sessionMetas) > TopSessionsSize {
-		sessions = sessionMetas[:TopSessionsSize]
-		return sessions, err
-	}
-
-	sessions = sessionMetas
-	return sessions, err
-}
+// ===============================================================================================================
+// Internal Config Related Functions
 
 type JSInternalConfig struct {
 	RouteSelectThreshold           int64 `json:"routeSelectThreshold"`
@@ -2092,6 +2195,9 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 
 	return nil
 }
+
+// ===============================================================================================================
+// Route Shader Related Functions
 
 type JSRouteShader struct {
 	DisableNetworkNext        bool            `json:"disableNetworkNext"`
@@ -2386,96 +2492,8 @@ func (s *BuyersService) RemoveBannedUser(r *http.Request, arg *BannedUserArgs, r
 	return nil
 }
 
-type BuyerArg struct {
-	BuyerID uint64
-}
-
-type BuyerReply struct {
-	Buyer routing.Buyer
-}
-
-func (s *BuyersService) Buyer(r *http.Request, arg *BuyerArg, reply *BuyerReply) error {
-
-	var b routing.Buyer
-	var err error
-
-	b, err = s.Storage.Buyer(r.Context(), arg.BuyerID)
-	if err != nil {
-		err = fmt.Errorf("Buyer() error retrieving buyer for ID %016x: %v", arg.BuyerID, err)
-		core.Error("%v", err)
-		return err
-	}
-
-	reply.Buyer = b
-
-	return nil
-}
-
-type UpdateBuyerArgs struct {
-	BuyerID    uint64 `json:"buyerID"`
-	HexBuyerID string `json:"hexBuyerID"` // needed for external (non-go) clients
-	Field      string `json:"field"`
-	Value      string `json:"value"`
-}
-
-type UpdateBuyerReply struct{}
-
-func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, reply *UpdateBuyerReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
-	var buyerID uint64
-	var err error
-	if args.BuyerID != 0 {
-		buyerID = args.BuyerID
-	} else {
-		buyerID, err = strconv.ParseUint(args.HexBuyerID, 16, 64)
-		if err != nil {
-			return fmt.Errorf("BuyersService.UpdateBuyer could not parse hexBuyerID: %s", args.HexBuyerID)
-		}
-	}
-
-	// sort out the value type here (comes from the next tool and javascript UI as a string)
-	switch args.Field {
-	case "Live", "Debug", "Analytics", "Billing", "Trial":
-		newValue, err := strconv.ParseBool(args.Value)
-		if err != nil {
-			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid boolean type", args.Value)
-		}
-
-		err = s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, newValue)
-		if err != nil {
-			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
-			core.Error("%v", err)
-			return err
-		}
-	case "ExoticLocationFee", "StandardLocationFee":
-		newValue, err := strconv.ParseFloat(args.Value, 64)
-		if err != nil {
-			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid float64 type", args.Value)
-		}
-
-		err = s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, newValue)
-		if err != nil {
-			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
-			core.Error("%v", err)
-			return err
-		}
-	case "ShortName", "PublicKey":
-		err := s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, args.Value)
-		if err != nil {
-			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
-			core.Error("%v", err)
-			return err
-		}
-
-	default:
-		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Buyer type", args.Field)
-	}
-
-	return nil
-}
+// ===============================================================================================================
+// Explore Tab Related Functions
 
 type FetchNotificationsArgs struct {
 	CompanyCode string `json:"company_code"`
