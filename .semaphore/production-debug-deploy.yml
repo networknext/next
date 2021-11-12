@@ -24,10 +24,10 @@ blocks:
     dependencies: []
     task:
       jobs:
-        - name: Debug Server Backend
+        - name: Debug Server Backend 4
           commands:
-            - make build-debug-server-backend-artifacts-prod-debug
-            - make publish-debug-server-backend-artifacts-prod-debug
+            - make build-debug-server-backend4-artifacts-prod-debug
+            - make publish-debug-server-backend4-artifacts-prod-debug
         - name: Debug Relay Backend
           commands:
             - make build-debug-relay-backend-artifacts-prod-debug
