@@ -157,6 +157,8 @@ type OpsService struct {
 	Release   string
 	BuildTime string
 
+	Env string
+
 	Storage storage.Storer
 	// RouteMatrix *routing.RouteMatrix
 
@@ -2242,7 +2244,7 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 	}
 
 	for _, dashboard := range dashboards {
-		lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, "")
+		lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, "", "")
 		if err != nil {
 			continue
 		}

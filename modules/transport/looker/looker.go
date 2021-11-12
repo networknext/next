@@ -122,10 +122,17 @@ func (l *LookerClient) FetchCurrentLookerDashboards() ([]LookerDashboard, error)
 	return dashboardList, nil
 }
 
-func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, userID string, customerCode string) (string, error) {
+func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, userID string, customerCode string, origin string) (string, error) {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return "", err
+	}
+
+	embedURL := ""
+	if origin != "" {
+		embedURL = fmt.Sprintf("/embed/dashboards-next/%s?embed_domain=%s", id, origin)
+	} else {
+		embedURL = fmt.Sprintf("/embed/dashboards-next/%s", id)
 	}
 
 	urlOptions := LookerURLOptions{
@@ -139,7 +146,7 @@ func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, userID s
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(fmt.Sprintf("/embed/dashboards-next/%s", id)),
+		EmbedURL:        "/login/embed/" + url.QueryEscape(embedURL),
 		ForceLogout:     true,
 		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
@@ -220,10 +227,17 @@ func BuildLookerURL(urlOptions LookerURLOptions) string {
 	return finalUrl
 }
 
-func (l *LookerClient) GenerateUsageDashboardURL(userID string, customerCode string) (string, error) {
+func (l *LookerClient) GenerateUsageDashboardURL(userID string, customerCode string, origin string) (string, error) {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return "", err
+	}
+
+	embedURL := ""
+	if origin != "" {
+		embedURL = fmt.Sprintf("%s?embed_domain=%s", USAGE_DASH_URL, origin)
+	} else {
+		embedURL = USAGE_DASH_URL
 	}
 
 	urlOptions := LookerURLOptions{
@@ -237,7 +251,7 @@ func (l *LookerClient) GenerateUsageDashboardURL(userID string, customerCode str
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(USAGE_DASH_URL),
+		EmbedURL:        "/login/embed/" + url.QueryEscape(embedURL),
 		ForceLogout:     true,
 		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),

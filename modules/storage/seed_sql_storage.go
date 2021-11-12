@@ -123,16 +123,19 @@ func SeedSQLStorage(
 
 		ghostCustomer, err := db.Customer(ctx, "ghost-army")
 		if err == nil {
-			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 11, false, ghostCustomer.DatabaseID, generalCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, ghostCustomer.DatabaseID, generalCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 11, false, ghostCustomer.DatabaseID, regionalCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 18, false, ghostCustomer.DatabaseID, regionalCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Platform Analytics", 11, false, ghostCustomer.DatabaseID, platformCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, "Platform Analytics", 12, false, ghostCustomer.DatabaseID, platformCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
 			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 11, true, ghostCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Another Discovery!", 11, true, ghostCustomer.DatabaseID, discoveryCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
 		}
@@ -147,13 +150,13 @@ func SeedSQLStorage(
 
 		localCustomer, err := db.Customer(ctx, "local")
 		if err == nil {
-			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 11, false, localCustomer.DatabaseID, generalCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, localCustomer.DatabaseID, generalCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 11, false, localCustomer.DatabaseID, regionalCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 18, false, localCustomer.DatabaseID, regionalCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
-			if err := db.AddAnalyticsDashboard(ctx, "Platform Analytics", 11, false, localCustomer.DatabaseID, platformCategory.ID); err != nil {
+			if err := db.AddAnalyticsDashboard(ctx, "Platform Analytics", 12, false, localCustomer.DatabaseID, platformCategory.ID); err != nil {
 				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
 			}
 			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 11, true, localCustomer.DatabaseID, discoveryCategory.ID); err != nil {

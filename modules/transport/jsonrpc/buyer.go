@@ -2678,6 +2678,7 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 
 type FetchAnalyticsDashboardsArgs struct {
 	CompanyCode string `json:"company_code"`
+	Origin      string `json:"origin"`
 }
 
 type FetchAnalyticsDashboardsReply struct {
@@ -2694,6 +2695,13 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 		return &err
 	}
 
+	if args.Origin == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsDashboards(): %v: Origin is required", err.Error()))
+		return &err
+	}
+
 	ctx := r.Context()
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
@@ -2701,7 +2709,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchUsageDashboard(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsDashboards(): %v", err.Error()))
 		return &err
 	}
 
@@ -2709,7 +2717,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchUsageDashboard(): %v: Failed to parse user ID", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsDashboards(): %v: Failed to parse user ID", err.Error()))
 		return &err
 	}
 
@@ -2740,13 +2748,19 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	}
 
 	for _, dashboard := range dashboards {
+		dashCustomerCode := customerCode
 		if dashboard.CustomerCode == customerCode && !dashboard.Discovery && !dashboard.Category.Admin && (!dashboard.Category.Premium || (buyer.Analytics && dashboard.Category.Premium)) {
 			_, ok := reply.Dashboards[dashboard.Category.Label]
 			if !ok {
 				reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
 			}
 
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, customerCode)
+			// Hacky work around for local and dev
+			if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
+				dashCustomerCode = "esl"
+			}
+
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, dashCustomerCode, args.Origin)
 			if err != nil {
 				continue
 			}
@@ -2760,6 +2774,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 type FetchUsageDashboardArgs struct {
 	CompanyCode string `json:"company_code"`
+	Origin      string `json:"origin"`
 }
 
 type FetchUsageDashboardReply struct {
@@ -2771,6 +2786,13 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchUsageDashboard(): %v", err.Error()))
+		return &err
+	}
+
+	if args.Origin == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
+		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsDashboards(): %v: Origin is required", err.Error()))
 		return &err
 	}
 
@@ -2807,7 +2829,7 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 		customerCode = "esl"
 	}
 
-	usageDashURL, err := s.LookerClient.GenerateUsageDashboardURL(requestID, customerCode)
+	usageDashURL, err := s.LookerClient.GenerateUsageDashboardURL(requestID, customerCode, args.Origin)
 	if err != nil {
 		// TODO: make a looker error code
 		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
@@ -2821,6 +2843,7 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 
 type FetchDiscoveryDashboardsArgs struct {
 	CompanyCode string `json:"company_code"`
+	Origin      string `json:"origin"`
 }
 
 type FetchDiscoveryDashboardsReply struct {
@@ -2834,6 +2857,13 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		return &err
+	}
+
+	if args.Origin == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Origin is required", err.Error()))
 		return &err
 	}
 
@@ -2879,7 +2909,7 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 
 	for _, dashboard := range dashboards {
 		if dashboard.CustomerCode == customerCode || (isAdmin && dashboard.CustomerCode == args.CompanyCode) {
-			lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, customerCode)
+			lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, customerCode, args.Origin)
 			if err != nil {
 				continue
 			}
