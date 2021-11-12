@@ -14,55 +14,80 @@ DONE
 
 	Remove the "chonkle" branch entirely from sdk repo
 
+	Get the sdk5 building under backend repo
+
+	Implement ref_backend5
+
+	Implement func_test5
+
 TODO
 
 	--------------
 
-	Get the sdk5 building under backend repo
+	reference backend5 needs golang functions for chonkle, pittle generation, simple packet filter, complex packet filter.
 
 	--------------
 
-	Implement ref_backend5
+	Initially, when getting everything working, magic will be held at zero.
 
 	--------------
 
-	Implement func_test5
+	Update the ref backend 5 so the server5 can talk with it
+
+	This means:
+
+		1. server init request
+		2. server init response
+		3. session update
+
+	Packets all get through and their responses are handled by the SDK.
 
 	--------------
 
-	Work on getting func tests passing ---> direct packets, upgraded etc.
+	Once the server5 can talk with backend5, pass over next.cpp so upgrade passes
+
+	This means that:
+
+		1. upgrade request
+		2. upgrade response
+		3. upgrade ack
+
+	Packets all get sent, received and processed, and the client and server can exchange packets over direct packets.
 
 	--------------
 
-
-
-
-
-
-
-
-
-
-	
+	Get the direct packet func test passing.
 
 	--------------
 
-	Get the client and server working with upgraded direct
+	Extend the relay so it knows how to process SDK5 packets.
 
 	--------------
 
-	Get the magic working end-to-end from the backend, down to client and server across multiple minutes.
+	Work out how to get ping tokens down to the client
 
 	--------------
 
-	Update the backend to support the new packet types and format
+	Get the client pinging near relays w. ping tokens and getting responses.
 
 	--------------
 
-	Update the relay to support the new packet types and format
+	Get a func test working with a network next route.
 
 	--------------
 
-	Implement key rotation for router private/public keypair. Having it fixed is a huge risk.
+	Now we need to work out how to make magic dynamic.
+
+	--------------
+
+	Get rest of func tests passing
+
+	--------------
+
+	Switch the routing keypair and store it via a secret.
+
+	Don't actually put it in the code anywhere.
+
+	The only person who knows the keypair should be me.
 
 	--------------
