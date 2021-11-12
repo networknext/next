@@ -10,6 +10,60 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestInMemoryGetCustomer(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	t.Run("customer not found by code", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		actual, err := inMemory.Customer(ctx, "not found")
+		assert.Empty(t, actual)
+		assert.EqualError(t, err, "customer with reference not found not found")
+	})
+
+	t.Run("success by code", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Customer{
+			Code: "found",
+		}
+
+		err := inMemory.AddCustomer(ctx, expected)
+		assert.NoError(t, err)
+
+		actual, err := inMemory.Customer(ctx, expected.Code)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("customer not found by id", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		actual, err := inMemory.CustomerByID(ctx, 0)
+		assert.Empty(t, actual)
+		assert.EqualError(t, err, "customer with reference 0 not found")
+	})
+
+	t.Run("success by id", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Customer{
+			DatabaseID: 0,
+		}
+
+		err := inMemory.AddCustomer(ctx, expected)
+		assert.NoError(t, err)
+
+		actual, err := inMemory.Customer(ctx, expected.Code)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expected, actual)
+	})
+}
+
 func TestInMemoryGetBuyer(t *testing.T) {
 	t.Parallel()
 
