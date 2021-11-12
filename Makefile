@@ -329,9 +329,9 @@ dev-debug-relay-backend: build-relay-backend ## runs a local debug relay backend
 dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
 	@PORT=30005 ./dist/relay_frontend
 
-.PHONY: dev-server-backend
-dev-server-backend: build-server-backend ## runs a local server backend
-	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
+.PHONY: dev-server-backend4
+dev-server-backend4: build-server-backend4 ## runs a local server backend
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay
@@ -548,10 +548,10 @@ build-beacon-inserter:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon_inserter ./cmd/beacon_inserter/beacon_inserter.go
 	@printf "done\n"
 
-.PHONY: build-server-backend
-build-server-backend:
-	@printf "Building server backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
+.PHONY: build-server-backend4
+build-server-backend4:
+	@printf "Building server backend 4... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
 	@printf "done\n"
 
 .PHONY: build-billing
@@ -712,9 +712,9 @@ build-portal-artifacts-dev-old: build-portal
 build-portal-cruncher-artifacts-dev: build-portal-cruncher
 	./deploy/build-artifacts.sh -e dev -s portal_cruncher
 
-.PHONY: build-server-backend-artifacts-dev
-build-server-backend-artifacts-dev: build-server-backend
-	./deploy/build-artifacts.sh -e dev -s server_backend
+.PHONY: build-server-backend4-artifacts-dev
+build-server-backend4-artifacts-dev: build-server-backend4
+	./deploy/build-artifacts.sh -e dev -s server_backend4
 
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
@@ -760,9 +760,9 @@ build-portal-artifacts-staging: build-portal
 build-portal-cruncher-artifacts-staging: build-portal-cruncher
 	./deploy/build-artifacts.sh -e staging -s portal_cruncher
 
-.PHONY: build-server-backend-artifacts-staging
-build-server-backend-artifacts-staging: build-server-backend
-	./deploy/build-artifacts.sh -e staging -s server_backend
+.PHONY: build-server-backend4-artifacts-staging
+build-server-backend4-artifacts-staging: build-server-backend4
+	./deploy/build-artifacts.sh -e staging -s server_backend4
 
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing
@@ -812,9 +812,9 @@ build-portal-artifacts-prod: build-portal
 build-portal-cruncher-artifacts-prod: build-portal-cruncher
 	./deploy/build-artifacts.sh -e prod -s portal_cruncher
 
-.PHONY: build-server-backend-artifacts-prod
-build-server-backend-artifacts-prod: build-server-backend
-	./deploy/build-artifacts.sh -e prod -s server_backend
+.PHONY: build-server-backend4-artifacts-prod
+build-server-backend4-artifacts-prod: build-server-backend4
+	./deploy/build-artifacts.sh -e prod -s server_backend4
 
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
@@ -864,9 +864,9 @@ publish-portal-artifacts-dev-test:
 publish-portal-cruncher-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal_cruncher
 
-.PHONY: publish-server-backend-artifacts-dev
-publish-server-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
+.PHONY: publish-server-backend4-artifacts-dev
+publish-server-backend4-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend4
 
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
@@ -912,9 +912,9 @@ publish-portal-artifacts-staging:
 publish-portal-cruncher-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal_cruncher
 
-.PHONY: publish-server-backend-artifacts-staging
-publish-server-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
+.PHONY: publish-server-backend4-artifacts-staging
+publish-server-backend4-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend4
 
 .PHONY: publish-fake-server-artifacts-staging
 publish-fake-server-artifacts-staging:
@@ -984,9 +984,9 @@ publish-portal-artifacts-prod:
 publish-portal-cruncher-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal_cruncher
 
-.PHONY: publish-server-backend-artifacts-prod
-publish-server-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
+.PHONY: publish-server-backend4-artifacts-prod4
+publish-server-backend4-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend4
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
@@ -1080,53 +1080,53 @@ publish-relay-pusher-artifacts-prod:
 #    Debug Server Backend   #
 #############################
 
-.PHONY: build-debug-server-backend-artifacts-dev
-build-debug-server-backend-artifacts-dev: build-server-backend
-	./deploy/build-artifacts.sh -e dev -s debug_server_backend
+.PHONY: build-debug-server-backend4-artifacts-dev
+build-debug-server-backend4-artifacts-dev: build-server-backend4
+	./deploy/build-artifacts.sh -e dev -s debug_server_backend4
 
-.PHONY: build-debug-server-backend-artifacts-staging
-build-debug-server-backend-artifacts-staging: build-server-backend
-	./deploy/build-artifacts.sh -e staging -s debug_server_backend
+.PHONY: build-debug-server-backend4-artifacts-staging
+build-debug-server-backend4-artifacts-staging: build-server-backend4
+	./deploy/build-artifacts.sh -e staging -s debug_server_backend4
 
-.PHONY: build-debug-server-backend-artifacts-prod
-build-debug-server-backend-artifacts-prod: build-server-backend
-	./deploy/build-artifacts.sh -e prod -s debug_server_backend
+.PHONY: build-debug-server-backend4-artifacts-prod
+build-debug-server-backend4-artifacts-prod: build-server-backend4
+	./deploy/build-artifacts.sh -e prod -s debug_server_backend4
 
-.PHONY: build-debug-server-backend-artifacts-prod-debug
-build-debug-server-backend-artifacts-prod-debug: build-server-backend
-	./deploy/build-artifacts.sh -e prod -s debug_server_backend
+.PHONY: build-debug-server-backend4-artifacts-prod-debug
+build-debug-server-backend4-artifacts-prod-debug: build-server-backend4
+	./deploy/build-artifacts.sh -e prod -s debug_server_backend4
 
-.PHONY: publish-debug-server-backend-artifacts-dev
-publish-debug-server-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_server_backend
+.PHONY: publish-debug-server-backend4-artifacts-dev
+publish-debug-server-backend4-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_server_backend4
 
-.PHONY: publish-debug-server-backend-artifacts-staging
-publish-debug-server-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_server_backend
+.PHONY: publish-debug-server-backend4-artifacts-staging
+publish-debug-server-backend4-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_server_backend4
 
-.PHONY: publish-debug-server-backend-artifacts-prod
-publish-debug-server-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_server_backend
+.PHONY: publish-debug-server-backend4-artifacts-prod
+publish-debug-server-backend4-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_server_backend4
 
-.PHONY: publish-debug-server-backend-artifacts-prod-debug
-publish-debug-server-backend-artifacts-prod-debug:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_server_backend
+.PHONY: publish-debug-server-backend4-artifacts-prod-debug
+publish-debug-server-backend4-artifacts-prod-debug:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_server_backend4
 
-.PHONY: deploy-debug-server-backend-dev
-deploy-debug-server-backend-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET)
+.PHONY: deploy-debug-server-backend4-dev
+deploy-debug-server-backend4-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET)
 
-.PHONY: deploy-debug-server-backend-staging
-deploy-debug-server-backend-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET_STAGING)
+.PHONY: deploy-debug-server-backend4-staging
+deploy-debug-server-backend4-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET_STAGING)
 
-.PHONY: deploy-debug-server-backend-prod
-deploy-debug-server-backend-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET_PROD)
+.PHONY: deploy-debug-server-backend4-prod
+deploy-debug-server-backend4-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET_PROD)
 
-.PHONY: deploy-debug-server-backend-prod-debug
-deploy-debug-server-backend-prod-debug:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET_PROD_DEBUG)
+.PHONY: deploy-debug-server-backend4-prod-debug
+deploy-debug-server-backend4-prod-debug:
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET_PROD_DEBUG)
 
 #############################
 #    Debug Relay Backend   #
@@ -1496,7 +1496,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-pingdom build-functional4 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-client build-server build-pingdom build-functional4 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
