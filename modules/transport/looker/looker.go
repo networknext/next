@@ -58,6 +58,7 @@ type AnalyticsDashboardCategory struct {
 	Label   string `json:"label"`
 	Premium bool   `json:"premium"`
 	Admin   bool   `json:"admin"`
+	Seller  bool   `json:"seller"`
 }
 
 type AnalyticsDashboard struct {

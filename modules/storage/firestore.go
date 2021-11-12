@@ -2422,7 +2422,7 @@ func (fs *Firestore) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, l
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (fs *Firestore) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool) error {
+func (fs *Firestore) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool, isSeller bool) error {
 	return fmt.Errorf("AddAnalyticsDashboardCategory not implemented in Firestore storer")
 }
 

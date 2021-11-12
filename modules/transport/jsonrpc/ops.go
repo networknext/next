@@ -1797,6 +1797,7 @@ type AddAnalyticsDashboardCategoryArgs struct {
 	Label   string `json:"label"`
 	Premium bool   `json:"premium"`
 	Admin   bool   `json:"admin"`
+	Seller  bool   `json:"seller"`
 }
 
 type AddAnalyticsDashboardCategoryReply struct{}
@@ -1815,7 +1816,7 @@ func (s *OpsService) AddAnalyticsDashboardCategory(r *http.Request, args *AddAna
 		return &err
 	}
 
-	if err := s.Storage.AddAnalyticsDashboardCategory(r.Context(), args.Label, args.Admin, args.Premium); err != nil {
+	if err := s.Storage.AddAnalyticsDashboardCategory(r.Context(), args.Label, args.Admin, args.Premium, args.Seller); err != nil {
 		s.Logger.Log("err", fmt.Errorf("AddAnalyticsDashboardCategory(): %v", err.Error()))
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
@@ -1869,6 +1870,7 @@ type UpdateAnalyticsDashboardCategoryArgs struct {
 	Label   string `json:"label"`
 	Premium bool   `json:"premium"`
 	Admin   bool   `json:"admin"`
+	Seller  bool   `json:"seller"`
 }
 
 type UpdateAnalyticsDashboardCategoryReply struct{}
@@ -1914,6 +1916,13 @@ func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *Upd
 
 	if category.Premium != args.Premium {
 		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Premium", args.Premium); err != nil {
+			s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboardCategory(): %v", err.Error()))
+			wasError = true
+		}
+	}
+
+	if category.Seller != args.Seller {
+		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Seller", args.Seller); err != nil {
 			s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboardCategory(): %v", err.Error()))
 			wasError = true
 		}
@@ -2104,17 +2113,10 @@ func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnal
 		return &err
 	}
 
-	if len(args.CustomerCodes) == 0 {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "CustomerCodes"
-		s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v: Name is required", err.Error()))
-		return &err
-	}
-
 	if len(args.IDs) == 0 {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "IDs"
-		s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v: Name is required", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v: IDs is required", err.Error()))
 		return &err
 	}
 
@@ -2203,30 +2205,33 @@ func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnal
 	return nil
 }
 
-type AdminDashboard struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+type FetchAdminDashboardsArgs struct {
+	CompanyCode string `json:"company_code"`
+	Origin      string `json:"origin"`
 }
-
-type FetchAdminDashboardsArgs struct{}
 
 type FetchAdminDashboardsReply struct {
-	Dashboards []AdminDashboard `json:"dashboards"`
+	Dashboards map[string][]string `json:"dashboards"`
 }
 
+// TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
 func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashboardsArgs, reply *FetchAdminDashboardsReply) error {
-	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+	reply.Dashboards = make(map[string][]string, 0)
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
 		return &err
 	}
 
-	dashboards, err := s.Storage.GetAdminAnalyticsDashboards(r.Context())
-	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+	if args.Origin == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
+		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v: Origin is required", err.Error()))
 		return &err
 	}
+
+	ctx := r.Context()
 
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
@@ -2243,15 +2248,35 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 		return &err
 	}
 
+	customerCode := args.CompanyCode
+
+	dashboards, err := s.Storage.GetAdminAnalyticsDashboards(ctx)
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
 	for _, dashboard := range dashboards {
-		lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, "", "")
-		if err != nil {
-			continue
+		if dashboard.CustomerCode == customerCode && !dashboard.Discovery && !dashboard.Category.Admin && (!dashboard.Category.Premium || (buyer.Analytics && dashboard.Category.Premium)) {
+			_, ok := reply.Dashboards[dashboard.Category.Label]
+			if !ok {
+				reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
+			}
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, customerCode, args.Origin)
+			if err != nil {
+				continue
+			}
+
+			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
 		}
-		reply.Dashboards = append(reply.Dashboards, AdminDashboard{
-			Name: dashboard.Name,
-			URL:  lookerURL,
-		})
 	}
 
 	return nil

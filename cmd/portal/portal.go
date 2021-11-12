@@ -412,9 +412,23 @@ func main() {
 		Storage: db,
 	}
 
-	// TODO: Pull these in from environment
-	lookerClient.APISettings.ClientId = "QXG3cfyWd8xqsVnT7QbT"
-	lookerClient.APISettings.ClientSecret = "JT2BpTYNc7fybyHNGs3S24g7"
+	lookerAPIClientID, ok := os.LookupEnv("LOOKER_API_CLIENT_ID")
+	if !ok {
+		level.Error(logger).Log("err", "env var LOOKER_API_CLIENT_ID must be set")
+		os.Exit(1)
+	}
+
+	lookerAPIClientSecret, ok := os.LookupEnv("LOOKER_API_CLIENT_SECRET")
+	if !ok {
+		level.Error(logger).Log("err", "env var LOOKER_API_CLIENT_SECRET must be set")
+		os.Exit(1)
+	}
+
+	lookerClient, err = looker.NewLookerClient(lookerHost, lookerSecret, lookerAPIClientID, lookerAPIClientSecret)
+	if err != nil {
+		level.Error(logger).Log("err", "failed to create looker client")
+		os.Exit(1)
+	}
 
 	opsService := jsonrpc.OpsService{
 		Logger:               logger,

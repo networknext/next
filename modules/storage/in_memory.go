@@ -649,7 +649,7 @@ func (m *InMemory) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, lab
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (m *InMemory) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool) error {
+func (m *InMemory) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool, isSeller bool) error {
 	return fmt.Errorf("AddAnalyticsDashboardCategory not implemented in InMemory storer")
 }
 

@@ -36,23 +36,23 @@ func SeedSQLStorage(
 	// only seed if we're using sqlite3
 	if !pgsql {
 
-		if err := db.AddAnalyticsDashboardCategory(ctx, "General", false, false); err != nil {
+		if err := db.AddAnalyticsDashboardCategory(ctx, "General", false, false, false); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 
-		if err := db.AddAnalyticsDashboardCategory(ctx, "Regional", false, true); err != nil {
+		if err := db.AddAnalyticsDashboardCategory(ctx, "Regional", false, true, false); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 
-		if err := db.AddAnalyticsDashboardCategory(ctx, "Platform", false, true); err != nil {
+		if err := db.AddAnalyticsDashboardCategory(ctx, "Platform", false, true, false); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 
-		if err := db.AddAnalyticsDashboardCategory(ctx, "Discovery", false, true); err != nil {
+		if err := db.AddAnalyticsDashboardCategory(ctx, "Discovery", false, true, false); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 
-		if err := db.AddAnalyticsDashboardCategory(ctx, "System", true, false); err != nil {
+		if err := db.AddAnalyticsDashboardCategory(ctx, "System", true, false, false); err != nil {
 			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
 		}
 

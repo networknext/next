@@ -3866,7 +3866,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
 
-	sql.Write([]byte("select id, tab_label, premium, admin_only "))
+	sql.Write([]byte("select id, tab_label, premium, admin_only, seller_only "))
 	sql.Write([]byte("from analytics_dashboard_categories"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -3885,6 +3885,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 			&category.Label,
 			&category.Premium,
 			&category.Admin,
+			&category.Seller,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetAnalyticsDashboardCategories(): error parsing returned row", "err", err)
@@ -3904,7 +3905,7 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]lo
 	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
 
-	sql.Write([]byte("select id, tab_label, premium "))
+	sql.Write([]byte("select id, tab_label, premium, seller_only "))
 	sql.Write([]byte("from analytics_dashboard_categories where premium = true"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -3922,6 +3923,7 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]lo
 			&category.ID,
 			&category.Label,
 			&category.Premium,
+			&category.Seller,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetPremiumAnalyticsDashboardCategories(): error parsing returned row", "err", err)
@@ -3941,7 +3943,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looke
 	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
 
-	sql.Write([]byte("select id, tab_label, premium "))
+	sql.Write([]byte("select id, tab_label, premium, seller_only "))
 	sql.Write([]byte("from analytics_dashboard_categories where premium = false"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -3959,6 +3961,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looke
 			&category.ID,
 			&category.Label,
 			&category.Premium,
+			&category.Seller,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "GetFreeAnalyticsDashboardCategories(): error parsing returned row", "err", err)
@@ -3981,7 +3984,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) 
 	category := looker.AnalyticsDashboardCategory{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, tab_label, premium, admin_only from analytics_dashboard_categories where id = $1"))
+	querySQL.Write([]byte("select id, tab_label, premium, admin_only, seller_only from analytics_dashboard_categories where id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -3993,6 +3996,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) 
 			&category.Label,
 			&category.Premium,
 			&category.Admin,
+			&category.Seller,
 		)
 		switch err {
 		case context.Canceled:
@@ -4026,7 +4030,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 	category := looker.AnalyticsDashboardCategory{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, tab_label, premium, admin_only from analytics_dashboard_categories where tab_label = $1"))
+	querySQL.Write([]byte("select id, tab_label, premium, admin_only, seller_only from analytics_dashboard_categories where tab_label = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -4038,6 +4042,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 			&category.Label,
 			&category.Premium,
 			&category.Admin,
+			&category.Seller,
 		)
 		switch err {
 		case context.Canceled:
@@ -4063,19 +4068,19 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool) error {
+func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool, isSeller bool) error {
 	var sql bytes.Buffer
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	sql.Write([]byte("insert into analytics_dashboard_categories (tab_label, premium, admin_only) values ($1, $2, $3)"))
+	sql.Write([]byte("insert into analytics_dashboard_categories (tab_label, premium, admin_only, seller_only) values ($1, $2, $3, $4)"))
 
 	result, err := ExecRetry(
 		ctx,
 		db,
 		sql,
-		label, isPremium, isAdmin,
+		label, isPremium, isAdmin, isSeller,
 	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error adding analytics dashboard category", "err", err)
@@ -4190,6 +4195,14 @@ func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int6
 		}
 		updateSQL.Write([]byte("update analytics_dashboard_categories set admin_only=$1 where id=$2"))
 		args = append(args, admin, id)
+
+	case "Seller":
+		seller, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboard_categories set seller_only=$1 where id=$2"))
+		args = append(args, seller, id)
 
 	default:
 		return fmt.Errorf("field '%v' does not exist on the analytics dashboard category type", field)
