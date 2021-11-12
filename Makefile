@@ -341,17 +341,17 @@ dev-relay: build-reference-relay  ## runs a local relay
 dev-relays: build-reference-relay  ## runs 10 local relays
 	@./scripts/relay-spawner.sh -n 10
 
-.PHONY: dev-client
-dev-client: build-client  ## runs a local client
-	@./scripts/client-spawner.sh -n 1
+.PHONY: dev-client4
+dev-client4: build-client4  ## runs a local client
+	@./scripts/client-spawner4.sh -n 1
 
-.PHONY: dev-clients
-dev-clients: build-client  ## runs 10 local clients
-	@./scripts/client-spawner.sh -n 10
+.PHONY: dev-clients4
+dev-clients4: build-client4  ## runs 10 local clients
+	@./scripts/client-spawner4.sh -n 10
 
-.PHONY: dev-server
-dev-server: build-sdk4 build-server  ## runs a local server
-	@./dist/server
+.PHONY: dev-server4
+dev-server4: build-sdk4 build-server4  ## runs a local server
+	@./dist/server4
 
 .PHONY: dev-portal
 dev-portal: build-portal ## runs a local portal
@@ -1012,16 +1012,16 @@ publish-bootstrap-script-prod-debug:
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD_DEBUG)/bootstrap.sh
 	@printf "done\n"
 
-.PHONY: build-server
-build-server: build-sdk4
-	@printf "Building server... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+.PHONY: build-server4
+build-server4: build-sdk4
+	@printf "Building server 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server4 ./cmd/server4/server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-client
-build-client: build-sdk4
-	@printf "Building client... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+.PHONY: build-client4
+build-client4: build-sdk4
+	@printf "Building client 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/client4 ./cmd/client4/client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-next
