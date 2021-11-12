@@ -2,12 +2,15 @@ package storage
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"time"
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/looker"
 )
 
 type InMemory struct {
@@ -177,6 +180,15 @@ func (m *InMemory) Customer(ctx context.Context, code string) (routing.Customer,
 	}
 
 	return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: code}
+}
+
+func (m *InMemory) CustomerByID(ctx context.Context, id int64) (routing.Customer, error) {
+	for _, customer := range m.localCustomers {
+		if customer.DatabaseID == id {
+			return customer, nil
+		}
+	}
+	return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: id}
 }
 
 func (m *InMemory) Customers(ctx context.Context) []routing.Customer {
@@ -533,35 +545,376 @@ func (m *InMemory) SetSequenceNumber(ctx context.Context, value int64) error {
 }
 
 func (m *InMemory) InternalConfig(ctx context.Context, buyerID uint64) (core.InternalConfig, error) {
-	return core.InternalConfig{}, fmt.Errorf(("InternalConfig not impemented in InMemory storer"))
+	buyer, err := m.Buyer(ctx, buyerID)
+	if err != nil {
+		return core.InternalConfig{}, err
+	}
+
+	emptyInternalConfig := core.InternalConfig{}
+	if buyer.InternalConfig == emptyInternalConfig {
+		return core.InternalConfig{}, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	return buyer.InternalConfig, nil
 }
 
 func (m *InMemory) RouteShader(ctx context.Context, buyerID uint64) (core.RouteShader, error) {
-	return core.RouteShader{}, fmt.Errorf(("RouteShaders not impemented in InMemory storer"))
+	buyer, err := m.Buyer(ctx, buyerID)
+	if err != nil {
+		return core.RouteShader{}, err
+	}
+
+	rs := buyer.RouteShader
+
+	isEmptyRouteShader := (!rs.DisableNetworkNext &&
+		rs.SelectionPercent == 0 &&
+		!rs.ABTest &&
+		!rs.ReduceLatency &&
+		!rs.ReduceJitter &&
+		!rs.ReducePacketLoss &&
+		!rs.Multipath &&
+		!rs.ProMode &&
+		rs.AcceptableLatency == 0 &&
+		rs.LatencyThreshold == 0 &&
+		rs.AcceptablePacketLoss == 0 &&
+		rs.BandwidthEnvelopeUpKbps == 0 &&
+		rs.BandwidthEnvelopeDownKbps == 0 &&
+		len(rs.BannedUsers) == 0 &&
+		rs.PacketLossSustained == 0)
+
+	if isEmptyRouteShader {
+		return core.RouteShader{}, &DoesNotExistError{resourceType: "RouteShader", resourceRef: fmt.Sprintf("%016x", buyerID)}
+	}
+
+	return buyer.RouteShader, nil
 }
 
 func (m *InMemory) AddInternalConfig(ctx context.Context, internalConfig core.InternalConfig, buyerID uint64) error {
-	return fmt.Errorf("AddInternalConfig not yet impemented in InMemory storer")
+	for idx, buyer := range m.localBuyers {
+		if buyer.ID == buyerID {
+			buyer.InternalConfig = internalConfig
+			m.localBuyers[idx] = buyer
+
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
 }
 
 func (m *InMemory) UpdateInternalConfig(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateInternalConfig not yet impemented in InMemory storer")
+	var buyerExists bool
+	var buyer routing.Buyer
+	var idx int
+
+	for i, localBuyer := range m.localBuyers {
+		if localBuyer.ID == buyerID {
+
+			buyer = localBuyer
+			idx = i
+			buyerExists = true
+			break
+		}
+	}
+
+	if !buyerExists {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
+	}
+
+	switch field {
+	case "RouteSelectThreshold":
+		routeSelectThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RouteSelectThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RouteSelectThreshold = routeSelectThreshold
+	case "RouteSwitchThreshold":
+		routeSwitchThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RouteSwitchThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RouteSwitchThreshold = routeSwitchThreshold
+	case "MaxLatencyTradeOff":
+		maxLatencyTradeOff, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MaxLatencyTradeOff: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.MaxLatencyTradeOff = maxLatencyTradeOff
+	case "RTTVeto_Default":
+		rttVetoDefault, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RTTVeto_Default: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RTTVeto_Default = rttVetoDefault
+	case "RTTVeto_PacketLoss":
+		rttVetoPacketLoss, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RTTVeto_PacketLoss: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RTTVeto_PacketLoss = rttVetoPacketLoss
+	case "RTTVeto_Multipath":
+		rttVetoMultipath, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RTTVeto_Multipath: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RTTVeto_Multipath = rttVetoMultipath
+	case "MultipathOverloadThreshold":
+		multipathOverloadThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MultipathOverloadThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.MultipathOverloadThreshold = multipathOverloadThreshold
+	case "TryBeforeYouBuy":
+		tryBeforeYouBuy, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("TryBeforeYouBuy: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.TryBeforeYouBuy = tryBeforeYouBuy
+	case "ForceNext":
+		forceNext, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ForceNext: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.ForceNext = forceNext
+	case "LargeCustomer":
+		largeCustomer, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("LargeCustomer: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.LargeCustomer = largeCustomer
+	case "Uncommitted":
+		uncommitted, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Uncommitted: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.Uncommitted = uncommitted
+	case "HighFrequencyPings":
+		highFrequencyPings, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("HighFrequencyPings: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.HighFrequencyPings = highFrequencyPings
+	case "MaxRTT":
+		maxRTT, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MaxRTT: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.MaxRTT = maxRTT
+	case "RouteDiversity":
+		routeDiversity, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("RouteDiversity: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.RouteDiversity = routeDiversity
+	case "MultipathThreshold":
+		multipathThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("MultipathThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.MultipathThreshold = multipathThreshold
+	case "EnableVanityMetrics":
+		enableVanityMetrics, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("EnableVanityMetrics: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.EnableVanityMetrics = enableVanityMetrics
+	case "ReducePacketLossMinSliceNumber":
+		reducePacketLossMinSliceNumber, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("ReducePacketLossMinSliceNumber: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.InternalConfig.ReducePacketLossMinSliceNumber = reducePacketLossMinSliceNumber
+	default:
+		return fmt.Errorf("Field '%v' does not exist on the InternalConfig type", field)
+	}
+
+	m.localBuyers[idx] = buyer
+
+	return nil
 }
 
 func (m *InMemory) RemoveInternalConfig(ctx context.Context, buyerID uint64) error {
-	return fmt.Errorf("RemoveInternalConfig not yet impemented in InMemory storer")
+	for idx, buyer := range m.localBuyers {
+		if buyer.ID == buyerID {
+			buyer.InternalConfig = core.InternalConfig{}
+			m.localBuyers[idx] = buyer
+
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
 }
 
 func (m *InMemory) AddRouteShader(ctx context.Context, routeShader core.RouteShader, buyerID uint64) error {
-	return fmt.Errorf("AddRouteShader not yet impemented in InMemory storer")
+	for idx, buyer := range m.localBuyers {
+		if buyer.ID == buyerID {
+			buyer.RouteShader = routeShader
+			m.localBuyers[idx] = buyer
+
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
 }
 
 func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateRouteShader not yet impemented in InMemory storer")
+	var buyerExists bool
+	var buyer routing.Buyer
+	var idx int
+
+	for i, localBuyer := range m.localBuyers {
+		if localBuyer.ID == buyerID {
+
+			buyer = localBuyer
+			idx = i
+			buyerExists = true
+			break
+		}
+	}
+
+	if !buyerExists {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
+	}
+
+	switch field {
+	case "ABTest":
+		abTest, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ABTest: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.ABTest = abTest
+	case "AcceptableLatency":
+		acceptableLatency, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("AcceptableLatency: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.AcceptableLatency = acceptableLatency
+	case "AcceptablePacketLoss":
+		acceptablePacketLoss, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("AcceptablePacketLoss: %v is not a valid float32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.AcceptablePacketLoss = acceptablePacketLoss
+	case "BandwidthEnvelopeDownKbps":
+		bandwidthEnvelopeDownKbps, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("BandwidthEnvelopeDownKbps: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.BandwidthEnvelopeDownKbps = bandwidthEnvelopeDownKbps
+	case "BandwidthEnvelopeUpKbps":
+		bandwidthEnvelopeUpKbps, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("BandwidthEnvelopeUpKbps: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.BandwidthEnvelopeUpKbps = bandwidthEnvelopeUpKbps
+	case "DisableNetworkNext":
+		disableNetworkNext, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("DisableNetworkNext: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.DisableNetworkNext = disableNetworkNext
+	case "LatencyThreshold":
+		latencyThreshold, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("LatencyThreshold: %v is not a valid int32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.LatencyThreshold = latencyThreshold
+	case "Multipath":
+		multipath, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Multipath: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.Multipath = multipath
+	case "ProMode":
+		proMode, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ProMode: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.ProMode = proMode
+	case "ReduceLatency":
+		reduceLatency, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ReduceLatency: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.ReduceLatency = reduceLatency
+	case "ReducePacketLoss":
+		reducePacketLoss, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ReducePacketLoss: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.ReducePacketLoss = reducePacketLoss
+	case "ReduceJitter":
+		reduceJitter, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("ReduceJitter: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.ReduceJitter = reduceJitter
+	case "SelectionPercent":
+		selectionPercent, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("SelectionPercent: %v is not a valid int type (%T)", value, value)
+		}
+
+		buyer.RouteShader.SelectionPercent = selectionPercent
+	case "PacketLossSustained":
+		packetLossSustained, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("PacketLossSustained: %v is not a valid float32 type (%T)", value, value)
+		}
+
+		buyer.RouteShader.PacketLossSustained = packetLossSustained
+	default:
+		return fmt.Errorf("Field '%v' does not exist on the RouteShader type", field)
+
+	}
+
+	m.localBuyers[idx] = buyer
+
+	return nil
 }
 
 func (m *InMemory) RemoveRouteShader(ctx context.Context, buyerID uint64) error {
-	return fmt.Errorf("RemoveRouteShader not yet impemented in InMemory storer")
+	for idx, buyer := range m.localBuyers {
+		if buyer.ID == buyerID {
+			buyer.RouteShader = core.RouteShader{}
+			m.localBuyers[idx] = buyer
+
+			return nil
+		}
+	}
+
+	return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
 }
 
 func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
@@ -569,19 +922,147 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 }
 
 func (m *InMemory) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	return fmt.Errorf(("AddBannedUser not yet impemented in InMemory storer"))
+	routeShader, err := m.RouteShader(ctx, buyerID)
+	if err != nil {
+		return err
+	}
+
+	routeShader.BannedUsers[userID] = true
+
+	err = m.AddRouteShader(ctx, routeShader, buyerID)
+
+	return err
 }
 
 func (m *InMemory) RemoveBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
-	return fmt.Errorf(("RemoveBannedUser not yet impemented in InMemory storer"))
+	routeShader, err := m.RouteShader(ctx, buyerID)
+	if err != nil {
+		return err
+	}
+
+	if _, exists := routeShader.BannedUsers[userID]; exists {
+		delete(routeShader.BannedUsers, userID)
+		return m.AddRouteShader(ctx, routeShader, buyerID)
+	}
+
+	return nil
 }
 
 func (m *InMemory) BannedUsers(ctx context.Context, buyerID uint64) (map[uint64]bool, error) {
-	return map[uint64]bool{}, fmt.Errorf(("BannedUsers not yet impemented in InMemory storer"))
+	routeShader, err := m.RouteShader(ctx, buyerID)
+	if err != nil {
+		return map[uint64]bool{}, err
+	}
+
+	return routeShader.BannedUsers, nil
 }
 
 func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateBuyer not impemented in InMemory storer")
+	var buyerExists bool
+	var buyer routing.Buyer
+	var idx int
+
+	for i, localBuyer := range m.localBuyers {
+		if localBuyer.ID == buyerID {
+
+			buyer = localBuyer
+			idx = i
+			buyerExists = true
+			break
+		}
+	}
+
+	if !buyerExists {
+		return &DoesNotExistError{resourceType: "buyer", resourceRef: buyerID}
+	}
+
+	switch field {
+	case "Live":
+		live, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Live: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.Live = live
+	case "Debug":
+		debug, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Debug: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.Debug = debug
+	case "Analytics":
+		analytics, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Analytics: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.Analytics = analytics
+	case "Billing":
+		billing, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Billing: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.Billing = billing
+	case "Trial":
+		trial, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("Trial: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.Trial = trial
+	case "ExoticLocationFee":
+		exoticLocationFee, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("ExoticLocationFee: %v is not a valid float64 type (%T)", value, value)
+		}
+
+		buyer.ExoticLocationFee = exoticLocationFee
+	case "StandardLocationFee":
+		standardLocationFee, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("StandardLocationFee: %v is not a valid float64 type (%T)", value, value)
+		}
+
+		buyer.StandardLocationFee = standardLocationFee
+	case "ShortName":
+		shortName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("ShortName: %v is not a valid string type (%T)", value, value)
+		}
+
+		buyer.ShortName = shortName
+	case "PublicKey":
+		pubKey, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("PublicKey: %v is not a valid string type (%T)", value, value)
+		}
+
+		// Changing the public key also requires changing the ID field and fixing any
+		// extant datacenter maps for this buyer
+		newPublicKey, err := base64.StdEncoding.DecodeString(pubKey)
+		if err != nil {
+			return fmt.Errorf("PublicKey: failed to decode string public key: %v", err)
+		}
+
+		if len(newPublicKey) != crypto.KeySize+8 {
+			return fmt.Errorf("PublicKey: public key is not the correct length: %d", len(newPublicKey))
+		}
+
+		newBuyerID := binary.LittleEndian.Uint64(newPublicKey[:8])
+
+		buyer.ID = newBuyerID
+		buyer.PublicKey = newPublicKey
+
+		// TODO: datacenter maps for this buyer must be updated with the new buyer ID
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Buyer type", field)
+	}
+
+	m.localBuyers[idx] = buyer
+
+	return nil
 }
 
 func (m *InMemory) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {
@@ -606,4 +1087,135 @@ func (m *InMemory) GetDatabaseBinFileMetaData(ctx context.Context) (routing.Data
 
 func (m *InMemory) UpdateDatabaseBinFileMetaData(ctx context.Context, fileMeta routing.DatabaseBinFileMetaData) error {
 	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in InMemory storer")
+}
+
+// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+func (m *InMemory) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+	return categories, fmt.Errorf("GetAnalyticsDashboardCategories not implemented in InMemory storer")
+}
+
+// GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
+func (m *InMemory) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+	return categories, fmt.Errorf("GetPremiumAnalyticsDashboardCategories not implemented in InMemory storer")
+}
+
+// GetFreeAnalyticsDashboardCategories returns all free Looker dashboard categories
+func (m *InMemory) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+	return categories, fmt.Errorf("GetFreeAnalyticsDashboardCategories not implemented in InMemory storer")
+}
+
+// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+func (m *InMemory) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) (looker.AnalyticsDashboardCategory, error) {
+	category := looker.AnalyticsDashboardCategory{}
+	return category, fmt.Errorf("GetAnalyticsDashboardCategoryByID not implemented in InMemory storer")
+}
+
+// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+func (m *InMemory) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) (looker.AnalyticsDashboardCategory, error) {
+	category := looker.AnalyticsDashboardCategory{}
+	return category, fmt.Errorf("GetAnalyticsDashboardCategoryByLabel not implemented in InMemory storer")
+}
+
+// AddAnalyticsDashboardCategory adds a new dashboard category
+func (m *InMemory) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool, isSeller bool) error {
+	return fmt.Errorf("AddAnalyticsDashboardCategory not implemented in InMemory storer")
+}
+
+// RemoveAnalyticsDashboardCategory remove a dashboard category by ID
+func (m *InMemory) RemoveAnalyticsDashboardCategoryByID(ctx context.Context, id int64) error {
+	return fmt.Errorf("RemoveAnalyticsDashboardCategory not implemented in InMemory storer")
+}
+
+// RemoveAnalyticsDashboardCategory remove a dashboard category by label
+func (m *InMemory) RemoveAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) error {
+	return fmt.Errorf("RemoveAnalyticsDashboardCategory not implemented in InMemory storer")
+
+}
+
+// UpdateAnalyticsDashboardCategoryByID update dashboard category by ID
+func (m *InMemory) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateAnalyticsDashboardCategoryByID not implemented in InMemory storer")
+}
+
+// GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
+func (m *InMemory) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboard, error) {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByCategoryID not implemented in InMemory storer")
+}
+
+// GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
+func (m *InMemory) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) ([]looker.AnalyticsDashboard, error) {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByCategoryLabel not implemented in InMemory storer")
+}
+
+// GetPremiumAnalyticsDashboards get all premium looker dashboards
+func (m *InMemory) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards, fmt.Errorf("GetPremiumAnalyticsDashboards not implemented in InMemory storer")
+}
+
+// GetFreeAnalyticsDashboards get all free looker dashboards
+func (m *InMemory) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards, fmt.Errorf("GetFreeAnalyticsDashboards not implemented in InMemory storer")
+}
+
+// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+func (m *InMemory) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards, fmt.Errorf("GetDiscoveryAnalyticsDashboards not implemented in InMemory storer")
+}
+
+// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+func (m *InMemory) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards, fmt.Errorf("GetAnalyticsDashboards not implemented in InMemory storer")
+}
+
+// GetAdminAnalyticsDashboards get all admin looker dashboards
+func (m *InMemory) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards, fmt.Errorf("GetAdminAnalyticsDashboards not implemented in InMemory storer")
+}
+
+// GetAnalyticsDashboardsByLookerID get looker dashboard by looker id
+func (m *InMemory) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) ([]looker.AnalyticsDashboard, error) {
+	dashboards := []looker.AnalyticsDashboard{}
+	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByLookerID not implemented in InMemory storer")
+}
+
+// GetAnalyticsDashboardByID get looker dashboard by id
+func (m *InMemory) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.AnalyticsDashboard, error) {
+	dashboard := looker.AnalyticsDashboard{}
+	return dashboard, fmt.Errorf("GetAnalyticsDashboardByID not implemented in InMemory storer")
+}
+
+// GetAnalyticsDashboardByName get looker dashboard by name
+func (m *InMemory) GetAnalyticsDashboardByName(ctx context.Context, name string) (looker.AnalyticsDashboard, error) {
+	dashboard := looker.AnalyticsDashboard{}
+	return dashboard, fmt.Errorf("GetAnalyticsDashboardByName not implemented in InMemory storer")
+}
+
+// AddAnalyticsDashboard adds a new dashboard
+func (m *InMemory) AddAnalyticsDashboard(ctx context.Context, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
+	return fmt.Errorf("AddAnalyticsDashboard not implemented in InMemory storer")
+}
+
+// RemoveAnalyticsDashboardByID remove looker dashboard by id
+func (m *InMemory) RemoveAnalyticsDashboardByID(ctx context.Context, id int64) error {
+	return fmt.Errorf("RemoveAnalyticsDashboardByID not implemented in InMemory storer")
+}
+
+// RemoveAnalyticsDashboardByName remove looker dashboard by name
+func (m *InMemory) RemoveAnalyticsDashboardByName(ctx context.Context, name string) error {
+	return fmt.Errorf("RemoveAnalyticsDashboardByName not implemented in InMemory storer")
+}
+
+// UpdateAnalyticsDashboardByID update looker dashboard looker id by dashboard id
+func (m *InMemory) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field string, value interface{}) error {
+	return fmt.Errorf("UpdateAnalyticsDashboardByID not implemented in InMemory storer")
 }
