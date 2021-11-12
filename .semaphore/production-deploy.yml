@@ -68,14 +68,14 @@ blocks:
           commands:
             - make build-relay-forwarder-artifacts-prod
             - make publish-relay-forwarder-artifacts-prod
-        - name: Server Backend
+        - name: Server Backend 4
           commands:
-            - make build-server-backend-artifacts-prod
-            - make publish-server-backend-artifacts-prod
-        - name: Debug Server Backend
+            - make build-server-backend4-artifacts-prod
+            - make publish-server-backend4-artifacts-prod
+        - name: Debug Server Backend 4
           commands:
-            - make build-debug-server-backend-artifacts-prod
-            - make publish-debug-server-backend-artifacts-prod
+            - make build-debug-server-backend4-artifacts-prod
+            - make publish-debug-server-backend4-artifacts-prod
         - name: Debug Relay Backend
           commands:
             - make build-debug-relay-backend-artifacts-prod
