@@ -76,10 +76,10 @@ blocks:
           commands:
             - make build-relay-forwarder-artifacts-staging
             - make publish-relay-forwarder-artifacts-staging
-        - name: Server Backend
+        - name: Server Backend 4
           commands:
-            - make build-server-backend-artifacts-staging
-            - make publish-server-backend-artifacts-staging
+            - make build-server-backend4-artifacts-staging
+            - make publish-server-backend4-artifacts-staging
         - name: Fake Relays
           commands:
             - make build-fake-relays-artifacts-staging
