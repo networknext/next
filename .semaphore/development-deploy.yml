@@ -6,6 +6,7 @@ agent:
     os_image: ubuntu1804
 global_job_config:
   secrets:
+    - name: sdk4-repo-access
     - name: sdk5-repo-access
   prologue:
     commands:
