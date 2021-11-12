@@ -16,8 +16,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
@@ -26,133 +25,6 @@ import (
 	"github.com/networknext/backend/modules/transport/middleware"
 )
 
-type RelayVersion struct {
-	Major uint8
-	Minor uint8
-	Patch uint8
-}
-
-func (self *RelayVersion) String() string {
-	return fmt.Sprintf("%d.%d.%d", self.Major, self.Minor, self.Patch)
-}
-
-type RelayData struct {
-	SessionCount   uint64
-	Version        RelayVersion
-	LastUpdateTime time.Time
-	CPU            float32
-	Mem            float32
-	TrafficStats   routing.TrafficStats
-}
-
-type RelayStatsMap struct {
-	Internal *map[uint64]RelayData
-	mu       sync.RWMutex
-}
-
-func NewRelayStatsMap() RelayStatsMap {
-	m := make(map[uint64]RelayData)
-	return RelayStatsMap{
-		Internal: &m,
-	}
-}
-
-func (r *RelayStatsMap) Get(id uint64) (RelayData, bool) {
-	r.mu.RLock()
-	relay, ok := (*r.Internal)[id]
-	r.mu.RUnlock()
-	return relay, ok
-}
-
-func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
-	index := 0
-
-	var version uint8
-	if !encoding.ReadUint8(data, &index, &version) {
-		return errors.New("unable to read relay stats version")
-	}
-
-	var count uint64
-	if !encoding.ReadUint64(data, &index, &count) {
-		return errors.New("unable to read relay stats count")
-	}
-
-	m := make(map[uint64]RelayData)
-
-	for i := uint64(0); i < count; i++ {
-		var id uint64
-		if !encoding.ReadUint64(data, &index, &id) {
-			return errors.New("unable to read relay stats id")
-		}
-
-		var relay RelayData
-
-		// currently map version & traffic stats match up, but not binding them together in case one changes and the other doesn't
-		switch version {
-		case 0:
-			if err := relay.TrafficStats.ReadFrom(data, &index, 0); err != nil {
-				return err
-			}
-		case 1:
-			if err := relay.TrafficStats.ReadFrom(data, &index, 1); err != nil {
-				return err
-			}
-		case 2:
-			if err := relay.TrafficStats.ReadFrom(data, &index, 2); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("invalid relay map version: %d", version)
-		}
-
-		// result of a merge with master, relay.SessionCount was supposed to be removed but the merge put it back in
-		// once this code is in prod for compatability, relay.SessionCount can be removed
-		if version <= 1 {
-			relay.TrafficStats.SessionCount = relay.SessionCount
-		} else {
-			relay.SessionCount = relay.TrafficStats.SessionCount
-		}
-
-		if !encoding.ReadUint8(data, &index, &relay.Version.Major) {
-			return errors.New("unable to relay stats major version")
-		}
-
-		if !encoding.ReadUint8(data, &index, &relay.Version.Minor) {
-			return errors.New("unable to relay stats minor version")
-		}
-
-		if !encoding.ReadUint8(data, &index, &relay.Version.Patch) {
-			return errors.New("unable to relay stats patch version")
-		}
-
-		var unixTime uint64
-		if !encoding.ReadUint64(data, &index, &unixTime) {
-			return errors.New("unable to read relay stats last update time")
-		}
-		relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
-
-		if !encoding.ReadFloat32(data, &index, &relay.CPU) {
-			return errors.New("unable to read relay stats cpu usage")
-		}
-
-		if !encoding.ReadFloat32(data, &index, &relay.Mem) {
-			return errors.New("unable to read relay stats memory usage")
-		}
-
-		m[id] = relay
-	}
-
-	r.Swap(&m)
-
-	return nil
-}
-
-func (r *RelayStatsMap) Swap(m *map[uint64]RelayData) {
-	r.mu.Lock()
-	r.Internal = m
-	r.mu.Unlock()
-}
-
 type OpsService struct {
 	Release   string
 	BuildTime string
@@ -160,9 +32,6 @@ type OpsService struct {
 	Env string
 
 	Storage storage.Storer
-	// RouteMatrix *routing.RouteMatrix
-
-	Logger log.Logger
 
 	LookerClient         *looker.LookerClient
 	LookerDashboardCache []looker.LookerDashboard
@@ -207,7 +76,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 		c, err := s.Storage.Customer(r.Context(), b.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("Buyers() could not find Customer %s for %s: %v", b.CompanyCode, b.String(), err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -254,24 +123,24 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 
 	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	if len(publicKey) != crypto.KeySize+8 {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	exoticLocationFee, err := strconv.ParseFloat(args.ExoticLocationFee, 64)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	standardLocationFee, err := strconv.ParseFloat(args.StandardLocationFee, 64)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -306,7 +175,7 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 	buyerID, err := strconv.ParseUint(args.ID, 16, 64)
 	if err != nil {
 		err = fmt.Errorf("RemoveBuyer() could not convert buyer ID %s to uint64: %v", args.ID, err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -360,7 +229,7 @@ func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersR
 		// c, err := s.Storage.Customer(localSeller.CompanyCode)
 		// if err != nil {
 		// 	err = fmt.Errorf("Sellers() could not find Customer %s: %v", localSeller.CompanyCode, err)
-		// 	s.Logger.Log("err", err)
+		// 	core.Error("%v", err)
 		// 	return err
 		// }
 		reply.Sellers = append(reply.Sellers, seller{
@@ -395,7 +264,7 @@ type customer struct {
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("Customers(): %v", err.Error()))
+		core.Error("Customers(): %v", err.Error())
 		return &err
 	}
 
@@ -448,7 +317,7 @@ func (s *OpsService) JSAddCustomer(r *http.Request, args *JSAddCustomerArgs, rep
 
 	if err := s.Storage.AddCustomer(ctx, customer); err != nil {
 		err = fmt.Errorf("AddCustomer() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	return nil
@@ -466,7 +335,7 @@ func (s *OpsService) AddCustomer(r *http.Request, args *AddCustomerArgs, reply *
 
 	if err := s.Storage.AddCustomer(ctx, args.Customer); err != nil {
 		err = fmt.Errorf("AddCustomer() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	return nil
@@ -487,7 +356,7 @@ func (s *OpsService) Customer(r *http.Request, arg *CustomerArg, reply *Customer
 
 	if c, err = s.Storage.Customer(r.Context(), arg.CustomerID); err != nil {
 		err = fmt.Errorf("Customer() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	reply.Customer = c
@@ -509,7 +378,7 @@ func (s *OpsService) Seller(r *http.Request, arg *SellerArg, reply *SellerReply)
 	var err error
 	if seller, err = s.Storage.Seller(r.Context(), arg.ID); err != nil {
 		err = fmt.Errorf("Seller() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -541,7 +410,7 @@ func (s *OpsService) JSAddSeller(r *http.Request, args *JSAddSellerArgs, reply *
 
 	if err := s.Storage.AddSeller(ctx, seller); err != nil {
 		err = fmt.Errorf("AddSeller() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -560,7 +429,7 @@ func (s *OpsService) AddSeller(r *http.Request, args *AddSellerArgs, reply *AddS
 
 	if err := s.Storage.AddSeller(ctx, args.Seller); err != nil {
 		err = fmt.Errorf("AddSeller() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -579,7 +448,7 @@ func (s *OpsService) RemoveSeller(r *http.Request, args *RemoveSellerArgs, reply
 
 	if err := s.Storage.RemoveSeller(ctx, args.ID); err != nil {
 		err = fmt.Errorf("RemoveSeller() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -597,19 +466,19 @@ type SetCustomerLinkReply struct{}
 func (s *OpsService) SetCustomerLink(r *http.Request, args *SetCustomerLinkArgs, reply *SetCustomerLinkReply) error {
 	if args.CustomerName == "" {
 		err := errors.New("SetCustomerLink() error: customer name empty")
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	if args.BuyerID == 0 && args.SellerID == "" {
 		err := errors.New("SetCustomerLink() error: invalid paramters - both buyer ID and seller ID are empty")
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	if args.BuyerID != 0 && args.SellerID != "" {
 		err := errors.New("SetCustomerLink() error: invalid paramters - both buyer ID and seller ID are given which is not allowed")
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -625,7 +494,7 @@ func (s *OpsService) SetCustomerLink(r *http.Request, args *SetCustomerLinkArgs,
 		sellerID, err = s.Storage.SellerIDFromCustomerName(ctx, args.CustomerName)
 		if err != nil {
 			err = fmt.Errorf("SetCustomerLink() error: %w", err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 	}
@@ -636,14 +505,14 @@ func (s *OpsService) SetCustomerLink(r *http.Request, args *SetCustomerLinkArgs,
 		buyerID, err = s.Storage.BuyerIDFromCustomerName(ctx, args.CustomerName)
 		if err != nil {
 			err = fmt.Errorf("SetCustomerLink() error: %w", err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 	}
 
 	if err := s.Storage.SetCustomerLink(ctx, args.CustomerName, buyerID, sellerID); err != nil {
 		err = fmt.Errorf("SetCustomerLink() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -853,7 +722,7 @@ func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRel
 
 	if err := s.Storage.AddRelay(ctx, args.Relay); err != nil {
 		err = fmt.Errorf("AddRelay() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -894,13 +763,13 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 
 	addr, err := net.ResolveUDPAddr("udp", args.Addr)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	dcID, err := strconv.ParseUint(args.DatacenterID, 16, 64)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -908,14 +777,14 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 	var datacenter routing.Datacenter
 	if datacenter, err = s.Storage.Datacenter(r.Context(), dcID); err != nil {
 		err = fmt.Errorf("Datacenter() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
 	if err != nil {
 		err = fmt.Errorf("could not decode base64 public key %s: %v", args.PublicKey, err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 	}
 
 	rid := crypto.HashID(args.Addr)
@@ -947,7 +816,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 	if args.InternalAddr != "" {
 		internalAddr, err = net.ResolveUDPAddr("udp", args.InternalAddr)
 		if err != nil {
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		relay.InternalAddr = *internalAddr
@@ -956,7 +825,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 	if args.StartDate != "" {
 		startDate, err := time.Parse("2006-01-02", args.StartDate)
 		if err != nil {
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		relay.StartDate = startDate
@@ -965,7 +834,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 	if args.EndDate != "" {
 		endDate, err := time.Parse("2006-01-02", args.EndDate)
 		if err != nil {
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		relay.EndDate = endDate
@@ -973,7 +842,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 
 	if err := s.Storage.AddRelay(ctx, relay); err != nil {
 		err = fmt.Errorf("AddRelay() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -990,7 +859,7 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.Relay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1007,7 +876,7 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 
 	if err = s.Storage.SetRelay(r.Context(), relay); err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1027,7 +896,7 @@ func (s *OpsService) RelayNameUpdate(r *http.Request, args *RelayNameUpdateArgs,
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("RelayNameUpdate() Storage.Relay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1053,14 +922,14 @@ func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArg
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("RelayStateUpdate() Storage.Relay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	relay.State = args.RelayState
 	if err = s.Storage.SetRelay(r.Context(), relay); err != nil {
 		err = fmt.Errorf("RelayStateUpdate() Storage.SetRelay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1087,13 +956,13 @@ func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyU
 
 	if err != nil {
 		err = fmt.Errorf("RelayPublicKeyUpdate() could not decode relay public key: %v", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	if err = s.Storage.SetRelay(r.Context(), relay); err != nil {
 		err = fmt.Errorf("RelayPublicKeyUpdate() SetRelay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1114,14 +983,14 @@ func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpd
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("RelayNICSpeedUpdate() Relay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	relay.NICSpeedMbps = int32(args.RelayNICSpeed)
 	if err = s.Storage.SetRelay(r.Context(), relay); err != nil {
 		err = fmt.Errorf("RelayNICSpeedUpdate() SetRelay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1142,7 +1011,7 @@ func (s *OpsService) Datacenter(r *http.Request, arg *DatacenterArg, reply *Data
 	var err error
 	if datacenter, err = s.Storage.Datacenter(r.Context(), arg.ID); err != nil {
 		err = fmt.Errorf("Datacenter() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1209,7 +1078,7 @@ func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, rep
 
 	if err := s.Storage.AddDatacenter(ctx, args.Datacenter); err != nil {
 		err = fmt.Errorf("AddDatacenter() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1233,7 +1102,7 @@ func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs,
 
 	seller, err := s.Storage.Seller(r.Context(), args.SellerID)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1249,7 +1118,7 @@ func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs,
 
 	if err := s.Storage.AddDatacenter(ctx, datacenter); err != nil {
 		err = fmt.Errorf("AddDatacenter() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1270,7 +1139,7 @@ func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArg
 
 	if err := s.Storage.RemoveDatacenter(ctx, id); err != nil {
 		err = fmt.Errorf("RemoveDatacenter() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1295,20 +1164,20 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 		buyer, err := s.Storage.Buyer(r.Context(), dcMap.BuyerID)
 		if err != nil {
 			err = fmt.Errorf("ListDatacenterMaps() could not parse buyer: %w", err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		datacenter, err := s.Storage.Datacenter(r.Context(), dcMap.DatacenterID)
 		if err != nil {
 			err = fmt.Errorf("ListDatacenterMaps() could not parse datacenter: %w", err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
 		company, err := s.Storage.Customer(r.Context(), buyer.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("ListDatacenterMaps() failed to find buyer company: %w", err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1409,14 +1278,14 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		relayID, err = strconv.ParseUint(args.HexRelayID, 16, 64)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() failed to parse HexRelayID %s: %w", args.HexRelayID, err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 	}
 	err = s.Storage.UpdateRelay(r.Context(), relayID, args.Field, args.Value)
 	if err != nil {
 		err = fmt.Errorf("UpdateRelay() failed to modify relay record for field %s with value %v: %w", args.Field, args.Value, err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	return nil
@@ -1434,7 +1303,7 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 	routingRelay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("Error retrieving relay ID %016x: %v", args.RelayID, err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1500,7 +1369,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, newfloat)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1509,7 +1378,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		err := s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1519,7 +1388,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		err := s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, newPublicKey)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1529,13 +1398,13 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		state, err := routing.ParseRelayState(args.Value)
 		if err != nil {
 			err := fmt.Errorf("value '%s' is not a valid relay state", args.Value)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, float64(state))
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1544,13 +1413,13 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			err = fmt.Errorf("value '%s' is not a valid float64 port number: %v", args.Value, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1560,13 +1429,13 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		bwRule, err := routing.ParseBandwidthRule(args.Value)
 		if err != nil {
 			err := fmt.Errorf("value '%s' is not a valid bandwidth rule", args.Value)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, float64(bwRule))
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1576,13 +1445,13 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		machineType, err := routing.ParseMachineType(args.Value)
 		if err != nil {
 			err := fmt.Errorf("value '%s' is not a valid machine type", args.Value)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, float64(machineType))
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1612,7 +1481,7 @@ func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, r
 		err := s.Storage.UpdateCustomer(r.Context(), args.CustomerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateCustomer() error updating record for customer %s: %v", args.CustomerID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1655,27 +1524,27 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 		err := s.Storage.UpdateSeller(r.Context(), args.SellerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateSeller() error updating record for seller %s: %v", args.SellerID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 	case "Secret":
 		secret, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateSeller() value '%s' is not a valid Secret/boolean: %v", args.Value, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		err = s.Storage.UpdateSeller(r.Context(), args.SellerID, args.Field, secret)
 		if err != nil {
 			err = fmt.Errorf("UpdateSeller() error updating record for seller %s: %v", args.SellerID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 	case "EgressPrice", "IngressPrice":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			err = fmt.Errorf("value '%s' is not a valid price: %v", args.Value, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1687,7 +1556,7 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 		err = s.Storage.UpdateSeller(r.Context(), args.SellerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateSeller() error updating field for seller %s: %v", args.SellerID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1721,7 +1590,7 @@ func (s *OpsService) ResetSellerEgressPriceOverride(r *http.Request, args *Reset
 				err := s.Storage.UpdateRelay(r.Context(), relay.ID, args.Field, float64(0))
 				if err != nil {
 					err = fmt.Errorf("ResetSellerEgressPriceOverride() error updating %s for seller %s: %v", args.Field, args.SellerID, err)
-					level.Error(s.Logger).Log("err", err)
+					core.Error("%v", err)
 					return err
 				}
 			}
@@ -1748,7 +1617,7 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 
 	dcID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
 	if err != nil {
-		level.Error(s.Logger).Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1758,7 +1627,7 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 		err := s.Storage.UpdateDatacenter(r.Context(), dcID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateDatacenter() error updating record for customer %s: %v", args.HexDatacenterID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1778,13 +1647,13 @@ type FetchAnalyticsDashboardCategoriesReply struct {
 func (s *OpsService) FetchAnalyticsDashboardCategories(r *http.Request, args *FetchAnalyticsDashboardCategoriesArgs, reply *FetchAnalyticsDashboardCategoriesReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
+		core.Error("FetchAnalyticsCategories(): %v", err.Error())
 		return &err
 	}
 
 	categories, err := s.Storage.GetAnalyticsDashboardCategories(r.Context())
 	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsDashboardCategories(): %v", err.Error()))
+		core.Error("FetchAnalyticsDashboardCategories(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
@@ -1805,19 +1674,19 @@ type AddAnalyticsDashboardCategoryReply struct{}
 func (s *OpsService) AddAnalyticsDashboardCategory(r *http.Request, args *AddAnalyticsDashboardCategoryArgs, reply *AddAnalyticsDashboardCategoryReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("AddAnalyticsDashboardCategory(): %v", err.Error()))
+		core.Error("AddAnalyticsDashboardCategory(): %v", err.Error())
 		return &err
 	}
 
 	if args.Label == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Label"
-		s.Logger.Log("err", fmt.Errorf("AddAnalyticsDashboardCategory(): %v: Label is required", err.Error()))
+		core.Error("AddAnalyticsDashboardCategory(): %v: Label is required", err.Error())
 		return &err
 	}
 
 	if err := s.Storage.AddAnalyticsDashboardCategory(r.Context(), args.Label, args.Admin, args.Premium, args.Seller); err != nil {
-		s.Logger.Log("err", fmt.Errorf("AddAnalyticsDashboardCategory(): %v", err.Error()))
+		core.Error("AddAnalyticsDashboardCategory(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
@@ -1834,7 +1703,7 @@ type DeleteAnalyticsDashboardCategoryReply struct{}
 func (s *OpsService) DeleteAnalyticsDashboardCategory(r *http.Request, args *DeleteAnalyticsDashboardCategoryArgs, reply *DeleteAnalyticsDashboardCategoryReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("DeleteAnalyticsDashboardCategory(): %v", err.Error()))
+		core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
 		return &err
 	}
 
@@ -1843,21 +1712,21 @@ func (s *OpsService) DeleteAnalyticsDashboardCategory(r *http.Request, args *Del
 	// Remove dashboards with this category to take care of FK issues
 	dashboards, err := s.Storage.GetAnalyticsDashboardsByCategoryID(ctx, int64(args.ID))
 	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("DeleteAnalyticsDashboardCategory(): %v", err.Error()))
+		core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
 
 	for _, d := range dashboards {
 		if err := s.Storage.RemoveAnalyticsDashboardByID(ctx, d.ID); err != nil {
-			s.Logger.Log("err", fmt.Errorf("DeleteAnalyticsDashboardCategory(): %v", err.Error()))
+			core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
 	}
 
 	if err := s.Storage.RemoveAnalyticsDashboardCategoryByID(ctx, int64(args.ID)); err != nil {
-		s.Logger.Log("err", fmt.Errorf("DeleteAnalyticsDashboardCategory(): %v", err.Error()))
+		core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
@@ -1878,14 +1747,14 @@ type UpdateAnalyticsDashboardCategoryReply struct{}
 func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *UpdateAnalyticsDashboardCategoryArgs, reply *UpdateAnalyticsDashboardCategoryReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboardCategory(): %v", err.Error()))
+		core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
 		return &err
 	}
 
 	if args.Label == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Label"
-		s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboardCategory(): %v: Label is required", err.Error()))
+		core.Error("UpdateAnalyticsDashboardCategory(): %v: Label is required", err.Error())
 		return &err
 	}
 
@@ -1893,7 +1762,7 @@ func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *Upd
 
 	category, err := s.Storage.GetAnalyticsDashboardCategoryByID(ctx, int64(args.ID))
 	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboardCategory(): %v: Name is required", err.Error()))
+		core.Error("UpdateAnalyticsDashboardCategory(): %v: Name is required", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 
@@ -1902,34 +1771,34 @@ func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *Upd
 	wasError := false
 	if category.Label != args.Label {
 		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Label", args.Label); err != nil {
-			s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboardCategory(): %v", err.Error()))
+			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
 			wasError = true
 		}
 	}
 
 	if category.Admin != args.Admin {
 		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Admin", args.Admin); err != nil {
-			s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboardCategory(): %v", err.Error()))
+			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
 			wasError = true
 		}
 	}
 
 	if category.Premium != args.Premium {
 		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Premium", args.Premium); err != nil {
-			s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboardCategory(): %v", err.Error()))
+			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
 			wasError = true
 		}
 	}
 
 	if category.Seller != args.Seller {
 		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Seller", args.Seller); err != nil {
-			s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboardCategory(): %v", err.Error()))
+			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
 			wasError = true
 		}
 	}
 
 	if wasError {
-		s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboardCategory(): %v", err.Error()))
+		core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
@@ -1955,7 +1824,7 @@ type FetchAllAnalyticsDashboardsReply struct {
 func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAnalyticsDashboardsArgs, reply *FetchAllAnalyticsDashboardsReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsCategories(): %v", err.Error()))
+		core.Error("FetchAnalyticsCategories(): %v", err.Error())
 		return &err
 	}
 
@@ -1965,7 +1834,7 @@ func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAna
 
 	dashboards, err := s.Storage.GetAnalyticsDashboards(ctx)
 	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("FetchAnalyticsDashboards(): %v", err.Error()))
+		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
@@ -2012,21 +1881,21 @@ type AddAnalyticsDashboardReply struct{}
 func (s *OpsService) AddAnalyticsDashboard(r *http.Request, args *AddAnalyticsDashboardArgs, reply *AddAnalyticsDashboardReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("AddAnalyticsDashboard(): %v", err.Error()))
+		core.Error("AddAnalyticsDashboard(): %v", err.Error())
 		return &err
 	}
 
 	if args.Name == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Name"
-		s.Logger.Log("err", fmt.Errorf("AddAnalyticsDashboard(): %v: Name is required", err.Error()))
+		core.Error("AddAnalyticsDashboard(): %v: Name is required", err.Error())
 		return &err
 	}
 
 	if args.CustomerCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "CustomerCode"
-		s.Logger.Log("err", fmt.Errorf("AddAnalyticsDashboard(): %v: Name is required", err.Error()))
+		core.Error("AddAnalyticsDashboard(): %v: Name is required", err.Error())
 		return &err
 	}
 
@@ -2034,13 +1903,13 @@ func (s *OpsService) AddAnalyticsDashboard(r *http.Request, args *AddAnalyticsDa
 
 	customer, err := s.Storage.Customer(ctx, args.CustomerCode)
 	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("AddAnalyticsDashboard(): %v", err.Error()))
+		core.Error("AddAnalyticsDashboard(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
 
 	if err := s.Storage.AddAnalyticsDashboard(ctx, args.Name, int64(args.LookerID), args.Discovery, customer.DatabaseID, int64(args.CategoryID)); err != nil {
-		s.Logger.Log("err", fmt.Errorf("AddAnalyticsDashboard(): %v", err.Error()))
+		core.Error("AddAnalyticsDashboard(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
@@ -2057,7 +1926,7 @@ type DeleteAnalyticsDashboardsReply struct{}
 func (s *OpsService) DeleteAnalyticsDashboards(r *http.Request, args *DeleteAnalyticsDashboardsArgs, reply *DeleteAnalyticsDashboardsReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("DeleteDashboards(): %v", err.Error()))
+		core.Error("DeleteDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -2070,7 +1939,7 @@ func (s *OpsService) DeleteAnalyticsDashboards(r *http.Request, args *DeleteAnal
 	wasError := false
 	for _, id := range args.IDs {
 		if err := s.Storage.RemoveAnalyticsDashboardByID(ctx, int64(id)); err != nil {
-			s.Logger.Log("err", fmt.Errorf("DeleteDashboards(): %v", err.Error()))
+			core.Error("DeleteDashboards(): %v", err.Error())
 			wasError = true
 			continue
 		}
@@ -2102,21 +1971,21 @@ type UpdateAnalyticsDashboardsReply struct{}
 func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnalyticsDashboardsArgs, reply *UpdateAnalyticsDashboardsReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v", err.Error()))
+		core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 		return &err
 	}
 
 	if args.Name == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Name"
-		s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v: Name is required", err.Error()))
+		core.Error("UpdateAnalyticsDashboards(): %v: Name is required", err.Error())
 		return &err
 	}
 
 	if len(args.IDs) == 0 {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "IDs"
-		s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v: IDs is required", err.Error()))
+		core.Error("UpdateAnalyticsDashboards(): %v: IDs is required", err.Error())
 		return &err
 	}
 
@@ -2127,7 +1996,7 @@ func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnal
 	for _, id := range args.IDs {
 		dashboard, err := s.Storage.GetAnalyticsDashboardByID(ctx, int64(id))
 		if err != nil {
-			s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v", err.Error()))
+			core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 			wasError = true
 			continue
 		}
@@ -2143,7 +2012,7 @@ func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnal
 
 				if dashboard.Name != args.Name {
 					if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, int64(id), "Name", args.Name); err != nil {
-						s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v", err.Error()))
+						core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 						wasError = true
 					}
 				}
@@ -2151,21 +2020,21 @@ func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnal
 				if dashboard.LookerID != int64(args.LookerID) {
 					if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, int64(id), "LookerID", int64(args.LookerID)); err != nil {
 						fmt.Println(err)
-						s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v", err.Error()))
+						core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 						wasError = true
 					}
 				}
 
 				if dashboard.Category.ID != int64(args.CategoryID) {
 					if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, int64(id), "Category", int64(args.CategoryID)); err != nil {
-						s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v", err.Error()))
+						core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 						wasError = true
 					}
 				}
 
 				if dashboard.Discovery != args.Discovery {
 					if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, int64(id), "Discovery", args.Discovery); err != nil {
-						s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v", err.Error()))
+						core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 						wasError = true
 					}
 				}
@@ -2176,7 +2045,7 @@ func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnal
 		// The customer code for this ID wasn't found so the customer code must have been removed -> remove the dashboard as well
 		if !found {
 			if err := s.Storage.RemoveAnalyticsDashboardByID(ctx, int64(id)); err != nil {
-				s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v", err.Error()))
+				core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 				wasError = true
 			}
 		}
@@ -2186,12 +2055,12 @@ func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnal
 	for _, code := range args.CustomerCodes {
 		customer, err := s.Storage.Customer(ctx, code)
 		if err != nil {
-			s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v", err.Error()))
+			core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 			wasError = true
 			continue
 		}
 		if err := s.Storage.AddAnalyticsDashboard(ctx, args.Name, int64(args.LookerID), args.Discovery, customer.DatabaseID, int64(args.CategoryID)); err != nil {
-			s.Logger.Log("err", fmt.Errorf("UpdateAnalyticsDashboards(): %v", err.Error()))
+			core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 			wasError = true
 		}
 	}
@@ -2220,14 +2089,14 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
+		core.Error("FetchAdminDashboards(): %v", err.Error())
 		return &err
 	}
 
 	if args.Origin == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v: Origin is required", err.Error()))
+		core.Error("FetchAdminDashboards(): %v: Origin is required", err.Error())
 		return &err
 	}
 
@@ -2236,7 +2105,7 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
+		core.Error("FetchAdminDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -2244,7 +2113,7 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v: Failed to parse user ID", err.Error()))
+		core.Error("FetchAdminDashboards(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
@@ -2252,14 +2121,14 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 
 	dashboards, err := s.Storage.GetAdminAnalyticsDashboards(ctx)
 	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
+		core.Error("FetchAdminDashboards(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
 
 	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
 	if err != nil {
-		s.Logger.Log("err", fmt.Errorf("FetchAdminDashboards(): %v", err.Error()))
+		core.Error("FetchAdminDashboards(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
@@ -2291,7 +2160,7 @@ type FetchAllLookerDashboardsReply struct {
 func (s *OpsService) FetchAllLookerDashboards(r *http.Request, args *FetchAllLookerDashboardsArgs, reply *FetchAllLookerDashboardsReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchAllLookerDashboards(): %v", err.Error()))
+		core.Error("FetchAllLookerDashboards(): %v", err.Error())
 		return &err
 	}
 
