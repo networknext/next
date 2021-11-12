@@ -2787,7 +2787,7 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
 		return &err
 	}
 
