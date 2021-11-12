@@ -1,6 +1,6 @@
-[submodule "sdk5"]
-	path = sdk5
-	url = git@github.com:networknext/sdk5.git
 [submodule "sdk4"]
 	path = sdk4
 	url = git@github.com:networknext/sdk4.git
+[submodule "sdk5"]
+	path = sdk5
+	url = git@github.com:networknext/sdk5.git
