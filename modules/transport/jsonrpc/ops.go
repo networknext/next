@@ -225,13 +225,7 @@ type seller struct {
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
 	for _, localSeller := range s.Storage.Sellers(r.Context()) {
-		// this is broken in firestore, customers in general do not exist
-		// c, err := s.Storage.Customer(localSeller.CompanyCode)
-		// if err != nil {
-		// 	err = fmt.Errorf("Sellers() could not find Customer %s: %v", localSeller.CompanyCode, err)
-		// 	core.Error("%v", err)
-		// 	return err
-		// }
+
 		reply.Sellers = append(reply.Sellers, seller{
 			ID:                  localSeller.ID,
 			Name:                localSeller.Name,
@@ -615,7 +609,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			}
 		}
 
-		// if no relay found, attemt to see if the query matches any seller names
+		// if no relay found, attempt to see if the query matches any seller names
 		if len(filtered) == 0 {
 			for idx := range reply.Relays {
 				relay := &reply.Relays[idx]
@@ -863,7 +857,7 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 		return err
 	}
 
-	// Rather than actually removing the relay from firestore, just
+	// Rather than actually removing the relay from postgres, just
 	// rename it and set it to the decomissioned state
 	relay.State = routing.RelayStateDecommissioned
 
@@ -977,7 +971,6 @@ type RelayNICSpeedUpdateArgs struct {
 type RelayNICSpeedUpdateReply struct {
 }
 
-// TODO This endpoint has been deprecated by SetRelayMetadata()?
 func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpdateArgs, reply *RelayNICSpeedUpdateReply) error {
 
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
@@ -1195,25 +1188,6 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 
 	return nil
 }
-
-// type RelayMetadataArgs struct {
-// 	Relay routing.Relay
-// }
-
-// type RelayMetadataReply struct {
-// 	Ok           bool
-// 	ErrorMessage string
-// }
-
-// func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
-
-// 	err := s.Storage.SetRelayMetadata(r.Context(), args.Relay)
-// 	if err != nil {
-// 		return err // TODO detail
-// 	}
-
-// 	return nil
-// }
 
 type RouteSelectionArgs struct {
 	SourceRelays      []string `json:"src_relays"`
