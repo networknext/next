@@ -1,6 +1,6 @@
 /*
 	Network Next Reference Backend (SDK4)
-	Copyright © 2017 - 2020 Network Next, Inc. All rights reserved.
+	Copyright © 2017 - 2022 Network Next, Inc. All rights reserved.
 */
 
 package main
