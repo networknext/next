@@ -28,14 +28,6 @@ blocks:
           commands:
             - make build-billing-artifacts-prod
             - make publish-billing-artifacts-prod
-        - name: Beacon
-          commands:
-            - make build-beacon-artifacts-prod
-            - make publish-beacon-artifacts-prod
-        - name: Beacon Inserter
-          commands:
-            - make build-beacon-inserter-artifacts-prod
-            - make publish-beacon-inserter-artifacts-prod
         - name: Analytics Pusher
           commands:
             - make build-analytics-pusher-artifacts-prod
@@ -100,5 +92,9 @@ blocks:
           commands:
             - make build-relay-pusher-artifacts-prod
             - make publish-relay-pusher-artifacts-prod
+        - name: Pingdom
+          commands:
+            - make build-pingdom-artifacts-prod
+            - make publish-pingdom-artifacts-prod
       secrets:
         - name: google-cloud-platform-prod

@@ -47,6 +47,9 @@ const (
 	MaxBigTableDays          = 10
 )
 
+// Saving these for later
+// AnalyticsDashURIs         = [...]string{"/embed/dashboards-next/14", "/embed/dashboards-next/12", "/embed/dashboards-next/18"}
+
 var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
 )
@@ -1522,6 +1525,26 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		}
 	}
 
+	// save old route shader, internal config, and banned users to bring over to new buyer
+	routeShader, routeShaderErr := s.Storage.RouteShader(ctx, oldBuyerID)
+	internalConfig, internalConfigErr := s.Storage.InternalConfig(ctx, oldBuyerID)
+	bannedUsers, bannedUsersErr := s.Storage.BannedUsers(ctx, oldBuyerID)
+
+	// Remove everything that has a FK to old buyer ID
+	if err = s.Storage.RemoveRouteShader(ctx, oldBuyerID); err != nil {
+		level.Error(s.Logger).Log("err", err)
+	}
+
+	if err = s.Storage.RemoveInternalConfig(ctx, oldBuyerID); err != nil {
+		level.Error(s.Logger).Log("err", err)
+	}
+
+	for id := range bannedUsers {
+		if err = s.Storage.RemoveBannedUser(ctx, oldBuyerID, id); err != nil {
+			level.Error(s.Logger).Log("err", err)
+		}
+	}
+
 	if err = s.Storage.RemoveBuyer(ctx, oldBuyerID); err != nil {
 		err = fmt.Errorf("UpdateGameConfiguration() failed to remove buyer")
 		level.Error(s.Logger).Log("err", err)
@@ -1542,6 +1565,36 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		err = fmt.Errorf("UpdateGameConfiguration() buyer update failed: %v", err)
 		level.Error(s.Logger).Log("err", err)
 		return err
+	}
+
+	// Add everything that was removed back to the new buyer ID
+	if routeShaderErr == nil {
+		err := s.Storage.AddRouteShader(ctx, routeShader, buyerID)
+		if err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add old route shader to new buyer: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	}
+
+	if internalConfigErr == nil {
+		err := s.Storage.AddInternalConfig(ctx, internalConfig, buyerID)
+		if err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to add old internal config to new buyer: %v", err)
+			level.Error(s.Logger).Log("err", err)
+			return err
+		}
+	}
+
+	if bannedUsersErr == nil {
+		for id := range bannedUsers {
+			err := s.Storage.AddBannedUser(ctx, buyerID, id)
+			if err != nil {
+				err = fmt.Errorf("UpdateGameConfiguration() failed to add old banned user to new buyer: %v", err)
+				level.Error(s.Logger).Log("err", err)
+				return err
+			}
+		}
 	}
 
 	// Add back dc maps with new buyer ID
@@ -2685,7 +2738,6 @@ type FetchAnalyticsDashboardsReply struct {
 	Dashboards map[string][]string `json:"dashboards"`
 }
 
-// TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
 func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAnalyticsDashboardsArgs, reply *FetchAnalyticsDashboardsReply) error {
 	reply.Dashboards = make(map[string][]string, 0)
 
