@@ -7408,7 +7408,6 @@ void next_client_internal_process_passthrough_packet( next_client_internal_t * c
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
         }
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
         client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_PASSTHROUGH]++;
     }
 
