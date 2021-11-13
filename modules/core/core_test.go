@@ -7456,3 +7456,74 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 }
 
 // -------------------------------------------------------------
+
+func randomBytes(buffer []byte) {
+	// todo
+}
+
+func TestPittle(t *testing.T) {
+
+	var output [256]byte
+    for i := 0; i < 10000; i++ {
+    	var fromAddress [4]byte
+    	var toAddress [4]byte
+    	randomBytes(fromAddress[:])
+    	randomBytes(toAddress[:])
+    	fromPort := uint16(i+1000000)
+    	toPort := uint16(i+5000)
+    	packetLength := 1 + (i % 1500)
+    	GeneratePittle(output[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+    	assert.NotEqual(t, output[0], 0)
+    	assert.NotEqual(t, output[1], 0)
+    }
+}
+
+/*
+void test_pittle()
+{
+}
+
+void test_chonkle()
+{
+    uint8_t output[1500];
+    memset( output, 0, sizeof(output) );
+    output[0] = 1;
+    for ( int i = 0; i < 10000; ++i )
+    {
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_random_bytes( magic, 8 );
+        next_random_bytes( from_address, 4 );
+        next_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
+        int packet_length = 18 + ( i % ( sizeof(output) - 18 ) );
+        next_generate_chonkle( output + 1, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length );
+        next_check( next_basic_packet_filter( output, sizeof(output) ) );
+    }
+}
+
+void test_pittle_and_chonkle()
+{
+    uint8_t output[1500];
+    memset( output, 0, sizeof(output) );
+    output[0] = 1;
+    for ( int i = 0; i < 10000; ++i )
+    {
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_random_bytes( magic, 8 );
+        next_random_bytes( from_address, 4 );
+        next_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
+        int packet_length = 18 + ( i % ( sizeof(output) - 18 ) );
+        next_generate_chonkle( output + 1, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length );
+        next_generate_pittle( output + packet_length - 2, from_address, 4, from_port, to_address, 4, to_port, packet_length );
+        next_check( next_basic_packet_filter( output, sizeof(output) ) );
+        next_check( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) );
+    }
+}
+*/
