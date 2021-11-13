@@ -1,35 +1,28 @@
 DONE
 
-	Fix the backend packets
+	reference backend5 needs golang functions for chonkle, pittle generation, simple packet filter, complex packet filter.
 
-	Heisenbug in test_relay_manager (?!)
+	Write core tests for chonkle, pittle and packet filter in core_test.go
 
-	It was benign and timing related. Fixed.
-
-	Setup a new repo called "sdk5"
-
-	Submodule "sdk5" into the backend repo.
-
-	Apply read/peek header no assert fixes to sdk4
-
-	Remove the "chonkle" branch entirely from sdk repo
-
-	Get the sdk5 building under backend repo
-
-	Implement ref_backend5
-
-	Implement func_test5
+	Initially, when getting everything working, magic will be held at zero.
 
 TODO
 
 	--------------
 
-	reference backend5 needs golang functions for chonkle, pittle generation, simple packet filter, complex packet filter.
+	Need to design how magic works between the SDK server and the backend
 
-	--------------
+	I think maybe we just hold magic at zero here, and whitelisting is the approch (w. proxy potentially)
 
-	Initially, when getting everything working, magic will be held at zero.
+	Reason for this is that neither server init, or server init response can be encoded with the correct magic,
+	since they are the method that the server KNOWS the initial magic value.
 
+	Therefore, is there really any benefit using magic with session update? Probably not.
+
+	Alternatively, provide a way to GET the magic, separate from the server init?
+
+	Would this provide an attack surface? If a DDoSer could just get the magic on demand, that's not helpful :)
+	
 	--------------
 
 	Update the ref backend 5 so the server5 can talk with it

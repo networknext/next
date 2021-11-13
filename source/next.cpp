@@ -16328,21 +16328,12 @@ void test_basic_packet_filter()
     srand( 100 );
     for ( int i = 0; i < int(iterations); ++i )
     {
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( i + 1000000 );
-        uint16_t to_port = uint16_t( i + 5000 );
-        int packet_length = 18 + ( i % ( sizeof(output) - 18 ) );
         for ( int j = 0; j < int(sizeof(output)); ++j )
         {
             output[j] = uint8_t( rand() % 256 );
         }
-        if ( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) )
-        {
+        if ( next_basic_packet_filter( output, rand() % sizeof(output) ) )
+        {            
             pass++;
         }
     }
@@ -16358,12 +16349,21 @@ void test_advanced_packet_filter()
     srand( 100 );
     for ( int i = 0; i < int(iterations); ++i )
     {
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_random_bytes( magic, 8 );
+        next_random_bytes( from_address, 4 );
+        next_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
+        int packet_length = 18 + ( i % ( sizeof(output) - 18 ) );
         for ( int j = 0; j < int(sizeof(output)); ++j )
         {
             output[j] = uint8_t( rand() % 256 );
         }
-        if ( next_basic_packet_filter( output, rand() % sizeof(output) ) )
-        {            
+        if ( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) )
+        {
             pass++;
         }
     }
