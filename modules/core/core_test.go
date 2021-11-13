@@ -7520,3 +7520,36 @@ func TestPittleAndChonkle(t *testing.T) {
     	assert.Equal(t, true, AdvancedPacketFilter(output[:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength))
 	}
 }
+
+func TestBasicPacketFilter(t *testing.T) {
+	rand.Seed(42)
+	var output [256]byte
+	pass := 0
+	iterations := 10000
+	for i := 0; i < iterations; i++ {
+		randomBytes(output[:])
+		packetLength := i % len(output)
+    	assert.Equal(t, false, BasicPacketFilter(output[:], packetLength))
+	}
+   	assert.Equal(t, 0, pass)
+}
+
+func AdvancedBasicPacketFilter(t *testing.T) {
+	rand.Seed(42)
+	var output [1500]byte
+	iterations := 10000
+	for i := 0; i < iterations; i++ {
+		var magic [8]byte
+		var fromAddress [4]byte
+		var toAddress [4]byte
+    	randomBytes(magic[:])
+    	randomBytes(fromAddress[:])
+    	randomBytes(toAddress[:])
+    	fromPort := uint16(i+1000000)
+    	toPort := uint16(i+5000)
+		randomBytes(output[:])
+		packetLength := i % len(output)
+    	assert.Equal(t, false, BasicPacketFilter(output[:], packetLength))
+    	assert.Equal(t, false, AdvancedPacketFilter(output[:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength))
+	}
+}

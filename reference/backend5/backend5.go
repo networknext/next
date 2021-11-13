@@ -1,5 +1,5 @@
 /*
-	Network Next Reference Backend (SDK4)
+	Network Next Reference Backend (SDK5)
 	Copyright © 2017 - 2022 Network Next, Inc. All rights reserved.
 */
 
@@ -28,6 +28,7 @@ import (
 	"sync"
 	"time"
 	"unsafe"
+	"bytes"
 
 	"github.com/gorilla/mux"
 )
@@ -44,11 +45,11 @@ const NEXT_MAX_NEAR_RELAYS = 32
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 40000
 
-const NEXT_BACKEND_SERVER_UPDATE_PACKET = 220
-const NEXT_BACKEND_SESSION_UPDATE_PACKET = 221
-const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 222
-const NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET = 223
-const NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET = 224
+const NEXT_BACKEND_SERVER_UPDATE_PACKET = 50
+const NEXT_BACKEND_SESSION_UPDATE_PACKET = 51
+const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 52
+const NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET = 53
+const NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET = 54
 
 const NEXT_MAX_PACKET_BYTES = 4096
 const NEXT_MTU = 1300
@@ -137,6 +138,173 @@ var routerPrivateKey = [...]byte{0x96, 0xce, 0x57, 0x8b, 0x00, 0x19, 0x44, 0x27,
 var backendPrivateKey = []byte{21, 124, 5, 171, 56, 198, 148, 140, 20, 15, 8, 170, 212, 222, 84, 155, 149, 84, 122, 199, 107, 225, 243, 246, 133, 85, 118, 114, 114, 126, 200, 4, 76, 97, 202, 140, 71, 135, 62, 212, 160, 181, 151, 195, 202, 224, 207, 113, 8, 45, 37, 60, 145, 14, 212, 111, 25, 34, 175, 186, 37, 150, 163, 64}
 
 var packetHashKey = []byte{0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c, 0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24}
+
+// ===================================================================================================================
+
+func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) {
+
+	var fromPortData [2]byte
+	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
+
+	var toPortData [2]byte
+	binary.LittleEndian.PutUint16(fromPortData[:], toPort)
+
+	var packetLengthData [4]byte
+	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
+
+	sum := uint16(0)
+
+    for i := 0; i < len(fromAddress); i++ {
+    	sum += uint16(fromAddress[i])
+    }
+
+    sum += uint16(fromPortData[0])
+    sum += uint16(fromPortData[1])
+
+    for i := 0; i < len(toAddress); i++ {
+    	sum += uint16(toAddress[i])
+    }
+
+    sum += uint16(toPortData[0])
+    sum += uint16(toPortData[1])
+
+    sum += uint16(packetLengthData[0])
+    sum += uint16(packetLengthData[1])
+    sum += uint16(packetLengthData[2])
+    sum += uint16(packetLengthData[3])
+
+	var sumData [2]byte
+	binary.LittleEndian.PutUint16(sumData[:], sum)
+
+    output[0] = 1 | ( sumData[0] ^ sumData[1] ^ 193 );
+    output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
+}
+
+func GenerateChonkle(output []byte, magic []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) {
+
+	var fromPortData [2]byte
+	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
+
+	var toPortData [2]byte
+	binary.LittleEndian.PutUint16(fromPortData[:], toPort)
+
+	var packetLengthData [4]byte
+	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
+
+	hash := fnv.New64a()
+	hash.Write(magic)
+	hash.Write(fromAddress)
+	hash.Write(fromPortData[:])
+	hash.Write(toAddress)
+	hash.Write(toPortData[:])
+	hash.Write(packetLengthData[:])
+	hashValue := hash.Sum64()
+
+	var data [8]byte
+	binary.LittleEndian.PutUint64(data[:], uint64(hashValue))
+
+    output[0] = ( ( data[6] & 0xC0 ) >> 6 ) + 42
+    output[1] = ( data[3] & 0x1F ) + 200
+    output[2] = ( ( data[2] & 0xFC ) >> 2 ) + 5
+    output[3] = data[0]
+    output[4] = ( data[2] & 0x03 ) + 78
+    output[5] = ( data[4] & 0x7F ) + 96
+    output[6] = ( ( data[1] & 0xFC ) >> 2 ) + 100
+    if ( data[7] & 1 ) == 0 { 
+    	output[7] = 79
+    } else { 
+    	output[7] = 7 
+    }
+    if ( data[4] & 0x80 ) == 0 {
+    	output[8] = 37
+    } else { 
+    	output[8] = 83
+    }
+    output[9] = ( data[5] & 0x07 ) + 124
+    output[10] = ( ( data[1] & 0xE0 ) >> 5 ) + 175
+    output[11] = ( data[6] & 0x3F ) + 33
+    value := ( data[1] & 0x03 ); 
+    if value == 0 { 
+    	output[12] = 97
+    } else if value == 1 { 
+    	output[12] = 5
+    } else if value == 2 { 
+    	output[12] = 43
+    } else { 
+    	output[12] = 13
+    }
+    output[13] = ( ( data[5] & 0xF8 ) >> 3 ) + 210
+    output[14] = ( ( data[7] & 0xFE ) >> 1 ) + 17
+}
+
+func BasicPacketFilter(data []byte, packetLength int) bool {
+    if packetLength < 18 {
+        return false
+    }
+    if data[0] < 0x01 || data[0] > 0x63 {
+        return false
+    }
+    if data[1] < 0x2A || data[1] > 0x2D {
+        return false
+    }
+    if data[2] < 0xC8 || data[2] > 0xE7 {
+        return false
+    }
+    if data[3] < 0x05 || data[3] > 0x44 {
+        return false
+    }
+    if data[5] < 0x4E || data[5] > 0x51 {
+        return false
+    }
+    if data[6] < 0x60 || data[6] > 0xDF {
+        return false
+    }
+    if data[7] < 0x64 || data[7] > 0xE3 {
+        return false
+    }
+    if data[8] != 0x07 && data[8] != 0x4F {
+        return false
+    }
+    if data[9] != 0x25 && data[9] != 0x53 {
+        return false
+    }
+    if data[10] < 0x7C || data[10] > 0x83 {
+        return false
+    }
+    if data[11] < 0xAF || data[11] > 0xB6 {
+        return false
+    }
+    if data[12] < 0x21 || data[12] > 0x60 {
+        return false
+    }
+    if data[13] != 0x61 && data[13] != 0x05 && data[13] != 0x2B && data[13] != 0x0D {
+        return false
+    }
+    if data[14] < 0xD2 || data[14] > 0xF1 {
+        return false
+    }
+    if data[15] < 0x11 || data[15] > 0x90 {
+        return false
+    }
+    return true
+}
+
+func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) bool {
+    if packetLength < 18 {
+        return false;
+    }
+    var a [15]byte
+    var b [2]byte
+    GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
+    GeneratePittle( b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
+    if bytes.Compare(a[0:15], data[1:16]) != 0 {
+        return false
+    }
+    if bytes.Compare(b[0:2], data[packetLength-2:packetLength]) != 0 {
+        return false
+    }
+    return true;
+}
 
 // ===================================================================================================================
 
@@ -629,38 +797,6 @@ func RouteChanged(previous []uint64, current []uint64) bool {
 	return false
 }
 
-func IsNetworkNextPacket(packetData []byte) bool {
-	packetBytes := len(packetData)
-	if packetBytes <= 1+NEXT_PACKET_HASH_BYTES {
-		fmt.Printf("packet too small\n")
-		return false
-	}
-	if packetBytes > NEXT_MAX_PACKET_BYTES {
-		fmt.Printf("packet too big\n")
-		return false
-	}
-	messageLength := packetBytes - 1 - NEXT_PACKET_HASH_BYTES
-	if messageLength > 32 {
-		messageLength = 32
-	}
-	hash := make([]byte, NEXT_PACKET_HASH_BYTES)
-	C.crypto_generichash(
-		(*C.uchar)(&hash[0]),
-		C.ulong(NEXT_PACKET_HASH_BYTES),
-		(*C.uchar)(&packetData[1+NEXT_PACKET_HASH_BYTES]),
-		C.ulonglong(messageLength),
-		(*C.uchar)(&packetHashKey[0]),
-		C.ulong(C.crypto_generichash_KEYBYTES),
-	)
-	for i := 0; i < NEXT_PACKET_HASH_BYTES; i++ {
-		if hash[i] != packetData[i+1] {
-			fmt.Printf("signature check failed\n")
-			return false
-		}
-	}
-	return true
-}
-
 func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
 	signedPacketData := make([]byte, len(packetData)+C.crypto_sign_BYTES)
 	for i := 0; i < len(packetData); i++ {
@@ -675,24 +811,6 @@ func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
 	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[9]), C.ulonglong(messageLength))
 	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[len(packetData)]), nil, (*C.uchar)(&privateKey[0]))
 	return signedPacketData
-}
-
-func HashNetworkNextPacket(packetData []byte) {
-	messageLength := len(packetData) - 9
-	if messageLength <= 0 {
-		panic("wtf")
-	}
-	if messageLength > 32 {
-		messageLength = 32
-	}
-	C.crypto_generichash(
-		(*C.uchar)(&packetData[1]),
-		C.ulong(NEXT_PACKET_HASH_BYTES),
-		(*C.uchar)(&packetData[9]),
-		C.ulonglong(messageLength),
-		(*C.uchar)(&packetHashKey[0]),
-		C.ulong(C.crypto_generichash_KEYBYTES),
-	)
 }
 
 // -----------------------------------------------------------
@@ -2379,19 +2497,17 @@ func main() {
 			continue
 		}
 
-		if packetBytes <= 0 {
-			continue
+		if !BasicPacketFilter(packetData[:], len(packetData)) {
+			fmt.Printf("basic packet filter failed\n")
+			return
 		}
+
+		// todo: check advanced packet filter
 
 		packetType := packetData[0]
 
-		if !IsNetworkNextPacket(packetData) {
-			fmt.Printf("error: not network next packet (%d)\n", packetData[8])
-			continue
-		}
-
-		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
-		packetBytes -= NEXT_PACKET_HASH_BYTES
+		packetData = packetData[16:]
+		packetBytes -= 16
 
 		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
 
@@ -2427,7 +2543,7 @@ func main() {
 
 			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
 
-			HashNetworkNextPacket(responsePacketData)
+			// todo: chonkle and pittle in packet response
 
 			_, err = connection.WriteToUDP(responsePacketData, from)
 			if err != nil {
@@ -2676,7 +2792,7 @@ func main() {
 
 			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
 
-			HashNetworkNextPacket(responsePacketData)
+			// todo: chonkle and pittle in response packet
 
 			_, err = connection.WriteToUDP(responsePacketData, from)
 			if err != nil {
