@@ -534,9 +534,13 @@ test-func5: build-test-func5 run-test-func5 ## runs functional tests
 
 #######################
 
-.PHONY: dev-reference-backend
-dev-reference-backend: ## runs a local reference backend
-	$(GO) run reference/backend/backend.go
+.PHONY: dev-reference-backend4
+dev-reference-backend4: ## runs a local reference backend4
+	$(GO) run reference/backend4/backend4.go
+
+.PHONY: dev-reference-backend5
+dev-reference-backend5: ## runs a local reference backend4
+	$(GO) run reference/backend5/backend5.go
 
 .PHONY: dev-mock-relay
 dev-mock-relay: ## runs a local mock relay
