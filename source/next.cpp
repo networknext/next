@@ -13113,19 +13113,26 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         server->server_init_request_id = packet.request_id;
 
-        // todo: update to new write_backend_packet
-        /*
+        // todo: need to get real inputs to the packet filter here
+        uint8_t magic[8];
+        memset( magic, 0, sizeof(magic) );
+        uint8_t from_address[16];
+        memset( from_address, 0, sizeof(from_address) );
+        int from_address_bytes = 4;
+        uint16_t from_address_port = 0;
+        uint8_t to_address[16];
+        memset( to_address, 0, sizeof(to_address) );
+        int to_address_bytes = 4;
+        uint16_t to_address_port = 0;
+
         int packet_bytes = 0;
-        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address, from_address_bytes, from_address_port, to_address, to_address_bytes, to_address_port ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
             return;
         }
 
-        // todo: packet filter
-
         next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
-        */
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent init request to backend" );
     }

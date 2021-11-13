@@ -6,23 +6,22 @@ DONE
 
 	Initially, when getting everything working, magic will be held at zero.
 
+	Extend the reference server backend 5 so it can apply the basic packet filter to incoming packets.
+
+	Prints out whether they pass or not.
+
 TODO
 
 	--------------
 
-	Need to design how magic works between the SDK server and the backend
+	Fix the server5 so it can actually send server init packets to the backend.
 
-	I think maybe we just hold magic at zero here, and whitelisting is the approch (w. proxy potentially)
+	Verify the server backend 5 can receive the packets and they pass the basic packet filter.
 
-	Reason for this is that neither server init, or server init response can be encoded with the correct magic,
-	since they are the method that the server KNOWS the initial magic value.
+	Extend the server backend 5 to respond with an server init response with chonkle and pittle that pass basic packet filter.
 
-	Therefore, is there really any benefit using magic with session update? Probably not.
+	Verify the server5 receives the init response and it passes basic packet filter.
 
-	Alternatively, provide a way to GET the magic, separate from the server init?
-
-	Would this provide an attack surface? If a DDoSer could just get the magic on demand, that's not helpful :)
-	
 	--------------
 
 	Update the ref backend 5 so the server5 can talk with it
