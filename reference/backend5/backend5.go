@@ -326,15 +326,15 @@ func WriteBackendPacket(packetType int, packetObject Serializable, privateKey []
 	serializeBytes := writeStream.GetBytesProcessed()
 	serializeData := writeStream.GetData()[0:serializeBytes]
 	for i := 0; i < serializeBytes; i++ {
-		packet[15+i] = serializeData[i]
+		packet[16+i] = serializeData[i]
 	}
 	packet = packet[:16+serializeBytes+int(C.crypto_sign_BYTES)+2]
 
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
 	C.crypto_sign_update(&state, (*C.uchar)(&packet[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&packet[15]), C.ulonglong(serializeBytes))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&packet[15+serializeBytes]), nil, (*C.uchar)(&privateKey[0]))
+	C.crypto_sign_update(&state, (*C.uchar)(&packet[16]), C.ulonglong(serializeBytes))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&packet[16+serializeBytes]), nil, (*C.uchar)(&privateKey[0]))
 
 	// todo: chonkle
 
@@ -2604,7 +2604,7 @@ func main() {
 			initResponse.RequestId = serverInitRequest.RequestId
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
 
-			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, initResponse, backendPrivateKey[:]);
+			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, initResponse, backendPrivateKey[:])
 			if err != nil {
 				fmt.Printf( "error: could not write response packet: %v\n", err)
 				continue
@@ -2838,9 +2838,8 @@ func main() {
 			sessionResponse.HasDebug = true
 			sessionResponse.Debug = "test session debug"
 
-
-
 			// todo: replace this junk with "WriteBackendPacket"
+
 			/*
 			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {
