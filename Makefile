@@ -341,6 +341,32 @@ dev-relay: build-reference-relay  ## runs a local relay
 dev-relays: build-reference-relay  ## runs 10 local relays
 	@./scripts/relay-spawner.sh -n 10
 
+##############################################
+
+.PHONY: build-server4
+build-server4: build-sdk4
+	@printf "Building server 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server4 ./cmd/server4/server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-client4
+build-client4: build-sdk4
+	@printf "Building client 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/client4 ./cmd/client4/client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-server5
+build-server5: build-sdk5
+	@printf "Building server 5... "
+	@$(CXX) -Isdk5/include -o $(DIST_DIR)/server5 ./cmd/server5/server5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-client5
+build-client5: build-sdk5
+	@printf "Building client 5... "
+	@$(CXX) -Isdk5/include -o $(DIST_DIR)/client5 ./cmd/client5/client5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@printf "done\n"
+
 .PHONY: dev-client4
 dev-client4: build-client4  ## runs a local client
 	@./scripts/client-spawner4.sh -n 1
@@ -352,6 +378,20 @@ dev-clients4: build-client4  ## runs 10 local clients
 .PHONY: dev-server4
 dev-server4: build-sdk4 build-server4  ## runs a local server
 	@./dist/server4
+
+.PHONY: dev-client5
+dev-client5: build-client5  ## runs a local client
+	@./scripts/client-spawner5.sh -n 1
+
+.PHONY: dev-clients5
+dev-clients5: build-client5  ## runs 10 local clients
+	@./scripts/client-spawner5.sh -n 10
+
+.PHONY: dev-server5
+dev-server5: build-sdk5 build-server5  ## runs a local server
+	@./dist/server5
+
+##########################################
 
 .PHONY: dev-portal
 dev-portal: build-portal ## runs a local portal
@@ -1057,18 +1097,6 @@ publish-bootstrap-script-prod:
 publish-bootstrap-script-prod-debug:
 	@printf "Publishing bootstrap script... \n\n"
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD_DEBUG)/bootstrap.sh
-	@printf "done\n"
-
-.PHONY: build-server4
-build-server4: build-sdk4
-	@printf "Building server 4... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server4 ./cmd/server4/server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-client4
-build-client4: build-sdk4
-	@printf "Building client 4... "
-	@$(CXX) -Isdk4/include -o $(DIST_DIR)/client4 ./cmd/client4/client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-next

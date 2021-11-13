@@ -29,6 +29,7 @@ import (
 	"time"
 	"unsafe"
 	"bytes"
+	"errors"
 
 	"github.com/gorilla/mux"
 )
@@ -306,6 +307,89 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
     return true;
 }
 
+type Serializable interface {
+    Serialize(Stream) error
+}
+
+func WriteBackendPacket(packetType int, packetObject Serializable) ([]byte, error) {
+	packet := make([]byte, NEXT_MAX_PACKET_BYTES)
+	packet[0] = byte(packetType)
+	writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+	if err != nil {
+		return nil, errors.New("could not create write stream")
+	}
+	if err := packetObject.Serialize(writeStream); err != nil {
+		return nil, errors.New(fmt.Sprintf("failed to write backend packet: %v\n", err))
+	}
+	writeStream.Flush()
+	serializeBytes := writeStream.GetBytesProcessed()
+	serializeData := writeStream.GetData()[0:serializeBytes]
+	for i := 0; i < serializeBytes; i++ {
+		packet[15+i] = serializeData[i]
+	}
+	packet = packet[:16+serializeBytes+int(C.crypto_sign_BYTES)+2]
+	// todo: sign
+	// todo: chonkle
+	// todo: pittle
+	return packet, nil
+}
+
+// todo: replace this garbage with "WriteBackendPacket"
+/*
+responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
+writeStream.SerializeBits(&responsePacketType, 8)
+var dummy uint32
+for i := 0; i < 15; i++ {
+	writeStream.SerializeBits(&dummy, 8)
+}
+if err := initResponse.Serialize(writeStream); err != nil {
+	fmt.Printf("error: failed to write server init response packet: %v\n", err)
+	continue
+}
+writeStream.Flush()
+
+// todo: this without reallocating and appending...
+responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
+responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
+responsePacketData = append(responsePacketData, byte(0))
+responsePacketData = append(responsePacketData, byte(0))
+*/
+
+// todo: this code is garbage...
+/*
+func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
+	signedPacketData := make([]byte, len(packetData)+C.crypto_sign_BYTES)
+	for i := 0; i < len(packetData); i++ {
+		signedPacketData[i] = packetData[i]
+	}
+	signedPacketBytes := len(packetData) - ( 1 + 15 + 2 )
+	if signedPacketBytes < 0 {
+		panic("wtf")
+	}
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[15]), C.ulonglong(messageLength))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[messageLength - ]), nil, (*C.uchar)(&privateKey[0]))
+	return signedPacketData
+}
+*/
+
+/*
+    const uint8_t * signed_packet_data = packet_data + 1 + 15;
+    const int signed_packet_bytes = packet_bytes - ( 1 + 15 + 2 );
+
+    next_crypto_sign_state_t state;
+    next_crypto_sign_init( &state );
+    next_crypto_sign_update( &state, packet_data, 1 );
+    next_crypto_sign_update( &state, signed_packet_data, size_t(signed_packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
+    if ( next_crypto_sign_final_verify( &state, signed_packet_data + signed_packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "signed backend packet did not verify" );
+        return NEXT_ERROR;
+    }
+*/
+
 // ===================================================================================================================
 
 type NextBackendServerInitRequestPacket struct {
@@ -334,7 +418,7 @@ type NextBackendServerInitResponsePacket struct {
 	Response  uint32
 }
 
-func (packet *NextBackendServerInitResponsePacket) Serialize(stream Stream) error {
+func (packet NextBackendServerInitResponsePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
@@ -352,7 +436,7 @@ type NextBackendServerUpdatePacket struct {
 	ServerAddress net.UDPAddr
 }
 
-func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
+func (packet NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	// IMPORTANT: read only
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
@@ -795,22 +879,6 @@ func RouteChanged(previous []uint64, current []uint64) bool {
 		}
 	}
 	return false
-}
-
-func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
-	signedPacketData := make([]byte, len(packetData)+C.crypto_sign_BYTES)
-	for i := 0; i < len(packetData); i++ {
-		signedPacketData[i] = packetData[i]
-	}
-	messageLength := len(packetData) - 9
-	if messageLength < 0 {
-		panic("wtf")
-	}
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[9]), C.ulonglong(messageLength))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[len(packetData)]), nil, (*C.uchar)(&privateKey[0]))
-	return signedPacketData
 }
 
 // -----------------------------------------------------------
@@ -2492,6 +2560,8 @@ func main() {
 
 		packetData = packetData[:packetBytes]
 
+		fmt.Printf("received %d byte packet from %s\n", packetBytes, from.String())
+
 		if err != nil {
 			fmt.Printf("socket error: %v\n", err)
 			continue
@@ -2501,6 +2571,8 @@ func main() {
 			fmt.Printf("basic packet filter failed\n")
 			return
 		}
+
+		fmt.Printf("passed basic packet filter\n")
 
 		// todo: check advanced packet filter
 
@@ -2519,35 +2591,19 @@ func main() {
 				continue
 			}
 
-			initResponse := &NextBackendServerInitResponsePacket{}
+			initResponse := NextBackendServerInitResponsePacket{}
 			initResponse.RequestId = serverInitRequest.RequestId
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
 
-			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, initResponse); 
 			if err != nil {
-				fmt.Printf("error: failed to write server init response packet: %v\n", err)
+				fmt.Printf( "error: could not write response packet: %v\n", err)
 				continue
 			}
 
-			responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
-			hash := uint64(0)
-			writeStream.SerializeUint64(&hash)
-			if err := initResponse.Serialize(writeStream); err != nil {
-				fmt.Printf("error: failed to write server init response packet: %v\n", err)
-				continue
-			}
-			writeStream.Flush()
-
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
-
-			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
-
-			// todo: chonkle and pittle in packet response
-
-			_, err = connection.WriteToUDP(responsePacketData, from)
+			_, err = connection.WriteToUDP(response, from)
 			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
+				fmt.Printf("error: failed to send response packet: %v\n", err)
 				continue
 			}
 
@@ -2773,6 +2829,10 @@ func main() {
 			sessionResponse.HasDebug = true
 			sessionResponse.Debug = "test session debug"
 
+
+
+			// todo: replace this junk with "WriteBackendPacket"
+			/*
 			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 			if err != nil {
 				fmt.Printf("error: failed to create write stream for session response packet: %v\n", err)
@@ -2790,15 +2850,19 @@ func main() {
 
 			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
 
-			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
+			// todo: garbage code
+			// responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
 
 			// todo: chonkle and pittle in response packet
+			*/
 
+			/*
 			_, err = connection.WriteToUDP(responsePacketData, from)
 			if err != nil {
 				fmt.Printf("error: failed to send udp response: %v\n", err)
 				continue
 			}
+			*/
 		}
 	}
 }
