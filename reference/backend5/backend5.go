@@ -138,8 +138,6 @@ var routerPrivateKey = [...]byte{0x96, 0xce, 0x57, 0x8b, 0x00, 0x19, 0x44, 0x27,
 
 var backendPrivateKey = []byte{21, 124, 5, 171, 56, 198, 148, 140, 20, 15, 8, 170, 212, 222, 84, 155, 149, 84, 122, 199, 107, 225, 243, 246, 133, 85, 118, 114, 114, 126, 200, 4, 76, 97, 202, 140, 71, 135, 62, 212, 160, 181, 151, 195, 202, 224, 207, 113, 8, 45, 37, 60, 145, 14, 212, 111, 25, 34, 175, 186, 37, 150, 163, 64}
 
-var packetHashKey = []byte{0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c, 0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24}
-
 // ===================================================================================================================
 
 func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) {
@@ -311,9 +309,11 @@ type Serializable interface {
     Serialize(Stream) error
 }
 
-func WriteBackendPacket(packetType int, packetObject Serializable) ([]byte, error) {
+func WriteBackendPacket(packetType int, packetObject Serializable, privateKey []byte) ([]byte, error) {
+
 	packet := make([]byte, NEXT_MAX_PACKET_BYTES)
 	packet[0] = byte(packetType)
+
 	writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
 	if err != nil {
 		return nil, errors.New("could not create write stream")
@@ -322,15 +322,24 @@ func WriteBackendPacket(packetType int, packetObject Serializable) ([]byte, erro
 		return nil, errors.New(fmt.Sprintf("failed to write backend packet: %v\n", err))
 	}
 	writeStream.Flush()
+
 	serializeBytes := writeStream.GetBytesProcessed()
 	serializeData := writeStream.GetData()[0:serializeBytes]
 	for i := 0; i < serializeBytes; i++ {
 		packet[15+i] = serializeData[i]
 	}
 	packet = packet[:16+serializeBytes+int(C.crypto_sign_BYTES)+2]
-	// todo: sign
+
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packet[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packet[15]), C.ulonglong(serializeBytes))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&packet[15+serializeBytes]), nil, (*C.uchar)(&privateKey[0]))
+
 	// todo: chonkle
+
 	// todo: pittle
+
 	return packet, nil
 }
 
@@ -2595,7 +2604,7 @@ func main() {
 			initResponse.RequestId = serverInitRequest.RequestId
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
 
-			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, initResponse); 
+			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, initResponse, backendPrivateKey[:]);
 			if err != nil {
 				fmt.Printf( "error: could not write response packet: %v\n", err)
 				continue
