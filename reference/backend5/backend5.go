@@ -238,10 +238,10 @@ func GenerateChonkle(output []byte, magic []byte, fromAddress []byte, fromPort u
 
 func BasicPacketFilter(data []byte, packetLength int) bool {
     if packetLength < 18 {
-        return false
+    	return false
     }
     if data[0] < 0x01 || data[0] > 0x63 {
-        return false
+    	return false
     }
     if data[1] < 0x2A || data[1] > 0x2D {
         return false
@@ -309,6 +309,13 @@ type Serializable interface {
     Serialize(Stream) error
 }
 
+// todo
+func randomBytes(buffer []byte) {
+	for i := 0; i < len(buffer); i++ {
+		buffer[i] = byte(rand.Intn(256))
+	}
+}
+
 func WriteBackendPacket(packetType int, packetObject Serializable, privateKey []byte) ([]byte, error) {
 
 	packet := make([]byte, NEXT_MAX_PACKET_BYTES)
@@ -328,7 +335,7 @@ func WriteBackendPacket(packetType int, packetObject Serializable, privateKey []
 	for i := 0; i < serializeBytes; i++ {
 		packet[16+i] = serializeData[i]
 	}
-	packet = packet[:16+serializeBytes+int(C.crypto_sign_BYTES)+2]
+	packet = packet[:1+15+serializeBytes+int(C.crypto_sign_BYTES)+2]
 
 	var state C.crypto_sign_state
 	C.crypto_sign_init(&state)
@@ -336,68 +343,23 @@ func WriteBackendPacket(packetType int, packetObject Serializable, privateKey []
 	C.crypto_sign_update(&state, (*C.uchar)(&packet[16]), C.ulonglong(serializeBytes))
 	C.crypto_sign_final_create(&state, (*C.uchar)(&packet[16+serializeBytes]), nil, (*C.uchar)(&privateKey[0]))
 
-	// todo: chonkle
+	// todo: use dummy data for now
+	var magic [8]byte
+	var fromAddress [4]byte
+	var toAddress [4]byte
+	randomBytes(magic[:])
+	randomBytes(fromAddress[:])
+	randomBytes(toAddress[:])
+	fromPort := uint16(1000)
+	toPort := uint16(5000)
+	packetLength := len(packet)
 
-	// todo: pittle
+    GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+    GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
 
 	return packet, nil
 }
-
-// todo: replace this garbage with "WriteBackendPacket"
-/*
-responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
-writeStream.SerializeBits(&responsePacketType, 8)
-var dummy uint32
-for i := 0; i < 15; i++ {
-	writeStream.SerializeBits(&dummy, 8)
-}
-if err := initResponse.Serialize(writeStream); err != nil {
-	fmt.Printf("error: failed to write server init response packet: %v\n", err)
-	continue
-}
-writeStream.Flush()
-
-// todo: this without reallocating and appending...
-responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
-responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
-responsePacketData = append(responsePacketData, byte(0))
-responsePacketData = append(responsePacketData, byte(0))
-*/
-
-// todo: this code is garbage...
-/*
-func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
-	signedPacketData := make([]byte, len(packetData)+C.crypto_sign_BYTES)
-	for i := 0; i < len(packetData); i++ {
-		signedPacketData[i] = packetData[i]
-	}
-	signedPacketBytes := len(packetData) - ( 1 + 15 + 2 )
-	if signedPacketBytes < 0 {
-		panic("wtf")
-	}
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[15]), C.ulonglong(messageLength))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[messageLength - ]), nil, (*C.uchar)(&privateKey[0]))
-	return signedPacketData
-}
-*/
-
-/*
-    const uint8_t * signed_packet_data = packet_data + 1 + 15;
-    const int signed_packet_bytes = packet_bytes - ( 1 + 15 + 2 );
-
-    next_crypto_sign_state_t state;
-    next_crypto_sign_init( &state );
-    next_crypto_sign_update( &state, packet_data, 1 );
-    next_crypto_sign_update( &state, signed_packet_data, size_t(signed_packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
-    if ( next_crypto_sign_final_verify( &state, signed_packet_data + signed_packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "signed backend packet did not verify" );
-        return NEXT_ERROR;
-    }
-*/
 
 // ===================================================================================================================
 
@@ -2587,12 +2549,12 @@ func main() {
 
 		packetType := packetData[0]
 
-		packetData = packetData[16:]
-		packetBytes -= 16
+		packetData = packetData[16:len(packetData)-2]
+		packetBytes -= 18
 
 		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
 
-			readStream := CreateReadStream(packetData[1:])
+			readStream := CreateReadStream(packetData)
 
 			serverInitRequest := &NextBackendServerInitRequestPacket{}
 			if err := serverInitRequest.Serialize(readStream); err != nil {
@@ -2606,19 +2568,25 @@ func main() {
 
 			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, initResponse, backendPrivateKey[:])
 			if err != nil {
-				fmt.Printf( "error: could not write response packet: %v\n", err)
+				fmt.Printf( "error: could not write server init response packet: %v\n", err)
 				continue
 			}
 
+			if !BasicPacketFilter(response[:], len(response)) {
+				panic("basic packet filter failed on server init response?")
+			}
+
+			// todo: advanced packet filter
+
 			_, err = connection.WriteToUDP(response, from)
 			if err != nil {
-				fmt.Printf("error: failed to send response packet: %v\n", err)
+				fmt.Printf("error: failed to send server init response packet: %v\n", err)
 				continue
 			}
 
 		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
 
-			readStream := CreateReadStream(packetData[1:])
+			readStream := CreateReadStream(packetData)
 
 			serverUpdate := &NextBackendServerUpdatePacket{}
 			if err := serverUpdate.Serialize(readStream); err != nil {
@@ -2642,7 +2610,7 @@ func main() {
 
 		} else if packetType == NEXT_BACKEND_SESSION_UPDATE_PACKET {
 
-			readStream := CreateReadStream(packetData[1:])
+			readStream := CreateReadStream(packetData)
 			sessionUpdate := &NextBackendSessionUpdatePacket{}
 			if err := sessionUpdate.Serialize(readStream); err != nil {
 				fmt.Printf("error: failed to read server session update packet: %v\n", err)
@@ -2838,36 +2806,23 @@ func main() {
 			sessionResponse.HasDebug = true
 			sessionResponse.Debug = "test session debug"
 
-			// todo: replace this junk with "WriteBackendPacket"
-
+			// todo: unfuck
 			/*
-			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			response, err := WriteBackendPacket(NEXT_BACKEND_SESSION_RESPONSE_PACKET, sessionResponse, backendPrivateKey[:])
 			if err != nil {
-				fmt.Printf("error: failed to create write stream for session response packet: %v\n", err)
+				fmt.Printf( "error: could not write session response packet: %v\n", err)
 				continue
 			}
-			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
-			hash := uint64(0)
-			writeStream.SerializeUint64(&hash)
-			if err := sessionResponse.Serialize(writeStream, sessionUpdate.VersionMajor, sessionUpdate.VersionMinor, sessionUpdate.VersionPatch); err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				continue
+
+			if !BasicPacketFilter(response[:], len(response)) {
+				panic("basic packet filter failed on session response?")
 			}
-			writeStream.Flush()
 
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
+			// todo: advanced packet filter
 
-			// todo: garbage code
-			// responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
-
-			// todo: chonkle and pittle in response packet
-			*/
-
-			/*
-			_, err = connection.WriteToUDP(responsePacketData, from)
+			_, err = connection.WriteToUDP(response, from)
 			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
+				fmt.Printf("error: failed to send session response packet: %v\n", err)
 				continue
 			}
 			*/
