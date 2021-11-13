@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"math/rand"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -7458,11 +7459,13 @@ func TestReframeRelays_ReducePacketLoss_NotWorse(t *testing.T) {
 // -------------------------------------------------------------
 
 func randomBytes(buffer []byte) {
-	// todo
+	for i := 0; i < len(buffer); i++ {
+		buffer[i] = byte(rand.Intn(256))
+	}
 }
 
 func TestPittle(t *testing.T) {
-
+	rand.Seed(42)
 	var output [256]byte
     for i := 0; i < 10000; i++ {
     	var fromAddress [4]byte
@@ -7478,11 +7481,26 @@ func TestPittle(t *testing.T) {
     }
 }
 
-/*
-void test_pittle()
-{
+func TestChonkle(t *testing.T) {
+	rand.Seed(42)
+	var output [1500]byte
+	output[0] = 1
+	for i := 0; i < 10000; i++ {
+		var magic [8]byte
+		var fromAddress [4]byte
+		var toAddress [4]byte
+    	randomBytes(magic[:])
+    	randomBytes(fromAddress[:])
+    	randomBytes(toAddress[:])
+    	fromPort := uint16(i+1000000)
+    	toPort := uint16(i+5000)
+    	packetLength := 18 + ( i % ( len(output) - 18 ) )
+    	GenerateChonkle(output[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+    	assert.Equal(t, true, BasicPacketFilter(output[:], packetLength))
+	}
 }
 
+/*
 void test_chonkle()
 {
     uint8_t output[1500];

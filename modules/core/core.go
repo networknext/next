@@ -2103,70 +2103,70 @@ func GenerateChonkle(output []byte, magic []byte, fromAddress []byte, fromPort u
 func BasicPacketFilter(data []byte, packetLength int) bool {
 
     if packetLength < 18 {
-        return false;
+        return false
     }
 
     if data[0] < 0x01 || data[0] > 0x63 {
-        return false;
+        return false
     }
 
     if data[1] < 0x2A || data[1] > 0x2D {
-        return false;
+        return false
     }
 
     if data[2] < 0xC8 || data[2] > 0xE7 {
-        return false;
+        return false
     }
 
     if data[3] < 0x05 || data[3] > 0x44 {
-        return false;
+        return false
     }
 
     if data[5] < 0x4E || data[5] > 0x51 {
-        return false;
+        return false
     }
 
     if data[6] < 0x60 || data[6] > 0xDF {
-        return false;
+        return false
     }
 
     if data[7] < 0x64 || data[7] > 0xE3 {
-        return false;
+        return false
     }
 
     if data[8] != 0x07 && data[8] != 0x4F {
-        return false;
+        return false
     }
 
     if data[9] != 0x25 && data[9] != 0x53 {
-        return false;
+        return false
     }
     
     if data[10] < 0x7C || data[10] > 0x83 {
-        return false;
+        return false
     }
 
     if data[11] < 0xAF || data[11] > 0xB6 {
-        return false;
+        return false
     }
 
     if data[12] < 0x21 || data[12] > 0x60 {
-        return false;
+        return false
     }
 
     if data[13] != 0x61 && data[13] != 0x05 && data[13] != 0x2B && data[13] != 0x0D {
-        return false;
+        return false
     }
 
     if data[14] < 0xD2 || data[14] > 0xF1 {
-        return false;
+        return false
     }
 
     if data[15] < 0x11 || data[15] > 0x90 {
-        return false;
+        return false
     }
 
-    return true;
+    return true
 }
 
 func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) bool {
