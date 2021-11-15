@@ -95,7 +95,7 @@ func SeedSQLStorage(
 			Live:        true,
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
-			Analytics:   false,
+			Analytics:   true,
 			Billing:     true,
 			Debug:       true,
 			Trial:       true,
