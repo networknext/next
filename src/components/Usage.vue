@@ -1,12 +1,12 @@
 <template>
   <div class="card-body" id="usageDash-page">
-    <div v-for="(url, index) in usageDashDashURLs" :key="index" class="row" style="margin-bottom: 2rem;">
+    <div class="row">
       <iframe
         class="col"
         id="usageDash"
-        :src="url"
-        style="min-height: 2500px;"
-        v-show="url !== ''"
+        style="min-height: 1000px;"
+        :src="usageDashDashURL"
+        v-if="usageDashDashURL !== ''"
         frameborder="0"
       >
       </iframe>
@@ -133,13 +133,13 @@ import { Component, Vue } from 'vue-property-decorator'
 
 @Component
 export default class Usage extends Vue {
-  private usageDashDashURLs: Array<string>
+  private usageDashDashURL: string
 
   private unwatchFilter: any
 
   constructor () {
     super()
-    this.usageDashDashURLs = []
+    this.usageDashDashURL = ''
   }
 
   private mounted () {
@@ -155,34 +155,36 @@ export default class Usage extends Vue {
 
     this.fetchUsageSummary()
 
-    const usageDashElement = document.getElementById('usageDash')
-    if (usageDashElement) {
-      usageDashElement.addEventListener('dashboard:run:complete', this.iframeTimeoutHandler)
-    }
-
-    // TODO: Add more hooks here to optimize what the user sees while the dashes load...
+    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
+    window.removeEventListener('message', this.resizeIframes)
+  }
+
+  private resizeIframes (event: any) {
+    const iframe = document.getElementById('usageDash') as HTMLIFrameElement
+    if (iframe && event.source === iframe.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
+      const eventData = JSON.parse(event.data)
+      if (eventData.type === 'page:properties:changed') {
+        iframe.height = eventData.height + 50
+      }
+    }
   }
 
   private fetchUsageSummary () {
     this.$apiService.fetchUsageSummary({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      origin: window.location.origin
     })
       .then((response: any) => {
-        this.usageDashDashURLs = response.urls || []
+        this.usageDashDashURL = response.url || ''
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the billing summary dashboard')
         console.log(error)
       })
-  }
-
-  private iframeTimeoutHandler () {
-    // TODO: Look for a status of error or stopped and display a refresh page message....
-    console.log('An iframe timed out we should add an alert to refresh the page!')
   }
 }
 </script>

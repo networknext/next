@@ -91,6 +91,10 @@ export class JSONRPCService {
     return this.call('BuyersService.FetchAnalyticsSummaryDashboards', args)
   }
 
+  public fetchDiscoveryDashboards (args: any): Promise<any> {
+    return this.call('BuyersService.FetchDiscoveryDashboards', args)
+  }
+
   public fetchUsageSummary (args: any): Promise<any> {
     return this.call('BuyersService.FetchUsageSummaryDashboard', args)
   }
