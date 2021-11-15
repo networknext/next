@@ -5,7 +5,7 @@
         class="col"
         id="analyticsDash"
         :src="url"
-        :style="{'min-height': '7700px'}"
+        style="min-height: 1000px;"
         v-if="url !== ''"
         frameborder="0"
       >
