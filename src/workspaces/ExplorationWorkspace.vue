@@ -26,11 +26,14 @@
     <div class="card" style="margin-bottom: 250px;">
       <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
-          <li class="nav-item" v-if="$store.getters.isAdmin">
+          <li class="nav-item" v-if="$store.getters.hasBilling">
             <router-link to="/explore/usage" class="nav-link" :class="{ active: $store.getters.currentPage === 'usage'}">Usage</router-link>
           </li>
-          <li class="nav-item" v-if="$store.getters.isAdmin">
+          <li class="nav-item" v-if="$store.getters.hasAnalytics">
             <router-link to="/explore/analytics" class="nav-link" :class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
+          </li>
+          <li class="nav-item" v-if="false && $store.getters.hasAnalytics">
+            <router-link to="/explore/discovery" class="nav-link" :class="{ active: $store.getters.currentPage === 'discovery'}">Discovery</router-link>
           </li>
           <li class="nav-item" v-if="false && $store.getters.isSeller">
             <router-link to="/explore/supply" class="nav-link" :class="{ active: $store.getters.currentPage === 'supply'}">Supplier</router-link>
