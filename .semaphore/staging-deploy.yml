@@ -6,7 +6,7 @@ agent:
     os_image: ubuntu1804
 global_job_config:
   secrets:
-    - name: sdk4-repo-access
+    - name: sdk5-repo-access
   prologue:
     commands:
       - sudo apt-get update && sudo apt-get -y install libzmq3-dev gcc-8
@@ -15,10 +15,10 @@ global_job_config:
       - checkout
       - sem-version go 1.13
       - make clean
-      - chmod 0600 ~/.ssh/id_rsa_semaphoreci_sdk4
-      - ssh-add ~/.ssh/id_rsa_semaphoreci_sdk4
-      - git submodule init sdk
-      - git submodule update sdk
+      - chmod 0600 ~/.ssh/id_rsa_semaphoreci_sdk5
+      - ssh-add ~/.ssh/id_rsa_semaphoreci_sdk5
+      - git submodule init
+      - git submodule update
       # libsodium in apt is too old, build from source
       - curl https://download.libsodium.org/libsodium/releases/libsodium-1.0.17.tar.gz --output libsodium-1.0.17.tar.gz
       - tar -zxvf libsodium-1.0.17.tar.gz
@@ -36,14 +36,6 @@ blocks:
           commands:
             - make build-billing-artifacts-staging
             - make publish-billing-artifacts-staging
-        - name: Beacon
-          commands:
-            - make build-beacon-artifacts-staging
-            - make publish-beacon-artifacts-staging
-        - name: Beacon Inserter
-          commands:
-            - make build-beacon-inserter-artifacts-staging
-            - make publish-beacon-inserter-artifacts-staging
         - name: Analytics Pusher
           commands:
             - make build-analytics-pusher-artifacts-staging
@@ -84,18 +76,10 @@ blocks:
           commands:
             - make build-relay-forwarder-artifacts-staging
             - make publish-relay-forwarder-artifacts-staging
-        - name: Server Backend
+        - name: Server Backend 4
           commands:
-            - make build-server-backend-artifacts-staging
-            - make publish-server-backend-artifacts-staging
-        - name: Debug Server Backend
-          commands:
-            - make build-debug-server-backend-artifacts-staging
-            - make publish-debug-server-backend-artifacts-staging
-        - name: Debug Relay Backend
-          commands:
-            - make build-debug-relay-backend-artifacts-staging
-            - make publish-debug-relay-backend-artifacts-staging
+            - make build-server-backend4-artifacts-staging
+            - make publish-server-backend4-artifacts-staging
         - name: Fake Relays
           commands:
             - make build-fake-relays-artifacts-staging
@@ -116,5 +100,9 @@ blocks:
           commands:
             - make build-relay-pusher-artifacts-staging
             - make publish-relay-pusher-artifacts-staging
+        - name: Pingdom
+          commands:
+            - make build-pingdom-artifacts-staging
+            - make publish-pingdom-artifacts-staging
       secrets:
         - name: google-cloud-platform-staging
