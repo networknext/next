@@ -57,12 +57,12 @@ func TestAllAccounts(t *testing.T) {
 		"rol_YfFrtom32or4vH89",
 	}
 	roleNames := []string{
-		"Viewer",
+		"Explorer",
 		"Owner",
 		"Admin",
 	}
 	roleDescriptions := []string{
-		"Can see current sessions and the map.",
+		"Can access the explore tab",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
 	}
@@ -242,12 +242,12 @@ func TestUserAccount(t *testing.T) {
 		"rol_YfFrtom32or4vH89",
 	}
 	roleNames := []string{
-		"Viewer",
+		"Explorer",
 		"Owner",
 		"Admin",
 	}
 	roleDescriptions := []string{
-		"Can see current sessions and the map.",
+		"Can access the explore tab",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
 	}
@@ -501,12 +501,12 @@ func TestDeleteAccount(t *testing.T) {
 		"rol_YfFrtom32or4vH89",
 	}
 	roleNames := []string{
-		"Viewer",
+		"Explorer",
 		"Owner",
 		"Admin",
 	}
 	roleDescriptions := []string{
-		"Can see current sessions and the map.",
+		"Can access the explore tab",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
 	}
@@ -668,12 +668,12 @@ func TestAddUserAccount(t *testing.T) {
 		"rol_YfFrtom32or4vH89",
 	}
 	roleNames := []string{
-		"Viewer",
+		"Explorer",
 		"Owner",
 		"Admin",
 	}
 	roleDescriptions := []string{
-		"Can see current sessions and the map.",
+		"Can access the explore tab",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
 	}
@@ -690,7 +690,7 @@ func TestAddUserAccount(t *testing.T) {
 		Name:        &roleNames[1],
 	}
 
-	svc.RoleCache["Viewer"] = &management.Role{
+	svc.RoleCache["Explorer"] = &management.Role{
 		Description: &roleDescriptions[0],
 		ID:          &roleIDs[0],
 		Name:        &roleNames[0],
@@ -868,12 +868,12 @@ func TestAllRoles(t *testing.T) {
 		"rol_YfFrtom32or4vH89",
 	}
 	roleNames := []string{
-		"Viewer",
+		"Explorer",
 		"Owner",
 		"Admin",
 	}
 	roleDescriptions := []string{
-		"Can see current sessions and the map.",
+		"Can access the explore tab.",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
 	}
@@ -901,7 +901,7 @@ func TestAllRoles(t *testing.T) {
 		Name:        &roleNames[1],
 	}
 
-	svc.RoleCache["Viewer"] = &management.Role{
+	svc.RoleCache["Explorer"] = &management.Role{
 		Description: &roleDescriptions[0],
 		ID:          &roleIDs[0],
 		Name:        &roleNames[0],
@@ -925,12 +925,12 @@ func TestAllRoles(t *testing.T) {
 		err := svc.AllRoles(req, &jsonrpc.RolesArgs{}, &reply)
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(reply.Roles))
-		assert.Equal(t, roleNames[0], *reply.Roles[0].Name)
-		assert.Equal(t, roleIDs[0], *reply.Roles[0].ID)
-		assert.Equal(t, roleDescriptions[0], *reply.Roles[0].Description)
-		assert.Equal(t, roleNames[1], *reply.Roles[1].Name)
-		assert.Equal(t, roleIDs[1], *reply.Roles[1].ID)
-		assert.Equal(t, roleDescriptions[1], *reply.Roles[1].Description)
+		assert.Equal(t, svc.RoleCache["Explorer"].GetName(), reply.Roles[0].GetName())
+		assert.Equal(t, svc.RoleCache["Explorer"].GetID(), reply.Roles[0].GetID())
+		assert.Equal(t, svc.RoleCache["Explorer"].GetDescription(), reply.Roles[0].GetDescription())
+		assert.Equal(t, svc.RoleCache["Owner"].GetName(), reply.Roles[1].GetName())
+		assert.Equal(t, svc.RoleCache["Owner"].GetID(), reply.Roles[1].GetID())
+		assert.Equal(t, svc.RoleCache["Owner"].GetDescription(), reply.Roles[1].GetDescription())
 	})
 
 	t.Run("success - admin", func(t *testing.T) {
@@ -943,15 +943,16 @@ func TestAllRoles(t *testing.T) {
 		err := svc.AllRoles(req, &jsonrpc.RolesArgs{}, &reply)
 		assert.NoError(t, err)
 		assert.Equal(t, 3, len(reply.Roles))
-		assert.Equal(t, roleNames[0], *reply.Roles[0].Name)
-		assert.Equal(t, roleIDs[0], *reply.Roles[0].ID)
-		assert.Equal(t, roleDescriptions[0], *reply.Roles[0].Description)
-		assert.Equal(t, roleNames[1], *reply.Roles[1].Name)
-		assert.Equal(t, roleIDs[1], *reply.Roles[1].ID)
-		assert.Equal(t, roleDescriptions[1], *reply.Roles[1].Description)
-		assert.Equal(t, roleNames[2], *reply.Roles[2].Name)
-		assert.Equal(t, roleIDs[2], *reply.Roles[2].ID)
-		assert.Equal(t, roleDescriptions[2], *reply.Roles[2].Description)
+		fmt.Println(reply.Roles)
+		assert.Equal(t, svc.RoleCache["Admin"].GetName(), reply.Roles[0].GetName())
+		assert.Equal(t, svc.RoleCache["Admin"].GetID(), reply.Roles[0].GetID())
+		assert.Equal(t, svc.RoleCache["Admin"].GetDescription(), reply.Roles[0].GetDescription())
+		assert.Equal(t, svc.RoleCache["Explorer"].GetName(), reply.Roles[1].GetName())
+		assert.Equal(t, svc.RoleCache["Explorer"].GetID(), reply.Roles[1].GetID())
+		assert.Equal(t, svc.RoleCache["Explorer"].GetDescription(), reply.Roles[1].GetDescription())
+		assert.Equal(t, svc.RoleCache["Owner"].GetName(), reply.Roles[2].GetName())
+		assert.Equal(t, svc.RoleCache["Owner"].GetID(), reply.Roles[2].GetID())
+		assert.Equal(t, svc.RoleCache["Owner"].GetDescription(), reply.Roles[2].GetDescription())
 	})
 }
 
@@ -967,12 +968,12 @@ func TestUserRoles(t *testing.T) {
 		"rol_YfFrtom32or4vH89",
 	}
 	roleNames := []string{
-		"Viewer",
+		"Explorer",
 		"Owner",
 		"Admin",
 	}
 	roleDescriptions := []string{
-		"Can see current sessions and the map.",
+		"Can access the explore tab",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
 	}
@@ -1051,9 +1052,9 @@ func TestUserRoles(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(reply.Roles))
-		assert.Equal(t, roleIDs[0], *reply.Roles[0].ID)
-		assert.Equal(t, roleNames[0], *reply.Roles[0].Name)
-		assert.Equal(t, roleDescriptions[0], *reply.Roles[0].Description)
+		assert.Equal(t, roleIDs[0], reply.Roles[0].GetID())
+		assert.Equal(t, roleNames[0], reply.Roles[0].GetName())
+		assert.Equal(t, roleDescriptions[0], reply.Roles[0].GetDescription())
 	})
 }
 
@@ -1070,12 +1071,12 @@ func TestUpdateUserRoles(t *testing.T) {
 		"rol_YfFrtom32or4vH89",
 	}
 	roleNames := []string{
-		"Viewer",
+		"Explorer",
 		"Owner",
 		"Admin",
 	}
 	roleDescriptions := []string{
-		"Can see current sessions and the map.",
+		"Can access the explore tab",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
 	}
@@ -1121,7 +1122,7 @@ func TestUpdateUserRoles(t *testing.T) {
 		Name:        &roleNames[1],
 	}
 
-	svc.RoleCache["Viewer"] = &management.Role{
+	svc.RoleCache["Explorer"] = &management.Role{
 		Description: &roleDescriptions[0],
 		ID:          &roleIDs[0],
 		Name:        &roleNames[0],
@@ -1192,9 +1193,9 @@ func TestUpdateUserRoles(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(reply.Roles))
-		assert.Equal(t, roleIDs[0], *reply.Roles[0].ID)
-		assert.Equal(t, roleNames[0], *reply.Roles[0].Name)
-		assert.Equal(t, roleDescriptions[0], *reply.Roles[0].Description)
+		assert.Equal(t, roleIDs[0], reply.Roles[0].GetID())
+		assert.Equal(t, roleNames[0], reply.Roles[0].GetName())
+		assert.Equal(t, roleDescriptions[0], reply.Roles[0].GetDescription())
 	})
 
 	t.Run("success - admin assigning admin", func(t *testing.T) {
@@ -1214,9 +1215,9 @@ func TestUpdateUserRoles(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(reply.Roles))
-		assert.Equal(t, roleIDs[2], *reply.Roles[0].ID)
-		assert.Equal(t, roleNames[2], *reply.Roles[0].Name)
-		assert.Equal(t, roleDescriptions[2], *reply.Roles[0].Description)
+		assert.Equal(t, roleIDs[2], reply.Roles[0].GetID())
+		assert.Equal(t, roleNames[2], reply.Roles[0].GetName())
+		assert.Equal(t, roleDescriptions[2], reply.Roles[0].GetDescription())
 	})
 }
 
@@ -1251,12 +1252,12 @@ func TestSetupCompanyAccount(t *testing.T) {
 		"rol_YfFrtom32or4vH89",
 	}
 	roleNames := []string{
-		"Viewer",
+		"Explorer",
 		"Owner",
 		"Admin",
 	}
 	roleDescriptions := []string{
-		"Can see current sessions and the map.",
+		"Can access the explore tab.",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
 	}
@@ -1284,7 +1285,7 @@ func TestSetupCompanyAccount(t *testing.T) {
 		Name:        &roleNames[1],
 	}
 
-	svc.RoleCache["Viewer"] = &management.Role{
+	svc.RoleCache["Explorer"] = &management.Role{
 		Description: &roleDescriptions[0],
 		ID:          &roleIDs[0],
 		Name:        &roleNames[0],
@@ -1376,13 +1377,10 @@ func TestSetupCompanyAccount(t *testing.T) {
 
 		userRoles, err := userManager.Roles("123")
 		assert.NoError(t, err)
-		assert.Equal(t, 2, len(userRoles.Roles))
-		assert.Equal(t, roleNames[0], *userRoles.Roles[0].Name)
-		assert.Equal(t, roleIDs[0], *userRoles.Roles[0].ID)
-		assert.Equal(t, roleDescriptions[0], *userRoles.Roles[0].Description)
-		assert.Equal(t, roleNames[1], *userRoles.Roles[1].Name)
-		assert.Equal(t, roleIDs[1], *userRoles.Roles[1].ID)
-		assert.Equal(t, roleDescriptions[1], *userRoles.Roles[1].Description)
+		assert.Equal(t, 1, len(userRoles.Roles))
+		assert.Equal(t, roleNames[1], userRoles.Roles[0].GetName())
+		assert.Equal(t, roleIDs[1], userRoles.Roles[0].GetID())
+		assert.Equal(t, roleDescriptions[1], userRoles.Roles[0].GetDescription())
 		customers := storer.Customers(req.Context())
 		assert.Equal(t, 2, len(customers))
 		assert.Equal(t, "testing", customers[1].Code)
