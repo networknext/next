@@ -88,7 +88,11 @@ export class JSONRPCService {
   }
 
   public fetchAnalyticsSummary (args: any): Promise<any> {
-    return this.call('BuyersService.FetchAnalyticsSummaryDashboard', args)
+    return this.call('BuyersService.FetchAnalyticsSummaryDashboards', args)
+  }
+
+  public fetchDiscoveryDashboards (args: any): Promise<any> {
+    return this.call('BuyersService.FetchDiscoveryDashboards', args)
   }
 
   public fetchUsageSummary (args: any): Promise<any> {
@@ -136,7 +140,7 @@ export class JSONRPCService {
   }
 
   public updateGameConfiguration (args: any): Promise<any> {
-    return this.call('BuyersService.UpdateBuyerInformation', args)
+    return this.call('BuyersService.UpdateGameConfiguration', args)
   }
 
   public resendVerificationEmail (args: any): Promise<any> {

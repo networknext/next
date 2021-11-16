@@ -1,19 +1,15 @@
 <template>
   <div class="card-body" id="usageDash-page">
     <div class="row">
-      <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
-        <div class="card-body">
-          <iframe
-            class="col"
-            id="usageDash"
-            :src="usageDashURL"
-            style="min-height: 2500px;"
-            v-show="usageDashURL !== ''"
-            frameborder="0"
-          >
-          </iframe>
-        </div>
-      </div>
+      <iframe
+        class="col"
+        id="usageDash"
+        style="min-height: 1000px;"
+        :src="usageDashURL"
+        v-if="usageDashURL !== ''"
+        frameborder="0"
+      >
+      </iframe>
     </div>
     <div class="row">
       <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
@@ -176,16 +172,28 @@ export default class Usage extends Vue {
 
     this.fetchUsageSummary()
 
-    // TODO: Figure out a way to hook into iframe lifecycle to optimize showing and hiding dash
+    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
+    window.removeEventListener('message', this.resizeIframes)
+  }
+
+  private resizeIframes (event: any) {
+    const iframe = document.getElementById('usageDash') as HTMLIFrameElement
+    if (iframe && event.source === iframe.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
+      const eventData = JSON.parse(event.data)
+      if (eventData.type === 'page:properties:changed') {
+        iframe.height = eventData.height + 50
+      }
+    }
   }
 
   private fetchUsageSummary () {
     this.$apiService.fetchUsageSummary({
       company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      origin: window.location.origin,
       date_string: this.dateString
     })
       .then((response: any) => {

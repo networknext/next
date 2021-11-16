@@ -6,7 +6,7 @@ import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 import AccountSettings from '@/components/AccountSettings.vue'
 import Analytics from '@/components/Analytics.vue'
-import Usage from '@/components/Usage.vue'
+import Discovery from '@/components/Discovery.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
 import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
@@ -19,6 +19,7 @@ import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
 import Supply from '@/components/Supply.vue'
+import Usage from '@/components/Usage.vue'
 import UserManagement from '@/components/UserManagement.vue'
 import UserSessions from '@/components/UserSessions.vue'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
@@ -52,6 +53,11 @@ const routes: Array<RouteConfig> = [
             name: 'invoice'
           }
         ]
+      },
+      {
+        path: 'discovery',
+        name: 'discovery',
+        component: Discovery
       },
       {
         path: 'supply',
@@ -185,15 +191,15 @@ const OwnerRoutes = [
   'account-settings',
   'config',
   'users',
-  'explore'
+  'explore',
+  'usage',
+  'analytics'
 ]
 
 // Add or remove these to open up beta features
 const BetaRoutes = [
-  'usage',
-  'invoice',
-  'supply',
-  'analytics'
+  'discovery',
+  'supply'
 ]
 
 function updateCurrentPage (name: string) {
@@ -206,7 +212,7 @@ function updateCurrentPage (name: string) {
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   if (to.name === '404') {
-    updateCurrentPage('/map')
+    updateCurrentPage('map')
     next('/map')
     return
   }
@@ -214,67 +220,85 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
     // TODO: refreshToken returns a promise that should be used to optimize page loads. Look into how this effects routing
     Vue.prototype.$authService.refreshToken()
-    updateCurrentPage('/map')
+    updateCurrentPage('map')
     next('/map')
     return
   }
 
   // Anonymous filters
   if (store.getters.isAnonymous && AnonymousRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('/map')
+    updateCurrentPage('map')
     next('/map')
     return
   }
 
   // AnonymousPlus filters
   if (store.getters.isAnonymousPlus && AnonymousPlusRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('/map')
+    updateCurrentPage('map')
     next('/map')
     return
   }
 
   if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && !store.getters.isOwner && !store.getters.isAdmin && ViewerRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('/map')
+    updateCurrentPage('map')
     next('/map')
     return
   }
 
   // Owner Filters
   if (store.getters.Owner && OwnerRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('/map')
+    updateCurrentPage('map')
     next('/map')
     return
   }
 
   // If user isn't an admin and they are trying to access beta content block them
   if (!store.getters.isAdmin && BetaRoutes.indexOf(to.name || '') !== -1) {
-    updateCurrentPage('/map')
-    next('/map')
-    return
-  }
-
-  // Beta / Premium features given to the user at a buyer level
-  if (!store.getters.isSeller && (to.name === 'supply')) {
-    updateCurrentPage('/map')
-    next('/map')
-    return
-  }
-  if (!store.getters.isAdmin && !store.getters.hasAnalytics && (to.name === 'analytics')) {
-    updateCurrentPage('/map')
-    next('/map')
-    return
-  }
-  if (!store.getters.isAdmin && !store.getters.hasBilling && (to.name === 'usage')) {
-    updateCurrentPage('/map')
+    updateCurrentPage('map')
     next('/map')
     return
   }
 
   if (to.name === 'explore') {
-    updateCurrentPage('usage')
-    next('/explore/usage')
+    if (store.getters.hasBilling) {
+      updateCurrentPage('usage')
+      next('/explore/usage')
+      return
+    }
+
+    if (store.getters.hasAnalytics) {
+      updateCurrentPage('analytics')
+      next('/explore/analytics')
+      return
+    }
+
+    updateCurrentPage('map')
+    next('/map')
     return
   }
+
+  // Beta / Premium features given to the user at a buyer level
+  if (!store.getters.hasBilling && (to.name === 'usage')) {
+    updateCurrentPage('map')
+    next('/map')
+    return
+  }
+  if (!store.getters.hasAnalytics && (to.name === 'analytics')) {
+    updateCurrentPage('map')
+    next('/map')
+    return
+  }
+  if (!store.getters.isAdmin && !store.getters.hasAnalytics && (to.name === 'discovery')) {
+    updateCurrentPage('map')
+    next('/map')
+    return
+  }
+  if (!store.getters.isAdmin && !store.getters.isSeller && (to.name === 'supply')) {
+    updateCurrentPage('map')
+    next('/map')
+    return
+  }
+
   if (to.name === 'settings') {
     updateCurrentPage('account-settings')
     next('/settings/account')
