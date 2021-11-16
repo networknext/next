@@ -2863,13 +2863,6 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchU
 		return &err
 	}
 
-	if args.Origin == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		s.Logger.Log("err", fmt.Errorf("FetchUsageSummaryDashboard(): %v: Origin is required", err.Error()))
-		return &err
-	}
-
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
@@ -2908,9 +2901,9 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchU
 		companyCode = "esl"
 	}
 
-	dashURL := UsageDashURI
+	dashURL := fmt.Sprintf("%s?embed_domain=%s", UsageDashURI, args.Origin)
 	if args.DateString != "" {
-		dashURL = fmt.Sprintf("%s?Billing+Period=%s", dashURL, args.DateString)
+		dashURL = fmt.Sprintf("%s&Billing+Period=%s", dashURL, args.DateString)
 	}
 
 	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
@@ -2925,7 +2918,7 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchU
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(fmt.Sprintf("%s?embed_domain=%s", dashURL, args.Origin)),
+		EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
 		ForceLogout:     true,
 		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
