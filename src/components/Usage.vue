@@ -147,16 +147,16 @@ export default class Usage extends Vue {
 
   private mounted () {
     const now = DateTime.now()
-    const currentDateString = `${now.year}-${now.month - 1}`
+    const currentDateString = `${now.year}-${now.month}`
 
     // Check URL date and set to default if empty
-    this.dateString = (this.$route.params.pathMatch || '') === '' ? currentDateString : this.$route.params.pathMatch
+    this.dateString = this.$route.params.pathMatch || ''
 
     if (this.dateString !== currentDateString) {
       const passedInDate = this.dateString.split('-')
       // check for invalid date
       if (parseInt(passedInDate[0]) > now.year || (parseInt(passedInDate[0]) === now.year && parseInt(passedInDate[1]) > now.month)) {
-        this.dateString = currentDateString
+        this.dateString = ''
       }
     }
 

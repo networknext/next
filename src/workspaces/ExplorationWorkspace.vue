@@ -27,7 +27,7 @@
       <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
           <li class="nav-item" v-if="$store.getters.hasBilling">
-            <router-link to="/explore/usage" class="nav-link" :class="{ active: $store.getters.currentPage === 'usage'}">Usage</router-link>
+            <router-link to="/explore/usage" class="nav-link" :class="{ active: $store.getters.currentPage === 'usage' || $store.getters.currentPage === 'invoice'}">Usage</router-link>
           </li>
           <li class="nav-item" v-if="$store.getters.hasAnalytics">
             <router-link to="/explore/analytics" class="nav-link" :class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>

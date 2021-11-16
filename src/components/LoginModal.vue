@@ -66,6 +66,7 @@ export default class LoginModal extends Vue {
   private emailError: string
   private password: string
   private passwordError: string
+  private redirectURL: string
 
   constructor () {
     super()
@@ -73,6 +74,15 @@ export default class LoginModal extends Vue {
     this.emailError = ''
     this.password = ''
     this.passwordError = ''
+    this.redirectURL = ''
+  }
+
+  private mounted () {
+    const redirectURI = this.$route.query.redirectURI || ''
+    if (redirectURI !== '') {
+      this.redirectURL = window.location.origin + redirectURI
+    }
+    console.log(this.redirectURL)
   }
 
   private login (): void {
@@ -84,7 +94,7 @@ export default class LoginModal extends Vue {
       this.passwordError = 'A password is required'
       return
     }
-    this.$authService.login(this.email, this.password).catch((err: Error) => {
+    this.$authService.login(this.email, this.password, this.redirectURL).catch((err: Error) => {
       this.password = ''
       this.passwordError = err.message
       setTimeout(() => {

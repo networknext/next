@@ -227,8 +227,9 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
 
   // Anonymous filters
   if (store.getters.isAnonymous && AnonymousRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('map')
-    next('/map')
+    console.log(to)
+    updateCurrentPage('login')
+    next('/login?redirectURI=' + to.fullPath)
     return
   }
 

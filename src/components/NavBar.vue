@@ -68,6 +68,7 @@
             :class="{
               active:
                 $store.getters.currentPage == 'analytics' ||
+                $store.getters.currentPage === 'invoice' ||
                 $store.getters.currentPage == 'usage'
             }"
             v-if="$store.getters.hasBilling || $store.getters.hasAnalytics"
