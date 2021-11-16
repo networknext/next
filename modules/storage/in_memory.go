@@ -301,10 +301,10 @@ func (m *InMemory) AddRelay(ctx context.Context, relay routing.Relay) error {
 		}
 	}
 
-	// Emulate firestore behavior by requiring the seller and datacenter to exist before adding the relay
+	// Emulate postgres behavior by requiring the seller and datacenter to exist before adding the relay
 	foundSeller := false
 	for _, s := range m.localSellers {
-		if s.ID == relay.Seller.ID {
+		if s.ID == relay.Seller.ID || s.ID == relay.BillingSupplier {
 			foundSeller = true
 		}
 	}

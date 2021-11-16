@@ -1,27 +1,1445 @@
 package jsonrpc_test
 
-/*func TestBuyers(t *testing.T) {
+import (
+	"context"
+	"encoding/base64"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/networknext/backend/modules/crypto"
+	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/middleware"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestBuyers(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1"})
 
-	logger := log.NewNopLogger()
+	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", ShortName: "local.1"})
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), routing.Buyer{ID: 2, CompanyCode: "local-local", ShortName: "local.local.2"})
+	assert.NoError(t, err)
+
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
-		Logger:  logger,
 	}
 
-	t.Run("list", func(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
 		var reply jsonrpc.BuyersReply
-		err := svc.Buyers(nil, &jsonrpc.BuyersArgs{}, &reply)
+		err := svc.Buyers(req, &jsonrpc.BuyersArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("no customer for buyer", func(t *testing.T) {
+		var reply jsonrpc.BuyersReply
+		err := svc.Buyers(req, &jsonrpc.BuyersArgs{}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "Buyers() could not find Customer")
+	})
+
+	err = storer.AddCustomer(context.Background(), routing.Customer{Name: "Local", Code: "local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(context.Background(), routing.Customer{Name: "Local-Local", Code: "local-local"})
+	assert.NoError(t, err)
+
+	t.Run("success - list", func(t *testing.T) {
+		var reply jsonrpc.BuyersReply
+		err := svc.Buyers(req, &jsonrpc.BuyersArgs{}, &reply)
 		assert.NoError(t, err)
 
-		assert.Equal(t, reply.Buyers[0].ID, "1")
-		assert.Equal(t, reply.Buyers[0].Name, "local.local.1")
+		assert.Equal(t, reply.Buyers[0].ID, uint64(1))
+		assert.Equal(t, reply.Buyers[0].ShortName, "local.1")
+		assert.Equal(t, reply.Buyers[1].ID, uint64(2))
+		assert.Equal(t, reply.Buyers[1].ShortName, "local.local.2")
 	})
 }
 
+func TestJSAddBuyer(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.JSAddBuyerReply
+		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("bad public key", func(t *testing.T) {
+		var reply jsonrpc.JSAddBuyerReply
+		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
+			ShortName:           "local",
+			ExoticLocationFee:   "100",
+			StandardLocationFee: "100",
+			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=",
+		}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("bad exotic location fee", func(t *testing.T) {
+		var reply jsonrpc.JSAddBuyerReply
+		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
+			ShortName:           "local",
+			ExoticLocationFee:   "a",
+			StandardLocationFee: "100",
+			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
+		}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("bad standard location fee", func(t *testing.T) {
+		var reply jsonrpc.JSAddBuyerReply
+		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
+			ShortName:           "local",
+			ExoticLocationFee:   "100",
+			StandardLocationFee: "a",
+			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
+		}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("add buyer for non-existant customer", func(t *testing.T) {
+		var reply jsonrpc.JSAddBuyerReply
+		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
+			ShortName:           "local",
+			ExoticLocationFee:   "100",
+			StandardLocationFee: "100",
+			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
+		}, &reply)
+		assert.Error(t, err)
+	})
+
+	err := storer.AddCustomer(context.Background(), routing.Customer{Name: "Local", Code: "local"})
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.JSAddBuyerReply
+		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
+			ShortName:           "local",
+			ExoticLocationFee:   "100",
+			StandardLocationFee: "100",
+			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
+		}, &reply)
+		assert.NoError(t, err)
+
+		buyers := storer.Buyers(context.Background())
+		assert.Equal(t, 1, len(buyers))
+		assert.Equal(t, "local", buyers[0].ShortName)
+	})
+}
+
+func TestRemoveBuyer(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RemoveBuyerReply
+		err := svc.RemoveBuyer(req, &jsonrpc.RemoveBuyerArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("bad buyer ID", func(t *testing.T) {
+		var reply jsonrpc.RemoveBuyerReply
+		err := svc.RemoveBuyer(req, &jsonrpc.RemoveBuyerArgs{ID: "-"}, &reply)
+		assert.Contains(t, err.Error(), "RemoveBuyer() could not convert buyer ID - to uint64:")
+	})
+
+	t.Run("buyer does not exist", func(t *testing.T) {
+		var reply jsonrpc.RemoveBuyerReply
+		err := svc.RemoveBuyer(req, &jsonrpc.RemoveBuyerArgs{ID: "0"}, &reply)
+		assert.Contains(t, err.Error(), "buyer with reference 0 not found")
+	})
+
+	err := storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", ShortName: "local.1"})
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RemoveBuyerReply
+		err := svc.RemoveBuyer(req, &jsonrpc.RemoveBuyerArgs{ID: "1"}, &reply)
+		assert.NoError(t, err)
+
+		buyers := storer.Buyers(context.Background())
+		assert.NoError(t, err)
+		assert.Zero(t, len(buyers))
+	})
+}
+
+func TestSellers(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	err := storer.AddSeller(context.Background(), routing.Seller{ID: "1", CompanyCode: "local", Name: "local.1"})
+	assert.NoError(t, err)
+	err = storer.AddSeller(context.Background(), routing.Seller{ID: "2", CompanyCode: "local-local", Name: "local.local.2"})
+	assert.NoError(t, err)
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.SellersReply
+		err := svc.Sellers(req, &jsonrpc.SellersArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success - list", func(t *testing.T) {
+		var reply jsonrpc.SellersReply
+		err := svc.Sellers(req, &jsonrpc.SellersArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.Sellers[0].ID, "1")
+		assert.Equal(t, reply.Sellers[0].Name, "local.1")
+		assert.Equal(t, reply.Sellers[1].ID, "2")
+		assert.Equal(t, reply.Sellers[1].Name, "local.local.2")
+	})
+}
+
+func TestCustomers(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.CustomersReply
+		err := svc.Customers(req, &jsonrpc.CustomersArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	err := storer.AddCustomer(context.Background(), routing.Customer{Name: "Local", Code: "local"})
+	assert.NoError(t, err)
+	err = storer.AddCustomer(context.Background(), routing.Customer{Name: "Local-Local", Code: "local-local"})
+	assert.NoError(t, err)
+
+	t.Run("success - list", func(t *testing.T) {
+		var reply jsonrpc.CustomersReply
+		err := svc.Customers(req, &jsonrpc.CustomersArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, reply.Customers[0].Code, "local")
+		assert.Equal(t, reply.Customers[0].Name, "Local")
+		assert.Equal(t, reply.Customers[1].Code, "local-local")
+		assert.Equal(t, reply.Customers[1].Name, "Local-Local")
+	})
+}
+
+func TestJSAddCustomers(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.JSAddCustomerReply
+		err := svc.JSAddCustomer(req, &jsonrpc.JSAddCustomerArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.JSAddCustomerReply
+		err := svc.JSAddCustomer(req, &jsonrpc.JSAddCustomerArgs{Code: "local", Name: "Local"}, &reply)
+		assert.NoError(t, err)
+
+		customers := storer.Customers(context.Background())
+		assert.Equal(t, 1, len(customers))
+		assert.Equal(t, "local", customers[0].Code)
+		assert.Equal(t, "Local", customers[0].Name)
+	})
+}
+
+func TestAddCustomers(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AddCustomerReply
+		err := svc.AddCustomer(req, &jsonrpc.AddCustomerArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success", func(t *testing.T) {
+		expectedCustomer := routing.Customer{
+			Code: "local",
+			Name: "Local",
+		}
+
+		var reply jsonrpc.AddCustomerReply
+		err := svc.AddCustomer(req, &jsonrpc.AddCustomerArgs{Customer: expectedCustomer}, &reply)
+		assert.NoError(t, err)
+
+		customers := storer.Customers(context.Background())
+		assert.Equal(t, 1, len(customers))
+		assert.Equal(t, expectedCustomer.Code, customers[0].Code)
+		assert.Equal(t, expectedCustomer.Name, customers[0].Name)
+	})
+}
+
+func TestCustomer(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.CustomerReply
+		err := svc.Customer(req, &jsonrpc.CustomerArg{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("customer does not exist", func(t *testing.T) {
+		var reply jsonrpc.CustomerReply
+		err := svc.Customer(req, &jsonrpc.CustomerArg{CustomerID: "local"}, &reply)
+		assert.Error(t, err)
+	})
+
+	expectedCustomer := routing.Customer{
+		Code: "local",
+		Name: "Local",
+	}
+	err := storer.AddCustomer(context.Background(), expectedCustomer)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.CustomerReply
+		err := svc.Customer(req, &jsonrpc.CustomerArg{CustomerID: "local"}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedCustomer, reply.Customer)
+	})
+}
+
+func TestSeller(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.SellerReply
+		err := svc.Seller(req, &jsonrpc.SellerArg{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("seller does not exist", func(t *testing.T) {
+		var reply jsonrpc.SellerReply
+		err := svc.Seller(req, &jsonrpc.SellerArg{ID: "1"}, &reply)
+		assert.Error(t, err)
+	})
+
+	expectedSeller := routing.Seller{
+		ID:          "1",
+		CompanyCode: "local",
+		Name:        "Local",
+	}
+	err := storer.AddSeller(context.Background(), expectedSeller)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.SellerReply
+		err := svc.Seller(req, &jsonrpc.SellerArg{ID: "1"}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedSeller, reply.Seller)
+	})
+}
+
+func TestJSAddSeller(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.JSAddSellerReply
+		err := svc.JSAddSeller(req, &jsonrpc.JSAddSellerArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.JSAddSellerReply
+		err := svc.JSAddSeller(req, &jsonrpc.JSAddSellerArgs{
+			ShortName:   "local",
+			EgressPrice: 100,
+		}, &reply)
+		assert.NoError(t, err)
+
+		sellers := storer.Sellers(context.Background())
+		assert.Equal(t, 1, len(sellers))
+		assert.Equal(t, "local", sellers[0].ShortName)
+		assert.Equal(t, routing.Nibblin(100), sellers[0].EgressPriceNibblinsPerGB)
+	})
+}
+
+func TestAddSeller(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AddSellerReply
+		err := svc.AddSeller(req, &jsonrpc.AddSellerArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("success", func(t *testing.T) {
+		expectedSeller := routing.Seller{
+			ID:          "1",
+			CompanyCode: "local",
+			Name:        "Local",
+		}
+
+		var reply jsonrpc.AddSellerReply
+		err := svc.AddSeller(req, &jsonrpc.AddSellerArgs{Seller: expectedSeller}, &reply)
+		assert.NoError(t, err)
+
+		sellers := storer.Sellers(context.Background())
+		assert.Equal(t, 1, len(sellers))
+		assert.Equal(t, "local", sellers[0].CompanyCode)
+	})
+}
+
+func TestRemoveSeller(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RemoveSellerReply
+		err := svc.RemoveSeller(req, &jsonrpc.RemoveSellerArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("seller does not exist", func(t *testing.T) {
+		var reply jsonrpc.RemoveSellerReply
+		err := svc.RemoveSeller(req, &jsonrpc.RemoveSellerArgs{ID: "0"}, &reply)
+		assert.Contains(t, err.Error(), "seller with reference 0 not found")
+	})
+
+	err := storer.AddSeller(context.Background(), routing.Seller{ID: "1", CompanyCode: "local", Name: "Local"})
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RemoveSellerReply
+		err := svc.RemoveSeller(req, &jsonrpc.RemoveSellerArgs{ID: "1"}, &reply)
+		assert.NoError(t, err)
+
+		sellers := storer.Sellers(context.Background())
+		assert.Zero(t, len(sellers))
+	})
+}
+
+func TestRelays(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RelaysReply
+		err := svc.Relays(req, &jsonrpc.RelaysArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	seller := routing.Seller{
+		ID:   "sellerID",
+		Name: "seller name",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	relay1 := routing.Relay{
+		ID:         1,
+		Name:       "local.local.1",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	relay2 := routing.Relay{
+		ID:         2,
+		Name:       "local.local.2",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	relay3 := routing.Relay{
+		ID:         3,
+		Name:       "local.local.3",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay1)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay2)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay3)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RelaysReply
+		err := svc.Relays(req, &jsonrpc.RelaysArgs{}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 3, len(reply.Relays))
+		assert.Equal(t, relay1.Name, reply.Relays[0].Name)
+		assert.Equal(t, relay2.Name, reply.Relays[1].Name)
+		assert.Equal(t, relay3.Name, reply.Relays[2].Name)
+	})
+
+	t.Run("success - regex", func(t *testing.T) {
+		var reply jsonrpc.RelaysReply
+		err := svc.Relays(req, &jsonrpc.RelaysArgs{Regex: "local.3"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, len(reply.Relays))
+		assert.Equal(t, relay3.Name, reply.Relays[0].Name)
+	})
+}
+
+func TestRelaysWithEgressPriceOverride(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RelayEgressPriceOverrideReply
+		err := svc.RelaysWithEgressPriceOverride(req, &jsonrpc.RelayEgressPriceOverrideArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	seller := routing.Seller{
+		ID:        "sellerID",
+		Name:      "seller name",
+		ShortName: "sname",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	relay1 := routing.Relay{
+		ID:         1,
+		Name:       "local.local.1",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	relay2 := routing.Relay{
+		ID:         2,
+		Name:       "local.local.2",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	relay3 := routing.Relay{
+		ID:                  3,
+		Name:                "local.local.3",
+		Seller:              seller,
+		Datacenter:          datacenter,
+		EgressPriceOverride: routing.Nibblin(100),
+	}
+
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay1)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay2)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay3)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RelayEgressPriceOverrideReply
+		err := svc.RelaysWithEgressPriceOverride(req, &jsonrpc.RelayEgressPriceOverrideArgs{SellerShortName: "sname"}, &reply)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, len(reply.Relays))
+		assert.Equal(t, relay3.Name, reply.Relays[0].Name)
+	})
+}
+
+func TestAddRelay(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AddRelayReply
+		err := svc.AddRelay(req, &jsonrpc.AddRelayArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("add relay without seller", func(t *testing.T) {
+		var reply jsonrpc.AddRelayReply
+		err := svc.AddRelay(req, &jsonrpc.AddRelayArgs{
+			routing.Relay{
+				ID:   1,
+				Name: "local.local.11",
+				Seller: routing.Seller{
+					ID: "0",
+				},
+			},
+		}, &reply)
+		assert.Contains(t, err.Error(), "seller with reference 0 not found")
+	})
+
+	seller := routing.Seller{
+		ID:        "sellerID",
+		Name:      "seller name",
+		ShortName: "sname",
+	}
+
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+
+	t.Run("add relay without datacenter", func(t *testing.T) {
+		var reply jsonrpc.AddRelayReply
+		err := svc.AddRelay(req, &jsonrpc.AddRelayArgs{
+			routing.Relay{
+				ID:     1,
+				Name:   "local.local.11",
+				Seller: seller,
+				Datacenter: routing.Datacenter{
+					ID:   0,
+					Name: "unknown",
+				},
+			},
+		}, &reply)
+		assert.Contains(t, err.Error(), "datacenter with reference 0 not found")
+	})
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.AddRelayReply
+		err := svc.AddRelay(req, &jsonrpc.AddRelayArgs{
+			routing.Relay{
+				ID:         11,
+				Name:       "local.local.11",
+				Seller:     seller,
+				Datacenter: datacenter,
+			},
+		}, &reply)
+		assert.NoError(t, err)
+
+		relays := storer.Relays(context.Background())
+		assert.Equal(t, 1, len(relays))
+		assert.Equal(t, "local.local.11", relays[0].Name)
+	})
+}
+
+func TestJSAddRelay(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.JSAddRelayReply
+		err := svc.JSAddRelay(req, &jsonrpc.JSAddRelayArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("add relay without datacenter", func(t *testing.T) {
+		var reply jsonrpc.JSAddRelayReply
+		err := svc.JSAddRelay(req, &jsonrpc.JSAddRelayArgs{
+			Name:         "local.local.11",
+			SellerID:     "0",
+			DatacenterID: "0",
+		}, &reply)
+		assert.Contains(t, err.Error(), "datacenter with reference 0 not found")
+	})
+
+	datacenter := routing.Datacenter{
+		ID:   0,
+		Name: "datacenter name",
+	}
+
+	err := storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+
+	t.Run("add relay without seller", func(t *testing.T) {
+		var reply jsonrpc.JSAddRelayReply
+		err := svc.JSAddRelay(req, &jsonrpc.JSAddRelayArgs{
+			Name:            "local.local.11",
+			BillingSupplier: "0",
+			DatacenterID:    "0",
+		}, &reply)
+		assert.Contains(t, err.Error(), "seller with reference  not found")
+	})
+
+	seller := routing.Seller{
+		ID:        "sname",
+		Name:      "seller name",
+		ShortName: "sname",
+	}
+
+	err = storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+
+	t.Run("bad public key", func(t *testing.T) {
+		var reply jsonrpc.JSAddRelayReply
+		err := svc.JSAddRelay(req, &jsonrpc.JSAddRelayArgs{
+			Name:            "local.local.11",
+			BillingSupplier: "sname",
+			DatacenterID:    "0",
+			PublicKey:       "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2",
+		}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "could not decode base64 public key")
+	})
+
+	t.Run("bad internal addr", func(t *testing.T) {
+		var reply jsonrpc.JSAddRelayReply
+		err := svc.JSAddRelay(req, &jsonrpc.JSAddRelayArgs{
+			Name:            "local.local.11",
+			BillingSupplier: "sname",
+			DatacenterID:    "0",
+			PublicKey:       "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
+			InternalAddr:    "127.0.0.1.1",
+		}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "address 127.0.0.1.1: missing port in address")
+	})
+
+	t.Run("bad start date", func(t *testing.T) {
+		var reply jsonrpc.JSAddRelayReply
+		err := svc.JSAddRelay(req, &jsonrpc.JSAddRelayArgs{
+			Name:            "local.local.11",
+			BillingSupplier: "sname",
+			DatacenterID:    "0",
+			PublicKey:       "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
+			EndDate:         "2021-13-51",
+		}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `parsing time "2021-13-51": month out of range`)
+	})
+
+	t.Run("bad end date", func(t *testing.T) {
+		var reply jsonrpc.JSAddRelayReply
+		err := svc.JSAddRelay(req, &jsonrpc.JSAddRelayArgs{
+			Name:            "local.local.11",
+			BillingSupplier: "sname",
+			DatacenterID:    "0",
+			PublicKey:       "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
+			EndDate:         "2021-13-51",
+		}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `parsing time "2021-13-51": month out of range`)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.JSAddRelayReply
+		err := svc.JSAddRelay(req, &jsonrpc.JSAddRelayArgs{
+			Name:            "local.local.11",
+			BillingSupplier: "sname",
+			DatacenterID:    "0",
+			PublicKey:       "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
+		}, &reply)
+		assert.NoError(t, err)
+
+		relays := storer.Relays(context.Background())
+		assert.Equal(t, 1, len(relays))
+		assert.Equal(t, "local.local.11", relays[0].Name)
+	})
+}
+
+func TestRemoveRelay(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RemoveRelayReply
+		err := svc.RemoveRelay(req, &jsonrpc.RemoveRelayArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("remove non-existant relay", func(t *testing.T) {
+		var reply jsonrpc.RemoveRelayReply
+		err := svc.RemoveRelay(req, &jsonrpc.RemoveRelayArgs{RelayID: 0}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "RemoveRelay() Storage.Relay error")
+	})
+
+	seller := routing.Seller{
+		ID:        "sellerID",
+		Name:      "seller name",
+		ShortName: "sname",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	relay1 := routing.Relay{
+		ID:         1,
+		Name:       "local.local.1",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay1)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RemoveRelayReply
+		err := svc.RemoveRelay(req, &jsonrpc.RemoveRelayArgs{RelayID: relay1.ID}, &reply)
+		assert.NoError(t, err)
+
+		relay, err := storer.Relay(context.Background(), relay1.ID)
+		assert.Contains(t, relay.Name, "local.local.1-removed-")
+		assert.Equal(t, routing.RelayStateDecommissioned, relay.State)
+	})
+}
+
+func TestRelayNameUpdate(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RelayNameUpdateReply
+		err := svc.RelayNameUpdate(req, &jsonrpc.RelayNameUpdateArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("update non-existant relay", func(t *testing.T) {
+		var reply jsonrpc.RelayNameUpdateReply
+		err := svc.RelayNameUpdate(req, &jsonrpc.RelayNameUpdateArgs{RelayID: 0}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "RelayNameUpdate() Storage.Relay error")
+	})
+
+	seller := routing.Seller{
+		ID:        "sellerID",
+		Name:      "seller name",
+		ShortName: "sname",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	relay1 := routing.Relay{
+		ID:         1,
+		Name:       "local.local.1",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay1)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RelayNameUpdateReply
+		err := svc.RelayNameUpdate(req, &jsonrpc.RelayNameUpdateArgs{RelayID: relay1.ID, RelayName: "new_name"}, &reply)
+		assert.NoError(t, err)
+
+		relay, err := storer.Relay(context.Background(), relay1.ID)
+		assert.Equal(t, relay.Name, "new_name")
+	})
+}
+
+func TestRelayStateUpdate(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RelayStateUpdateReply
+		err := svc.RelayStateUpdate(req, &jsonrpc.RelayStateUpdateArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("update non-existant relay", func(t *testing.T) {
+		var reply jsonrpc.RelayStateUpdateReply
+		err := svc.RelayStateUpdate(req, &jsonrpc.RelayStateUpdateArgs{RelayID: 0}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "RelayStateUpdate() Storage.Relay error")
+	})
+
+	seller := routing.Seller{
+		ID:        "sellerID",
+		Name:      "seller name",
+		ShortName: "sname",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	relay1 := routing.Relay{
+		ID:         1,
+		Name:       "local.local.1",
+		Seller:     seller,
+		Datacenter: datacenter,
+		State:      routing.RelayStateEnabled,
+	}
+
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay1)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RelayStateUpdateReply
+		err := svc.RelayStateUpdate(req, &jsonrpc.RelayStateUpdateArgs{RelayID: relay1.ID, RelayState: routing.RelayStateDecommissioned}, &reply)
+		assert.NoError(t, err)
+
+		relay, err := storer.Relay(context.Background(), relay1.ID)
+		assert.Equal(t, relay.State, routing.RelayStateDecommissioned)
+	})
+}
+
+func TestRelayPublicKeyUpdate(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RelayPublicKeyUpdateReply
+		err := svc.RelayPublicKeyUpdate(req, &jsonrpc.RelayPublicKeyUpdateArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("update non-existant relay", func(t *testing.T) {
+		var reply jsonrpc.RelayPublicKeyUpdateReply
+		err := svc.RelayPublicKeyUpdate(req, &jsonrpc.RelayPublicKeyUpdateArgs{RelayID: 0}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "RelayPublicKeyUpdate()")
+	})
+
+	seller := routing.Seller{
+		ID:        "sellerID",
+		Name:      "seller name",
+		ShortName: "sname",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	relay1 := routing.Relay{
+		ID:         1,
+		Name:       "local.local.1",
+		Seller:     seller,
+		Datacenter: datacenter,
+	}
+
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay1)
+	assert.NoError(t, err)
+
+	t.Run("bad public key", func(t *testing.T) {
+		var reply jsonrpc.RelayPublicKeyUpdateReply
+		err := svc.RelayPublicKeyUpdate(req, &jsonrpc.RelayPublicKeyUpdateArgs{RelayID: relay1.ID, RelayPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A"}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "RelayPublicKeyUpdate() could not decode relay public key")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RelayPublicKeyUpdateReply
+		err := svc.RelayPublicKeyUpdate(req, &jsonrpc.RelayPublicKeyUpdateArgs{RelayID: relay1.ID, RelayPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
+		assert.NoError(t, err)
+
+		relay, err := storer.Relay(context.Background(), relay1.ID)
+
+		expectedPublicKey, err := base64.StdEncoding.DecodeString("KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==")
+		assert.NoError(t, err)
+		assert.Equal(t, relay.PublicKey, expectedPublicKey)
+	})
+}
+
+func TestDatacenter(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.DatacenterReply
+		err := svc.Datacenter(req, &jsonrpc.DatacenterArg{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("get non-existant datacenter", func(t *testing.T) {
+		var reply jsonrpc.DatacenterReply
+		err := svc.Datacenter(req, &jsonrpc.DatacenterArg{ID: 0}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "Datacenter() error")
+	})
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	err := storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.DatacenterReply
+		err := svc.Datacenter(req, &jsonrpc.DatacenterArg{ID: crypto.HashID("datacenter name")}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, datacenter, reply.Datacenter)
+	})
+}
+
+func TestDatacenters(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.DatacentersReply
+		err := svc.Datacenters(req, &jsonrpc.DatacentersArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	datacenter1 := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name 1"),
+		Name: "datacenter name 1",
+	}
+
+	datacenter2 := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name 2"),
+		Name: "datacenter name 2",
+	}
+
+	err := storer.AddDatacenter(context.Background(), datacenter1)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter2)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.DatacentersReply
+		err := svc.Datacenters(req, &jsonrpc.DatacentersArgs{}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(reply.Datacenters))
+		assert.Equal(t, datacenter1.Name, reply.Datacenters[0].Name)
+		assert.Equal(t, datacenter2.Name, reply.Datacenters[1].Name)
+	})
+
+	t.Run("success - name filter", func(t *testing.T) {
+		var reply jsonrpc.DatacentersReply
+		err := svc.Datacenters(req, &jsonrpc.DatacentersArgs{Name: "datacenter name 1"}, &reply)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(reply.Datacenters))
+		assert.Equal(t, datacenter1.Name, reply.Datacenters[0].Name)
+	})
+}
+
+func TestAddDatacenter(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterReply
+		err := svc.AddDatacenter(req, &jsonrpc.AddDatacenterArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	datacenter1 := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name 1"),
+		Name: "datacenter name 1",
+	}
+
+	err := storer.AddDatacenter(context.Background(), datacenter1)
+	assert.NoError(t, err)
+
+	t.Run("add datacenter that already exists", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterReply
+		err := svc.AddDatacenter(req, &jsonrpc.AddDatacenterArgs{Datacenter: datacenter1}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "AddDatacenter() error: ")
+	})
+
+	err = storer.RemoveDatacenter(context.Background(), datacenter1.ID)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.AddDatacenterReply
+		err := svc.AddDatacenter(req, &jsonrpc.AddDatacenterArgs{Datacenter: datacenter1}, &reply)
+		assert.NoError(t, err)
+
+		dc, err := storer.Datacenter(context.Background(), datacenter1.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, datacenter1, dc)
+	})
+}
+
+func TestJSAddDatacenter(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.JSAddDatacenterReply
+		err := svc.JSAddDatacenter(req, &jsonrpc.JSAddDatacenterArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	datacenter1 := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name 1"),
+		Name: "datacenter name 1",
+	}
+
+	t.Run("seller does not exist", func(t *testing.T) {
+		var reply jsonrpc.JSAddDatacenterReply
+		err := svc.JSAddDatacenter(req, &jsonrpc.JSAddDatacenterArgs{Name: datacenter1.Name, SellerID: ""}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "seller with reference  not found")
+	})
+
+	seller := routing.Seller{
+		ID:         "sname",
+		Name:       "seller name",
+		ShortName:  "sname",
+		DatabaseID: 0,
+	}
+
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+
+	err = storer.AddDatacenter(context.Background(), datacenter1)
+	assert.NoError(t, err)
+
+	t.Run("add datacenter that already exists", func(t *testing.T) {
+		var reply jsonrpc.JSAddDatacenterReply
+		err := svc.JSAddDatacenter(req, &jsonrpc.JSAddDatacenterArgs{Name: datacenter1.Name, SellerID: seller.ShortName}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "AddDatacenter() error:")
+	})
+
+	err = storer.RemoveDatacenter(context.Background(), datacenter1.ID)
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.JSAddDatacenterReply
+		err := svc.JSAddDatacenter(req, &jsonrpc.JSAddDatacenterArgs{Name: datacenter1.Name, SellerID: seller.ShortName}, &reply)
+		assert.NoError(t, err)
+
+		dc, err := storer.Datacenter(context.Background(), datacenter1.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, datacenter1, dc)
+	})
+}
+
+/*
 // 1 customer with a buyer and a seller ID
 func TestCustomersSingle(t *testing.T) {
 	t.Parallel()

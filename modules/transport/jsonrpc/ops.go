@@ -154,6 +154,13 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		return err
 	}
 
+	_, err = s.Storage.Customer(r.Context(), args.ShortName)
+	if err != nil {
+		err = fmt.Errorf("JSAddBuyer() could not find Customer %s for %+v: %v", args.ShortName, args, err)
+		core.Error("%v", err)
+		return err
+	}
+
 	// slice the public key here instead of in the clients
 	buyer := routing.Buyer{
 		CompanyCode:         args.ShortName,
@@ -196,34 +203,6 @@ func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *
 	}
 
 	return s.Storage.RemoveBuyer(ctx, buyerID)
-}
-
-type RoutingRulesSettingsArgs struct {
-	BuyerID string
-}
-
-type RoutingRulesSettingsReply struct {
-	RoutingRuleSettings []routingRuleSettings
-}
-
-type routingRuleSettings struct {
-	EnvelopeKbpsUp               int64           `json:"envelopeKbpsUp"`
-	EnvelopeKbpsDown             int64           `json:"envelopeKbpsDown"`
-	Mode                         int64           `json:"mode"`
-	MaxNibblinsPerGB             routing.Nibblin `json:"maxNibblinsPerGB"`
-	RTTEpsilon                   float32         `json:"rttEpsilon"`
-	RTTThreshold                 float32         `json:"rttThreshold"`
-	RTTHysteresis                float32         `json:"rttHysteresis"`
-	RTTVeto                      float32         `json:"rttVeto"`
-	EnableYouOnlyLiveOnce        bool            `json:"yolo"`
-	EnablePacketLossSafety       bool            `json:"plSafety"`
-	EnableMultipathForPacketLoss bool            `json:"plMultipath"`
-	EnableMultipathForJitter     bool            `json:"jitterMultipath"`
-	EnableMultipathForRTT        bool            `json:"rttMultipath"`
-	EnableABTest                 bool            `json:"abTest"`
-	EnableTryBeforeYouBuy        bool            `json:"tryBeforeYouBuy"`
-	TryBeforeYouBuyMaxSlices     int8            `json:"tryBeforeYouBuyMaxSlices"`
-	SelectionPercentage          int64           `json:"selectionPercentage"`
 }
 
 type SellersArgs struct{}
@@ -354,7 +333,7 @@ type AddCustomerReply struct{}
 func (s *OpsService) AddCustomer(r *http.Request, args *AddCustomerArgs, reply *AddCustomerReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("RemoveBuyer(): %v", err.Error())
+		core.Error("AddCustomer(): %v", err.Error())
 		return &err
 	}
 
@@ -857,7 +836,6 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		return err
 	}
 
-	// seller is not required for SQL Storer AddRelay() method
 	var datacenter routing.Datacenter
 	if datacenter, err = s.Storage.Datacenter(r.Context(), dcID); err != nil {
 		err = fmt.Errorf("Datacenter() error: %w", err)
@@ -869,6 +847,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 	if err != nil {
 		err = fmt.Errorf("could not decode base64 public key %s: %v", args.PublicKey, err)
 		core.Error("%v", err)
+		return err
 	}
 
 	rid := crypto.HashID(args.Addr)
