@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 
@@ -557,6 +558,9 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		reply.Roles = append(reply.Roles, role)
 	}
 
+	sort.Slice(reply.Roles, func(i, j int) bool {
+		return reply.Roles[i].GetName() < reply.Roles[j].GetName()
+	})
 	return nil
 }
 
