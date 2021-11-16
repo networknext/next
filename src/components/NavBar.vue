@@ -67,11 +67,10 @@
             class="nav-link"
             :class="{
               active:
-                $store.getters.currentPage == 'notifications' ||
                 $store.getters.currentPage == 'analytics' ||
                 $store.getters.currentPage == 'usage'
             }"
-            v-if="$store.getters.isAdmin"
+            v-if="$store.getters.hasBilling || $store.getters.hasAnalytics"
           >Explore</router-link>
         </li>
         <li class="nav-item text-nowrap">

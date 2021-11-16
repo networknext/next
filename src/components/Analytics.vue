@@ -1,19 +1,15 @@
 <template>
   <div class="card-body" id="analytics-page">
     <div v-for="(url, index) in analyticsDashURLs" :key="index" class="row">
-      <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
-        <div class="card-body">
-          <iframe
-            class="col"
-            id="analyticsDash"
-            :src="url"
-            :style="{'min-height': index === 0 ? '3400px' : '4600px'}"
-            v-if="url !== ''"
-            frameborder="0"
-          >
-          </iframe>
-        </div>
-      </div>
+      <iframe
+        class="col"
+        id="analyticsDash"
+        :src="url"
+        style="min-height: 1000px;"
+        v-if="url !== ''"
+        frameborder="0"
+      >
+      </iframe>
     </div>
   </div>
 </template>
@@ -45,32 +41,34 @@ export default class Analytics extends Vue {
 
     this.fetchAnalyticsSummary()
 
-    const usageDashElement = document.getElementById('usageDash')
-    if (usageDashElement) {
-      usageDashElement.addEventListener('dashboard:run:complete', this.iframeTimeoutHandler)
-    }
+    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
+    window.removeEventListener('message', this.resizeIframes)
+  }
+
+  private resizeIframes (event: any) {
+    const iframes = document.querySelectorAll('#analyticsDash')
+    iframes.forEach((frame: any) => {
+      if (event.source === frame.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
+        const eventData = JSON.parse(event.data)
+        if (eventData.type === 'page:properties:changed') {
+          frame.height = eventData.height + 50
+        }
+      }
+    })
   }
 
   private fetchAnalyticsSummary () {
     this.$apiService.fetchAnalyticsSummary({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      origin: window.location.origin
     })
       .then((response: any) => {
         this.analyticsDashURLs = response.urls || []
       })
-      .catch((error: Error) => {
-        console.log('There was an issue fetching the analytics summary dashboard')
-        console.log(error)
-      })
-  }
-
-  private iframeTimeoutHandler () {
-    // TODO: Look for a status of error or stopped and display a refresh page message....
-    console.log('An iframe timed out we should add an alert to refresh the page!')
   }
 }
 </script>
