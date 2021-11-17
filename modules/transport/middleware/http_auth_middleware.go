@@ -179,6 +179,26 @@ var OwnerRole = func(req *http.Request) (bool, error) {
 	return found, nil
 }
 
+var ExplorerRole = func(req *http.Request) (bool, error) {
+	requestRoles := req.Context().Value(Keys.RolesKey)
+
+	if requestRoles == nil {
+		return false, fmt.Errorf("ExplorerRole(): failed to get roles from context")
+	}
+
+	found := false
+
+	for _, role := range requestRoles.([]string) {
+		if found {
+			continue
+		}
+		if role == "Explorer" {
+			found = true
+		}
+	}
+	return found, nil
+}
+
 // Ops checks the request for the appropriate "scope" in the JWT
 var AnonymousRole = func(req *http.Request) (bool, error) {
 	anon, ok := req.Context().Value(Keys.AnonymousCallKey).(bool)
