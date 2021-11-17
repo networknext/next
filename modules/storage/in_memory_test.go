@@ -1533,14 +1533,13 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 		assert.EqualError(t, err, "relay with reference 0 not found")
 	})
 
-	basicStringNames := []string{"Name", "ManagementAddr", "SSHUser", "Notes", "BillingSupplier", "Version"}
-	times := []string{"StartDate", "EndDate"}
-	addresses := []string{"Addr", "InternalAddr"}
-	base64Fields := []string{"PublicKey"}
-	int32Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "ContractTerm"}
-	uint32Fields := []string{"State", "MaxSessions", "BWRule", "Type"}
-	int64Fields := []string{"SSHPort"}
-	float64Fields := []string{"EgressPriceOverride", "MRC", "Overage"}
+	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "ContractTerm", "SSHPort", "MaxSessions"}
+	stringFields := []string{"ManagementAddr", "SSHUser", "Version"}
+	timeFields := []string{"StartDate", "EndDate"}
+	addressFields := []string{"Addr", "InternalAddr"}
+	nibblinFields := []string{"EgressPriceOverride", "MRC", "Overage"}
+
+	// special cases: PublicKey, State, BWRule, Type, BillingSupplier
 
 	relay := routing.Relay{
 		ID:   0,
@@ -1573,80 +1572,6 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 		assert.Contains(t, err.Error(), "does not exist on the routing.Relay type")
 	})
 
-	t.Run("invalid string fields", func(t *testing.T) {
-		for _, field := range basicStringNames {
-			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
-			assert.Error(t, err)
-			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string value", float64(-1)))
-		}
-	})
-
-	t.Run("invalid time fields", func(t *testing.T) {
-		for _, field := range times {
-			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
-			assert.Error(t, err)
-			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string value", float64(-1)))
-		}
-
-		for _, field := range times {
-			err := inMemory.UpdateRelay(ctx, 0, field, "2021/11/17")
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "must be of the form 'January 2, 2006'")
-		}
-	})
-
-	t.Run("invalid address fields", func(t *testing.T) {
-		for _, field := range addresses {
-			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
-			assert.Error(t, err)
-			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string value", float64(-1)))
-		}
-
-		for _, field := range addresses {
-			err := inMemory.UpdateRelay(ctx, 0, field, "127.0.0.1.1")
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "unable to parse address")
-		}
-	})
-
-	t.Run("invalid base64 fields", func(t *testing.T) {
-		for _, field := range base64Fields {
-			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
-			assert.Error(t, err)
-			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string type", float64(-1)))
-		}
-
-		for _, field := range base64Fields {
-			err := inMemory.UpdateRelay(ctx, 0, field, "a")
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "PublicKey: failed to encode string public key")
-		}
-	})
-
-	t.Run("invalid int32 fields", func(t *testing.T) {
-		for _, field := range int32Fields {
-			err := inMemory.UpdateRelay(ctx, 0, field, "a")
-			assert.Error(t, err)
-			assert.EqualError(t, err, fmt.Sprintf("%s is not a valid int32 type", "a"))
-		}
-	})
-
-	t.Run("invalid uint32 fields", func(t *testing.T) {
-		for _, field := range uint32Fields {
-			err := inMemory.UpdateRelay(ctx, 0, field, "a")
-			assert.Error(t, err)
-			assert.EqualError(t, err, fmt.Sprintf("%s is not a valid uint32 type", "a"))
-		}
-	})
-
-	t.Run("invalid int64 fields", func(t *testing.T) {
-		for _, field := range int64Fields {
-			err := inMemory.UpdateRelay(ctx, 0, field, "a")
-			assert.Error(t, err)
-			assert.EqualError(t, err, fmt.Sprintf("%s is not a valid int64 type", "a"))
-		}
-	})
-
 	t.Run("invalid float64 fields", func(t *testing.T) {
 		for _, field := range float64Fields {
 			err := inMemory.UpdateRelay(ctx, 0, field, "a")
@@ -1655,60 +1580,178 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 		}
 	})
 
+	t.Run("invalid string fields", func(t *testing.T) {
+		for _, field := range stringFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
+			assert.Error(t, err)
+			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string value", float64(-1)))
+		}
+	})
+
+	t.Run("invalid time fields", func(t *testing.T) {
+		for _, field := range timeFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
+			assert.Error(t, err)
+			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string value", float64(-1)))
+		}
+
+		for _, field := range timeFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, "2021/11/17")
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "must be of the form 'January 2, 2006'")
+		}
+	})
+
+	t.Run("invalid address fields", func(t *testing.T) {
+		for _, field := range addressFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
+			assert.Error(t, err)
+			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string value", float64(-1)))
+		}
+
+		for _, field := range addressFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, "127.0.0.1.1")
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "unable to parse address")
+		}
+	})
+
+	t.Run("invalid nibblin fields", func(t *testing.T) {
+		for _, field := range nibblinFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, "a")
+			assert.Error(t, err)
+			assert.EqualError(t, err, fmt.Sprintf("%s is not a valid float64 type", "a"))
+		}
+	})
+
+	t.Run("invalid public key", func(t *testing.T) {
+
+		err := inMemory.UpdateRelay(ctx, 0, "PublicKey", float64(-1))
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string type", float64(-1)))
+
+		err = inMemory.UpdateRelay(ctx, 0, "PublicKey", "a")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "PublicKey: failed to encode string public key")
+	})
+
+	t.Run("invalid relay state", func(t *testing.T) {
+
+		err := inMemory.UpdateRelay(ctx, 0, "State", "a")
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("%s is not a valid float64 type", "a"))
+
+		err = inMemory.UpdateRelay(ctx, 0, "State", float64(-1))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "-1 is not a valid RelayState value")
+
+		err = inMemory.UpdateRelay(ctx, 0, "State", float64(6))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "6 is not a valid RelayState value")
+	})
+
+	t.Run("invalid bw rule", func(t *testing.T) {
+
+		err := inMemory.UpdateRelay(ctx, 0, "BWRule", "a")
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("%s is not a valid float64 type", "a"))
+
+		err = inMemory.UpdateRelay(ctx, 0, "BWRule", float64(-1))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "-1 is not a valid BandWidthRule value")
+
+		err = inMemory.UpdateRelay(ctx, 0, "BWRule", float64(5))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "5 is not a valid BandWidthRule value")
+	})
+
+	t.Run("invalid machine type", func(t *testing.T) {
+
+		err := inMemory.UpdateRelay(ctx, 0, "Type", "a")
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("%s is not a valid float64 type", "a"))
+
+		err = inMemory.UpdateRelay(ctx, 0, "Type", float64(-1))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "-1 is not a valid MachineType value")
+
+		err = inMemory.UpdateRelay(ctx, 0, "Type", float64(3))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "3 is not a valid MachineType value")
+	})
+
+	t.Run("invalid billing supplier", func(t *testing.T) {
+
+		err := inMemory.UpdateRelay(ctx, 0, "BillingSupplier", float64(-1))
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string value", float64(-1)))
+
+		err = inMemory.UpdateRelay(ctx, 0, "BillingSupplier", "unknown seller")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("%s is not a valid seller ID", "unknown seller"))
+	})
+
+	t.Run("success float64 fields", func(t *testing.T) {
+		for _, field := range float64Fields {
+			err := inMemory.UpdateRelay(ctx, 0, field, float64(1))
+			assert.NoError(t, err)
+		}
+	})
+
 	t.Run("success string fields", func(t *testing.T) {
-		for _, field := range basicStringNames {
-			err := inMemory.UpdateRelay(ctx, 0, field, "seller ID")
+		for _, field := range stringFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, "a")
 			assert.NoError(t, err)
 		}
 	})
 
 	t.Run("success time fields", func(t *testing.T) {
-		for _, field := range times {
+		for _, field := range timeFields {
 			err := inMemory.UpdateRelay(ctx, 0, field, "November 17, 2021")
 			assert.NoError(t, err)
 		}
 	})
 
 	t.Run("success address fields", func(t *testing.T) {
-		for _, field := range addresses {
+		for _, field := range addressFields {
 			err := inMemory.UpdateRelay(ctx, 0, field, "127.0.0.1:40000")
 			assert.NoError(t, err)
 		}
 	})
 
-	t.Run("success base64 fields", func(t *testing.T) {
-		for _, field := range base64Fields {
-			err := inMemory.UpdateRelay(ctx, 0, field, "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g==")
+	t.Run("success nibblin fields", func(t *testing.T) {
+		for _, field := range nibblinFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, float64(100))
 			assert.NoError(t, err)
 		}
 	})
 
-	t.Run("success int32 fields", func(t *testing.T) {
-		for _, field := range int32Fields {
-			err := inMemory.UpdateRelay(ctx, 0, field, int32(1))
-			assert.NoError(t, err)
-		}
+	t.Run("success public key", func(t *testing.T) {
+		err := inMemory.UpdateRelay(ctx, 0, "PublicKey", "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g==")
+		assert.NoError(t, err)
 	})
 
-	t.Run("success uint32 fields", func(t *testing.T) {
-		for _, field := range uint32Fields {
-			err := inMemory.UpdateRelay(ctx, 0, field, uint32(1))
-			assert.NoError(t, err)
-		}
+	t.Run("success relay state", func(t *testing.T) {
+		err := inMemory.UpdateRelay(ctx, 0, "State", float64(1))
+		assert.NoError(t, err)
 	})
 
-	t.Run("success int64 fields", func(t *testing.T) {
-		for _, field := range int64Fields {
-			err := inMemory.UpdateRelay(ctx, 0, field, int64(1))
-			assert.NoError(t, err)
-		}
+	t.Run("success bw rule", func(t *testing.T) {
+
+		err := inMemory.UpdateRelay(ctx, 0, "BWRule", float64(1))
+		assert.NoError(t, err)
 	})
 
-	t.Run("success float64 fields", func(t *testing.T) {
-		for _, field := range float64Fields {
-			err := inMemory.UpdateRelay(ctx, 0, field, float64(1.0))
-			assert.NoError(t, err)
-		}
+	t.Run("success machine type", func(t *testing.T) {
+
+		err := inMemory.UpdateRelay(ctx, 0, "Type", float64(1))
+		assert.NoError(t, err)
+	})
+
+	t.Run("success billing supplier", func(t *testing.T) {
+
+		err := inMemory.UpdateRelay(ctx, 0, "BillingSupplier", "seller ID")
+		assert.NoError(t, err)
 	})
 }
 

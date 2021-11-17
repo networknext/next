@@ -992,23 +992,23 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 		relay.PublicKey = newPublicKey
 
 	case "NICSpeedMbps":
-		portSpeed, ok := value.(int32)
+		portSpeed, ok := value.(float64)
 		if !ok {
-			return fmt.Errorf("%v is not a valid int32 type", value)
+			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
-		relay.NICSpeedMbps = portSpeed
+		relay.NICSpeedMbps = int32(portSpeed)
 
 	case "IncludedBandwidthGB":
-		includedBW, ok := value.(int32)
+		includedBW, ok := value.(float64)
 		if !ok {
-			return fmt.Errorf("%v is not a valid int32 type", value)
+			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
-		relay.IncludedBandwidthGB = includedBW
+		relay.IncludedBandwidthGB = int32(includedBW)
 
 	case "State":
-		state, ok := value.(uint32)
+		state, ok := value.(float64)
 		if !ok {
-			return fmt.Errorf("%v is not a valid uint32 type", value)
+			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
 		if state < 0 || state > 5 {
 			return fmt.Errorf("%d is not a valid RelayState value", int64(state))
@@ -1032,18 +1032,22 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 		relay.SSHUser = user
 
 	case "SSHPort":
-		port, ok := value.(int64)
+		port, ok := value.(float64)
 		if !ok {
-			return fmt.Errorf("%v is not a valid int64 type", value)
+			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
-		relay.SSHPort = port
+		relay.SSHPort = int64(port)
 
 	case "MaxSessions":
-		maxSessions, ok := value.(uint32)
+		maxSessions, ok := value.(float64)
 		if !ok {
-			return fmt.Errorf("%v is not a valid uint32 type", value)
+			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
-		relay.MaxSessions = maxSessions
+		if maxSessions < 0 {
+			return fmt.Errorf("%d is not a valid MaxSessions value", int32(maxSessions))
+		}
+
+		relay.MaxSessions = uint32(maxSessions)
 
 	case "EgressPriceOverride":
 		egressPriceOverrideUSD, ok := value.(float64)
@@ -1067,9 +1071,9 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 		relay.Overage = routing.DollarsToNibblins(overageUSD)
 
 	case "BWRule":
-		bwRule, ok := value.(uint32)
+		bwRule, ok := value.(float64)
 		if !ok {
-			return fmt.Errorf("%v is not a valid uint32 type", value)
+			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
 		if bwRule < 0 || bwRule > 4 {
 			return fmt.Errorf("%d is not a valid BandWidthRule value", int64(bwRule))
@@ -1077,14 +1081,14 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 		relay.BWRule = routing.BandWidthRule(bwRule)
 
 	case "ContractTerm":
-		term, ok := value.(int32)
+		term, ok := value.(float64)
 		if !ok {
-			return fmt.Errorf("%v is not a valid int32 type", value)
+			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
 		if term < 0 {
 			return fmt.Errorf("%d is not a valid ContractTerm value", int32(term))
 		}
-		relay.ContractTerm = term
+		relay.ContractTerm = int32(term)
 
 	case "StartDate":
 		startDate, ok := value.(string)
@@ -1120,9 +1124,9 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 		}
 
 	case "Type":
-		machineType, ok := value.(uint32)
+		machineType, ok := value.(float64)
 		if !ok {
-			return fmt.Errorf("%v is not a valid uint32 type", value)
+			return fmt.Errorf("%v is not a valid float64 type", value)
 		}
 		if machineType < 0 || machineType > 2 {
 			return fmt.Errorf("%d is not a valid MachineType value", int64(machineType))
