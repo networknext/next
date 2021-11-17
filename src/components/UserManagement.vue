@@ -52,7 +52,15 @@
         <label for="customerId">
           Permission Level
         </label>
-        <multiselect placeholder="" track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple></multiselect>
+        <multiselect placeholder="" track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple>
+          <template slot="option" slot-scope="props">
+            <div class="option__desc row" style="margin-right: 0px;">
+              <div class="option__title col" style="max-width: 10%;">{{ props.option.name }}</div>
+              <div class="col text-wrap" style="max-width: 70%;">{{ props.option.description }}</div>
+              <div class="col" style="max-width: 10%;"></div>
+            </div>
+          </template>
+        </multiselect>
         <small class="form-text text-muted">
           The permission level to grant the added user accounts.
         </small>
@@ -97,7 +105,15 @@
             {{ account.email }}
           </td>
           <td>
-            <multiselect placeholder="" track-by="name" label="name" v-model="account.roles" :options="allRoles" multiple :disabled="!account.edit"></multiselect>
+            <multiselect placeholder="" track-by="name" label="name" v-model="account.roles" :options="allRoles" multiple :disabled="!account.edit">
+              <template slot="option" slot-scope="props">
+                <div class="option__desc row" style="margin-right: 0px;">
+                  <div class="option__title col" style="max-width: 10%;">{{ props.option.name }}</div>
+                  <div class="col text-wrap" style="max-width: 70%;">{{ props.option.description }}</div>
+                  <div class="col" style="max-width: 10%;"></div>
+                </div>
+              </template>
+            </multiselect>
           </td>
           <td class="td-btn" v-show="!account.edit && !account.delete">
             <button

@@ -179,6 +179,21 @@ const ViewerRoutes = [
   'account-settings'
 ]
 
+const ExplorerRoutes = [
+  'map',
+  'sessions',
+  'session-details',
+  'session-tool',
+  'user-sessions',
+  'user-tool',
+  'downloads',
+  'settings',
+  'account-settings',
+  'explore',
+  'usage',
+  'analytics'
+]
+
 const OwnerRoutes = [
   'map',
   'sessions',
@@ -240,14 +255,21 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     return
   }
 
-  if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && !store.getters.isOwner && !store.getters.isAdmin && ViewerRoutes.indexOf(to.name || '') === -1) {
+  if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && !store.getters.isExplorer && !store.getters.isOwner && !store.getters.isAdmin && ViewerRoutes.indexOf(to.name || '') === -1) {
+    updateCurrentPage('map')
+    next('/map')
+    return
+  }
+
+  // Explorer Filters
+  if (store.getters.isExplorer && !store.getters.isOwner && !store.getters.isAdmin && ExplorerRoutes.indexOf(to.name || '') === -1) {
     updateCurrentPage('map')
     next('/map')
     return
   }
 
   // Owner Filters
-  if (store.getters.Owner && OwnerRoutes.indexOf(to.name || '') === -1) {
+  if (store.getters.isOwner && !store.getters.isAdmin && OwnerRoutes.indexOf(to.name || '') === -1) {
     updateCurrentPage('map')
     next('/map')
     return
