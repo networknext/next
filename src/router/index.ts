@@ -300,7 +300,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
 
   // Beta / Premium features given to the user at a buyer level
-  if (!store.getters.hasBilling && (to.name === 'usage')) {
+  if (!store.getters.hasBilling && (to.name === 'usage' || to.name === 'invoice')) {
     next(new Error('Insufficient privileges'))
     return
   }
