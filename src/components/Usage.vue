@@ -5,8 +5,8 @@
         class="col"
         id="usageDash"
         style="min-height: 1000px;"
-        :src="usageDashDashURL"
-        v-if="usageDashDashURL !== ''"
+        :src="usageDashURL"
+        v-if="usageDashURL !== ''"
         frameborder="0"
       >
       </iframe>
@@ -130,19 +130,36 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { DateTime } from 'luxon'
 
 @Component
 export default class Usage extends Vue {
-  private usageDashDashURL: string
+  private dateString: string
+  private usageDashURL: string
 
   private unwatchFilter: any
 
   constructor () {
     super()
-    this.usageDashDashURL = ''
+    this.dateString = ''
+    this.usageDashURL = ''
   }
 
   private mounted () {
+    const now = DateTime.now()
+    const currentDateString = `${now.year}-${now.month}`
+
+    // Check URL date and set to default if empty
+    this.dateString = this.$route.params.pathMatch || ''
+
+    if (this.dateString !== currentDateString) {
+      const passedInDate = this.dateString.split('-')
+      // check for invalid date
+      if (parseInt(passedInDate[0]) > now.year || (parseInt(passedInDate[0]) === now.year && parseInt(passedInDate[1]) > now.month)) {
+        this.dateString = ''
+      }
+    }
+
     // This is only necessary for admins - when the filter changes, grab the new billing URL
     this.unwatchFilter = this.$store.watch(
       (state: any, getters: any) => {
@@ -176,10 +193,11 @@ export default class Usage extends Vue {
   private fetchUsageSummary () {
     this.$apiService.fetchUsageSummary({
       company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
-      origin: window.location.origin
+      origin: window.location.origin,
+      date_string: this.dateString
     })
       .then((response: any) => {
-        this.usageDashDashURL = response.url || ''
+        this.usageDashURL = response.url || ''
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the billing summary dashboard')
