@@ -733,9 +733,9 @@ func TestAddUserAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleIDs[0],
-			Name:        &roleNames[0],
-			Description: &roleDescriptions[0],
+			ID:          svc.RoleCache["Explorer"].ID,
+			Name:        svc.RoleCache["Explorer"].Name,
+			Description: svc.RoleCache["Explorer"].Description,
 		},
 	}...)
 
@@ -764,9 +764,9 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleIDs[2],
-				Name:        &roleNames[2],
-				Description: &roleDescriptions[2],
+				ID:          svc.RoleCache["Admin"].ID,
+				Name:        svc.RoleCache["Admin"].Name,
+				Description: svc.RoleCache["Admin"].Description,
 			},
 		}}, &reply)
 		assert.Error(t, err)
@@ -776,9 +776,9 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleIDs[2],
-				Name:        &roleNames[2],
-				Description: &roleDescriptions[2],
+				ID:          svc.RoleCache["Admin"].ID,
+				Name:        svc.RoleCache["Admin"].Name,
+				Description: svc.RoleCache["Admin"].Description,
 			},
 		}}, &reply)
 		assert.Error(t, err)
@@ -788,9 +788,9 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleIDs[0],
-				Name:        &roleNames[0],
-				Description: &roleDescriptions[0],
+				ID:          svc.RoleCache["Explorer"].ID,
+				Name:        svc.RoleCache["Explorer"].Name,
+				Description: svc.RoleCache["Explorer"].Description,
 			},
 		}}, &reply)
 		assert.Error(t, err)
@@ -803,9 +803,9 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleIDs[0],
-				Name:        &roleNames[0],
-				Description: &roleDescriptions[0],
+				ID:          svc.RoleCache["Admin"].ID,
+				Name:        svc.RoleCache["Admin"].Name,
+				Description: svc.RoleCache["Admin"].Description,
 			},
 		}}, &reply)
 		assert.NoError(t, err)
@@ -820,9 +820,9 @@ func TestAddUserAccount(t *testing.T) {
 		var reply jsonrpc.AccountsReply
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{Roles: []*management.Role{
 			{
-				ID:          &roleIDs[0],
-				Name:        &roleNames[0],
-				Description: &roleDescriptions[0],
+				ID:          svc.RoleCache["Explorer"].ID,
+				Name:        svc.RoleCache["Explorer"].Name,
+				Description: svc.RoleCache["Explorer"].Description,
 			},
 		}, Emails: []string{"test@test123.com"}}, &reply)
 		assert.NoError(t, err)
@@ -844,9 +844,9 @@ func TestAddUserAccount(t *testing.T) {
 		err := svc.AddUserAccount(req, &jsonrpc.AccountsArgs{
 			Roles: []*management.Role{
 				{
-					ID:          &roleIDs[0],
-					Name:        &roleNames[0],
-					Description: &roleDescriptions[0],
+					ID:          svc.RoleCache["Explorer"].ID,
+					Name:        svc.RoleCache["Explorer"].Name,
+					Description: svc.RoleCache["Explorer"].Description,
 				},
 			},
 			Emails: []string{"test@test1.com"},
@@ -959,6 +959,7 @@ func TestUserRoles(t *testing.T) {
 	t.Parallel()
 	var userManager = storage.NewLocalUserManager()
 	var jobManager = storage.LocalJobManager{}
+	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
 
 	roleIDs := []string{
@@ -1000,8 +1001,28 @@ func TestUserRoles(t *testing.T) {
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
+		RoleManager: roleManager,
+		RoleCache:   make(map[string]*management.Role),
 		Storage:     &storer,
 		Logger:      logger,
+	}
+
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Explorer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1039,9 +1060,9 @@ func TestUserRoles(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleIDs[0],
-			Name:        &roleNames[0],
-			Description: &roleDescriptions[0],
+			ID:          svc.RoleCache["Explorer"].ID,
+			Name:        svc.RoleCache["Explorer"].Name,
+			Description: svc.RoleCache["Explorer"].Description,
 		},
 	}...)
 
@@ -1162,9 +1183,9 @@ func TestUpdateUserRoles(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleIDs[0],
-			Name:        &roleNames[0],
-			Description: &roleDescriptions[0],
+			ID:          svc.RoleCache["Explorer"].ID,
+			Name:        svc.RoleCache["Explorer"].Name,
+			Description: svc.RoleCache["Explorer"].Description,
 		},
 	}...)
 
@@ -1172,9 +1193,9 @@ func TestUpdateUserRoles(t *testing.T) {
 		var reply jsonrpc.RolesReply
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "456", Roles: []*management.Role{
 			{
-				ID:          &roleIDs[2],
-				Name:        &roleNames[2],
-				Description: &roleDescriptions[2],
+				ID:          svc.RoleCache["Admin"].ID,
+				Name:        svc.RoleCache["Admin"].Name,
+				Description: svc.RoleCache["Admin"].Description,
 			},
 		}}, &reply)
 		assert.Error(t, err)
@@ -1184,17 +1205,17 @@ func TestUpdateUserRoles(t *testing.T) {
 		var reply jsonrpc.RolesReply
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "456", Roles: []*management.Role{
 			{
-				ID:          &roleIDs[0],
-				Name:        &roleNames[0],
-				Description: &roleDescriptions[0],
+				ID:          svc.RoleCache["Explorer"].ID,
+				Name:        svc.RoleCache["Explorer"].Name,
+				Description: svc.RoleCache["Explorer"].Description,
 			},
 		}}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(reply.Roles))
-		assert.Equal(t, roleIDs[0], reply.Roles[0].GetID())
-		assert.Equal(t, roleNames[0], reply.Roles[0].GetName())
-		assert.Equal(t, roleDescriptions[0], reply.Roles[0].GetDescription())
+		assert.Equal(t, svc.RoleCache["Explorer"].GetID(), reply.Roles[0].GetID())
+		assert.Equal(t, svc.RoleCache["Explorer"].GetName(), reply.Roles[0].GetName())
+		assert.Equal(t, svc.RoleCache["Explorer"].GetDescription(), reply.Roles[0].GetDescription())
 	})
 
 	t.Run("success - admin assigning admin", func(t *testing.T) {
@@ -1206,17 +1227,17 @@ func TestUpdateUserRoles(t *testing.T) {
 		var reply jsonrpc.RolesReply
 		err := svc.UpdateUserRoles(req, &jsonrpc.RolesArgs{UserID: "456", Roles: []*management.Role{
 			{
-				ID:          &roleIDs[2],
-				Name:        &roleNames[2],
-				Description: &roleDescriptions[2],
+				ID:          svc.RoleCache["Admin"].ID,
+				Name:        svc.RoleCache["Admin"].Name,
+				Description: svc.RoleCache["Admin"].Description,
 			},
 		}}, &reply)
 		assert.NoError(t, err)
 
 		assert.Equal(t, 1, len(reply.Roles))
-		assert.Equal(t, roleIDs[2], reply.Roles[0].GetID())
-		assert.Equal(t, roleNames[2], reply.Roles[0].GetName())
-		assert.Equal(t, roleDescriptions[2], reply.Roles[0].GetDescription())
+		assert.Equal(t, svc.RoleCache["Admin"].GetID(), reply.Roles[0].GetID())
+		assert.Equal(t, svc.RoleCache["Admin"].GetName(), reply.Roles[0].GetName())
+		assert.Equal(t, svc.RoleCache["Admin"].GetDescription(), reply.Roles[0].GetDescription())
 	})
 }
 
@@ -1363,9 +1384,9 @@ func TestSetupCompanyAccount(t *testing.T) {
 
 	userManager.AssignRoles("123", []*management.Role{
 		{
-			ID:          &roleIDs[0],
-			Name:        &roleNames[0],
-			Description: &roleDescriptions[0],
+			ID:          svc.RoleCache["Explorer"].ID,
+			Name:        svc.RoleCache["Explorer"].Name,
+			Description: svc.RoleCache["Explorer"].Description,
 		},
 	}...)
 
