@@ -255,14 +255,14 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
 
   // Explorer Filters
-  if (store.getters.isExplorer && OwnerRoutes.indexOf(to.name || '') === -1) {
+  if (store.getters.isExplorer && !store.getters.isOwner && !store.getters.isAdmin && ExplorerRoutes.indexOf(to.name || '') === -1) {
     updateCurrentPage('map')
     next('/map')
     return
   }
 
   // Owner Filters
-  if (store.getters.isOwner && OwnerRoutes.indexOf(to.name || '') === -1) {
+  if (store.getters.isOwner && !store.getters.isAdmin && OwnerRoutes.indexOf(to.name || '') === -1) {
     updateCurrentPage('map')
     next('/map')
     return
