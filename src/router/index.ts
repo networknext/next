@@ -255,7 +255,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
 
   // Explorer Filters
-  if (store.getters.isExplorer && OwnerRoutes.indexOf(to.name || '') === -1) {
+  if (store.getters.isExplorer && ExplorerRoutes.indexOf(to.name || '') === -1) {
     updateCurrentPage('map')
     next('/map')
     return
