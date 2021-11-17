@@ -1567,6 +1567,12 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 	err = inMemory.AddRelay(ctx, relay)
 	assert.NoError(t, err)
 
+	t.Run("unknown field", func(t *testing.T) {
+		err := inMemory.UpdateRelay(ctx, 0, "unknown", "1")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "does not exist on the routing.Relay type")
+	})
+
 	t.Run("invalid string fields", func(t *testing.T) {
 		for _, field := range basicStringNames {
 			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
