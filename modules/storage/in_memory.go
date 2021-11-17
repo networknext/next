@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/networknext/backend/modules/core"
@@ -918,7 +919,267 @@ func (m *InMemory) RemoveRouteShader(ctx context.Context, buyerID uint64) error 
 }
 
 func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string, value interface{}) error {
-	return fmt.Errorf(("UpdateRelay not impemented in Firestore storer"))
+	var relayExists bool
+	var relay routing.Relay
+	var idx int
+
+	for i, localRelay := range m.localRelays {
+		if localRelay.ID == relayID {
+
+			relay = localRelay
+			idx = i
+			relayExists = true
+			break
+		}
+	}
+
+	if !relayExists {
+		return &DoesNotExistError{resourceType: "relay", resourceRef: relayID}
+	}
+
+	switch field {
+	case "Name":
+		name, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		relay.Name = name
+	case "Addr":
+		addrString, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		// "removing" a relay zeroes-out the public IP address
+		if addrString == "" {
+			relay.Addr = net.UDPAddr{}
+		} else {
+			udpAddr, err := net.ResolveUDPAddr("udp", addrString)
+			if err != nil {
+				return fmt.Errorf("unable to parse address %s as UDP address: %w", addrString, err)
+			}
+			relay.Addr = *udpAddr
+		}
+
+	case "InternalAddr":
+		addrString, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if addrString == "" {
+			relay.InternalAddr = net.UDPAddr{}
+
+		} else {
+			udpAddr, err := net.ResolveUDPAddr("udp", addrString)
+			if err != nil {
+				return fmt.Errorf("unable to parse address %s as UDP address: %w", addrString, err)
+			}
+			relay.InternalAddr = *udpAddr
+		}
+
+	case "PublicKey":
+		publicKey, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string type", value)
+		}
+
+		newPublicKey, err := base64.StdEncoding.DecodeString(publicKey)
+		if err != nil {
+			return fmt.Errorf("PublicKey: failed to encode string public key: %v", err)
+		}
+
+		relay.PublicKey = newPublicKey
+
+	case "NICSpeedMbps":
+		portSpeed, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int32 type", value)
+		}
+		relay.NICSpeedMbps = portSpeed
+
+	case "IncludedBandwidthGB":
+		includedBW, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int32 type", value)
+		}
+		relay.IncludedBandwidthGB = includedBW
+
+	case "State":
+		state, ok := value.(uint32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid uint32 type", value)
+		}
+		if state < 0 || state > 5 {
+			return fmt.Errorf("%d is not a valid RelayState value", int64(state))
+		}
+		relay.State = routing.RelayState(state)
+
+	case "ManagementAddr":
+		// routing.Relay.ManagementIP is currently a string type although
+		// the database field is inet
+		managementIP, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		relay.ManagementAddr = managementIP
+
+	case "SSHUser":
+		user, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+		relay.SSHUser = user
+
+	case "SSHPort":
+		port, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int64 type", value)
+		}
+		relay.SSHPort = port
+
+	case "MaxSessions":
+		maxSessions, ok := value.(uint32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid uint32 type", value)
+		}
+		relay.MaxSessions = maxSessions
+
+	case "EgressPriceOverride":
+		egressPriceOverrideUSD, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		relay.EgressPriceOverride = routing.DollarsToNibblins(egressPriceOverrideUSD)
+
+	case "MRC":
+		mrcUSD, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		relay.MRC = routing.DollarsToNibblins(mrcUSD)
+
+	case "Overage":
+		overageUSD, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		relay.Overage = routing.DollarsToNibblins(overageUSD)
+
+	case "BWRule":
+		bwRule, ok := value.(uint32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid uint32 type", value)
+		}
+		if bwRule < 0 || bwRule > 4 {
+			return fmt.Errorf("%d is not a valid BandWidthRule value", int64(bwRule))
+		}
+		relay.BWRule = routing.BandWidthRule(bwRule)
+
+	case "ContractTerm":
+		term, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int32 type", value)
+		}
+		if term < 0 {
+			return fmt.Errorf("%d is not a valid ContractTerm value", int32(term))
+		}
+		relay.ContractTerm = term
+
+	case "StartDate":
+		startDate, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if startDate == "" {
+			relay.StartDate = time.Time{}
+		} else {
+			newStartDate, err := time.Parse("January 2, 2006", startDate)
+			if err != nil {
+				return fmt.Errorf("could not parse `%s` - must be of the form 'January 2, 2006'", startDate)
+			}
+			relay.StartDate = newStartDate
+		}
+
+	case "EndDate":
+		endDate, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if endDate == "" {
+			relay.EndDate = time.Time{}
+		} else {
+			newEndDate, err := time.Parse("January 2, 2006", endDate)
+			if err != nil {
+				return fmt.Errorf("could not parse `%s` - must be of the form 'January 2, 2006'", endDate)
+			}
+
+			relay.EndDate = newEndDate
+		}
+
+	case "Type":
+		machineType, ok := value.(uint32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid uint32 type", value)
+		}
+		if machineType < 0 || machineType > 2 {
+			return fmt.Errorf("%d is not a valid MachineType value", int64(machineType))
+		}
+		relay.Type = routing.MachineType(machineType)
+
+	case "Notes":
+		notes, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		relay.Notes = notes
+
+	case "BillingSupplier":
+		billingSupplier, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if billingSupplier == "" {
+			relay.BillingSupplier = ""
+		} else {
+
+			sellerDatabaseID := 0
+			for _, seller := range m.Sellers(ctx) {
+				if seller.ID == billingSupplier {
+					sellerDatabaseID = int(seller.DatabaseID)
+				}
+			}
+
+			if sellerDatabaseID == 0 {
+				return fmt.Errorf("%s is not a valid seller ID", billingSupplier)
+			}
+
+			relay.BillingSupplier = billingSupplier
+		}
+
+	case "Version":
+		version, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		if version == "" {
+			return fmt.Errorf("relay version must not be an empty string")
+		}
+
+		relay.Version = version
+
+	default:
+		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
+
+	}
+
+	m.localRelays[idx] = relay
+	return nil
 }
 
 func (m *InMemory) AddBannedUser(ctx context.Context, buyerID uint64, userID uint64) error {
