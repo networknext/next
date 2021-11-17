@@ -3,6 +3,8 @@ package jsonrpc_test
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -1007,6 +1009,7 @@ func TestRemoveRelay(t *testing.T) {
 		relay, err := storer.Relay(context.Background(), relay1.ID)
 		assert.Contains(t, relay.Name, "local.local.1-removed-")
 		assert.Equal(t, routing.RelayStateDecommissioned, relay.State)
+		assert.Equal(t, net.UDPAddr{}, relay.Addr)
 	})
 }
 
@@ -1439,370 +1442,284 @@ func TestJSAddDatacenter(t *testing.T) {
 	})
 }
 
-/*
-// 1 customer with a buyer and a seller ID
-func TestCustomersSingle(t *testing.T) {
+func TestRemoveDatacenter(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "Fred Scuttle"})
-	storer.AddSeller(context.Background(), routing.Seller{ID: "some seller", Name: "Fred Scuttle"})
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
-		Logger:  logger,
 	}
 
-	t.Run("single customer", func(t *testing.T) {
-		var reply jsonrpc.CustomersReply
-		err := svc.Customers(nil, &jsonrpc.CustomersArgs{}, &reply)
-		assert.NoError(t, err)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-		assert.Equal(t, "1", reply.Customers[0].BuyerID)
-		assert.Equal(t, "some seller", reply.Customers[0].SellerID)
-		assert.Equal(t, "Fred Scuttle", reply.Customers[0].Name)
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RemoveDatacenterReply
+		err := svc.RemoveDatacenter(req, &jsonrpc.RemoveDatacenterArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
 	})
-}
 
-// Multiple customers with different names (2 records)
-func TestCustomersMultiple(t *testing.T) {
-	t.Parallel()
-
-	storer := storage.InMemory{}
-	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "Fred Scuttle"})
-	storer.AddSeller(context.Background(), routing.Seller{ID: "some seller", Name: "Bull Winkle"})
-
-	logger := log.NewNopLogger()
-	svc := jsonrpc.OpsService{
-		Storage: &storer,
-		Logger:  logger,
-	}
-
-	t.Run("multiple customers", func(t *testing.T) {
-		var reply jsonrpc.CustomersReply
-		err := svc.Customers(nil, &jsonrpc.CustomersArgs{}, &reply)
-		assert.NoError(t, err)
-
-		// sorted alphabetically by name
-		assert.Equal(t, "", reply.Customers[0].BuyerID)
-		assert.Equal(t, "some seller", reply.Customers[0].SellerID)
-		assert.Equal(t, "Bull Winkle", reply.Customers[0].Name)
-
-		assert.Equal(t, "1", reply.Customers[1].BuyerID)
-		assert.Equal(t, "", reply.Customers[1].SellerID)
-		assert.Equal(t, "Fred Scuttle", reply.Customers[1].Name)
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
 	})
-}
+	req = req.WithContext(reqContext)
 
-func TestAddBuyer(t *testing.T) {
-	t.Parallel()
-
-	storer := storage.InMemory{}
-
-	logger := log.NewNopLogger()
-	svc := jsonrpc.OpsService{
-		Storage: &storer,
-		Logger:  logger,
+	datacenter1 := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name 1"),
+		Name: "datacenter name 1",
 	}
 
-	publicKey := make([]byte, crypto.KeySize)
-	_, err := rand.Read(publicKey)
+	t.Run("remove non-existant datacenter", func(t *testing.T) {
+		var reply jsonrpc.RemoveDatacenterReply
+		err := svc.RemoveDatacenter(req, &jsonrpc.RemoveDatacenterArgs{Name: datacenter1.Name}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "RemoveDatacenter() error:")
+	})
+
+	err := storer.AddDatacenter(context.Background(), datacenter1)
 	assert.NoError(t, err)
 
-	expected := routing.Buyer{
-		ID:                   1,
-		Name:                 "local buyer",
-		Active:               true,
-		Live:                 false,
-		PublicKey:            publicKey,
-		RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
-	}
-
-	t.Run("add", func(t *testing.T) {
-		var reply jsonrpc.AddBuyerReply
-		err := svc.AddBuyer(nil, &jsonrpc.AddBuyerArgs{Buyer: expected}, &reply)
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RemoveDatacenterReply
+		err := svc.RemoveDatacenter(req, &jsonrpc.RemoveDatacenterArgs{Name: datacenter1.Name}, &reply)
 		assert.NoError(t, err)
 
-		var buyersReply jsonrpc.BuyersReply
-		err = svc.Buyers(nil, &jsonrpc.BuyersArgs{}, &buyersReply)
-		assert.NoError(t, err)
-
-		assert.Len(t, buyersReply.Buyers, 1)
-		assert.Equal(t, buyersReply.Buyers[0].ID, fmt.Sprintf("%x", expected.ID))
-		assert.Equal(t, buyersReply.Buyers[0].Name, expected.Name)
-	})
-
-	t.Run("exists", func(t *testing.T) {
-		var reply jsonrpc.AddBuyerReply
-
-		err = svc.AddBuyer(nil, &jsonrpc.AddBuyerArgs{Buyer: expected}, &reply)
-		assert.EqualError(t, err, "buyer with reference 1 already exists")
+		dcs := storer.Datacenters(context.Background())
+		assert.Zero(t, len(dcs))
 	})
 }
 
-func TestRemoveBuyer(t *testing.T) {
+func TestListDatacenterMaps(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
-		Logger:  logger,
 	}
 
-	publicKey := make([]byte, crypto.KeySize)
-	_, err := rand.Read(publicKey)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.ListDatacenterMapsReply
+		err := svc.ListDatacenterMaps(req, &jsonrpc.ListDatacenterMapsArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	datacenter1 := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name 1"),
+		Name: "datacenter name 1",
+	}
+
+	datacenter2 := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name 2"),
+		Name: "datacenter name 2",
+	}
+
+	dcMap1 := routing.DatacenterMap{
+		BuyerID:      0,
+		DatacenterID: datacenter1.ID,
+	}
+
+	dcMap2 := routing.DatacenterMap{
+		BuyerID:      1,
+		DatacenterID: datacenter2.ID,
+	}
+
+	err := storer.AddDatacenterMap(context.Background(), dcMap1)
+	assert.NoError(t, err)
+	err = storer.AddDatacenterMap(context.Background(), dcMap2)
 	assert.NoError(t, err)
 
-	expected := routing.Buyer{
-		ID:                   1,
-		Name:                 "local buyer",
-		Active:               true,
-		Live:                 false,
-		PublicKey:            publicKey,
-		RoutingRulesSettings: routing.DefaultRoutingRulesSettings,
-	}
-
-	t.Run("doesn't exist", func(t *testing.T) {
-		var reply jsonrpc.RemoveBuyerReply
-
-		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: fmt.Sprintf("%x", expected.ID)}, &reply)
-		assert.EqualError(t, err, "buyer with reference 1 not found")
+	t.Run("buyer for datacenter map does not exist", func(t *testing.T) {
+		var reply jsonrpc.ListDatacenterMapsReply
+		err := svc.ListDatacenterMaps(req, &jsonrpc.ListDatacenterMapsArgs{DatacenterID: 0}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "ListDatacenterMaps() could not parse buyer")
 	})
 
-	t.Run("remove", func(t *testing.T) {
-		var addReply jsonrpc.AddBuyerReply
-		err := svc.AddBuyer(nil, &jsonrpc.AddBuyerArgs{Buyer: expected}, &addReply)
+	customer1 := routing.Customer{
+		Code: "local1",
+		Name: "Local1",
+	}
+
+	customer2 := routing.Customer{
+		Code: "local2",
+		Name: "Local2",
+	}
+
+	buyer1 := routing.Buyer{
+		ID:        0,
+		ShortName: "Local1",
+	}
+
+	buyer2 := routing.Buyer{
+		ID:        1,
+		ShortName: "Local2",
+	}
+
+	err = storer.AddCustomer(context.Background(), customer1)
+	assert.NoError(t, err)
+	err = storer.AddCustomer(context.Background(), customer2)
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), buyer1)
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), buyer2)
+	assert.NoError(t, err)
+
+	t.Run("datacenter in datacenter map does not exist", func(t *testing.T) {
+		var reply jsonrpc.ListDatacenterMapsReply
+		err := svc.ListDatacenterMaps(req, &jsonrpc.ListDatacenterMapsArgs{DatacenterID: 0}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "ListDatacenterMaps() could not parse datacenter")
+	})
+
+	err = storer.AddDatacenter(context.Background(), datacenter1)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter2)
+	assert.NoError(t, err)
+
+	t.Run("buyer in datacenter map does not have company code", func(t *testing.T) {
+		var reply jsonrpc.ListDatacenterMapsReply
+		err := svc.ListDatacenterMaps(req, &jsonrpc.ListDatacenterMapsArgs{DatacenterID: 0}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "ListDatacenterMaps() failed to find buyer company")
+	})
+
+	err = storer.RemoveBuyer(context.Background(), buyer1.ID)
+	assert.NoError(t, err)
+	err = storer.RemoveBuyer(context.Background(), buyer2.ID)
+	assert.NoError(t, err)
+
+	buyer1.CompanyCode = "local1"
+	buyer2.CompanyCode = "local2"
+
+	err = storer.AddBuyer(context.Background(), buyer1)
+	assert.NoError(t, err)
+	err = storer.AddBuyer(context.Background(), buyer2)
+	assert.NoError(t, err)
+
+	t.Run("success - all maps", func(t *testing.T) {
+		var reply jsonrpc.ListDatacenterMapsReply
+		err := svc.ListDatacenterMaps(req, &jsonrpc.ListDatacenterMapsArgs{DatacenterID: 0}, &reply)
 		assert.NoError(t, err)
 
-		var reply jsonrpc.RemoveBuyerReply
-		err = svc.RemoveBuyer(nil, &jsonrpc.RemoveBuyerArgs{ID: fmt.Sprintf("%x", expected.ID)}, &reply)
+		assert.Equal(t, 2, len(reply.DatacenterMaps))
+	})
+
+	t.Run("success - single map", func(t *testing.T) {
+		var reply jsonrpc.ListDatacenterMapsReply
+		err := svc.ListDatacenterMaps(req, &jsonrpc.ListDatacenterMapsArgs{DatacenterID: datacenter1.ID}, &reply)
 		assert.NoError(t, err)
 
-		var buyersReply jsonrpc.BuyersReply
-		err = svc.Buyers(nil, &jsonrpc.BuyersArgs{}, &buyersReply)
-		assert.NoError(t, err)
-
-		assert.Len(t, buyersReply.Buyers, 0)
+		assert.Equal(t, 1, len(reply.DatacenterMaps))
+		assert.Equal(t, fmt.Sprintf("%016x", datacenter1.ID), reply.DatacenterMaps[0].DatacenterID)
 	})
 }
 
-func TestRoutingRulesSettings(t *testing.T) {
+func TestCheckRelayIPAddress(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
-		Logger:  logger,
 	}
 
-	t.Run("doesn't exist", func(t *testing.T) {
-		var reply jsonrpc.RoutingRulesSettingsReply
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: "0"}, &reply)
-		assert.EqualError(t, err, "buyer with reference 0 not found")
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.CheckRelayIPAddressReply
+		err := svc.CheckRelayIPAddress(req, &jsonrpc.CheckRelayIPAddressArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
 	})
 
-	t.Run("list", func(t *testing.T) {
-		storer.AddBuyer(context.Background(), routing.Buyer{ID: 0, Name: "local.local.1", RoutingRulesSettings: routing.DefaultRoutingRulesSettings})
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
 
-		var reply jsonrpc.RoutingRulesSettingsReply
-		err := svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: "0"}, &reply)
+	t.Run("bad hex ID", func(t *testing.T) {
+		var reply jsonrpc.CheckRelayIPAddressReply
+		err := svc.CheckRelayIPAddress(req, &jsonrpc.CheckRelayIPAddressArgs{HexID: "-"}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `strconv.ParseUint: parsing "-": invalid syntax`)
+		assert.False(t, reply.Valid)
+	})
+
+	t.Run("bad IP address", func(t *testing.T) {
+		var reply jsonrpc.CheckRelayIPAddressReply
+		err := svc.CheckRelayIPAddress(req, &jsonrpc.CheckRelayIPAddressArgs{HexID: "0", IpAddress: "127.0.0.1.1"}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "address 127.0.0.1.1: missing port in address")
+		assert.False(t, reply.Valid)
+	})
+
+	t.Run("internal ID mismatch", func(t *testing.T) {
+		var reply jsonrpc.CheckRelayIPAddressReply
+		err := svc.CheckRelayIPAddress(req, &jsonrpc.CheckRelayIPAddressArgs{HexID: "0", IpAddress: "127.0.0.1:40000"}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "CheckRelayIPAddress(): internal ID from Hex ID")
+		assert.False(t, reply.Valid)
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.CheckRelayIPAddressReply
+		err := svc.CheckRelayIPAddress(req, &jsonrpc.CheckRelayIPAddressArgs{HexID: fmt.Sprintf("%x", crypto.HashID("127.0.0.1:40000")), IpAddress: "127.0.0.1:40000"}, &reply)
 		assert.NoError(t, err)
-
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.DefaultRoutingRulesSettings.EnvelopeKbpsUp)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnvelopeKbpsDown, routing.DefaultRoutingRulesSettings.EnvelopeKbpsDown)
-		assert.Equal(t, reply.RoutingRuleSettings[0].Mode, routing.DefaultRoutingRulesSettings.Mode)
-		assert.Equal(t, reply.RoutingRuleSettings[0].MaxCentsPerGB, routing.DefaultRoutingRulesSettings.MaxCentsPerGB)
-		assert.Equal(t, reply.RoutingRuleSettings[0].RTTEpsilon, routing.DefaultRoutingRulesSettings.RTTEpsilon)
-		assert.Equal(t, reply.RoutingRuleSettings[0].RTTThreshold, routing.DefaultRoutingRulesSettings.RTTThreshold)
-		assert.Equal(t, reply.RoutingRuleSettings[0].RTTHysteresis, routing.DefaultRoutingRulesSettings.RTTHysteresis)
-		assert.Equal(t, reply.RoutingRuleSettings[0].RTTVeto, routing.DefaultRoutingRulesSettings.RTTVeto)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableYouOnlyLiveOnce, routing.DefaultRoutingRulesSettings.EnableYouOnlyLiveOnce)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnablePacketLossSafety, routing.DefaultRoutingRulesSettings.EnablePacketLossSafety)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForPacketLoss, routing.DefaultRoutingRulesSettings.EnableMultipathForPacketLoss)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.DefaultRoutingRulesSettings.EnableMultipathForJitter)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.DefaultRoutingRulesSettings.EnableMultipathForRTT)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableABTest, routing.DefaultRoutingRulesSettings.EnableABTest)
-		assert.Equal(t, reply.RoutingRuleSettings[0].EnableTryBeforeYouBuy, routing.DefaultRoutingRulesSettings.EnableTryBeforeYouBuy)
-		assert.Equal(t, reply.RoutingRuleSettings[0].TryBeforeYouBuyMaxSlices, routing.DefaultRoutingRulesSettings.TryBeforeYouBuyMaxSlices)
+		assert.True(t, reply.Valid)
 	})
 }
 
-func TestSetRoutingRulesSettings(t *testing.T) {
+func TestUpdateRelay(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
-		Logger:  logger,
 	}
 
-	t.Run("doesn't exist", func(t *testing.T) {
-		var reply jsonrpc.SetRoutingRulesSettingsReply
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: "0", RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
-		assert.EqualError(t, err, "SetRoutingRulesSettings() Storage.Buyer error: buyer with reference 0 not found")
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateRelayReply
+		err := svc.UpdateRelay(req, &jsonrpc.UpdateRelayArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
 	})
 
-	t.Run("set", func(t *testing.T) {
-		storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, Name: "local.local.1", RoutingRulesSettings: routing.DefaultRoutingRulesSettings})
-
-		var reply jsonrpc.SetRoutingRulesSettingsReply
-		err := svc.SetRoutingRulesSettings(nil, &jsonrpc.SetRoutingRulesSettingsArgs{BuyerID: "1", RoutingRulesSettings: routing.LocalRoutingRulesSettings}, &reply)
-		assert.NoError(t, err)
-
-		var rrsReply jsonrpc.RoutingRulesSettingsReply
-		err = svc.RoutingRulesSettings(nil, &jsonrpc.RoutingRulesSettingsArgs{BuyerID: "1"}, &rrsReply)
-		assert.NoError(t, err)
-
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsUp, routing.LocalRoutingRulesSettings.EnvelopeKbpsUp)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnvelopeKbpsDown, routing.LocalRoutingRulesSettings.EnvelopeKbpsDown)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].Mode, routing.LocalRoutingRulesSettings.Mode)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].MaxCentsPerGB, routing.LocalRoutingRulesSettings.MaxCentsPerGB)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTEpsilon, routing.LocalRoutingRulesSettings.RTTEpsilon)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTThreshold, routing.LocalRoutingRulesSettings.RTTThreshold)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTHysteresis, routing.LocalRoutingRulesSettings.RTTHysteresis)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].RTTVeto, routing.LocalRoutingRulesSettings.RTTVeto)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableYouOnlyLiveOnce, routing.LocalRoutingRulesSettings.EnableYouOnlyLiveOnce)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnablePacketLossSafety, routing.LocalRoutingRulesSettings.EnablePacketLossSafety)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForPacketLoss, routing.LocalRoutingRulesSettings.EnableMultipathForPacketLoss)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForJitter, routing.LocalRoutingRulesSettings.EnableMultipathForJitter)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableMultipathForRTT, routing.LocalRoutingRulesSettings.EnableMultipathForRTT)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableABTest, routing.LocalRoutingRulesSettings.EnableABTest)
-		assert.Equal(t, rrsReply.RoutingRuleSettings[0].EnableTryBeforeYouBuy, routing.DefaultRoutingRulesSettings.EnableTryBeforeYouBuy)
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
 	})
-}
+	req = req.WithContext(reqContext)
 
-func TestSellers(t *testing.T) {
-	t.Parallel()
-
-	expected := routing.Seller{
-		ID:                "1",
-		Name:              "local.local.1",
-		IngressPriceCents: 10,
-		EgressPriceCents:  20,
-	}
-
-	storer := storage.InMemory{}
-	storer.AddSeller(context.Background(), expected)
-
-	logger := log.NewNopLogger()
-	svc := jsonrpc.OpsService{
-		Storage: &storer,
-		Logger:  logger,
-	}
-
-	t.Run("list", func(t *testing.T) {
-		var reply jsonrpc.SellersReply
-		err := svc.Sellers(nil, &jsonrpc.SellersArgs{}, &reply)
-		assert.NoError(t, err)
-
-		assert.Equal(t, reply.Sellers[0].ID, expected.ID)
-		assert.Equal(t, reply.Sellers[0].Name, expected.Name)
-		assert.Equal(t, reply.Sellers[0].IngressPriceCents, expected.IngressPriceCents)
-		assert.Equal(t, reply.Sellers[0].EgressPriceCents, expected.EgressPriceCents)
-	})
-}
-
-func TestAddSeller(t *testing.T) {
-	t.Parallel()
-
-	storer := storage.InMemory{}
-
-	logger := log.NewNopLogger()
-	svc := jsonrpc.OpsService{
-		Storage: &storer,
-		Logger:  logger,
-	}
-
-	expected := routing.Seller{
-		ID:                "id",
-		Name:              "local seller",
-		IngressPriceCents: 10,
-		EgressPriceCents:  20,
-	}
-
-	t.Run("add", func(t *testing.T) {
-		var reply jsonrpc.AddSellerReply
-		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
-		assert.NoError(t, err)
-
-		var sellersReply jsonrpc.SellersReply
-		err = svc.Sellers(nil, &jsonrpc.SellersArgs{}, &sellersReply)
-		assert.NoError(t, err)
-
-		assert.Len(t, sellersReply.Sellers, 1)
-		assert.Equal(t, sellersReply.Sellers[0].ID, expected.ID)
-		assert.Equal(t, sellersReply.Sellers[0].Name, expected.Name)
-		assert.Equal(t, sellersReply.Sellers[0].IngressPriceCents, expected.IngressPriceCents)
-		assert.Equal(t, sellersReply.Sellers[0].EgressPriceCents, expected.EgressPriceCents)
+	t.Run("bad hex relay ID", func(t *testing.T) {
+		var reply jsonrpc.UpdateRelayReply
+		err := svc.UpdateRelay(req, &jsonrpc.UpdateRelayArgs{HexRelayID: "-"}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "UpdateRelay() failed to parse HexRelayID")
 	})
 
-	t.Run("exists", func(t *testing.T) {
-		var reply jsonrpc.AddSellerReply
-
-		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &reply)
-		assert.EqualError(t, err, "AddSeller() error: seller with reference id already exists")
+	t.Run("relay does not exist", func(t *testing.T) {
+		var reply jsonrpc.UpdateRelayReply
+		err := svc.UpdateRelay(req, &jsonrpc.UpdateRelayArgs{RelayID: 0}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "UpdateRelay() failed to modify relay record for field")
 	})
-}
-
-func TestRemoveSeller(t *testing.T) {
-	t.Parallel()
-
-	storer := storage.InMemory{}
-
-	logger := log.NewNopLogger()
-	svc := jsonrpc.OpsService{
-		Storage: &storer,
-		Logger:  logger,
-	}
-
-	expected := routing.Seller{
-		ID:                "1",
-		Name:              "local seller",
-		IngressPriceCents: 10,
-		EgressPriceCents:  20,
-	}
-
-	t.Run("doesn't exist", func(t *testing.T) {
-		var reply jsonrpc.RemoveSellerReply
-
-		err := svc.RemoveSeller(nil, &jsonrpc.RemoveSellerArgs{ID: expected.ID}, &reply)
-		assert.EqualError(t, err, "RemoveSeller() error: seller with reference 1 not found")
-	})
-
-	t.Run("remove", func(t *testing.T) {
-		var addReply jsonrpc.AddSellerReply
-		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected}, &addReply)
-		assert.NoError(t, err)
-
-		var reply jsonrpc.RemoveSellerReply
-		err = svc.RemoveSeller(nil, &jsonrpc.RemoveSellerArgs{ID: expected.ID}, &reply)
-		assert.NoError(t, err)
-
-		var sellersReply jsonrpc.SellersReply
-		err = svc.Sellers(nil, &jsonrpc.SellersArgs{}, &sellersReply)
-		assert.NoError(t, err)
-
-		assert.Len(t, sellersReply.Sellers, 0)
-	})
-}
-
-func TestRelays(t *testing.T) {
-	t.Parallel()
-
-	storer := storage.InMemory{}
 
 	seller := routing.Seller{
-		ID:   "sellerID",
-		Name: "seller name",
+		ID:        "sellerID",
+		Name:      "seller name",
+		ShortName: "sname",
 	}
 
 	datacenter := routing.Datacenter{
@@ -1817,16 +1734,87 @@ func TestRelays(t *testing.T) {
 		Datacenter: datacenter,
 	}
 
-	relay2 := routing.Relay{
-		ID:         2,
-		Name:       "local.local.2",
-		Seller:     seller,
-		Datacenter: datacenter,
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay1)
+	assert.NoError(t, err)
+
+	t.Run("bad hex ID", func(t *testing.T) {
+		var reply jsonrpc.UpdateRelayReply
+		err := svc.UpdateRelay(req, &jsonrpc.UpdateRelayArgs{HexRelayID: "-"}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), `strconv.ParseUint: parsing "-": invalid syntax`)
+	})
+
+	// Storer test takes care of all invalid fields
+	t.Run("field is invalid", func(t *testing.T) {
+		var reply jsonrpc.UpdateRelayReply
+		err := svc.UpdateRelay(req, &jsonrpc.UpdateRelayArgs{RelayID: 1, Field: ""}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "UpdateRelay() failed to modify relay record for field")
+	})
+
+	// Storer test takes care of all invalid values
+	t.Run("value is invalid", func(t *testing.T) {
+		var reply jsonrpc.UpdateRelayReply
+		err := svc.UpdateRelay(req, &jsonrpc.UpdateRelayArgs{RelayID: 1, Field: "Version", Value: ""}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "UpdateRelay() failed to modify relay record for field")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.UpdateRelayReply
+		err := svc.UpdateRelay(req, &jsonrpc.UpdateRelayArgs{RelayID: 1, Field: "Version", Value: "2.0.8"}, &reply)
+		assert.NoError(t, err)
+	})
+}
+
+func TestGetRelay(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
 	}
 
-	relay3 := routing.Relay{
-		ID:         3,
-		Name:       "local.local.23",
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.GetRelayReply
+		err := svc.GetRelay(req, &jsonrpc.GetRelayArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("get non-existant relay", func(t *testing.T) {
+		var reply jsonrpc.GetRelayReply
+		err := svc.GetRelay(req, &jsonrpc.GetRelayArgs{RelayID: 0}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("Error retrieving relay ID %016x: ", 0))
+	})
+
+	seller := routing.Seller{
+		ID:        "sellerID",
+		Name:      "seller name",
+		ShortName: "sname",
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	relay1 := routing.Relay{
+		ID:         1,
+		Name:       "local.local.1",
 		Seller:     seller,
 		Datacenter: datacenter,
 	}
@@ -1837,192 +1825,44 @@ func TestRelays(t *testing.T) {
 	assert.NoError(t, err)
 	err = storer.AddRelay(context.Background(), relay1)
 	assert.NoError(t, err)
-	err = storer.AddRelay(context.Background(), relay2)
-	assert.NoError(t, err)
-	err = storer.AddRelay(context.Background(), relay3)
-	assert.NoError(t, err)
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-	logger := log.NewNopLogger()
-	svc := jsonrpc.OpsService{
-		Storage:     &storer,
-		RedisClient: redisClient,
-		Logger:      logger,
-	}
-
-	t.Run("list", func(t *testing.T) {
-		var reply jsonrpc.RelaysReply
-		err := svc.Relays(nil, &jsonrpc.RelaysArgs{}, &reply)
+	t.Run("get non-existant relay", func(t *testing.T) {
+		var reply jsonrpc.GetRelayReply
+		err := svc.GetRelay(req, &jsonrpc.GetRelayArgs{RelayID: 1}, &reply)
 		assert.NoError(t, err)
-
-		assert.Equal(t, reply.Relays[0].ID, uint64(1))
-		assert.Equal(t, reply.Relays[0].Name, "local.local.1")
-		assert.Equal(t, reply.Relays[1].ID, uint64(2))
-		assert.Equal(t, reply.Relays[1].Name, "local.local.2")
-		assert.Equal(t, reply.Relays[2].ID, uint64(3))
-		assert.Equal(t, reply.Relays[2].Name, "local.local.23")
-	})
-
-	t.Run("exact match", func(t *testing.T) {
-		var reply jsonrpc.RelaysReply
-		err := svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "local.local.2"}, &reply)
-		assert.NoError(t, err)
-
-		assert.Equal(t, len(reply.Relays), 1)
-		assert.Equal(t, reply.Relays[0].ID, uint64(2))
-		assert.Equal(t, reply.Relays[0].Name, "local.local.2")
-
-		var empty jsonrpc.RelaysReply
-		err = svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "not.found"}, &empty)
-		assert.NoError(t, err)
-
-		assert.Equal(t, len(empty.Relays), 0)
-	})
-
-	t.Run("filter", func(t *testing.T) {
-		var reply jsonrpc.RelaysReply
-		err := svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "local.1"}, &reply)
-		assert.NoError(t, err)
-
-		assert.Equal(t, len(reply.Relays), 1)
-		assert.Equal(t, reply.Relays[0].ID, uint64(1))
-		assert.Equal(t, reply.Relays[0].Name, "local.local.1")
-
-		var empty jsonrpc.RelaysReply
-		err = svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "not.found"}, &empty)
-		assert.NoError(t, err)
-
-		assert.Equal(t, len(empty.Relays), 0)
-	})
-
-	t.Run("filter by seller", func(t *testing.T) {
-		var reply jsonrpc.RelaysReply
-		err := svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "seller name"}, &reply)
-		assert.NoError(t, err)
-
-		assert.Equal(t, len(reply.Relays), 3)
-		assert.Equal(t, reply.Relays[0].ID, uint64(1))
-		assert.Equal(t, reply.Relays[0].Name, "local.local.1")
-		assert.Equal(t, reply.Relays[1].ID, uint64(2))
-		assert.Equal(t, reply.Relays[1].Name, "local.local.2")
-		assert.Equal(t, reply.Relays[2].ID, uint64(3))
-		assert.Equal(t, reply.Relays[2].Name, "local.local.23")
-
-		var empty jsonrpc.RelaysReply
-		err = svc.Relays(nil, &jsonrpc.RelaysArgs{Regex: "not.found"}, &empty)
-		assert.NoError(t, err)
-
-		assert.Equal(t, len(empty.Relays), 0)
+		assert.Equal(t, relay1.ID, reply.Relay.ID)
+		assert.Equal(t, relay1.Name, reply.Relay.Name)
 	})
 }
 
-func TestAddRelay(t *testing.T) {
+func TestModifyRelayField(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
 
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
-		Storage:     &storer,
-		RedisClient: redisClient,
-		Logger:      logger,
+		Storage: &storer,
 	}
 
-	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-	assert.NoError(t, err)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	expected := routing.Relay{
-		ID:   crypto.HashID(addr.String()),
-		Name: "local relay",
-		Addr: *addr,
-	}
-
-	t.Run("seller doesn't exist", func(t *testing.T) {
-		var reply jsonrpc.AddRelayReply
-		err := svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.EqualError(t, err, "AddRelay() error: seller with reference  not found")
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
 	})
 
-	t.Run("datacenter doesn't exist", func(t *testing.T) {
-		expected.Seller = routing.Seller{
-			ID:                "sellerID",
-			Name:              "seller name",
-			IngressPriceCents: 10,
-			EgressPriceCents:  20,
-		}
-
-		var sellerReply jsonrpc.AddSellerReply
-		err := svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: expected.Seller}, &sellerReply)
-		assert.NoError(t, err)
-
-		var reply jsonrpc.AddRelayReply
-		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.EqualError(t, err, "AddRelay() error: datacenter with reference 0 not found")
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
 	})
-
-	t.Run("add", func(t *testing.T) {
-		expected.Datacenter = routing.Datacenter{
-			ID:       crypto.HashID("datacenter name"),
-			Name:     "datacenter name",
-			Enabled:  true,
-			Location: routing.LocationNullIsland,
-		}
-
-		var datacenterReply jsonrpc.AddDatacenterReply
-		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected.Datacenter}, &datacenterReply)
-		assert.NoError(t, err)
-
-		var reply jsonrpc.AddRelayReply
-		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.NoError(t, err)
-
-		var relaysReply jsonrpc.RelaysReply
-		err = svc.Relays(nil, &jsonrpc.RelaysArgs{}, &relaysReply)
-		assert.NoError(t, err)
-
-		assert.Len(t, relaysReply.Relays, 1)
-		assert.Equal(t, relaysReply.Relays[0].ID, expected.ID)
-		assert.Equal(t, relaysReply.Relays[0].Name, expected.Name)
-		assert.Equal(t, relaysReply.Relays[0].Addr, expected.Addr.String())
-	})
-
-	t.Run("exists", func(t *testing.T) {
-		var reply jsonrpc.AddRelayReply
-
-		err = svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("AddRelay() error: relay with reference %d already exists", expected.ID))
-	})
-}
-
-func TestRemoveRelay(t *testing.T) {
-	t.Parallel()
-
-	storer := storage.InMemory{}
-
-	redisServer, err := miniredis.Run()
-	assert.NoError(t, err)
-	redisClient := redis.NewClient(&redis.Options{Addr: redisServer.Addr()})
-
-	logger := log.NewNopLogger()
-	svc := jsonrpc.OpsService{
-		Storage:     &storer,
-		RedisClient: redisClient,
-		Logger:      logger,
-	}
-
-	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
-	assert.NoError(t, err)
+	req = req.WithContext(reqContext)
 
 	seller := routing.Seller{
-		ID:   "sellerID",
-		Name: "seller name",
+		ID:         "sellerID",
+		Name:       "seller name",
+		ShortName:  "sname",
+		DatabaseID: 1,
 	}
 
 	datacenter := routing.Datacenter{
@@ -2030,399 +1870,526 @@ func TestRemoveRelay(t *testing.T) {
 		Name: "datacenter name",
 	}
 
-	expected := routing.Relay{
-		ID:         crypto.HashID(addr.String()),
-		Name:       "local relay",
-		Addr:       *addr,
+	relay1 := routing.Relay{
+		ID:         1,
+		Name:       "local.local.1",
 		Seller:     seller,
 		Datacenter: datacenter,
 	}
 
-	svc.AddSeller(nil, &jsonrpc.AddSellerArgs{Seller: seller}, &jsonrpc.AddSellerReply{})
-	svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: datacenter}, &jsonrpc.AddDatacenterReply{})
+	err := storer.AddSeller(context.Background(), seller)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay1)
+	assert.NoError(t, err)
 
-	t.Run("doesn't exist", func(t *testing.T) {
-		var reply jsonrpc.RemoveRelayReply
+	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "ContractTerm", "SSHPort", "MaxSessions"}
+	addressFields := []string{"Addr", "InternalAddr"}
+	timeFields := []string{"StartDate", "EndDate"}
+	stringFields := []string{"ManagementAddr", "SSHUser", "Version"}
+	nibblinFields := []string{"EgressPriceOverride", "MRC", "Overage"}
 
-		err = svc.RemoveRelay(nil, &jsonrpc.RemoveRelayArgs{RelayID: expected.ID}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("RemoveRelay() Storage.Relay error: relay with reference %d not found", expected.ID))
+	// special cases: PublicKey, State, BWRule, Type, BillingSupplier
+
+	t.Run("invalid float64 fields", func(t *testing.T) {
+		for _, field := range float64Fields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "a"}, &reply)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), fmt.Sprintf("Value: %s is not a valid numeric type", "a"))
+		}
 	})
 
-	t.Run("remove", func(t *testing.T) {
-		var addReply jsonrpc.AddRelayReply
-		err := svc.AddRelay(nil, &jsonrpc.AddRelayArgs{Relay: expected}, &addReply)
-		assert.NoError(t, err)
-
-		var reply jsonrpc.RemoveRelayReply
-		err = svc.RemoveRelay(nil, &jsonrpc.RemoveRelayArgs{RelayID: expected.ID}, &reply)
-		assert.NoError(t, err)
-
-		var relaysReply jsonrpc.RelaysReply
-		err = svc.Relays(nil, &jsonrpc.RelaysArgs{}, &relaysReply)
-		assert.NoError(t, err)
-
-		// Remove shouldn't actually remove it anymore, just set the state to decommissioned
-		assert.Len(t, relaysReply.Relays, 1)
-		assert.Equal(t, relaysReply.Relays[0].ID, expected.ID)
-		assert.Equal(t, relaysReply.Relays[0].State, routing.RelayStateDecommissioned.String())
-	})
-}
-
-func TestRelayStateUpdate(t *testing.T) {
-	t.Parallel()
-
-	logger := log.NewNopLogger()
-	makeSvc := func() *jsonrpc.OpsService {
-		var storer storage.InMemory
-
-		seller := routing.Seller{
-			ID:   "sellerID",
-			Name: "seller name",
+	t.Run("invalid address fields", func(t *testing.T) {
+		for _, field := range addressFields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "-"}, &reply)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), fmt.Sprintf("UpdateRelay() error updating field for relay %016x", 1))
 		}
-
-		datacenter := routing.Datacenter{
-			ID:   crypto.HashID("datacenter name"),
-			Name: "datacenter name",
-		}
-
-		storer.AddSeller(context.Background(), seller)
-		storer.AddDatacenter(context.Background(), datacenter)
-
-		err := storer.AddRelay(context.Background(), routing.Relay{
-			ID:         1,
-			State:      0,
-			Seller:     seller,
-			Datacenter: datacenter,
-		})
-		assert.NoError(t, err)
-		err = storer.AddRelay(context.Background(), routing.Relay{
-			ID:         2,
-			State:      123456,
-			Seller:     seller,
-			Datacenter: datacenter,
-		})
-		assert.NoError(t, err)
-
-		return &jsonrpc.OpsService{
-			Storage: &storer,
-			Logger:  logger,
-		}
-	}
-
-	t.Run("found", func(t *testing.T) {
-		svc := makeSvc()
-		err := svc.RelayStateUpdate(nil, &jsonrpc.RelayStateUpdateArgs{
-			RelayID:    1,
-			RelayState: routing.RelayStateDisabled,
-		}, &jsonrpc.RelayStateUpdateReply{})
-		assert.NoError(t, err)
-
-		relay, err := svc.Storage.Relay(1)
-		assert.NoError(t, err)
-		assert.Equal(t, routing.RelayStateDisabled, relay.State)
-
-		relay, err = svc.Storage.Relay(2)
-		assert.NoError(t, err)
-		assert.Equal(t, routing.RelayState(123456), relay.State)
 	})
 
-	t.Run("not found", func(t *testing.T) {
-		svc := makeSvc()
-		err := svc.RelayStateUpdate(nil, &jsonrpc.RelayStateUpdateArgs{
-			RelayID:    987654321,
-			RelayState: routing.RelayStateDisabled,
-		}, &jsonrpc.RelayStateUpdateReply{})
+	t.Run("invalid time fields", func(t *testing.T) {
+		for _, field := range timeFields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "-"}, &reply)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), fmt.Sprintf("UpdateRelay() error updating field for relay %016x", 1))
+		}
+	})
+
+	t.Run("invalid nibblin fields", func(t *testing.T) {
+		for _, field := range nibblinFields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "a"}, &reply)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), fmt.Sprintf("value '%s' is not a valid float64 number", "a"))
+		}
+	})
+
+	t.Run("invalid public key", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: "PublicKey", Value: "a"}, &reply)
 		assert.Error(t, err)
-
-		relay, err := svc.Storage.Relay(1)
-		assert.NoError(t, err)
-		assert.Equal(t, routing.RelayState(0), relay.State)
-
-		relay, err = svc.Storage.Relay(2)
-		assert.NoError(t, err)
-		assert.Equal(t, routing.RelayState(123456), relay.State)
-	})
-}
-
-func TestRelayPublicKeyUpdate(t *testing.T) {
-	t.Parallel()
-
-	logger := log.NewNopLogger()
-
-	makeSvc := func() *jsonrpc.OpsService {
-		var storer storage.InMemory
-
-		seller := routing.Seller{
-			ID:   "sellerID",
-			Name: "seller name",
-		}
-
-		datacenter := routing.Datacenter{
-			ID:   crypto.HashID("datacenter name"),
-			Name: "datacenter name",
-		}
-
-		storer.AddSeller(context.Background(), seller)
-		storer.AddDatacenter(context.Background(), datacenter)
-
-		err := storer.AddRelay(context.Background(), routing.Relay{
-			ID:         1,
-			PublicKey:  []byte("oldpublickey"),
-			Seller:     seller,
-			Datacenter: datacenter,
-		})
-		assert.NoError(t, err)
-		err = storer.AddRelay(context.Background(), routing.Relay{
-			ID:         2,
-			PublicKey:  []byte("oldpublickey"),
-			Seller:     seller,
-			Datacenter: datacenter,
-		})
-		assert.NoError(t, err)
-
-		return &jsonrpc.OpsService{
-			Storage: &storer,
-			Logger:  logger,
-		}
-	}
-
-	t.Run("found", func(t *testing.T) {
-		svc := makeSvc()
-		err := svc.RelayPublicKeyUpdate(nil, &jsonrpc.RelayPublicKeyUpdateArgs{
-			RelayID:        1,
-			RelayPublicKey: "newpublickey",
-		}, &jsonrpc.RelayPublicKeyUpdateReply{})
-		assert.NoError(t, err)
-
-		relay, err := svc.Storage.Relay(1)
-		assert.NoError(t, err)
-		assert.Equal(t, "newpublickey", base64.StdEncoding.EncodeToString(relay.PublicKey))
-
-		relay, err = svc.Storage.Relay(2)
-		assert.NoError(t, err)
-		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
+		assert.Contains(t, err.Error(), fmt.Sprintf("UpdateRelay() error updating field for relay %016x", 1))
 	})
 
-	t.Run("not found", func(t *testing.T) {
-		svc := makeSvc()
-		err := svc.RelayPublicKeyUpdate(nil, &jsonrpc.RelayPublicKeyUpdateArgs{
-			RelayID:        987654321,
-			RelayPublicKey: "newpublickey",
-		}, &jsonrpc.RelayPublicKeyUpdateReply{})
+	// Storer tests handle edge cases
+	t.Run("invalid relay state", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: "State", Value: "a"}, &reply)
 		assert.Error(t, err)
-
-		relay, err := svc.Storage.Relay(1)
-		assert.NoError(t, err)
-		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
-
-		relay, err = svc.Storage.Relay(2)
-		assert.NoError(t, err)
-		assert.Equal(t, []byte("oldpublickey"), relay.PublicKey)
-	})
-}
-
-func TestRelayNICSpeedUpdate(t *testing.T) {
-	t.Parallel()
-
-	logger := log.NewNopLogger()
-
-	makeSvc := func() *jsonrpc.OpsService {
-		var storer storage.InMemory
-
-		seller := routing.Seller{
-			ID:   "sellerID",
-			Name: "seller name",
-		}
-
-		datacenter := routing.Datacenter{
-			ID:   crypto.HashID("datacenter name"),
-			Name: "datacenter name",
-		}
-
-		storer.AddSeller(context.Background(), seller)
-		storer.AddDatacenter(context.Background(), datacenter)
-
-		err := storer.AddRelay(context.Background(), routing.Relay{
-			ID:           1,
-			NICSpeedMbps: 1000,
-			Seller:       seller,
-			Datacenter:   datacenter,
-		})
-		assert.NoError(t, err)
-		err = storer.AddRelay(context.Background(), routing.Relay{
-			ID:           2,
-			NICSpeedMbps: 2000,
-			Seller:       seller,
-			Datacenter:   datacenter,
-		})
-		assert.NoError(t, err)
-
-		return &jsonrpc.OpsService{
-			Storage: &storer,
-			Logger:  logger,
-		}
-	}
-
-	t.Run("found", func(t *testing.T) {
-		svc := makeSvc()
-		err := svc.RelayNICSpeedUpdate(nil, &jsonrpc.RelayNICSpeedUpdateArgs{
-			RelayID:       1,
-			RelayNICSpeed: 10000,
-		}, &jsonrpc.RelayNICSpeedUpdateReply{})
-		assert.NoError(t, err)
-
-		relay, err := svc.Storage.Relay(1)
-		assert.NoError(t, err)
-		assert.Equal(t, uint64(10000), relay.NICSpeedMbps)
-
-		relay, err = svc.Storage.Relay(2)
-		assert.NoError(t, err)
-		assert.Equal(t, uint64(2000), relay.NICSpeedMbps)
+		assert.Contains(t, err.Error(), fmt.Sprintf("value '%s' is not a valid relay state", "a"))
 	})
 
-	t.Run("not found", func(t *testing.T) {
-		svc := makeSvc()
-		err := svc.RelayNICSpeedUpdate(nil, &jsonrpc.RelayNICSpeedUpdateArgs{
-			RelayID:       987654321,
-			RelayNICSpeed: 10000,
-		}, &jsonrpc.RelayNICSpeedUpdateReply{})
+	// Storer tests handle edge cases
+	t.Run("invalid bw rule", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: "BWRule", Value: "a"}, &reply)
 		assert.Error(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("value '%s' is not a valid bandwidth rule", "a"))
+	})
 
-		relay, err := svc.Storage.Relay(1)
-		assert.NoError(t, err)
-		assert.Equal(t, uint64(1000), relay.NICSpeedMbps)
+	// Storer tests handle edge cases
+	t.Run("invalid machine type", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: "Type", Value: "a"}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("value '%s' is not a valid machine type", "a"))
+	})
 
-		relay, err = svc.Storage.Relay(2)
+	t.Run("invalid billing supplier", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: "BillingSupplier", Value: "a"}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("UpdateRelay() error updating field for relay %016x", 1))
+	})
+
+	t.Run("success float64 fields", func(t *testing.T) {
+		for _, field := range float64Fields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "1"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success address fields", func(t *testing.T) {
+		for _, field := range addressFields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "127.0.0.1:40000"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success time fields", func(t *testing.T) {
+		for _, field := range timeFields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "November 17, 2021"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success string fields", func(t *testing.T) {
+		for _, field := range stringFields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "some string"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success nibblin fields", func(t *testing.T) {
+		for _, field := range nibblinFields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "100"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success public key", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: "PublicKey", Value: "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g=="}, &reply)
 		assert.NoError(t, err)
-		assert.Equal(t, uint64(2000), relay.NICSpeedMbps)
+	})
+
+	t.Run("success relay state", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: "State", Value: "enabled"}, &reply)
+		assert.NoError(t, err)
+	})
+
+	t.Run("success bw rule", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: "BWRule", Value: "burst"}, &reply)
+		assert.NoError(t, err)
+	})
+
+	t.Run("success machine type", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: "Type", Value: "vm"}, &reply)
+		assert.NoError(t, err)
+	})
+
+	t.Run("success billing supplier", func(t *testing.T) {
+		var reply jsonrpc.ModifyRelayFieldReply
+		err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: "BillingSupplier", Value: "sellerID"}, &reply)
+		assert.NoError(t, err)
 	})
 }
 
-func TestDatacenters(t *testing.T) {
-	t.Parallel()
-
-	storer := storage.InMemory{}
-	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 1, Name: "local.local.1"})
-	storer.AddDatacenter(context.Background(), routing.Datacenter{ID: 2, Name: "local.local.2"})
-
-	logger := log.NewNopLogger()
-	svc := jsonrpc.OpsService{
-		Storage: &storer,
-		Logger:  logger,
-	}
-
-	t.Run("list", func(t *testing.T) {
-		var reply jsonrpc.DatacentersReply
-		err := svc.Datacenters(nil, &jsonrpc.DatacentersArgs{}, &reply)
-		assert.NoError(t, err)
-
-		assert.Equal(t, reply.Datacenters[0].Name, "local.local.1")
-		assert.Equal(t, reply.Datacenters[1].Name, "local.local.2")
-	})
-
-	t.Run("filter", func(t *testing.T) {
-		var reply jsonrpc.DatacentersReply
-		err := svc.Datacenters(nil, &jsonrpc.DatacentersArgs{Name: "local.1"}, &reply)
-		assert.NoError(t, err)
-
-		assert.Equal(t, len(reply.Datacenters), 1)
-		assert.Equal(t, reply.Datacenters[0].Name, "local.local.1")
-
-		var empty jsonrpc.DatacentersReply
-		err = svc.Datacenters(nil, &jsonrpc.DatacentersArgs{Name: "not.found"}, &empty)
-		assert.NoError(t, err)
-
-		assert.Equal(t, len(empty.Datacenters), 0)
-	})
-}
-
-func TestAddDatacenter(t *testing.T) {
+func TestUpdateCustomer(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
-		Logger:  logger,
 	}
 
-	expected := routing.Datacenter{
-		ID:      1,
-		Name:    "local datacenter",
-		Enabled: false,
-		Location: routing.Location{
-			Latitude:  70.5,
-			Longitude: 120.5,
-		},
-	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	t.Run("add", func(t *testing.T) {
-		var reply jsonrpc.AddDatacenterReply
-		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
-		assert.NoError(t, err)
-
-		var datacentersReply jsonrpc.DatacentersReply
-		err = svc.Datacenters(nil, &jsonrpc.DatacentersArgs{}, &datacentersReply)
-		assert.NoError(t, err)
-
-		assert.Len(t, datacentersReply.Datacenters, 1)
-		assert.Equal(t, datacentersReply.Datacenters[0].Name, expected.Name)
-		assert.Equal(t, datacentersReply.Datacenters[0].Latitude, expected.Location.Latitude)
-		assert.Equal(t, datacentersReply.Datacenters[0].Longitude, expected.Location.Longitude)
-		assert.Equal(t, datacentersReply.Datacenters[0].Enabled, expected.Enabled)
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateCustomerReply
+		err := svc.UpdateCustomer(req, &jsonrpc.UpdateCustomerArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
 	})
 
-	t.Run("exists", func(t *testing.T) {
-		var reply jsonrpc.AddDatacenterReply
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
 
-		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &reply)
-		assert.EqualError(t, err, "AddDatacenter() error: datacenter with reference 1 already exists")
+	err := storer.AddCustomer(context.Background(), routing.Customer{Name: "Local", Code: "local"})
+	assert.NoError(t, err)
+
+	stringFields := []string{"AutomaticSigninDomains", "Name"}
+
+	immutableFields := []string{"Code", "BuyerRef", "SellerRef", "DatabaseID"}
+
+	t.Run("failed immutable fields", func(t *testing.T) {
+		for _, field := range immutableFields {
+			var reply jsonrpc.UpdateCustomerReply
+			err := svc.UpdateCustomer(req, &jsonrpc.UpdateCustomerArgs{CustomerID: "local", Field: field, Value: ""}, &reply)
+			assert.Error(t, err)
+			assert.EqualError(t, err, fmt.Sprintf("Field '%v' does not exist (or is not editable) on the Customer type", field))
+		}
+	})
+
+	t.Run("success mutable fields", func(t *testing.T) {
+		for _, field := range stringFields {
+			var reply jsonrpc.UpdateCustomerReply
+			err := svc.UpdateCustomer(req, &jsonrpc.UpdateCustomerArgs{CustomerID: "local", Field: field, Value: "some value"}, &reply)
+			assert.NoError(t, err)
+		}
 	})
 }
 
-func TestRemoveDatacenter(t *testing.T) {
+func TestRemoveCustomer(t *testing.T) {
 	t.Parallel()
 
 	storer := storage.InMemory{}
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.OpsService{
 		Storage: &storer,
-		Logger:  logger,
 	}
 
-	expected := routing.Datacenter{
-		ID:      crypto.HashID("local datacenter"),
-		Name:    "local datacenter",
-		Enabled: false,
-		Location: routing.Location{
-			Latitude:  70.5,
-			Longitude: 120.5,
-		},
-	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
-	t.Run("doesn't exist", func(t *testing.T) {
-		var reply jsonrpc.RemoveDatacenterReply
-
-		err := svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
-		assert.EqualError(t, err, fmt.Sprintf("RemoveDatacenter() error: datacenter with reference %d not found", expected.ID))
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.RemoveCustomerReply
+		err := svc.RemoveCustomer(req, &jsonrpc.RemoveCustomerArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
 	})
 
-	t.Run("remove", func(t *testing.T) {
-		var addReply jsonrpc.AddDatacenterReply
-		err := svc.AddDatacenter(nil, &jsonrpc.AddDatacenterArgs{Datacenter: expected}, &addReply)
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("customer does not exist", func(t *testing.T) {
+		var reply jsonrpc.RemoveCustomerReply
+		err := svc.RemoveCustomer(req, &jsonrpc.RemoveCustomerArgs{CustomerCode: "0"}, &reply)
+		assert.Contains(t, err.Error(), "customer with reference 0 not found")
+	})
+
+	err := storer.AddCustomer(context.Background(), routing.Customer{Name: "Local", Code: "local"})
+	assert.NoError(t, err)
+
+	t.Run("success", func(t *testing.T) {
+		var reply jsonrpc.RemoveCustomerReply
+		err := svc.RemoveCustomer(req, &jsonrpc.RemoveCustomerArgs{CustomerCode: "local"}, &reply)
 		assert.NoError(t, err)
 
-		var reply jsonrpc.RemoveDatacenterReply
-		err = svc.RemoveDatacenter(nil, &jsonrpc.RemoveDatacenterArgs{Name: expected.Name}, &reply)
-		assert.NoError(t, err)
-
-		var datacentersReply jsonrpc.DatacentersReply
-		err = svc.Datacenters(nil, &jsonrpc.DatacentersArgs{}, &datacentersReply)
-		assert.NoError(t, err)
-
-		assert.Len(t, datacentersReply.Datacenters, 0)
+		Customers := storer.Customers(context.Background())
+		assert.Zero(t, len(Customers))
 	})
 }
-*/
+
+func TestUpdateSeller(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateSellerReply
+		err := svc.UpdateSeller(req, &jsonrpc.UpdateSellerArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("seller does not exist", func(t *testing.T) {
+		var reply jsonrpc.UpdateSellerReply
+		err := svc.UpdateSeller(req, &jsonrpc.UpdateSellerArgs{SellerID: "0", Field: "ShortName", Value: "-"}, &reply)
+		assert.Contains(t, err.Error(), "seller with reference 0 not found")
+	})
+
+	err := storer.AddSeller(context.Background(), routing.Seller{ID: "1", CompanyCode: "local", Name: "Local"})
+	assert.NoError(t, err)
+
+	stringFields := []string{"ShortName"}
+
+	boolFields := []string{"Secret"}
+
+	float64Fields := []string{"EgressPrice", "EgressPriceNibblinsPerGB"}
+
+	immutableFields := []string{"ID", "Name", "CompanyCode", "DatabaseID", "CustomerID"}
+
+	t.Run("failed immutable fields", func(t *testing.T) {
+		for _, field := range immutableFields {
+			var reply jsonrpc.UpdateSellerReply
+			err := svc.UpdateSeller(req, &jsonrpc.UpdateSellerArgs{SellerID: "1", Field: field, Value: "-"}, &reply)
+			assert.EqualError(t, err, fmt.Sprintf("Field '%v' does not exist (or is not editable) on the Seller type", field))
+		}
+	})
+
+	t.Run("failed bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			var reply jsonrpc.UpdateSellerReply
+			err := svc.UpdateSeller(req, &jsonrpc.UpdateSellerArgs{SellerID: "1", Field: field, Value: "-"}, &reply)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), fmt.Sprintf("UpdateSeller() value '%s' is not a valid Secret/boolean:", "-"))
+		}
+	})
+
+	t.Run("failed float64 fields", func(t *testing.T) {
+		for _, field := range float64Fields {
+			var reply jsonrpc.UpdateSellerReply
+			err := svc.UpdateSeller(req, &jsonrpc.UpdateSellerArgs{SellerID: "1", Field: field, Value: "-"}, &reply)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), fmt.Sprintf("UpdateSeller() value '%s' is not a valid price:", "-"))
+		}
+	})
+
+	t.Run("success strings fields", func(t *testing.T) {
+		for _, field := range stringFields {
+			var reply jsonrpc.UpdateSellerReply
+			err := svc.UpdateSeller(req, &jsonrpc.UpdateSellerArgs{SellerID: "1", Field: field, Value: "-"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			var reply jsonrpc.UpdateSellerReply
+			err := svc.UpdateSeller(req, &jsonrpc.UpdateSellerArgs{SellerID: "1", Field: field, Value: "true"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success float64 fields", func(t *testing.T) {
+		for _, field := range float64Fields {
+			var reply jsonrpc.UpdateSellerReply
+			err := svc.UpdateSeller(req, &jsonrpc.UpdateSellerArgs{SellerID: "1", Field: field, Value: "1"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+}
+
+func TestResetSellerEgressPriceOverride(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.ResetSellerEgressPriceOverrideReply
+		err := svc.ResetSellerEgressPriceOverride(req, &jsonrpc.ResetSellerEgressPriceOverrideArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	seller1 := routing.Seller{
+		ID:         "sellerID1",
+		Name:       "seller name 1",
+		ShortName:  "sname1",
+		DatabaseID: 1,
+	}
+
+	seller2 := routing.Seller{
+		ID:         "sellerID2",
+		Name:       "seller name 2",
+		ShortName:  "sname2",
+		DatabaseID: 2,
+	}
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	relay1 := routing.Relay{
+		ID:         1,
+		Name:       "local.local.1",
+		Seller:     seller1,
+		Datacenter: datacenter,
+	}
+
+	relay2 := routing.Relay{
+		ID:                  2,
+		Name:                "local.local.2",
+		Seller:              seller1,
+		Datacenter:          datacenter,
+		EgressPriceOverride: routing.Nibblin(100),
+	}
+
+	relay3 := routing.Relay{
+		ID:                  3,
+		Name:                "local.local.3",
+		Seller:              seller2,
+		Datacenter:          datacenter,
+		EgressPriceOverride: routing.Nibblin(100),
+	}
+
+	err := storer.AddSeller(context.Background(), seller1)
+	assert.NoError(t, err)
+	err = storer.AddSeller(context.Background(), seller2)
+	assert.NoError(t, err)
+	err = storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay1)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay2)
+	assert.NoError(t, err)
+	err = storer.AddRelay(context.Background(), relay3)
+	assert.NoError(t, err)
+
+	t.Run("unknown field", func(t *testing.T) {
+		var reply jsonrpc.ResetSellerEgressPriceOverrideReply
+		err := svc.ResetSellerEgressPriceOverride(req, &jsonrpc.ResetSellerEgressPriceOverrideArgs{Field: "unknown"}, &reply)
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("Field '%s' is not a valid Relay type for resetting seller egress price override", "unknown"))
+	})
+
+	t.Run("success - only reset for seller 1", func(t *testing.T) {
+		var reply jsonrpc.ResetSellerEgressPriceOverrideReply
+		err := svc.ResetSellerEgressPriceOverride(req, &jsonrpc.ResetSellerEgressPriceOverrideArgs{SellerID: "sname1", Field: "EgressPriceOverride"}, &reply)
+		assert.NoError(t, err)
+
+		r1, err := storer.Relay(context.Background(), relay1.ID)
+		assert.NoError(t, err)
+		r2, err := storer.Relay(context.Background(), relay2.ID)
+		assert.NoError(t, err)
+		r3, err := storer.Relay(context.Background(), relay3.ID)
+		assert.NoError(t, err)
+
+		assert.Zero(t, r1.EgressPriceOverride)
+		assert.Zero(t, r2.EgressPriceOverride)
+		assert.Equal(t, r3.EgressPriceOverride, routing.Nibblin(100))
+	})
+}
+
+func TestUpdateDatacenter(t *testing.T) {
+	t.Parallel()
+
+	storer := storage.InMemory{}
+
+	svc := jsonrpc.OpsService{
+		Storage: &storer,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+
+	t.Run("insufficient privileges", func(t *testing.T) {
+		var reply jsonrpc.UpdateDatacenterReply
+		err := svc.UpdateDatacenter(req, &jsonrpc.UpdateDatacenterArgs{}, &reply)
+		assert.Equal(t, jsonrpc.JSONRPCErrorCodes[int(jsonrpc.ERROR_INSUFFICIENT_PRIVILEGES)].Message, err.Error())
+	})
+
+	reqContext := req.Context()
+	reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
+		"Admin",
+	})
+	req = req.WithContext(reqContext)
+
+	t.Run("bad hex datacenter ID", func(t *testing.T) {
+		var reply jsonrpc.UpdateDatacenterReply
+		err := svc.UpdateDatacenter(req, &jsonrpc.UpdateDatacenterArgs{HexDatacenterID: "-"}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "UpdateDatacenter() failed to parse hex datacenter ID")
+	})
+
+	t.Run("datacenter does not exist", func(t *testing.T) {
+		var reply jsonrpc.UpdateDatacenterReply
+		err := svc.UpdateDatacenter(req, &jsonrpc.UpdateDatacenterArgs{HexDatacenterID: fmt.Sprintf("%016x", 0), Field: "Latitude", Value: float64(23.32)}, &reply)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "datacenter with reference 0 not found")
+	})
+
+	datacenter := routing.Datacenter{
+		ID:   crypto.HashID("datacenter name"),
+		Name: "datacenter name",
+	}
+
+	err := storer.AddDatacenter(context.Background(), datacenter)
+	assert.NoError(t, err)
+
+	float32Fields := []string{"Latitude", "Longitude"}
+	immutableFields := []string{"ID", "Name", "AliasName", "SellerID", "DatabaseID"}
+
+	t.Run("failed immutable fields", func(t *testing.T) {
+		for _, field := range immutableFields {
+			var reply jsonrpc.UpdateDatacenterReply
+			err := svc.UpdateDatacenter(req, &jsonrpc.UpdateDatacenterArgs{HexDatacenterID: fmt.Sprintf("%016x", crypto.HashID("datacenter name")), Field: field, Value: float64(23.32)}, &reply)
+			assert.EqualError(t, err, fmt.Sprintf("Field '%v' does not exist (or is not editable) on the Datacenter type", field))
+		}
+	})
+
+	t.Run("failed float32 fields", func(t *testing.T) {
+		for _, field := range float32Fields {
+			var reply jsonrpc.UpdateDatacenterReply
+			err := svc.UpdateDatacenter(req, &jsonrpc.UpdateDatacenterArgs{HexDatacenterID: fmt.Sprintf("%016x", crypto.HashID("datacenter name")), Field: field, Value: "-"}, &reply)
+			assert.EqualError(t, err, fmt.Sprintf("UpdateDatacenter() value '%v' is not a valid float32 type", "-"))
+		}
+	})
+
+	t.Run("success float32 fields", func(t *testing.T) {
+		for _, field := range float32Fields {
+			var reply jsonrpc.UpdateDatacenterReply
+			err := svc.UpdateDatacenter(req, &jsonrpc.UpdateDatacenterArgs{HexDatacenterID: fmt.Sprintf("%016x", crypto.HashID("datacenter name")), Field: field, Value: float64(23.32)}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+}

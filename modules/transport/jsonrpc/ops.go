@@ -1330,7 +1330,7 @@ func (s *OpsService) CheckRelayIPAddress(r *http.Request, args *CheckRelayIPAddr
 	internalIdFromIpAddress := crypto.HashID(addr.String())
 	if internalIDFromHexID != internalIdFromIpAddress {
 		reply.Valid = false
-		return err
+		return fmt.Errorf("CheckRelayIPAddress(): internal ID from Hex ID (%016x) does not match internal ID from IP Address (%016x)", internalIDFromHexID, internalIdFromIpAddress)
 	}
 
 	reply.Valid = true
@@ -1446,10 +1446,6 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		return &err
 	}
 
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
-	}
-
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
 	switch args.Field {
 	// sent to storer as float64
@@ -1504,7 +1500,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 	case "EgressPriceOverride", "MRC", "Overage":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
-			err = fmt.Errorf("value '%s' is not a valid float64 port number: %v", args.Value, err)
+			err = fmt.Errorf("value '%s' is not a valid float64 number: %v", args.Value, err)
 			core.Error("%v", err)
 			return err
 		}
@@ -1567,10 +1563,6 @@ func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, r
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("UpdateCustomer(): %v", err.Error())
 		return &err
-	}
-
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -1646,19 +1638,18 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 			core.Error("%v", err)
 			return err
 		}
-	case "EgressPrice", "IngressPrice":
+	case "EgressPrice", "EgressPriceNibblinsPerGB":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
-			err = fmt.Errorf("value '%s' is not a valid price: %v", args.Value, err)
+			err = fmt.Errorf("UpdateSeller() value '%s' is not a valid price: %v", args.Value, err)
 			core.Error("%v", err)
 			return err
 		}
 
 		if args.Field == "EgressPrice" {
 			args.Field = "EgressPriceNibblinsPerGB"
-		} else {
-			args.Field = "IngressPriceNibblinsPerGB"
 		}
+
 		err = s.Storage.UpdateSeller(r.Context(), args.SellerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateSeller() error updating field for seller %s: %v", args.SellerID, err)
@@ -1727,16 +1718,24 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 
 	dcID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
 	if err != nil {
+		err = fmt.Errorf("UpdateDatacenter() failed to parse hex datacenter ID: %v", err)
 		core.Error("%v", err)
 		return err
 	}
 
 	switch args.Field {
 	case "Latitude", "Longitude":
-		newValue := float32(args.Value.(float64))
+		floatValue, ok := args.Value.(float64)
+		if !ok {
+			err = fmt.Errorf("UpdateDatacenter() value '%v' is not a valid float32 type", args.Value)
+			core.Error("%v", err)
+			return err
+		}
+
+		newValue := float32(floatValue)
 		err := s.Storage.UpdateDatacenter(r.Context(), dcID, args.Field, newValue)
 		if err != nil {
-			err = fmt.Errorf("UpdateDatacenter() error updating record for customer %s: %v", args.HexDatacenterID, err)
+			err = fmt.Errorf("UpdateDatacenter() error updating record for datacenter %s: %v", args.HexDatacenterID, err)
 			core.Error("%v", err)
 			return err
 		}
