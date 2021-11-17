@@ -2863,6 +2863,13 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchU
 		return &err
 	}
 
+	if args.Origin == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
+		s.Logger.Log("err", fmt.Errorf("FetchUsageSummaryDashboard(): %v: Origin is required", err.Error()))
+		return &err
+	}
+
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
