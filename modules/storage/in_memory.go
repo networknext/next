@@ -1331,19 +1331,135 @@ func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string
 }
 
 func (m *InMemory) UpdateSeller(ctx context.Context, sellerID string, field string, value interface{}) error {
-	return fmt.Errorf("UpdateSeller not impemented in InMemory storer")
+	var foundSeller bool
+	var seller routing.Seller
+	var idx int
+
+	for i, localSeller := range m.localSellers {
+		if localSeller.ID == sellerID {
+			seller = localSeller
+			idx = i
+			foundSeller = true
+			break
+		}
+	}
+
+	if !foundSeller {
+		return &DoesNotExistError{resourceType: "seller", resourceRef: sellerID}
+	}
+
+	switch field {
+	case "ShortName":
+		shortName, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		seller.ShortName = shortName
+	case "EgressPriceNibblinsPerGB":
+		egressPrice, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+
+		egress := routing.DollarsToNibblins(egressPrice)
+		seller.EgressPriceNibblinsPerGB = egress
+	case "Secret":
+		secret, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean type", value)
+		}
+
+		seller.Secret = secret
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Seller type", field)
+
+	}
+
+	m.localSellers[idx] = seller
+	return nil
 }
 
 func (m *InMemory) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
-	return fmt.Errorf("UpdateCustomer not impemented in InMemory storer")
+	var foundCustomer bool
+	var customer routing.Customer
+	var idx int
+
+	for i, localCustomer := range m.localCustomers {
+		if localCustomer.Code == customerID {
+			customer = localCustomer
+			idx = i
+			foundCustomer = true
+			break
+		}
+	}
+
+	if !foundCustomer {
+		return &DoesNotExistError{resourceType: "customer", resourceRef: customerID}
+	}
+
+	switch field {
+	case "AutomaticSigninDomains":
+		domains, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer.AutomaticSignInDomains = domains
+	case "Name":
+		name, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid string value", value)
+		}
+
+		customer.Name = name
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Customer type", field)
+	}
+
+	m.localCustomers[idx] = customer
+	return nil
 }
 
 func (m *InMemory) UpdateDatacenter(ctx context.Context, datacenterID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateDatacenter not impemented in InMemory storer")
-}
+	var foundDatacenter bool
+	var datacenter routing.Datacenter
+	var idx int
 
-func (m *InMemory) UpdateDatacenterMap(ctx context.Context, buyerID uint64, datacenterID uint64, field string, value interface{}) error {
-	return fmt.Errorf("UpdateDatacenterMap not implemented in InMemory storer")
+	for i, localDatacenter := range m.localDatacenters {
+		if localDatacenter.ID == datacenterID {
+			datacenter = localDatacenter
+			idx = i
+			foundDatacenter = true
+			break
+		}
+	}
+
+	if !foundDatacenter {
+		return &DoesNotExistError{resourceType: "datacenter", resourceRef: datacenterID}
+	}
+
+	switch field {
+	case "Latitude":
+		latitude, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float32 value", value)
+		}
+
+		datacenter.Location.Latitude = latitude
+	case "Longitude":
+		longitude, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float32 value", value)
+		}
+
+		datacenter.Location.Longitude = longitude
+	default:
+		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Datacenter type", field)
+	}
+
+	m.localDatacenters[idx] = datacenter
+	return nil
 }
 
 func (m *InMemory) GetDatabaseBinFileMetaData(ctx context.Context) (routing.DatabaseBinFileMetaData, error) {

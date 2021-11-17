@@ -1940,7 +1940,7 @@ func TestInMemoryUpdateBuyer(t *testing.T) {
 	t.Run("buyer does not exist", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
-		err := inMemory.UpdateRouteShader(ctx, 0, "", "")
+		err := inMemory.UpdateBuyer(ctx, 0, "", "")
 		assert.EqualError(t, err, "buyer with reference 0 not found")
 	})
 
@@ -2066,5 +2066,314 @@ func TestInMemoryUpdateBuyer(t *testing.T) {
 		publicKey := "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g=="
 		err = inMemory.UpdateBuyer(ctx, expected.ID, "PublicKey", publicKey)
 		assert.NoError(t, err)
+	})
+}
+
+func TestInMemoryUpdateSeller(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	stringFields := []string{"ShortName"}
+
+	boolFields := []string{"Secret"}
+
+	float64Fields := []string{"EgressPriceNibblinsPerGB"}
+
+	immutableFields := []string{"ID", "Name", "CompanyCode", "DatabaseID", "CustomerID"}
+
+	t.Run("seller does not exist", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		err := inMemory.UpdateSeller(ctx, "0", "", "")
+		assert.EqualError(t, err, "seller with reference 0 not found")
+	})
+
+	t.Run("unknown field", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Seller{
+			ID: "sellerID",
+		}
+
+		err := inMemory.AddSeller(ctx, expected)
+		assert.NoError(t, err)
+
+		err = inMemory.UpdateSeller(ctx, expected.ID, "unknown field", "")
+		assert.EqualError(t, fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Seller type", "unknown field"), err.Error())
+	})
+
+	t.Run("immutable fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Seller{
+			ID: "sellerID",
+		}
+
+		err := inMemory.AddSeller(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range immutableFields {
+			err := inMemory.UpdateSeller(ctx, expected.ID, field, "")
+			assert.EqualError(t, fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Seller type", field), err.Error())
+		}
+	})
+
+	t.Run("failed string fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Seller{
+			ID: "sellerID",
+		}
+
+		err := inMemory.AddSeller(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range stringFields {
+			err := inMemory.UpdateSeller(ctx, expected.ID, field, float64(-1))
+			assert.EqualError(t, fmt.Errorf("%v is not a valid string value", float64(-1)), err.Error())
+		}
+	})
+
+	t.Run("failed bool fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Seller{
+			ID: "sellerID",
+		}
+
+		err := inMemory.AddSeller(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range boolFields {
+			err := inMemory.UpdateSeller(ctx, expected.ID, field, float64(-1))
+			assert.EqualError(t, fmt.Errorf("%v is not a valid boolean type", float64(-1)), err.Error())
+		}
+	})
+
+	t.Run("failed float64 fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Seller{
+			ID: "sellerID",
+		}
+
+		err := inMemory.AddSeller(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range float64Fields {
+			err := inMemory.UpdateSeller(ctx, expected.ID, field, "a")
+			assert.EqualError(t, fmt.Errorf("%v is not a valid float64 type", "a"), err.Error())
+		}
+	})
+
+	t.Run("success string fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Seller{
+			ID: "sellerID",
+		}
+
+		err := inMemory.AddSeller(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range stringFields {
+			err := inMemory.UpdateSeller(ctx, expected.ID, field, "newString")
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success bool fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Seller{
+			ID: "sellerID",
+		}
+
+		err := inMemory.AddSeller(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range boolFields {
+			err := inMemory.UpdateSeller(ctx, expected.ID, field, true)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success float64 fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Seller{
+			ID: "sellerID",
+		}
+
+		err := inMemory.AddSeller(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range float64Fields {
+			err := inMemory.UpdateSeller(ctx, expected.ID, field, float64(100))
+			assert.NoError(t, err)
+		}
+	})
+}
+
+func TestInMemoryUpdateCustomer(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	stringFields := []string{"AutomaticSigninDomains", "Name"}
+
+	immutableFields := []string{"Code", "BuyerRef", "SellerRef", "DatabaseID"}
+
+	t.Run("customer does not exist", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		err := inMemory.UpdateCustomer(ctx, "0", "", "")
+		assert.EqualError(t, err, "customer with reference 0 not found")
+	})
+
+	t.Run("unknown field", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Customer{
+			Code: "customerID",
+		}
+
+		err := inMemory.AddCustomer(ctx, expected)
+		assert.NoError(t, err)
+
+		err = inMemory.UpdateCustomer(ctx, expected.Code, "unknown field", "")
+		assert.EqualError(t, fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Customer type", "unknown field"), err.Error())
+	})
+
+	t.Run("immutable fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Customer{
+			Code: "customerID",
+		}
+
+		err := inMemory.AddCustomer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range immutableFields {
+			err := inMemory.UpdateCustomer(ctx, expected.Code, field, "")
+			assert.EqualError(t, fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Customer type", field), err.Error())
+		}
+	})
+
+	t.Run("failed string fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Customer{
+			Code: "customerID",
+		}
+
+		err := inMemory.AddCustomer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range stringFields {
+			err := inMemory.UpdateCustomer(ctx, expected.Code, field, float64(-1))
+			assert.EqualError(t, fmt.Errorf("%v is not a valid string value", float64(-1)), err.Error())
+		}
+	})
+
+	t.Run("success string fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Customer{
+			Code: "sellerID",
+		}
+
+		err := inMemory.AddCustomer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range stringFields {
+			err := inMemory.UpdateCustomer(ctx, expected.Code, field, "newString")
+			assert.NoError(t, err)
+		}
+	})
+}
+
+func TestInMemoryUpdateDatacenter(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	float32Fields := []string{"Latitude", "Longitude"}
+
+	immutableFields := []string{"ID", "Name", "AliasName", "SellerID", "DatabaseID"}
+
+	t.Run("datacenter does not exist", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		err := inMemory.UpdateDatacenter(ctx, 0, "", "")
+		assert.EqualError(t, err, "datacenter with reference 0 not found")
+	})
+
+	t.Run("unknown field", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Datacenter{
+			ID:   crypto.HashID("datacenter name"),
+			Name: "datadcenter name",
+		}
+
+		err := inMemory.AddDatacenter(ctx, expected)
+		assert.NoError(t, err)
+
+		err = inMemory.UpdateDatacenter(ctx, expected.ID, "unknown field", "")
+		assert.EqualError(t, fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Datacenter type", "unknown field"), err.Error())
+	})
+
+	t.Run("immutable fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Datacenter{
+			ID:   crypto.HashID("datacenter name"),
+			Name: "datadcenter name",
+		}
+
+		err := inMemory.AddDatacenter(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range immutableFields {
+			err := inMemory.UpdateDatacenter(ctx, expected.ID, field, "")
+			assert.EqualError(t, fmt.Errorf("Field '%v' does not exist (or is not editable) on the routing.Datacenter type", field), err.Error())
+		}
+	})
+
+	t.Run("failed float32 fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Datacenter{
+			ID:   crypto.HashID("datacenter name"),
+			Name: "datadcenter name",
+		}
+
+		err := inMemory.AddDatacenter(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range float32Fields {
+			err := inMemory.UpdateDatacenter(ctx, expected.ID, field, "a")
+			assert.EqualError(t, fmt.Errorf("%v is not a valid float32 value", "a"), err.Error())
+		}
+	})
+
+	t.Run("success float32 fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Datacenter{
+			ID:   crypto.HashID("datacenter name"),
+			Name: "datadcenter name",
+		}
+
+		err := inMemory.AddDatacenter(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range float32Fields {
+			err := inMemory.UpdateDatacenter(ctx, expected.ID, field, float32(23.32))
+			assert.NoError(t, err)
+		}
 	})
 }
