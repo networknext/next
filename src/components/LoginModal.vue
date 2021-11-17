@@ -80,9 +80,8 @@ export default class LoginModal extends Vue {
   private mounted () {
     const redirectURI = this.$route.query.redirectURI || ''
     if (redirectURI !== '') {
-      this.redirectURL = window.location.origin + redirectURI
+      this.redirectURL = window.location.origin + '?redirectURI=' + redirectURI
     }
-    console.log(this.redirectURL)
   }
 
   private login (): void {

@@ -227,7 +227,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
 
   // Anonymous filters
   if (store.getters.isAnonymous && AnonymousRoutes.indexOf(to.name || '') === -1) {
-    console.log(to)
+    // Prompt user to login and try the route again afterwards
     updateCurrentPage('login')
     next('/login?redirectURI=' + to.fullPath)
     return
@@ -280,6 +280,7 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
 
   // Beta / Premium features given to the user at a buyer level
   if (!store.getters.hasBilling && (to.name === 'usage')) {
+    console.log('No billing for you!')
     updateCurrentPage('map')
     next('/map')
     return

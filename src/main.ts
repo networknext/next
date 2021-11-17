@@ -94,7 +94,10 @@ Vue.use(JSONRPCPlugin)
 Vue.prototype.$authService.processAuthentication()
   .then(() => {
     const query = window.location.search
-    if (window.location.hash !== '' || query.includes('signup')) {
+    if (query.includes('redirectURI')) {
+      const parseURI = query.split('=')[1]
+      router.push({ path: parseURI }).catch(() => { console.log('Routing to invoice failed') })
+    } else if (window.location.hash !== '' || query.includes('signup')) {
       router.push('/map')
     }
 
