@@ -70,7 +70,7 @@
                 $store.getters.currentPage == 'analytics' ||
                 $store.getters.currentPage == 'usage'
             }"
-            v-if="$store.getters.hasBilling || $store.getters.hasAnalytics"
+            v-if="($store.getters.hasBilling || $store.getters.hasAnalytics) && $store.getters.isExplorer"
           >Explore</router-link>
         </li>
         <li class="nav-item text-nowrap">
