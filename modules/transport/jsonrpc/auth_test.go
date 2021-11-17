@@ -943,7 +943,6 @@ func TestAllRoles(t *testing.T) {
 		err := svc.AllRoles(req, &jsonrpc.RolesArgs{}, &reply)
 		assert.NoError(t, err)
 		assert.Equal(t, 3, len(reply.Roles))
-		fmt.Println(reply.Roles)
 		assert.Equal(t, svc.RoleCache["Admin"].GetName(), reply.Roles[0].GetName())
 		assert.Equal(t, svc.RoleCache["Admin"].GetID(), reply.Roles[0].GetID())
 		assert.Equal(t, svc.RoleCache["Admin"].GetDescription(), reply.Roles[0].GetDescription())
