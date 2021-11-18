@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
@@ -24,13 +23,10 @@ func TestAllAccounts(t *testing.T) {
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	IDs := []string{
@@ -209,13 +205,10 @@ func TestUserAccount(t *testing.T) {
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	IDs := []string{
@@ -468,13 +461,10 @@ func TestDeleteAccount(t *testing.T) {
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	IDs := []string{
@@ -651,11 +641,8 @@ func TestAddUserAccount(t *testing.T) {
 	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		JobManager:  &jobManager,
-		Logger:      logger,
 		RoleCache:   make(map[string]*management.Role),
 		RoleManager: roleManager,
 		Storage:     &storer,
@@ -878,11 +865,8 @@ func TestAllRoles(t *testing.T) {
 		"Can manage the Network Next system, including access to configstore.",
 	}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		JobManager:  &jobManager,
-		Logger:      logger,
 		RoleCache:   make(map[string]*management.Role),
 		RoleManager: roleManager,
 		Storage:     &storer,
@@ -996,15 +980,12 @@ func TestUserRoles(t *testing.T) {
 		"Lenny",
 	}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		RoleManager: roleManager,
 		RoleCache:   make(map[string]*management.Role),
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	svc.RoleCache["Admin"] = &management.Role{
@@ -1119,11 +1100,8 @@ func TestUpdateUserRoles(t *testing.T) {
 		"Lenny",
 	}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		JobManager:  &jobManager,
-		Logger:      logger,
 		RoleCache:   make(map[string]*management.Role),
 		RoleManager: roleManager,
 		Storage:     &storer,
@@ -1282,11 +1260,8 @@ func TestSetupCompanyAccount(t *testing.T) {
 		"Can manage the Network Next system, including access to configstore.",
 	}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		JobManager:  &jobManager,
-		Logger:      logger,
 		RoleCache:   make(map[string]*management.Role),
 		RoleManager: roleManager,
 		Storage:     &storer,
@@ -1464,13 +1439,10 @@ func TestUpdateAccountDetails(t *testing.T) {
 		Name: &names[0],
 	})
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1632,13 +1604,10 @@ func TestSendVerificationEmail(t *testing.T) {
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1683,13 +1652,10 @@ func TestUpdateAutoSignupDomains(t *testing.T) {
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
