@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 
@@ -359,12 +360,14 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				return &err
 			}
-			roles := []*management.Role{
-				s.RoleCache["Viewer"],
-				s.RoleCache["Owner"],
-				s.RoleCache["Admin"],
+
+			allRoles := []*management.Role{}
+
+			// Convert map to array
+			for _, role := range s.RoleCache {
+				allRoles = append(allRoles, role)
 			}
-			if err := s.UserManager.RemoveRoles(user.GetID(), roles...); err != nil {
+			if err := s.UserManager.RemoveRoles(user.GetID(), allRoles...); err != nil {
 				core.Error("AddUserAccount(): %v: Failed to remove exist roles from user account", err.Error())
 				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 				return &err
@@ -462,7 +465,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("AllRoles(): %v", err.Error())
+		core.Error("UserDatabase(): %v", err.Error())
 		return &err
 	}
 
@@ -473,7 +476,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 	for keepSearching {
 		accountList, err := s.UserManager.List(management.PerPage(100), management.Page(page))
 		if err != nil {
-			core.Error("AllAccounts(): %v: Failed to fetch user list", err.Error())
+			core.Error("UserDatabase(): %v: Failed to fetch user list", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 			return &err
 		}
@@ -494,7 +497,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 
 		userRoles, err := s.UserManager.Roles(account.GetID())
 		if err != nil {
-			core.Error("AllAccounts(): %v: Failed to get user roles", err.Error())
+			core.Error("UserDatabase(): %v: Failed to get user roles", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 			return &err
 		}
@@ -547,19 +550,16 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		return &err
 	}
 
-	if middleware.VerifyAllRoles(r, middleware.AdminRole) {
-		reply.Roles = []*management.Role{
-			s.RoleCache["Viewer"],
-			s.RoleCache["Owner"],
-			s.RoleCache["Admin"],
+	for name, role := range s.RoleCache {
+		if name == "Admin" && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+			continue
 		}
-	} else {
-		reply.Roles = []*management.Role{
-			s.RoleCache["Viewer"],
-			s.RoleCache["Owner"],
-		}
+		reply.Roles = append(reply.Roles, role)
 	}
 
+	sort.Slice(reply.Roles, func(i, j int) bool {
+		return reply.Roles[i].GetName() < reply.Roles[j].GetName()
+	})
 	return nil
 }
 
@@ -604,34 +604,18 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return &err
 	}
 
-	userRoles, err := s.UserManager.Roles(args.UserID)
+	allRoles := []*management.Role{}
+
+	// Convert map to array
+	for _, role := range s.RoleCache {
+		allRoles = append(allRoles, role)
+	}
+
+	err = s.UserManager.RemoveRoles(args.UserID, allRoles...)
 	if err != nil {
-		core.Error("UpdateUserRoles(): %v: failed to fetch user roles", err.Error())
+		core.Error("UpdateUserRoles(): %v: Failed to remove old user roles", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
-	}
-
-	removeRoles := []*management.Role{
-		s.RoleCache["Viewer"],
-		s.RoleCache["Owner"],
-	}
-
-	if len(userRoles.Roles) > 0 {
-		if middleware.VerifyAllRoles(r, middleware.AdminRole) {
-			err = s.UserManager.RemoveRoles(args.UserID, removeRoles...)
-			if err != nil {
-				core.Error("UpdateUserRoles(): %v: Failed to remove old user roles", err.Error())
-				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
-				return &err
-			}
-		} else {
-			err = s.UserManager.RemoveRoles(args.UserID, userRoles.Roles...)
-			if err != nil {
-				core.Error("UpdateUserRoles(): %v: Failed to remove old user roles", err.Error())
-				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
-				return &err
-			}
-		}
 	}
 
 	if len(args.Roles) == 0 {
@@ -707,9 +691,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 	}
 
 	ctx := r.Context()
-	roles := []*management.Role{
-		s.RoleCache["Viewer"],
-	}
+	roles := []*management.Role{}
 
 	// Check if customer account exists already
 	customer, err := s.Storage.Customer(ctx, args.CompanyCode)
@@ -755,21 +737,27 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 	}
 
 	if !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		allRoles := []*management.Role{}
+
+		// Convert map to array
+		for _, role := range s.RoleCache {
+			allRoles = append(allRoles, role)
+		}
+
 		// Remove existing roles if there are any
-		if err := s.UserManager.RemoveRoles(requestID, []*management.Role{
-			s.RoleCache["Viewer"],
-			s.RoleCache["Owner"],
-		}...); err != nil {
+		if err := s.UserManager.RemoveRoles(requestID, allRoles...); err != nil {
 			core.Error("SetupCompanyAccount() failed to remove roles: %v", err)
 			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 			return &err
 		}
 
-		// Assign new roles (owner and viewer)
-		if err := s.UserManager.AssignRoles(requestID, roles...); err != nil {
-			core.Error("SetupCompanyAccount() failed to assign user roles: %v", err)
-			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
-			return &err
+		// Assign new roles (owner)
+		if len(roles) > 0 {
+			if err := s.UserManager.AssignRoles(requestID, roles...); err != nil {
+				core.Error("SetupCompanyAccount() failed to assign user roles: %v", err)
+				err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+				return &err
+			}
 		}
 	}
 	return nil
