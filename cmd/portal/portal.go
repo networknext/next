@@ -623,6 +623,12 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
+		pingdomURI := envvar.Get("PINGDOM_URI", "")
+		if pingdomURI == "" {
+			core.Error("PINGDOM_URI not set")
+			// Don't return here because the pingdom writer does not exist in every env
+		}
+
 		portalBackendMIG := envvar.Get("PORTAL_BACKEND_MIG", "")
 		if portalBackendMIG == "" {
 			core.Error("PORTAL_BACKEND_MIG not set")
@@ -638,7 +644,7 @@ func mainReturnWithCode() int {
 		relayForwarderURI := envvar.Get("RELAY_FORWARDER_URI", "")
 		if relayForwarderURI == "" {
 			core.Error("RELAY_FORWARDER_URI not set")
-			// Don't return here because the forwarder does not exist in every env
+			// Don't return here because the relay forwarder does not exist in every env
 		}
 
 		relayFrontendURI := envvar.Get("RELAY_FRONTEND_URI", "")
@@ -682,6 +688,7 @@ func mainReturnWithCode() int {
 			AnalyticsPusherURI: analyticsPusherURI,
 			ApiURI:             apiURI,
 			BillingMIG:         billingMIG,
+			PingdomURI:			pingdomURI,
 			PortalBackendMIG:   portalBackendMIG,
 			PortalCruncherURI:  portalCruncherURI,
 			RelayForwarderURI:  relayForwarderURI,

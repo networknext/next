@@ -38,6 +38,7 @@ type RelayFleetService struct {
 	AnalyticsPusherURI string
 	ApiURI             string
 	BillingMIG         string
+	PingdomURI         string
 	PortalBackendMIG   string
 	PortalCruncherURI  string
 	RelayForwarderURI  string
@@ -265,6 +266,8 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 			return serviceURI, err
 		}
 		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
+	case "Pingdom":
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.PingdomURI)
 	case "PortalBackend":
 		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.PortalBackendMIG)
 		if err != nil {
@@ -382,6 +385,7 @@ var ServiceStatusList = []string{
 	"AnalyticsPusher",
 	"Api",
 	"Billing",
+	"Pingdom",
 	"PortalBackend",
 	"PortalCruncher",
 	"RelayBackend",
@@ -500,6 +504,11 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 				values = reflect.ValueOf(status)
 			case "Billing":
 				var status metrics.BillingStatus
+				json.Unmarshal(b, &status)
+				fields = reflect.TypeOf(status)
+				values = reflect.ValueOf(status)
+			case "Pingdom":
+				var status metrics.PingdomStatus
 				json.Unmarshal(b, &status)
 				fields = reflect.TypeOf(status)
 				values = reflect.ValueOf(status)
