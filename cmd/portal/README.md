@@ -3,7 +3,6 @@
 The Portal Backend is responsible for:
 
 1. Providing a single RPC API for data management (Relays, Datacenters, Buyers, etc.)
-2. Serve the static front end JavaScript Portal UI
 
 ### Load & Scalability
 
@@ -15,12 +14,12 @@ Scalability: **Vertically**
 
 ### To Run
 
-Run `redis-server` in one terminal window
+Run `./next select local` to choose the local environment and start a redis server if needed
 Run `make dev-portal`
 
 ### Logging
 
-Be default, only error logs will be outputted to console.   
+Be default, only error logs will be outputted to console.
 
 Debug logs are controlled by the `NEXT_DEBUG_LOGS` environment variable.
 
@@ -28,7 +27,7 @@ Debug logs are controlled by the `NEXT_DEBUG_LOGS` environment variable.
 
 #### Required
 - `ENV`: the environment the service is running in. Should be either local, dev, staging, or prod
-- `LOOKER_SECRET`: the secret for accessing the Looker API
+- `LOOKER_SECRET`: the secret to sign the SSO URLs embedded in the Portal for Looker
 - `LOOKER_HOST`: the hostname for the Looker API
 - `GITHUB_ACCESS_TOKEN`: the token to access Github API via OAuth 2.0 to read relase notes
 - `SLACK_WEBHOOK_URL`: the Slack webhook URL to send messages notifications to Slack channels
@@ -58,7 +57,7 @@ Debug logs are controlled by the `NEXT_DEBUG_LOGS` environment variable.
 - `REDIS_PASSWORD`: the password to connect to the redis database. Default `""`
 - `REDIS_MAX_IDLE_CONNS`: the max number of idle redis pool connections. Default `5`
 - `REDIS_MAX_ACTIVE_CONNS`: the max number of active redis pool connections. Default `64`
-- `FEATURE_BIGTABLE`: the feature flag to viewing historical user sessions through the User Tool). Default `false`
+- `FEATURE_BIGTABLE`: the feature flag to viewing historical user sessions through the User Tool. Default `false`
 - `BIGTABLE_EMULATOR_HOST`: the hostname for the Bigtable emulator. Should only be set for local development.
 - `BIGTABLE_INSTANCE_ID`: the instance ID of the Bigtable instance for the current project. Default `localhost:8086`
 - `BIGTABLE_TABLE_NAME`: the table name for the historical sessions table in Bigtable. Default `""`
