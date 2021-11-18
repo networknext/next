@@ -215,25 +215,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	lookerSecret := envvar.Get("LOOKER_SECRET", "")
-	if lookerSecret == "" {
-		core.Error("LOOKER_SECRET not set")
-		return 1
-	}
-
-	lookerHost := envvar.Get("LOOKER_HOST", "")
-	if lookerHost == "" {
-		core.Error("LOOKER_HOST not set")
-		return 1
-	}
-
-	// Leave the looker clientID and api secret blank here because we don't want API access within the buyer service
-	lookerClient, err := looker.NewLookerClient(lookerHost, lookerSecret, "", "")
-	if err != nil {
-		core.Error("failed to create looker client: %v", err)
-		return 1
-	}
-
 	githubAccessToken := envvar.Get("GITHUB_ACCESS_TOKEN", "")
 	if githubAccessToken == "" {
 		core.Error("GITHUB_ACCESS_TOKEN not set")
@@ -331,7 +312,6 @@ func mainReturnWithCode() int {
 		BigTableCfName:         btCfName,
 		BigTable:               btClient,
 		BigTableMetrics:        btMetrics,
-		LookerClient:           lookerClient,
 		RedisPoolTopSessions:   redisPoolTopSessions,
 		RedisPoolSessionMeta:   redisPoolSessionMeta,
 		RedisPoolSessionSlices: redisPoolSessionSlices,
@@ -347,6 +327,18 @@ func mainReturnWithCode() int {
 		Storage: db,
 	}
 
+	lookerSecret := envvar.Get("LOOKER_SECRET", "")
+	if lookerSecret == "" {
+		core.Error("LOOKER_SECRET not set")
+		return 1
+	}
+
+	lookerHost := envvar.Get("LOOKER_HOST", "")
+	if lookerHost == "" {
+		core.Error("LOOKER_HOST not set")
+		return 1
+	}
+
 	lookerAPIClientID := envvar.Get("LOOKER_API_CLIENT_ID", "")
 	if lookerAPIClientID == "" {
 		core.Error("LOOKER_API_CLIENT_ID not set")
@@ -359,7 +351,7 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	lookerClient, err = looker.NewLookerClient(lookerHost, lookerSecret, lookerAPIClientID, lookerAPIClientSecret)
+	lookerClient, err := looker.NewLookerClient(lookerHost, lookerSecret, lookerAPIClientID, lookerAPIClientSecret)
 	if err != nil {
 		core.Error("failed to create looker client: %v", err)
 		return 1
@@ -688,7 +680,7 @@ func mainReturnWithCode() int {
 			AnalyticsPusherURI: analyticsPusherURI,
 			ApiURI:             apiURI,
 			BillingMIG:         billingMIG,
-			PingdomURI:			pingdomURI,
+			PingdomURI:         pingdomURI,
 			PortalBackendMIG:   portalBackendMIG,
 			PortalCruncherURI:  portalCruncherURI,
 			RelayForwarderURI:  relayForwarderURI,

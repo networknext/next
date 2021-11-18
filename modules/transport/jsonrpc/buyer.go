@@ -10,6 +10,7 @@ import (
 	"hash/fnv"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -2554,7 +2555,14 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	}
 
 	if buyer.Trial && !buyer.Analytics && middleware.VerifyAnyRole(r, middleware.AdminRole) {
-		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(requestID))
+		nonce, err := GenerateRandomString(16)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+			core.Error("FetchNotifications(): %v: Failed to generate nonce", err.Error())
+			return &err
+		}
+
+		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerSecret, nonce, requestID))
 	}
 
 	return nil
@@ -2629,23 +2637,24 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 	return nil
 }
 
-type FetchAnalyticsDashboardsArgs struct {
+type FetchSummaryDashboardArgs struct {
 	CompanyCode string `json:"company_code"`
 	DateString  string `json:"date_string"`
 	Origin      string `json:"origin"`
 }
 
-type FetchAnalyticsDashboardsReply struct {
-	Dashboards map[string][]string `json:"dashboards"`
+type FetchSummaryDashboardReply struct {
+	URLs []string `json:"urls"`
 }
 
-func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAnalyticsDashboardsArgs, reply *FetchAnalyticsDashboardsReply) error {
-	reply.Dashboards = make(map[string][]string, 0)
+// TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
+func (s *BuyersService) FetchAnalyticsSummaryDashboards(r *http.Request, args *FetchSummaryDashboardArgs, reply *FetchSummaryDashboardReply) error {
+	reply.URLs = make([]string, 0)
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.ExplorerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+		core.Error("FetchAnalyticsSummaryDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -2659,84 +2668,36 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+		core.Error("FetchAnalyticsSummaryDashboards(): %v", err.Error())
 		return &err
 	}
 
 	// Admin's will be able to search any company's billing info
 	if isAdmin {
-		customerCode = args.CompanyCode
+		companyCode = args.CompanyCode
 	}
 
-	dashboards, err := s.Storage.GetAnalyticsDashboards(ctx)
-	if err != nil {
-		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
-	}
+	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
+		companyCode = "esl"
+	} else {
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			core.Error("FetchAnalyticsSummaryDashboards(): %v: Failed to fetch buyer", err.Error())
+			return &err
+		}
 
-	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
-	if err != nil {
-		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
-	}
-
-	for _, dashboard := range dashboards {
-		dashCustomerCode := customerCode
-		if dashboard.CustomerCode == customerCode && !dashboard.Discovery && !dashboard.Category.Admin && (!dashboard.Category.Premium || (buyer.Analytics && dashboard.Category.Premium)) {
-			_, ok := reply.Dashboards[dashboard.Category.Label]
-			if !ok {
-				reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
-			}
-
-			// Hacky work around for local and dev
-			if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
-				dashCustomerCode = "esl"
-			}
-
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, dashCustomerCode, args.Origin)
-			if err != nil {
-				continue
-			}
-
-			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
+		if !buyer.Analytics && !isAdmin {
+			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+			core.Error("FetchAnalyticsSummaryDashboards(): %v", err.Error())
+			return &err
 		}
 	}
-
-	return nil
-}
-
-type FetchUsageDashboardArgs struct {
-	CompanyCode string `json:"company_code"`
-	Origin      string `json:"origin"`
-}
-
-type FetchUsageDashboardReply struct {
-	URL string `json:"url"`
-}
-
-// TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
-func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDashboardArgs, reply *FetchUsageDashboardReply) error {
-	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("FetchUsageDashboard(): %v", err.Error())
-		return &err
-	}
-
-	if args.Origin == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		core.Error("FetchAnalyticsDashboards(): %v: Origin is required", err.Error())
-		return &err
-	}
-
-	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchUsageDashboard(): %v", err.Error())
+		core.Error("FetchAnalyticsSummaryDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -2744,14 +2705,14 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchUsageDashboard(): %v: Failed to parse user ID", err.Error())
+		core.Error("FetchAnalyticsSummaryDashboards(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
-	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
-	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
-		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("FetchUsageDashboard(): %v", err.Error())
+	nonce, err := GenerateRandomString(16)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+		core.Error("FetchAnalyticsSummaryDashboards(): %v: Failed to generate nonce", err.Error())
 		return &err
 	}
 
@@ -2774,19 +2735,10 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 			Time:            time.Now().Unix(),
 		}
 
-	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
-		customerCode = "esl"
-	}
+		urlOptions.UserAttributes["customer_code"] = companyCode
 
-	usageDashURL, err := s.LookerClient.GenerateUsageDashboardURL(requestID, customerCode, args.Origin)
-	if err != nil {
-		// TODO: make a looker error code
-		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
-		core.Error("FetchUsageDashboard(): %v", err.Error())
-		return &err
+		reply.URLs = append(reply.URLs, notifications.BuildLookerURL(urlOptions))
 	}
-
-	reply.URL = usageDashURL
 	return nil
 }
 
@@ -2837,7 +2789,7 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchU
 		return &err
 	}
 
-	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchUsageSummaryDashboard(): %v", err.Error())
@@ -2846,11 +2798,11 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchU
 
 	// Admin's will be able to search any company's billing info
 	if isAdmin {
-		customerCode = args.CompanyCode
+		companyCode = args.CompanyCode
 	}
 
 	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
-		customerCode = "esl"
+		companyCode = "esl"
 	}
 
 	dashURL := fmt.Sprintf("%s?embed_domain=%s", UsageDashURI, args.Origin)
