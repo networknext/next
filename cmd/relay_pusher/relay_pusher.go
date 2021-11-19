@@ -281,22 +281,6 @@ func mainReturnWithCode() int {
 				}
 				gz.Close()
 
-				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), serverBackendInstanceNames, ispFileName); err != nil {
-					core.Error("failed to copy maxmind ISP file to server backends: %v", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
-					// Don't continue here, we need to try out the city file as well
-				} else {
-					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPSCP.Add(1)
-				}
-
-				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), ispStorageName); err != nil {
-					core.Error("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP.Add(1)
-					// Don't continue here, we need to try out the city file as well
-				} else {
-					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPStorageUploads.Add(1)
-				}
-
 				updateTime := time.Since(start)
 				duration := float64(updateTime.Milliseconds())
 
@@ -351,7 +335,7 @@ func mainReturnWithCode() int {
 				gz.Close()
 
 				// Store the known list of instance names
-				maxmindInstanceNames := serverBackendInstanceNames
+				allBackendInstanceNames := serverBackendInstanceNames
 
 				// The names of instances in a MIG can change, so get them each time
 				serverBackendMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, serverBackendMIGName)
@@ -359,7 +343,22 @@ func mainReturnWithCode() int {
 					core.Error("failed to fetch server backend mig instance names: %v", err)
 				} else {
 					// Add the server backend mig instance names to the list
-					maxmindInstanceNames = append(maxmindInstanceNames, serverBackendMIGInstanceNames...)
+					allBackendInstanceNames = append(allBackendInstanceNames, serverBackendMIGInstanceNames...)
+				}
+
+				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), ispStorageName); err != nil {
+					core.Error("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP.Add(1)
+				} else {
+					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPStorageUploads.Add(1)
+				}
+
+				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), allBackendInstanceNames, ispFileName); err != nil {
+					core.Error("failed to copy maxmind ISP file to server backends: %v", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+					// Don't continue here, need to record update duration
+				} else {
+					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPSCP.Add(1)
 				}
 
 				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), cityStorageName); err != nil {
@@ -369,7 +368,7 @@ func mainReturnWithCode() int {
 					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCityStorageUploads.Add(1)
 				}
 
-				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), maxmindInstanceNames, cityFileName); err != nil {
+				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), allBackendInstanceNames, cityFileName); err != nil {
 					core.Error("failed to copy maxmind City file to server backends: %v", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
 					// Don't continue here, need to record update duration
