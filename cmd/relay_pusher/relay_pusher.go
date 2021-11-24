@@ -372,7 +372,7 @@ func mainReturnWithCode() int {
 					}
 				} else {
 					core.Debug("copying maxmind ISP from bytes to remote")
-					if err := gcpStorage.CopyFromBytesToRemote(bufISP.Bytes(), allBackendInstanceNames, ispFileName); err != nil {
+					if err := gcpStorage.CopyFromBytesToRemote(bufISP.Bytes(), allBackendInstanceNames, ispOutputLocation); err != nil {
 						core.Error("failed to copy maxmind ISP file from bytes to server backends: %v", err)
 						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
 						// Don't continue here, need to record update duration
@@ -399,7 +399,7 @@ func mainReturnWithCode() int {
 					}
 				} else {
 					core.Debug("copying maxmind City from bytes to remote")
-					if err := gcpStorage.CopyFromBytesToRemote(bufCity.Bytes(), allBackendInstanceNames, cityFileName); err != nil {
+					if err := gcpStorage.CopyFromBytesToRemote(bufCity.Bytes(), allBackendInstanceNames, cityOutputLocation); err != nil {
 						core.Error("failed to copy maxmind City file to server backends: %v", err)
 						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
 						// Don't continue here, need to record update duration
