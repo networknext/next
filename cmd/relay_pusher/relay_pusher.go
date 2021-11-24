@@ -179,15 +179,15 @@ func mainReturnWithCode() int {
 		Timeout: time.Second * 30,
 	}
 
-	ispFileName := envvar.Get("MAXMIND_ISP_DB_FILE_NAME", "")
-	if ispFileName == "" {
-		core.Error("MAXMIND_ISP_DB_FILE_NAME not set")
+	ispOutputLocation := envvar.Get("MAXMIND_ISP_OUTPUT_LOCATION", "")
+	if ispOutputLocation == "" {
+		core.Error("MAXMIND_ISP_OUTPUT_LOCATION not set")
 		return 1
 	}
 
-	cityFileName := envvar.Get("MAXMIND_CITY_DB_FILE_NAME", "")
-	if cityFileName == "" {
-		core.Error("MAXMIND_CITY_DB_FILE_NAME not set")
+	cityOutputLocation := envvar.Get("MAXMIND_CITY_OUTPUT_LOCATION", "")
+	if cityOutputLocation == "" {
+		core.Error("MAXMIND_CITY_OUTPUT_LOCATION not set")
 		return 1
 	}
 
@@ -212,6 +212,12 @@ func mainReturnWithCode() int {
 	cityURI := envvar.Get("MAXMIND_CITY_DB_URI", "")
 	if cityURI == "" {
 		core.Error("MAXMIND_CITY_DB_URI not set")
+		return 1
+	}
+
+	useFromBucket, err := envvar.GetBool("MAXMIND_COPY_FROM_BUCKET_TO_REMOTE", false)
+	if err != nil {
+		core.Error("failed to parse MAXMIND_COPY_FROM_BUCKET_TO_REMOTE: %v", err)
 		return 1
 	}
 
@@ -257,7 +263,7 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				buf := bytes.NewBuffer(nil)
+				bufISP := bytes.NewBuffer(nil)
 				tr := tar.NewReader(gz)
 				for {
 					hdr, err := tr.Next()
@@ -271,7 +277,7 @@ func mainReturnWithCode() int {
 					}
 
 					if strings.HasSuffix(hdr.Name, "mmdb") {
-						_, err := io.Copy(buf, tr)
+						_, err := io.Copy(bufISP, tr)
 						if err != nil {
 							core.Error("failed to copy ISP data to buffer: %v", err)
 							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
@@ -310,7 +316,7 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				buf = bytes.NewBuffer(nil)
+				bufCity := bytes.NewBuffer(nil)
 				tr = tar.NewReader(gz)
 				for {
 					hdr, err := tr.Next()
@@ -324,7 +330,7 @@ func mainReturnWithCode() int {
 					}
 
 					if strings.HasSuffix(hdr.Name, "mmdb") {
-						_, err := io.Copy(buf, tr)
+						_, err := io.Copy(bufCity, tr)
 						if err != nil {
 							core.Error("failed to copy City data to buffer: %v", err)
 							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
@@ -333,6 +339,8 @@ func mainReturnWithCode() int {
 					}
 				}
 				gz.Close()
+
+				core.Debug("successfully got mmdb City and ISP data")
 
 				// Store the known list of instance names
 				allBackendInstanceNames := serverBackendInstanceNames
@@ -346,34 +354,58 @@ func mainReturnWithCode() int {
 					allBackendInstanceNames = append(allBackendInstanceNames, serverBackendMIGInstanceNames...)
 				}
 
-				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), ispStorageName); err != nil {
+				if err := gcpStorage.CopyFromBytesToStorage(ctx, bufISP.Bytes(), ispStorageName); err != nil {
 					core.Error("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP.Add(1)
 				} else {
 					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPStorageUploads.Add(1)
 				}
 
-				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), allBackendInstanceNames, ispFileName); err != nil {
-					core.Error("failed to copy maxmind ISP file to server backends: %v", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
-					// Don't continue here, need to record update duration
+				if useFromBucket {
+					core.Debug("copying maxmind ISP from storage to remote")
+					if err := gcpStorage.CopyFromBucketToRemote(ctx, ispStorageName, allBackendInstanceNames, ispOutputLocation); err != nil {
+						core.Error("failed to copy maxmind ISP file from storage to server backends: %v", err)
+						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+						// Don't continue here, need to record update duration
+					} else {
+						relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPSCP.Add(1)
+					}
 				} else {
-					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPSCP.Add(1)
+					core.Debug("copying maxmind ISP from bytes to remote")
+					if err := gcpStorage.CopyFromBytesToRemote(bufISP.Bytes(), allBackendInstanceNames, ispOutputLocation); err != nil {
+						core.Error("failed to copy maxmind ISP file from bytes to server backends: %v", err)
+						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+						// Don't continue here, need to record update duration
+					} else {
+						relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPSCP.Add(1)
+					}
 				}
 
-				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), cityStorageName); err != nil {
+				if err := gcpStorage.CopyFromBytesToStorage(ctx, bufCity.Bytes(), cityStorageName); err != nil {
 					core.Error("failed to copy maxmind City file to GCP Cloud Storage: %v", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity.Add(1)
 				} else {
 					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCityStorageUploads.Add(1)
 				}
 
-				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), allBackendInstanceNames, cityFileName); err != nil {
-					core.Error("failed to copy maxmind City file to server backends: %v", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
-					// Don't continue here, need to record update duration
+				if useFromBucket {
+					core.Debug("copying maxmind City from storage to remote")
+					if err := gcpStorage.CopyFromBucketToRemote(ctx, cityStorageName, allBackendInstanceNames, cityOutputLocation); err != nil {
+						core.Error("failed to copy maxmind City file from storage to server backends: %v", err)
+						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+						// Don't continue here, need to record update duration
+					} else {
+						relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCitySCP.Add(1)
+					}
 				} else {
-					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCitySCP.Add(1)
+					core.Debug("copying maxmind City from bytes to remote")
+					if err := gcpStorage.CopyFromBytesToRemote(bufCity.Bytes(), allBackendInstanceNames, cityOutputLocation); err != nil {
+						core.Error("failed to copy maxmind City file to server backends: %v", err)
+						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+						// Don't continue here, need to record update duration
+					} else {
+						relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCitySCP.Add(1)
+					}
 				}
 
 				updateTime = time.Since(start)
