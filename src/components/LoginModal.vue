@@ -42,10 +42,10 @@
                   <br/>
                 </small>
               </div>
-              <div style="padding: 1rem 0 1rem 0;"><router-link to="password-reset"><strong>Forgot Password?</strong></router-link></div>
+              <div style="padding: 1rem 0 1rem 0;"><router-link to="/password-reset"><strong>Forgot Password?</strong></router-link></div>
               <button type="submit" class="btn btn-primary btn-block">Log in</button>
             </form>
-            <div style="padding: 1rem 0 1rem 0;">Don't have an account? <router-link to="get-access"><strong>Get Access</strong></router-link></div>
+            <div style="padding: 1rem 0 1rem 0;">Don't have an account? <router-link to="/get-access"><strong>Get Access</strong></router-link></div>
           </div>
         </div>
       </div>
