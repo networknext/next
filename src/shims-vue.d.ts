@@ -21,6 +21,7 @@ declare module '*.vue' {
     fetchUserSessions (args: any): Promise<any>;
     fetchAllRoles (): Promise<any>;
     fetchAllAccounts (): Promise<any>;
+    fetchCurrentSaves (args: any): Promise<any>;
     updateAccountDetails (args: any): Promise<any>;
     updateUserRoles (args: any): Promise<any>;
     deleteUserAccount (args: any): Promise<any>;
