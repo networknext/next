@@ -92,7 +92,7 @@ func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []st
 			err = fmt.Errorf("failed to copy file to instance %s: %v", name, err)
 			loopError = err
 		} else {
-			core.Debug("CopyFromBytesToRemote() gcloud compute scp output: %v", buffer)
+			core.Debug("CopyFromBytesToRemote() gcloud compute scp output: %s", buffer)
 		}
 	}
 
@@ -104,6 +104,45 @@ func (g *GCPStorage) CopyFromBytesToRemote(inputBytes []byte, instanceNames []st
 		err = fmt.Errorf("failed to clean up tmp file: %v", err)
 		return err
 	}
+
+	return nil
+}
+
+// Copy file from local to GCP Storage Bucket
+func (g *GCPStorage) CopyFromLocalToBucket(ctx context.Context, outputLocation string, artifactBucketName string, storageFileName string) error {
+	if !LocalFileExists(outputLocation) {
+		err := fmt.Errorf("local file %s does not exist", outputLocation)
+		return err
+	}
+
+	bucketPath := fmt.Sprintf("gs://%s/%s", artifactBucketName, storageFileName)
+
+	runnable := exec.Command("gsutil", "cp", outputLocation, bucketPath)
+	buffer, err := runnable.CombinedOutput()
+
+	if err != nil {
+		err = fmt.Errorf("failed to copy file to bucket: %v", err)
+		return err
+	}
+	core.Debug("CopyFromLocalToBucket() gsutil cp output: %s", buffer)
+
+	return nil
+}
+
+// Copy file from local to remote location on VM (SCP function)
+func (g *GCPStorage) CopyFromLocalToRemote(ctx context.Context, outputFileName string, instanceName string) error {
+
+	// Call gsutil to copy the tmp file over to the instance
+	runnable := exec.Command("gcloud", "compute", "scp", "--zone", "us-central1-a", outputFileName, fmt.Sprintf("%s:%s", instanceName, outputFileName))
+
+	buffer, err := runnable.CombinedOutput()
+
+	if err != nil {
+		err = fmt.Errorf("failed to copy file to instance %s: %v", instanceName, err)
+		return err
+	}
+
+	core.Debug("CopyFromLocalToRemote() gcloud compute scp output: %s", buffer)
 
 	return nil
 }
@@ -125,7 +164,7 @@ func (g *GCPStorage) CopyFromBucketToLocal(ctx context.Context, artifactName str
 		err = fmt.Errorf("failed to copy file to instance: %v", err)
 		return err
 	}
-	core.Debug("CopyFromBucketToLocal() gsutil cp output: %v", buffer)
+	core.Debug("CopyFromBucketToLocal() gsutil cp output: %s", buffer)
 
 	return nil
 }
@@ -150,7 +189,7 @@ func (g *GCPStorage) CopyFromBucketToRemote(ctx context.Context, artifactName st
 			err = fmt.Errorf("failed to copy file to instance %s: %v", name, err)
 			loopError = err
 		} else {
-			core.Debug("CopyFromBucketToRemote() gcloud compute scp output: %v", buffer)
+			core.Debug("CopyFromBucketToRemote() gcloud compute scp output: %s", buffer)
 		}
 	}
 
