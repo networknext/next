@@ -34,6 +34,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/notifications"
 
@@ -90,6 +91,8 @@ type BuyersService struct {
 	Metrics *metrics.BuyerEndpointMetrics
 	Storage storage.Storer
 	Logger  log.Logger
+
+	SavesCache *map[string][]looker.LookerSave
 
 	LookerSecret string
 
@@ -906,6 +909,7 @@ type point struct {
 }
 
 func (s *BuyersService) GenerateMapPointsPerBuyer(ctx context.Context) error {
+	// TODO: Use pointer swap here instead of building map under lock
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -2984,6 +2988,57 @@ func (s *BuyersService) FetchReleaseNotes(ctx context.Context) error {
 	}
 
 	s.ReleaseNotesNotificationsCache = cacheList
+
+	return nil
+}
+
+func (s *BuyersService) ReloadSavesCache(newCache *map[string][]looker.LookerSave) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.SavesCache = newCache
+}
+
+type SavedSession struct {
+	SessionID string `json:"id"`
+}
+
+type FetchCurrentSavesArgs struct {
+	CustomerCode string `json:"customer_code"`
+}
+
+type FetchCurrentSavesReply struct {
+	Saves []SavedSession `json:"saves"`
+}
+
+func (s *BuyersService) FetchCurrentSaves(r *http.Request, args *FetchCurrentSavesArgs, reply *FetchCurrentSavesReply) error {
+	reply.Saves = make([]SavedSession, 0)
+
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.ExplorerRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchUsageSummaryDashboard(): %v", err.Error()))
+		return &err
+	}
+
+	if args.CustomerCode == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "CustomerCode"
+		s.Logger.Log("err", fmt.Errorf("FetchCurrentSaves(): %v: CustomerCode is required", err.Error()))
+		return &err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	savesCache := *s.SavesCache
+	reply.Saves = make([]SavedSession, len(savesCache[args.CustomerCode]))
+
+	for i, save := range savesCache[args.CustomerCode] {
+		reply.Saves[i] = SavedSession{
+			SessionID: fmt.Sprintf("%016x", save.SessionID),
+		}
+	}
 
 	return nil
 }

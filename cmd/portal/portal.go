@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -28,12 +30,14 @@ import (
 
 	"github.com/networknext/backend/modules/backend" // todo: not a good name for a module
 	"github.com/networknext/backend/modules/config"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/envvar"
 	"github.com/networknext/backend/modules/logging"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/notifications"
 )
@@ -430,6 +434,8 @@ func main() {
 		Storage:     db,
 	}
 
+	blankSavesCache := make(map[string][]looker.LookerSave)
+
 	// Generate Sessions Map Points periodically
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -447,6 +453,7 @@ func main() {
 		LookerSecret:           lookerSecret,
 		GithubClient:           githubClient,
 		SlackClient:            slackClient,
+		SavesCache:             &blankSavesCache,
 	}
 
 	configService := jsonrpc.ConfigService{
@@ -676,9 +683,49 @@ func main() {
 			os.Exit(1)
 		}
 
+		lookerWebhookHandler := func(w http.ResponseWriter, r *http.Request) {
+			lookerToken := r.Header.Get("X-Looker-Webhook-Token")
+			if lookerToken == "" || lookerToken != "123" { // Change this out with the actual token grabbed from env var
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(http.StatusText(http.StatusBadRequest)))
+				return
+			}
+
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			defer r.Body.Close()
+
+			fmt.Println(string(body))
+			// TODO: break down body into saves struct and cache it in buyers service
+
+			payload := looker.LookerWebhookPayload{}
+
+			if err := json.Unmarshal(body, &payload); err != nil {
+				core.Error("Failed to unmarshal looker webhook payload: %v", err)
+				return
+			}
+
+			savesCache := make(map[string][]looker.LookerSave)
+
+			fmt.Println(payload.ScheduledPlan.Title)
+			for _, data := range payload.Attachment.Data {
+				customerCode := data.CustomerCode
+				if _, ok := savesCache[customerCode]; !ok {
+					savesCache[customerCode] = make([]looker.LookerSave, 0)
+				}
+				savesCache[customerCode] = append(savesCache[customerCode], data)
+			}
+
+			buyerService.ReloadSavesCache(&savesCache)
+		}
+
 		r := mux.NewRouter()
 
 		r.Handle("/rpc", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ","), auth0Issuer, true))
+		r.HandleFunc("/saves", lookerWebhookHandler)
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 
