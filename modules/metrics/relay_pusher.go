@@ -32,10 +32,9 @@ type RelayPusherStatus struct {
 	DatabaseSCPWriteFailure         int `json:"database_scp_write_failure"`
 
 	// Durations
-	DBBinaryTotalUpdateDurationMs  float64 `json:"db_binary_total_update_duration_ms"`
-	MaxmindDBTotalUpdateDurationMs float64 `json:"maxmind_db_total_update_duration_ms"`
-	MaxmindDBCityUpdateDurationMs  float64 `json:"maxmind_db_city_update_duration_ms"`
-	MaxmindDBISPUpdateDurationMs   float64 `json:"maxmind_db_isp_update_duration_ms"`
+	DBBinaryTotalUpdateDurationMs float64 `json:"db_binary_total_update_duration_ms"`
+	MaxmindDBCityUpdateDurationMs float64 `json:"maxmind_db_city_update_duration_ms"`
+	MaxmindDBISPUpdateDurationMs  float64 `json:"maxmind_db_isp_update_duration_ms"`
 }
 
 // RelayPusherServiceMetrics defines a set of metrics for the beacon insertion service.
@@ -59,7 +58,6 @@ type RelayPusherMetrics struct {
 	MaxmindSuccessfulISPStorageUploads  Counter
 	MaxmindSuccessfulCityStorageUploads Counter
 	DBBinaryTotalUpdateDuration         Gauge
-	MaxmindDBTotalUpdateDuration        Gauge
 	MaxmindDBCityUpdateDuration         Gauge
 	MaxmindDBISPUpdateDuration          Gauge
 	ErrorMetrics                        RelayPusherErrorMetrics
@@ -74,7 +72,6 @@ var EmptyRelayPusherMetrics RelayPusherMetrics = RelayPusherMetrics{
 	MaxmindSuccessfulISPStorageUploads:  &EmptyCounter{},
 	MaxmindSuccessfulCityStorageUploads: &EmptyCounter{},
 	DBBinaryTotalUpdateDuration:         &EmptyGauge{},
-	MaxmindDBTotalUpdateDuration:        &EmptyGauge{},
 	MaxmindDBCityUpdateDuration:         &EmptyGauge{},
 	MaxmindDBISPUpdateDuration:          &EmptyGauge{},
 	ErrorMetrics:                        EmptyRelayPusherErrorMetrics,
@@ -199,17 +196,6 @@ func NewRelayPusherServiceMetrics(ctx context.Context, metricsHandler Handler) (
 		ID:          "maxmind_db_city_update.duration",
 		Unit:        "ms",
 		Description: "The amount of time it takes to update city files on all server backends in ms.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	RelayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBTotalUpdateDuration, err = metricsHandler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Maxmind DB Update Duration",
-		ServiceName: "relay_pusher",
-		ID:          "maxmind_db_update.duration",
-		Unit:        "ms",
-		Description: "The total amount of time it takes to update both maxmind files on all server backends in ms.",
 	})
 	if err != nil {
 		return nil, err
