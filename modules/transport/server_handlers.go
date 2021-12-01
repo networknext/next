@@ -627,6 +627,7 @@ func SessionPre(state *SessionHandlerState) bool {
 		if err != nil || state.Output.Location == routing.LocationNullIsland {
 			core.Error("location veto: %s\n", err)
 			state.Metrics.ClientLocateFailure.Add(1)
+			state.Input.Location = routing.LocationNullIsland
 			state.Output.RouteState.LocationVeto = true
 			return true
 		}

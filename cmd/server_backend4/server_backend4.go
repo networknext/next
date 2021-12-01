@@ -203,6 +203,11 @@ func mainReturnWithCode() int {
 						continue
 					}
 
+					if err := newMMDB.Validate(); err != nil {
+						core.Error("failed to validate new maxmind db: %v", err)
+						continue
+					}
+
 					// Pointer swap under mutex
 					mmdbMutex.Lock()
 					// IMPORTANT: Do not close the previous mmdb since it could still be in use
