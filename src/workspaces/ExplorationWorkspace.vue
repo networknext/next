@@ -18,7 +18,7 @@
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
       </div>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="$store.getters.currentPage === 'analytics' || $store.getters.currentPage === 'invoice' || $store.getters.currentPage === 'saves' || $store.getters.currentPage === 'usage'" style="max-width: 400px;">
+      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="$store.getters.currentPage === 'analytics' || $store.getters.currentPage === 'discovery'  || $store.getters.currentPage === 'invoice'|| $store.getters.currentPage === 'usage'" style="max-width: 400px;">
         <div class="mr-auto"></div>
         <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" />
       </div>
@@ -32,14 +32,11 @@
           <li class="nav-item" v-if="$store.getters.hasAnalytics">
             <router-link to="/explore/analytics" class="nav-link" :class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
           </li>
-          <li class="nav-item" v-if="false && $store.getters.hasAnalytics">
+          <li class="nav-item" v-if="$store.getters.isAdmin">
             <router-link to="/explore/discovery" class="nav-link" :class="{ active: $store.getters.currentPage === 'discovery'}">Discovery</router-link>
           </li>
           <li class="nav-item" v-if="false && $store.getters.isSeller">
             <router-link to="/explore/supply" class="nav-link" :class="{ active: $store.getters.currentPage === 'supply'}">Supplier</router-link>
-          </li>
-          <li class="nav-item" v-if="$store.getters.isAdmin">
-            <router-link to="/explore/saves" class="nav-link" :class="{ active: $store.getters.currentPage === 'saves'}">Saves</router-link>
           </li>
         </ul>
       </div>

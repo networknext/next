@@ -1,15 +1,7 @@
 <template>
   <div class="card-body" id="analytics-page">
     <div v-for="(url, index) in analyticsDashURLs" :key="index" class="row">
-      <iframe
-        class="col"
-        id="analyticsDash"
-        :src="url"
-        style="min-height: 1000px;"
-        v-if="url !== ''"
-        frameborder="0"
-      >
-      </iframe>
+      <LookerEmbed :dashURL="url" dashID="analyticsDash" />
     </div>
   </div>
 </template>
@@ -17,7 +9,13 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 
-@Component
+import LookerEmbed from '@/components/LookerEmbed.vue'
+
+@Component({
+  components: {
+    LookerEmbed
+  }
+})
 export default class Analytics extends Vue {
   private analyticsDashURLs: Array<string>
 
@@ -40,25 +38,10 @@ export default class Analytics extends Vue {
     )
 
     this.fetchAnalyticsSummary()
-
-    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
-    window.removeEventListener('message', this.resizeIframes)
-  }
-
-  private resizeIframes (event: any) {
-    const iframes = document.querySelectorAll('#analyticsDash')
-    iframes.forEach((frame: any) => {
-      if (event.source === frame.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
-        const eventData = JSON.parse(event.data)
-        if (eventData.type === 'page:properties:changed') {
-          frame.height = eventData.height + 50
-        }
-      }
-    })
   }
 
   private fetchAnalyticsSummary () {

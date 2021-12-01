@@ -1,15 +1,7 @@
 <template>
   <div class="card-body" id="usageDash-page">
     <div class="row">
-      <iframe
-        class="col"
-        id="usageDash"
-        style="min-height: 1000px;"
-        :src="usageDashURL"
-        v-if="usageDashURL !== ''"
-        frameborder="0"
-      >
-      </iframe>
+      <LookerEmbed dashID="usageDash" :dashURL="usageDashURL"/>
     </div>
     <div class="row">
       <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
@@ -132,7 +124,13 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { DateTime } from 'luxon'
 
-@Component
+import LookerEmbed from '@/components/LookerEmbed.vue'
+
+@Component({
+  components: {
+    LookerEmbed
+  }
+})
 export default class Usage extends Vue {
   private dateString: string
   private usageDashURL: string
@@ -171,23 +169,10 @@ export default class Usage extends Vue {
     )
 
     this.fetchUsageSummary()
-
-    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
-    window.removeEventListener('message', this.resizeIframes)
-  }
-
-  private resizeIframes (event: any) {
-    const iframe = document.getElementById('usageDash') as HTMLIFrameElement
-    if (iframe && event.source === iframe.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
-      const eventData = JSON.parse(event.data)
-      if (eventData.type === 'page:properties:changed') {
-        iframe.height = eventData.height + 50
-      }
-    }
   }
 
   private fetchUsageSummary () {

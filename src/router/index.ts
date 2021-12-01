@@ -14,7 +14,6 @@ import GetAccessModal from '@/components/GetAccessModal.vue'
 import LoginModal from '@/components/LoginModal.vue'
 import MapWorkspace from '@/workspaces/MapWorkspace.vue'
 import ResetPasswordModal from '@/components/ResetPasswordModal.vue'
-import Saves from '@/components/Saves.vue'
 import SessionDetails from '@/components/SessionDetails.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
@@ -59,11 +58,6 @@ const routes: Array<RouteConfig> = [
         path: 'discovery',
         name: 'discovery',
         component: Discovery
-      },
-      {
-        path: 'saves',
-        name: 'saves',
-        component: Saves
       },
       {
         path: 'supply',
