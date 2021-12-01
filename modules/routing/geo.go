@@ -347,3 +347,22 @@ func (mmdb *MaxmindDB) LocateStagingIP(sessionID uint64) (Location, error) {
 		Longitude: -180.0 + long*360.0,
 	}, nil
 }
+
+// Checks if the Maxmind DB can locate an IP
+func (mmdb *MaxmindDB) Validate() error {
+	ipStr := "192.0.2.1"
+	testIP := net.ParseIP(ipStr)
+	if testIP == nil {
+		return fmt.Errorf("Validate(): failed to create test IP %s", ipStr)
+	}
+
+	loc, err := mmdb.LocateIP(testIP, 0)
+	if err != nil {
+		return fmt.Errorf("Validate(): failed to locate test IP %s: %v", testIP.String(), err)
+	}
+	if loc == LocationNullIsland {
+		return fmt.Errorf("Validate(): location is null island: %v", loc)
+	}
+
+	return nil
+}
