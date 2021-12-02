@@ -10325,7 +10325,8 @@ struct next_server_internal_t
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
     char autodetect_input[NEXT_MAX_DATACENTER_NAME_LENGTH];
     char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
-    bool autodetected_datacenter;
+    bool autodetect_finished;
+    bool autodetect_succeeded;
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -12648,7 +12649,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     // only run the autodetect datacenter code once. once we know our datacenter name, it does not change
 
-    if ( server->autodetected_datacenter )
+    if ( server->autodetect_finished )
     {
         NEXT_PLATFORM_THREAD_RETURN();
     }
@@ -12691,12 +12692,14 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
         autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output );
         
+        server->autodetect_finished = true;
+
         if ( autodetect_result )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter: \"%s\"", autodetect_output );
             strncpy( server->autodetect_datacenter, autodetect_output, NEXT_MAX_DATACENTER_NAME_LENGTH );
             server->autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-            server->autodetected_datacenter = true;
+            server->autodetect_succeeded = true;
         }
         else
         {
@@ -12739,7 +12742,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     server->resolve_hostname_thread = NULL;
 
-    if ( server->autodetected_datacenter )
+    if ( server->autodetect_finished )
     {
         strncpy( server->datacenter_name, server->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
         server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
