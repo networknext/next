@@ -17,18 +17,18 @@ const (
 )
 
 type RelayUpdateRequest struct {
-	Version            uint32
-	Address            net.UDPAddr
-	Token              []byte
-	PingStats          []routing.RelayStatsPing
-	SessionCount       uint64
-	ShuttingDown       bool
-	RelayVersion       string
-	CPU                uint8
-	EnvelopeUpKbps     uint64
-	EnvelopeDownKbps   uint64
-	BandwidthSentBytes uint64
-	BandwidthRecvBytes uint64
+	Version          uint32
+	Address          net.UDPAddr
+	Token            []byte
+	PingStats        []routing.RelayStatsPing
+	SessionCount     uint64
+	ShuttingDown     bool
+	RelayVersion     string
+	CPU              uint8
+	EnvelopeUpKbps   uint64
+	EnvelopeDownKbps uint64
+	BytesSent        uint64
+	BytesRecv        uint64
 }
 
 func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
@@ -160,11 +160,11 @@ func (r *RelayUpdateRequest) unmarshalBinaryV5(buff []byte, index int) error {
 		return errors.New("coult not read envelope down kpbs")
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.BandwidthSentBytes) {
+	if !encoding.ReadUint64(buff, &index, &r.BytesSent) {
 		return errors.New("coult not read bandwidth sent bytes")
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.BandwidthRecvBytes) {
+	if !encoding.ReadUint64(buff, &index, &r.BytesRecv) {
 		return errors.New("coult not read bandwidth received bytes")
 	}
 
@@ -238,8 +238,8 @@ func (r *RelayUpdateRequest) marshalBinaryV5() ([]byte, error) {
 
 	encoding.WriteUint64(data, &index, r.EnvelopeUpKbps)
 	encoding.WriteUint64(data, &index, r.EnvelopeDownKbps)
-	encoding.WriteUint64(data, &index, r.BandwidthSentBytes)
-	encoding.WriteUint64(data, &index, r.BandwidthRecvBytes)
+	encoding.WriteUint64(data, &index, r.BytesSent)
+	encoding.WriteUint64(data, &index, r.BytesRecv)
 
 	return data[:index], nil
 }
