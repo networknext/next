@@ -107,6 +107,25 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 				relayData.Version = relayUpdateRequest.RelayVersion
 				relayData.CPU = relayUpdateRequest.CPU
 
+				// Envelope Up/Down is sent by the relay in kbps, no need for time adjustment
+				relayData.EnvelopeUpMbps = float32(float64(relayUpdateRequest.EnvelopeUpKbps) / 1000.0)
+				relayData.EnvelopeDownMbps = float32(float64(relayUpdateRequest.EnvelopeDownKbps) / 1000.0)
+
+				// Get the last update time to calculate bandwidth up/down mbps
+				params.RelayMap.RLock()
+				prevData, exists := params.RelayMap.GetRelayData(relayUpdateRequest.Address.String())
+				params.RelayMap.RUnlock()
+
+				if exists {
+					// This is the first relay update, no need to adjust for last update time
+					relayData.BandwidthSentMbps = float32(float64(relayUpdateRequest.BytesSent) * 8.0 / 1000000.0)
+					relayData.BandwidthRecvMbps = float32(float64(relayUpdateRequest.BytesRecv) * 8.0 / 1000000.0)
+				} else {
+					// Adjust bandwidth sent/recv based on last update time
+					relayData.BandwidthSentMbps = float32(float64(relayUpdateRequest.BytesSent) * 8.0 / 1000000.0 / time.Since(prevData.LastUpdateTime).Seconds())
+					relayData.BandwidthRecvMbps = float32(float64(relayUpdateRequest.BytesRecv) * 8.0 / 1000000.0 / time.Since(prevData.LastUpdateTime).Seconds())
+				}
+
 				params.RelayMap.Lock()
 				params.RelayMap.UpdateRelayData(relayData)
 				params.RelayMap.Unlock()
