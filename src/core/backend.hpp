@@ -49,8 +49,8 @@ namespace core
     uint8_t cpu_usage;
     uint64_t envelope_up;
     uint64_t envelope_down;
-    uint64_t bandwidth_tx;
-    uint64_t bandwidth_rx;
+    uint64_t bytes_sent;
+    uint64_t bytes_received;
 
     auto from(const std::vector<uint8_t>& v) -> bool;
   };
