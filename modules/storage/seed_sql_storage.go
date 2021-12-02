@@ -319,7 +319,7 @@ func SeedSQLStorage(
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
 				Notes:               "I am relay local." + fmt.Sprintf("%d", i) + " - hear me roar!",
-				Version:             "2.0.6",
+				Version:             "2.0.9",
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding local relay: %w", err)
 			}
@@ -371,7 +371,7 @@ func SeedSQLStorage(
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
 				Notes:               "I am relay ghost-army.local.1" + fmt.Sprintf("%d", i) + " - hear me roar!",
-				Version:             "2.0.6",
+				Version:             "2.0.9",
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding ghost relay: %w", err)
 			}
