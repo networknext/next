@@ -698,8 +698,7 @@ func main() {
 			}
 			defer r.Body.Close()
 
-			fmt.Println(string(body))
-			// TODO: break down body into saves struct and cache it in buyers service
+			// TODO: Potentially change this up to accept more fields depending on how Tapan structures payload
 
 			payload := looker.LookerWebhookPayload{}
 
@@ -710,7 +709,6 @@ func main() {
 
 			savesCache := make(map[string][]looker.LookerSave)
 
-			fmt.Println(payload.ScheduledPlan.Title)
 			for _, data := range payload.Attachment.Data {
 				customerCode := data.CustomerCode
 				if _, ok := savesCache[customerCode]; !ok {
