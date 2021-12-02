@@ -70,51 +70,35 @@ type account struct {
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
-	var totalUsers []*management.User
 	ctx := r.Context()
 
-	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+
+	if !isAdmin && !middleware.VerifyAllRoles(r, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
 		return &err
 	}
 
 	reply.UserAccounts = make([]account, 0)
-	keepSearching := true
-	page := 0
 
-	for keepSearching {
-		accountList, err := s.UserManager.List(management.PerPage(100), management.Page(page))
-		if err != nil {
-			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
-			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
-			return &err
-		}
-
-		totalUsers = append(totalUsers, accountList.Users...)
-		if len(totalUsers)%100 != 0 {
-			keepSearching = false
-		}
-		page++
-	}
-
-	requestUser := middleware.RequestUserInformation(ctx)
-	if requestUser == nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to parse user", err.Error()))
-		return &err
-	}
-
-	requestCompany := middleware.RequestUserCustomerCode(ctx)
-	if requestCompany == "" {
+	requestCustomerCode := middleware.RequestUserCustomerCode(ctx)
+	if requestCustomerCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
 		return &err
 	}
 
+	totalUsers, err := s.FetchAllAccountsFromAuth0()
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		return &err
+	}
+
 	for _, a := range totalUsers {
-		companyCode, ok := a.AppMetadata["company_code"].(string)
-		if !ok || requestCompany != companyCode {
+		customerCode, ok := a.AppMetadata["company_code"].(string)
+		if !ok || requestCustomerCode != customerCode {
 			continue
 		}
 		userRoles, err := s.UserManager.Roles(*a.ID)
@@ -124,22 +108,47 @@ func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *Ac
 			return &err
 		}
 
-		buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
-		seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), companyCode)
-		company, err := s.Storage.Customer(r.Context(), companyCode)
+		buyer, _ := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
+		seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), customerCode)
+		customer, err := s.Storage.Customer(r.Context(), customerCode)
 		if err != nil {
 			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v", err.Error()))
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
 
-		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, company.Name, company.Code, seller.Name != ""))
+		reply.UserAccounts = append(reply.UserAccounts, newAccount(a, userRoles.Roles, buyer, customer.Name, customer.Code, seller.Name != "", isAdmin))
 	}
 
 	return nil
 }
 
+func (s *AuthService) FetchAllAccountsFromAuth0() ([]*management.User, error) {
+	var totalUsers []*management.User
+	keepSearching := true
+	page := 0
+
+	for keepSearching {
+		accountList, err := s.UserManager.List(management.PerPage(100), management.Page(page))
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return totalUsers, &err
+		}
+
+		totalUsers = append(totalUsers, accountList.Users...)
+		if len(totalUsers)%100 != 0 {
+			keepSearching = false
+		}
+		page++
+	}
+
+	return totalUsers, nil
+}
+
 func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *AccountReply) error {
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+
 	if args.UserID == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "UserID"
@@ -200,7 +209,7 @@ func (s *AuthService) UserAccount(r *http.Request, args *AccountArgs, reply *Acc
 		reply.Domains = strings.Split(company.AutomaticSignInDomains, ",")
 	}
 
-	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code, seller.Name != "")
+	reply.UserAccount = newAccount(userAccount, userRoles.Roles, buyer, company.Name, company.Code, seller.Name != "", isAdmin)
 
 	return nil
 }
@@ -247,6 +256,16 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
+
+	allRoles := s.RoleCacheToArray()
+
+	err = s.UserManager.RemoveRoles(args.UserID, allRoles...)
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("UpdateUserRoles(): %v: Failed to remove old user roles", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		return &err
+	}
+
 	return nil
 }
 
@@ -254,7 +273,9 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 	var adminString string = "Admin"
 	var accounts []account
 
-	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+
+	if !isAdmin && !middleware.VerifyAllRoles(r, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
 		return &err
@@ -286,23 +307,11 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 
 	registered := make(map[string]*management.User)
 
-	var totalUsers []*management.User
-	keepSearching := true
-	page := 0
-
-	for keepSearching {
-		accountList, err := s.UserManager.List(management.PerPage(100), management.Page(page))
-		if err != nil {
-			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
-			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
-			return &err
-		}
-
-		totalUsers = append(totalUsers, accountList.Users...)
-		if len(totalUsers)%100 != 0 {
-			keepSearching = false
-		}
-		page++
+	totalUsers, err := s.FetchAllAccountsFromAuth0()
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
+		return &err
 	}
 
 	emailString := strings.Join(emails, ",")
@@ -388,7 +397,7 @@ func (s *AuthService) AddUserAccount(r *http.Request, args *AccountsArgs, reply 
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 			return &err
 		}
-		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, company.Name, company.Code, seller.Name != ""))
+		accounts = append(accounts, newAccount(newUser, args.Roles, buyer, company.Name, company.Code, seller.Name != "", isAdmin))
 	}
 	reply.UserAccounts = accounts
 	return nil
@@ -419,10 +428,20 @@ func GenerateRandomBytes(n int) ([]byte, error) {
 	return b, nil
 }
 
-func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string, companyCode string, isSeller bool) account {
+func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, companyName string, companyCode string, isSeller bool, isAdmin bool) account {
 	buyerID := ""
 	if buyer.ID != 0 {
 		buyerID = fmt.Sprintf("%016x", buyer.ID)
+	}
+
+	roles := make([]*management.Role, 0)
+
+	if !isAdmin {
+		for _, role := range r {
+			if role.GetName() != "Admin" {
+				roles = append(roles, role)
+			}
+		}
 	}
 
 	account := account{
@@ -435,7 +454,7 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 		FirstName:   u.GetGivenName(),
 		LastName:    u.GetFamilyName(),
 		Email:       u.GetEmail(),
-		Roles:       r,
+		Roles:       roles,
 		Analytics:   buyer.Analytics,
 		Billing:     buyer.Billing,
 		Trial:       buyer.Trial,
@@ -466,27 +485,15 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("AllRoles(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("UserDatabase(): %v", err.Error()))
 		return &err
 	}
 
-	var totalUsers []*management.User
-	keepSearching := true
-	page := 0
-
-	for keepSearching {
-		accountList, err := s.UserManager.List(management.PerPage(100), management.Page(page))
-		if err != nil {
-			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
-			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
-			return &err
-		}
-
-		totalUsers = append(totalUsers, accountList.Users...)
-		if len(totalUsers)%100 != 0 {
-			keepSearching = false
-		}
-		page++
+	totalUsers, err := s.FetchAllAccountsFromAuth0()
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
+		return &err
 	}
 
 	for _, account := range totalUsers {
@@ -498,7 +505,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 
 		userRoles, err := s.UserManager.Roles(account.GetID())
 		if err != nil {
-			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to get user roles", err.Error()))
+			s.Logger.Log("err", fmt.Errorf("UserDatabase(): %v: Failed to get user roles", err.Error()))
 			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 			return &err
 		}
@@ -544,15 +551,60 @@ type RolesReply struct {
 
 func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesReply) error {
 	reply.Roles = make([]*management.Role, 0)
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
-	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
+	if !isAdmin && !middleware.VerifyAllRoles(r, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		s.Logger.Log("err", fmt.Errorf("AllRoles(): %v", err.Error()))
 		return &err
 	}
 
+	requestCustomerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
+		s.Logger.Log("err", fmt.Errorf("AllRoles(): %v", err.Error()))
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), requestCustomerCode)
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("AllRoles(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	totalUsers, err := s.FetchAllAccountsFromAuth0()
+	if err != nil {
+		s.Logger.Log("err", fmt.Errorf("AllRoles(): %v", err.Error()))
+		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+		return &err
+	}
+
+	seatsTaken := int64(0)
+	for _, a := range totalUsers {
+		userCustomerCode, ok := a.AppMetadata["company_code"].(string)
+		if !ok || requestCustomerCode != userCustomerCode {
+			continue
+		}
+		userRoles, err := s.UserManager.Roles(*a.ID)
+		if err != nil {
+			s.Logger.Log("err", fmt.Errorf("AllRoles(): %v: Failed to get user roles", err.Error()))
+			err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
+			return &err
+		}
+
+		for _, role := range userRoles.Roles {
+			if role.GetName() == s.RoleCache["Explorer"].GetName() {
+				seatsTaken = seatsTaken + 1
+			}
+		}
+	}
+
 	for name, role := range s.RoleCache {
-		if name == "Admin" && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		if name == "Admin" && !isAdmin {
+			continue
+		}
+		if !isAdmin && name == "Explorer" && buyer.LookerSeats <= seatsTaken {
 			continue
 		}
 		reply.Roles = append(reply.Roles, role)
@@ -605,12 +657,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return &err
 	}
 
-	allRoles := []*management.Role{}
-
-	// Convert map to array
-	for _, role := range s.RoleCache {
-		allRoles = append(allRoles, role)
-	}
+	allRoles := s.RoleCacheToArray()
 
 	err = s.UserManager.RemoveRoles(args.UserID, allRoles...)
 	if err != nil {
@@ -626,7 +673,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 
 	// Make sure someone who isn't admin isn't assigning admin
 	for _, role := range args.Roles {
-		if *role.Name == "Admin" && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		if role.GetName() == s.RoleCache["Admin"].GetName() && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 			s.Logger.Log("err", fmt.Errorf("UpdateUserRoles(): %v", err.Error()))
 			return &err
@@ -641,6 +688,10 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 	}
 
 	reply.Roles = args.Roles
+
+	sort.Slice(reply.Roles, func(i, j int) bool {
+		return reply.Roles[i].GetName() < reply.Roles[j].GetName()
+	})
 	return nil
 }
 
@@ -1346,4 +1397,18 @@ func (s *AuthService) RefreshAuthRolesCache() error {
 	}
 
 	return nil
+}
+
+func (s *AuthService) RoleCacheToArray() []*management.Role {
+	allRoles := []*management.Role{}
+	// Convert map to array
+	for _, role := range s.RoleCache {
+		// Don't remove admin role from admin. They can be removed from a company account but should retain admin privileges
+		if role.GetName() == s.RoleCache["Admin"].GetName() {
+			continue
+		}
+		allRoles = append(allRoles, role)
+	}
+
+	return allRoles
 }
