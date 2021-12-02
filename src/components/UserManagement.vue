@@ -309,6 +309,7 @@ export default class UserManagement extends Vue {
         })
         .finally(() => {
           this.setAccountState(false, false, account, index)
+          this.refreshRoleList()
         })
       return
     }
@@ -335,6 +336,9 @@ export default class UserManagement extends Vue {
               this.$refs.newUsersAlert.resetAlert()
             }
           }, 5000)
+        })
+        .finally(() => {
+          this.refreshRoleList()
         })
     }
   }
@@ -391,8 +395,18 @@ export default class UserManagement extends Vue {
           }
         }, 5000)
       })
+      .finally(() => {
+        this.refreshRoleList()
+      })
     this.newUserRoles = []
     this.newUserEmails = ''
+  }
+
+  private refreshRoleList () {
+    this.$apiService.fetchAllRoles()
+      .then((response: any) => {
+        this.allRoles = response.roles
+      })
   }
 }
 
