@@ -89,7 +89,7 @@ namespace core
 {
   using namespace std::chrono_literals;
 
-  const char* RELAY_VERSION = "2.0.8";
+  const char* RELAY_VERSION = "2.0.9";
 
   const char* const UPDATE_ENDPOINT = "/relay_update";
 
@@ -132,92 +132,28 @@ namespace core
     if (!encoding::read_uint64(v, index, this->session_count)) {
       return false;
     }
-    if (!encoding::read_uint64(v, index, this->envelope_up)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->envelope_down)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->outbound_ping_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->route_request_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->route_request_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->route_response_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->route_response_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->client_to_server_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->client_to_server_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->server_to_client_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->server_to_client_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->inbound_ping_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->inbound_ping_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->pong_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->session_ping_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->session_ping_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->session_pong_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->session_pong_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->continue_request_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->continue_request_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->continue_response_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->continue_response_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->near_ping_rx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->near_ping_tx)) {
-      return false;
-    }
-    if (!encoding::read_uint64(v, index, this->unknown_rx)) {
-      return false;
-    }
     uint8_t shutdown_flag;
     if (!encoding::read_uint8(v, index, shutdown_flag)) {
       return false;
     }
     this->shutting_down = static_cast<bool>(shutdown_flag);
 
-    if (!encoding::read_double(v, index, this->cpu_usage)) {
+    if (!encoding::read_string(v, index, this->relay_version)) {
       return false;
     }
-
-    if (!encoding::read_double(v, index, this->mem_usage)) {
+    if (!encoding::read_uint8(v, index, this->cpu_usage)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->envelope_up)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->envelope_down)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->bandwidth_tx)) {
+      return false;
+    }
+    if (!encoding::read_uint64(v, index, this->bandwidth_rx)) {
       return false;
     }
 
@@ -400,6 +336,40 @@ namespace core
       cpu = (uint8_t) floor(cpu_percent + 0.5f);
       #endif
       encoding::write_uint8(req, index, cpu);
+
+      encoding::write_uint64(req, index, this->session_map.envelope_up_total());
+      encoding::write_uint64(req, index, this->session_map.envelope_down_total());
+
+      util::ThroughputRecorder traffic_stats(std::move(recorder));
+
+      uint64_t bandwidth_tx = traffic_stats.outbound_ping_tx.num_bytes.load()
+                              + traffic_stats.route_request_tx.num_bytes.load()
+                              + traffic_stats.route_response_tx.num_bytes.load()
+                              + traffic_stats.client_to_server_tx.num_bytes.load()
+                              + traffic_stats.server_to_client_tx.num_bytes.load()
+                              + traffic_stats.inbound_ping_tx.num_bytes.load()
+                              + traffic_stats.session_ping_tx.num_bytes.load()
+                              + traffic_stats.session_pong_tx.num_bytes.load()
+                              + traffic_stats.continue_request_tx.num_bytes.load()
+                              + traffic_stats.continue_response_tx.num_bytes.load()
+                              + traffic_stats.near_ping_tx.num_bytes.load();
+
+      uint64_t bandwidth_rx = traffic_stats.route_request_rx.num_bytes.load()
+                              + traffic_stats.route_request_rx.num_bytes.load()
+                              + traffic_stats.route_response_rx.num_bytes.load()
+                              + traffic_stats.client_to_server_rx.num_bytes.load()
+                              + traffic_stats.server_to_client_rx.num_bytes.load()
+                              + traffic_stats.inbound_ping_rx.num_bytes.load()
+                              + traffic_stats.pong_rx.num_bytes.load()
+                              + traffic_stats.session_ping_rx.num_bytes.load()
+                              + traffic_stats.session_pong_rx.num_bytes.load()
+                              + traffic_stats.continue_request_rx.num_bytes.load()
+                              + traffic_stats.continue_response_rx.num_bytes.load()
+                              + traffic_stats.near_ping_rx.num_bytes.load()
+                              + traffic_stats.unknown_rx.num_bytes.load();
+
+      encoding::write_uint64(req, index, bandwidth_tx);
+      encoding::write_uint64(req, index, bandwidth_rx);
     }
 
     // todo: this whole loop here is naff... the retry loop shouldn't occur in place here, but in the regular, 1 sec delay updates!
