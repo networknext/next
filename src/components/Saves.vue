@@ -1,12 +1,18 @@
 <template>
   <div>
-    <h5 class="card-title">
+    <div v-if="savesDashURL !== ''">
+      <div class="row">
+        <LookerEmbed dashID="savesDash" :dashURL="savesDashURL" />
+      </div>
+      <hr class="mt-4 mb-4">
+    </div>
+    <h5 class="card-title looker-padding">
       Recent Saves
     </h5>
-    <p class="card-text">
-      Saves that happened recently
+    <p class="card-text looker-padding">
+      Saves that have happened in the last week
     </p>
-    <div class="table-responsive table-no-top-line">
+    <div class="table-responsive table-no-top-line looker-padding">
       <table class="table table-sm" :class="{'table-striped': saves.length > 0, 'table-hover': saves.length > 0}">
         <thead>
           <tr>
@@ -62,12 +68,6 @@
           </tr>
         </tbody>
       </table>
-    </div>
-    <div v-if="savesDashURL !== ''">
-      <hr class="mt-4 mb-4">
-      <div class="row">
-        <LookerEmbed dashID="savesDash" :dashURL="savesDashURL" />
-      </div>
     </div>
   </div>
 </template>
@@ -181,4 +181,8 @@ export default class Saves extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+  .looker-padding {
+    padding-right: 3.75rem;
+    padding-left: 3.75rem;
+  }
 </style>
