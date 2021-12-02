@@ -342,7 +342,7 @@ namespace core
 
       util::ThroughputRecorder traffic_stats(std::move(recorder));
 
-      uint64_t bandwidth_tx = traffic_stats.outbound_ping_tx.num_bytes.load()
+      uint64_t bytes_sent = traffic_stats.outbound_ping_tx.num_bytes.load()
                               + traffic_stats.route_request_tx.num_bytes.load()
                               + traffic_stats.route_response_tx.num_bytes.load()
                               + traffic_stats.client_to_server_tx.num_bytes.load()
@@ -354,7 +354,7 @@ namespace core
                               + traffic_stats.continue_response_tx.num_bytes.load()
                               + traffic_stats.near_ping_tx.num_bytes.load();
 
-      uint64_t bandwidth_rx = traffic_stats.route_request_rx.num_bytes.load()
+      uint64_t bytes_recv = traffic_stats.route_request_rx.num_bytes.load()
                               + traffic_stats.route_request_rx.num_bytes.load()
                               + traffic_stats.route_response_rx.num_bytes.load()
                               + traffic_stats.client_to_server_rx.num_bytes.load()
@@ -368,8 +368,8 @@ namespace core
                               + traffic_stats.near_ping_rx.num_bytes.load()
                               + traffic_stats.unknown_rx.num_bytes.load();
 
-      encoding::write_uint64(req, index, bandwidth_tx);
-      encoding::write_uint64(req, index, bandwidth_rx);
+      encoding::write_uint64(req, index, bytes_sent);
+      encoding::write_uint64(req, index, bytes_recv);
     }
 
     // todo: this whole loop here is naff... the retry loop shouldn't occur in place here, but in the regular, 1 sec delay updates!
