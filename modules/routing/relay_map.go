@@ -20,6 +20,7 @@ type RelayData struct {
 	LastUpdateTime    time.Time
 	Version           string
 	CPU               uint8
+	NICSpeedMbps      int32
 	EnvelopeUpMbps    float32
 	EnvelopeDownMbps  float32
 	BandwidthSentMbps float32

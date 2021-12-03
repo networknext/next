@@ -106,6 +106,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 				relayData.ShuttingDown = relayUpdateRequest.ShuttingDown
 				relayData.Version = relayUpdateRequest.RelayVersion
 				relayData.CPU = relayUpdateRequest.CPU
+				relayData.NICSpeedMbps = relay.NICSpeedMbps
 
 				// Envelope Up/Down and Bandwidth Sent/Recv are sent by the Relay in kbps
 				relayData.EnvelopeUpMbps = float32(float64(relayUpdateRequest.EnvelopeUpKbps) / 1000.0)
