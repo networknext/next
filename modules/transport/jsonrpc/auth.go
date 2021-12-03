@@ -18,6 +18,10 @@ import (
 	"gopkg.in/auth0.v4/management"
 )
 
+const (
+	MAX_USER_LOOKUP_PAGES = 100
+)
+
 type AuthService struct {
 	AuthenticationClient *notifications.Auth0AuthClient
 	HubSpotClient        *notifications.HubSpotClient
@@ -128,7 +132,7 @@ func (s *AuthService) FetchAllAccountsFromAuth0() ([]*management.User, error) {
 	keepSearching := true
 	page := 0
 
-	for keepSearching {
+	for keepSearching && page < MAX_USER_LOOKUP_PAGES { // MAX_USER_LOOKUP_PAGES is a kill switch for unforseen infinite loops
 		accountList, err := s.UserManager.List(management.PerPage(100), management.Page(page))
 		if err != nil {
 			s.Logger.Log("err", fmt.Errorf("AllAccounts(): %v: Failed to fetch user list", err.Error()))
@@ -140,7 +144,7 @@ func (s *AuthService) FetchAllAccountsFromAuth0() ([]*management.User, error) {
 		if len(totalUsers)%100 != 0 {
 			keepSearching = false
 		}
-		page++
+		page = page + 1
 	}
 
 	return totalUsers, nil
@@ -442,6 +446,8 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 				roles = append(roles, role)
 			}
 		}
+	} else {
+		roles = r
 	}
 
 	account := account{
@@ -573,12 +579,14 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		return &err
 	}
 
+	fmt.Println(0)
 	totalUsers, err := s.FetchAllAccountsFromAuth0()
 	if err != nil {
 		s.Logger.Log("err", fmt.Errorf("AllRoles(): %v", err.Error()))
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
+	fmt.Println(1)
 
 	seatsTaken := int64(0)
 	for _, a := range totalUsers {
