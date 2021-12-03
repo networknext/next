@@ -737,6 +737,23 @@ func mainReturnWithCode() int {
 						}
 					}
 
+					var bwSentPercent float32
+					var bwRecvPercent float32
+					var envSentPercent float32
+					var envRecvPercent float32
+					var nicSpeedMbps int32
+
+					if dbRelay, exists := relayHash[relay.ID]; exists {
+						nicSpeedMbps := dbRelay.NICSpeedMbps
+
+						if nicSpeedMbps > 0 {
+							bwSentPercent = relay.BandwidthSentMbps / float32(nicSpeedMbps) * 100.0
+							bwRecvPercent = relay.BandwidthRecvMbps / float32(nicSpeedMbps) * 100.0
+							envSentPercent = relay.EnvelopeUpMbps / float32(nicSpeedMbps) * 100.0
+							envRecvPercent = relay.EnvelopeDownMbps / float32(nicSpeedMbps) * 100.0
+						}
+					}
+
 					// Track the relays that are near max capacity
 					// Relays with MaxSessions set to 0 are never considered full
 					var full bool
@@ -749,13 +766,22 @@ func mainReturnWithCode() int {
 					}
 
 					entries[count] = analytics.RelayStatsEntry{
-						ID:            relay.ID,
-						MaxSessions:   relay.MaxSessions,
-						NumSessions:   uint32(numSessions),
-						NumRoutable:   numRouteable,
-						NumUnroutable: uint32(len(allRelayData)) - 1 - numRouteable,
-						Timestamp:     uint64(time.Now().Unix()),
-						Full:          full,
+						ID:                       relay.ID,
+						MaxSessions:              relay.MaxSessions,
+						NumSessions:              uint32(numSessions),
+						NumRoutable:              numRouteable,
+						NumUnroutable:            uint32(len(allRelayData)) - 1 - numRouteable,
+						Timestamp:                uint64(time.Now().Unix()),
+						Full:                     full,
+						CPUUsage:                 float32(relay.CPU),
+						BandwidthSentPercent:     bwSentPercent,
+						BandwidthReceivedPercent: bwRecvPercent,
+						EnvelopeSentPercent:      envSentPercent,
+						EnvelopeReceivedPercent:  envRecvPercent,
+						BandwidthSentMbps:        relay.BandwidthSentMbps,
+						BandwidthReceivedMbps:    relay.BandwidthReceivedMbps,
+						EnvelopeSentMbps:         relay.EnvelopeUpMbps,
+						EnvelopeReceivedMbps:     relay.EnvelopeDownMbps,
 					}
 
 					count++
