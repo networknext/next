@@ -4632,8 +4632,18 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     relay_write_uint64(&p, relay->envelope_bandwidth_kbps_up);
     relay_write_uint64(&p, relay->envelope_bandwidth_kbps_down);
-    relay_write_uint64(&p, relay->bytes_sent);
-    relay_write_uint64(&p, relay->bytes_received);
+
+    uint64_t bandwidth_tx = uint64_t(relay->bytes_sent * 8.0 / 1000.0);
+    uint64_t bandwidth_rx = uint64_t(relay->bytes_received * 8.0 / 1000.0);
+
+    relay_write_uint64(&p, bandwidth_tx);
+    relay_write_uint64(&p, bandwidth_rx);
+
+    // reset bandwidth bytes sent / recv to accurately track bandwidth kbps
+    // this is easier than subtracting previously sent / recv bytes
+
+    relay->bytes_sent = 0;
+    relay->bytes_received = 0;
 
     int update_data_length = (int) ( p - update_data );
 
