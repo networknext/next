@@ -202,6 +202,7 @@ type buyer struct {
 	Trial               bool   `json:"trial"`
 	ExoticLocationFee   string `json:"exotic_location_fee"`
 	StandardLocationFee string `json:"standard_location_fee"`
+	LookerSeats         int64  `json:"looker_seats"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
@@ -226,6 +227,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			Trial:               b.Trial,
 			ExoticLocationFee:   fmt.Sprintf("%f", b.ExoticLocationFee),
 			StandardLocationFee: fmt.Sprintf("%f", b.StandardLocationFee),
+			LookerSeats:         b.LookerSeats,
 		})
 	}
 
@@ -246,6 +248,7 @@ type JSAddBuyerArgs struct {
 	ExoticLocationFee   string `json:"exoticLocationFee"`
 	StandardLocationFee string `json:"standardLocationFee"`
 	PublicKey           string `json:"publicKey"`
+	LookerSeats         string `json:"looker_seats"`
 }
 
 type JSAddBuyerReply struct{}
@@ -277,6 +280,12 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		return err
 	}
 
+	lookerSeats, err := strconv.ParseFloat(args.LookerSeats, 64)
+	if err != nil {
+		s.Logger.Log("err", err)
+		return err
+	}
+
 	// slice the public key here instead of in the clients
 	buyer := routing.Buyer{
 		CompanyCode:         args.ShortName,
@@ -290,6 +299,7 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		ExoticLocationFee:   exoticLocationFee,
 		StandardLocationFee: standardLocationFee,
 		PublicKey:           publicKey[8:],
+		LookerSeats:         int64(lookerSeats),
 	}
 
 	return s.Storage.AddBuyer(ctx, buyer)
