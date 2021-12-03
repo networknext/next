@@ -2575,7 +2575,7 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 			level.Error(s.Logger).Log("err", err)
 			return err
 		}
-	case "ExoticLocationFee", "StandardLocationFee":
+	case "ExoticLocationFee", "StandardLocationFee", "LookerSeats":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid float64 type", args.Value)
