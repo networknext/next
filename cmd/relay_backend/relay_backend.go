@@ -745,8 +745,11 @@ func mainReturnWithCode() int {
 					if relay.NICSpeedMbps > 0 {
 						bwSentPercent = relay.BandwidthSentMbps / float32(relay.NICSpeedMbps) * 100.0
 						bwRecvPercent = relay.BandwidthRecvMbps / float32(relay.NICSpeedMbps) * 100.0
-						envSentPercent = relay.BandwidthSentMbps / relay.EnvelopeUpMbps
-						envRecvPercent = relay.BandwidthRecvMbps / relay.EnvelopeDownMbps
+
+						if relay.EnvelopeUpMbps > 0 {
+							envSentPercent = relay.BandwidthSentMbps / relay.EnvelopeUpMbps
+							envRecvPercent = relay.BandwidthRecvMbps / relay.EnvelopeDownMbps
+						}
 					}
 
 					// Track the relays that are near max capacity
