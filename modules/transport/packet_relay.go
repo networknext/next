@@ -17,18 +17,18 @@ const (
 )
 
 type RelayUpdateRequest struct {
-	Version          uint32
-	Address          net.UDPAddr
-	Token            []byte
-	PingStats        []routing.RelayStatsPing
-	SessionCount     uint64
-	ShuttingDown     bool
-	RelayVersion     string
-	CPU              uint8
-	EnvelopeUpKbps   uint64
-	EnvelopeDownKbps uint64
-	BytesSent        uint64
-	BytesRecv        uint64
+	Version           uint32
+	Address           net.UDPAddr
+	Token             []byte
+	PingStats         []routing.RelayStatsPing
+	SessionCount      uint64
+	ShuttingDown      bool
+	RelayVersion      string
+	CPU               uint8
+	EnvelopeUpKbps    uint64
+	EnvelopeDownKbps  uint64
+	BandwidthSentKbps uint64
+	BandwidthRecvKbps uint64
 }
 
 func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
@@ -160,12 +160,12 @@ func (r *RelayUpdateRequest) unmarshalBinaryV5(buff []byte, index int) error {
 		return errors.New("coult not read envelope down kpbs")
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.BytesSent) {
-		return errors.New("coult not read bandwidth sent bytes")
+	if !encoding.ReadUint64(buff, &index, &r.BandwidthSentKbps) {
+		return errors.New("coult not read bandwidth sent kbps")
 	}
 
-	if !encoding.ReadUint64(buff, &index, &r.BytesRecv) {
-		return errors.New("coult not read bandwidth received bytes")
+	if !encoding.ReadUint64(buff, &index, &r.BandwidthRecvKbps) {
+		return errors.New("coult not read bandwidth received kbps")
 	}
 
 	return nil
@@ -174,8 +174,6 @@ func (r *RelayUpdateRequest) unmarshalBinaryV5(buff []byte, index int) error {
 // Marshals a RelayUpdateRequest. Useful for tests and fake relays.
 func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 	switch r.Version {
-	case 3:
-		return r.marshalBinaryV3()
 	case 4:
 		return r.marshalBinaryV4()
 	case 5:
@@ -238,8 +236,8 @@ func (r *RelayUpdateRequest) marshalBinaryV5() ([]byte, error) {
 
 	encoding.WriteUint64(data, &index, r.EnvelopeUpKbps)
 	encoding.WriteUint64(data, &index, r.EnvelopeDownKbps)
-	encoding.WriteUint64(data, &index, r.BytesSent)
-	encoding.WriteUint64(data, &index, r.BytesRecv)
+	encoding.WriteUint64(data, &index, r.BandwidthSentKbps)
+	encoding.WriteUint64(data, &index, r.BandwidthRecvKbps)
 
 	return data[:index], nil
 }
@@ -268,8 +266,8 @@ func (r *RelayUpdateRequest) sizeV5() int {
 		1 + // CPU
 		8 + // envelope up kbps
 		8 + // envelope down kpbs
-		8 + // bandwidth sent bytes
-		8) // bandwidth received bytes
+		8 + // bandwidth sent kbps
+		8) // bandwidth received kbps
 }
 
 type RelayUpdateResponse struct {
