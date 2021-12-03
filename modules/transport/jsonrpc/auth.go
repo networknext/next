@@ -579,14 +579,12 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		return &err
 	}
 
-	fmt.Println(0)
 	totalUsers, err := s.FetchAllAccountsFromAuth0()
 	if err != nil {
 		s.Logger.Log("err", fmt.Errorf("AllRoles(): %v", err.Error()))
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
 		return &err
 	}
-	fmt.Println(1)
 
 	seatsTaken := int64(0)
 	for _, a := range totalUsers {
