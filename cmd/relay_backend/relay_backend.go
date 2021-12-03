@@ -774,7 +774,7 @@ func mainReturnWithCode() int {
 						EnvelopeSentPercent:      envSentPercent,
 						EnvelopeReceivedPercent:  envRecvPercent,
 						BandwidthSentMbps:        relay.BandwidthSentMbps,
-						BandwidthReceivedMbps:    relay.BandwidthReceivedMbps,
+						BandwidthReceivedMbps:    relay.BandwidthRecvMbps,
 						EnvelopeSentMbps:         relay.EnvelopeUpMbps,
 						EnvelopeReceivedMbps:     relay.EnvelopeDownMbps,
 					}
