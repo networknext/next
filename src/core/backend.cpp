@@ -301,6 +301,9 @@ namespace core
 
     static bool first_update = true;
 
+    uint64_t prev_bytes_sent = 0;
+    uint64_t prev_bytes_recv = 0;
+
     // serialize request
     {
       RelayStats stats;
@@ -369,8 +372,11 @@ namespace core
                               + traffic_stats.unknown_rx.num_bytes.load();
 
       // Assume relay sends updates every second
-      double bandwidth_sent = double(bytes_sent * 8.0 / 1000.0);
-      double bandwidth_recv = double(bytes_recv * 8.0 / 1000.0);
+      double bandwidth_sent = double((bytes_sent - prev_bytes_sent) * 8.0 / 1000.0);
+      double bandwidth_recv = double((bytes_recv - prev_bytes_recv) * 8.0 / 1000.0);
+
+      prev_bytes_sent += bytes_sent;
+      prev_bytes_recv += bytes_recv;
 
       encoding::write_double(req, index, bandwidth_sent);
       encoding::write_double(req, index, bandwidth_recv);
