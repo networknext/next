@@ -73,6 +73,7 @@ create table buyers (
   public_key bytea not null,
   short_name varchar not null,
   customer_id integer not null,
+  looker_seats integer not null default 0,
   primary key (id),
   constraint fk_customer_id foreign key (customer_id) references customers(id),
   constraint buyer_short_name unique(short_name)
