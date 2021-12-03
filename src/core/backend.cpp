@@ -150,10 +150,10 @@ namespace core
     if (!encoding::read_uint64(v, index, this->envelope_down)) {
       return false;
     }
-    if (!encoding::read_uint64(v, index, this->bandwidth_tx)) {
+    if (!encoding::read_double(v, index, this->bandwidth_sent)) {
       return false;
     }
-    if (!encoding::read_uint64(v, index, this->bandwidth_rx)) {
+    if (!encoding::read_double(v, index, this->bandwidth_recv)) {
       return false;
     }
 
@@ -368,8 +368,12 @@ namespace core
                               + traffic_stats.near_ping_rx.num_bytes.load()
                               + traffic_stats.unknown_rx.num_bytes.load();
 
-      encoding::write_uint64(req, index, bytes_sent);
-      encoding::write_uint64(req, index, bytes_recv);
+      // Assume relay sends updates every second
+      double bandwidth_sent = double(bytes_sent * 8.0 / 1000.0);
+      double bandwidth_recv = double(bytes_recv * 8.0 / 1000.0);
+
+      encoding::write_double(req, index, bandwidth_sent);
+      encoding::write_double(req, index, bandwidth_recv);
     }
 
     // todo: this whole loop here is naff... the retry loop shouldn't occur in place here, but in the regular, 1 sec delay updates!
