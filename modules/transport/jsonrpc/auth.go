@@ -257,7 +257,7 @@ func (s *AuthService) DeleteUserAccount(r *http.Request, args *AccountArgs, repl
 		return &err
 	}
 
-	allRoles := s.RoleCacheToArray()
+	allRoles := s.RoleCacheToArray(true)
 
 	err = s.UserManager.RemoveRoles(args.UserID, allRoles...)
 	if err != nil {
@@ -492,7 +492,7 @@ func (s *AuthService) UserDatabase(r *http.Request, args *UserDatabaseArgs, repl
 	totalUsers, err := s.FetchAllAccountsFromAuth0()
 	if err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_AUTH0_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("AddUserAccount(): %v", err.Error()))
+		s.Logger.Log("err", fmt.Errorf("UserDatabase(): %v", err.Error()))
 		return &err
 	}
 
@@ -657,7 +657,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 		return &err
 	}
 
-	allRoles := s.RoleCacheToArray()
+	allRoles := s.RoleCacheToArray(true)
 
 	err = s.UserManager.RemoveRoles(args.UserID, allRoles...)
 	if err != nil {
@@ -1399,12 +1399,12 @@ func (s *AuthService) RefreshAuthRolesCache() error {
 	return nil
 }
 
-func (s *AuthService) RoleCacheToArray() []*management.Role {
+func (s *AuthService) RoleCacheToArray(removeAdmin bool) []*management.Role {
 	allRoles := []*management.Role{}
 	// Convert map to array
 	for _, role := range s.RoleCache {
 		// Don't remove admin role from admin. They can be removed from a company account but should retain admin privileges
-		if role.GetName() == s.RoleCache["Admin"].GetName() {
+		if removeAdmin && role.GetName() == s.RoleCache["Admin"].GetName() {
 			continue
 		}
 		allRoles = append(allRoles, role)
