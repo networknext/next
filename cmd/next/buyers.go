@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -69,122 +68,6 @@ func removeBuyer(env Environment, id string) {
 	}
 
 	fmt.Printf("Buyer with ID \"%s\" removed from storage.\n", id)
-}
-
-func routingRulesSettingsByID(env Environment, buyerID string) {
-
-	buyerArgs := localjsonrpc.BuyersArgs{}
-	var buyers localjsonrpc.BuyersReply
-	if err := makeRPCCall(env, &buyers, "OpsService.Buyers", buyerArgs); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	for i := range buyers.Buyers {
-		if fmt.Sprintf("%016x", buyers.Buyers[i].ID) == buyerID {
-
-			fmt.Printf(" Routing rules for %s:\n\n", buyers.Buyers[i].CompanyName)
-
-			transpose := []struct {
-				RoutingRuleSetting string
-				Value              string
-			}{}
-
-			args := localjsonrpc.RoutingRulesSettingsArgs{
-				BuyerID: buyerID,
-			}
-
-			var reply localjsonrpc.RoutingRulesSettingsReply
-			if err := makeRPCCall(env, &reply, "OpsService.RoutingRulesSettings", args); err != nil {
-				handleJSONRPCError(env, err)
-				return
-			}
-
-			v := reflect.ValueOf(reply.RoutingRuleSettings[0])
-			typeOfV := v.Type()
-
-			for i := 0; i < v.NumField(); i++ {
-				transpose = append(transpose, struct {
-					RoutingRuleSetting string
-					Value              string
-				}{
-					RoutingRuleSetting: typeOfV.Field(i).Name,
-					Value:              fmt.Sprintf("%v", v.Field(i).Interface()),
-				})
-			}
-
-			table.Output(transpose)
-			return
-		}
-	}
-
-	fmt.Printf("Buyer id %s not found", buyerID)
-
-}
-
-func routingRulesSettings(env Environment, buyerName string) {
-
-	buyerArgs := localjsonrpc.BuyersArgs{}
-	var buyers localjsonrpc.BuyersReply
-	if err := makeRPCCall(env, &buyers, "OpsService.Buyers", buyerArgs); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	var filtered [][]string
-
-	r := regexp.MustCompile("(?i)" + buyerName) // case-insensitive regex
-	for _, buyer := range buyers.Buyers {
-		if r.MatchString(buyer.CompanyName) {
-			filtered = append(filtered, []string{buyer.CompanyName, fmt.Sprintf("%016x", buyer.ID)})
-		}
-	}
-
-	if len(filtered) == 0 {
-		fmt.Printf("No matches found for '%s'", buyerName)
-		return
-	}
-
-	if len(filtered) > 1 {
-		fmt.Printf("Found several  matches for '%s'", buyerName)
-		for _, match := range filtered {
-			fmt.Printf("\t%s", match[0])
-		}
-		return
-	}
-
-	fmt.Printf(" Routing rules for %s:\n\n", filtered[0][0])
-
-	transpose := []struct {
-		RoutingRuleSetting string
-		Value              string
-	}{}
-
-	args := localjsonrpc.RoutingRulesSettingsArgs{
-		BuyerID: filtered[0][1],
-	}
-
-	var reply localjsonrpc.RoutingRulesSettingsReply
-	if err := makeRPCCall(env, &reply, "OpsService.RoutingRulesSettings", args); err != nil {
-		handleJSONRPCError(env, err)
-		return
-	}
-
-	v := reflect.ValueOf(reply.RoutingRuleSettings[0])
-	typeOfV := v.Type()
-
-	for i := 0; i < v.NumField(); i++ {
-		transpose = append(transpose, struct {
-			RoutingRuleSetting string
-			Value              string
-		}{
-			RoutingRuleSetting: typeOfV.Field(i).Name,
-			Value:              fmt.Sprintf("%v", v.Field(i).Interface()),
-		})
-	}
-
-	table.Output(transpose)
-	return
 }
 
 func datacenterMapsForBuyer(

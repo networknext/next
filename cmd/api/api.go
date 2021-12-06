@@ -260,19 +260,8 @@ func mainReturnWithCode() int {
 	}
 
 	// Setup the status handler info
-	type APIStatus struct {
-		// Service Information
-		ServiceName string `json:"service_name"`
-		GitHash     string `json:"git_hash"`
-		Started     string `json:"started"`
-		Uptime      string `json:"uptime"`
+	statusData := &metrics.APIStatus{}
 
-		// Metrics
-		Goroutines      int     `json:"goroutines"`
-		MemoryAllocated float64 `json:"mb_allocated"`
-	}
-
-	statusData := &APIStatus{}
 	var statusMutex sync.RWMutex
 
 	{
@@ -284,12 +273,15 @@ func mainReturnWithCode() int {
 
 		go func() {
 			for {
-				newStatusData := &APIStatus{}
+				newStatusData := &metrics.APIStatus{}
 
+				// Service Information
 				newStatusData.ServiceName = serviceName
 				newStatusData.GitHash = sha
 				newStatusData.Started = startTime.Format("Mon, 02 Jan 2006 15:04:05 EST")
 				newStatusData.Uptime = time.Since(startTime).String()
+
+				// Service Metrics
 				newStatusData.Goroutines = runtime.NumGoroutine()
 				newStatusData.MemoryAllocated = memoryUsed()
 
