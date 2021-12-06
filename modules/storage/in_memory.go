@@ -1291,6 +1291,13 @@ func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string
 		}
 
 		buyer.StandardLocationFee = standardLocationFee
+	case "LookerSeats":
+		lookerSeats, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("LookerSeats: %v is not a valid int64 type (%T)", value, value)
+		}
+
+		buyer.LookerSeats = lookerSeats
 	case "ShortName":
 		shortName, ok := value.(string)
 		if !ok {
