@@ -6105,18 +6105,38 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     next_assert( packet_data );
     next_assert( payload_sequence );
 
+    // stateless
+
     (void) from;
 
-    if ( packet_bytes <= 1 + 15 + NEXT_HEADER_BYTES + 2 )
+    // todo: we need real data here
+    uint8_t magic[8];
+    uint8_t from_address[4];
+    uint8_t to_address[4];
+    next_random_bytes( magic, 8 );
+    next_random_bytes( from_address, 4 );
+    next_random_bytes( to_address, 4 );
+    uint16_t from_port = uint16_t( 1000 );
+    uint16_t to_port = uint16_t( 5000 );
+    int from_address_bytes = 4;
+    int to_address_bytes = 4;
+
+    if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server to client packet is too small" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "basic packet filter failed" );
         return false;
     }
 
-    // todo: update to new packet header structure
+    if ( !next_advanced_packet_filter( packet_data, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_bytes ) )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "advanced packet filter failed" );
+        return false;
+    }
 
+    // stateful
+
+    // todo: need to fix up this part
     /*
-
     uint8_t packet_type = 0;
     uint64_t packet_sequence = 0;
     uint64_t packet_session_id = 0;
@@ -6133,7 +6153,9 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
             return false;
         }
     }
+    */
 
+    /*
     if ( !route_manager->route_data.current_route && !route_manager->route_data.previous_route )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. no current or previous route" );
