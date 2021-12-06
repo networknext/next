@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis"
-	"github.com/go-kit/kit/log"
 	"github.com/go-redis/redis/v7"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
@@ -41,11 +40,8 @@ func TestBuyersList(t *testing.T) {
 	storer.AddCustomer(context.Background(), routing.Customer{Name: "Local Local Local", Code: "local-local-local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 3, CompanyCode: "local-local-local"})
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.BuyersService{
 		Storage: &storer,
-		Logger:  logger,
 	}
 
 	t.Run("list - empty", func(t *testing.T) {
@@ -191,8 +187,6 @@ func TestUserSessions_Binary(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 333, UserHash: userHash1, DeltaRTT: 150}.RedisString(), time.Hour)
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID4), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 444, UserHash: userHash3, DeltaRTT: 150}.RedisString(), time.Hour)
 
-	logger := log.NewNopLogger()
-
 	btTableName, btTableEnvVarOK := os.LookupEnv("BIGTABLE_TABLE_NAME")
 	if !btTableEnvVarOK {
 		btTableName = "Test"
@@ -314,7 +308,6 @@ func TestUserSessions_Binary(t *testing.T) {
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
 		RedisPoolUserSessions:  redisPool,
-		Logger:                 logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -568,8 +561,6 @@ func TestUserSessions_Serialize(t *testing.T) {
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID3), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 333, UserHash: userHash1, DeltaRTT: 150}.RedisString(), time.Hour)
 	redisClient.Set(fmt.Sprintf("sm-%s", sessionID4), transport.SessionMeta{Version: transport.SessionMetaVersion, ID: 444, UserHash: userHash3, DeltaRTT: 150}.RedisString(), time.Hour)
 
-	logger := log.NewNopLogger()
-
 	btTableName, btTableEnvVarOK := os.LookupEnv("BIGTABLE_TABLE_NAME")
 	if !btTableEnvVarOK {
 		btTableName = "Test"
@@ -695,7 +686,6 @@ func TestUserSessions_Serialize(t *testing.T) {
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
 		RedisPoolUserSessions:  redisPool,
-		Logger:                 logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -884,11 +874,8 @@ func TestDatacenterMaps(t *testing.T) {
 	storer.AddCustomer(ctx, customer)
 	storer.AddDatacenter(ctx, datacenter)
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.BuyersService{
 		Storage: &storer,
-		Logger:  logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -977,14 +964,12 @@ func TestTotalSessions(t *testing.T) {
 	storer.AddBuyer(ctx, routing.Buyer{ID: 2, CompanyCode: "local-local", PublicKey: pubkey})
 	storer.AddBuyer(ctx, routing.Buyer{ID: 3, CompanyCode: "local-local-local", PublicKey: pubkey})
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisPoolTopSessions:   redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolSessionMap:    redisPool,
 		Storage:                &storer,
-		Logger:                 logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1065,14 +1050,12 @@ func TestTotalSessionsWithGhostArmy(t *testing.T) {
 	storer.AddBuyer(ctx, routing.Buyer{ID: 1, CompanyCode: "local-local", PublicKey: pubkey})
 	storer.AddBuyer(ctx, routing.Buyer{ID: 2, CompanyCode: "local-local-local", PublicKey: pubkey})
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisPoolTopSessions:   redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolSessionMap:    redisPool,
 		Storage:                &storer,
-		Logger:                 logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1141,14 +1124,12 @@ func TestTopSessions(t *testing.T) {
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, CompanyCode: "local-local", PublicKey: pubkey})
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
 		Storage:                &storer,
-		Logger:                 logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1270,7 +1251,6 @@ func TestSessionDetails_Binary(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	logger := log.NewNopLogger()
 
 	// Setup Bigtable
 	btTableName, btTableEnvVarOK := os.LookupEnv("BIGTABLE_TABLE_NAME")
@@ -1333,7 +1313,6 @@ func TestSessionDetails_Binary(t *testing.T) {
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
 		Storage:                &inMemory,
-		Logger:                 logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1567,7 +1546,6 @@ func TestSessionDetails_Serialize(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	logger := log.NewNopLogger()
 
 	// Setup Bigtable
 	btTableName, btTableEnvVarOK := os.LookupEnv("BIGTABLE_TABLE_NAME")
@@ -1630,7 +1608,6 @@ func TestSessionDetails_Serialize(t *testing.T) {
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
 		Storage:                &inMemory,
-		Logger:                 logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1826,14 +1803,12 @@ func TestSessionMapPoints(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, CompanyCode: "local", PublicKey: pubkey})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, CompanyCode: "local-local", PublicKey: pubkey})
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
 		Storage:                &storer,
-		Logger:                 logger,
 	}
 
 	err := svc.GenerateMapPointsPerBuyer(context.Background())
@@ -1935,14 +1910,12 @@ func TestSessionMap(t *testing.T) {
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 111, CompanyCode: "local", PublicKey: pubkey})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 222, CompanyCode: "local-local", PublicKey: pubkey})
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
 		Storage:                &storer,
-		Logger:                 logger,
 	}
 
 	err := svc.GenerateMapPointsPerBuyer(context.Background())
@@ -2019,14 +1992,12 @@ func TestGameConfiguration(t *testing.T) {
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisPoolTopSessions:   redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolSessionMap:    redisPool,
 		Storage:                &storer,
-		Logger:                 logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -2071,14 +2042,12 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local-local", Name: "Local Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey, Live: true})
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisPoolTopSessions:   redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolSessionMap:    redisPool,
 		Storage:                &storer,
-		Logger:                 logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -2157,14 +2126,12 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "local", Name: "Local"})
 	storer.AddBuyer(context.Background(), routing.Buyer{ID: 1, CompanyCode: "local", PublicKey: pubkey})
 
-	logger := log.NewNopLogger()
 	svc := jsonrpc.BuyersService{
 		RedisPoolSessionMap:    redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
 		RedisPoolTopSessions:   redisPool,
 		Storage:                &storer,
-		Logger:                 logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -2375,7 +2342,7 @@ func TestSameBuyerRoleFunction(t *testing.T) {
 // 	// we need to add the relay ID to bq_billing_row.json
 // 	// fmt.Printf("Relay2 ID: %d\n", int64(checkRelay2.ID))
 
-// 	logger := log.NewNopLogger()
+//
 // 	svc := jsonrpc.BuyersService{
 // 		RedisPoolSessionMap:    redisPool,
 // 		RedisPoolSessionMeta:   redisPool,
