@@ -157,7 +157,7 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		return err
 	}
 
-	lookerSeats, err := strconv.ParseFloat(args.LookerSeats, 64)
+	lookerSeats, err := strconv.ParseInt(args.LookerSeats, 10, 64)
 	if err != nil {
 		core.Error("%v", err)
 		return err
@@ -176,7 +176,7 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		ExoticLocationFee:   exoticLocationFee,
 		StandardLocationFee: standardLocationFee,
 		PublicKey:           publicKey[8:],
-		LookerSeats:         int64(lookerSeats),
+		LookerSeats:         lookerSeats,
 	}
 
 	return s.Storage.AddBuyer(ctx, buyer)
