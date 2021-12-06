@@ -3,6 +3,8 @@ package storage
 import (
 	"fmt"
 	"math/rand"
+	"net/url"
+	"strconv"
 	"sync"
 
 	"gopkg.in/auth0.v4/management"
@@ -66,6 +68,25 @@ func (lum *LocalUserManager) Delete(id string) error {
 }
 func (lum *LocalUserManager) List(opts ...management.ListOption) (*management.UserList, error) {
 	var userList management.UserList
+
+	// Check to see if a page number is being passed in (this is necessary for live looks up but irrelavent for testing and local use)
+	if len(opts) > 0 {
+		v := make(url.Values)
+		opts[len(opts)-1](v)
+		pages, ok := v["page"]
+
+		if ok {
+			page, err := strconv.ParseInt(pages[0], 10, 64)
+			if err != nil {
+				return &userList, nil
+			}
+			if page > 0 {
+				userList.Users = make([]*management.User, 0)
+				return &userList, nil
+			}
+		}
+	}
+
 	users := make([]*management.User, len(lum.localUsers))
 	for i := range users {
 		users[i] = lum.localUsers[i]

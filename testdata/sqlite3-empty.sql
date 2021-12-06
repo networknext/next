@@ -44,6 +44,7 @@ create table buyers (
   public_key bytea not null,
   short_name varchar unique,
   customer_id integer not null,
+  looker_seats integer not null default 0,
   constraint fk_customer_id foreign key (customer_id) references customers(id)
 );
 
