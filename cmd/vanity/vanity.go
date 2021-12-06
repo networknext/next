@@ -192,22 +192,7 @@ func mainReturnWithCode() int {
 	go vanityMetricHandler.Start(ctx, numVanityUpdateGoroutines, wg, errChan)
 
 	// Setup the status handler info
-	type VanityStatus struct {
-		// Service Information
-		ServiceName string `json:"service_name"`
-		GitHash     string `json:"git_hash"`
-		Started     string `json:"started"`
-		Uptime      string `json:"uptime"`
-
-		// Metrics
-		Goroutines        int     `json:"goroutines"`
-		MemoryAllocated   float64 `json:"mb_allocated"`
-		MessagesReceived  int     `json:"messages_received"`
-		SuccessfulUpdates int     `json:"successful_updates"`
-		FailedUpdates     int     `json:"failed_updates"`
-	}
-
-	statusData := &VanityStatus{}
+	statusData := &metrics.VanityStatus{}
 	var statusMutex sync.RWMutex
 
 	{
@@ -222,7 +207,7 @@ func mainReturnWithCode() int {
 				vanityServiceMetrics.Goroutines.Set(float64(runtime.NumGoroutine()))
 				vanityServiceMetrics.MemoryAllocated.Set(memoryUsed())
 
-				newStatusData := &VanityStatus{}
+				newStatusData := &metrics.VanityStatus{}
 
 				newStatusData.ServiceName = serviceName
 				newStatusData.GitHash = sha
