@@ -21,6 +21,7 @@ type RelayData struct {
 	Version           string
 	CPU               uint8
 	NICSpeedMbps      int32
+	MaxBandwidthMbps  int32
 	EnvelopeUpMbps    float32
 	EnvelopeDownMbps  float32
 	BandwidthSentMbps float32

@@ -198,6 +198,17 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	if !envvar.Exists("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE") {
+		core.Error("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE not set")
+		return 1
+	}
+
+	maxBandwidthPercentage, err := envvar.GetFloat("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE", 0)
+	if err != nil {
+		core.Error("failed to parse RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE: %v", err)
+		return 1
+	}
+
 	instanceID, err := getInstanceID(env)
 	if err != nil {
 		core.Error("failed to get relay backend instance ID: %v", err)
@@ -752,15 +763,30 @@ func mainReturnWithCode() int {
 						}
 					}
 
-					// Track the relays that are near max capacity
-					// Relays with MaxSessions set to 0 are never considered full
+					// Track the relays that are near max capacity based on max sessions and bandwidth
 					var full bool
 
+					// Relays with MaxSessions set to 0 are never considered full based on session count
 					maxSessions := int(relay.MaxSessions)
 					if maxSessions != 0 && numSessions >= maxSessions {
 						fullRelayIDs = append(fullRelayIDs, relay.ID)
 						full = true
 						core.Debug("Relay ID %016x is full (%d/%d sessions)", relay.ID, numSessions, maxSessions)
+					}
+
+					// Relays with MaxBandwidthMbps set to 0 use maxBandwidthPercentage by default to determine if full
+					if !full {
+						if relay.MaxBandwidthMbps != 0 {
+							if relay.BandwidthSentMbps > float32(relay.MaxBandwidthMbps) || relay.BandwidthRecvMbps > float32(relay.MaxBandwidthMbps) {
+								fullRelayIDs = append(fullRelayIDs, relay.ID)
+								full = true
+								core.Debug("Relay ID %016x is full (BW Sent Mbps: %.2f | BW Recv Mbps: %.2f | Max BW Mbps: %d)", relay.BandwidthSentMbps, relay.BandwidthRecvMbps, relay.MaxBandwidthMbps)
+							}
+						} else if float64(bwSentPercent) > maxBandwidthPercentage || float64(bwRecvPercent) > maxBandwidthPercentage {
+							fullRelayIDs = append(fullRelayIDs, relay.ID)
+							full = true
+							core.Debug("Relay ID %016x is full (BW Sent %: %.2f | BW Recv %: %.2f | Max BW %: %.2f)", bwSentPercent, bwRecvPercent, maxBandwidthPercentage)
+						}
 					}
 
 					entries[count] = analytics.RelayStatsEntry{
