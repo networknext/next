@@ -2742,6 +2742,7 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 
 type FetchSummaryDashboardArgs struct {
 	CompanyCode string `json:"company_code"`
+	DateString  string `json:"date_string"`
 	Origin      string `json:"origin"`
 }
 
@@ -2846,6 +2847,7 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboards(r *http.Request, args *F
 
 type FetchUsageDashboardArgs struct {
 	CompanyCode string `json:"company_code"`
+	DateString  string `json:"date_string"`
 	Origin      string `json:"origin"`
 }
 
@@ -2906,6 +2908,11 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchU
 		companyCode = "esl"
 	}
 
+	dashURL := fmt.Sprintf("%s?embed_domain=%s", UsageDashURI, args.Origin)
+	if args.DateString != "" {
+		dashURL = fmt.Sprintf("%s&Billing+Period=%s", dashURL, args.DateString)
+	}
+
 	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
 	urlOptions := notifications.LookerURLOptions{
 		Host:            notifications.LOOKER_HOST,
@@ -2918,7 +2925,7 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchU
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(fmt.Sprintf("%s?embed_domain=%s", UsageDashURI, args.Origin)),
+		EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
 		ForceLogout:     true,
 		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
