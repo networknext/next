@@ -161,6 +161,7 @@ create table relays (
   mrc bigint not null,
   overage bigint not null,
   port_speed integer not null,
+  max_bandwidth_mbps integer not null,
   public_ip inet not null,
   public_ip_port integer not null,
   public_key bytea not null,
