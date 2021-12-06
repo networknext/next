@@ -1905,10 +1905,7 @@ func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *Upd
 		}
 	}
 
-	fmt.Println(args.Seller)
-	fmt.Println(category.Seller)
 	if category.Seller != args.Seller {
-		fmt.Println("Updating category Seller field....")
 		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Seller", args.Seller); err != nil {
 			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
 			wasError = true

@@ -1953,13 +1953,13 @@ func (s *BuyersService) JSAddDatacenterMap(r *http.Request, args *JSAddDatacente
 
 	buyerID, err := strconv.ParseUint(args.HexBuyerID, 16, 64)
 	if err != nil {
-		core.Error("JSAddDatacenterMap(): %v", err.Error())
+		core.Error("JSAddDatacenterMap() failed to parse buyer hex ID %s: %v", args.HexBuyerID, err)
 		return err
 	}
 
 	datacenterID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
 	if err != nil {
-		core.Error("JSAddDatacenterMap(): %v", err.Error())
+		core.Error("JSAddDatacenterMap() failed to parse datacenter hex ID %s: %v", args.HexDatacenterID, err)
 		return err
 	}
 
@@ -2536,7 +2536,7 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchNotifications(): %v", err.Error())
+		core.Error("FetchNotifications(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
@@ -2558,7 +2558,7 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 		nonce, err := GenerateRandomString(16)
 		if err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-			core.Error("FetchNotifications(): %v", err.Error())
+			core.Error("FetchNotifications(): %v: Failed to generate nonce", err.Error())
 			return &err
 		}
 
@@ -2589,7 +2589,7 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 	email, ok := claims["email"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("StartAnalyticsTrial(): %v", err.Error())
+		core.Error("StartAnalyticsTrial(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
@@ -2629,7 +2629,7 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 
 		if err := s.SlackClient.SendInfo(fmt.Sprintf("%s signed from %s up for an analytics trial! :money_mouth_face:", email, company.Name)); err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
-			core.Error("StartAnalyticsTrial(): Email is required: %v", err.Error())
+			core.Error("StartAnalyticsTrial(): %v: Email is required", err.Error())
 			return &err
 		}
 	}
@@ -2661,7 +2661,7 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboards(r *http.Request, args *F
 	if args.Origin == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		core.Error("FetchAnalyticsSummaryDashboards(): Origin is required: %v", err.Error())
+		core.Error("FetchAnalyticsSummaryDashboards(): %v: Origin is required", err.Error())
 		return &err
 	}
 
