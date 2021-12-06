@@ -6861,19 +6861,37 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         // Without this, under very rare packet loss conditions it's possible for the client to get
         // stuck in an undefined state.
 
-        // todo: update to new next_write_packet
-        /*
+        // todo: we need real
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_random_bytes( magic, 8 );
+        next_random_bytes( from_address, 4 );
+        next_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( 1000 );
+        uint16_t to_port = uint16_t( 5000 );
+
         client->upgrade_response_packet_bytes = 0;
-        if ( next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key ) != NEXT_OK )
+        const int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, NULL, NULL, NULL, NULL, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
+
+        if ( result != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write upgrade response packet" );
             return;
         }
+        
+        const uint8_t * packet_data = client->upgrade_response_packet_data;
+        const int packet_bytes = client->upgrade_response_packet_bytes;
+
+        next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_assert( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+
+        (void) packet_data;
+        (void) packet_bytes;
 
         client->sending_upgrade_response = true;
         client->upgrade_response_start_time = next_time();
         client->last_upgrade_response_send_time = next_time();
-        */
 
         return;
     }
@@ -8541,15 +8559,30 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         {
             // send direct from client to server
 
-            // todo: replace this with next_write_direct_packet
+            // todo: we need real data here
+            uint8_t magic[8];
+            uint8_t from_address[4];
+            uint8_t to_address[4];
+            next_random_bytes( magic, 8 );
+            next_random_bytes( from_address, 4 );
+            next_random_bytes( to_address, 4 );
+            uint16_t from_port = uint16_t( 1000 );
+            uint16_t to_port = uint16_t( 5000 );
 
-            uint8_t buffer[10+NEXT_MTU];
-            uint8_t * p = buffer;
-            next_write_uint8( &p, NEXT_DIRECT_PACKET );
-            next_write_uint8( &p, client->open_session_sequence );
-            next_write_uint64( &p, send_sequence );
-            memcpy( buffer+10, packet_data, packet_bytes );
-            next_platform_socket_send_packet( client->internal->socket, &client->server_address, buffer, packet_bytes + 10 );
+            uint8_t direct_packet_data[NEXT_MAX_PACKET_BYTES];
+
+            const int direct_packet_bytes = next_write_direct_packet( direct_packet_data, client->open_session_sequence, send_sequence, packet_data, packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+
+            next_assert( direct_packet_bytes >= 0 );
+
+            next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( direct_packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, direct_packet_bytes ) );
+
+            (void) direct_packet_data;
+            (void) direct_packet_bytes;
+
+            next_platform_socket_send_packet( client->internal->socket, &client->server_address, direct_packet_data, direct_packet_bytes );
+
             client->counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]++;
         }
 
