@@ -153,19 +153,19 @@ func (r *RelayUpdateRequest) unmarshalBinaryV5(buff []byte, index int) error {
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.EnvelopeUpKbps) {
-		return errors.New("coult not read envelope up kpbs")
+		return errors.New("could not read envelope up kpbs")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.EnvelopeDownKbps) {
-		return errors.New("coult not read envelope down kpbs")
+		return errors.New("could not read envelope down kpbs")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.BandwidthSentKbps) {
-		return errors.New("coult not read bandwidth sent kbps")
+		return errors.New("could not read bandwidth sent kbps")
 	}
 
 	if !encoding.ReadUint64(buff, &index, &r.BandwidthRecvKbps) {
-		return errors.New("coult not read bandwidth received kbps")
+		return errors.New("could not read bandwidth received kbps")
 	}
 
 	return nil

@@ -417,6 +417,7 @@ func SeedSQLStorage(
 				State:               routing.RelayStateEnabled,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
+				MaxBandwidthMbps:    0,
 				Notes:               "I am relay local." + fmt.Sprintf("%d", i) + " - hear me roar!",
 				Version:             "2.0.9",
 			}); err != nil {
@@ -469,6 +470,7 @@ func SeedSQLStorage(
 				State:               ghostRelayState,
 				IncludedBandwidthGB: 10000,
 				NICSpeedMbps:        1000,
+				MaxBandwidthMbps:    0,
 				Notes:               "I am relay ghost-army.local.1" + fmt.Sprintf("%d", i) + " - hear me roar!",
 				Version:             "2.0.9",
 			}); err != nil {

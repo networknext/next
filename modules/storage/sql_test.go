@@ -185,6 +185,7 @@ func TestInsertSQL(t *testing.T) {
 			Type:                routing.BareMetal,
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
+			MaxBandwidthMbps:    900,
 			Notes:               "the original notes",
 			Version:             initialRelayVersion,
 		}
@@ -223,7 +224,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, routing.RelayStateEnabled, checkRelay.State)
 		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
 		assert.Equal(t, int32(1000), checkRelay.NICSpeedMbps)
-
+		assert.Equal(t, int32(900), checkRelay.MaxBandwidthMbps)
 		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
 		assert.Equal(t, customerShortname, checkRelay.Seller.CompanyCode)
@@ -257,6 +258,7 @@ func TestInsertSQL(t *testing.T) {
 		relayMod.State = checkRelay.State
 		relayMod.IncludedBandwidthGB = checkRelay.IncludedBandwidthGB
 		relayMod.NICSpeedMbps = checkRelay.NICSpeedMbps
+		relayMod.MaxBandwidthMbps = checkRelay.MaxBandwidthMbps
 		relayMod.Notes = checkRelay.Notes
 		relayMod.DatabaseID = checkRelay.DatabaseID
 
@@ -288,6 +290,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relayMod.State, checkRelayMod.State)
 		assert.Equal(t, int32(10000), checkRelayMod.IncludedBandwidthGB)
 		assert.Equal(t, int32(1000), checkRelayMod.NICSpeedMbps)
+		assert.Equal(t, int32(900), checkRelayMod.MaxBandwidthMbps)
 
 		assert.Equal(t, customerShortname, checkRelayMod.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelayMod.Seller.ShortName)
@@ -329,6 +332,7 @@ func TestInsertSQL(t *testing.T) {
 			State:               routing.RelayStateMaintenance,
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
+			MaxBandwidthMbps:    900,
 			Notes:               "the original notes",
 			Version:             initialRelayVersion,
 		}
@@ -366,6 +370,7 @@ func TestInsertSQL(t *testing.T) {
 			State:               routing.RelayStateMaintenance,
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
+			MaxBandwidthMbps:    900,
 			Notes:               "the original notes",
 			Version:             initialRelayVersion,
 		}
@@ -419,6 +424,7 @@ func TestInsertSQL(t *testing.T) {
 			State:               routing.RelayStateMaintenance,
 			IncludedBandwidthGB: 10000,
 			NICSpeedMbps:        1000,
+			MaxBandwidthMbps:    900,
 			// Notes: "the original notes"
 			Version: initialRelayVersion,
 		}
@@ -458,6 +464,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.State, checkRelay.State)
 		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
 		assert.Equal(t, int32(1000), checkRelay.NICSpeedMbps)
+		assert.Equal(t, int32(900), checkRelay.MaxBandwidthMbps)
 
 		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
@@ -981,6 +988,7 @@ func TestUpdateSQL(t *testing.T) {
 			Overage:             26000000000000,
 			BWRule:              routing.BWRuleBurst,
 			NICSpeedMbps:        1000,
+			MaxBandwidthMbps:    900,
 			IncludedBandwidthGB: 10000,
 			ContractTerm:        12,
 			StartDate:           time.Now(),
@@ -1175,6 +1183,13 @@ func TestUpdateSQL(t *testing.T) {
 		checkRelay, err = db.Relay(ctx, rid)
 		assert.NoError(t, err)
 		assert.Equal(t, int32(25000), checkRelay.IncludedBandwidthGB)
+
+		// relay.MaxBandwidthMbps
+		err = db.UpdateRelay(ctx, rid, "MaxBandwidthMbps", float64(19000))
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(ctx, rid)
+		assert.NoError(t, err)
+		assert.Equal(t, int32(19000), checkRelay.MaxBandwidthMbps)
 
 		// relay.Notes
 		err = db.UpdateRelay(ctx, rid, "Notes", "not the original notes")

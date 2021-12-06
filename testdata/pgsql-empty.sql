@@ -159,6 +159,7 @@ create table relays (
   internal_ip_port integer,
   management_ip varchar not null,
   max_sessions integer not null,
+  egress_price_override bigint not null,
   mrc bigint not null,
   overage bigint not null,
   port_speed integer not null,
