@@ -26,13 +26,18 @@ export class AuthService {
     })
   }
 
-  public login (username: string, password: string): Promise<any> {
+  public login (username: string, password: string, redirectURL: string): Promise<any> {
+    if (redirectURL === '') {
+      redirectURL = window.location.origin
+    }
+
     return new Promise(
       (resolve: any, reject: any) => this.auth0Client.login(
         {
           username: username,
           password: password,
-          realm: 'Username-Password-Authentication'
+          realm: 'Username-Password-Authentication',
+          redirectUri: redirectURL
         },
         (err: Auth0Error | null) => {
           err ? reject(Error('Wrong username/password')) : resolve()

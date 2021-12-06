@@ -40,7 +40,7 @@
                 Resend email
               </button>
             </form>
-            <div style="padding: 1rem 0 1rem 0; text-align: center;"><router-link to="map"><strong>Back to Portal</strong></router-link></div>
+            <div style="padding: 1rem 0 1rem 0; text-align: center;"><router-link to="/map"><strong>Back to Portal</strong></router-link></div>
           </div>
         </div>
       </div>

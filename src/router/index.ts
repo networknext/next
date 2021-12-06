@@ -46,7 +46,13 @@ const routes: Array<RouteConfig> = [
       {
         path: 'usage',
         name: 'usage',
-        component: Usage
+        component: Usage,
+        children: [
+          {
+            path: '*',
+            name: 'invoice'
+          }
+        ]
       },
       {
         path: 'discovery',
@@ -185,6 +191,7 @@ const ExplorerRoutes = [
   'account-settings',
   'explore',
   'usage',
+  'invoice',
   'analytics'
 ]
 
@@ -218,11 +225,15 @@ function updateCurrentPage (name: string) {
   }
 }
 
+router.onError(() => {
+  updateCurrentPage('map')
+  router.push('/map')
+})
+
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   if (to.name === '404') {
-    updateCurrentPage('map')
-    next('/map')
+    next(new Error('Route does not exist'))
     return
   }
   // Email is verified - catch this event, refresh the user's token and go to the map
@@ -236,42 +247,38 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
 
   // Anonymous filters
   if (store.getters.isAnonymous && AnonymousRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('map')
-    next('/map')
+    // Prompt user to login and try the route again afterwards
+    updateCurrentPage('login')
+    next('/login?redirectURI=' + to.fullPath)
     return
   }
 
   // AnonymousPlus filters
   if (store.getters.isAnonymousPlus && AnonymousPlusRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('map')
-    next('/map')
+    next(new Error('Insufficient privileges'))
     return
   }
 
   if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && !store.getters.isExplorer && !store.getters.isOwner && !store.getters.isAdmin && ViewerRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('map')
-    next('/map')
+    next(new Error('Insufficient privileges'))
     return
   }
 
   // Explorer Filters
   if (store.getters.isExplorer && !store.getters.isOwner && !store.getters.isAdmin && ExplorerRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('map')
-    next('/map')
+    next(new Error('Insufficient privileges'))
     return
   }
 
   // Owner Filters
   if (store.getters.isOwner && !store.getters.isAdmin && OwnerRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('map')
-    next('/map')
+    next(new Error('Insufficient privileges'))
     return
   }
 
   // If user isn't an admin and they are trying to access beta content block them
   if (!store.getters.isAdmin && BetaRoutes.indexOf(to.name || '') !== -1) {
-    updateCurrentPage('map')
-    next('/map')
+    next(new Error('Insufficient privileges'))
     return
   }
 
@@ -288,30 +295,25 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
       return
     }
 
-    updateCurrentPage('map')
-    next('/map')
+    next(new Error('Insufficient privileges'))
     return
   }
 
   // Beta / Premium features given to the user at a buyer level
-  if (!store.getters.hasBilling && (to.name === 'usage')) {
-    updateCurrentPage('map')
-    next('/map')
+  if (!store.getters.hasBilling && (to.name === 'usage' || to.name === 'invoice')) {
+    next(new Error('Insufficient privileges'))
     return
   }
   if (!store.getters.hasAnalytics && (to.name === 'analytics')) {
-    updateCurrentPage('map')
-    next('/map')
+    next(new Error('Insufficient privileges'))
     return
   }
   if (!store.getters.isAdmin && !store.getters.hasAnalytics && (to.name === 'discovery')) {
-    updateCurrentPage('map')
-    next('/map')
+    next(new Error('Insufficient privileges'))
     return
   }
   if (!store.getters.isAdmin && !store.getters.isSeller && (to.name === 'supply')) {
-    updateCurrentPage('map')
-    next('/map')
+    next(new Error('Insufficient privileges'))
     return
   }
 

@@ -68,6 +68,7 @@
             :class="{
               active:
                 $store.getters.currentPage == 'analytics' ||
+                $store.getters.currentPage === 'invoice' ||
                 $store.getters.currentPage == 'usage'
             }"
             v-if="($store.getters.hasBilling || $store.getters.hasAnalytics) && $store.getters.isExplorer"
@@ -111,7 +112,7 @@
       </ul>
       <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
-          <router-link to="login" data-test="loginButton" class="login btn-sm btn-primary">Log in</router-link>
+          <router-link to="/login" data-test="loginButton" class="login btn-sm btn-primary">Log in</router-link>
         </li>
       </ul>
       <ul class="navbar-nav px-3" v-if="$flagService.isEnabled(FeatureEnum.FEATURE_IMPERSONATION) && $store.getters.isAdmin">
@@ -129,7 +130,7 @@
       </ul>
       <ul class="navbar-nav px-3" v-if="$store.getters.isAnonymous">
         <li class="nav-item text-nowrap" data-tour="signUpButton">
-          <router-link to="get-access" data-test="signUpButton" class="signup btn-sm btn-primary">Get Access</router-link>
+          <router-link to="/get-access" data-test="signUpButton" class="signup btn-sm btn-primary">Get Access</router-link>
         </li>
       </ul>
       <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">

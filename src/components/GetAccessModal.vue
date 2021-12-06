@@ -283,7 +283,7 @@ export default class GetAccessModal extends Vue {
       last_name: this.lastName
     })
 
-    this.$authService.login(this.email, this.password)
+    this.$authService.login(this.email, this.password, window.location.origin)
       .catch((err: Error) => {
         console.log('Something went wrong processing the new sign up information')
         console.log(err)
