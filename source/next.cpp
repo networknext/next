@@ -46,9 +46,9 @@
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
 #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_HOSTNAME   "prod.losangelesfreewaysatnight.com"
+#define NEXT_PING_BACKEND_HOSTNAME  "prod5.losangelesfreewaysatnight.com"
 #else // #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_HOSTNAME    "dev.losangelesfreewaysatnight.com"
+#define NEXT_PING_BACKEND_HOSTNAME   "dev5.losangelesfreewaysatnight.com"
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_PING_BACKEND_PORT                                    "40100"
 
@@ -5068,13 +5068,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
     
     next_assert( socket );
 
-
-    // todo: update to new next_write_packet
-    (void) session_id;
-    /*
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-
-    next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
     double current_time = next_time();
 
@@ -5089,24 +5083,31 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
         {
             uint64_t ping_sequence = next_ping_history_ping_sent( &manager->relay_ping_history[i], next_time() );
 
-            NextRelayPingPacket packet;
-            packet.ping_sequence = ping_sequence;
-            packet.session_id = session_id;
-            
-            int packet_bytes = 0;
+            // todo: need to fill out with real data
+            uint8_t magic[8];
+            uint8_t from_address[4];
+            uint8_t to_address[4];
+            next_random_bytes( magic, 8 );
+            next_random_bytes( from_address, 4 );
+            next_random_bytes( to_address, 4 );
+            uint16_t from_port = uint16_t( 1000 );
+            uint16_t to_port = uint16_t( 5000 );
 
-            if ( next_write_packet( NEXT_RELAY_PING_PACKET, &packet, packet_data, &packet_bytes, NULL, NULL, NULL, NULL, NULL ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "failed to write ping packet" );
-                continue;
-            }
+            // todo: need session version?
+            uint8_t session_version = 0;
+
+            int packet_bytes = next_write_ping_packet( packet_data, ping_sequence, session_id, session_version, NULL, ping_sequence, magic, from_address, 4, from_port, to_address, 4, to_port );
+
+            next_assert( packet_bytes > 0 );
+
+            next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+            next_assert( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
 
             next_platform_socket_send_packet( socket, &manager->relay_addresses[i], packet_data, packet_bytes );
 
             manager->relay_last_ping_time[i] = current_time;
         }
     }
-    */
 }
 
 void next_relay_manager_process_pong( next_relay_manager_t * manager, const next_address_t * from, uint64_t sequence )
@@ -6656,21 +6657,32 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
         return NEXT_ERROR;
     }
 
-    // todo: update to new next_write_packet
-    (void) packet_id;
-    /*
     int packet_bytes = 0;
 
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
 
-    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key ) != NEXT_OK )
+    // todo: client needs to know its external IP address. server needs to pass it back down to the client.
+
+    // todo: fill out data for write packet
+    uint8_t magic[8];
+    uint8_t from_address[4];
+    uint8_t to_address[4];
+    next_random_bytes( magic, 8 );
+    next_random_bytes( from_address, 4 );
+    next_random_bytes( to_address, 4 );
+    uint16_t from_port = uint16_t( 1000 );
+    uint16_t to_port = uint16_t( 1000 );
+
+    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key, magic, from_address, 4, from_port, to_address, 4, to_port ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write internal packet type %d", packet_id );
         return NEXT_ERROR;
     }
 
+    next_assert( next_basic_packet_filter( buffer, sizeof(buffer) ) );
+    next_assert( next_advanced_packet_filter( buffer, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+
     next_platform_socket_send_packet( client->socket, &client->server_address, buffer, packet_bytes );
-    */
 
     return NEXT_OK;
 }
@@ -10504,7 +10516,7 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 
         if ( signed_packet_bytes < int( NEXT_CRYPTO_SIGN_BYTES ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet is too small to be valid" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "signed backend packet is too small to be valid" );
             return NEXT_ERROR;
         }
 
@@ -10514,7 +10526,7 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
         next_crypto_sign_update( &state, signed_packet_data, size_t(signed_packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
         if ( next_crypto_sign_final_verify( &state, signed_packet_data + signed_packet_bytes - NEXT_CRYPTO_SIGN_BYTES, sign_public_key ) != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "signed packet did not verify" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "signed backend packet did not verify" );
             return NEXT_ERROR;
         }
     }
