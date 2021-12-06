@@ -11673,7 +11673,7 @@ inline int next_sequence_greater_than( uint8_t s1, uint8_t s2 )
            ( ( s1 < s2 ) && ( s2 - s1  > 128 ) );
 }
 
-next_session_entry_t * next_server_internal_check_client_to_server_packet( next_server_internal_t * server, uint8_t * packet_data, int packet_bytes )
+next_session_entry_t * next_server_internal_process_client_to_server_packet( next_server_internal_t * server, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( server );
     next_assert( packet_data );
@@ -12599,10 +12599,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_session_entry_t * entry = next_server_internal_check_client_to_server_packet( server, packet_data, packet_bytes );
+        next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_data, packet_bytes );
         if ( !entry )
         {
-            // IMPORTANT: There is no need to log this case, because next_server_internal_check_client_to_server_packet already
+            // IMPORTANT: There is no need to log this case, because next_server_internal_process_client_to_server_packet already
             // logs all cases where it returns NULL to the debug log. Logging here duplicates the log and incorrectly prints
             // out an error when the packet has already been received on the direct path, when multipath is enabled.
             return;
@@ -12638,7 +12638,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_session_entry_t * entry = next_server_internal_check_client_to_server_packet( server, packet_data, packet_bytes );
+        next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_data, packet_bytes );
         if ( !entry )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. did not verify" );
