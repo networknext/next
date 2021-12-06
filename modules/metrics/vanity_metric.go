@@ -5,6 +5,22 @@ import (
 	"fmt"
 )
 
+// VanityStatus defines the metrics reported by the service's status endpoint
+type VanityStatus struct {
+	// Service Information
+	ServiceName string `json:"service_name"`
+	GitHash     string `json:"git_hash"`
+	Started     string `json:"started"`
+	Uptime      string `json:"uptime"`
+
+	// Metrics
+	Goroutines        int     `json:"goroutines"`
+	MemoryAllocated   float64 `json:"mb_allocated"`
+	MessagesReceived  int     `json:"messages_received"`
+	SuccessfulUpdates int     `json:"successful_updates"`
+	FailedUpdates     int     `json:"failed_updates"`
+}
+
 // VanityMetric defines the set of metrics for each vanity metric to be recorded.
 type VanityMetric struct {
 	SlicesAccelerated       Counter
