@@ -5059,7 +5059,7 @@ void next_relay_manager_exclude( next_relay_manager_t * manager, bool * near_rel
     memcpy( manager->relay_excluded, near_relay_excluded, sizeof(manager->relay_excluded) );
 }
 
-void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id )
+void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket )
 {
     next_relay_manager_verify_sentinels( manager );
 
@@ -5067,6 +5067,10 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
         return;
     
     next_assert( socket );
+
+    // todo: we need ping token here
+    uint8_t ping_token[256];
+    memset( ping_token, 0, sizeof(ping_token) );
 
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
@@ -5092,11 +5096,10 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
             next_random_bytes( to_address, 4 );
             uint16_t from_port = uint16_t( 1000 );
             uint16_t to_port = uint16_t( 5000 );
+            int from_address_bytes = 4;
+            int to_address_bytes = 4;
 
-            // todo: need session version?
-            uint8_t session_version = 0;
-
-            int packet_bytes = next_write_ping_packet( packet_data, ping_sequence, session_id, session_version, NULL, ping_sequence, magic, from_address, 4, from_port, to_address, 4, to_port );
+            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port );
 
             next_assert( packet_bytes > 0 );
 
@@ -7932,7 +7935,7 @@ void next_client_internal_send_pings_to_near_relays( next_client_internal_t * cl
     if ( client->fallback_to_direct )
         return;
 
-    next_relay_manager_send_pings( client->near_relay_manager, client->socket, client->session_id );
+    next_relay_manager_send_pings( client->near_relay_manager, client->socket );
 }
 
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client )
