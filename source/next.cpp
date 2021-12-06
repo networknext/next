@@ -11619,10 +11619,6 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
     next_assert( server->socket );
     next_assert( packet_object );
     
-    // todo: update to new next_write_packet
-    (void) to_address;
-    (void) packet_id;
-    /*
     next_server_internal_verify_sentinels( server );
 
     int packet_bytes = 0;
@@ -11646,14 +11642,27 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
         send_key = session->send_key;
     }
 
-    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, server->customer_private_key, send_key ) != NEXT_OK )
+    // todo: we need real data here
+    uint8_t magic[8];
+    uint8_t from_address_data[4];
+    uint8_t to_address_data[4];
+    next_random_bytes( magic, 8 );
+    next_random_bytes( from_address_data, 4 );
+    next_random_bytes( to_address_data, 4 );
+    uint16_t from_port = uint16_t( 1000 );
+    uint16_t to_port = uint16_t( 5000 );
+
+    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, server->customer_private_key, send_key, magic, from_address_data, 4, from_port, to_address_data, 4, to_port ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write internal packet with id %d", packet_id );
         return NEXT_ERROR;
     }
-    
+
+    next_assert( packet_bytes > 0 );
+    next_assert( next_basic_packet_filter( buffer, packet_bytes ) );
+    next_assert( next_advanced_packet_filter( buffer, magic, from_address_data, 4, from_port, to_address_data, 4, to_port, packet_bytes ) );
+
     next_platform_socket_send_packet( server->socket, to_address, buffer, packet_bytes );
-    */
     
     return NEXT_OK;
 }
