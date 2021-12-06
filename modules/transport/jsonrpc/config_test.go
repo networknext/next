@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
 	"github.com/stretchr/testify/assert"
@@ -15,11 +14,8 @@ func TestFlagList(t *testing.T) {
 	t.Parallel()
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.ConfigService{
 		Storage: &storer,
-		Logger:  logger,
 	}
 
 	t.Run("list - empty", func(t *testing.T) {
