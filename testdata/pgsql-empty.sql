@@ -199,7 +199,7 @@ create table analytics_dashboard_categories (
   premium boolean not null,
   admin_only boolean not null,
   seller_only boolean not null
-  primary key (id),
+  primary key (id)
 );
 
 create table analytics_dashboards (
