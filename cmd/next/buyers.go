@@ -683,6 +683,7 @@ func getBuyerInfo(env Environment, buyerRegex string) {
 	buyerInfo += "  Trial                 : " + fmt.Sprintf("%t", reply.Buyer.Trial) + "\n"
 	buyerInfo += "  Exotic Location Fee   : " + fmt.Sprintf("%f", reply.Buyer.ExoticLocationFee) + "\n"
 	buyerInfo += "  Standard Location Fee : " + fmt.Sprintf("%f", reply.Buyer.StandardLocationFee) + "\n"
+	buyerInfo += "  Looker Seats          : " + fmt.Sprintf("%d", reply.Buyer.LookerSeats) + "\n"
 	buyerInfo += "  ID                    : " + fmt.Sprintf("%016x", uint64(reply.Buyer.ID)) + "\n"
 	buyerInfo += "  Public Key            : " + reply.Buyer.EncodedPublicKey() + "\n"
 
