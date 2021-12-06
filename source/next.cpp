@@ -6098,44 +6098,12 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     *packet_bytes = NEXT_HEADER_BYTES + payload_bytes;
 }
 
-bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, const next_address_t * from, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence )
+bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence )
 {
     next_route_manager_verify_sentinels( route_manager );
 
     next_assert( packet_data );
     next_assert( payload_sequence );
-
-    // todo: we should move the stateless check earlier than this, and keep this function stateful
-
-    // stateless
-
-    (void) from;
-
-    // todo: we need real data here
-    uint8_t magic[8];
-    uint8_t from_address[4];
-    uint8_t to_address[4];
-    next_random_bytes( magic, 8 );
-    next_random_bytes( from_address, 4 );
-    next_random_bytes( to_address, 4 );
-    uint16_t from_port = uint16_t( 1000 );
-    uint16_t to_port = uint16_t( 5000 );
-    int from_address_bytes = 4;
-    int to_address_bytes = 4;
-
-    if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "basic packet filter failed" );
-        return false;
-    }
-
-    if ( !next_advanced_packet_filter( packet_data, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_bytes ) )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "advanced packet filter failed" );
-        return false;
-    }
-
-    // stateful
 
     uint8_t * read_packet_data = packet_data + 16;
     int read_packet_bytes = packet_bytes - 16;
@@ -6763,9 +6731,40 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     next_assert( from );
     next_assert( packet_data );
     
-    const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
+    // apply stateless packet filters
+
+    // todo: we need real data here
+    uint8_t magic[8];
+    uint8_t from_address[4];
+    uint8_t to_address[4];
+    next_random_bytes( magic, 8 );
+    next_random_bytes( from_address, 4 );
+    next_random_bytes( to_address, 4 );
+    uint16_t from_port = uint16_t( 1000 );
+    uint16_t to_port = uint16_t( 5000 );
+    int from_address_bytes = 4;
+    int to_address_bytes = 4;
+
+    if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "basic packet filter failed" );
+        return;
+    }
+
+    if ( !next_advanced_packet_filter( packet_data, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_bytes ) )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "advanced packet filter failed" );
+        return;
+    }
+
+    // packet is valid
+
+    packet_data += 16;
+    packet_bytes -= 16;
 
     const int packet_id = packet_data[0];
+
+    const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
 
     // upgraded direct packet (255)
 
@@ -6884,7 +6883,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         // Without this, under very rare packet loss conditions it's possible for the client to get
         // stuck in an undefined state.
 
-        // todo: we need real
+        // todo: we need real data here
         uint8_t magic[8];
         uint8_t from_address[4];
         uint8_t to_address[4];
@@ -7229,7 +7228,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t payload_sequence = 0;
 
         next_platform_mutex_acquire( &client->route_manager_mutex );
-        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence );
+        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, packet_data, packet_bytes, &payload_sequence );
         next_platform_mutex_release( &client->route_manager_mutex );
 
         if ( !result )
@@ -7290,7 +7289,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t payload_sequence = 0;
  
         next_platform_mutex_acquire( &client->route_manager_mutex );
-        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, from, packet_data, packet_bytes, &payload_sequence );
+        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, packet_data, packet_bytes, &payload_sequence );
         next_platform_mutex_release( &client->route_manager_mutex );
 
         if ( !result )
