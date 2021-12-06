@@ -36,6 +36,51 @@ func SeedSQLStorage(
 	// only seed if we're using sqlite3
 	if !pgsql {
 
+		if err := db.AddAnalyticsDashboardCategory(ctx, "General", false, false, false); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		if err := db.AddAnalyticsDashboardCategory(ctx, "Regional", false, true, false); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		if err := db.AddAnalyticsDashboardCategory(ctx, "Platform", false, true, false); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		if err := db.AddAnalyticsDashboardCategory(ctx, "Discovery", false, true, false); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		if err := db.AddAnalyticsDashboardCategory(ctx, "System", true, false, false); err != nil {
+			return fmt.Errorf("AddAnalyticsDashboardCategory() err: %w", err)
+		}
+
+		generalCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "General")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
+		regionalCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Regional")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
+		platformCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Platform")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
+		discoveryCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "Discovery")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
+		systemCategory, err := db.GetAnalyticsDashboardCategoryByLabel(ctx, "System")
+		if err != nil {
+			return fmt.Errorf("GetAnalyticsDashboardCategoryByLabel() err: %w", err)
+		}
+
 		// Add customers
 		// fmt.Println("Adding customers")
 		if err := db.AddCustomer(ctx, routing.Customer{
@@ -46,12 +91,26 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddCustomer() err: %w", err)
 		}
 
+		nextCustomer, err := db.Customer(ctx, "next")
+		if err == nil {
+			if err := db.AddAnalyticsDashboard(ctx, "Relay Stats", 11, false, nextCustomer.DatabaseID, systemCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+		}
+
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Happy Path",
 			Code:                   "happypath",
 			AutomaticSignInDomains: "happypath.com",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
+		}
+
+		happyPathCustomer, err := db.Customer(ctx, "happypath")
+		if err == nil {
+			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, happyPathCustomer.DatabaseID, generalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
 		}
 
 		if err := db.AddCustomer(ctx, routing.Customer{
@@ -62,12 +121,50 @@ func SeedSQLStorage(
 			return fmt.Errorf("AddCustomer() err: %w", err)
 		}
 
+		ghostCustomer, err := db.Customer(ctx, "ghost-army")
+		if err == nil {
+			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, ghostCustomer.DatabaseID, generalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 18, false, ghostCustomer.DatabaseID, regionalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Platform Analytics", 12, false, ghostCustomer.DatabaseID, platformCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 11, true, ghostCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Another Discovery!", 11, true, ghostCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+		}
+
 		if err := db.AddCustomer(ctx, routing.Customer{
 			Name:                   "Local",
 			Code:                   "local",
 			AutomaticSignInDomains: "",
 		}); err != nil {
 			return fmt.Errorf("AddCustomer() err: %w", err)
+		}
+
+		localCustomer, err := db.Customer(ctx, "local")
+		if err == nil {
+			if err := db.AddAnalyticsDashboard(ctx, "General Analytics", 14, false, localCustomer.DatabaseID, generalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Regional Analytics", 18, false, localCustomer.DatabaseID, regionalCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Platform Analytics", 12, false, localCustomer.DatabaseID, platformCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Some Discovery!", 11, true, localCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
+			if err := db.AddAnalyticsDashboard(ctx, "Another Discovery!", 11, true, localCustomer.DatabaseID, discoveryCategory.ID); err != nil {
+				return fmt.Errorf("AddAnalyticsDashboard() err: %w", err)
+			}
 		}
 
 		// retrieve entities so we can get the database-assigned keys
@@ -95,11 +192,10 @@ func SeedSQLStorage(
 			Live:        true,
 			PublicKey:   customerPublicKey,
 			CustomerID:  localCust.DatabaseID,
-			Analytics:   false,
+			Analytics:   true,
 			Billing:     true,
 			Debug:       true,
 			Trial:       true,
-			LookerSeats: 1,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -122,7 +218,6 @@ func SeedSQLStorage(
 			Trial:       true,
 			PublicKey:   publicKey,
 			CustomerID:  ghostCust.DatabaseID,
-			LookerSeats: 0,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}

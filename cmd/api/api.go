@@ -261,7 +261,6 @@ func mainReturnWithCode() int {
 
 	// Setup the status handler info
 	statusData := &metrics.APIStatus{}
-
 	var statusMutex sync.RWMutex
 
 	{
