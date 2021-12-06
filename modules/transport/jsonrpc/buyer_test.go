@@ -2452,7 +2452,7 @@ func TestUpdateBuyer(t *testing.T) {
 
 	boolFields := []string{"Live", "Debug", "Analytics", "Billing", "Trial"}
 
-	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee"}
+	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee", "LookerSeats"}
 
 	t.Run("invalid public key", func(t *testing.T) {
 		var reply jsonrpc.UpdateBuyerReply

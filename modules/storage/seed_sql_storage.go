@@ -196,6 +196,7 @@ func SeedSQLStorage(
 			Billing:     true,
 			Debug:       true,
 			Trial:       true,
+			LookerSeats: 1,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}
@@ -218,6 +219,7 @@ func SeedSQLStorage(
 			Trial:       true,
 			PublicKey:   publicKey,
 			CustomerID:  ghostCust.DatabaseID,
+			LookerSeats: 0,
 		}); err != nil {
 			return fmt.Errorf("AddBuyer() err: %w", err)
 		}

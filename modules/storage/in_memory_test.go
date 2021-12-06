@@ -1935,7 +1935,7 @@ func TestInMemoryUpdateBuyer(t *testing.T) {
 
 	boolFields := []string{"Live", "Debug", "Analytics", "Billing", "Trial"}
 
-	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee"}
+	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee", "LookerSeats"}
 
 	t.Run("buyer does not exist", func(t *testing.T) {
 		inMemory := storage.InMemory{}

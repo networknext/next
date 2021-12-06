@@ -125,6 +125,18 @@ func TestJSAddBuyer(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("bad looker seats", func(t *testing.T) {
+		var reply jsonrpc.JSAddBuyerReply
+		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
+			ShortName:           "local",
+			ExoticLocationFee:   "100",
+			StandardLocationFee: "100",
+			LookerSeats:         "a",
+			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
+		}, &reply)
+		assert.Error(t, err)
+	})
+
 	t.Run("add buyer for non-existant customer", func(t *testing.T) {
 		var reply jsonrpc.JSAddBuyerReply
 		err := svc.JSAddBuyer(req, &jsonrpc.JSAddBuyerArgs{
@@ -145,6 +157,7 @@ func TestJSAddBuyer(t *testing.T) {
 			ShortName:           "local",
 			ExoticLocationFee:   "100",
 			StandardLocationFee: "100",
+			LookerSeats:         "100",
 			PublicKey:           "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==",
 		}, &reply)
 		assert.NoError(t, err)

@@ -102,6 +102,7 @@ type sqlBuyer struct {
 	CompanyCode         string // should not be needed
 	DatabaseID          int64  // sql PK
 	CustomerID          int64  // sql PK
+	LookerSeats         int64
 }
 
 type sqlDatacenterMap struct {
@@ -440,7 +441,7 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 
 	sqlBuyerID := int64(ephemeralBuyerID)
 
-	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
+	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
 	querySQL.Write([]byte("from buyers where sdk_generated_id = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -457,6 +458,7 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
+			&buyer.LookerSeats,
 		)
 		switch err {
 		case context.Canceled:
@@ -501,6 +503,7 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			InternalConfig:      ic,
 			CustomerID:          buyer.CustomerID,
 			DatabaseID:          buyer.DatabaseID,
+			LookerSeats:         buyer.LookerSeats,
 		}
 		return b, nil
 	default:
@@ -518,7 +521,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 	var err error
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
+	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
 	querySQL.Write([]byte("from buyers where short_name = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -535,6 +538,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
+			&buyer.LookerSeats,
 		)
 		switch err {
 		case context.Canceled:
@@ -579,6 +583,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			InternalConfig:      ic,
 			CustomerID:          buyer.CustomerID,
 			DatabaseID:          buyer.DatabaseID,
+			LookerSeats:         buyer.LookerSeats,
 		}
 		return b, nil
 	default:
@@ -595,7 +600,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 	buyers := []routing.Buyer{}
 	buyerIDs := make(map[uint64]int64)
 
-	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
+	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
 	sql.Write([]byte("from buyers"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -622,6 +627,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
+			&buyer.LookerSeats,
 		)
 		if err != nil {
 			level.Error(db.Logger).Log("during", "Buyers(): error parsing returned row", "err", err)
@@ -659,6 +665,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			InternalConfig:      ic,
 			CustomerID:          buyer.CustomerID,
 			DatabaseID:          buyer.DatabaseID,
+			LookerSeats:         buyer.LookerSeats,
 		}
 
 		buyers = append(buyers, b)
@@ -694,12 +701,13 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		StandardLocationFee: b.StandardLocationFee,
 		PublicKey:           b.PublicKey,
 		CustomerID:          c.DatabaseID,
+		LookerSeats:         b.LookerSeats,
 	}
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"))
+	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -716,6 +724,7 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		buyer.StandardLocationFee,
 		buyer.PublicKey,
 		buyer.CustomerID,
+		buyer.LookerSeats,
 	)
 	if err != nil {
 		level.Error(db.Logger).Log("during", "error adding buyer", "err", err)

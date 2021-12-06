@@ -892,6 +892,15 @@ func TestUpdateSQL(t *testing.T) {
 		err = db.UpdateBuyer(ctx, buyerWithID.ID, "ShortName", "newname")
 		assert.NoError(t, err)
 
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "LookerSeats", "100")
+		assert.NoError(t, err)
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "ExoticLocationFee", "100")
+		assert.NoError(t, err)
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "StandardLocationFee", "100")
+		assert.NoError(t, err)
+
 		newPublicKeyStr := "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g=="
 		newPublicKeyEncoded, err := base64.StdEncoding.DecodeString(newPublicKeyStr)
 		assert.NoError(t, err)
@@ -907,6 +916,9 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, false, checkBuyer.Live)
 		assert.Equal(t, false, checkBuyer.Debug)
 		assert.Equal(t, "newname", checkBuyer.ShortName)
+		assert.Equal(t, 100, checkBuyer.LookerSeats)
+		assert.Equal(t, 100, checkBuyer.ExoticLocationFee)
+		assert.Equal(t, 100, checkBuyer.LookerSeats)
 		assert.Equal(t, newBuyerID, checkBuyer.ID)
 		assert.Equal(t, newPublicKeyEncoded[8:], checkBuyer.PublicKey)
 		assert.Equal(t, newPublicKeyStr, checkBuyer.EncodedPublicKey())

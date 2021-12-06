@@ -67,6 +67,7 @@ type buyer struct {
 	Trial               bool   `json:"trial"`
 	ExoticLocationFee   string `json:"exotic_location_fee"`
 	StandardLocationFee string `json:"standard_location_fee"`
+	LookerSeats         int64  `json:"looker_seats"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
@@ -97,6 +98,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			Trial:               b.Trial,
 			ExoticLocationFee:   fmt.Sprintf("%f", b.ExoticLocationFee),
 			StandardLocationFee: fmt.Sprintf("%f", b.StandardLocationFee),
+			LookerSeats:         b.LookerSeats,
 		})
 	}
 
@@ -117,6 +119,7 @@ type JSAddBuyerArgs struct {
 	ExoticLocationFee   string `json:"exoticLocationFee"`
 	StandardLocationFee string `json:"standardLocationFee"`
 	PublicKey           string `json:"publicKey"`
+	LookerSeats         string `json:"looker_seats"`
 }
 
 type JSAddBuyerReply struct{}
@@ -154,7 +157,7 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		return err
 	}
 
-	_, err = s.Storage.Customer(r.Context(), args.ShortName)
+	lookerSeats, err := strconv.ParseFloat(args.LookerSeats, 64)
 	if err != nil {
 		err = fmt.Errorf("JSAddBuyer() could not find Customer %s for %+v: %v", args.ShortName, args, err)
 		core.Error("%v", err)
@@ -174,6 +177,7 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		ExoticLocationFee:   exoticLocationFee,
 		StandardLocationFee: standardLocationFee,
 		PublicKey:           publicKey[8:],
+		LookerSeats:         int64(lookerSeats),
 	}
 
 	return s.Storage.AddBuyer(ctx, buyer)
