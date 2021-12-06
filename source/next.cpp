@@ -5937,8 +5937,8 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     memcpy( route_manager->route_data.pending_route_request_packet_data + 1, tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
     memcpy( route_manager->route_data.pending_route_private_key, route_token.private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
 
-    uint8_t * token_data = tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
-    int token_bytes = ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
+    const uint8_t * token_data = tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
+    const int token_bytes = ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
 
     // todo: we need real data here
     uint8_t magic[8];
@@ -5956,7 +5956,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     next_assert( route_manager->route_data.pending_route_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
 
     const uint8_t * packet_data = route_manager->route_data.pending_route_request_packet_data;
-    int packet_bytes = route_manager->route_data.pending_route_request_packet_bytes;
+    const int packet_bytes = route_manager->route_data.pending_route_request_packet_bytes;
 
     next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
     next_assert( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
@@ -6004,11 +6004,32 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     route_manager->route_data.pending_continue_start_time = next_time();
     route_manager->route_data.pending_continue_last_send_time = -1000.0;
 
-    // todo: switch to next_write_continue_request_packet
-    route_manager->route_data.pending_continue_request_packet_bytes = 1 + ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
-    route_manager->route_data.pending_continue_request_packet_data[0] = NEXT_CONTINUE_REQUEST_PACKET;
-    memcpy( route_manager->route_data.pending_continue_request_packet_data + 1, tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES, ( size_t(num_tokens) - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+    // todo: need real data
+    uint8_t magic[8];
+    uint8_t from_address[4];
+    uint8_t to_address[4];
+    next_random_bytes( magic, 8 );
+    next_random_bytes( from_address, 4 );
+    next_random_bytes( to_address, 4 );
+    uint16_t from_port = uint16_t( 1000 );
+    uint16_t to_port = uint16_t( 5000 );
+
+    const uint8_t * token_data = tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
+    const int token_bytes = ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
+
+    route_manager->route_data.pending_continue_request_packet_bytes = next_write_continue_request_packet( route_manager->route_data.pending_continue_request_packet_data, token_data, token_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+
+    next_assert( route_manager->route_data.pending_continue_request_packet_bytes >= 0 );
     next_assert( route_manager->route_data.pending_continue_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
+
+    const uint8_t * packet_data = route_manager->route_data.pending_continue_request_packet_data;
+    const int packet_bytes = route_manager->route_data.pending_continue_request_packet_bytes;
+
+    next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+    next_assert( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+
+    (void) packet_data;
+    (void) packet_bytes;
 
     next_printf( NEXT_LOG_LEVEL_INFO, "client continues route (%s)", committed ? "committed" : "uncommitted" );
 }
