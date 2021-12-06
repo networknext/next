@@ -3509,9 +3509,6 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	if field == "LookerSeats" {
-		fmt.Println(field)
-	}
 	switch field {
 	case "Live":
 		live, ok := value.(bool)
