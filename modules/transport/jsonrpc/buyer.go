@@ -1784,10 +1784,22 @@ func (s *BuyersService) UpdateBuyer(r *http.Request, args *UpdateBuyerArgs, repl
 			core.Error("%v", err)
 			return err
 		}
-	case "ExoticLocationFee", "StandardLocationFee", "LookerSeats":
+	case "ExoticLocationFee", "StandardLocationFee":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid float64 type", args.Value)
+		}
+
+		err = s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, newValue)
+		if err != nil {
+			err = fmt.Errorf("UpdateBuyer() error updating record for buyer %016x: %v", args.BuyerID, err)
+			core.Error("%v", err)
+			return err
+		}
+	case "LookerSeats":
+		newValue, err := strconv.ParseInt(args.Value, 10, 64)
+		if err != nil {
+			return fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid int64 type", args.Value)
 		}
 
 		err = s.Storage.UpdateBuyer(r.Context(), buyerID, args.Field, newValue)

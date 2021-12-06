@@ -2452,7 +2452,9 @@ func TestUpdateBuyer(t *testing.T) {
 
 	boolFields := []string{"Live", "Debug", "Analytics", "Billing", "Trial"}
 
-	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee", "LookerSeats"}
+	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee"}
+
+	int64Fields := []string{"LookerSeats"}
 
 	t.Run("invalid public key", func(t *testing.T) {
 		var reply jsonrpc.UpdateBuyerReply
@@ -2476,6 +2478,14 @@ func TestUpdateBuyer(t *testing.T) {
 		}
 	})
 
+	t.Run("invalid int64 fields", func(t *testing.T) {
+		for _, field := range int64Fields {
+			var reply jsonrpc.UpdateBuyerReply
+			err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: field, Value: "a"}, &reply)
+			assert.EqualError(t, fmt.Errorf("BuyersService.UpdateBuyer Value: %v is not a valid int64 type", "a"), err.Error())
+		}
+	})
+
 	t.Run("success bool fields", func(t *testing.T) {
 		for _, field := range boolFields {
 			var reply jsonrpc.UpdateBuyerReply
@@ -2486,6 +2496,14 @@ func TestUpdateBuyer(t *testing.T) {
 
 	t.Run("success float64 fields", func(t *testing.T) {
 		for _, field := range float64Fields {
+			var reply jsonrpc.UpdateBuyerReply
+			err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: field, Value: "1"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success int64 fields", func(t *testing.T) {
+		for _, field := range int64Fields {
 			var reply jsonrpc.UpdateBuyerReply
 			err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: field, Value: "1"}, &reply)
 			assert.NoError(t, err)

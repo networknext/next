@@ -1935,7 +1935,9 @@ func TestInMemoryUpdateBuyer(t *testing.T) {
 
 	boolFields := []string{"Live", "Debug", "Analytics", "Billing", "Trial"}
 
-	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee", "LookerSeats"}
+	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee"}
+
+	int64Fields := []string{"LookerSeats"}
 
 	t.Run("buyer does not exist", func(t *testing.T) {
 		inMemory := storage.InMemory{}
@@ -1992,6 +1994,22 @@ func TestInMemoryUpdateBuyer(t *testing.T) {
 		}
 	})
 
+	t.Run("failed int64 fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range int64Fields {
+			err := inMemory.UpdateBuyer(ctx, expected.ID, field, "a")
+			assert.EqualError(t, fmt.Errorf("%s: %v is not a valid int64 type (%T)", field, "a", "a"), err.Error())
+		}
+	})
+
 	t.Run("bad public key", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
@@ -2035,6 +2053,22 @@ func TestInMemoryUpdateBuyer(t *testing.T) {
 
 		for _, field := range float64Fields {
 			err := inMemory.UpdateBuyer(ctx, expected.ID, field, float64(1))
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success int64 fields", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		expected := routing.Buyer{
+			ID: 1,
+		}
+
+		err := inMemory.AddBuyer(ctx, expected)
+		assert.NoError(t, err)
+
+		for _, field := range int64Fields {
+			err := inMemory.UpdateBuyer(ctx, expected.ID, field, int64(1))
 			assert.NoError(t, err)
 		}
 	})
