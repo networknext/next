@@ -159,7 +159,6 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 
 	lookerSeats, err := strconv.ParseFloat(args.LookerSeats, 64)
 	if err != nil {
-		err = fmt.Errorf("JSAddBuyer() could not find Customer %s for %+v: %v", args.ShortName, args, err)
 		core.Error("%v", err)
 		return err
 	}
