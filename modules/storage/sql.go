@@ -3567,7 +3567,6 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 		args = append(args, standardLocationFee, int64(ephemeralBuyerID))
 	case "LookerSeats":
-		fmt.Println("Updating looker seats.....")
 		lookerSeats, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("LookerSeats: %v is not a valid int64 type (%T)", value, value)
