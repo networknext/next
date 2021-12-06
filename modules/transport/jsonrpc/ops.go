@@ -12,162 +12,27 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
+	"github.com/dgrijalva/jwt-go"
+	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 )
-
-type RelayVersion struct {
-	Major uint8
-	Minor uint8
-	Patch uint8
-}
-
-func (self *RelayVersion) String() string {
-	return fmt.Sprintf("%d.%d.%d", self.Major, self.Minor, self.Patch)
-}
-
-type RelayData struct {
-	SessionCount   uint64
-	Version        RelayVersion
-	LastUpdateTime time.Time
-	CPU            float32
-	Mem            float32
-	TrafficStats   routing.TrafficStats
-}
-
-type RelayStatsMap struct {
-	Internal *map[uint64]RelayData
-	mu       sync.RWMutex
-}
-
-func NewRelayStatsMap() RelayStatsMap {
-	m := make(map[uint64]RelayData)
-	return RelayStatsMap{
-		Internal: &m,
-	}
-}
-
-func (r *RelayStatsMap) Get(id uint64) (RelayData, bool) {
-	r.mu.RLock()
-	relay, ok := (*r.Internal)[id]
-	r.mu.RUnlock()
-	return relay, ok
-}
-
-func (r *RelayStatsMap) ReadAndSwap(data []byte) error {
-	index := 0
-
-	var version uint8
-	if !encoding.ReadUint8(data, &index, &version) {
-		return errors.New("unable to read relay stats version")
-	}
-
-	/*
-		if version != routing.VersionNumberRelayMap {
-			return fmt.Errorf("incorrect relay map version number: %d", version)
-		}
-	*/
-
-	var count uint64
-	if !encoding.ReadUint64(data, &index, &count) {
-		return errors.New("unable to read relay stats count")
-	}
-
-	m := make(map[uint64]RelayData)
-
-	for i := uint64(0); i < count; i++ {
-		var id uint64
-		if !encoding.ReadUint64(data, &index, &id) {
-			return errors.New("unable to read relay stats id")
-		}
-
-		var relay RelayData
-
-		// currently map version & traffic stats match up, but not binding them together in case one changes and the other doesn't
-		switch version {
-		case 0:
-			if err := relay.TrafficStats.ReadFrom(data, &index, 0); err != nil {
-				return err
-			}
-		case 1:
-			if err := relay.TrafficStats.ReadFrom(data, &index, 1); err != nil {
-				return err
-			}
-		case 2:
-			if err := relay.TrafficStats.ReadFrom(data, &index, 2); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("invalid relay map version: %d", version)
-		}
-
-		// result of a merge with master, relay.SessionCount was supposed to be removed but the merge put it back in
-		// once this code is in prod for compatability, relay.SessionCount can be removed
-		if version <= 1 {
-			relay.TrafficStats.SessionCount = relay.SessionCount
-		} else {
-			relay.SessionCount = relay.TrafficStats.SessionCount
-		}
-
-		if !encoding.ReadUint8(data, &index, &relay.Version.Major) {
-			return errors.New("unable to relay stats major version")
-		}
-
-		if !encoding.ReadUint8(data, &index, &relay.Version.Minor) {
-			return errors.New("unable to relay stats minor version")
-		}
-
-		if !encoding.ReadUint8(data, &index, &relay.Version.Patch) {
-			return errors.New("unable to relay stats patch version")
-		}
-
-		var unixTime uint64
-		if !encoding.ReadUint64(data, &index, &unixTime) {
-			return errors.New("unable to read relay stats last update time")
-		}
-		relay.LastUpdateTime = time.Unix(int64(unixTime), 0)
-
-		if !encoding.ReadFloat32(data, &index, &relay.CPU) {
-			return errors.New("unable to read relay stats cpu usage")
-		}
-
-		if !encoding.ReadFloat32(data, &index, &relay.Mem) {
-			return errors.New("unable to read relay stats memory usage")
-		}
-
-		m[id] = relay
-	}
-
-	r.Swap(&m)
-
-	return nil
-}
-
-func (r *RelayStatsMap) Swap(m *map[uint64]RelayData) {
-	r.mu.Lock()
-	r.Internal = m
-	r.mu.Unlock()
-}
 
 type OpsService struct {
 	Release   string
 	BuildTime string
 
+	Env string
+
 	Storage storage.Storer
-	// RouteMatrix *routing.RouteMatrix
 
-	Logger log.Logger
-
-	// TODO: remove RelayMay
-	RelayMap *RelayStatsMap
+	LookerClient         *looker.LookerClient
+	LookerDashboardCache []looker.LookerDashboard
 }
 
 type CurrentReleaseArgs struct{}
@@ -202,15 +67,20 @@ type buyer struct {
 	Trial               bool   `json:"trial"`
 	ExoticLocationFee   string `json:"exotic_location_fee"`
 	StandardLocationFee string `json:"standard_location_fee"`
-	LookerSeats         int64  `json:"looker_seats"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Buyers(): %v", err.Error())
+		return &err
+	}
+
 	for _, b := range s.Storage.Buyers(r.Context()) {
 		c, err := s.Storage.Customer(r.Context(), b.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("Buyers() could not find Customer %s for %s: %v", b.CompanyCode, b.String(), err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -227,7 +97,6 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			Trial:               b.Trial,
 			ExoticLocationFee:   fmt.Sprintf("%f", b.ExoticLocationFee),
 			StandardLocationFee: fmt.Sprintf("%f", b.StandardLocationFee),
-			LookerSeats:         b.LookerSeats,
 		})
 	}
 
@@ -248,41 +117,47 @@ type JSAddBuyerArgs struct {
 	ExoticLocationFee   string `json:"exoticLocationFee"`
 	StandardLocationFee string `json:"standardLocationFee"`
 	PublicKey           string `json:"publicKey"`
-	LookerSeats         string `json:"looker_seats"`
 }
 
 type JSAddBuyerReply struct{}
 
 func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JSAddBuyerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("JSAddBuyer(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	if len(publicKey) != crypto.KeySize+8 {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	exoticLocationFee, err := strconv.ParseFloat(args.ExoticLocationFee, 64)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	standardLocationFee, err := strconv.ParseFloat(args.StandardLocationFee, 64)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
-	lookerSeats, err := strconv.ParseFloat(args.LookerSeats, 64)
+	_, err = s.Storage.Customer(r.Context(), args.ShortName)
 	if err != nil {
-		s.Logger.Log("err", err)
+		err = fmt.Errorf("JSAddBuyer() could not find Customer %s for %+v: %v", args.ShortName, args, err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -299,7 +174,6 @@ func (s *OpsService) JSAddBuyer(r *http.Request, args *JSAddBuyerArgs, reply *JS
 		ExoticLocationFee:   exoticLocationFee,
 		StandardLocationFee: standardLocationFee,
 		PublicKey:           publicKey[8:],
-		LookerSeats:         int64(lookerSeats),
 	}
 
 	return s.Storage.AddBuyer(ctx, buyer)
@@ -312,45 +186,23 @@ type RemoveBuyerArgs struct {
 type RemoveBuyerReply struct{}
 
 func (s *OpsService) RemoveBuyer(r *http.Request, args *RemoveBuyerArgs, reply *RemoveBuyerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveBuyer(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	buyerID, err := strconv.ParseUint(args.ID, 16, 64)
 	if err != nil {
 		err = fmt.Errorf("RemoveBuyer() could not convert buyer ID %s to uint64: %v", args.ID, err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	return s.Storage.RemoveBuyer(ctx, buyerID)
-}
-
-type RoutingRulesSettingsArgs struct {
-	BuyerID string
-}
-
-type RoutingRulesSettingsReply struct {
-	RoutingRuleSettings []routingRuleSettings
-}
-
-type routingRuleSettings struct {
-	EnvelopeKbpsUp               int64           `json:"envelopeKbpsUp"`
-	EnvelopeKbpsDown             int64           `json:"envelopeKbpsDown"`
-	Mode                         int64           `json:"mode"`
-	MaxNibblinsPerGB             routing.Nibblin `json:"maxNibblinsPerGB"`
-	RTTEpsilon                   float32         `json:"rttEpsilon"`
-	RTTThreshold                 float32         `json:"rttThreshold"`
-	RTTHysteresis                float32         `json:"rttHysteresis"`
-	RTTVeto                      float32         `json:"rttVeto"`
-	EnableYouOnlyLiveOnce        bool            `json:"yolo"`
-	EnablePacketLossSafety       bool            `json:"plSafety"`
-	EnableMultipathForPacketLoss bool            `json:"plMultipath"`
-	EnableMultipathForJitter     bool            `json:"jitterMultipath"`
-	EnableMultipathForRTT        bool            `json:"rttMultipath"`
-	EnableABTest                 bool            `json:"abTest"`
-	EnableTryBeforeYouBuy        bool            `json:"tryBeforeYouBuy"`
-	TryBeforeYouBuyMaxSlices     int8            `json:"tryBeforeYouBuyMaxSlices"`
-	SelectionPercentage          int64           `json:"selectionPercentage"`
 }
 
 type SellersArgs struct{}
@@ -367,14 +219,14 @@ type seller struct {
 }
 
 func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Sellers(): %v", err.Error())
+		return &err
+	}
+
 	for _, localSeller := range s.Storage.Sellers(r.Context()) {
-		// this is broken in firestore, customers in general do not exist
-		// c, err := s.Storage.Customer(localSeller.CompanyCode)
-		// if err != nil {
-		// 	err = fmt.Errorf("Sellers() could not find Customer %s: %v", localSeller.CompanyCode, err)
-		// 	s.Logger.Log("err", err)
-		// 	return err
-		// }
+
 		reply.Sellers = append(reply.Sellers, seller{
 			ID:                  localSeller.ID,
 			Name:                localSeller.Name,
@@ -393,7 +245,7 @@ func (s *OpsService) Sellers(r *http.Request, args *SellersArgs, reply *SellersR
 type CustomersArgs struct{}
 
 type CustomersReply struct {
-	Customers []customer
+	Customers []customer `json:"customers"`
 }
 
 type customer struct {
@@ -405,9 +257,13 @@ type customer struct {
 }
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Customers(): %v", err.Error())
+		return &err
+	}
 
 	customers := s.Storage.Customers(r.Context())
-
 	for _, c := range customers {
 
 		buyerID := ""
@@ -445,6 +301,12 @@ type JSAddCustomerArgs struct {
 type JSAddCustomerReply struct{}
 
 func (s *OpsService) JSAddCustomer(r *http.Request, args *JSAddCustomerArgs, reply *JSAddCustomerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("JSAddCustomer(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -456,7 +318,7 @@ func (s *OpsService) JSAddCustomer(r *http.Request, args *JSAddCustomerArgs, rep
 
 	if err := s.Storage.AddCustomer(ctx, customer); err != nil {
 		err = fmt.Errorf("AddCustomer() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	return nil
@@ -469,12 +331,18 @@ type AddCustomerArgs struct {
 type AddCustomerReply struct{}
 
 func (s *OpsService) AddCustomer(r *http.Request, args *AddCustomerArgs, reply *AddCustomerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddCustomer(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	if err := s.Storage.AddCustomer(ctx, args.Customer); err != nil {
 		err = fmt.Errorf("AddCustomer() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	return nil
@@ -489,13 +357,18 @@ type CustomerReply struct {
 }
 
 func (s *OpsService) Customer(r *http.Request, arg *CustomerArg, reply *CustomerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Customer(): %v", err.Error())
+		return &err
+	}
 
 	var c routing.Customer
 	var err error
 
 	if c, err = s.Storage.Customer(r.Context(), arg.CustomerID); err != nil {
 		err = fmt.Errorf("Customer() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	reply.Customer = c
@@ -512,12 +385,17 @@ type SellerReply struct {
 }
 
 func (s *OpsService) Seller(r *http.Request, arg *SellerArg, reply *SellerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Seller(): %v", err.Error())
+		return &err
+	}
 
 	var seller routing.Seller
 	var err error
 	if seller, err = s.Storage.Seller(r.Context(), arg.ID); err != nil {
 		err = fmt.Errorf("Seller() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -536,6 +414,12 @@ type JSAddSellerArgs struct {
 type JSAddSellerReply struct{}
 
 func (s *OpsService) JSAddSeller(r *http.Request, args *JSAddSellerArgs, reply *JSAddSellerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("JSAddSeller(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -549,7 +433,7 @@ func (s *OpsService) JSAddSeller(r *http.Request, args *JSAddSellerArgs, reply *
 
 	if err := s.Storage.AddSeller(ctx, seller); err != nil {
 		err = fmt.Errorf("AddSeller() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -563,12 +447,18 @@ type AddSellerArgs struct {
 type AddSellerReply struct{}
 
 func (s *OpsService) AddSeller(r *http.Request, args *AddSellerArgs, reply *AddSellerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddSeller(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	if err := s.Storage.AddSeller(ctx, args.Seller); err != nil {
 		err = fmt.Errorf("AddSeller() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -582,12 +472,18 @@ type RemoveSellerArgs struct {
 type RemoveSellerReply struct{}
 
 func (s *OpsService) RemoveSeller(r *http.Request, args *RemoveSellerArgs, reply *RemoveSellerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveSeller(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	if err := s.Storage.RemoveSeller(ctx, args.ID); err != nil {
 		err = fmt.Errorf("RemoveSeller() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -603,21 +499,27 @@ type SetCustomerLinkArgs struct {
 type SetCustomerLinkReply struct{}
 
 func (s *OpsService) SetCustomerLink(r *http.Request, args *SetCustomerLinkArgs, reply *SetCustomerLinkReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("SetCustomerLink(): %v", err.Error())
+		return &err
+	}
+
 	if args.CustomerName == "" {
 		err := errors.New("SetCustomerLink() error: customer name empty")
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	if args.BuyerID == 0 && args.SellerID == "" {
 		err := errors.New("SetCustomerLink() error: invalid paramters - both buyer ID and seller ID are empty")
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	if args.BuyerID != 0 && args.SellerID != "" {
 		err := errors.New("SetCustomerLink() error: invalid paramters - both buyer ID and seller ID are given which is not allowed")
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -633,7 +535,7 @@ func (s *OpsService) SetCustomerLink(r *http.Request, args *SetCustomerLinkArgs,
 		sellerID, err = s.Storage.SellerIDFromCustomerName(ctx, args.CustomerName)
 		if err != nil {
 			err = fmt.Errorf("SetCustomerLink() error: %w", err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 	}
@@ -644,14 +546,14 @@ func (s *OpsService) SetCustomerLink(r *http.Request, args *SetCustomerLinkArgs,
 		buyerID, err = s.Storage.BuyerIDFromCustomerName(ctx, args.CustomerName)
 		if err != nil {
 			err = fmt.Errorf("SetCustomerLink() error: %w", err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 	}
 
 	if err := s.Storage.SetCustomerLink(ctx, args.CustomerName, buyerID, sellerID); err != nil {
 		err = fmt.Errorf("SetCustomerLink() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -701,6 +603,11 @@ type relay struct {
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Relays(): %v", err.Error())
+		return &err
+	}
 
 	for _, r := range s.Storage.Relays(r.Context()) {
 		relay := relay{
@@ -754,7 +661,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			}
 		}
 
-		// if no relay found, attemt to see if the query matches any seller names
+		// if no relay found, attempt to see if the query matches any seller names
 		if len(filtered) == 0 {
 			for idx := range reply.Relays {
 				relay := &reply.Relays[idx]
@@ -796,6 +703,11 @@ type RelayEgressPriceOverrideReply struct {
 }
 
 func (s *OpsService) RelaysWithEgressPriceOverride(r *http.Request, args *RelayEgressPriceOverrideArgs, reply *RelayEgressPriceOverrideReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RelaysWithEgressPriceOverride(): %v", err.Error())
+		return &err
+	}
 
 	for _, r := range s.Storage.Relays(r.Context()) {
 
@@ -856,12 +768,18 @@ type AddRelayArgs struct {
 type AddRelayReply struct{}
 
 func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddRelay(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	if err := s.Storage.AddRelay(ctx, args.Relay); err != nil {
 		err = fmt.Errorf("AddRelay() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -897,33 +815,39 @@ type JSAddRelayArgs struct {
 type JSAddRelayReply struct{}
 
 func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JSAddRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("JSAddRelay(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	addr, err := net.ResolveUDPAddr("udp", args.Addr)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	dcID, err := strconv.ParseUint(args.DatacenterID, 16, 64)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
-	// seller is not required for SQL Storer AddRelay() method
 	var datacenter routing.Datacenter
 	if datacenter, err = s.Storage.Datacenter(r.Context(), dcID); err != nil {
 		err = fmt.Errorf("Datacenter() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	publicKey, err := base64.StdEncoding.DecodeString(args.PublicKey)
 	if err != nil {
 		err = fmt.Errorf("could not decode base64 public key %s: %v", args.PublicKey, err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
+		return err
 	}
 
 	rid := crypto.HashID(args.Addr)
@@ -955,7 +879,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 	if args.InternalAddr != "" {
 		internalAddr, err = net.ResolveUDPAddr("udp", args.InternalAddr)
 		if err != nil {
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		relay.InternalAddr = *internalAddr
@@ -964,7 +888,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 	if args.StartDate != "" {
 		startDate, err := time.Parse("2006-01-02", args.StartDate)
 		if err != nil {
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		relay.StartDate = startDate
@@ -973,7 +897,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 	if args.EndDate != "" {
 		endDate, err := time.Parse("2006-01-02", args.EndDate)
 		if err != nil {
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		relay.EndDate = endDate
@@ -981,7 +905,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 
 	if err := s.Storage.AddRelay(ctx, relay); err != nil {
 		err = fmt.Errorf("AddRelay() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -995,14 +919,20 @@ type RemoveRelayArgs struct {
 type RemoveRelayReply struct{}
 
 func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *RemoveRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveRelay(): %v", err.Error())
+		return &err
+	}
+
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.Relay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
-	// Rather than actually removing the relay from firestore, just
+	// Rather than actually removing the relay from postgres, just
 	// rename it and set it to the decomissioned state
 	relay.State = routing.RelayStateDecommissioned
 
@@ -1015,7 +945,7 @@ func (s *OpsService) RemoveRelay(r *http.Request, args *RemoveRelayArgs, reply *
 
 	if err = s.Storage.SetRelay(r.Context(), relay); err != nil {
 		err = fmt.Errorf("RemoveRelay() Storage.SetRelay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1031,11 +961,16 @@ type RelayNameUpdateReply struct {
 }
 
 func (s *OpsService) RelayNameUpdate(r *http.Request, args *RelayNameUpdateArgs, reply *RelayNameUpdateReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RelayNameUpdate(): %v", err.Error())
+		return &err
+	}
 
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("RelayNameUpdate() Storage.Relay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1057,18 +992,23 @@ type RelayStateUpdateReply struct {
 }
 
 func (s *OpsService) RelayStateUpdate(r *http.Request, args *RelayStateUpdateArgs, reply *RelayStateUpdateReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RelayStateUpdate(): %v", err.Error())
+		return &err
+	}
 
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("RelayStateUpdate() Storage.Relay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	relay.State = args.RelayState
 	if err = s.Storage.SetRelay(r.Context(), relay); err != nil {
 		err = fmt.Errorf("RelayStateUpdate() Storage.SetRelay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1084,6 +1024,11 @@ type RelayPublicKeyUpdateReply struct {
 }
 
 func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyUpdateArgs, reply *RelayPublicKeyUpdateReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RelayPublicKeyUpdate(): %v", err.Error())
+		return &err
+	}
 
 	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
@@ -1095,41 +1040,13 @@ func (s *OpsService) RelayPublicKeyUpdate(r *http.Request, args *RelayPublicKeyU
 
 	if err != nil {
 		err = fmt.Errorf("RelayPublicKeyUpdate() could not decode relay public key: %v", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	if err = s.Storage.SetRelay(r.Context(), relay); err != nil {
 		err = fmt.Errorf("RelayPublicKeyUpdate() SetRelay error: %w", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	return nil
-}
-
-type RelayNICSpeedUpdateArgs struct {
-	RelayID       uint64 `json:"relay_id"`
-	RelayNICSpeed uint64 `json:"relay_nic_speed"`
-}
-
-type RelayNICSpeedUpdateReply struct {
-}
-
-// TODO This endpoint has been deprecated by SetRelayMetadata()?
-func (s *OpsService) RelayNICSpeedUpdate(r *http.Request, args *RelayNICSpeedUpdateArgs, reply *RelayNICSpeedUpdateReply) error {
-
-	relay, err := s.Storage.Relay(r.Context(), args.RelayID)
-	if err != nil {
-		err = fmt.Errorf("RelayNICSpeedUpdate() Relay error: %w", err)
-		s.Logger.Log("err", err)
-		return err
-	}
-
-	relay.NICSpeedMbps = int32(args.RelayNICSpeed)
-	if err = s.Storage.SetRelay(r.Context(), relay); err != nil {
-		err = fmt.Errorf("RelayNICSpeedUpdate() SetRelay error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1145,12 +1062,17 @@ type DatacenterReply struct {
 }
 
 func (s *OpsService) Datacenter(r *http.Request, arg *DatacenterArg, reply *DatacenterReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Datacenter(): %v", err.Error())
+		return &err
+	}
 
 	var datacenter routing.Datacenter
 	var err error
 	if datacenter, err = s.Storage.Datacenter(r.Context(), arg.ID); err != nil {
 		err = fmt.Errorf("Datacenter() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1178,6 +1100,12 @@ type datacenter struct {
 }
 
 func (s *OpsService) Datacenters(r *http.Request, args *DatacentersArgs, reply *DatacentersReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Datacenters(): %v", err.Error())
+		return &err
+	}
+
 	for _, d := range s.Storage.Datacenters(r.Context()) {
 		reply.Datacenters = append(reply.Datacenters, datacenter{
 			Name:      d.Name,
@@ -1212,12 +1140,18 @@ type AddDatacenterArgs struct {
 type AddDatacenterReply struct{}
 
 func (s *OpsService) AddDatacenter(r *http.Request, args *AddDatacenterArgs, reply *AddDatacenterReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddDatacenter(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
 	if err := s.Storage.AddDatacenter(ctx, args.Datacenter); err != nil {
 		err = fmt.Errorf("AddDatacenter() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1234,6 +1168,12 @@ type JSAddDatacenterArgs struct {
 type JSAddDatacenterReply struct{}
 
 func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs, reply *JSAddDatacenterReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("JSAddDatacenter(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -1241,7 +1181,7 @@ func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs,
 
 	seller, err := s.Storage.Seller(r.Context(), args.SellerID)
 	if err != nil {
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1257,7 +1197,7 @@ func (s *OpsService) JSAddDatacenter(r *http.Request, args *JSAddDatacenterArgs,
 
 	if err := s.Storage.AddDatacenter(ctx, datacenter); err != nil {
 		err = fmt.Errorf("AddDatacenter() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1271,6 +1211,12 @@ type RemoveDatacenterArgs struct {
 type RemoveDatacenterReply struct{}
 
 func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArgs, reply *RemoveDatacenterReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveDatacenter(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -1278,7 +1224,7 @@ func (s *OpsService) RemoveDatacenter(r *http.Request, args *RemoveDatacenterArg
 
 	if err := s.Storage.RemoveDatacenter(ctx, id); err != nil {
 		err = fmt.Errorf("RemoveDatacenter() error: %w", err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1295,6 +1241,11 @@ type ListDatacenterMapsReply struct {
 
 // A zero DatacenterID returns a list of all maps.
 func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMapsArgs, reply *ListDatacenterMapsReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("ListDatacenterMaps(): %v", err.Error())
+		return &err
+	}
 
 	dcm := s.Storage.ListDatacenterMaps(r.Context(), args.DatacenterID)
 
@@ -1303,20 +1254,20 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 		buyer, err := s.Storage.Buyer(r.Context(), dcMap.BuyerID)
 		if err != nil {
 			err = fmt.Errorf("ListDatacenterMaps() could not parse buyer: %w", err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		datacenter, err := s.Storage.Datacenter(r.Context(), dcMap.DatacenterID)
 		if err != nil {
 			err = fmt.Errorf("ListDatacenterMaps() could not parse datacenter: %w", err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
 		company, err := s.Storage.Customer(r.Context(), buyer.CompanyCode)
 		if err != nil {
 			err = fmt.Errorf("ListDatacenterMaps() failed to find buyer company: %w", err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1334,25 +1285,6 @@ func (s *OpsService) ListDatacenterMaps(r *http.Request, args *ListDatacenterMap
 
 	return nil
 }
-
-// type RelayMetadataArgs struct {
-// 	Relay routing.Relay
-// }
-
-// type RelayMetadataReply struct {
-// 	Ok           bool
-// 	ErrorMessage string
-// }
-
-// func (s *OpsService) RelayMetadata(r *http.Request, args *RelayMetadataArgs, reply *RelayMetadataReply) error {
-
-// 	err := s.Storage.SetRelayMetadata(r.Context(), args.Relay)
-// 	if err != nil {
-// 		return err // TODO detail
-// 	}
-
-// 	return nil
-// }
 
 type RouteSelectionArgs struct {
 	SourceRelays      []string `json:"src_relays"`
@@ -1377,6 +1309,11 @@ type CheckRelayIPAddressReply struct {
 // CheckRelayIPAddress is used by the Admin tool when recommissioning a relay to ensure the
 // selected IP address "matches" the HexID (which was derived from its original IP address).
 func (s *OpsService) CheckRelayIPAddress(r *http.Request, args *CheckRelayIPAddressArgs, reply *CheckRelayIPAddressReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CheckRelayIPAddress(): %v", err.Error())
+		return &err
+	}
 
 	internalIDFromHexID, err := strconv.ParseUint(args.HexID, 16, 64)
 	if err != nil {
@@ -1393,7 +1330,7 @@ func (s *OpsService) CheckRelayIPAddress(r *http.Request, args *CheckRelayIPAddr
 	internalIdFromIpAddress := crypto.HashID(addr.String())
 	if internalIDFromHexID != internalIdFromIpAddress {
 		reply.Valid = false
-		return err
+		return fmt.Errorf("CheckRelayIPAddress(): internal ID from Hex ID (%016x) does not match internal ID from IP Address (%016x)", internalIDFromHexID, internalIdFromIpAddress)
 	}
 
 	reply.Valid = true
@@ -1410,6 +1347,11 @@ type UpdateRelayArgs struct {
 type UpdateRelayReply struct{}
 
 func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *UpdateRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateRelay(): %v", err.Error())
+		return &err
+	}
 
 	relayID := args.RelayID
 	var err error
@@ -1417,14 +1359,14 @@ func (s *OpsService) UpdateRelay(r *http.Request, args *UpdateRelayArgs, reply *
 		relayID, err = strconv.ParseUint(args.HexRelayID, 16, 64)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() failed to parse HexRelayID %s: %w", args.HexRelayID, err)
-			s.Logger.Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 	}
 	err = s.Storage.UpdateRelay(r.Context(), relayID, args.Field, args.Value)
 	if err != nil {
 		err = fmt.Errorf("UpdateRelay() failed to modify relay record for field %s with value %v: %w", args.Field, args.Value, err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 	return nil
@@ -1439,10 +1381,16 @@ type GetRelayReply struct {
 }
 
 func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRelayReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("GetRelay(): %v", err.Error())
+		return &err
+	}
+
 	routingRelay, err := s.Storage.Relay(r.Context(), args.RelayID)
 	if err != nil {
 		err = fmt.Errorf("Error retrieving relay ID %016x: %v", args.RelayID, err)
-		s.Logger.Log("err", err)
+		core.Error("%v", err)
 		return err
 	}
 
@@ -1492,9 +1440,10 @@ type ModifyRelayFieldArgs struct {
 type ModifyRelayFieldReply struct{}
 
 func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArgs, reply *ModifyRelayFieldReply) error {
-
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("ModifyRelayField(): %v", err.Error())
+		return &err
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -1508,7 +1457,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, newfloat)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1517,7 +1466,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		err := s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1527,7 +1476,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		err := s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, newPublicKey)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1537,13 +1486,13 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		state, err := routing.ParseRelayState(args.Value)
 		if err != nil {
 			err := fmt.Errorf("value '%s' is not a valid relay state", args.Value)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, float64(state))
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1551,14 +1500,14 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 	case "EgressPriceOverride", "MRC", "Overage":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
-			err = fmt.Errorf("value '%s' is not a valid float64 port number: %v", args.Value, err)
-			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("value '%s' is not a valid float64 number: %v", args.Value, err)
+			core.Error("%v", err)
 			return err
 		}
 		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1568,13 +1517,13 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		bwRule, err := routing.ParseBandwidthRule(args.Value)
 		if err != nil {
 			err := fmt.Errorf("value '%s' is not a valid bandwidth rule", args.Value)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, float64(bwRule))
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1584,13 +1533,13 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		machineType, err := routing.ParseMachineType(args.Value)
 		if err != nil {
 			err := fmt.Errorf("value '%s' is not a valid machine type", args.Value)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, float64(machineType))
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1610,8 +1559,10 @@ type UpdateCustomerArgs struct {
 type UpdateCustomerReply struct{}
 
 func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, reply *UpdateCustomerReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateCustomer(): %v", err.Error())
+		return &err
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -1620,7 +1571,7 @@ func (s *OpsService) UpdateCustomer(r *http.Request, args *UpdateCustomerArgs, r
 		err := s.Storage.UpdateCustomer(r.Context(), args.CustomerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateCustomer() error updating record for customer %s: %v", args.CustomerID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1638,6 +1589,12 @@ type RemoveCustomerArgs struct {
 type RemoveCustomerReply struct{}
 
 func (s *OpsService) RemoveCustomer(r *http.Request, args *RemoveCustomerArgs, reply *RemoveCustomerReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("RemoveCustomer(): %v", err.Error())
+		return &err
+	}
+
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
@@ -1653,8 +1610,10 @@ type UpdateSellerArgs struct {
 type UpdateSellerReply struct{}
 
 func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply *UpdateSellerReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateSeller(): %v", err.Error())
+		return &err
 	}
 
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
@@ -1663,39 +1622,38 @@ func (s *OpsService) UpdateSeller(r *http.Request, args *UpdateSellerArgs, reply
 		err := s.Storage.UpdateSeller(r.Context(), args.SellerID, args.Field, args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateSeller() error updating record for seller %s: %v", args.SellerID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 	case "Secret":
 		secret, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			err = fmt.Errorf("UpdateSeller() value '%s' is not a valid Secret/boolean: %v", args.Value, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 		err = s.Storage.UpdateSeller(r.Context(), args.SellerID, args.Field, secret)
 		if err != nil {
 			err = fmt.Errorf("UpdateSeller() error updating record for seller %s: %v", args.SellerID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
-	case "EgressPrice", "IngressPrice":
+	case "EgressPrice", "EgressPriceNibblinsPerGB":
 		newValue, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
-			err = fmt.Errorf("value '%s' is not a valid price: %v", args.Value, err)
-			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("UpdateSeller() value '%s' is not a valid price: %v", args.Value, err)
+			core.Error("%v", err)
 			return err
 		}
 
 		if args.Field == "EgressPrice" {
 			args.Field = "EgressPriceNibblinsPerGB"
-		} else {
-			args.Field = "IngressPriceNibblinsPerGB"
 		}
+
 		err = s.Storage.UpdateSeller(r.Context(), args.SellerID, args.Field, newValue)
 		if err != nil {
 			err = fmt.Errorf("UpdateSeller() error updating field for seller %s: %v", args.SellerID, err)
-			level.Error(s.Logger).Log("err", err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1715,7 +1673,9 @@ type ResetSellerEgressPriceOverrideReply struct{}
 
 func (s *OpsService) ResetSellerEgressPriceOverride(r *http.Request, args *ResetSellerEgressPriceOverrideArgs, reply *ResetSellerEgressPriceOverrideReply) error {
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
-		return nil
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("ResetSellerEgressPriceOverride(): %v", err.Error())
+		return &err
 	}
 
 	// Iterate through relays and reset egress price override for this seller's relays
@@ -1729,7 +1689,7 @@ func (s *OpsService) ResetSellerEgressPriceOverride(r *http.Request, args *Reset
 				err := s.Storage.UpdateRelay(r.Context(), relay.ID, args.Field, float64(0))
 				if err != nil {
 					err = fmt.Errorf("ResetSellerEgressPriceOverride() error updating %s for seller %s: %v", args.Field, args.SellerID, err)
-					level.Error(s.Logger).Log("err", err)
+					core.Error("%v", err)
 					return err
 				}
 			}
@@ -1750,23 +1710,33 @@ type UpdateDatacenterArgs struct {
 type UpdateDatacenterReply struct{}
 
 func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArgs, reply *UpdateDatacenterReply) error {
-	if middleware.VerifyAllRoles(r, middleware.AnonymousRole) {
-		return nil
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateDatacenter(): %v", err.Error())
+		return &err
 	}
 
 	dcID, err := strconv.ParseUint(args.HexDatacenterID, 16, 64)
 	if err != nil {
-		level.Error(s.Logger).Log("err", err)
+		err = fmt.Errorf("UpdateDatacenter() failed to parse hex datacenter ID: %v", err)
+		core.Error("%v", err)
 		return err
 	}
 
 	switch args.Field {
 	case "Latitude", "Longitude":
-		newValue := float32(args.Value.(float64))
+		floatValue, ok := args.Value.(float64)
+		if !ok {
+			err = fmt.Errorf("UpdateDatacenter() value '%v' is not a valid float32 type", args.Value)
+			core.Error("%v", err)
+			return err
+		}
+
+		newValue := float32(floatValue)
 		err := s.Storage.UpdateDatacenter(r.Context(), dcID, args.Field, newValue)
 		if err != nil {
-			err = fmt.Errorf("UpdateDatacenter() error updating record for customer %s: %v", args.HexDatacenterID, err)
-			level.Error(s.Logger).Log("err", err)
+			err = fmt.Errorf("UpdateDatacenter() error updating record for datacenter %s: %v", args.HexDatacenterID, err)
+			core.Error("%v", err)
 			return err
 		}
 
@@ -1774,5 +1744,551 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 		return fmt.Errorf("Field '%v' does not exist (or is not editable) on the Datacenter type", args.Field)
 	}
 
+	return nil
+}
+
+type FetchAnalyticsDashboardCategoriesArgs struct{}
+
+type FetchAnalyticsDashboardCategoriesReply struct {
+	Categories []looker.AnalyticsDashboardCategory `json:"categories"`
+}
+
+func (s *OpsService) FetchAnalyticsDashboardCategories(r *http.Request, args *FetchAnalyticsDashboardCategoriesArgs, reply *FetchAnalyticsDashboardCategoriesReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("FetchAnalyticsDashboardCategories(): %v", err.Error())
+		return &err
+	}
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("FetchAnalyticsDashboardCategories(): %v", err.Error())
+		return &err
+	}
+
+	categories, err := s.Storage.GetAnalyticsDashboardCategories(r.Context())
+	if err != nil {
+		core.Error("FetchAnalyticsDashboardCategories(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	reply.Categories = categories
+	return nil
+}
+
+type AddAnalyticsDashboardCategoryArgs struct {
+	Label   string `json:"label"`
+	Premium bool   `json:"premium"`
+	Admin   bool   `json:"admin"`
+	Seller  bool   `json:"seller"`
+}
+
+type AddAnalyticsDashboardCategoryReply struct{}
+
+func (s *OpsService) AddAnalyticsDashboardCategory(r *http.Request, args *AddAnalyticsDashboardCategoryArgs, reply *AddAnalyticsDashboardCategoryReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddAnalyticsDashboardCategory(): %v", err.Error())
+		return &err
+	}
+
+	if args.Label == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Label"
+		core.Error("AddAnalyticsDashboardCategory(): %v: Label is required", err.Error())
+		return &err
+	}
+
+	if err := s.Storage.AddAnalyticsDashboardCategory(r.Context(), args.Label, args.Admin, args.Premium, args.Seller); err != nil {
+		core.Error("AddAnalyticsDashboardCategory(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
+type DeleteAnalyticsDashboardCategoryArgs struct {
+	ID int32 `json:"id"`
+}
+
+type DeleteAnalyticsDashboardCategoryReply struct{}
+
+func (s *OpsService) DeleteAnalyticsDashboardCategory(r *http.Request, args *DeleteAnalyticsDashboardCategoryArgs, reply *DeleteAnalyticsDashboardCategoryReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	// Remove dashboards with this category to take care of FK issues
+	dashboards, err := s.Storage.GetAnalyticsDashboardsByCategoryID(ctx, int64(args.ID))
+	if err != nil {
+		core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	for _, d := range dashboards {
+		if err := s.Storage.RemoveAnalyticsDashboardByID(ctx, d.ID); err != nil {
+			core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			return &err
+		}
+	}
+
+	if err := s.Storage.RemoveAnalyticsDashboardCategoryByID(ctx, int64(args.ID)); err != nil {
+		core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
+type UpdateAnalyticsDashboardCategoryArgs struct {
+	ID      int32  `json:"id"`
+	Label   string `json:"label"`
+	Premium bool   `json:"premium"`
+	Admin   bool   `json:"admin"`
+	Seller  bool   `json:"seller"`
+}
+
+type UpdateAnalyticsDashboardCategoryReply struct{}
+
+func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *UpdateAnalyticsDashboardCategoryArgs, reply *UpdateAnalyticsDashboardCategoryReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
+		return &err
+	}
+
+	if args.Label == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Label"
+		core.Error("UpdateAnalyticsDashboardCategory(): %v: Label is required", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	category, err := s.Storage.GetAnalyticsDashboardCategoryByID(ctx, int64(args.ID))
+	if err != nil {
+		core.Error("UpdateAnalyticsDashboardCategory(): %v: Name is required", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+
+	}
+
+	wasError := false
+	if category.Label != args.Label {
+		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Label", args.Label); err != nil {
+			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if category.Admin != args.Admin {
+		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Admin", args.Admin); err != nil {
+			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if category.Premium != args.Premium {
+		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Premium", args.Premium); err != nil {
+			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if category.Seller != args.Seller {
+		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Seller", args.Seller); err != nil {
+			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if wasError {
+		core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
+type AnalyticsDashboardMap struct {
+	IDs       []int32                           `json:"ids"`
+	Name      string                            `json:"name"`
+	Category  looker.AnalyticsDashboardCategory `json:"category"`
+	Customers []customer                        `json:"customers"`
+	LookerID  int32                             `json:"looker_id"`
+	Discovery bool                              `json:"discovery"`
+}
+
+type FetchAllAnalyticsDashboardsArgs struct{}
+
+type FetchAllAnalyticsDashboardsReply struct {
+	Dashboards map[string]AnalyticsDashboardMap `json:"dashboards"`
+}
+
+func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAnalyticsDashboardsArgs, reply *FetchAllAnalyticsDashboardsReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	reply.Dashboards = make(map[string]AnalyticsDashboardMap, 0)
+
+	dashboards, err := s.Storage.GetAnalyticsDashboards(ctx)
+	if err != nil {
+		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	for _, d := range dashboards {
+		dashboardInfo, ok := reply.Dashboards[d.Name]
+		if !ok {
+			dashboardInfo = AnalyticsDashboardMap{
+				IDs:       make([]int32, 0),
+				Name:      d.Name,
+				Category:  d.Category,
+				Customers: make([]customer, 0),
+				LookerID:  int32(d.LookerID),
+				Discovery: d.Discovery,
+			}
+		}
+
+		dashboardInfo.IDs = append(dashboardInfo.IDs, int32(d.ID))
+
+		dbCustomer, err := s.Storage.Customer(ctx, d.CustomerCode)
+		if err == nil {
+			dashboardInfo.Customers = append(dashboardInfo.Customers, customer{
+				Code: dbCustomer.Code,
+				Name: dbCustomer.Name,
+			})
+		}
+
+		reply.Dashboards[d.Name] = dashboardInfo
+	}
+
+	return nil
+}
+
+type AddAnalyticsDashboardArgs struct {
+	Name         string `json:"name"`
+	LookerID     int32  `json:"looker_id"`
+	Discovery    bool   `json:"discovery"`
+	CustomerCode string `json:"customer_code"`
+	CategoryID   int32  `json:"category_id"`
+}
+
+type AddAnalyticsDashboardReply struct{}
+
+func (s *OpsService) AddAnalyticsDashboard(r *http.Request, args *AddAnalyticsDashboardArgs, reply *AddAnalyticsDashboardReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddAnalyticsDashboard(): %v", err.Error())
+		return &err
+	}
+
+	if args.Name == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Name"
+		core.Error("AddAnalyticsDashboard(): %v: Name is required", err.Error())
+		return &err
+	}
+
+	if args.CustomerCode == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "CustomerCode"
+		core.Error("AddAnalyticsDashboard(): %v: Name is required", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	customer, err := s.Storage.Customer(ctx, args.CustomerCode)
+	if err != nil {
+		core.Error("AddAnalyticsDashboard(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	if err := s.Storage.AddAnalyticsDashboard(ctx, args.Name, int64(args.LookerID), args.Discovery, customer.DatabaseID, int64(args.CategoryID)); err != nil {
+		core.Error("AddAnalyticsDashboard(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
+type DeleteAnalyticsDashboardsArgs struct {
+	IDs []int32 `json:"ids"`
+}
+
+type DeleteAnalyticsDashboardsReply struct{}
+
+func (s *OpsService) DeleteAnalyticsDashboards(r *http.Request, args *DeleteAnalyticsDashboardsArgs, reply *DeleteAnalyticsDashboardsReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("DeleteAnalyticsDashboards(): %v", err.Error())
+		return &err
+	}
+
+	if len(args.IDs) == 0 {
+		return nil
+	}
+
+	ctx := r.Context()
+
+	wasError := false
+	for _, id := range args.IDs {
+		if err := s.Storage.RemoveAnalyticsDashboardByID(ctx, int64(id)); err != nil {
+			core.Error("DeleteAnalyticsDashboards(): %v", err.Error())
+			wasError = true
+			continue
+		}
+	}
+
+	if wasError {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
+type UpdateAnalyticsDashboardsArgs struct {
+	IDs           []int32  `json:"ids"`
+	Name          string   `json:"name"`
+	LookerID      int32    `json:"looker_id"`
+	Discovery     bool     `json:"discovery"`
+	CustomerCodes []string `json:"customer_codes"`
+	CategoryID    int32    `json:"category_id"`
+}
+
+type UpdateAnalyticsDashboardsReply struct{}
+
+// This function accomplishes "bulk" update for a list of customer codes and their corresponding dashboards. The three main use cases are:
+// 1. New Dashboard (new customer code that wasn't there originally)
+// 2. Dashboard removal (customer code was removed from the original list)
+// 3. Dashboard update (customer code and dashboard ID are still available and match up with DB values)
+func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnalyticsDashboardsArgs, reply *UpdateAnalyticsDashboardsReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+		return &err
+	}
+
+	if args.Name == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Name"
+		core.Error("UpdateAnalyticsDashboards(): %v: Name is required", err.Error())
+		return &err
+	}
+
+	if len(args.IDs) == 0 {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "IDs"
+		core.Error("UpdateAnalyticsDashboards(): %v: IDs is required", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	// Loop over passed in IDs to determine what needs to be updated
+	wasError := false
+	for _, id := range args.IDs {
+		dashboard, err := s.Storage.GetAnalyticsDashboardByID(ctx, int64(id))
+		if err != nil {
+			core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+			wasError = true
+			continue
+		}
+
+		// Loop over customer codes to see if a customer was removed from a dashboard's list (basically deleting a dashboard)
+		found := false
+		for i, code := range args.CustomerCodes {
+			// If there is a dashboard for a given customer code, update the dashboard and remove it from the list of customer codes
+			if code == dashboard.CustomerCode {
+				found = true
+				args.CustomerCodes[i] = args.CustomerCodes[len(args.CustomerCodes)-1]
+				args.CustomerCodes = args.CustomerCodes[:len(args.CustomerCodes)-1]
+
+				if dashboard.Name != args.Name {
+					if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, int64(id), "Name", args.Name); err != nil {
+						core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+						wasError = true
+					}
+				}
+
+				if dashboard.LookerID != int64(args.LookerID) {
+					if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, int64(id), "LookerID", int64(args.LookerID)); err != nil {
+						fmt.Println(err)
+						core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+						wasError = true
+					}
+				}
+
+				if dashboard.Category.ID != int64(args.CategoryID) {
+					if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, int64(id), "Category", int64(args.CategoryID)); err != nil {
+						core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+						wasError = true
+					}
+				}
+
+				if dashboard.Discovery != args.Discovery {
+					if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, int64(id), "Discovery", args.Discovery); err != nil {
+						core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+						wasError = true
+					}
+				}
+				break
+			}
+		}
+
+		// The customer code for this ID wasn't found so the customer code must have been removed -> remove the dashboard as well
+		if !found {
+			if err := s.Storage.RemoveAnalyticsDashboardByID(ctx, int64(id)); err != nil {
+				core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+				wasError = true
+			}
+		}
+	}
+
+	// Add a dashboard for all of the left over customer codes (didn't get updated so must be new)
+	for _, code := range args.CustomerCodes {
+		customer, err := s.Storage.Customer(ctx, code)
+		if err != nil {
+			core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+			wasError = true
+			continue
+		}
+		if err := s.Storage.AddAnalyticsDashboard(ctx, args.Name, int64(args.LookerID), args.Discovery, customer.DatabaseID, int64(args.CategoryID)); err != nil {
+			core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	// If there was an error return it to let the user know something wrong happened in the mix
+	if wasError {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
+type FetchAdminDashboardsArgs struct {
+	CompanyCode string `json:"company_code"`
+	Origin      string `json:"origin"`
+}
+
+type FetchAdminDashboardsReply struct {
+	Dashboards map[string][]string `json:"dashboards"`
+}
+
+// TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
+func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashboardsArgs, reply *FetchAdminDashboardsReply) error {
+	reply.Dashboards = make(map[string][]string, 0)
+
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("FetchAdminDashboards(): %v", err.Error())
+		return &err
+	}
+
+	if args.Origin == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
+		core.Error("FetchAdminDashboards(): %v: Origin is required", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		core.Error("FetchAdminDashboards(): %v", err.Error())
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		core.Error("FetchAdminDashboards(): %v: Failed to parse user ID", err.Error())
+		return &err
+	}
+
+	customerCode := args.CompanyCode
+
+	dashboards, err := s.Storage.GetAdminAnalyticsDashboards(ctx)
+	if err != nil {
+		core.Error("FetchAdminDashboards(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
+	if err != nil {
+		core.Error("FetchAdminDashboards(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	for _, dashboard := range dashboards {
+		if dashboard.CustomerCode == customerCode && !dashboard.Discovery && !dashboard.Category.Admin && (!dashboard.Category.Premium || (buyer.Analytics && dashboard.Category.Premium)) {
+			_, ok := reply.Dashboards[dashboard.Category.Label]
+			if !ok {
+				reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
+			}
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, customerCode, args.Origin)
+			if err != nil {
+				continue
+			}
+
+			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
+		}
+	}
+
+	return nil
+}
+
+type FetchAllLookerDashboardsArgs struct{}
+
+type FetchAllLookerDashboardsReply struct {
+	Dashboards []looker.LookerDashboard `json:"dashboards"`
+}
+
+func (s *OpsService) FetchAllLookerDashboards(r *http.Request, args *FetchAllLookerDashboardsArgs, reply *FetchAllLookerDashboardsReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("FetchAllLookerDashboards(): %v", err.Error())
+		return &err
+	}
+
+	reply.Dashboards = s.LookerDashboardCache
+	return nil
+}
+
+func (s *OpsService) RefreshLookerDashboardCache() error {
+	dashboards, err := s.LookerClient.FetchCurrentLookerDashboards()
+	if err != nil {
+		return err
+	}
+
+	s.LookerDashboardCache = dashboards
 	return nil
 }

@@ -3,14 +3,11 @@ package jsonrpc
 import (
 	"net/http"
 
-	"github.com/go-kit/kit/log"
-
 	"github.com/networknext/backend/modules/storage"
 )
 
 type ConfigService struct {
 	Storage storage.Storer
-	Logger  log.Logger
 }
 
 type FeatureFlag struct {
