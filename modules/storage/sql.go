@@ -331,17 +331,17 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		customer.CustomerCode,
 	)
 	if err != nil {
-		core.Error("error adding customer")
+		core.Error("AddCustomer() error adding customer: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("AddCustomer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("AddCustomer() RowsAffected <> 1")
 		return err
 	}
 
@@ -364,16 +364,16 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 
 	result, err := ExecRetry(ctx, db, sql, customerCode)
 	if err != nil {
-		core.Error("error removing customer")
+		core.Error("RemoveCustomer() error removing customer: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveCustomer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveCustomer() RowsAffected <> 1")
 		return err
 	}
 
@@ -406,16 +406,16 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		c.Code,
 	)
 	if err != nil {
-		core.Error("error modifying customer record")
+		core.Error("SetCustomer() error modifying customer record: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("SetCustomer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("SetCustomer() RowsAffected <> 1")
 		return err
 	}
 
@@ -722,18 +722,18 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		buyer.LookerSeats,
 	)
 	if err != nil {
-		core.Error("error adding buyer")
+		core.Error("AddBuyer() error adding buyer: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("AddBuyer() RowsAffected returned an error")
 		return err
 	}
 
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("AddBuyer() RowsAffected <> 1")
 		return err
 	}
 
@@ -760,16 +760,16 @@ func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 		int64(ephemeralBuyerID),
 	)
 	if err != nil {
-		core.Error("error removing buyer")
+		core.Error("RemoveBuyer() error removing buyer: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveBuyer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveBuyer() RowsAffected <> 1")
 		return err
 	}
 
@@ -1001,16 +1001,16 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	)
 
 	if err != nil {
-		core.Error("error adding seller")
+		core.Error("AddSeller() error adding seller: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("AddSeller() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("AddSeller() RowsAffected <> 1")
 		return err
 	}
 
@@ -1037,16 +1037,16 @@ func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 		id,
 	)
 	if err != nil {
-		core.Error("error removing seller")
+		core.Error("RemoveSeller() error removing seller: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveSeller() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveSeller() RowsAffected <> 1")
 		return err
 	}
 
@@ -1118,7 +1118,7 @@ func (db *SQL) SellerWithCompanyCode(ctx context.Context, code string) (routing.
 		}
 		return s, nil
 	default:
-		core.Error("SellerWithCompanyCode() QueryRow returned an error", "err", err)
+		core.Error("SellerWithCompanyCode() QueryRow returned an error: %v", err)
 		return routing.Seller{}, err
 	}
 }
@@ -1204,32 +1204,32 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 	case nil:
 		relayState, err := routing.GetRelayStateSQL(relay.State)
 		if err != nil {
-			core.Error("invalid relay state", "err", err)
+			core.Error("Relay() invalid relay state: %v", err)
 		}
 
 		bwRule, err := routing.GetBandwidthRuleSQL(relay.BWRule)
 		if err != nil {
-			core.Error("routing.ParseBandwidthRule returned an error", "err", err)
+			core.Error("Relay() routing.ParseBandwidthRule returned an error: %v", err)
 		}
 
 		machineType, err := routing.GetMachineTypeSQL(relay.MachineType)
 		if err != nil {
-			core.Error("routing.ParseMachineType returned an error", "err", err)
+			core.Error("Relay() routing.ParseMachineType returned an error: %v", err)
 		}
 
 		datacenter, err := db.DatacenterByDbId(ctx, relay.DatacenterID)
 		if err != nil {
-			core.Error("syncRelays error dereferencing datacenter", "err", err)
+			core.Error("Relay() syncRelays error dereferencing datacenter: %v", err)
 		}
 
 		seller, err := db.SellerByDbId(ctx, datacenter.SellerID)
 		if err != nil {
-			core.Error("syncRelays error dereferencing seller", "err", err)
+			core.Error("Relay() syncRelays error dereferencing seller: %v", err)
 		}
 
 		internalID, err := strconv.ParseUint(hexID, 16, 64)
 		if err != nil {
-			core.Error("syncRelays error parsing hex_id", "err", err)
+			core.Error("Relay() syncRelays error parsing hex_id: %v", err)
 		}
 
 		r := routing.Relay{
@@ -1260,7 +1260,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
 			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
 			if err != nil {
-				core.Error("net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+				core.Error("Relay() net.ResolveUDPAddr returned an error parsing internal address: %v", err)
 			}
 			r.InternalAddr = *internalAddr
 		}
@@ -1269,7 +1269,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			fullPublicAddress := relay.PublicIP.String + ":" + fmt.Sprintf("%d", relay.PublicIPPort.Int64)
 			publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
 			if err != nil {
-				core.Error("net.ResolveUDPAddr returned an error parsing public address", "err", err)
+				core.Error("Relay() net.ResolveUDPAddr returned an error parsing public address: %v", err)
 			}
 			r.Addr = *publicAddr
 		}
@@ -1286,7 +1286,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 
 			if !found {
 				errString := fmt.Sprintf("Relay() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
-				core.Error(errString, "err", err)
+				core.Error(errString, err)
 			}
 
 		}
@@ -1333,7 +1333,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
-		core.Error("Relays(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("Relays(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []routing.Relay{}
 	}
 	defer rows.Close()
@@ -1370,38 +1370,38 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			&relay.Version,
 		)
 		if err != nil {
-			core.Error("Relays(): error parsing returned row", "err", err)
+			core.Error("Relays(): error parsing returned row: %v", err)
 			return []routing.Relay{}
 		}
 
 		relayState, err := routing.GetRelayStateSQL(relay.State)
 		if err != nil {
-			core.Error("invalid relay state", "err", err)
+			core.Error("Relays() invalid relay state: %v", err)
 		}
 
 		bwRule, err := routing.GetBandwidthRuleSQL(relay.BWRule)
 		if err != nil {
-			core.Error("routing.ParseBandwidthRule returned an error", "err", err)
+			core.Error("Relays() routing.ParseBandwidthRule returned an error: %v", err)
 		}
 
 		machineType, err := routing.GetMachineTypeSQL(relay.MachineType)
 		if err != nil {
-			core.Error("routing.ParseMachineType returned an error", "err", err)
+			core.Error("Relays() routing.ParseMachineType returned an error: %v", err)
 		}
 
 		datacenter, err := db.DatacenterByDbId(ctx, relay.DatacenterID)
 		if err != nil {
-			core.Error("Relays error dereferencing datacenter", "err", err)
+			core.Error("Relays() error dereferencing datacenter: %v", err)
 		}
 
 		seller, err := db.SellerByDbId(ctx, datacenter.SellerID)
 		if err != nil {
-			core.Error("Relays error dereferencing seller", "err", err)
+			core.Error("Relays() error dereferencing seller: %v", err)
 		}
 
 		internalID, err := strconv.ParseUint(relay.HexID, 16, 64)
 		if err != nil {
-			core.Error("Relays error parsing hex_id", "err", err)
+			core.Error("Relays() error parsing hex_id: %v", err)
 		}
 
 		r := routing.Relay{
@@ -1432,7 +1432,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
 			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
 			if err != nil {
-				core.Error("net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+				core.Error("Relays() net.ResolveUDPAddr returned an error parsing internal address: %v", err)
 			}
 			r.InternalAddr = *internalAddr
 		}
@@ -1441,7 +1441,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			fullPublicAddress := relay.PublicIP.String + ":" + fmt.Sprintf("%d", relay.PublicIPPort.Int64)
 			publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
 			if err != nil {
-				core.Error("net.ResolveUDPAddr returned an error parsing public address", "err", err)
+				core.Error("Relays() net.ResolveUDPAddr returned an error parsing public address: %v", err)
 			}
 			r.Addr = *publicAddr
 		}
@@ -1458,7 +1458,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 
 			if !found {
 				errString := fmt.Sprintf("Relays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
-				core.Error(errString, "err", err)
+				core.Error(errString, err)
 			}
 
 		}
@@ -1795,17 +1795,17 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		core.Error("error modifying relay record", "err", err)
+		core.Error("UpdateRelay() error modifying relay record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("UpdateRelay() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("UpdateRelay() RowsAffected <> 1")
 		return err
 	}
 
@@ -2012,18 +2012,18 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.Version,
 	)
 	if err != nil {
-		core.Error("error adding relay", "err", err)
+		core.Error("AddRelay() error adding relay: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("AddRelay() RowsAffected returned an error")
 		return err
 	}
 
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("AddRelay() RowsAffected <> 1")
 		return err
 	}
 
@@ -2048,16 +2048,16 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 		hexID,
 	)
 	if err != nil {
-		core.Error("error removing relay", "err", err)
+		core.Error("RemoveRelay() error removing relay: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveRelay() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveRelay() RowsAffected <> 1")
 		return err
 	}
 
@@ -2197,18 +2197,18 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		r.DatabaseID,
 	)
 	if err != nil {
-		core.Error("error modifying relay", "err", err)
+		core.Error("SetRelay() error modifying relay: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("SetRelay() RowsAffected returned an error")
 		return err
 	}
 
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("SetRelay() RowsAffected <> 1")
 		return err
 	}
 
@@ -2352,7 +2352,7 @@ func (db *SQL) Datacenters(ctx context.Context) []routing.Datacenter {
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		core.Error("Datacenters(): QueryContext returned an error", "err", err)
+		core.Error("Datacenters(): QueryContext returned an error: %v", err)
 		return []routing.Datacenter{}
 	}
 	defer rows.Close()
@@ -2365,7 +2365,7 @@ func (db *SQL) Datacenters(ctx context.Context) []routing.Datacenter {
 			&dc.SellerID,
 		)
 		if err != nil {
-			core.Error("Datacenters(): error parsing returned row", "err", err)
+			core.Error("Datacenters(): error parsing returned row: %v", err)
 			return []routing.Datacenter{}
 		}
 
@@ -2411,16 +2411,16 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 		hexID,
 	)
 	if err != nil {
-		core.Error("error removing datacenter", "err", err)
+		core.Error("RemoveDatacenter() error removing datacenter: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveDatacenter() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveDatacenter() RowsAffected <> 1")
 		return err
 	}
 
@@ -2446,7 +2446,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(ctx context.Context, ephemeralBuyerID u
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, querySQL, dbBuyerID)
 	if err != nil {
-		core.Error("GetDatacenterMapsForBuyer(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetDatacenterMapsForBuyer(): QueryMultipleRowsRetry returned an error: %v", err)
 		return map[uint64]routing.DatacenterMap{}
 	}
 	defer rows.Close()
@@ -2455,7 +2455,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(ctx context.Context, ephemeralBuyerID u
 		var hexID string
 		err = rows.Scan(&hexID)
 		if err != nil {
-			core.Error("GetDatacenterMapsForBuyer(): error parsing returned row", "err", err)
+			core.Error("GetDatacenterMapsForBuyer(): error parsing returned row: %v", err)
 			return map[uint64]routing.DatacenterMap{}
 		}
 
@@ -2505,18 +2505,18 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	)
 
 	if err != nil {
-		core.Error("error adding DatacenterMap", "err", err)
+		core.Error("AddDatacenterMap() error adding DatacenterMap: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("AddDatacenterMap() RowsAffected returned an error")
 		return err
 	}
 
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("AddDatacenterMap() RowsAffected <> 1")
 		return err
 	}
 
@@ -2541,7 +2541,7 @@ func (db *SQL) ListDatacenterMaps(ctx context.Context, dcID uint64) map[uint64]r
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, querySQL, hexID)
 	if err != nil {
-		core.Error("ListDatacenterMaps(): QueryContext returned an error", "err", err)
+		core.Error("ListDatacenterMaps(): QueryContext returned an error: %v", err)
 		return map[uint64]routing.DatacenterMap{}
 	}
 	defer rows.Close()
@@ -2549,7 +2549,7 @@ func (db *SQL) ListDatacenterMaps(ctx context.Context, dcID uint64) map[uint64]r
 	for rows.Next() {
 		err = rows.Scan(&sqlMap.BuyerID)
 		if err != nil {
-			core.Error("ListDatacenterMaps(): error parsing returned row", "err", err)
+			core.Error("ListDatacenterMaps(): error parsing returned row: %v", err)
 			return map[uint64]routing.DatacenterMap{}
 		}
 
@@ -2584,16 +2584,16 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		fmt.Sprintf("%016x", dcMap.DatacenterID),
 	)
 	if err != nil {
-		core.Error("error removing datacenter map", "err", err)
+		core.Error("RemoveDatacenterMap() error removing datacenter map: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveDatacenterMap() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveDatacenterMap() RowsAffected <> 1")
 		return err
 	}
 
@@ -2645,16 +2645,16 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	)
 
 	if err != nil {
-		core.Error("error adding datacenter", "err", err)
+		core.Error("RemoveDatacenterMap() error adding datacenter: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveDatacenterMap() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveDatacenterMap() RowsAffected <> 1")
 		return err
 	}
 
@@ -2898,16 +2898,16 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		int64(ephemeralBuyerID),
 	)
 	if err != nil {
-		core.Error("error adding internal config", "err", err)
+		core.Error("AddInternalConfig() error adding internal config: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("AddInternalConfig() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("AddInternalConfig() RowsAffected <> 1")
 		return err
 	}
 
@@ -2931,16 +2931,16 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		buyerID,
 	)
 	if err != nil {
-		core.Error("error removing internal config", "err", err)
+		core.Error("RemoveInternalConfig() error removing internal config: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveInternalConfig() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveInternalConfig() RowsAffected <> 1")
 		return err
 	}
 
@@ -3104,17 +3104,17 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		args...,
 	)
 	if err != nil {
-		core.Error("error modifying internal_config record", "err", err)
+		core.Error("UpdateInternalConfig() error modifying internal_config record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("UpdateInternalConfig() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("UpdateInternalConfig() RowsAffected <> 1")
 		return err
 	}
 
@@ -3173,16 +3173,16 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 	)
 
 	if err != nil {
-		core.Error("error adding route shader", "err", err)
+		core.Error("AddRouteShader() error adding route shader: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("AddRouteShader() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("AddRouteShader() RowsAffected <> 1")
 		return err
 	}
 
@@ -3323,17 +3323,17 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		args...,
 	)
 	if err != nil {
-		core.Error("error modifying route_shader record", "err", err)
+		core.Error("UpdateRouteShader() error modifying route_shader record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("UpdateRouteShader() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("UpdateRouteShader() RowsAffected <> 1")
 		return err
 	}
 
@@ -3357,16 +3357,16 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) e
 	)
 
 	if err != nil {
-		core.Error("error removing route shader", "err", err)
+		core.Error("RemoveRouteShader() error removing route shader: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveRouteShader() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveRouteShader() RowsAffected <> 1")
 		return err
 	}
 
@@ -3390,16 +3390,16 @@ func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userI
 		int64(userID), int64(ephemeralBuyerID),
 	)
 	if err != nil {
-		core.Error("error adding banned user", "err", err)
+		core.Error("AddBannedUser() error adding banned user: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("AddBannedUser() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("AddBannedUser() RowsAffected <> 1")
 		return err
 	}
 
@@ -3425,16 +3425,16 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, us
 		int64(ephemeralBuyerID),
 	)
 	if err != nil {
-		core.Error("error removing banned user", "err", err)
+		core.Error("RemoveBannedUser() error removing banned user: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveBannedUser() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveBannedUser() RowsAffected <> 1")
 		return err
 	}
 
@@ -3455,7 +3455,7 @@ func (db *SQL) BannedUsers(ctx context.Context, ephemeralBuyerID uint64) (map[ui
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql, int64(ephemeralBuyerID))
 	if err != nil {
-		core.Error("BannedUsers(): QueryContext returned an error", "err", err)
+		core.Error("BannedUsers(): QueryContext returned an error: %v", err)
 		return bannedUserList, err
 	}
 	defer rows.Close()
@@ -3464,7 +3464,7 @@ func (db *SQL) BannedUsers(ctx context.Context, ephemeralBuyerID uint64) (map[ui
 		var userID int64
 		err := rows.Scan(&userID)
 		if err != nil {
-			core.Error("BannedUsers() error parsing user and buyer IDs", "err", err)
+			core.Error("BannedUsers() error parsing user and buyer IDs: %v", err)
 			return bannedUserList, err
 		}
 
@@ -3608,17 +3608,17 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		core.Error("error modifying buyer record", "err", err)
+		core.Error("UpdateBuyer() error modifying buyer record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("UpdateBuyer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("UpdateBuyer() RowsAffected <> 1")
 		return err
 	}
 
@@ -3662,17 +3662,17 @@ func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field stri
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		core.Error("error modifying customer record", "err", err)
+		core.Error("UpdateCustomer() error modifying customer record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("UpdateCustomer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("UpdateCustomer() RowsAffected <> 1")
 		return err
 	}
 
@@ -3726,17 +3726,17 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		core.Error("error modifying seller record", "err", err)
+		core.Error("UpdateSeller() error modifying seller record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("UpdateSeller() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("UpdateSeller() RowsAffected <> 1")
 		return err
 	}
 
@@ -3779,17 +3779,17 @@ func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field 
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		core.Error("error modifying datacenter record", "err", err)
+		core.Error("UpdateDatacenter() error modifying datacenter record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("UpdateDatacenter() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("UpdateDatacenter() RowsAffected <> 1")
 		return err
 	}
 
@@ -3856,16 +3856,16 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 	)
 
 	if err != nil {
-		core.Error("UpdateDatabaseBinFileMetaData() error adding DatabaseBinFileMetaData", "err", err)
+		core.Error("UpdateDatabaseBinFileMetaData() error adding DatabaseBinFileMetaData: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("UpdateDatabaseBinFileMetaData() RowsAffected returned an error", "err", err)
+		core.Error("UpdateDatabaseBinFileMetaData() RowsAffected returned an error: %v", err)
 		return err
 	}
 	if rows != 1 {
-		core.Error("UpdateDatabaseBinFileMetaData() RowsAffected <> 1", "err", err)
+		core.Error("UpdateDatabaseBinFileMetaData() RowsAffected <> 1: %v", err)
 		return err
 	}
 
@@ -3886,7 +3886,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		core.Error("GetAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboardCategory{}, err
 	}
 	defer rows.Close()
@@ -3900,7 +3900,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 			&category.Seller,
 		)
 		if err != nil {
-			core.Error("GetAnalyticsDashboardCategories(): error parsing returned row", "err", err)
+			core.Error("GetAnalyticsDashboardCategories(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboardCategory{}, err
 		}
 
@@ -3925,7 +3925,7 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]lo
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		core.Error("GetPremiumAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetPremiumAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboardCategory{}, err
 	}
 	defer rows.Close()
@@ -3938,7 +3938,7 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]lo
 			&category.Seller,
 		)
 		if err != nil {
-			core.Error("GetPremiumAnalyticsDashboardCategories(): error parsing returned row", "err", err)
+			core.Error("GetPremiumAnalyticsDashboardCategories(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboardCategory{}, err
 		}
 
@@ -3963,7 +3963,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looke
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		core.Error("GetFreeAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetFreeAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboardCategory{}, err
 	}
 	defer rows.Close()
@@ -3976,7 +3976,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looke
 			&category.Seller,
 		)
 		if err != nil {
-			core.Error("GetFreeAnalyticsDashboardCategories(): error parsing returned row", "err", err)
+			core.Error("GetFreeAnalyticsDashboardCategories(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboardCategory{}, err
 		}
 
@@ -4095,16 +4095,16 @@ func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, label string, 
 		label, isPremium, isAdmin, isSeller,
 	)
 	if err != nil {
-		core.Error("error adding analytics dashboard category", "err", err)
+		core.Error("AddAnalyticsDashboardCategory() error adding analytics dashboard category: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("AddAnalyticsDashboardCategory() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("AddAnalyticsDashboardCategory() RowsAffected <> 1")
 		return err
 	}
 
@@ -4127,16 +4127,16 @@ func (db *SQL) RemoveAnalyticsDashboardCategoryByID(ctx context.Context, id int6
 		id,
 	)
 	if err != nil {
-		core.Error("error removing analytics dashboard category", "err", err)
+		core.Error("RemoveAnalyticsDashboardCategoryByID() error removing analytics dashboard category: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveAnalyticsDashboardCategoryByID() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveAnalyticsDashboardCategoryByID() RowsAffected <> 1")
 		return err
 	}
 
@@ -4159,16 +4159,16 @@ func (db *SQL) RemoveAnalyticsDashboardCategoryByLabel(ctx context.Context, labe
 		label,
 	)
 	if err != nil {
-		core.Error("error removing analytics dashboard category", "err", err)
+		core.Error("RemoveAnalyticsDashboardCategoryByID() error removing analytics dashboard category: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveAnalyticsDashboardCategoryByID() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveAnalyticsDashboardCategoryByID() RowsAffected <> 1")
 		return err
 	}
 
@@ -4223,17 +4223,17 @@ func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int6
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		core.Error("error modifying relay record", "err", err)
+		core.Error("UpdateAnalyticsDashboardCategoryByID() error modifying relay record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("UpdateAnalyticsDashboardCategoryByID() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("UpdateAnalyticsDashboardCategoryByID() RowsAffected <> 1")
 		return err
 	}
 
@@ -4256,7 +4256,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		core.Error("GetAdminAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetAdminAnalyticsDashboards(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
@@ -4271,7 +4271,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 			&categoryID,
 		)
 		if err != nil {
-			core.Error("GetAdminAnalyticsDashboards(): error parsing returned row", "err", err)
+			core.Error("GetAdminAnalyticsDashboards(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboard{}, err
 		}
 
@@ -4313,7 +4313,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql, id)
 	if err != nil {
-		core.Error("GetAnalyticsDashboardsByCategoryID(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetAnalyticsDashboardsByCategoryID(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
@@ -4328,7 +4328,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 			&categoryID,
 		)
 		if err != nil {
-			core.Error("GetAnalyticsDashboardsByCategoryID(): error parsing returned row", "err", err)
+			core.Error("GetAnalyticsDashboardsByCategoryID(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboard{}, err
 		}
 
@@ -4368,7 +4368,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		core.Error("GetAnalyticsDashboardsByCategoryLabel(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetAnalyticsDashboardsByCategoryLabel(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
@@ -4383,7 +4383,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 			&categoryID,
 		)
 		if err != nil {
-			core.Error("GetAnalyticsDashboardsByCategoryLabel(): error parsing returned row", "err", err)
+			core.Error("GetAnalyticsDashboardsByCategoryLabel(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboard{}, err
 		}
 
@@ -4426,7 +4426,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.Anal
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		core.Error("GetPremiumAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetPremiumAnalyticsDashboards(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
@@ -4441,7 +4441,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.Anal
 			&categoryID,
 		)
 		if err != nil {
-			core.Error("GetPremiumAnalyticsDashboards(): error parsing returned row", "err", err)
+			core.Error("GetPremiumAnalyticsDashboards(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboard{}, err
 		}
 
@@ -4483,7 +4483,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Analyti
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		core.Error("GetFreeAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetFreeAnalyticsDashboards(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
@@ -4498,7 +4498,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Analyti
 			&categoryID,
 		)
 		if err != nil {
-			core.Error("GetFreeAnalyticsDashboards(): error parsing returned row", "err", err)
+			core.Error("GetFreeAnalyticsDashboards(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboard{}, err
 		}
 
@@ -4540,7 +4540,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.An
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		core.Error("GetDiscoveryAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetDiscoveryAnalyticsDashboards(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
@@ -4555,7 +4555,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.An
 			&categoryID,
 		)
 		if err != nil {
-			core.Error("GetDiscoveryAnalyticsDashboards(): error parsing returned row", "err", err)
+			core.Error("GetDiscoveryAnalyticsDashboards(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboard{}, err
 		}
 
@@ -4595,7 +4595,7 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDa
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		core.Error("GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
@@ -4610,7 +4610,7 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDa
 			&categoryID,
 		)
 		if err != nil {
-			core.Error("GetAnalyticsDashboards(): error parsing returned row", "err", err)
+			core.Error("GetAnalyticsDashboards(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboard{}, err
 		}
 
@@ -4650,7 +4650,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql, id)
 	if err != nil {
-		core.Error("GetAnalyticsDashboardsByLookerID(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetAnalyticsDashboardsByLookerID(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []looker.AnalyticsDashboard{}, err
 	}
 	defer rows.Close()
@@ -4665,7 +4665,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 			&categoryID,
 		)
 		if err != nil {
-			core.Error("GetAnalyticsDashboardsByLookerID(): error parsing returned row", "err", err)
+			core.Error("GetAnalyticsDashboardsByLookerID(): error parsing returned row: %v", err)
 			return []looker.AnalyticsDashboard{}, err
 		}
 
@@ -4829,16 +4829,16 @@ func (db *SQL) AddAnalyticsDashboard(ctx context.Context, name string, lookerID 
 		name, lookerID, isDiscover, customerID, categoryID,
 	)
 	if err != nil {
-		core.Error("error adding analytics dashboard category", "err", err)
+		core.Error("AddAnalyticsDashboard() error adding analytics dashboard category: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("AddAnalyticsDashboard() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("AddAnalyticsDashboard() RowsAffected <> 1")
 		return err
 	}
 
@@ -4861,16 +4861,16 @@ func (db *SQL) RemoveAnalyticsDashboardByID(ctx context.Context, id int64) error
 		id,
 	)
 	if err != nil {
-		core.Error("error removing analytics dashboard", "err", err)
+		core.Error("RemoveAnalyticsDashboardByID() error removing analytics dashboard: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveAnalyticsDashboardByID() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveAnalyticsDashboardByID() RowsAffected <> 1")
 		return err
 	}
 
@@ -4893,16 +4893,16 @@ func (db *SQL) RemoveAnalyticsDashboardByName(ctx context.Context, name string) 
 		name,
 	)
 	if err != nil {
-		core.Error("error removing analytics dashboard", "err", err)
+		core.Error("RemoveAnalyticsDashboardByName() error removing analytics dashboard: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveAnalyticsDashboardByName() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveAnalyticsDashboardByName() RowsAffected <> 1")
 		return err
 	}
 
@@ -4925,16 +4925,16 @@ func (db *SQL) RemoveAnalyticsDashboardByLookerID(ctx context.Context, id string
 		id,
 	)
 	if err != nil {
-		core.Error("error removing analytics dashboard", "err", err)
+		core.Error("RemoveAnalyticsDashboardByLookerID() error removing analytics dashboard: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("RemoveAnalyticsDashboardByLookerID() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("RemoveAnalyticsDashboardByLookerID() RowsAffected <> 1")
 		return err
 	}
 
@@ -5003,17 +5003,17 @@ func (db *SQL) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		core.Error("error modifying relay record", "err", err)
+		core.Error("UpdateAnalyticsDashboardByID() error modifying relay record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		core.Error("RowsAffected returned an error")
+		core.Error("UpdateAnalyticsDashboardByID() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		core.Error("RowsAffected <> 1")
+		core.Error("UpdateAnalyticsDashboardByID() RowsAffected <> 1")
 		return err
 	}
 
