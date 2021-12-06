@@ -6105,6 +6105,8 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     next_assert( packet_data );
     next_assert( payload_sequence );
 
+    // todo: we should move the stateless check earlier than this, and keep this function stateful
+
     // stateless
 
     (void) from;
@@ -6135,27 +6137,27 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
 
     // stateful
 
-    // todo: need to fix up this part
-    /*
-    uint8_t packet_type = 0;
+    uint8_t * read_packet_data = packet_data + 16;
+    int read_packet_bytes = packet_bytes - 16;
+
+    uint8_t packet_type = read_packet_data[0];
+
     uint64_t packet_sequence = 0;
     uint64_t packet_session_id = 0;
     uint8_t packet_session_version = 0;
 
     bool from_current_route = true;
 
-    if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+    if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.current_route_private_key, read_packet_data, read_packet_bytes ) != NEXT_OK )
     {
         from_current_route = false;
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.previous_route_private_key, read_packet_data, read_packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not read header" );
             return false;
         }
     }
-    */
 
-    /*
     if ( !route_manager->route_data.current_route && !route_manager->route_data.previous_route )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. no current or previous route" );
@@ -6200,7 +6202,6 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. too large (%d>%d)", payload_bytes, NEXT_MTU );
         return false;
     }
-    */
 
     return true;
 }
