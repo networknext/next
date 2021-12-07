@@ -5436,7 +5436,7 @@ int next_peek_header( int direction, int packet_type, uint64_t * sequence, uint6
 
     next_assert( buffer );
 
-    if ( buffer_length < NEXT_HEADER_BYTES ) // todo: this is wrong now
+    if ( buffer_length < NEXT_HEADER_BYTES )
         return NEXT_ERROR;
 
     packet_sequence = next_read_uint64( &buffer );
@@ -5487,7 +5487,7 @@ int next_read_header( int direction, int packet_type, uint64_t * sequence, uint6
     next_assert( private_key );
     next_assert( buffer );
 
-    if ( buffer_length < NEXT_HEADER_BYTES ) // todo: this is wrong now
+    if ( buffer_length < NEXT_HEADER_BYTES )
     {
         return NEXT_ERROR;
     }
@@ -5943,7 +5943,6 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     next_assert( payload_bytes );
     next_assert( packet_data );
     next_assert( packet_bytes );
-    next_assert( payload_bytes + NEXT_HEADER_BYTES <= NEXT_MAX_PACKET_BYTES );
 
     // todo: this needs to be replaced with next_write_client_to_server_packet
 
@@ -5958,6 +5957,8 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     memcpy( packet_data + NEXT_HEADER_BYTES, payload_data, payload_bytes );
 
     *packet_bytes = NEXT_HEADER_BYTES + payload_bytes;
+
+    next_assert( *packet_bytes < NEXT_MAX_PACKET_BYTES );
 }
 
 bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence )
@@ -5967,10 +5968,10 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     next_assert( packet_data );
     next_assert( payload_sequence );
 
-    uint8_t * read_packet_data = packet_data + 16;
-    int read_packet_bytes = packet_bytes - 16;
+    uint8_t packet_type = packet_data[0];
 
-    uint8_t packet_type = read_packet_data[0];
+    packet_data += 16;
+    packet_bytes -= 16;
 
     uint64_t packet_sequence = 0;
     uint64_t packet_session_id = 0;
@@ -5978,10 +5979,10 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
 
     bool from_current_route = true;
 
-    if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.current_route_private_key, read_packet_data, read_packet_bytes ) != NEXT_OK )
+    if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
     {
         from_current_route = false;
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.previous_route_private_key, read_packet_data, read_packet_bytes ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_manager->route_data.previous_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. could not read header" );
             return false;
@@ -6025,13 +6026,15 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
 
     *payload_sequence = packet_sequence;
 
-    int payload_bytes = packet_bytes - NEXT_HEADER_BYTES; // todo: this is wrong
+    int payload_bytes = packet_bytes - NEXT_HEADER_BYTES - 2;
 
     if ( payload_bytes > NEXT_MTU )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored server to client packet. too large (%d>%d)", payload_bytes, NEXT_MTU );
         return false;
     }
+
+    (void) payload_bytes;
 
     return true;
 }
@@ -6857,7 +6860,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
-        if ( packet_bytes != NEXT_HEADER_BYTES )    // todo: this is wrong
+        if ( packet_bytes != NEXT_HEADER_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. bad packet size" );
             return;
@@ -6982,7 +6985,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
     {
-        if ( packet_bytes != NEXT_HEADER_BYTES ) // todo: this is wrong
+        if ( packet_bytes != NEXT_HEADER_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. bad packet size" );
             return;
@@ -7107,8 +7110,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = false;
-        notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES; // todo: this is wrong
-        memcpy( notify->payload_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES );
+        notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES - 2;
+        memcpy( notify->payload_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES - 2 );
         {
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
@@ -11557,8 +11560,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     (void) packet_data;
     (void) packet_bytes;
 
-    /*
-    if ( packet_bytes <= NEXT_HEADER_BYTES ) // todo: this is wrong
+    if ( packet_bytes <= NEXT_HEADER_BYTES + 2 )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet is too small to be valid" );
         return NULL;
@@ -11569,7 +11571,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     uint64_t packet_session_id = 0;
     uint8_t packet_session_version = 0;
 
-    if ( next_peek_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, packet_data, packet_bytes ) != NEXT_OK )
+    if ( next_peek_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, packet_data, packet_bytes ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. could not peek header" );        
         return NULL;
@@ -11603,7 +11605,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
         return NULL;
     }
 
-    if ( entry->has_pending_route && next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK )
+    if ( entry->has_pending_route && next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server promoted pending route for session %" PRIx64, entry->session_id );
 
@@ -11636,9 +11638,9 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     }
     else
     {
-        const bool current_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+        const bool current_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
 
-        const bool previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+        const bool previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
 
         if ( !current_route_ok && !previous_route_ok )
         {
@@ -11657,8 +11659,6 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     }
 
     return entry;
-    */
-    return NULL;
 }
 
 void next_server_internal_update_route( next_server_internal_t * server )
@@ -12495,7 +12495,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CLIENT_TO_SERVER_PACKET )
     {
-        if ( packet_bytes <= NEXT_HEADER_BYTES ) // todo: this is wrong
+        if ( packet_bytes <= NEXT_HEADER_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet too small to be valid" );
             return;
@@ -12515,7 +12515,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = entry->address;
-        notify->packet_bytes = packet_bytes - NEXT_HEADER_BYTES;
+        notify->packet_bytes = packet_bytes - NEXT_HEADER_BYTES - 2;
         next_assert( notify->packet_bytes > 0 );
         next_assert( notify->packet_bytes <= NEXT_MTU );
         memcpy( notify->packet_data, packet_data + NEXT_HEADER_BYTES, size_t(notify->packet_bytes) );
@@ -12563,7 +12563,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_platform_socket_send_packet( server->socket, from, packet_data, NEXT_HEADER_BYTES + 8 );
+        next_platform_socket_send_packet( server->socket, from, packet_data, NEXT_HEADER_BYTES + 8 ); // todo: size
 
         return;
     }
@@ -16708,7 +16708,6 @@ void test_header()
         uint64_t read_packet_session_id = 0;
         uint8_t read_packet_session_version = 0;
 
-        // todo: NEXT_HEADER_BYTES is wrong
         next_check( next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, packet_data, NEXT_HEADER_BYTES ) == NEXT_OK );
 
         next_check( read_packet_sequence == send_sequence );
@@ -16794,7 +16793,6 @@ void test_client_to_server_packet()
 
         next_check( packet_data[0] == NEXT_CLIENT_TO_SERVER_PACKET );
 
-        // todo: NEXT_HEADER_BYTES is wrong, I think?
         next_check( memcmp( packet_data + 1 + 15 + NEXT_HEADER_BYTES, game_packet_data, game_packet_bytes ) == 0 );
 
         uint64_t read_packet_sequence = 0;
@@ -16846,7 +16844,6 @@ void test_server_to_client_packet()
 
         next_check( packet_data[0] == NEXT_SERVER_TO_CLIENT_PACKET );
 
-        // todo: is NEXT_HEADER_BYTES wrong?
         next_check( memcmp( packet_data + 1 + 15 + NEXT_HEADER_BYTES, game_packet_data, game_packet_bytes ) == 0 );
 
         uint64_t read_packet_sequence = 0;
