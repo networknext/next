@@ -3279,6 +3279,8 @@ struct NextRouteUpdateAckPacket
     }
 };
 
+// todo: do we still use these?
+
 struct NextRelayPingPacket
 {
     uint64_t ping_sequence;
@@ -3323,60 +3325,6 @@ struct NextRelayPongPacket
     {
         serialize_uint64( stream, ping_sequence );
         serialize_uint64( stream, session_id );
-        return true;
-    }
-};
-
-struct NextBeaconPacket
-{
-    NextBeaconPacket()
-    {
-        memset( this, 0, sizeof(NextBeaconPacket) );
-    }
-
-    uint8_t version;
-    uint64_t customer_id;
-    uint64_t datacenter_id;
-    uint64_t user_hash;
-    uint64_t address_hash;
-    uint64_t session_id;
-    int platform_id;
-    int connection_type;
-    bool enabled;
-    bool upgraded;
-    bool next;
-    bool fallback_to_direct;
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_bits( stream, version, 8 );
-
-        serialize_bool( stream, enabled );
-        serialize_bool( stream, upgraded );
-        serialize_bool( stream, next );
-        serialize_bool( stream, fallback_to_direct );
-        
-        bool has_datacenter_id = Stream::IsWriting && datacenter_id != 0;
-        serialize_bool( stream, has_datacenter_id );
-        
-        serialize_uint64( stream, customer_id );
-
-        if ( has_datacenter_id )
-        {
-            serialize_uint64( stream, datacenter_id );
-        }
-
-        if ( upgraded )
-        {
-            serialize_uint64( stream, user_hash );
-            serialize_uint64( stream, address_hash );
-            serialize_uint64( stream, session_id );
-        }
-
-        serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
-
-        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
-
         return true;
     }
 };
@@ -7130,9 +7078,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
     {
-        // todo: update to new header structure
-
-        /*
         if ( packet_bytes != NEXT_HEADER_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. bad packet size" );
@@ -7172,7 +7117,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t packet_session_id = 0;
         uint8_t packet_session_version = 0;
 
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. could not read header" );
             return;
@@ -7211,7 +7156,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_platform_mutex_release( &client->route_manager_mutex );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client continue network next route is confirmed" );
-        */
 
         return;
     }
@@ -7220,9 +7164,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_SERVER_TO_CLIENT_PACKET )
     {
-        // todo: update to new packet header structure
-
-        /*
         uint64_t payload_sequence = 0;
 
         next_platform_mutex_acquire( &client->route_manager_mutex );
@@ -7275,7 +7216,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         {
             client->wake_up_callback( client->context );
         }
-        */
 
         return;
     }
