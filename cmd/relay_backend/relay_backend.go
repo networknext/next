@@ -780,12 +780,12 @@ func mainReturnWithCode() int {
 							if relay.BandwidthSentMbps > float32(relay.MaxBandwidthMbps) || relay.BandwidthRecvMbps > float32(relay.MaxBandwidthMbps) {
 								fullRelayIDs = append(fullRelayIDs, relay.ID)
 								full = true
-								core.Debug("Relay ID %016x is full (BW Sent Mbps: %.2f | BW Recv Mbps: %.2f | Max BW Mbps: %d)", relay.BandwidthSentMbps, relay.BandwidthRecvMbps, relay.MaxBandwidthMbps)
+								core.Debug("Relay ID %016x is full (BW Sent Mbps: %.2f | BW Recv Mbps: %.2f | Max BW Mbps: %d)", relay.ID, relay.BandwidthSentMbps, relay.BandwidthRecvMbps, relay.MaxBandwidthMbps)
 							}
 						} else if float64(bwSentPercent) > maxBandwidthPercentage || float64(bwRecvPercent) > maxBandwidthPercentage {
 							fullRelayIDs = append(fullRelayIDs, relay.ID)
 							full = true
-							core.Debug("Relay ID %016x is full (BW Sent %: %.2f | BW Recv %: %.2f | Max BW %: %.2f)", bwSentPercent, bwRecvPercent, maxBandwidthPercentage)
+							core.Debug(`Relay ID %016x is full (BW Sent Percent: %.2f | BW Recv Percent: %.2f | Max BW Percent: %.2f)`, relay.ID, bwSentPercent, bwRecvPercent, maxBandwidthPercentage)
 						}
 					}
 
