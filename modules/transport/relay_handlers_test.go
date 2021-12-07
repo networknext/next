@@ -13,7 +13,7 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport"
-	
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -75,8 +75,8 @@ func TestRelayUpdateHandlerFunc_UnbatchFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	updateRequest := &transport.RelayUpdateRequest{
-		Version:      4,
-		RelayVersion: "2.0.6",
+		Version:      5,
+		RelayVersion: "2.0.9",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -105,8 +105,8 @@ func TestRelayUpdateHandlerFunc_UnmarshalFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	updateRequest := &transport.RelayUpdateRequest{
-		Version:      4,
-		RelayVersion: "2.0.6",
+		Version:      5,
+		RelayVersion: "2.0.9",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -143,8 +143,8 @@ func TestRelayUpdateHandlerFunc_RelayNotFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	updateRequest := &transport.RelayUpdateRequest{
-		Version:      4,
-		RelayVersion: "2.0.6",
+		Version:      5,
+		RelayVersion: "2.0.9",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -180,7 +180,9 @@ func TestRelayUpdateHandlerFunc_Success(t *testing.T) {
 			ID:   1,
 			Name: "some name",
 		},
-		PublicKey: make([]byte, crypto.KeySize),
+		NICSpeedMbps:     int32(1000),
+		MaxBandwidthMbps: int32(900),
+		PublicKey:        make([]byte, crypto.KeySize),
 		Seller: routing.Seller{
 			ID:   "sellerID",
 			Name: "seller name",
@@ -188,7 +190,7 @@ func TestRelayUpdateHandlerFunc_Success(t *testing.T) {
 		State:       routing.RelayStateEnabled,
 		MaxSessions: uint32(10),
 
-		Version: "2.0.6",
+		Version: "2.0.9",
 	}
 
 	config := getRelayUpdateHandlerConfig(t, []routing.Relay{relay1})
@@ -197,14 +199,18 @@ func TestRelayUpdateHandlerFunc_Success(t *testing.T) {
 	defer svr.Close()
 
 	updateRequest := &transport.RelayUpdateRequest{
-		Version:      4,
-		RelayVersion: relay1.Version,
-		Address:      relay1.Addr,
-		Token:        make([]byte, crypto.KeySize),
-		PingStats:    make([]routing.RelayStatsPing, transport.MaxRelays),
-		SessionCount: uint64(5),
-		ShuttingDown: false,
-		CPU:          uint8(16),
+		Version:           5,
+		RelayVersion:      relay1.Version,
+		Address:           relay1.Addr,
+		Token:             make([]byte, crypto.KeySize),
+		PingStats:         make([]routing.RelayStatsPing, transport.MaxRelays),
+		SessionCount:      uint64(5),
+		ShuttingDown:      false,
+		CPU:               uint8(16),
+		EnvelopeUpKbps:    uint64(200),
+		EnvelopeDownKbps:  uint64(200),
+		BandwidthSentKbps: uint64(100),
+		BandwidthRecvKbps: uint64(100),
 	}
 
 	bin, err := updateRequest.MarshalBinary()
@@ -232,6 +238,12 @@ func TestRelayUpdateHandlerFunc_Success(t *testing.T) {
 	assert.Equal(t, uint64(relayData.SessionCount), updateRequest.SessionCount)
 	assert.Equal(t, relayData.ShuttingDown, updateRequest.ShuttingDown)
 	assert.Equal(t, relayData.CPU, updateRequest.CPU)
+	assert.Equal(t, relayData.NICSpeedMbps, relay1.NICSpeedMbps)
+	assert.Equal(t, relayData.MaxBandwidthMbps, relay1.MaxBandwidthMbps)
+	assert.Equal(t, relayData.EnvelopeUpMbps, float32(float64(updateRequest.EnvelopeUpKbps)/1000.0))
+	assert.Equal(t, relayData.EnvelopeDownMbps, float32(float64(updateRequest.EnvelopeDownKbps)/1000.0))
+	assert.Equal(t, relayData.BandwidthSentMbps, float32(float64(updateRequest.BandwidthSentKbps)/1000.0))
+	assert.Equal(t, relayData.BandwidthRecvMbps, float32(float64(updateRequest.BandwidthRecvKbps)/1000.0))
 
 	statsEntry, exists := config.StatsDB.Entries[relayData.ID]
 	assert.True(t, exists)

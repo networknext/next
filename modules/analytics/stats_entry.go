@@ -140,22 +140,13 @@ type RelayStatsEntry struct {
 
 	Full bool
 
-	// all of below are deprecated
-	Tx                        uint64
-	Rx                        uint64
-	PeakSessions              uint64
-	PeakSentBandwidthMbps     float32
-	PeakReceivedBandwidthMbps float32
-	CPUUsage                  float32
-	MemUsage                  float32
+	CPUUsage float32
 
 	// percent = (sent||received) / nic speed
-
 	BandwidthSentPercent     float32
 	BandwidthReceivedPercent float32
 
 	// percent = bandwidth_(sent||received) / envelope_(sent||received)
-
 	EnvelopeSentPercent     float32
 	EnvelopeReceivedPercent float32
 
@@ -164,6 +155,14 @@ type RelayStatsEntry struct {
 
 	EnvelopeSentMbps     float32
 	EnvelopeReceivedMbps float32
+
+	// all of below are deprecated
+	Tx                        uint64
+	Rx                        uint64
+	PeakSessions              uint64
+	PeakSentBandwidthMbps     float32
+	PeakReceivedBandwidthMbps float32
+	MemUsage                  float32
 }
 
 func WriteRelayStatsEntries(entries []RelayStatsEntry) []byte {
