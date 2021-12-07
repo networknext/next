@@ -292,6 +292,10 @@ ifndef RELAY_BACKEND_ADDRESSES
 export RELAY_BACKEND_ADDRESSES = 127.0.0.1:30001,127.0.0.1:30002
 endif
 
+ifndef FEATURE_RELAY_FULL_BANDWIDTH
+export FEATURE_RELAY_FULL_BANDWIDTH = false
+endif
+
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"

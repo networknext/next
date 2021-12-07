@@ -209,6 +209,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	featureRelayFullBandwidth, err := envvar.GetBool("FEATURE_RELAY_FULL_BANDWIDTH", false)
+	if err != nil {
+		core.Error("failed to parse FEATURE_RELAY_FULL_BANDWIDTH: %v", err)
+		return 1
+	}
+
 	instanceID, err := getInstanceID(env)
 	if err != nil {
 		core.Error("failed to get relay backend instance ID: %v", err)
@@ -775,7 +781,7 @@ func mainReturnWithCode() int {
 					}
 
 					// Relays with MaxBandwidthMbps set to 0 use maxBandwidthPercentage by default to determine if full
-					if !full {
+					if featureRelayFullBandwidth && !full {
 						if relay.MaxBandwidthMbps != 0 {
 							if relay.BandwidthSentMbps > float32(relay.MaxBandwidthMbps) || relay.BandwidthRecvMbps > float32(relay.MaxBandwidthMbps) {
 								fullRelayIDs = append(fullRelayIDs, relay.ID)
