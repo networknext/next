@@ -6609,24 +6609,24 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "basic packet filter failed" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client basic packet filter dropped packet" );
         return;
     }
 
     if ( !next_advanced_packet_filter( packet_data, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_bytes ) )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "advanced packet filter failed" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet" );
         return;
     }
 
     // packet is valid
 
-    packet_data += 16;
-    packet_bytes -= 16;
+    const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
 
     const int packet_id = packet_data[0];
 
-    const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
+    packet_data += 16;
+    packet_bytes -= 16;
 
     // upgraded direct packet (255)
 
@@ -11554,14 +11554,14 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     next_assert( server );
     next_assert( packet_data );
 
+    next_server_internal_verify_sentinels( server );
+
     // todo: update to new header structure
     (void) server;
     (void) packet_data;
     (void) packet_bytes;
 
     /*
-    next_server_internal_verify_sentinels( server );
-
     if ( packet_bytes <= NEXT_HEADER_BYTES )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet is too small to be valid" );
@@ -11880,13 +11880,42 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     next_server_internal_verify_sentinels( server );
 
-    const int packet_id = packet_data[0];
+    // todo: we need real data here
+    uint8_t magic[8];
+    uint8_t from_address[4];
+    uint8_t to_address[4];
+    next_random_bytes( magic, 8 );
+    next_random_bytes( from_address, 4 );
+    next_random_bytes( to_address, 4 );
+    uint16_t from_port = uint16_t( 1000 );
+    uint16_t to_port = uint16_t( 5000 );
+    int from_address_bytes = 4;
+    int to_address_bytes = 4;
 
-    // upgraded direct packet (255)
-
-    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 10 && packet_bytes <= 10 + NEXT_MTU )
+    if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
     {
-        const uint8_t * p = packet_data + 1;
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server basic packet filter dropped packet" );
+        return;
+    }
+
+    if ( !next_advanced_packet_filter( packet_data, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_bytes ) )
+    {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet" );
+        return;
+    }
+
+    // packet is valid
+
+    int packet_id = packet_data[0];
+
+    packet_data += 16;
+    packet_bytes -= 16;
+
+    // direct packet (255)
+
+    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 1 + 15 + 9 + 2 && packet_bytes <= 1 + 15 + 9 + 2 + NEXT_MTU )
+    {
+        const uint8_t * p = packet_data;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
         
@@ -11944,6 +11973,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
+    /*
     // backend response packets
 
     if ( server->state == NEXT_SERVER_STATE_INITIALIZING || server->state == NEXT_SERVER_STATE_INITIALIZED )
@@ -12692,6 +12722,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         return;
     }
+    */
 }
 
 void next_server_internal_process_passthrough_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
