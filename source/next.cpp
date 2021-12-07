@@ -5436,7 +5436,7 @@ int next_peek_header( int direction, int packet_type, uint64_t * sequence, uint6
 
     next_assert( buffer );
 
-    if ( buffer_length < NEXT_HEADER_BYTES )
+    if ( buffer_length < NEXT_HEADER_BYTES ) // todo: this is wrong now
         return NEXT_ERROR;
 
     packet_sequence = next_read_uint64( &buffer );
@@ -5487,7 +5487,7 @@ int next_read_header( int direction, int packet_type, uint64_t * sequence, uint6
     next_assert( private_key );
     next_assert( buffer );
 
-    if ( buffer_length < NEXT_HEADER_BYTES )
+    if ( buffer_length < NEXT_HEADER_BYTES ) // todo: this is wrong now
     {
         return NEXT_ERROR;
     }
@@ -5945,6 +5945,8 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     next_assert( packet_bytes );
     next_assert( payload_bytes + NEXT_HEADER_BYTES <= NEXT_MAX_PACKET_BYTES );
 
+    // todo: this needs to be replaced with next_write_client_to_server_packet
+
     *to = route_manager->route_data.current_route_next_address;
 
     if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, route_manager->route_data.current_route_private_key, packet_data ) != NEXT_OK )
@@ -6023,7 +6025,7 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
 
     *payload_sequence = packet_sequence;
 
-    int payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
+    int payload_bytes = packet_bytes - NEXT_HEADER_BYTES; // todo: this is wrong
 
     if ( payload_bytes > NEXT_MTU )
     {
@@ -6590,7 +6592,13 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     next_assert( from );
     next_assert( packet_data );
-    
+    next_assert( packet_bytes > 0 );
+    next_assert( packet_bytes <= NEXT_MAX_PACKET_BYTES );
+
+    const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
+
+    const int packet_id = packet_data[0];
+
     // todo: NEXT_UPGRADE_REQUEST_PACKET will always come encoded with magic of zero
 
     // todo: NEXT_UPGRADE_REQUEST_PACKET will always come encoded with to address/port of zero bytes
@@ -6620,10 +6628,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     }
 
     // packet is valid
-
-    const bool from_server_address = client->server_address.type != 0 && next_address_equal( from, &client->server_address );
-
-    const int packet_id = packet_data[0];
 
     packet_data += 16;
     packet_bytes -= 16;
@@ -6853,8 +6857,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
-        // todo: is this still correct?
-        if ( packet_bytes != NEXT_HEADER_BYTES )
+        if ( packet_bytes != NEXT_HEADER_BYTES )    // todo: this is wrong
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. bad packet size" );
             return;
@@ -6979,7 +6982,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
     {
-        if ( packet_bytes != NEXT_HEADER_BYTES )
+        if ( packet_bytes != NEXT_HEADER_BYTES ) // todo: this is wrong
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. bad packet size" );
             return;
@@ -7104,7 +7107,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = false;
-        notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
+        notify->payload_bytes = packet_bytes - NEXT_HEADER_BYTES; // todo: this is wrong
         memcpy( notify->payload_data, packet_data + NEXT_HEADER_BYTES, size_t(packet_bytes) - NEXT_HEADER_BYTES );
         {
             next_platform_mutex_guard( &client->notify_mutex );
@@ -7147,7 +7150,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_replay_protection_advance_sequence( &client->special_replay_protection, clean_sequence );
 
-        const uint8_t * p = packet_data + NEXT_HEADER_BYTES;
+        // todo: this needs to be replaced with next_read_pong_packet
+
+        const uint8_t * p = packet_data + NEXT_HEADER_BYTES; 
 
         uint64_t ping_sequence = next_read_uint64( &p );
 
@@ -7827,6 +7832,8 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
         next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
+        // todo: this needs to be replaced with next_write_ping_packet
 
         if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, private_key, packet_data ) != NEXT_OK )
         {
@@ -11551,7 +11558,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     (void) packet_bytes;
 
     /*
-    if ( packet_bytes <= NEXT_HEADER_BYTES )
+    if ( packet_bytes <= NEXT_HEADER_BYTES ) // todo: this is wrong
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet is too small to be valid" );
         return NULL;
@@ -12488,7 +12495,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CLIENT_TO_SERVER_PACKET )
     {
-        if ( packet_bytes <= NEXT_HEADER_BYTES )
+        if ( packet_bytes <= NEXT_HEADER_BYTES ) // todo: this is wrong
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet too small to be valid" );
             return;
@@ -12502,6 +12509,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             // out an error when the packet has already been received on the direct path, when multipath is enabled.
             return;
         }
+
+        // todo: next_read_client_to_server_packet
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -12527,11 +12536,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_PING_PACKET )
     {
-        if ( packet_bytes != NEXT_HEADER_BYTES + 8 )
+        if ( packet_bytes != NEXT_HEADER_BYTES + 8 ) // todo: this is wrong
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. bad packet size" );            
             return;
         }
+
+        // todo: next_read_ping_packet
 
         next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_data, packet_bytes );
         if ( !entry )
@@ -16697,6 +16708,7 @@ void test_header()
         uint64_t read_packet_session_id = 0;
         uint8_t read_packet_session_version = 0;
 
+        // todo: NEXT_HEADER_BYTES is wrong
         next_check( next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, private_key, packet_data, NEXT_HEADER_BYTES ) == NEXT_OK );
 
         next_check( read_packet_sequence == send_sequence );
@@ -16782,6 +16794,7 @@ void test_client_to_server_packet()
 
         next_check( packet_data[0] == NEXT_CLIENT_TO_SERVER_PACKET );
 
+        // todo: NEXT_HEADER_BYTES is wrong, I think?
         next_check( memcmp( packet_data + 1 + 15 + NEXT_HEADER_BYTES, game_packet_data, game_packet_bytes ) == 0 );
 
         uint64_t read_packet_sequence = 0;
@@ -16833,6 +16846,7 @@ void test_server_to_client_packet()
 
         next_check( packet_data[0] == NEXT_SERVER_TO_CLIENT_PACKET );
 
+        // todo: is NEXT_HEADER_BYTES wrong?
         next_check( memcmp( packet_data + 1 + 15 + NEXT_HEADER_BYTES, game_packet_data, game_packet_bytes ) == 0 );
 
         uint64_t read_packet_sequence = 0;
