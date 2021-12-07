@@ -47,7 +47,7 @@ const getters = {
   idToken: (state: any) => state.userProfile.idToken,
   isAdmin: (state: any) => state.userProfile.roles.indexOf('Admin') !== -1,
   isOwner: (state: any, getters: any) => state.userProfile.roles.indexOf('Owner') !== -1 || getters.isAdmin,
-  isExplorer: (state: any, getters: any) => state.userProfile.roles.indexOf('Explorer') !== -1 || getters.isOwner || getters.isAdmin,
+  isExplorer: (state: any, getters: any) => state.userProfile.roles.indexOf('Explorer') !== -1 || getters.isAdmin,
   isAnonymous: (state: any, getters: any) => getters.idToken === '',
   isAnonymousPlus: (state: any, getters: any) => !getters.isAnonymous ? !state.userProfile.verified : false,
   isBuyer: (state: any) => (state.userProfile.pubKey !== ''),
