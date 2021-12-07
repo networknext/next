@@ -6731,7 +6731,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     next_assert( from );
     next_assert( packet_data );
     
-    // apply stateless packet filters
+    // todo: NEXT_UPGRADE_REQUEST_PACKET will always come encoded with magic of zero
+
+    // todo: NEXT_UPGRADE_REQUEST_PACKET will always come encoded with to address/port of zero bytes
 
     // todo: we need real data here
     uint8_t magic[8];
@@ -6823,8 +6825,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( from_server_address && packet_id == NEXT_UPGRADE_REQUEST_PACKET )
     {
-        // todo: this packet will always come in encoded with magic of zero
-
         if ( !next_address_equal( from, &client->server_address ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. packet does not come from server address" );
@@ -7005,7 +7005,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     {
         // todo: update to new packet header structure
 
-        /*
         if ( packet_bytes != NEXT_HEADER_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. bad packet size" );
@@ -7026,7 +7025,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t packet_session_id = 0;
         uint8_t packet_session_version = 0;
 
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, &packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_private_key, packet_data, packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. could not read header" );
             return;
@@ -7123,7 +7122,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             client->bandwidth_envelope_kbps_up = 0;
             client->bandwidth_envelope_kbps_down = 0;
         }
-        */
 
         return;
     }
