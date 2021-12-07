@@ -228,6 +228,8 @@ grant all on relays to engineering;
 grant all on route_shaders to engineering;
 grant all on rs_internal_configs to engineering;
 grant all on sellers to engineering;
+grant all on analytics_dashboard_categories to engineering;
+grant all on analytics_dashboards to engineering;
 
 grant select,
   insert,
