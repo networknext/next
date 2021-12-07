@@ -3279,56 +3279,6 @@ struct NextRouteUpdateAckPacket
     }
 };
 
-// todo: do we still use these?
-
-struct NextRelayPingPacket
-{
-    uint64_t ping_sequence;
-    uint64_t session_id;
-    uint64_t padding1;
-    uint64_t padding2;
-
-    NextRelayPingPacket()
-    {
-        ping_sequence = 0;
-        session_id = 0;
-        padding1 = 0;
-        padding2 = 0;
-    }
-    
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_uint64( stream, ping_sequence );
-        serialize_uint64( stream, session_id );
-        serialize_uint64( stream, padding1 );
-        serialize_uint64( stream, padding2 );
-        if ( Stream::IsWriting )
-        {
-            next_assert( padding1 == 0 );
-            next_assert( padding2 == 0 );
-        }
-        if ( Stream::IsReading )
-        {
-            if ( padding1 != 0 || padding2 != 0 )
-                return false;
-        }
-        return true;
-    }
-};
-
-struct NextRelayPongPacket
-{
-    uint64_t ping_sequence;
-    uint64_t session_id;
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_uint64( stream, ping_sequence );
-        serialize_uint64( stream, session_id );
-        return true;
-    }
-};
-
 static void next_generate_pittle( uint8_t * output, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
 {
     next_assert( output );
@@ -3846,28 +3796,6 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
         }
         break;
 
-        case NEXT_RELAY_PING_PACKET:
-        {
-            NextRelayPingPacket * packet = (NextRelayPingPacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to write relay ping packet" );
-                return NEXT_ERROR;
-            }
-        }
-        break;
-
-        case NEXT_RELAY_PONG_PACKET:
-        {
-            NextRelayPongPacket * packet = (NextRelayPongPacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to write relay pong packet" );
-                return NEXT_ERROR;
-            }
-        }
-        break;
-
         default:
             return NEXT_ERROR;
     }
@@ -4077,22 +4005,6 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
         case NEXT_ROUTE_UPDATE_ACK_PACKET:
         {
             NextRouteUpdateAckPacket * packet = (NextRouteUpdateAckPacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
-        case NEXT_RELAY_PING_PACKET:
-        {
-            NextRelayPingPacket * packet = (NextRelayPingPacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
-        case NEXT_RELAY_PONG_PACKET:
-        {
-            NextRelayPongPacket * packet = (NextRelayPongPacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -7267,6 +7179,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }            
 
+        // todo: convert to next_read_relay_pong_packet
+
+        /*
         NextRelayPongPacket packet;
 
         if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL ) != packet_id )
@@ -7284,6 +7199,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL );
 
         next_relay_manager_process_pong( client->near_relay_manager, from, packet.ping_sequence );
+        */
 
         return;
     }
