@@ -123,6 +123,10 @@ ifndef RELAY_ROUTER_MAX_PACKET_LOSS
 export RELAY_ROUTER_MAX_PACKET_LOSS = 0.1
 endif
 
+ifndef RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE
+export RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE = 90.0
+endif
+
 ## By default we set only error and warning logs for server_backend and relay_backend
 ifndef BACKEND_LOG_LEVEL
 export BACKEND_LOG_LEVEL = warn
