@@ -13,12 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
-
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/transport/looker"
 )
 
 // SQL is an implementation of the Storer interface. It can
@@ -32,7 +30,6 @@ import (
 // The PK is required to enforce business rules in the DB.
 type SQL struct {
 	Client *sql.DB
-	Logger log.Logger
 }
 
 const (
@@ -68,7 +65,7 @@ func ExecRetry(ctx context.Context, db *SQL, queryString bytes.Buffer, queryArgs
 
 	stmt, err := db.Client.PrepareContext(ctx, queryString.String())
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error preparing ExecRetry SQL", "err", err)
+		core.Error("Failed to prepare ExecRetry SQL: %v", err)
 		return nil, err
 	}
 
@@ -101,6 +98,7 @@ type sqlBuyer struct {
 	CompanyCode         string // should not be needed
 	DatabaseID          int64  // sql PK
 	CustomerID          int64  // sql PK
+	LookerSeats         int64
 }
 
 type sqlDatacenterMap struct {
@@ -179,10 +177,10 @@ func (db *SQL) Customer(ctx context.Context, customerCode string) (routing.Custo
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "Customer() connection with the database timed out!")
+		core.Error("Customer() connection with database timed out!")
 		return routing.Customer{}, err
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "Customer() no rows were returned!")
+		core.Error("Customer() no rows were returned!")
 		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: customerCode}
 	case nil:
 		c := routing.Customer{
@@ -193,10 +191,59 @@ func (db *SQL) Customer(ctx context.Context, customerCode string) (routing.Custo
 		}
 		return c, nil
 	default:
-		level.Error(db.Logger).Log("during", "Customer() QueryRow returned an error: %v", err)
+		core.Error("Customer() QueryRow returned an error: %v", err)
 		return routing.Customer{}, err
 	}
+}
 
+func (db *SQL) CustomerByID(ctx context.Context, id int64) (routing.Customer, error) {
+	var querySQL bytes.Buffer
+	var customer sqlCustomer
+	var row *sql.Row
+	var err error
+	retryCount := 0
+
+	querySQL.Write([]byte("select id, automatic_signin_domain,"))
+	querySQL.Write([]byte("customer_name, customer_code from customers where id = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), id)
+		err = row.Scan(
+			&customer.ID,
+			&customer.AutomaticSignInDomains,
+			&customer.Name,
+			&customer.CustomerCode,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
+	switch err {
+	case context.Canceled:
+		core.Error("during", "Customer() connection with the database timed out!")
+		return routing.Customer{}, err
+	case sql.ErrNoRows:
+		core.Error("during", "Customer() no rows were returned!")
+		return routing.Customer{}, &DoesNotExistError{resourceType: "customer", resourceRef: id}
+	case nil:
+		c := routing.Customer{
+			Code:                   customer.CustomerCode,
+			Name:                   customer.Name,
+			AutomaticSignInDomains: customer.AutomaticSignInDomains,
+			DatabaseID:             customer.ID,
+		}
+		return c, nil
+	default:
+		core.Error("Customer() QueryRow returned an error: %v", err)
+		return routing.Customer{}, err
+	}
 }
 
 // Customers retrieves the full list
@@ -216,7 +263,7 @@ func (db *SQL) Customers(ctx context.Context) []routing.Customer {
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "Customers(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("Customers(): QueryMultipleRowsRetry returned an error")
 		return []routing.Customer{}
 	}
 	defer rows.Close()
@@ -228,7 +275,7 @@ func (db *SQL) Customers(ctx context.Context) []routing.Customer {
 			&customer.CustomerCode,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "Customers(): error parsing returned row", "err", err)
+			core.Error("Customers(): error parsing returned row")
 			return []routing.Customer{}
 		}
 
@@ -284,17 +331,17 @@ func (db *SQL) AddCustomer(ctx context.Context, c routing.Customer) error {
 		customer.CustomerCode,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding customer", "err", err)
+		core.Error("AddCustomer() error adding customer: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("AddCustomer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("AddCustomer() RowsAffected <> 1")
 		return err
 	}
 
@@ -317,16 +364,16 @@ func (db *SQL) RemoveCustomer(ctx context.Context, customerCode string) error {
 
 	result, err := ExecRetry(ctx, db, sql, customerCode)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error removing customer", "err", err)
+		core.Error("RemoveCustomer() error removing customer: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("RemoveCustomer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("RemoveCustomer() RowsAffected <> 1")
 		return err
 	}
 
@@ -359,16 +406,16 @@ func (db *SQL) SetCustomer(ctx context.Context, c routing.Customer) error {
 		c.Code,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
+		core.Error("SetCustomer() error modifying customer record: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("SetCustomer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("SetCustomer() RowsAffected <> 1")
 		return err
 	}
 
@@ -389,7 +436,7 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 
 	sqlBuyerID := int64(ephemeralBuyerID)
 
-	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
+	querySQL.Write([]byte("select id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
 	querySQL.Write([]byte("from buyers where sdk_generated_id = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -406,6 +453,7 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
+			&buyer.LookerSeats,
 		)
 		switch err {
 		case context.Canceled:
@@ -417,10 +465,10 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "Buyer() connection with the database timed out!")
+		core.Error("Buyer() connection with the database timed out!")
 		return routing.Buyer{}, err
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "Buyer() no rows were returned!")
+		core.Error("Buyer() no rows were returned!")
 		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	case nil:
 		ic, err := db.InternalConfig(ctx, ephemeralBuyerID)
@@ -450,10 +498,11 @@ func (db *SQL) Buyer(ctx context.Context, ephemeralBuyerID uint64) (routing.Buye
 			InternalConfig:      ic,
 			CustomerID:          buyer.CustomerID,
 			DatabaseID:          buyer.DatabaseID,
+			LookerSeats:         buyer.LookerSeats,
 		}
 		return b, nil
 	default:
-		level.Error(db.Logger).Log("during", fmt.Sprintf("Buyer() QueryRow returned an error: %v", err))
+		core.Error("Buyer() QueryRow returned an error: %v", err)
 		return routing.Buyer{}, err
 	}
 
@@ -467,7 +516,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 	var err error
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
+	querySQL.Write([]byte("select id, sdk_generated_id, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
 	querySQL.Write([]byte("from buyers where short_name = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -484,6 +533,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
+			&buyer.LookerSeats,
 		)
 		switch err {
 		case context.Canceled:
@@ -495,7 +545,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "Buyer() connection with the database timed out!")
+		core.Error("Buyer() connection with the database timed out!")
 		return routing.Buyer{}, err
 	case sql.ErrNoRows:
 		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: companyCode}
@@ -528,10 +578,11 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 			InternalConfig:      ic,
 			CustomerID:          buyer.CustomerID,
 			DatabaseID:          buyer.DatabaseID,
+			LookerSeats:         buyer.LookerSeats,
 		}
 		return b, nil
 	default:
-		level.Error(db.Logger).Log("during", fmt.Sprintf("BuyerWithCompanyCode() QueryRow returned an error: %v", err))
+		core.Error("BuyerWithCompanyCode() QueryRow returned an error: %v", err)
 		return routing.Buyer{}, err
 	}
 }
@@ -544,7 +595,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 	buyers := []routing.Buyer{}
 	buyerIDs := make(map[uint64]int64)
 
-	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id "))
+	sql.Write([]byte("select sdk_generated_id, id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats "))
 	sql.Write([]byte("from buyers"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -552,7 +603,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "Buyers(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("Buyers(): QueryMultipleRowsRetry returned an error")
 		return []routing.Buyer{}
 	}
 	defer rows.Close()
@@ -571,9 +622,10 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			&buyer.StandardLocationFee,
 			&buyer.PublicKey,
 			&buyer.CustomerID,
+			&buyer.LookerSeats,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "Buyers(): error parsing returned row", "err", err)
+			core.Error("Buyers(): error parsing returned row")
 			return []routing.Buyer{}
 		}
 
@@ -608,6 +660,7 @@ func (db *SQL) Buyers(ctx context.Context) []routing.Buyer {
 			InternalConfig:      ic,
 			CustomerID:          buyer.CustomerID,
 			DatabaseID:          buyer.DatabaseID,
+			LookerSeats:         buyer.LookerSeats,
 		}
 
 		buyers = append(buyers, b)
@@ -643,12 +696,13 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		StandardLocationFee: b.StandardLocationFee,
 		PublicKey:           b.PublicKey,
 		CustomerID:          c.DatabaseID,
+		LookerSeats:         b.LookerSeats,
 	}
 
 	// Add the buyer in remote storage
 	sql.Write([]byte("insert into buyers ("))
-	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"))
+	sql.Write([]byte("sdk_generated_id, short_name, is_live_customer, debug, analytics, billing, trial, exotic_location_fee, standard_location_fee, public_key, customer_id, looker_seats"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -665,20 +719,21 @@ func (db *SQL) AddBuyer(ctx context.Context, b routing.Buyer) error {
 		buyer.StandardLocationFee,
 		buyer.PublicKey,
 		buyer.CustomerID,
+		buyer.LookerSeats,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding buyer", "err", err)
+		core.Error("AddBuyer() error adding buyer: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("AddBuyer() RowsAffected returned an error")
 		return err
 	}
 
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("AddBuyer() RowsAffected <> 1")
 		return err
 	}
 
@@ -705,16 +760,16 @@ func (db *SQL) RemoveBuyer(ctx context.Context, ephemeralBuyerID uint64) error {
 		int64(ephemeralBuyerID),
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error removing buyer", "err", err)
+		core.Error("RemoveBuyer() error removing buyer: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("RemoveBuyer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("RemoveBuyer() RowsAffected <> 1")
 		return err
 	}
 
@@ -755,10 +810,10 @@ func (db *SQL) Seller(ctx context.Context, id string) (routing.Seller, error) {
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "Seller() connection with the database timed out!")
+		core.Error("Seller() connection with the database timed out!")
 		return routing.Seller{}, err
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "Seller() no rows were returned!")
+		core.Error("Seller() no rows were returned!")
 		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
 	case nil:
 		c, err := db.Customer(ctx, id)
@@ -777,7 +832,7 @@ func (db *SQL) Seller(ctx context.Context, id string) (routing.Seller, error) {
 		}
 		return s, nil
 	default:
-		level.Error(db.Logger).Log("during", "Seller() QueryRow returned an error: %v", err)
+		core.Error("Seller() QueryRow returned an error: %v", err)
 		return routing.Seller{}, err
 	}
 }
@@ -815,10 +870,10 @@ func (db *SQL) SellerByDbId(ctx context.Context, id int64) (routing.Seller, erro
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "SellerByDbId() connection with the database timed out!")
+		core.Error("SellerByDbId() connection with the database timed out!")
 		return routing.Seller{}, err
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "SellerByDbId() no rows were returned!")
+		core.Error("SellerByDbId() no rows were returned!")
 		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: id}
 	case nil:
 		c, err := db.Customer(ctx, seller.ShortName)
@@ -837,7 +892,7 @@ func (db *SQL) SellerByDbId(ctx context.Context, id int64) (routing.Seller, erro
 		}
 		return s, nil
 	default:
-		level.Error(db.Logger).Log("during", "SellerByDbId() QueryRow returned an error: %v", err)
+		core.Error("SellerByDbId() QueryRow returned an error: %v", err)
 		return routing.Seller{}, err
 	}
 }
@@ -856,7 +911,7 @@ func (db *SQL) Sellers(ctx context.Context) []routing.Seller {
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "Sellers(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("Sellers(): QueryMultipleRowsRetry returned an error")
 		return []routing.Seller{}
 	}
 	defer rows.Close()
@@ -869,13 +924,13 @@ func (db *SQL) Sellers(ctx context.Context) []routing.Seller {
 			&seller.CustomerID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "Sellers(): error parsing returned row", "err", err)
+			core.Error("Sellers(): error parsing returned row")
 			return []routing.Seller{}
 		}
 
 		c, err := db.Customer(ctx, seller.ShortName)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "Sellers(): customer does not exist", "err", err)
+			core.Error("Sellers(): customer does not exist")
 			return []routing.Seller{}
 		}
 		s := routing.Seller{
@@ -946,16 +1001,16 @@ func (db *SQL) AddSeller(ctx context.Context, s routing.Seller) error {
 	)
 
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding seller", "err", err)
+		core.Error("AddSeller() error adding seller: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("AddSeller() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("AddSeller() RowsAffected <> 1")
 		return err
 	}
 
@@ -982,16 +1037,16 @@ func (db *SQL) RemoveSeller(ctx context.Context, id string) error {
 		id,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error removing seller", "err", err)
+		core.Error("RemoveSeller() error removing seller: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("RemoveSeller() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("RemoveSeller() RowsAffected <> 1")
 		return err
 	}
 
@@ -1042,7 +1097,7 @@ func (db *SQL) SellerWithCompanyCode(ctx context.Context, code string) (routing.
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "SellerWithCompanyCode() connection with the database timed out!")
+		core.Error("SellerWithCompanyCode() connection with the database timed out!")
 		return routing.Seller{}, err
 	case sql.ErrNoRows:
 		return routing.Seller{}, &DoesNotExistError{resourceType: "seller", resourceRef: code}
@@ -1063,7 +1118,7 @@ func (db *SQL) SellerWithCompanyCode(ctx context.Context, code string) (routing.
 		}
 		return s, nil
 	default:
-		level.Error(db.Logger).Log("during", "SellerWithCompanyCode() QueryRow returned an error", "err", err)
+		core.Error("SellerWithCompanyCode() QueryRow returned an error: %v", err)
 		return routing.Seller{}, err
 	}
 }
@@ -1141,40 +1196,40 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "Relay() connection with the database timed out!")
+		core.Error("Relay() connection with the database timed out!")
 		return routing.Relay{}, err
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "Relay() no rows were returned!")
+		core.Error("Relay() no rows were returned!")
 		return routing.Relay{}, &DoesNotExistError{resourceType: "relay", resourceRef: hexID}
 	case nil:
 		relayState, err := routing.GetRelayStateSQL(relay.State)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "invalid relay state", "err", err)
+			core.Error("Relay() invalid relay state: %v", err)
 		}
 
 		bwRule, err := routing.GetBandwidthRuleSQL(relay.BWRule)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "routing.ParseBandwidthRule returned an error", "err", err)
+			core.Error("Relay() routing.ParseBandwidthRule returned an error: %v", err)
 		}
 
 		machineType, err := routing.GetMachineTypeSQL(relay.MachineType)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
+			core.Error("Relay() routing.ParseMachineType returned an error: %v", err)
 		}
 
 		datacenter, err := db.DatacenterByDbId(ctx, relay.DatacenterID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays error dereferencing datacenter", "err", err)
+			core.Error("Relay() syncRelays error dereferencing datacenter: %v", err)
 		}
 
 		seller, err := db.SellerByDbId(ctx, datacenter.SellerID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays error dereferencing seller", "err", err)
+			core.Error("Relay() syncRelays error dereferencing seller: %v", err)
 		}
 
 		internalID, err := strconv.ParseUint(hexID, 16, 64)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "syncRelays error parsing hex_id", "err", err)
+			core.Error("Relay() syncRelays error parsing hex_id: %v", err)
 		}
 
 		r := routing.Relay{
@@ -1205,7 +1260,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
 			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
 			if err != nil {
-				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+				core.Error("Relay() net.ResolveUDPAddr returned an error parsing internal address: %v", err)
 			}
 			r.InternalAddr = *internalAddr
 		}
@@ -1214,7 +1269,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			fullPublicAddress := relay.PublicIP.String + ":" + fmt.Sprintf("%d", relay.PublicIPPort.Int64)
 			publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
 			if err != nil {
-				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
+				core.Error("Relay() net.ResolveUDPAddr returned an error parsing public address: %v", err)
 			}
 			r.Addr = *publicAddr
 		}
@@ -1231,7 +1286,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 
 			if !found {
 				errString := fmt.Sprintf("Relay() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
-				level.Error(db.Logger).Log("during", errString, "err", err)
+				core.Error(errString, err)
 			}
 
 		}
@@ -1251,7 +1306,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 		return r, nil
 
 	default:
-		level.Error(db.Logger).Log("during", "Relay() QueryRow returned an error: %v", err)
+		core.Error("Relay() QueryRow returned an error: %v", err)
 		return routing.Relay{}, err
 	}
 }
@@ -1278,7 +1333,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "Relays(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("Relays(): QueryMultipleRowsRetry returned an error: %v", err)
 		return []routing.Relay{}
 	}
 	defer rows.Close()
@@ -1315,38 +1370,38 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			&relay.Version,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "Relays(): error parsing returned row", "err", err)
+			core.Error("Relays(): error parsing returned row: %v", err)
 			return []routing.Relay{}
 		}
 
 		relayState, err := routing.GetRelayStateSQL(relay.State)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "invalid relay state", "err", err)
+			core.Error("Relays() invalid relay state: %v", err)
 		}
 
 		bwRule, err := routing.GetBandwidthRuleSQL(relay.BWRule)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "routing.ParseBandwidthRule returned an error", "err", err)
+			core.Error("Relays() routing.ParseBandwidthRule returned an error: %v", err)
 		}
 
 		machineType, err := routing.GetMachineTypeSQL(relay.MachineType)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "routing.ParseMachineType returned an error", "err", err)
+			core.Error("Relays() routing.ParseMachineType returned an error: %v", err)
 		}
 
 		datacenter, err := db.DatacenterByDbId(ctx, relay.DatacenterID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "Relays error dereferencing datacenter", "err", err)
+			core.Error("Relays() error dereferencing datacenter: %v", err)
 		}
 
 		seller, err := db.SellerByDbId(ctx, datacenter.SellerID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "Relays error dereferencing seller", "err", err)
+			core.Error("Relays() error dereferencing seller: %v", err)
 		}
 
 		internalID, err := strconv.ParseUint(relay.HexID, 16, 64)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "Relays error parsing hex_id", "err", err)
+			core.Error("Relays() error parsing hex_id: %v", err)
 		}
 
 		r := routing.Relay{
@@ -1377,7 +1432,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			fullInternalAddress := relay.InternalIP.String + ":" + fmt.Sprintf("%d", relay.InternalIPPort.Int64)
 			internalAddr, err := net.ResolveUDPAddr("udp", fullInternalAddress)
 			if err != nil {
-				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing internal address", "err", err)
+				core.Error("Relays() net.ResolveUDPAddr returned an error parsing internal address: %v", err)
 			}
 			r.InternalAddr = *internalAddr
 		}
@@ -1386,7 +1441,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			fullPublicAddress := relay.PublicIP.String + ":" + fmt.Sprintf("%d", relay.PublicIPPort.Int64)
 			publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
 			if err != nil {
-				level.Error(db.Logger).Log("during", "net.ResolveUDPAddr returned an error parsing public address", "err", err)
+				core.Error("Relays() net.ResolveUDPAddr returned an error parsing public address: %v", err)
 			}
 			r.Addr = *publicAddr
 		}
@@ -1403,7 +1458,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 
 			if !found {
 				errString := fmt.Sprintf("Relays() Unable to find Seller matching BillingSupplier ID %d", relay.BillingSupplier.Int64)
-				level.Error(db.Logger).Log("during", errString, "err", err)
+				core.Error(errString, err)
 			}
 
 		}
@@ -1740,17 +1795,17 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying relay record", "err", err)
+		core.Error("UpdateRelay() error modifying relay record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("UpdateRelay() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("UpdateRelay() RowsAffected <> 1")
 		return err
 	}
 
@@ -1957,18 +2012,18 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.Version,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding relay", "err", err)
+		core.Error("AddRelay() error adding relay: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("AddRelay() RowsAffected returned an error")
 		return err
 	}
 
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("AddRelay() RowsAffected <> 1")
 		return err
 	}
 
@@ -1993,16 +2048,16 @@ func (db *SQL) RemoveRelay(ctx context.Context, id uint64) error {
 		hexID,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error removing relay", "err", err)
+		core.Error("RemoveRelay() error removing relay: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("RemoveRelay() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("RemoveRelay() RowsAffected <> 1")
 		return err
 	}
 
@@ -2142,18 +2197,18 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		r.DatabaseID,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying relay", "err", err)
+		core.Error("SetRelay() error modifying relay: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("SetRelay() RowsAffected returned an error")
 		return err
 	}
 
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("SetRelay() RowsAffected <> 1")
 		return err
 	}
 
@@ -2197,10 +2252,10 @@ func (db *SQL) Datacenter(ctx context.Context, datacenterID uint64) (routing.Dat
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "Datacenter() connection with database timed out!")
+		core.Error("Datacenter() connection with database timed out!")
 		return routing.Datacenter{}, err
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "Datacenter() no rows were returned!")
+		core.Error("Datacenter() no rows were returned!")
 		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: hexID}
 	case nil:
 		d := routing.Datacenter{
@@ -2214,7 +2269,7 @@ func (db *SQL) Datacenter(ctx context.Context, datacenterID uint64) (routing.Dat
 			DatabaseID: dc.ID}
 		return d, nil
 	default:
-		level.Error(db.Logger).Log("during", "Datacenter() QueryRow returned an error: %v", err)
+		core.Error("Datacenter() QueryRow returned an error: %v", err)
 		return routing.Datacenter{}, err
 	}
 }
@@ -2254,15 +2309,15 @@ func (db *SQL) DatacenterByDbId(ctx context.Context, databaseID int64) (routing.
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "DatacenterByDbId() connection with the database timed out!")
+		core.Error("DatacenterByDbId() connection with the database timed out!")
 		return routing.Datacenter{}, err
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "DatacenterByDbId() no rows were returned!")
+		core.Error("DatacenterByDbId() no rows were returned!")
 		return routing.Datacenter{}, &DoesNotExistError{resourceType: "datacenter", resourceRef: fmt.Sprintf("%d", databaseID)}
 	case nil:
 		datacenterID, err := strconv.ParseUint(dc.HexID, 16, 64)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "DatacenterByDbId() error parsing hex ID")
+			core.Error("DatacenterByDbId() error parsing hex ID")
 			return routing.Datacenter{}, &HexStringConversionError{hexString: dc.HexID}
 		}
 		d := routing.Datacenter{
@@ -2277,7 +2332,7 @@ func (db *SQL) DatacenterByDbId(ctx context.Context, databaseID int64) (routing.
 		}
 		return d, nil
 	default:
-		level.Error(db.Logger).Log("during", "DatacenterByDbId() QueryRow returned an error: %v", err)
+		core.Error("DatacenterByDbId() QueryRow returned an error: %v", err)
 		return routing.Datacenter{}, err
 	}
 }
@@ -2297,7 +2352,7 @@ func (db *SQL) Datacenters(ctx context.Context) []routing.Datacenter {
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "Datacenters(): QueryContext returned an error", "err", err)
+		core.Error("Datacenters(): QueryContext returned an error: %v", err)
 		return []routing.Datacenter{}
 	}
 	defer rows.Close()
@@ -2310,7 +2365,7 @@ func (db *SQL) Datacenters(ctx context.Context) []routing.Datacenter {
 			&dc.SellerID,
 		)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "Datacenters(): error parsing returned row", "err", err)
+			core.Error("Datacenters(): error parsing returned row: %v", err)
 			return []routing.Datacenter{}
 		}
 
@@ -2356,16 +2411,16 @@ func (db *SQL) RemoveDatacenter(ctx context.Context, id uint64) error {
 		hexID,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error removing datacenter", "err", err)
+		core.Error("RemoveDatacenter() error removing datacenter: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("RemoveDatacenter() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("RemoveDatacenter() RowsAffected <> 1")
 		return err
 	}
 
@@ -2391,7 +2446,7 @@ func (db *SQL) GetDatacenterMapsForBuyer(ctx context.Context, ephemeralBuyerID u
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, querySQL, dbBuyerID)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer(): QueryMultipleRowsRetry returned an error", "err", err)
+		core.Error("GetDatacenterMapsForBuyer(): QueryMultipleRowsRetry returned an error: %v", err)
 		return map[uint64]routing.DatacenterMap{}
 	}
 	defer rows.Close()
@@ -2400,13 +2455,13 @@ func (db *SQL) GetDatacenterMapsForBuyer(ctx context.Context, ephemeralBuyerID u
 		var hexID string
 		err = rows.Scan(&hexID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer(): error parsing returned row", "err", err)
+			core.Error("GetDatacenterMapsForBuyer(): error parsing returned row: %v", err)
 			return map[uint64]routing.DatacenterMap{}
 		}
 
 		dcID, err := strconv.ParseUint(hexID, 16, 64)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "GetDatacenterMapsForBuyer() error parsing datacenter hex ID")
+			core.Error("GetDatacenterMapsForBuyer() error parsing datacenter hex ID")
 			return map[uint64]routing.DatacenterMap{}
 		}
 
@@ -2450,18 +2505,18 @@ func (db *SQL) AddDatacenterMap(ctx context.Context, dcMap routing.DatacenterMap
 	)
 
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding DatacenterMap", "err", err)
+		core.Error("AddDatacenterMap() error adding DatacenterMap: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("AddDatacenterMap() RowsAffected returned an error")
 		return err
 	}
 
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("AddDatacenterMap() RowsAffected <> 1")
 		return err
 	}
 
@@ -2486,7 +2541,7 @@ func (db *SQL) ListDatacenterMaps(ctx context.Context, dcID uint64) map[uint64]r
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, querySQL, hexID)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "ListDatacenterMaps(): QueryContext returned an error", "err", err)
+		core.Error("ListDatacenterMaps(): QueryContext returned an error: %v", err)
 		return map[uint64]routing.DatacenterMap{}
 	}
 	defer rows.Close()
@@ -2494,7 +2549,7 @@ func (db *SQL) ListDatacenterMaps(ctx context.Context, dcID uint64) map[uint64]r
 	for rows.Next() {
 		err = rows.Scan(&sqlMap.BuyerID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "ListDatacenterMaps(): error parsing returned row", "err", err)
+			core.Error("ListDatacenterMaps(): error parsing returned row: %v", err)
 			return map[uint64]routing.DatacenterMap{}
 		}
 
@@ -2529,16 +2584,16 @@ func (db *SQL) RemoveDatacenterMap(ctx context.Context, dcMap routing.Datacenter
 		fmt.Sprintf("%016x", dcMap.DatacenterID),
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error removing datacenter map", "err", err)
+		core.Error("RemoveDatacenterMap() error removing datacenter map: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("RemoveDatacenterMap() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("RemoveDatacenterMap() RowsAffected <> 1")
 		return err
 	}
 
@@ -2590,16 +2645,16 @@ func (db *SQL) AddDatacenter(ctx context.Context, datacenter routing.Datacenter)
 	)
 
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding datacenter", "err", err)
+		core.Error("RemoveDatacenterMap() error adding datacenter: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("RemoveDatacenterMap() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("RemoveDatacenterMap() RowsAffected <> 1")
 		return err
 	}
 
@@ -2652,7 +2707,7 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "RouteShader() connection with the database timed out!")
+		core.Error("RouteShader() connection with the database timed out!")
 		return core.RouteShader{}, err
 	case sql.ErrNoRows:
 		// By default buyers do not have a custom route shader so will not
@@ -2660,7 +2715,7 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 		// to log an error here. However, the return is checked and the
 		// default core.RouteShader is applied to the buyer if an error
 		// is returned.
-		// level.Error(db.Logger).Log("during", "RouteShader() no rows were returned!")
+		// core.Error("RouteShader() no rows were returned!")
 		return core.RouteShader{}, &DoesNotExistError{resourceType: "buyer", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	case nil:
 		routeShader := core.RouteShader{
@@ -2682,13 +2737,13 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 
 		bannedUserList, err := db.BannedUsers(ctx, ephemeralBuyerID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "RouteShader() -> BannedUsers() returned an error")
+			core.Error("RouteShader() -> BannedUsers() returned an error")
 			return core.RouteShader{}, fmt.Errorf("RouteShader() -> BannedUser() returned an error: %v for Buyer %s", err, fmt.Sprintf("%016x", ephemeralBuyerID))
 		}
 		routeShader.BannedUsers = bannedUserList
 		return routeShader, nil
 	default:
-		level.Error(db.Logger).Log("during", "RouteShader() QueryRow returned an error: %v", err)
+		core.Error("RouteShader() QueryRow returned an error: %v", err)
 		return core.RouteShader{}, err
 	}
 }
@@ -2744,7 +2799,7 @@ func (db *SQL) InternalConfig(ctx context.Context, ephemeralBuyerID uint64) (cor
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "InternalConfig() connection with the database timed out!")
+		core.Error("InternalConfig() connection with the database timed out!")
 		return core.InternalConfig{}, err
 	case sql.ErrNoRows:
 		// By default buyers do not have a custom internal config so will not
@@ -2752,7 +2807,7 @@ func (db *SQL) InternalConfig(ctx context.Context, ephemeralBuyerID uint64) (cor
 		// to log an error here. However, the return is checked and the
 		// default core.InternalConfig is applied to the buyer if an error
 		// is returned.
-		// level.Error(db.Logger).Log("during", "InternalConfig() no rows were returned!")
+		// core.Error("InternalConfig() no rows were returned!")
 		return core.InternalConfig{}, &DoesNotExistError{resourceType: "InternalConfig", resourceRef: fmt.Sprintf("%016x", ephemeralBuyerID)}
 	case nil:
 		internalConfig := core.InternalConfig{
@@ -2776,7 +2831,7 @@ func (db *SQL) InternalConfig(ctx context.Context, ephemeralBuyerID uint64) (cor
 		}
 		return internalConfig, nil
 	default:
-		level.Error(db.Logger).Log("during", "InternalConfig() QueryRow returned an error: %v", err)
+		core.Error("InternalConfig() QueryRow returned an error: %v", err)
 		return core.InternalConfig{}, err
 	}
 
@@ -2843,16 +2898,16 @@ func (db *SQL) AddInternalConfig(ctx context.Context, ic core.InternalConfig, ep
 		int64(ephemeralBuyerID),
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding internal config", "err", err)
+		core.Error("AddInternalConfig() error adding internal config: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("AddInternalConfig() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("AddInternalConfig() RowsAffected <> 1")
 		return err
 	}
 
@@ -2876,16 +2931,16 @@ func (db *SQL) RemoveInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		buyerID,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error removing internal config", "err", err)
+		core.Error("RemoveInternalConfig() error removing internal config: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("RemoveInternalConfig() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("RemoveInternalConfig() RowsAffected <> 1")
 		return err
 	}
 
@@ -3049,17 +3104,17 @@ func (db *SQL) UpdateInternalConfig(ctx context.Context, ephemeralBuyerID uint64
 		args...,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying internal_config record", "err", err)
+		core.Error("UpdateInternalConfig() error modifying internal_config record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("UpdateInternalConfig() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("UpdateInternalConfig() RowsAffected <> 1")
 		return err
 	}
 
@@ -3118,16 +3173,16 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 	)
 
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding route shader", "err", err)
+		core.Error("AddRouteShader() error adding route shader: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("AddRouteShader() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("AddRouteShader() RowsAffected <> 1")
 		return err
 	}
 
@@ -3268,17 +3323,17 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		args...,
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying route_shader record", "err", err)
+		core.Error("UpdateRouteShader() error modifying route_shader record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("UpdateRouteShader() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("UpdateRouteShader() RowsAffected <> 1")
 		return err
 	}
 
@@ -3302,16 +3357,16 @@ func (db *SQL) RemoveRouteShader(ctx context.Context, ephemeralBuyerID uint64) e
 	)
 
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error removing route shader", "err", err)
+		core.Error("RemoveRouteShader() error removing route shader: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("RemoveRouteShader() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("RemoveRouteShader() RowsAffected <> 1")
 		return err
 	}
 
@@ -3335,16 +3390,16 @@ func (db *SQL) AddBannedUser(ctx context.Context, ephemeralBuyerID uint64, userI
 		int64(userID), int64(ephemeralBuyerID),
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error adding banned user", "err", err)
+		core.Error("AddBannedUser() error adding banned user: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("AddBannedUser() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("AddBannedUser() RowsAffected <> 1")
 		return err
 	}
 
@@ -3370,16 +3425,16 @@ func (db *SQL) RemoveBannedUser(ctx context.Context, ephemeralBuyerID uint64, us
 		int64(ephemeralBuyerID),
 	)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error removing banned user", "err", err)
+		core.Error("RemoveBannedUser() error removing banned user: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("RemoveBannedUser() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("RemoveBannedUser() RowsAffected <> 1")
 		return err
 	}
 
@@ -3400,7 +3455,7 @@ func (db *SQL) BannedUsers(ctx context.Context, ephemeralBuyerID uint64) (map[ui
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sql, int64(ephemeralBuyerID))
 	if err != nil {
-		level.Error(db.Logger).Log("during", "BannedUsers(): QueryContext returned an error", "err", err)
+		core.Error("BannedUsers(): QueryContext returned an error: %v", err)
 		return bannedUserList, err
 	}
 	defer rows.Close()
@@ -3409,7 +3464,7 @@ func (db *SQL) BannedUsers(ctx context.Context, ephemeralBuyerID uint64) (map[ui
 		var userID int64
 		err := rows.Scan(&userID)
 		if err != nil {
-			level.Error(db.Logger).Log("during", "BannedUsers() error parsing user and buyer IDs", "err", err)
+			core.Error("BannedUsers() error parsing user and buyer IDs: %v", err)
 			return bannedUserList, err
 		}
 
@@ -3506,6 +3561,14 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 		updateSQL.Write([]byte("update buyers set standard_location_fee=$1 where id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 		args = append(args, standardLocationFee, int64(ephemeralBuyerID))
+	case "LookerSeats":
+		lookerSeats, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("LookerSeats: %v is not a valid int64 type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update buyers set looker_seats=$1 where id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, lookerSeats, int64(ephemeralBuyerID))
 	case "ShortName":
 		shortName, ok := value.(string)
 		if !ok {
@@ -3545,17 +3608,17 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying buyer record", "err", err)
+		core.Error("UpdateBuyer() error modifying buyer record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("UpdateBuyer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1")
+		core.Error("UpdateBuyer() RowsAffected <> 1")
 		return err
 	}
 
@@ -3599,17 +3662,17 @@ func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field stri
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying customer record", "err", err)
+		core.Error("UpdateCustomer() error modifying customer record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("UpdateCustomer() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("UpdateCustomer() RowsAffected <> 1")
 		return err
 	}
 
@@ -3663,17 +3726,17 @@ func (db *SQL) UpdateSeller(ctx context.Context, sellerID string, field string, 
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying seller record", "err", err)
+		core.Error("UpdateSeller() error modifying seller record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("UpdateSeller() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("UpdateSeller() RowsAffected <> 1")
 		return err
 	}
 
@@ -3716,17 +3779,17 @@ func (db *SQL) UpdateDatacenter(ctx context.Context, datacenterID uint64, field 
 
 	result, err := ExecRetry(ctx, db, updateSQL, args...)
 	if err != nil {
-		level.Error(db.Logger).Log("during", "error modifying datacenter record", "err", err)
+		core.Error("UpdateDatacenter() error modifying datacenter record: %v", err)
 		return err
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "RowsAffected returned an error", "err", err)
+		core.Error("UpdateDatacenter() RowsAffected returned an error")
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "RowsAffected <> 1", "err", err)
+		core.Error("UpdateDatacenter() RowsAffected <> 1")
 		return err
 	}
 
@@ -3760,15 +3823,15 @@ func (db *SQL) GetDatabaseBinFileMetaData(ctx context.Context) (routing.Database
 
 	switch err {
 	case context.Canceled:
-		level.Error(db.Logger).Log("during", "GetFleetDashboardData() connection with the database timed out!")
+		core.Error("GetFleetDashboardData() connection with the database timed out!")
 		return routing.DatabaseBinFileMetaData{}, err
 	case sql.ErrNoRows:
-		level.Error(db.Logger).Log("during", "GetFleetDashboardData() no rows were returned!")
+		core.Error("GetFleetDashboardData() no rows were returned!")
 		return routing.DatabaseBinFileMetaData{}, err
 	case nil:
 		return dashboardData, nil
 	default:
-		level.Error(db.Logger).Log("during", "GetFleetDashboardData() QueryRow returned an error: %v", err)
+		core.Error("GetFleetDashboardData() QueryRow returned an error: %v", err)
 		return routing.DatabaseBinFileMetaData{}, err
 	}
 }
@@ -3793,16 +3856,1164 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 	)
 
 	if err != nil {
-		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() error adding DatabaseBinFileMetaData", "err", err)
+		core.Error("UpdateDatabaseBinFileMetaData() error adding DatabaseBinFileMetaData: %v", err)
 		return err
 	}
 	rows, err := result.RowsAffected()
 	if err != nil {
-		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() RowsAffected returned an error", "err", err)
+		core.Error("UpdateDatabaseBinFileMetaData() RowsAffected returned an error: %v", err)
 		return err
 	}
 	if rows != 1 {
-		level.Error(db.Logger).Log("during", "UpdateDatabaseBinFileMetaData() RowsAffected <> 1", "err", err)
+		core.Error("UpdateDatabaseBinFileMetaData() RowsAffected <> 1: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
+	var sql bytes.Buffer
+	category := looker.AnalyticsDashboardCategory{}
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+
+	sql.Write([]byte("select id, tab_label, premium, admin_only, seller_only "))
+	sql.Write([]byte("from analytics_dashboard_categories"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		core.Error("GetAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboardCategory{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&category.ID,
+			&category.Label,
+			&category.Premium,
+			&category.Admin,
+			&category.Seller,
+		)
+		if err != nil {
+			core.Error("GetAnalyticsDashboardCategories(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboardCategory{}, err
+		}
+
+		categories = append(categories, category)
+	}
+
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
+	return categories, nil
+}
+
+// GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
+func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
+	var sql bytes.Buffer
+	category := looker.AnalyticsDashboardCategory{}
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+
+	sql.Write([]byte("select id, tab_label, premium, seller_only "))
+	sql.Write([]byte("from analytics_dashboard_categories where premium = true"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		core.Error("GetPremiumAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboardCategory{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&category.ID,
+			&category.Label,
+			&category.Premium,
+			&category.Seller,
+		)
+		if err != nil {
+			core.Error("GetPremiumAnalyticsDashboardCategories(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboardCategory{}, err
+		}
+
+		categories = append(categories, category)
+	}
+
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
+	return categories, nil
+}
+
+// GetFreeAnalyticsDashboardCategories returns all Looker dashboard categories
+func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
+	var sql bytes.Buffer
+	category := looker.AnalyticsDashboardCategory{}
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+
+	sql.Write([]byte("select id, tab_label, premium, seller_only "))
+	sql.Write([]byte("from analytics_dashboard_categories where premium = false"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		core.Error("GetFreeAnalyticsDashboardCategories(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboardCategory{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&category.ID,
+			&category.Label,
+			&category.Premium,
+			&category.Seller,
+		)
+		if err != nil {
+			core.Error("GetFreeAnalyticsDashboardCategories(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboardCategory{}, err
+		}
+
+		categories = append(categories, category)
+	}
+
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
+	return categories, nil
+}
+
+// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) (looker.AnalyticsDashboardCategory, error) {
+	var querySQL bytes.Buffer
+	var row *sql.Row
+	var err error
+
+	category := looker.AnalyticsDashboardCategory{}
+	retryCount := 0
+
+	querySQL.Write([]byte("select id, tab_label, premium, admin_only, seller_only from analytics_dashboard_categories where id = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), id)
+		err = row.Scan(
+			&category.ID,
+			&category.Label,
+			&category.Premium,
+			&category.Admin,
+			&category.Seller,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
+	switch err {
+	case context.Canceled:
+		core.Error("GetAnalyticsDashboardCategoryByID() connection with the database timed out!")
+		return looker.AnalyticsDashboardCategory{}, err
+	case sql.ErrNoRows:
+		core.Error("GetAnalyticsDashboardCategoryByID() no rows were returned!")
+		return looker.AnalyticsDashboardCategory{}, &DoesNotExistError{resourceType: "analytics dashboard category", resourceRef: id}
+	case nil:
+		return category, nil
+	default:
+		core.Error("GetAnalyticsDashboardCategoryByID() QueryRow returned an error: %v", err)
+		return looker.AnalyticsDashboardCategory{}, err
+	}
+}
+
+// GetAnalyticsDashboardCategories returns all Looker dashboard categories
+func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) (looker.AnalyticsDashboardCategory, error) {
+	var querySQL bytes.Buffer
+	var row *sql.Row
+	var err error
+
+	category := looker.AnalyticsDashboardCategory{}
+	retryCount := 0
+
+	querySQL.Write([]byte("select id, tab_label, premium, admin_only, seller_only from analytics_dashboard_categories where tab_label = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), label)
+		err = row.Scan(
+			&category.ID,
+			&category.Label,
+			&category.Premium,
+			&category.Admin,
+			&category.Seller,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
+	switch err {
+	case context.Canceled:
+		core.Error("GetAnalyticsDashboardCategoryByLabel() connection with the database timed out!")
+		return looker.AnalyticsDashboardCategory{}, err
+	case sql.ErrNoRows:
+		core.Error("GetAnalyticsDashboardCategoryByLabel() no rows were returned!")
+		return looker.AnalyticsDashboardCategory{}, &DoesNotExistError{resourceType: "analytics dashboard category", resourceRef: label}
+	case nil:
+		return category, nil
+	default:
+		core.Error("GetAnalyticsDashboardCategoryByLabel() QueryRow returned an error: %v", err)
+		return looker.AnalyticsDashboardCategory{}, err
+	}
+}
+
+// AddAnalyticsDashboardCategory adds a new dashboard category
+func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool, isSeller bool) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("insert into analytics_dashboard_categories (tab_label, premium, admin_only, seller_only) values ($1, $2, $3, $4)"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		label, isPremium, isAdmin, isSeller,
+	)
+	if err != nil {
+		core.Error("AddAnalyticsDashboardCategory() error adding analytics dashboard category: %v", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		core.Error("AddAnalyticsDashboardCategory() RowsAffected returned an error")
+		return err
+	}
+	if rows != 1 {
+		core.Error("AddAnalyticsDashboardCategory() RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// RemoveAnalyticsDashboardCategory remove a dashboard category by ID
+func (db *SQL) RemoveAnalyticsDashboardCategoryByID(ctx context.Context, id int64) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("delete from analytics_dashboard_categories where id = $1"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		id,
+	)
+	if err != nil {
+		core.Error("RemoveAnalyticsDashboardCategoryByID() error removing analytics dashboard category: %v", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		core.Error("RemoveAnalyticsDashboardCategoryByID() RowsAffected returned an error")
+		return err
+	}
+	if rows != 1 {
+		core.Error("RemoveAnalyticsDashboardCategoryByID() RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// RemoveAnalyticsDashboardCategory remove a dashboard category by label
+func (db *SQL) RemoveAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("delete from analytics_dashboard_categories where tab_label = $1"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		label,
+	)
+	if err != nil {
+		core.Error("RemoveAnalyticsDashboardCategoryByID() error removing analytics dashboard category: %v", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		core.Error("RemoveAnalyticsDashboardCategoryByID() RowsAffected returned an error")
+		return err
+	}
+	if rows != 1 {
+		core.Error("RemoveAnalyticsDashboardCategoryByID() RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// UpdateAnalyticsDashboardCategoryByID update dashboard category by id
+func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int64, field string, value interface{}) error {
+	var updateSQL bytes.Buffer
+	var args []interface{}
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	switch field {
+	case "Label":
+		label, ok := value.(string)
+		if !ok || label == "" {
+			return fmt.Errorf("%v is not a valid string or empty", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboard_categories set tab_label=$1 where id=$2"))
+		args = append(args, label, id)
+
+	case "Premium":
+		premium, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboard_categories set premium=$1 where id=$2"))
+		args = append(args, premium, id)
+
+	case "Admin":
+		admin, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboard_categories set admin_only=$1 where id=$2"))
+		args = append(args, admin, id)
+
+	case "Seller":
+		seller, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboard_categories set seller_only=$1 where id=$2"))
+		args = append(args, seller, id)
+
+	default:
+		return fmt.Errorf("field '%v' does not exist on the analytics dashboard category type", field)
+
+	}
+
+	result, err := ExecRetry(ctx, db, updateSQL, args...)
+	if err != nil {
+		core.Error("UpdateAnalyticsDashboardCategoryByID() error modifying relay record: %v", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		core.Error("UpdateAnalyticsDashboardCategoryByID() RowsAffected returned an error")
+		return err
+	}
+	if rows != 1 {
+		core.Error("UpdateAnalyticsDashboardCategoryByID() RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// GetAdminAnalyticsDashboards get all admin looker dashboards
+func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		core.Error("GetAdminAnalyticsDashboards(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboard{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			core.Error("GetAdminAnalyticsDashboards(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		if category.Admin {
+			dashboard.CustomerCode = customer.Code
+			dashboard.Category = category
+
+			dashboards = append(dashboards, dashboard)
+		}
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards, nil
+}
+
+// GetAnalyticsDashboardsByCategoryID get all looker dashboards by category id
+func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboard, error) {
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards where category_id = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql, id)
+	if err != nil {
+		core.Error("GetAnalyticsDashboardsByCategoryID(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboard{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			core.Error("GetAnalyticsDashboardsByCategoryID(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		dashboards = append(dashboards, dashboard)
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards, nil
+}
+
+// GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
+func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) ([]looker.AnalyticsDashboard, error) {
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		core.Error("GetAnalyticsDashboardsByCategoryLabel(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboard{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			core.Error("GetAnalyticsDashboardsByCategoryLabel(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		if dashboard.Category.Label == label {
+			dashboards = append(dashboards, dashboard)
+		}
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards, nil
+}
+
+// GetPremiumAnalyticsDashboards get all premium looker dashboards
+func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		core.Error("GetPremiumAnalyticsDashboards(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboard{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			core.Error("GetPremiumAnalyticsDashboards(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		if dashboard.Category.Premium {
+			dashboards = append(dashboards, dashboard)
+		}
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards, nil
+}
+
+// GetFreeAnalyticsDashboards get all free looker dashboards
+func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards where discovery = false"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		core.Error("GetFreeAnalyticsDashboards(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboard{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			core.Error("GetFreeAnalyticsDashboards(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		if !dashboard.Category.Premium {
+			dashboards = append(dashboards, dashboard)
+		}
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards, nil
+}
+
+// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards where discovery = true"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		core.Error("GetDiscoveryAnalyticsDashboards(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboard{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			core.Error("GetDiscoveryAnalyticsDashboards(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		dashboards = append(dashboards, dashboard)
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards, nil
+}
+
+// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+func (db *SQL) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql)
+	if err != nil {
+		core.Error("GetAnalyticsDashboards(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboard{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			core.Error("GetAnalyticsDashboards(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		dashboards = append(dashboards, dashboard)
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards, nil
+}
+
+// GetAnalyticsDashboardsByLookerID get looker dashboards by looker id
+func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) ([]looker.AnalyticsDashboard, error) {
+	var sql bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards where looker_dashboard_id = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql, id)
+	if err != nil {
+		core.Error("GetAnalyticsDashboardsByLookerID(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboard{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			core.Error("GetAnalyticsDashboardsByLookerID(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		dashboards = append(dashboards, dashboard)
+	}
+
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards, nil
+}
+
+// GetAnalyticsDashboardByID get looker dashboard by id
+func (db *SQL) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.AnalyticsDashboard, error) {
+	var querySQL bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	var row *sql.Row
+	var err error
+
+	dashboard := looker.AnalyticsDashboard{}
+	retryCount := 0
+
+	querySQL.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id from analytics_dashboards where id = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), id)
+		err = row.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
+	switch err {
+	case context.Canceled:
+		core.Error("GetAnalyticsDashboardByID() connection with the database timed out!")
+		return looker.AnalyticsDashboard{}, err
+	case sql.ErrNoRows:
+		core.Error("GetAnalyticsDashboardByID() no rows were returned!")
+		return looker.AnalyticsDashboard{}, &DoesNotExistError{resourceType: "analytics dashboard id", resourceRef: id}
+	case nil:
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		return dashboard, nil
+	default:
+		core.Error("GetAnalyticsDashboardByID() QueryRow returned an error: %v", err)
+		return looker.AnalyticsDashboard{}, err
+	}
+}
+
+// GetAnalyticsDashboardByName get looker dashboard by name
+func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (looker.AnalyticsDashboard, error) {
+	var querySQL bytes.Buffer
+	var customerID int64
+	var categoryID int64
+	var row *sql.Row
+	var err error
+
+	dashboard := looker.AnalyticsDashboard{}
+	retryCount := 0
+
+	querySQL.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id from analytics_dashboards where dashboard_name = $1"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	for retryCount < MAX_RETRIES {
+		row = db.Client.QueryRowContext(ctx, querySQL.String(), name)
+		err = row.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		switch err {
+		case context.Canceled:
+			retryCount = retryCount + 1
+		default:
+			retryCount = MAX_RETRIES
+		}
+	}
+
+	switch err {
+	case context.Canceled:
+		core.Error("GetAnalyticsDashboardByName() connection with the database timed out!")
+		return looker.AnalyticsDashboard{}, err
+	case sql.ErrNoRows:
+		core.Error("GetAnalyticsDashboardByName() no rows were returned!")
+		return looker.AnalyticsDashboard{}, &DoesNotExistError{resourceType: "analytics dashboard name", resourceRef: name}
+	case nil:
+		customer, err := db.CustomerByID(ctx, customerID)
+		if err != nil {
+			return looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.CustomerCode = customer.Code
+		dashboard.Category = category
+
+		return dashboard, nil
+	default:
+		core.Error("GetAnalyticsDashboardByName() QueryRow returned an error: %v", err)
+		return looker.AnalyticsDashboard{}, err
+	}
+}
+
+// AddAnalyticsDashboard adds a new dashboard
+func (db *SQL) AddAnalyticsDashboard(ctx context.Context, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("insert into analytics_dashboards (dashboard_name, looker_dashboard_id, discovery, customer_id, category_id) values ($1, $2, $3, $4, $5)"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		name, lookerID, isDiscover, customerID, categoryID,
+	)
+	if err != nil {
+		core.Error("AddAnalyticsDashboard() error adding analytics dashboard category: %v", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		core.Error("AddAnalyticsDashboard() RowsAffected returned an error")
+		return err
+	}
+	if rows != 1 {
+		core.Error("AddAnalyticsDashboard() RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// RemoveAnalyticsDashboardByID remove looker dashboard by id
+func (db *SQL) RemoveAnalyticsDashboardByID(ctx context.Context, id int64) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("delete from analytics_dashboards where id = $1"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		id,
+	)
+	if err != nil {
+		core.Error("RemoveAnalyticsDashboardByID() error removing analytics dashboard: %v", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		core.Error("RemoveAnalyticsDashboardByID() RowsAffected returned an error")
+		return err
+	}
+	if rows != 1 {
+		core.Error("RemoveAnalyticsDashboardByID() RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// RemoveAnalyticsDashboardByName remove looker dashboard by name
+func (db *SQL) RemoveAnalyticsDashboardByName(ctx context.Context, name string) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("delete from analytics_dashboards where dashboard_name = $1"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		name,
+	)
+	if err != nil {
+		core.Error("RemoveAnalyticsDashboardByName() error removing analytics dashboard: %v", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		core.Error("RemoveAnalyticsDashboardByName() RowsAffected returned an error")
+		return err
+	}
+	if rows != 1 {
+		core.Error("RemoveAnalyticsDashboardByName() RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// RemoveAnalyticsDashboardByLookerID remove looker dashboard by looker id
+func (db *SQL) RemoveAnalyticsDashboardByLookerID(ctx context.Context, id string) error {
+	var sql bytes.Buffer
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sql.Write([]byte("delete from analytics_dashboards where looker_dashboard_id = $1"))
+
+	result, err := ExecRetry(
+		ctx,
+		db,
+		sql,
+		id,
+	)
+	if err != nil {
+		core.Error("RemoveAnalyticsDashboardByLookerID() error removing analytics dashboard: %v", err)
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		core.Error("RemoveAnalyticsDashboardByLookerID() RowsAffected returned an error")
+		return err
+	}
+	if rows != 1 {
+		core.Error("RemoveAnalyticsDashboardByLookerID() RowsAffected <> 1")
+		return err
+	}
+
+	return nil
+}
+
+// UpdateAnalyticsDashboardByID update dashboard by id
+func (db *SQL) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field string, value interface{}) error {
+	var updateSQL bytes.Buffer
+	var args []interface{}
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	switch field {
+	case "Name":
+		name, ok := value.(string)
+		if !ok || name == "" {
+			return fmt.Errorf("%v is not a valid string or is empty", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboards set dashboard_name=$1 where id=$2"))
+		args = append(args, name, id)
+
+	case "LookerID":
+		dashID, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int64 value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboards set looker_dashboard_id=$1 where id=$2"))
+		args = append(args, dashID, id)
+
+	case "Discovery":
+		isDiscovery, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboards set discovery=$1 where id=$2"))
+		args = append(args, isDiscovery, id)
+
+	case "CustomerCode":
+		customerCode, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
+
+		customer, err := db.Customer(ctx, customerCode)
+		if err != nil {
+			return &DoesNotExistError{resourceType: "customer", resourceRef: customerCode}
+		}
+
+		updateSQL.Write([]byte("update analytics_dashboards set customer_id=$1 where id=$2"))
+		args = append(args, customer.DatabaseID, id)
+
+	case "Category":
+		categoryID, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int64 value", value)
+		}
+
+		updateSQL.Write([]byte("update analytics_dashboards set category_id=$1 where id=$2"))
+		args = append(args, categoryID, id)
+
+	default:
+		return fmt.Errorf("field '%v' does not exist on the analytics dashboard type", field)
+	}
+
+	result, err := ExecRetry(ctx, db, updateSQL, args...)
+	if err != nil {
+		core.Error("UpdateAnalyticsDashboardByID() error modifying relay record: %v", err)
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		core.Error("UpdateAnalyticsDashboardByID() RowsAffected returned an error")
+		return err
+	}
+	if rows != 1 {
+		core.Error("UpdateAnalyticsDashboardByID() RowsAffected <> 1")
 		return err
 	}
 

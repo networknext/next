@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/go-kit/kit/log"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport/jsonrpc"
@@ -21,16 +20,16 @@ import (
 func TestAllAccounts(t *testing.T) {
 	t.Parallel()
 	var userManager = storage.NewLocalUserManager()
+	var roleManager = storage.NewLocalRoleManager()
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
-
-	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
+		RoleManager: roleManager,
+		RoleCache:   make(map[string]*management.Role),
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	IDs := []string{
@@ -65,6 +64,24 @@ func TestAllAccounts(t *testing.T) {
 		"Can access the explore tab",
 		"Can access and manage everything in an account.",
 		"Can manage the Network Next system, including access to configstore.",
+	}
+
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Explorer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
 	}
 
 	currentTime := time.Now()
@@ -105,9 +122,9 @@ func TestAllAccounts(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleIDs[0],
-			Name:        &roleNames[0],
-			Description: &roleDescriptions[0],
+			ID:          svc.RoleCache["Explorer"].ID,
+			Name:        svc.RoleCache["Explorer"].Name,
+			Description: svc.RoleCache["Explorer"].Description,
 		},
 	}...)
 
@@ -128,7 +145,7 @@ func TestAllAccounts(t *testing.T) {
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "test", Name: "Test"})
 	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test", ID: 123})
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "test-test", Name: "Test Test"})
-	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test-test", ID: 456})
+	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test-test", ID: 456, LookerSeats: 1})
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "test-test-test", Name: "Test Test Test"})
 	storer.AddBuyer(context.Background(), routing.Buyer{CompanyCode: "test-test-test", ID: 789})
 
@@ -145,9 +162,9 @@ func TestAllAccounts(t *testing.T) {
 
 	userManager.AssignRoles(IDs[0], []*management.Role{
 		{
-			ID:          &roleIDs[0],
-			Name:        &roleNames[0],
-			Description: &roleDescriptions[0],
+			ID:          svc.RoleCache["Explorer"].ID,
+			Name:        svc.RoleCache["Explorer"].Name,
+			Description: svc.RoleCache["Explorer"].Description,
 		},
 	}...)
 
@@ -197,25 +214,25 @@ func TestAllAccounts(t *testing.T) {
 		assert.Equal(t, "Test Test", reply.UserAccounts[0].CompanyName)
 		assert.Equal(t, IDs[1], reply.UserAccounts[0].UserID)
 		assert.Equal(t, fmt.Sprintf("%016x", 456), reply.UserAccounts[0].BuyerID)
-		assert.Equal(t, roleNames[0], *reply.UserAccounts[0].Roles[0].Name)
-		assert.Equal(t, roleIDs[0], *reply.UserAccounts[0].Roles[0].ID)
-		assert.Equal(t, roleDescriptions[0], *reply.UserAccounts[0].Roles[0].Description)
+		assert.Equal(t, svc.RoleCache["Explorer"].GetName(), reply.UserAccounts[0].Roles[0].GetName())
+		assert.Equal(t, svc.RoleCache["Explorer"].GetID(), reply.UserAccounts[0].Roles[0].GetID())
+		assert.Equal(t, svc.RoleCache["Explorer"].GetDescription(), reply.UserAccounts[0].Roles[0].GetDescription())
 	})
 }
 
 func TestUserAccount(t *testing.T) {
 	t.Parallel()
 	var userManager = storage.NewLocalUserManager()
+	var roleManager = storage.NewLocalRoleManager()
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
-
-	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
+		RoleManager: roleManager,
+		RoleCache:   make(map[string]*management.Role, 0),
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	IDs := []string{
@@ -252,6 +269,24 @@ func TestUserAccount(t *testing.T) {
 		"Can manage the Network Next system, including access to configstore.",
 	}
 
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Explorer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
+	}
+
 	currentTime := time.Now()
 
 	userManager.Create(&management.User{
@@ -273,9 +308,9 @@ func TestUserAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[0], []*management.Role{
 		{
-			ID:          &roleIDs[2],
-			Name:        &roleNames[2],
-			Description: &roleDescriptions[2],
+			ID:          svc.RoleCache["Admin"].ID,
+			Name:        svc.RoleCache["Admin"].Name,
+			Description: svc.RoleCache["Admin"].Description,
 		},
 	}...)
 
@@ -298,9 +333,9 @@ func TestUserAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleIDs[0],
-			Name:        &roleNames[0],
-			Description: &roleDescriptions[0],
+			ID:          svc.RoleCache["Explorer"].ID,
+			Name:        svc.RoleCache["Explorer"].Name,
+			Description: svc.RoleCache["Explorer"].Description,
 		},
 	}...)
 
@@ -320,9 +355,9 @@ func TestUserAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[2], []*management.Role{
 		{
-			ID:          &roleIDs[0],
-			Name:        &roleNames[0],
-			Description: &roleDescriptions[0],
+			ID:          svc.RoleCache["Explorer"].ID,
+			Name:        svc.RoleCache["Explorer"].Name,
+			Description: svc.RoleCache["Explorer"].Description,
 		},
 	}...)
 
@@ -465,16 +500,16 @@ func TestUserAccount(t *testing.T) {
 func TestDeleteAccount(t *testing.T) {
 	t.Parallel()
 	var userManager = storage.NewLocalUserManager()
+	var roleManager = storage.NewLocalRoleManager()
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
-
-	logger := log.NewNopLogger()
 
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
+		RoleManager: roleManager,
+		RoleCache:   make(map[string]*management.Role, 0),
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	IDs := []string{
@@ -511,6 +546,24 @@ func TestDeleteAccount(t *testing.T) {
 		"Can manage the Network Next system, including access to configstore.",
 	}
 
+	svc.RoleCache["Admin"] = &management.Role{
+		Description: &roleDescriptions[2],
+		ID:          &roleIDs[2],
+		Name:        &roleNames[2],
+	}
+
+	svc.RoleCache["Owner"] = &management.Role{
+		Description: &roleDescriptions[1],
+		ID:          &roleIDs[1],
+		Name:        &roleNames[1],
+	}
+
+	svc.RoleCache["Explorer"] = &management.Role{
+		Description: &roleDescriptions[0],
+		ID:          &roleIDs[0],
+		Name:        &roleNames[0],
+	}
+
 	userManager.Create(&management.User{
 		ID:    &IDs[0],
 		Email: &emails[0],
@@ -527,9 +580,9 @@ func TestDeleteAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[0], []*management.Role{
 		{
-			ID:          &roleIDs[2],
-			Name:        &roleNames[2],
-			Description: &roleDescriptions[2],
+			ID:          svc.RoleCache["Admin"].ID,
+			Name:        svc.RoleCache["Admin"].Name,
+			Description: svc.RoleCache["Admin"].Description,
 		},
 	}...)
 
@@ -549,9 +602,9 @@ func TestDeleteAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[1], []*management.Role{
 		{
-			ID:          &roleIDs[0],
-			Name:        &roleNames[0],
-			Description: &roleDescriptions[0],
+			ID:          svc.RoleCache["Explorer"].ID,
+			Name:        svc.RoleCache["Explorer"].Name,
+			Description: svc.RoleCache["Explorer"].Description,
 		},
 	}...)
 
@@ -571,9 +624,9 @@ func TestDeleteAccount(t *testing.T) {
 
 	userManager.AssignRoles(IDs[2], []*management.Role{
 		{
-			ID:          &roleIDs[0],
-			Name:        &roleNames[0],
-			Description: &roleDescriptions[0],
+			ID:          svc.RoleCache["Explorer"].ID,
+			Name:        svc.RoleCache["Explorer"].Name,
+			Description: svc.RoleCache["Explorer"].Description,
 		},
 	}...)
 
@@ -651,11 +704,8 @@ func TestAddUserAccount(t *testing.T) {
 	var roleManager = storage.NewLocalRoleManager()
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		JobManager:  &jobManager,
-		Logger:      logger,
 		RoleCache:   make(map[string]*management.Role),
 		RoleManager: roleManager,
 		Storage:     &storer,
@@ -878,11 +928,8 @@ func TestAllRoles(t *testing.T) {
 		"Can manage the Network Next system, including access to configstore.",
 	}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		JobManager:  &jobManager,
-		Logger:      logger,
 		RoleCache:   make(map[string]*management.Role),
 		RoleManager: roleManager,
 		Storage:     &storer,
@@ -907,6 +954,9 @@ func TestAllRoles(t *testing.T) {
 		Name:        &roleNames[0],
 	}
 
+	storer.AddCustomer(context.Background(), routing.Customer{Code: "test", Name: "Test"})
+	storer.AddBuyer(context.Background(), routing.Buyer{ID: uint64(111), CompanyCode: "test", LookerSeats: 1})
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	t.Run("failure - insufficient privileges", func(t *testing.T) {
@@ -920,9 +970,11 @@ func TestAllRoles(t *testing.T) {
 		reqContext = context.WithValue(reqContext, middleware.Keys.RolesKey, []string{
 			"Owner",
 		})
+		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.RolesReply
 		err := svc.AllRoles(req, &jsonrpc.RolesArgs{}, &reply)
+
 		assert.NoError(t, err)
 		assert.Equal(t, 2, len(reply.Roles))
 		assert.Equal(t, svc.RoleCache["Explorer"].GetName(), reply.Roles[0].GetName())
@@ -996,15 +1048,12 @@ func TestUserRoles(t *testing.T) {
 		"Lenny",
 	}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		RoleManager: roleManager,
 		RoleCache:   make(map[string]*management.Role),
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	svc.RoleCache["Admin"] = &management.Role{
@@ -1119,11 +1168,8 @@ func TestUpdateUserRoles(t *testing.T) {
 		"Lenny",
 	}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		JobManager:  &jobManager,
-		Logger:      logger,
 		RoleCache:   make(map[string]*management.Role),
 		RoleManager: roleManager,
 		Storage:     &storer,
@@ -1282,11 +1328,8 @@ func TestSetupCompanyAccount(t *testing.T) {
 		"Can manage the Network Next system, including access to configstore.",
 	}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		JobManager:  &jobManager,
-		Logger:      logger,
 		RoleCache:   make(map[string]*management.Role),
 		RoleManager: roleManager,
 		Storage:     &storer,
@@ -1464,13 +1507,10 @@ func TestUpdateAccountDetails(t *testing.T) {
 		Name: &names[0],
 	})
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1632,13 +1672,10 @@ func TestSendVerificationEmail(t *testing.T) {
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -1683,13 +1720,10 @@ func TestUpdateAutoSignupDomains(t *testing.T) {
 	var jobManager = storage.LocalJobManager{}
 	var storer = storage.InMemory{}
 
-	logger := log.NewNopLogger()
-
 	svc := jsonrpc.AuthService{
 		UserManager: userManager,
 		JobManager:  &jobManager,
 		Storage:     &storer,
-		Logger:      logger,
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
