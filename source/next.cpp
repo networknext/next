@@ -6630,9 +6630,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     // upgraded direct packet (255)
 
-    if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes <= NEXT_MTU + 10 && from_server_address )
+    if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes > 11 && packet_bytes <= NEXT_MTU + 11 && from_server_address )
     {
-        const uint8_t * p = packet_data + 1;
+        const uint8_t * p = packet_data;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
         
@@ -6665,8 +6665,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
-        notify->payload_bytes = packet_bytes - 10;
-        memcpy( notify->payload_data, packet_data + 10, size_t(packet_bytes) - 10 );
+        notify->payload_bytes = packet_bytes - 11;
+        memcpy( notify->payload_data, packet_data + 9, size_t(notify->payload_bytes) );
         {
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );            
@@ -6742,16 +6742,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         // IMPORTANT: Cache upgrade response and keep sending it until we get an upgrade confirm.
         // Without this, under very rare packet loss conditions it's possible for the client to get
         // stuck in an undefined state.
-
-        // todo: we need real data here
-        uint8_t magic[8];
-        uint8_t from_address[4];
-        uint8_t to_address[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address, 4 );
-        next_random_bytes( to_address, 4 );
-        uint16_t from_port = uint16_t( 1000 );
-        uint16_t to_port = uint16_t( 5000 );
 
         client->upgrade_response_packet_bytes = 0;
         const int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, NULL, NULL, NULL, NULL, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
@@ -11913,7 +11903,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     // direct packet (255)
 
-    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 1 + 15 + 9 + 2 && packet_bytes <= 1 + 15 + 9 + 2 + NEXT_MTU )
+    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 11 && packet_bytes <= 11 + NEXT_MTU )
     {
         const uint8_t * p = packet_data;
 
@@ -11956,10 +11946,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = *from;
-        notify->packet_bytes = packet_bytes - 10;
+        notify->packet_bytes = packet_bytes - 11;
         next_assert( notify->packet_bytes > 0 );
         next_assert( notify->packet_bytes <= NEXT_MTU );
-        memcpy( notify->packet_data, packet_data + 10, size_t(notify->packet_bytes) );
+        memcpy( notify->packet_data, packet_data + 9, size_t(notify->packet_bytes) );
         {
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify );            
