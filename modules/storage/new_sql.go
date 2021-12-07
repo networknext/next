@@ -66,7 +66,6 @@ func NewSQLite3(ctx context.Context, logger log.Logger) (*SQL, error) {
 
 	db := &SQL{
 		Client: sqlite3,
-		Logger: logger,
 	}
 
 	// populate the db with some data from dev
@@ -120,7 +119,6 @@ func NewSQLite3Staging(ctx context.Context, logger log.Logger) (*SQL, error) {
 
 	db := &SQL{
 		Client: sqlite3,
-		Logger: logger,
 	}
 
 	// populate the db with basic tables
@@ -175,7 +173,6 @@ func NewPostgreSQL(
 
 	db := &SQL{
 		Client: pgsql,
-		Logger: logger,
 	}
 
 	return db, nil
