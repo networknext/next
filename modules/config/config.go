@@ -18,7 +18,7 @@ const (
 )
 
 // NumFeatures is always one more than the highest FeatureEnum
-var NumFeatures = 11
+var NumFeatures = 12
 
 type Feature struct {
 	Name        string
