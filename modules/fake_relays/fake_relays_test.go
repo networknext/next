@@ -139,7 +139,7 @@ func TestSendRequests(t *testing.T) {
 		gatewayAddr := strings.TrimLeft(svr.URL, "http://")
 		assert.NotEqual(t, gatewayAddr, svr.URL)
 
-		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 3, fakeRelayMetrics)
+		relays, err := NewFakeRelays(1, relayPublicKey, gatewayAddr, 4, fakeRelayMetrics)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(relays))
 		assert.NotNil(t, relays[0])

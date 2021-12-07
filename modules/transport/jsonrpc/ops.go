@@ -584,6 +584,7 @@ type relay struct {
 	Longitude           float64               `json:"longitude"`
 	NICSpeedMbps        int32                 `json:"nicSpeedMbps"`
 	IncludedBandwidthGB int32                 `json:"includedBandwidthGB"`
+	MaxBandwidthMbps    int32                 `json:"maxBandwidthMbps"`
 	State               string                `json:"state"`
 	ManagementAddr      string                `json:"management_addr"`
 	SSHUser             string                `json:"ssh_user"`
@@ -625,6 +626,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Longitude:           float64(r.Datacenter.Location.Longitude),
 			NICSpeedMbps:        r.NICSpeedMbps,
 			IncludedBandwidthGB: r.IncludedBandwidthGB,
+			MaxBandwidthMbps:    r.MaxBandwidthMbps,
 			ManagementAddr:      r.ManagementAddr,
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
@@ -730,6 +732,7 @@ func (s *OpsService) RelaysWithEgressPriceOverride(r *http.Request, args *RelayE
 			Longitude:           float64(r.Datacenter.Location.Longitude),
 			NICSpeedMbps:        r.NICSpeedMbps,
 			IncludedBandwidthGB: r.IncludedBandwidthGB,
+			MaxBandwidthMbps:    r.MaxBandwidthMbps,
 			ManagementAddr:      r.ManagementAddr,
 			SSHUser:             r.SSHUser,
 			SSHPort:             r.SSHPort,
@@ -798,6 +801,7 @@ type JSAddRelayArgs struct {
 	DatacenterID        string `json:"datacenter"`
 	NICSpeedMbps        int64  `json:"nicSpeedMbps"`
 	IncludedBandwidthGB int64  `json:"includedBandwidthGB"`
+	MaxBandwidthMbps    int64  `json:"maxBandwidthMbps"`
 	ManagementAddr      string `json:"management_addr"`
 	SSHUser             string `json:"ssh_user"`
 	SSHPort             int64  `json:"ssh_port"`
@@ -862,6 +866,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		Datacenter:          datacenter,
 		NICSpeedMbps:        int32(args.NICSpeedMbps),
 		IncludedBandwidthGB: int32(args.IncludedBandwidthGB),
+		MaxBandwidthMbps:    int32(args.MaxBandwidthMbps),
 		State:               routing.RelayStateEnabled,
 		ManagementAddr:      args.ManagementAddr,
 		SSHUser:             args.SSHUser,
@@ -1407,6 +1412,7 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		Longitude:           float64(routingRelay.Datacenter.Location.Longitude),
 		NICSpeedMbps:        routingRelay.NICSpeedMbps,
 		IncludedBandwidthGB: routingRelay.IncludedBandwidthGB,
+		MaxBandwidthMbps:    routingRelay.MaxBandwidthMbps,
 		ManagementAddr:      routingRelay.ManagementAddr,
 		SSHUser:             routingRelay.SSHUser,
 		SSHPort:             routingRelay.SSHPort,
@@ -1452,7 +1458,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 	// sort out the value type here (comes from the next tool and javascript UI as a string)
 	switch args.Field {
 	// sent to storer as float64
-	case "NICSpeedMbps", "IncludedBandwidthGB", "ContractTerm", "SSHPort", "MaxSessions":
+	case "NICSpeedMbps", "IncludedBandwidthGB", "MaxBandwidthMbps", "ContractTerm", "SSHPort", "MaxSessions":
 		newfloat, err := strconv.ParseFloat(args.Value, 64)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid numeric type", args.Value)
