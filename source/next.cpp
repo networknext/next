@@ -6853,8 +6853,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
-        // todo: update to new packet header structure
-
+        // todo: is this still correct?
         if ( packet_bytes != NEXT_HEADER_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. bad packet size" );
@@ -13679,9 +13678,6 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
         return 0;
     }
 
-    // todo
-    printf( "server session id = %" PRIx64 "\n", session_id );
-
     return session_id;
 }
 
@@ -13863,6 +13859,8 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         {
             // send over network next
 
+            // todo: convert to next_write_server_to_client_packet
+
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
             
             if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, session_private_key, next_packet_data ) != NEXT_OK )
@@ -13882,15 +13880,27 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         {
             // direct packet
 
-            // todo: replace this with next_write_direct_packet
+            // todo: we need real data here
+            uint8_t magic[8];
+            uint8_t from_address_data[4];
+            uint8_t to_address_data[4];
+            next_random_bytes( magic, 8 );
+            next_random_bytes( from_address_data, 4 );
+            next_random_bytes( to_address_data, 4 );
+            uint16_t from_port = uint16_t( 1000 );
+            uint16_t to_port = uint16_t( 5000 );
 
-            uint8_t buffer[NEXT_MAX_PACKET_BYTES];
-            uint8_t * p = buffer;
-            next_write_uint8( &p, NEXT_DIRECT_PACKET );
-            next_write_uint8( &p, open_session_sequence );
-            next_write_uint64( &p, send_sequence );
-            memcpy( buffer+10, packet_data, packet_bytes );
-            next_platform_socket_send_packet( server->internal->socket, to_address, buffer, size_t(packet_bytes) + 10 );
+            uint8_t direct_packet_data[NEXT_MAX_PACKET_BYTES];
+
+            int direct_packet_bytes = next_write_direct_packet( direct_packet_data, open_session_sequence, send_sequence, packet_data, packet_bytes, magic, from_address_data, 4, from_port, to_address_data, 4, to_port );
+
+            next_assert( direct_packet_bytes >= 0 );
+            next_assert( direct_packet_bytes <= NEXT_MTU + 27 );
+
+            next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( direct_packet_data, magic, from_address_data, 4, from_port, to_address_data, 4, to_port, direct_packet_bytes ) );
+
+            next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, size_t(packet_bytes) );
         }
     }
     else
