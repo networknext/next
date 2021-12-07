@@ -288,6 +288,12 @@ export default class UserManagement extends Vue {
         .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
         .then((response: any) => {
           account.roles = response.roles
+          if (account.email === this.$store.getters.userProfile.email) {
+            this.$authService.refreshToken()
+            if (account.roles.indexOf('Owner') === -1) {
+              this.$router.push('/map')
+            }
+          }
           this.$refs.editUserAlert.setMessage('User account edited successfully')
           this.$refs.editUserAlert.setAlertType(AlertType.SUCCESS)
           setTimeout(() => {
