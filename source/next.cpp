@@ -7908,23 +7908,26 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
-        next_assert( ( size_t(packet_data) % 4 ) == 0 );
-
-        // todo: this needs to be replaced with next_write_ping_packet
-
-        if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_PING_PACKET, sequence, session_id, session_version, private_key, packet_data ) != NEXT_OK )
-        {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write next ping packet" );
-            return;
-        }
+        // todo: we need real data here
+        uint8_t magic[8];
+        uint8_t from_address_data[4];
+        uint8_t to_address_data[4];
+        next_random_bytes( magic, 8 );
+        next_random_bytes( from_address_data, 4 );
+        next_random_bytes( to_address_data, 4 );
+        uint16_t from_address_port = uint16_t( 1000 );
+        uint16_t to_address_port = uint16_t( 5000 );
+        int from_address_bytes = 4;
+        int to_address_bytes = 4;
 
         const uint64_t ping_sequence = next_ping_history_ping_sent( &client->next_ping_history, current_time );
 
-        uint8_t * p = packet_data + NEXT_HEADER_BYTES;
+        int packet_bytes = next_write_ping_packet( packet_data, sequence, session_id, session_version, private_key, ping_sequence, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
-        next_write_uint64( &p, ping_sequence );
+        next_assert( packet_bytes > 0 );
 
-        int packet_bytes = NEXT_HEADER_BYTES + 8;
+        next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
         next_platform_socket_send_packet( client->socket, &to, packet_data, packet_bytes );
 
@@ -17637,7 +17640,7 @@ void test_relay_ping_packet()
         next_check( packet_data[0] == NEXT_RELAY_PING_PACKET );
 
         // todo: read back ping sequence and verify
-        
+
         // todo: read back ping session id and verify
         
         next_check( memcmp( packet_data + 1 + 15 + 8 + 8, ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES ) == 0 );
