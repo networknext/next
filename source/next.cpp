@@ -13277,19 +13277,31 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
 
-        // todo: update to new write_backend_packet
-        /*
+        // todo: we need most recent magic here
+        uint8_t magic[8];
+        memset( magic, 0, sizeof(magic) );
+
+        uint8_t from_address_data[32];
+        uint8_t to_address_data[32];
+        uint16_t from_address_port;
+        uint16_t to_address_port;
+        int from_address_bytes;
+        int to_address_bytes;
+
+        next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
         int packet_bytes = 0;
-        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server update packet for backend" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init update packet for backend" );
             return;
         }
 
-        // todo: packet filter
+        next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
         next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
-        */
 
         server->last_backend_server_update = current_time;
 
