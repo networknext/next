@@ -11968,8 +11968,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     next_server_internal_verify_sentinels( server );
 
-    // todo: we need to test against both current and previous magic here
-
     // todo: we need magic here
     uint8_t magic[8];
     memset( magic, 0, sizeof(magic) );
@@ -11989,6 +11987,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server basic packet filter dropped packet" );
         return;
     }
+
+    // todo: we need to test against *both* current and previous magic here
 
     if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
     {
@@ -12446,13 +12446,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_REQUEST_PACKET )
     {
-        if ( packet_bytes != 1 + 15 + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES + 2 )
+        if ( packet_bytes != NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. wrong size" );
             return;
         }
 
-        uint8_t * buffer = packet_data + 16;
+        uint8_t * buffer = packet_data;
         next_route_token_t route_token;
         if ( next_read_encrypted_route_token( &buffer, &route_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
         {
@@ -12495,25 +12495,33 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->most_recent_session_version = route_token.session_version;
         }
 
-        // todo: convert to write_route_response packet
-
-        /*
-        uint8_t response[NEXT_MAX_PACKET_BYTES];
-
         uint64_t session_send_sequence = entry->special_send_sequence++;
-        session_send_sequence |= uint64_t(1) << 63;
-        session_send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_ROUTE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->pending_route_session_version, entry->pending_route_private_key, response ) != NEXT_OK )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server failed to write next route response packet" );
-            return;
-        }
+        // todo: get current magic
+        uint8_t magic[8];
 
-        next_platform_socket_send_packet( server->socket, from, response, NEXT_HEADER_BYTES );
+        uint8_t from_address_data[4];
+        uint8_t to_address_data[4];
+        uint16_t from_address_port;
+        uint16_t to_address_port;
+        int from_address_bytes;
+        int to_address_bytes;
+
+        next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( from, to_address_data, &to_address_bytes, &to_address_port );
+
+        uint8_t response_data[NEXT_MAX_PACKET_BYTES];
+
+        int response_bytes = next_write_route_response_packet( response_data, session_send_sequence, entry->session_id, entry->pending_route_session_version, entry->pending_route_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+
+        next_assert( response_bytes > 0 );
+
+        next_assert( next_basic_packet_filter( response_data, response_bytes ) );
+        next_assert( next_advanced_packet_filter( response_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, response_bytes ) );
+
+        next_platform_socket_send_packet( server->socket, from, response_data, response_bytes );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route response packet to relay for session %" PRIx64, entry->session_id );
-        */
 
         return;
     }
@@ -12522,13 +12530,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
     {
-        if ( packet_bytes != 1 + 15 + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES + 2 )
+        if ( packet_bytes != NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet. wrong size" );
             return;
         }
 
-        uint8_t * buffer = packet_data + 16;
+        uint8_t * buffer = packet_data;
         next_continue_token_t continue_token;
         if ( next_read_encrypted_continue_token( &buffer, &continue_token, next_router_public_key, server->server_route_private_key ) != NEXT_OK )
         {
@@ -12567,26 +12575,34 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         entry->current_route_expire_time += NEXT_SLICE_SECONDS;
         entry->has_previous_route = false;
 
-        // todo: next_write_continue_response_packet
-
-        /*
-        uint8_t response[NEXT_MAX_PACKET_BYTES];
-
         uint64_t session_send_sequence = entry->special_send_sequence++;
-        session_send_sequence |= uint64_t(1) << 63;
-        session_send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_CONTINUE_RESPONSE_PACKET, session_send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, response ) != NEXT_OK )
-        {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write next continue response packet" );
-            return;
-        }
+        // todo: get current magic
+        uint8_t magic[8];
 
-        next_platform_socket_send_packet( server->socket, from, response, NEXT_HEADER_BYTES );
+        uint8_t from_address_data[4];
+        uint8_t to_address_data[4];
+        uint16_t from_address_port;
+        uint16_t to_address_port;
+        int from_address_bytes;
+        int to_address_bytes;
+
+        next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( from, to_address_data, &to_address_bytes, &to_address_port );
+
+        uint8_t response_data[NEXT_MAX_PACKET_BYTES];
+
+        int response_bytes = next_write_continue_response_packet( packet_data, session_send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+
+        next_assert( response_bytes > 0 );
+
+        next_assert( next_basic_packet_filter( response_data, response_bytes ) );
+        next_assert( next_advanced_packet_filter( response_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, response_bytes ) );
+
+        next_platform_socket_send_packet( server->socket, from, response_data, response_bytes );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent continue response packet to relay for session %" PRIx64, entry->session_id );
-        */
-
+        
         return;
     }
 
