@@ -1939,7 +1939,9 @@ type AnalyticsDashboardMap struct {
 	Discovery bool                              `json:"discovery"`
 }
 
-type FetchAllAnalyticsDashboardsArgs struct{}
+type FetchAllAnalyticsDashboardsArgs struct {
+	CustomerCode string `json:"customer_code"`
+}
 
 type FetchAllAnalyticsDashboardsReply struct {
 	Dashboards map[string]AnalyticsDashboardMap `json:"dashboards"`
@@ -1986,7 +1988,9 @@ func (s *OpsService) FetchAnalyticsDashboards(r *http.Request, args *FetchAllAna
 			})
 		}
 
-		reply.Dashboards[d.Name] = dashboardInfo
+		if args.CustomerCode == "" || args.CustomerCode == dbCustomer.Code {
+			reply.Dashboards[d.Name] = dashboardInfo
+		}
 	}
 
 	return nil
@@ -2198,18 +2202,23 @@ func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnal
 	return nil
 }
 
+type AdminDashboard struct {
+	URL  string `json:"url"`
+	Live bool   `json:"live"`
+}
+
 type FetchAdminDashboardsArgs struct {
 	CompanyCode string `json:"company_code"`
 	Origin      string `json:"origin"`
 }
 
 type FetchAdminDashboardsReply struct {
-	Dashboards map[string][]string `json:"dashboards"`
+	Dashboards map[string][]AdminDashboard `json:"dashboards"`
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
 func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashboardsArgs, reply *FetchAdminDashboardsReply) error {
-	reply.Dashboards = make(map[string][]string, 0)
+	reply.Dashboards = make(map[string][]AdminDashboard, 0)
 
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
@@ -2243,14 +2252,7 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 
 	customerCode := args.CompanyCode
 
-	dashboards, err := s.Storage.GetAdminAnalyticsDashboards(ctx)
-	if err != nil {
-		core.Error("FetchAdminDashboards(): %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
-	}
-
-	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
+	dashboards, err := s.Storage.GetAnalyticsDashboards(ctx)
 	if err != nil {
 		core.Error("FetchAdminDashboards(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
@@ -2258,17 +2260,20 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 	}
 
 	for _, dashboard := range dashboards {
-		if dashboard.CustomerCode == customerCode && !dashboard.Discovery && !dashboard.Category.Admin && (!dashboard.Category.Premium || (buyer.Analytics && dashboard.Category.Premium)) {
+		if dashboard.CustomerCode == customerCode {
 			_, ok := reply.Dashboards[dashboard.Category.Label]
 			if !ok {
-				reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
+				reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
 			}
 			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, customerCode, args.Origin)
 			if err != nil {
 				continue
 			}
 
-			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
+			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], AdminDashboard{
+				URL:  url,
+				Live: !dashboard.Category.Admin,
+			})
 		}
 	}
 
