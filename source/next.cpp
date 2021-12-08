@@ -12065,8 +12065,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
-    // todo: fix
-    /*
     // backend response packets
 
     if ( server->state == NEXT_SERVER_STATE_INITIALIZING || server->state == NEXT_SERVER_STATE_INITIALIZED )
@@ -12499,6 +12497,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         // todo: convert to write_route_response packet
 
+        /*
         uint8_t response[NEXT_MAX_PACKET_BYTES];
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
@@ -12514,6 +12513,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_platform_socket_send_packet( server->socket, from, response, NEXT_HEADER_BYTES );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route response packet to relay for session %" PRIx64, entry->session_id );
+        */
 
         return;
     }
@@ -12569,6 +12569,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         // todo: next_write_continue_response_packet
 
+        /*
         uint8_t response[NEXT_MAX_PACKET_BYTES];
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
@@ -12584,6 +12585,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_platform_socket_send_packet( server->socket, from, response, NEXT_HEADER_BYTES );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent continue response packet to relay for session %" PRIx64, entry->session_id );
+        */
 
         return;
     }
@@ -12606,8 +12608,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             // out an error when the packet has already been received on the direct path, when multipath is enabled.
             return;
         }
-
-        // todo: next_read_client_to_server_packet
 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
@@ -12633,14 +12633,15 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_PING_PACKET )
     {
-        if ( packet_bytes != NEXT_HEADER_BYTES + 8 ) // todo: this is wrong
+        if ( packet_bytes != NEXT_HEADER_BYTES + 8 + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. bad packet size" );            
             return;
         }
 
-        // todo: next_read_ping_packet
+        // todo: next_write_pong_packet
 
+        /*
         next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_data, packet_bytes );
         if ( !entry )
         {
@@ -12661,6 +12662,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         }
 
         next_platform_socket_send_packet( server->socket, from, packet_data, NEXT_HEADER_BYTES + 8 ); // todo: size
+        */
 
         return;
     }
@@ -12819,7 +12821,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         return;
     }
-    */
 }
 
 void next_server_internal_process_passthrough_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
