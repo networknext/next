@@ -16428,7 +16428,12 @@ void test_address_data_none()
 {
     next_address_t address;
     next_check( address.type == NEXT_ADDRESS_NONE );
-    // todo
+    uint8_t address_data[32];
+    int address_bytes = 0;
+    uint16_t address_port = 0;
+    next_address_data( &address, address_data, &address_bytes, &address_port );
+    next_check( address_bytes == 0 );
+    next_check( address_port == 0 );
 }
 
 void test_address_data_ipv4()
@@ -16436,7 +16441,16 @@ void test_address_data_ipv4()
     next_address_t address;
     next_address_parse( &address, "127.0.0.1:50000" );
     next_check( address.type == NEXT_ADDRESS_IPV4 );
-    // todo
+    uint8_t address_data[32];
+    int address_bytes = 0;
+    uint16_t address_port = 0;
+    next_address_data( &address, address_data, &address_bytes, &address_port );
+    next_check( address_data[0] == 127 );
+    next_check( address_data[1] == 0 );
+    next_check( address_data[2] == 0 );
+    next_check( address_data[3] == 1 );
+    next_check( address_bytes == 4 );
+    next_check( address_port == 50000 );
 }
 
 #if NEXT_PLATFORM_HAS_IPV6
@@ -16446,7 +16460,28 @@ void test_address_data_ipv6()
     next_address_t address;
     next_address_parse( &address, "[2001:db8:3333:4444:5555:6666:7777:8888]:50000" );
     next_check( address.type == NEXT_ADDRESS_IPV6 );
-    // todo
+    uint8_t address_data[32];
+    int address_bytes = 0;
+    uint16_t address_port = 0;
+    next_address_data( &address, address_data, &address_bytes, &address_port );
+    next_check( address_data[0] == 32 );
+    next_check( address_data[1] == 1 );
+    next_check( address_data[2] == 13 );
+    next_check( address_data[3] == 184 );
+    next_check( address_data[4] == 51 );
+    next_check( address_data[5] == 51 );
+    next_check( address_data[6] == 68 );
+    next_check( address_data[7] == 68 );
+    next_check( address_data[8] == 85 );
+    next_check( address_data[9] == 85 );
+    next_check( address_data[10] == 102 );
+    next_check( address_data[11] == 102 );
+    next_check( address_data[12] == 119 );
+    next_check( address_data[13] == 119 );
+    next_check( address_data[14] == 136 );
+    next_check( address_data[15] == 136 );
+    next_check( address_bytes == 16 );
+    next_check( address_port == 50000 );
 }
 
 #endif // #if NEXT_PLATFORM_HAS_IPV6
