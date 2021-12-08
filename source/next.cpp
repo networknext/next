@@ -4950,7 +4950,7 @@ void next_relay_manager_exclude( next_relay_manager_t * manager, bool * near_rel
 
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket )
 {
-    // todo: we need magic in as a parameter
+    // todo: we need magic passed in as a parameter
     uint8_t magic[8];
     memset( magic, 0, sizeof(magic) );
 
@@ -5798,6 +5798,13 @@ void next_route_manager_direct_route( next_route_manager_t * route_manager, bool
 
 void next_route_manager_begin_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
 {
+    // todo: we need magic passed in as a parameter
+    uint8_t magic[8];
+    memset( magic, 0, sizeof(magic) );
+
+    // todo: we need the client external address passed in as a paremeter
+    next_address_t client_external_address;
+
     next_route_manager_verify_sentinels( route_manager );
 
     next_assert( tokens );
@@ -5834,17 +5841,17 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     const uint8_t * token_data = tokens + NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
     const int token_bytes = ( num_tokens - 1 ) * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES;
 
-    // todo: we need real data here
-    uint8_t magic[8];
-    uint8_t from_address[4];
-    uint8_t to_address[4];
-    next_random_bytes( magic, 8 );
-    next_random_bytes( from_address, 4 );
-    next_random_bytes( to_address, 4 );
-    uint16_t from_port = uint16_t( 1000 );
-    uint16_t to_port = uint16_t( 5000 );
+    uint8_t from_address_data[32];
+    uint8_t to_address_data[32];
+    uint16_t from_address_port;
+    uint16_t to_address_port;
+    int from_address_bytes;
+    int to_address_bytes;
 
-    route_manager->route_data.pending_route_request_packet_bytes = next_write_route_request_packet( route_manager->route_data.pending_route_request_packet_data, token_data, token_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+    next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( &route_token.next_address, to_address_data, &to_address_bytes, &to_address_port );
+
+    route_manager->route_data.pending_route_request_packet_bytes = next_write_route_request_packet( route_manager->route_data.pending_route_request_packet_data, token_data, token_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
     next_assert( route_manager->route_data.pending_route_request_packet_bytes > 0 );
     next_assert( route_manager->route_data.pending_route_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
@@ -5853,7 +5860,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     const int packet_bytes = route_manager->route_data.pending_route_request_packet_bytes;
 
     next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-    next_assert( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+    next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
     (void) packet_data;
     (void) packet_bytes;
@@ -5861,6 +5868,13 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
 
 void next_route_manager_continue_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
 {
+    // todo: we need magic passed in as a parameter
+    uint8_t magic[8];
+    memset( magic, 0, sizeof(magic) );
+
+    // todo: we need the client external address passed in as a paremeter
+    next_address_t client_external_address;
+
     next_route_manager_verify_sentinels( route_manager );
 
     next_assert( tokens );
@@ -5898,20 +5912,20 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     route_manager->route_data.pending_continue_start_time = next_time();
     route_manager->route_data.pending_continue_last_send_time = -1000.0;
 
-    // todo: need real data
-    uint8_t magic[8];
-    uint8_t from_address[4];
-    uint8_t to_address[4];
-    next_random_bytes( magic, 8 );
-    next_random_bytes( from_address, 4 );
-    next_random_bytes( to_address, 4 );
-    uint16_t from_port = uint16_t( 1000 );
-    uint16_t to_port = uint16_t( 5000 );
+    uint8_t from_address_data[32];
+    uint8_t to_address_data[32];
+    uint16_t from_address_port;
+    uint16_t to_address_port;
+    int from_address_bytes;
+    int to_address_bytes;
+
+    next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( &route_manager->route_data.current_route_next_address, to_address_data, &to_address_bytes, &to_address_port );
 
     const uint8_t * token_data = tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
     const int token_bytes = ( num_tokens - 1 ) * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
 
-    route_manager->route_data.pending_continue_request_packet_bytes = next_write_continue_request_packet( route_manager->route_data.pending_continue_request_packet_data, token_data, token_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+    route_manager->route_data.pending_continue_request_packet_bytes = next_write_continue_request_packet( route_manager->route_data.pending_continue_request_packet_data, token_data, token_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
     next_assert( route_manager->route_data.pending_continue_request_packet_bytes >= 0 );
     next_assert( route_manager->route_data.pending_continue_request_packet_bytes <= NEXT_MAX_PACKET_BYTES );
@@ -5920,7 +5934,7 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     const int packet_bytes = route_manager->route_data.pending_continue_request_packet_bytes;
 
     next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-    next_assert( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+    next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
     (void) packet_data;
     (void) packet_bytes;
