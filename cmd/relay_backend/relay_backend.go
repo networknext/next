@@ -764,8 +764,8 @@ func mainReturnWithCode() int {
 						bwRecvPercent = relay.BandwidthRecvMbps / float32(relay.NICSpeedMbps) * 100.0
 
 						if relay.EnvelopeUpMbps > 0 {
-							envSentPercent = relay.BandwidthSentMbps / relay.EnvelopeUpMbps
-							envRecvPercent = relay.BandwidthRecvMbps / relay.EnvelopeDownMbps
+							envSentPercent = relay.BandwidthSentMbps / relay.EnvelopeUpMbps * 100.0
+							envRecvPercent = relay.BandwidthRecvMbps / relay.EnvelopeDownMbps * 100.0
 						}
 					}
 
