@@ -16424,10 +16424,32 @@ void test_advanced_packet_filter()
     next_check( pass == 0 );
 }
 
-void test_address_data()
+void test_address_data_none()
 {
+    next_address_t address;
+    next_check( address.type == NEXT_ADDRESS_NONE );
     // todo
 }
+
+void test_address_data_ipv4()
+{
+    next_address_t address;
+    next_address_parse( &address, "127.0.0.1:50000" );
+    next_check( address.type == NEXT_ADDRESS_IPV4 );
+    // todo
+}
+
+#if NEXT_PLATFORM_HAS_IPV6
+
+void test_address_data_ipv6()
+{
+    next_address_t address;
+    next_address_parse( &address, "[2001:db8:3333:4444:5555:6666:7777:8888]:50000" );
+    next_check( address.type == NEXT_ADDRESS_IPV6 );
+    // todo
+}
+
+#endif // #if NEXT_PLATFORM_HAS_IPV6
 
 void test_direct_packet()
 {
@@ -19380,7 +19402,11 @@ void next_test()
         RUN_TEST( test_pittle_and_chonkle );
         RUN_TEST( test_basic_packet_filter );
         RUN_TEST( test_advanced_packet_filter );
-        RUN_TEST( test_address_data );
+        RUN_TEST( test_address_data_none );
+        RUN_TEST( test_address_data_ipv4 );
+#if defined(NEXT_PLATFORM_HAS_IPV6)
+        RUN_TEST( test_address_data_ipv6 );
+#endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
         RUN_TEST( test_direct_packet );
         RUN_TEST( test_direct_ping_packet );
         RUN_TEST( test_direct_pong_packet );
