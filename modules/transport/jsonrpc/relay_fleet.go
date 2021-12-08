@@ -74,7 +74,7 @@ type RelayFleetReply struct {
 func (rfs *RelayFleetService) RelayFleet(r *http.Request, args *RelayFleetArgs, reply *RelayFleetReply) error {
 	authHeader := r.Header.Get("Authorization")
 
-	uri := rfs.RelayFrontendURI + "/relays"
+	uri := "http://" + rfs.RelayFrontendURI + "/relays"
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
@@ -153,7 +153,7 @@ func (rfs *RelayFleetService) RelayDashboardJson(r *http.Request, args *RelayDas
 	var fullDashboard, filteredDashboard jsonResponse
 	authHeader := r.Header.Get("Authorization")
 
-	uri := rfs.RelayFrontendURI + "/relay_dashboard_data"
+	uri := "http://" + rfs.RelayFrontendURI + "/relay_dashboard_data"
 
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", uri, nil)
@@ -415,7 +415,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	authHeader := r.Header.Get("Authorization")
 	if args.ServiceName == "" || args.ServiceName == "RelayDashboardAnalysis" {
 
-		uri := rfs.RelayFrontendURI + "/relay_dashboard_analysis"
+		uri := "http://" + rfs.RelayFrontendURI + "/relay_dashboard_analysis"
 
 		client := &http.Client{}
 		req, err := http.NewRequest("GET", uri, nil)
@@ -809,7 +809,7 @@ func (rfs *RelayFleetService) NextCostMatrixHandler(
 
 	authHeader := r.Header.Get("Authorization")
 
-	uri := rfs.RelayFrontendURI + "/cost_matrix"
+	uri := "http://" + rfs.RelayFrontendURI + "/cost_matrix"
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", uri, nil)

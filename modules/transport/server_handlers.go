@@ -154,7 +154,7 @@ func ServerInitHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, Serve
 		*/
 
 		if !datacenterExists(database, packet.DatacenterID) {
-			core.Error("unknown datacenter %s [%016x, %s] for buyer id %016x", packet.DatacenterName, packet.DatacenterID, incoming.From.String(), packet.BuyerID)
+			// core.Error("unknown datacenter %s [%016x, %s] for buyer id %016x", packet.DatacenterName, packet.DatacenterID, incoming.From.String(), packet.BuyerID)
 			metrics.DatacenterNotFound.Add(1)
 			return
 		}
