@@ -1005,6 +1005,13 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 		}
 		relay.IncludedBandwidthGB = int32(includedBW)
 
+	case "MaxBandwidthMbps":
+		maxBandwidthMbps, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		relay.MaxBandwidthMbps = int32(maxBandwidthMbps)
+
 	case "State":
 		state, ok := value.(float64)
 		if !ok {

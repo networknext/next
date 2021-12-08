@@ -198,6 +198,23 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	if !envvar.Exists("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE") {
+		core.Error("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE not set")
+		return 1
+	}
+
+	maxBandwidthPercentage, err := envvar.GetFloat("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE", 0)
+	if err != nil {
+		core.Error("failed to parse RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE: %v", err)
+		return 1
+	}
+
+	featureRelayFullBandwidth, err := envvar.GetBool("FEATURE_RELAY_FULL_BANDWIDTH", false)
+	if err != nil {
+		core.Error("failed to parse FEATURE_RELAY_FULL_BANDWIDTH: %v", err)
+		return 1
+	}
+
 	instanceID, err := getInstanceID(env)
 	if err != nil {
 		core.Error("failed to get relay backend instance ID: %v", err)
@@ -737,10 +754,25 @@ func mainReturnWithCode() int {
 						}
 					}
 
-					// Track the relays that are near max capacity
-					// Relays with MaxSessions set to 0 are never considered full
+					var bwSentPercent float32
+					var bwRecvPercent float32
+					var envSentPercent float32
+					var envRecvPercent float32
+
+					if relay.NICSpeedMbps > 0 {
+						bwSentPercent = relay.BandwidthSentMbps / float32(relay.NICSpeedMbps) * 100.0
+						bwRecvPercent = relay.BandwidthRecvMbps / float32(relay.NICSpeedMbps) * 100.0
+
+						if relay.EnvelopeUpMbps > 0 {
+							envSentPercent = relay.BandwidthSentMbps / relay.EnvelopeUpMbps
+							envRecvPercent = relay.BandwidthRecvMbps / relay.EnvelopeDownMbps
+						}
+					}
+
+					// Track the relays that are near max capacity based on max sessions and bandwidth
 					var full bool
 
+					// Relays with MaxSessions set to 0 are never considered full based on session count
 					maxSessions := int(relay.MaxSessions)
 					if maxSessions != 0 && numSessions >= maxSessions {
 						fullRelayIDs = append(fullRelayIDs, relay.ID)
@@ -748,14 +780,38 @@ func mainReturnWithCode() int {
 						core.Debug("Relay ID %016x is full (%d/%d sessions)", relay.ID, numSessions, maxSessions)
 					}
 
+					// Relays with MaxBandwidthMbps set to 0 use maxBandwidthPercentage by default to determine if full
+					if featureRelayFullBandwidth && !full {
+						if relay.MaxBandwidthMbps != 0 {
+							if relay.BandwidthSentMbps > float32(relay.MaxBandwidthMbps) || relay.BandwidthRecvMbps > float32(relay.MaxBandwidthMbps) {
+								fullRelayIDs = append(fullRelayIDs, relay.ID)
+								full = true
+								core.Debug("Relay ID %016x is full (BW Sent Mbps: %.2f | BW Recv Mbps: %.2f | Max BW Mbps: %d)", relay.ID, relay.BandwidthSentMbps, relay.BandwidthRecvMbps, relay.MaxBandwidthMbps)
+							}
+						} else if float64(bwSentPercent) > maxBandwidthPercentage || float64(bwRecvPercent) > maxBandwidthPercentage {
+							fullRelayIDs = append(fullRelayIDs, relay.ID)
+							full = true
+							core.Debug(`Relay ID %016x is full (BW Sent Percent: %.2f | BW Recv Percent: %.2f | Max BW Percent: %.2f)`, relay.ID, bwSentPercent, bwRecvPercent, maxBandwidthPercentage)
+						}
+					}
+
 					entries[count] = analytics.RelayStatsEntry{
-						ID:            relay.ID,
-						MaxSessions:   relay.MaxSessions,
-						NumSessions:   uint32(numSessions),
-						NumRoutable:   numRouteable,
-						NumUnroutable: uint32(len(allRelayData)) - 1 - numRouteable,
-						Timestamp:     uint64(time.Now().Unix()),
-						Full:          full,
+						ID:                       relay.ID,
+						MaxSessions:              relay.MaxSessions,
+						NumSessions:              uint32(numSessions),
+						NumRoutable:              numRouteable,
+						NumUnroutable:            uint32(len(allRelayData)) - 1 - numRouteable,
+						Timestamp:                uint64(time.Now().Unix()),
+						Full:                     full,
+						CPUUsage:                 float32(relay.CPU),
+						BandwidthSentPercent:     bwSentPercent,
+						BandwidthReceivedPercent: bwRecvPercent,
+						EnvelopeSentPercent:      envSentPercent,
+						EnvelopeReceivedPercent:  envRecvPercent,
+						BandwidthSentMbps:        relay.BandwidthSentMbps,
+						BandwidthReceivedMbps:    relay.BandwidthRecvMbps,
+						EnvelopeSentMbps:         relay.EnvelopeUpMbps,
+						EnvelopeReceivedMbps:     relay.EnvelopeDownMbps,
 					}
 
 					count++

@@ -1897,7 +1897,7 @@ func TestModifyRelayField(t *testing.T) {
 	err = storer.AddRelay(context.Background(), relay1)
 	assert.NoError(t, err)
 
-	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "ContractTerm", "SSHPort", "MaxSessions"}
+	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "MaxBandwidthMbps", "ContractTerm", "SSHPort", "MaxSessions"}
 	addressFields := []string{"Addr", "InternalAddr"}
 	timeFields := []string{"StartDate", "EndDate"}
 	stringFields := []string{"ManagementAddr", "SSHUser", "Version"}
