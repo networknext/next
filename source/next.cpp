@@ -5983,6 +5983,13 @@ bool next_route_manager_committed( next_route_manager_t * route_manager )
 
 void next_route_manager_prepare_send_packet( next_route_manager_t * route_manager, uint64_t sequence, next_address_t * to, const uint8_t * payload_data, int payload_bytes, uint8_t * packet_data, int * packet_bytes )
 {
+    // todo: we need magic passed in as a parameter
+    uint8_t magic[8];
+    memset( magic, 0, sizeof(magic) );
+
+    // todo: we need the client external address passed in as a paremeter
+    next_address_t client_external_address;
+
     next_route_manager_verify_sentinels( route_manager );
 
     next_assert( route_manager->route_data.current_route );
@@ -5992,19 +5999,28 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     next_assert( packet_data );
     next_assert( packet_bytes );
 
-    // todo: this needs to be replaced with next_write_client_to_server_packet
-
     *to = route_manager->route_data.current_route_next_address;
 
-    if ( next_write_header( NEXT_DIRECTION_CLIENT_TO_SERVER, NEXT_CLIENT_TO_SERVER_PACKET, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, route_manager->route_data.current_route_private_key, packet_data ) != NEXT_OK )
+    uint8_t from_address_data[32];
+    uint8_t to_address_data[32];
+    uint16_t from_address_port;
+    uint16_t to_address_port;
+    int from_address_bytes;
+    int to_address_bytes;
+
+    next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( to, to_address_data, &to_address_bytes, &to_address_port );
+
+    *packet_bytes = next_write_client_to_server_packet( packet_data, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, route_manager->route_data.current_route_private_key, payload_data, payload_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+
+    if ( *packet_bytes == 0 )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write client to server packet header" );
         return;
     }
 
-    memcpy( packet_data + NEXT_HEADER_BYTES, payload_data, payload_bytes );
-
-    *packet_bytes = NEXT_HEADER_BYTES + payload_bytes;
+    next_assert( next_basic_packet_filter( packet_data, *packet_bytes ) );
+    next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, *packet_bytes ) );
 
     next_assert( *packet_bytes < NEXT_MAX_PACKET_BYTES );
 }
