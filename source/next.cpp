@@ -11592,6 +11592,9 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
     uint64_t * sequence = NULL;
     uint8_t * send_key = NULL;
 
+    uint8_t magic[8];
+    memset( magic, 0, sizeof(magic) );
+
     if ( next_encrypted_packets[packet_id] )
     {
         next_session_entry_t * session = next_session_manager_find_by_address( server->session_manager, to_address );
@@ -11604,19 +11607,24 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
 
         sequence = &session->internal_send_sequence;
         send_key = session->send_key;
+
+        if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
+        {
+            // todo: we need the real acked magic value for this client session
+        }
     }
 
-    // todo: we need real data here
-    uint8_t magic[8];
-    uint8_t from_address_data[4];
-    uint8_t to_address_data[4];
-    next_random_bytes( magic, 8 );
-    next_random_bytes( from_address_data, 4 );
-    next_random_bytes( to_address_data, 4 );
-    uint16_t from_port = uint16_t( 1000 );
-    uint16_t to_port = uint16_t( 5000 );
+    uint8_t from_address_data[32];
+    uint8_t to_address_data[32];
+    uint16_t from_address_port;
+    uint16_t to_address_port;
+    int from_address_bytes;
+    int to_address_bytes;
 
-    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, server->customer_private_key, send_key, magic, from_address_data, 4, from_port, to_address_data, 4, to_port ) != NEXT_OK )
+    next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( to_address, to_address_data, &to_address_bytes, &to_address_port );
+    
+    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, sequence, server->customer_private_key, send_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write internal packet with id %d", packet_id );
         return NEXT_ERROR;
@@ -11624,7 +11632,7 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
 
     next_assert( packet_bytes > 0 );
     next_assert( next_basic_packet_filter( buffer, packet_bytes ) );
-    next_assert( next_advanced_packet_filter( buffer, magic, from_address_data, 4, from_port, to_address_data, 4, to_port, packet_bytes ) );
+    next_assert( next_advanced_packet_filter( buffer, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
     next_platform_socket_send_packet( server->socket, to_address, buffer, packet_bytes );
     
@@ -11643,11 +11651,6 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     next_assert( packet_data );
 
     next_server_internal_verify_sentinels( server );
-
-    // todo: update to new header structure
-    (void) server;
-    (void) packet_data;
-    (void) packet_bytes;
 
     if ( packet_bytes <= NEXT_HEADER_BYTES + 2 )
     {
@@ -11866,7 +11869,7 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
             
             entry->last_packet_send_time = current_time;
 
-            // todo: fill in magic and the client address
+            // todo: fill in magic and the client external address
 
             NextUpgradeRequestPacket packet;
             packet.protocol_version = next_protocol_version();
@@ -11965,17 +11968,21 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     next_server_internal_verify_sentinels( server );
 
-    // todo: we need real data here
+    // todo: we need to test against both current and previous magic here
+
+    // todo: we need magic here
     uint8_t magic[8];
-    uint8_t from_address[4];
-    uint8_t to_address[4];
-    next_random_bytes( magic, 8 );
-    next_random_bytes( from_address, 4 );
-    next_random_bytes( to_address, 4 );
-    uint16_t from_port = uint16_t( 1000 );
-    uint16_t to_port = uint16_t( 5000 );
-    int from_address_bytes = 4;
-    int to_address_bytes = 4;
+    memset( magic, 0, sizeof(magic) );
+
+    uint8_t from_address_data[32];
+    uint8_t to_address_data[32];
+    uint16_t from_address_port;
+    uint16_t to_address_port;
+    int from_address_bytes;
+    int to_address_bytes;
+
+    next_address_data( from, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( &server->server_address, to_address_data, &to_address_bytes, &to_address_port );
 
     if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
     {
@@ -11983,7 +11990,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
-    if ( !next_advanced_packet_filter( packet_data, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_bytes ) )
+    if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet" );
         return;
