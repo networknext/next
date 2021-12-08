@@ -16424,6 +16424,11 @@ void test_advanced_packet_filter()
     next_check( pass == 0 );
 }
 
+void test_address_data()
+{
+    // todo
+}
+
 void test_direct_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -19375,6 +19380,7 @@ void next_test()
         RUN_TEST( test_pittle_and_chonkle );
         RUN_TEST( test_basic_packet_filter );
         RUN_TEST( test_advanced_packet_filter );
+        RUN_TEST( test_address_data );
         RUN_TEST( test_direct_packet );
         RUN_TEST( test_direct_ping_packet );
         RUN_TEST( test_direct_pong_packet );
