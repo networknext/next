@@ -3683,12 +3683,13 @@ int next_write_continue_response_packet( uint8_t * packet_data, uint64_t send_se
     return packet_length;
 }
 
-int next_write_relay_ping_packet( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_relay_ping_packet( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     uint8_t * p = packet_data;
     next_write_uint8( &p, NEXT_RELAY_PING_PACKET );
     uint8_t * a = p; p += 15;
     next_write_uint64( &p, ping_sequence );
+    next_write_uint64( &p, session_id );
     next_write_bytes( &p, ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
@@ -3697,12 +3698,13 @@ int next_write_relay_ping_packet( uint8_t * packet_data, const uint8_t * ping_to
     return packet_length;
 }
 
-int next_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int next_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     uint8_t * p = packet_data;
     next_write_uint8( &p, NEXT_RELAY_PONG_PACKET );
     uint8_t * a = p; p += 15;
     next_write_uint64( &p, ping_sequence );
+    next_write_uint64( &p, session_id );
     uint8_t * b = p; p += 2;
     int packet_length = p - packet_data;
     next_generate_chonkle( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
@@ -4950,6 +4952,9 @@ void next_relay_manager_exclude( next_relay_manager_t * manager, bool * near_rel
 
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket )
 {
+    // todo: we need session id passed in as a parameter
+    uint64_t session_id = 0;
+
     // todo: we need magic passed in as a parameter
     uint8_t magic[8];
     memset( magic, 0, sizeof(magic) );
@@ -4993,7 +4998,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
             next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
             next_address_data( &manager->relay_addresses[i], to_address_data, &to_address_bytes, &to_address_port );
 
-            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, session_id, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( packet_bytes > 0 );
 
@@ -6627,7 +6632,7 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
 
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
 
-    // todo: we need magic
+    // todo: we need the current magic value
     uint8_t magic[8];
     memset( magic, 0, sizeof(magic) );
 
@@ -6671,16 +6676,17 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     const int packet_id = packet_data[0];
 
-    // todo: NEXT_UPGRADE_REQUEST_PACKET will always come encoded with magic of zero
-
-    // todo: NEXT_UPGRADE_REQUEST_PACKET will always come encoded with to address/port of zero bytes
-
-    // todo: we need magic
     uint8_t magic[8];
     memset( magic, 0, sizeof(magic) );
 
-    // todo: we need the client external address
     next_address_t client_external_address;
+
+    if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
+    {
+        // todo: get magic value
+
+        // todo: get client external address
+    }
 
     uint8_t from_address_data[32];
     uint8_t to_address_data[32];
@@ -7230,8 +7236,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_replay_protection_advance_sequence( &client->special_replay_protection, clean_sequence );
 
-        // todo: this needs to be replaced with next_read_pong_packet
-
         const uint8_t * p = packet_data + NEXT_HEADER_BYTES; 
 
         uint64_t ping_sequence = next_read_uint64( &p );
@@ -7253,27 +7257,20 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }            
 
-        // todo: convert to next_read_relay_pong_packet
+        const uint8_t * p = packet_data + NEXT_HEADER_BYTES; 
 
-        /*
-        NextRelayPongPacket packet;
+        uint64_t ping_sequence = next_read_uint64( &p );
+        uint64_t ping_session_id = next_read_uint64( &p );
 
-        if ( next_read_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL, NULL, NULL ) != packet_id )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. failed to read" );
-            return;
-        }
-
-        if ( packet.session_id != client->session_id )
+        if ( ping_session_id != client->session_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignoring relay pong packet. session id does not match" );
             return;
         }
 
-        next_post_validate_packet( packet_data, packet_bytes, &packet, NULL, NULL, NULL, NULL );
+        // todo: don't we need to do something here wrt. non-payload replay protection?
 
-        next_relay_manager_process_pong( client->near_relay_manager, from, packet.ping_sequence );
-        */
+        next_relay_manager_process_pong( client->near_relay_manager, from, ping_sequence );
 
         return;
     }
@@ -17627,8 +17624,9 @@ void test_relay_ping_packet()
         next_random_bytes( ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES );
 
         uint64_t ping_sequence = i;
+        uint64_t ping_session_id = 0x12345;
 
-        int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, ping_session_id, magic, from_address, 4, from_port, to_address, 4, to_port );
 
         next_check( packet_bytes >= 0 );
         next_check( packet_bytes <= NEXT_MTU + 27 );
@@ -17637,7 +17635,12 @@ void test_relay_ping_packet()
         next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_RELAY_PING_PACKET );
-        next_check( memcmp( packet_data + 1 + 15 + 8, ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES ) == 0 );
+
+        // todo: read back ping sequence and verify
+        
+        // todo: read back ping session id and verify
+        
+        next_check( memcmp( packet_data + 1 + 15 + 8 + 8, ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES ) == 0 );
     }
 }
 
@@ -17656,9 +17659,10 @@ void test_relay_pong_packet()
         uint16_t from_port = uint16_t( i + 1000000 );
         uint16_t to_port = uint16_t( i + 5000 );
 
-        uint64_t ping_sequence = i;
+        uint64_t pong_sequence = i;
+        uint64_t pong_session_id = 0x123456;
 
-        int packet_bytes = next_write_relay_pong_packet( packet_data, ping_sequence, magic, from_address, 4, from_port, to_address, 4, to_port );
+        int packet_bytes = next_write_relay_pong_packet( packet_data, pong_sequence, pong_session_id, magic, from_address, 4, from_port, to_address, 4, to_port );
 
         next_check( packet_bytes >= 0 );
         next_check( packet_bytes <= NEXT_MTU + 27 );
@@ -17667,6 +17671,10 @@ void test_relay_pong_packet()
         next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
 
         next_check( packet_data[0] == NEXT_RELAY_PONG_PACKET );
+
+        // todo: read back pong sequence and verify
+
+        // todo: read back pong session id and verify
     }
 }
 
