@@ -7908,17 +7908,22 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
-        // todo: we need real data here
+        // todo: we need the magic value here
         uint8_t magic[8];
-        uint8_t from_address_data[4];
-        uint8_t to_address_data[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address_data, 4 );
-        next_random_bytes( to_address_data, 4 );
-        uint16_t from_address_port = uint16_t( 1000 );
-        uint16_t to_address_port = uint16_t( 5000 );
-        int from_address_bytes = 4;
-        int to_address_bytes = 4;
+        memset( magic, 0, sizeof(magic) );
+
+        // todo: we need the client external address here
+        next_address_t client_external_address;
+
+        uint8_t from_address_data[32];
+        uint8_t to_address_data[32];
+        uint16_t from_address_port;
+        uint16_t to_address_port;
+        int from_address_bytes;
+        int to_address_bytes;
+
+        next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( &to, to_address_data, &to_address_bytes, &to_address_port );
 
         const uint64_t ping_sequence = next_ping_history_ping_sent( &client->next_ping_history, current_time );
 
@@ -8511,24 +8516,31 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         {
             // send direct from client to server
 
-            // todo: we need real data here
+            // todo: we need magic here
             uint8_t magic[8];
-            uint8_t from_address[4];
-            uint8_t to_address[4];
-            next_random_bytes( magic, 8 );
-            next_random_bytes( from_address, 4 );
-            next_random_bytes( to_address, 4 );
-            uint16_t from_port = uint16_t( 1000 );
-            uint16_t to_port = uint16_t( 5000 );
+            memset( magic, 0, sizeof(magic) );
+
+            // todo: we need the client external address
+            next_address_t client_external_address;
+
+            uint8_t from_address_data[32];
+            uint8_t to_address_data[32];
+            uint16_t from_address_port;
+            uint16_t to_address_port;
+            int from_address_bytes;
+            int to_address_bytes;
+
+            next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
 
             uint8_t direct_packet_data[NEXT_MAX_PACKET_BYTES];
 
-            const int direct_packet_bytes = next_write_direct_packet( direct_packet_data, client->open_session_sequence, send_sequence, packet_data, packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+            const int direct_packet_bytes = next_write_direct_packet( direct_packet_data, client->open_session_sequence, send_sequence, packet_data, packet_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( direct_packet_bytes >= 0 );
 
             next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
-            next_assert( next_advanced_packet_filter( direct_packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, direct_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( direct_packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
 
             (void) direct_packet_data;
             (void) direct_packet_bytes;
