@@ -4950,6 +4950,13 @@ void next_relay_manager_exclude( next_relay_manager_t * manager, bool * near_rel
 
 void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket )
 {
+    // todo: we need magic in as a parameter
+    uint8_t magic[8];
+    memset( magic, 0, sizeof(magic) );
+
+    // todo: we need the client external address passed in as a paremeter
+    next_address_t client_external_address;
+
     next_relay_manager_verify_sentinels( manager );
 
     if ( manager->disable_pings )
@@ -4976,24 +4983,22 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
             uint8_t ping_token[1024];
             memset( ping_token, 0, sizeof(ping_token) );
 
-            // todo: need to fill out with real data
-            uint8_t magic[8];
-            uint8_t from_address[4];
-            uint8_t to_address[4];
-            next_random_bytes( magic, 8 );
-            next_random_bytes( from_address, 4 );
-            next_random_bytes( to_address, 4 );
-            uint16_t from_port = uint16_t( 1000 );
-            uint16_t to_port = uint16_t( 5000 );
-            int from_address_bytes = 4;
-            int to_address_bytes = 4;
+            uint8_t from_address_data[32];
+            uint8_t to_address_data[32];
+            uint16_t from_address_port;
+            uint16_t to_address_port;
+            int from_address_bytes;
+            int to_address_bytes;
 
-            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port );
+            next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( &manager->relay_addresses[i], to_address_data, &to_address_bytes, &to_address_port );
+
+            int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( packet_bytes > 0 );
 
             next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-            next_assert( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
             next_platform_socket_send_packet( socket, &manager->relay_addresses[i], packet_data, packet_bytes );
 
