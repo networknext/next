@@ -3412,6 +3412,35 @@ bool next_basic_packet_filter( const uint8_t * data, int packet_length )
     return true;
 }
 
+void next_address_data( const next_address_t * address, uint8_t * address_data, int * address_bytes, uint16_t * address_port )
+{
+    next_assert( address );
+    if ( address->type == NEXT_ADDRESS_IPV4 )
+    {
+        address_data[0] = address->data.ipv4[0];
+        address_data[1] = address->data.ipv4[1];
+        address_data[2] = address->data.ipv4[2];
+        address_data[3] = address->data.ipv4[3];
+        *address_bytes = 4;
+    }
+    else if ( address->type == NEXT_ADDRESS_IPV6 )
+    {
+        for ( int i = 0; i < 8; ++i )
+        {
+            address_data[i*2]   = address->data.ipv6[i] >> 8;
+            address_data[i*2+1] = address->data.ipv6[i] & 0xFF;
+        }
+        *address_bytes = 16;
+    }
+    else
+    {
+        *address_bytes = 0;
+    }
+    *address_port = address->port;
+}
+
+// --------------------------------------------------
+
 bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
 {
     if ( packet_length < 18 )
