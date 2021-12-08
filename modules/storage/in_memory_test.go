@@ -1533,7 +1533,7 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 		assert.EqualError(t, err, "relay with reference 0 not found")
 	})
 
-	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "ContractTerm", "SSHPort", "MaxSessions"}
+	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "MaxBandwidthMbps", "ContractTerm", "SSHPort", "MaxSessions"}
 	stringFields := []string{"ManagementAddr", "SSHUser", "Version"}
 	timeFields := []string{"StartDate", "EndDate"}
 	addressFields := []string{"Addr", "InternalAddr"}

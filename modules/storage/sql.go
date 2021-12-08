@@ -1147,7 +1147,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 
 	sqlQuery.Write([]byte("select relays.id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
-	sqlQuery.Write([]byte("relays.max_sessions, relays.egress_price_override, relays.mrc, relays.overage, relays.port_speed, "))
+	sqlQuery.Write([]byte("relays.max_sessions, relays.egress_price_override, relays.mrc, relays.overage, relays.port_speed, relays.max_bandwidth_mbps,"))
 	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
@@ -1168,6 +1168,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			&relay.MRC,
 			&relay.Overage,
 			&relay.NICSpeedMbps,
+			&relay.MaxBandwidthMbps,
 			&relay.PublicIP,
 			&relay.PublicIPPort,
 			&relay.PublicKey,
@@ -1239,6 +1240,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			Datacenter:          datacenter,
 			NICSpeedMbps:        int32(relay.NICSpeedMbps),
 			IncludedBandwidthGB: int32(relay.IncludedBandwithGB),
+			MaxBandwidthMbps:    int32(relay.MaxBandwidthMbps),
 			State:               relayState,
 			ManagementAddr:      relay.ManagementIP,
 			SSHUser:             relay.SSHUser,
@@ -1323,7 +1325,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 
 	sqlQuery.Write([]byte("select relays.id, relays.hex_id, relays.display_name, relays.contract_term, relays.end_date, "))
 	sqlQuery.Write([]byte("relays.included_bandwidth_gb, relays.management_ip, "))
-	sqlQuery.Write([]byte("relays.max_sessions, relays.egress_price_override, relays.mrc, relays.overage, relays.port_speed, "))
+	sqlQuery.Write([]byte("relays.max_sessions, relays.egress_price_override, relays.mrc, relays.overage, relays.port_speed, relays.max_bandwidth_mbps,"))
 	sqlQuery.Write([]byte("relays.public_ip, relays.public_ip_port, relays.public_key, "))
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
@@ -1351,6 +1353,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			&relay.MRC,
 			&relay.Overage,
 			&relay.NICSpeedMbps,
+			&relay.MaxBandwidthMbps,
 			&relay.PublicIP,
 			&relay.PublicIPPort,
 			&relay.PublicKey,
@@ -1411,6 +1414,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			Datacenter:          datacenter,
 			NICSpeedMbps:        int32(relay.NICSpeedMbps),
 			IncludedBandwidthGB: int32(relay.IncludedBandwithGB),
+			MaxBandwidthMbps:    int32(relay.MaxBandwidthMbps),
 			State:               relayState,
 			ManagementAddr:      relay.ManagementIP,
 			SSHUser:             relay.SSHUser,
@@ -1590,6 +1594,14 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 		updateSQL.Write([]byte("update relays set included_bandwidth_gb=$1 where id=$2"))
 		args = append(args, includedBW, relay.DatabaseID)
+
+	case "MaxBandwidthMbps":
+		maxBandwidthMbps, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("%v is not a valid float64 type", value)
+		}
+		updateSQL.Write([]byte("update relays set max_bandwidth_mbps=$1 where id=$2"))
+		args = append(args, maxBandwidthMbps, relay.DatabaseID)
 
 	case "State":
 		state, ok := value.(float64)
@@ -1824,6 +1836,7 @@ type sqlRelay struct {
 	PublicKey           []byte
 	NICSpeedMbps        int64
 	IncludedBandwithGB  int64
+	MaxBandwidthMbps    int64
 	DatacenterID        int64
 	ManagementIP        string
 	SSHUser             string
@@ -1952,6 +1965,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		PublicKey:           r.PublicKey,
 		NICSpeedMbps:        int64(r.NICSpeedMbps),
 		IncludedBandwithGB:  int64(r.IncludedBandwidthGB),
+		MaxBandwidthMbps:    int64(r.MaxBandwidthMbps),
 		DatacenterID:        r.Datacenter.DatabaseID,
 		ManagementIP:        r.ManagementAddr,
 		BillingSupplier:     billingSupplier,
@@ -1973,12 +1987,12 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	sqlQuery.Write([]byte("insert into relays ("))
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
-	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, public_ip, "))
+	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
 	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version "))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -1995,6 +2009,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.MRC,
 		relay.Overage,
 		relay.NICSpeedMbps,
+		relay.MaxBandwidthMbps,
 		relay.PublicIP,
 		relay.PublicIPPort,
 		relay.PublicKey,
@@ -2142,6 +2157,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		PublicKey:           r.PublicKey,
 		NICSpeedMbps:        int64(r.NICSpeedMbps),
 		IncludedBandwithGB:  int64(r.IncludedBandwidthGB),
+		MaxBandwidthMbps:    int64(r.MaxBandwidthMbps),
 		DatacenterID:        r.Datacenter.DatabaseID,
 		ManagementIP:        r.ManagementAddr,
 		SSHUser:             r.SSHUser,
@@ -2161,11 +2177,11 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 
 	sqlQuery.Write([]byte("update relays set ("))
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
-	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, public_ip, "))
+	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
 	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23) where id = $24"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) where id = $25"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -2182,6 +2198,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.MRC,
 		relay.Overage,
 		relay.NICSpeedMbps,
+		relay.MaxBandwidthMbps,
 		relay.PublicIP,
 		relay.PublicIPPort,
 		relay.PublicKey,
