@@ -6675,17 +6675,22 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     // todo: NEXT_UPGRADE_REQUEST_PACKET will always come encoded with to address/port of zero bytes
 
-    // todo: we need real data here
+    // todo: we need magic
     uint8_t magic[8];
-    uint8_t from_address[4];
-    uint8_t to_address[4];
-    next_random_bytes( magic, 8 );
-    next_random_bytes( from_address, 4 );
-    next_random_bytes( to_address, 4 );
-    uint16_t from_port = uint16_t( 1000 );
-    uint16_t to_port = uint16_t( 5000 );
-    int from_address_bytes = 4;
-    int to_address_bytes = 4;
+    memset( magic, 0, sizeof(magic) );
+
+    // todo: we need the client external address
+    next_address_t client_external_address;
+
+    uint8_t from_address_data[32];
+    uint8_t to_address_data[32];
+    uint16_t from_address_port;
+    uint16_t to_address_port;
+    int from_address_bytes;
+    int to_address_bytes;
+
+    next_address_data( from, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( &client_external_address, to_address_data, &to_address_bytes, &to_address_port );
 
     if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
     {
@@ -6693,7 +6698,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         return;
     }
 
-    if ( !next_advanced_packet_filter( packet_data, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_bytes ) )
+    if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet" );
         return;
@@ -6820,7 +6825,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         // stuck in an undefined state.
 
         client->upgrade_response_packet_bytes = 0;
-        const int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, NULL, NULL, NULL, NULL, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
+        const int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, NULL, NULL, NULL, NULL, NULL, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
         if ( result != NEXT_OK )
         {
@@ -6831,8 +6836,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         const uint8_t * packet_data = client->upgrade_response_packet_data;
         const int packet_bytes = client->upgrade_response_packet_bytes;
 
+        next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
+
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_assert( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_port, to_address_port, packet_bytes ) );
 
         (void) packet_data;
         (void) packet_bytes;
