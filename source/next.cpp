@@ -6627,26 +6627,31 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
 
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
 
-    // todo: client needs to know its external IP address. server needs to pass it back down to the client.
-
-    // todo: fill out data for write packet
+    // todo: we need magic
     uint8_t magic[8];
-    uint8_t from_address[4];
-    uint8_t to_address[4];
-    next_random_bytes( magic, 8 );
-    next_random_bytes( from_address, 4 );
-    next_random_bytes( to_address, 4 );
-    uint16_t from_port = uint16_t( 1000 );
-    uint16_t to_port = uint16_t( 1000 );
+    memset( magic, 0, sizeof(magic) );
 
-    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key, magic, from_address, 4, from_port, to_address, 4, to_port ) != NEXT_OK )
+    // todo: we need the client external address
+    next_address_t client_external_address;
+
+    uint8_t from_address_data[32];
+    uint8_t to_address_data[32];
+    uint16_t from_address_port;
+    uint16_t to_address_port;
+    int from_address_bytes;
+    int to_address_bytes;
+
+    next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
+
+    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write internal packet type %d", packet_id );
         return NEXT_ERROR;
     }
 
     next_assert( next_basic_packet_filter( buffer, sizeof(buffer) ) );
-    next_assert( next_advanced_packet_filter( buffer, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+    next_assert( next_advanced_packet_filter( buffer, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
     next_platform_socket_send_packet( client->socket, &client->server_address, buffer, packet_bytes );
 
