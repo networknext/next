@@ -8874,6 +8874,8 @@ struct next_pending_session_entry_t
     double last_packet_send_time;
     uint8_t private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
 
     NEXT_DECLARE_SENTINEL(1)
 };
@@ -9061,6 +9063,8 @@ next_pending_session_entry_t * next_pending_session_manager_add( next_pending_se
             {
                 pending_session_manager->max_entry_index = i;
             }
+            memset( entry->current_magic, 0, sizeof(entry->current_magic) );
+            memset( entry->previous_magic, 0, sizeof(entry->previous_magic) );
             return entry;
         }        
     }  
@@ -9079,6 +9083,8 @@ next_pending_session_entry_t * next_pending_session_manager_add( next_pending_se
     entry->last_packet_send_time = -1000.0;
     memcpy( entry->private_key, private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
     memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+    memset( entry->current_magic, 0, sizeof(entry->current_magic) );
+    memset( entry->previous_magic, 0, sizeof(entry->previous_magic) );
 
     next_pending_session_manager_verify_sentinels( pending_session_manager );
 
@@ -9170,6 +9176,8 @@ struct next_proxy_session_entry_t
 
     next_address_t address;
     uint64_t session_id;
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -9359,6 +9367,8 @@ next_proxy_session_entry_t * next_proxy_session_manager_add( next_proxy_session_
             {
                 session_manager->max_entry_index = i;
             }
+            memset( entry->current_magic, 0, sizeof(entry->current_magic) );
+            memset( entry->previous_magic, 0, sizeof(entry->previous_magic) );
             return entry;
         }        
     }  
@@ -9374,6 +9384,8 @@ next_proxy_session_entry_t * next_proxy_session_manager_add( next_proxy_session_
     entry->address = *address;
     entry->session_id = session_id;
     next_bandwidth_limiter_reset( &entry->send_bandwidth );
+    memset( entry->current_magic, 0, sizeof(entry->current_magic) );
+    memset( entry->previous_magic, 0, sizeof(entry->previous_magic) );
 
     next_proxy_session_manager_verify_sentinels( session_manager );
 
@@ -9752,6 +9764,8 @@ struct next_session_entry_t
     uint64_t tags[NEXT_MAX_TAGS];
     int num_tags;
     uint8_t client_open_session_sequence;
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -10189,6 +10203,9 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
 
     entry->last_client_direct_ping = current_time;
     entry->last_client_next_ping = current_time;
+
+    memset( entry->current_magic, 0, sizeof(entry->current_magic) );
+    memset( entry->previous_magic, 0, sizeof(entry->previous_magic) );
 }
 
 next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token, const uint64_t * tags, int num_tags )
