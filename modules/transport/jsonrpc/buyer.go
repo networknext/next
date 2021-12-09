@@ -2918,21 +2918,21 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.ExplorerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
 		return &err
 	}
 
 	if args.Origin == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Origin is required", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v: Origin is required", err.Error())
 		return &err
 	}
 
 	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -2947,13 +2947,13 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
 		if err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to fetch buyer", err.Error()))
+			core.Error("FetchDiscoveryDashboards(): %v: Failed to fetch buyer", err.Error())
 			return &err
 		}
 
 		if !buyer.Analytics && !isAdmin {
 			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-			s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
 			return &err
 		}
 	}
@@ -2961,7 +2961,7 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -2969,14 +2969,14 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to parse user ID", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to generate nonce", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v: Failed to generate nonce", err.Error())
 		return &err
 	}
 
@@ -3033,14 +3033,14 @@ func (s *BuyersService) FetchCurrentSaves(r *http.Request, args *FetchCurrentSav
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.ExplorerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchUsageSummaryDashboard(): %v", err.Error()))
+		core.Error("FetchUsageSummaryDashboard(): %v", err.Error())
 		return &err
 	}
 
 	if args.CustomerCode == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "CustomerCode"
-		s.Logger.Log("err", fmt.Errorf("FetchCurrentSaves(): %v: CustomerCode is required", err.Error()))
+		core.Error("FetchCurrentSaves(): %v: CustomerCode is required", err.Error())
 		return &err
 	}
 
@@ -3072,21 +3072,21 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.ExplorerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
 		return &err
 	}
 
 	if args.Origin == "" {
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Origin is required", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v: Origin is required", err.Error())
 		return &err
 	}
 
 	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -3101,13 +3101,13 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
 		if err != nil {
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-			s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to fetch buyer", err.Error()))
+			core.Error("FetchDiscoveryDashboards(): %v: Failed to fetch buyer", err.Error())
 			return &err
 		}
 
 		if !buyer.Analytics && !isAdmin {
 			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-			s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
 			return &err
 		}
 	}
@@ -3115,7 +3115,7 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	user := r.Context().Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -3123,14 +3123,14 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to parse user ID", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
-		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to generate nonce", err.Error()))
+		core.Error("FetchDiscoveryDashboards(): %v: Failed to generate nonce", err.Error())
 		return &err
 	}
 

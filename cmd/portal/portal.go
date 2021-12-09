@@ -307,7 +307,6 @@ func mainReturnWithCode() int {
 		Storage:     db,
 	}
 
-	// Generate Sessions Map Points periodically
 	configService := jsonrpc.ConfigService{
 		Storage: db,
 	}
