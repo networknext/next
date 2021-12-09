@@ -32,6 +32,7 @@ import (
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport"
+	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/networknext/backend/modules/transport/middleware"
 	"github.com/networknext/backend/modules/transport/notifications"
 
@@ -46,6 +47,7 @@ const (
 	EmbeddedUserGroupID      = 3
 	LOOKER_SESSION_TIMEOUT   = 86400
 	UsageDashURI             = "/embed/dashboards-next/11"
+	SavesDashURI             = "/embed/dashboards-next/20"
 )
 
 // Saving these for later
@@ -54,6 +56,7 @@ const (
 var (
 	ErrInsufficientPrivileges = errors.New("insufficient privileges")
 	AnalyticsDashURIs         = [...]string{"/embed/dashboards-next/18"}
+	DiscoveryDashURIs         = [...]string{} // Placeholder to make frontend happy - will be replaced with dynamic dashboard system is deployed
 )
 
 type BuyersService struct {
@@ -87,6 +90,8 @@ type BuyersService struct {
 
 	Metrics *metrics.BuyerEndpointMetrics
 	Storage storage.Storer
+
+	SavesCache *map[string][]looker.LookerSave
 
 	LookerSecret string
 
@@ -879,6 +884,7 @@ type point struct {
 }
 
 func (s *BuyersService) GenerateMapPointsPerBuyer(ctx context.Context) error {
+	// TODO: Use pointer swap here instead of building map under lock
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -2894,5 +2900,262 @@ func (s *BuyersService) FetchReleaseNotes(ctx context.Context) error {
 
 	s.ReleaseNotesNotificationsCache = cacheList
 
+	return nil
+}
+
+type FetchDiscoverDashboardArgs struct {
+	CustomerCode string `json:"customer_code"`
+	Origin       string `json:"origin"`
+}
+
+type FetchDiscoverDashboardReply struct {
+	URLs []string `json:"urls"`
+}
+
+func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDiscoverDashboardArgs, reply *FetchDiscoverDashboardReply) error {
+	reply.URLs = make([]string, 0)
+
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.ExplorerRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		return &err
+	}
+
+	if args.Origin == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Origin is required", err.Error()))
+		return &err
+	}
+
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		return &err
+	}
+
+	// Admin's will be able to search any company's billing info
+	if isAdmin {
+		customerCode = args.CustomerCode
+	}
+
+	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
+		customerCode = "esl"
+	} else {
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to fetch buyer", err.Error()))
+			return &err
+		}
+
+		if !buyer.Analytics && !isAdmin {
+			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+			s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+			return &err
+		}
+	}
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
+	nonce, err := GenerateRandomString(16)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to generate nonce", err.Error()))
+		return &err
+	}
+
+	// TODO: Fetch discovery dashboards from storage after dynamic dashboard feature is deployed
+
+	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
+	for _, dashURL := range DiscoveryDashURIs {
+		urlOptions := notifications.LookerURLOptions{
+			Host:            notifications.LOOKER_HOST,
+			Secret:          s.LookerSecret,
+			ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+			GroupsIds:       []int{EmbeddedUserGroupID},
+			ExternalGroupId: "",
+			Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+			Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+			AccessFilters:   make(map[string]map[string]interface{}),
+			UserAttributes:  make(map[string]interface{}),
+			SessionLength:   LOOKER_SESSION_TIMEOUT,
+			EmbedURL:        "/login/embed/" + url.QueryEscape(fmt.Sprintf("%s?embed_domain=%s", dashURL, args.Origin)),
+			ForceLogout:     true,
+			Nonce:           fmt.Sprintf("\"%s\"", nonce),
+			Time:            time.Now().Unix(),
+		}
+
+		urlOptions.UserAttributes["customer_code"] = customerCode
+
+		reply.URLs = append(reply.URLs, notifications.BuildLookerURL(urlOptions))
+	}
+	return nil
+}
+
+func (s *BuyersService) ReloadSavesCache(newCache *map[string][]looker.LookerSave) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.SavesCache = newCache
+}
+
+type SavedSession struct {
+	SessionID string `json:"id"`
+}
+
+type FetchCurrentSavesArgs struct {
+	CustomerCode string `json:"customer_code"`
+}
+
+type FetchCurrentSavesReply struct {
+	Saves []SavedSession `json:"saves"`
+}
+
+func (s *BuyersService) FetchCurrentSaves(r *http.Request, args *FetchCurrentSavesArgs, reply *FetchCurrentSavesReply) error {
+	reply.Saves = make([]SavedSession, 0)
+
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.ExplorerRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchUsageSummaryDashboard(): %v", err.Error()))
+		return &err
+	}
+
+	if args.CustomerCode == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "CustomerCode"
+		s.Logger.Log("err", fmt.Errorf("FetchCurrentSaves(): %v: CustomerCode is required", err.Error()))
+		return &err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	savesCache := *s.SavesCache
+	reply.Saves = make([]SavedSession, len(savesCache[args.CustomerCode]))
+
+	for i, save := range savesCache[args.CustomerCode] {
+		reply.Saves[i] = SavedSession{
+			SessionID: fmt.Sprintf("%016x", save.SessionID),
+		}
+	}
+
+	return nil
+}
+
+type FetchSavesDashboardArgs struct {
+	CustomerCode string `json:"customer_code"`
+	Origin       string `json:"origin"`
+}
+
+type FetchSavesDashboardReply struct {
+	URL string `json:"url"`
+}
+
+func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDashboardArgs, reply *FetchSavesDashboardReply) error {
+	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.ExplorerRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		return &err
+	}
+
+	if args.Origin == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Origin is required", err.Error()))
+		return &err
+	}
+
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		return &err
+	}
+
+	// Admin's will be able to search any company's billing info
+	if isAdmin {
+		customerCode = args.CustomerCode
+	}
+
+	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
+		customerCode = "esl"
+	} else {
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to fetch buyer", err.Error()))
+			return &err
+		}
+
+		if !buyer.Analytics && !isAdmin {
+			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+			s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+			return &err
+		}
+	}
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v", err.Error()))
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to parse user ID", err.Error()))
+		return &err
+	}
+
+	nonce, err := GenerateRandomString(16)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_NONCE_GENERATION_FAILURE)]
+		s.Logger.Log("err", fmt.Errorf("FetchDiscoveryDashboards(): %v: Failed to generate nonce", err.Error()))
+		return &err
+	}
+
+	// TODO: Fetch discovery dashboards from storage after dynamic dashboard feature is deployed
+
+	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
+	urlOptions := notifications.LookerURLOptions{
+		Host:            notifications.LOOKER_HOST,
+		Secret:          s.LookerSecret,
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		GroupsIds:       []int{EmbeddedUserGroupID},
+		ExternalGroupId: "",
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+		AccessFilters:   make(map[string]map[string]interface{}),
+		UserAttributes:  make(map[string]interface{}),
+		SessionLength:   LOOKER_SESSION_TIMEOUT,
+		EmbedURL:        "/login/embed/" + url.QueryEscape(fmt.Sprintf("%s?embed_domain=%s", SavesDashURI, args.Origin)),
+		ForceLogout:     true,
+		Nonce:           fmt.Sprintf("\"%s\"", nonce),
+		Time:            time.Now().Unix(),
+	}
+
+	urlOptions.UserAttributes["customer_code"] = customerCode
+
+	reply.URL = notifications.BuildLookerURL(urlOptions)
 	return nil
 }
