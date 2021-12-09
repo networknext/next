@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -348,6 +349,8 @@ func mainReturnWithCode() int {
 		LookerDashboardCache: make([]looker.LookerDashboard, 0),
 	}
 
+	blankSavesCache := make(map[string][]looker.LookerSave)
+
 	// Create buyer service
 	buyerService := jsonrpc.BuyersService{
 		UseBigtable:            useBigtable,
@@ -363,6 +366,7 @@ func mainReturnWithCode() int {
 		Metrics:                serviceMetrics,
 		GithubClient:           githubClient,
 		SlackClient:            slackClient,
+		SavesCache:             &blankSavesCache,
 		LookerSecret:           lookerClient.Secret,
 	}
 
@@ -705,9 +709,47 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
+		lookerWebhookHandler := func(w http.ResponseWriter, r *http.Request) {
+			lookerToken := r.Header.Get("X-Looker-Webhook-Token")
+			if lookerToken == "" || lookerToken != "123" { // Change this out with the actual token grabbed from env var
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(http.StatusText(http.StatusBadRequest)))
+				return
+			}
+
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			defer r.Body.Close()
+
+			// TODO: Potentially change this up to accept more fields depending on how Tapan structures payload
+
+			payload := looker.LookerWebhookPayload{}
+
+			if err := json.Unmarshal(body, &payload); err != nil {
+				core.Error("Failed to unmarshal looker webhook payload: %v", err)
+				return
+			}
+
+			savesCache := make(map[string][]looker.LookerSave)
+
+			for _, data := range payload.Attachment.Data {
+				customerCode := data.CustomerCode
+				if _, ok := savesCache[customerCode]; !ok {
+					savesCache[customerCode] = make([]looker.LookerSave, 0)
+				}
+				savesCache[customerCode] = append(savesCache[customerCode], data)
+			}
+
+			buyerService.ReloadSavesCache(&savesCache)
+		}
+
 		r := mux.NewRouter()
 
 		r.Handle("/rpc", middleware.HTTPAuthMiddleware(keys, envvar.GetList("JWT_AUDIENCES", []string{}), http.TimeoutHandler(s, httpTimeout, "Connection Timed Out!"), strings.Split(allowedOrigins, ","), auth0Issuer, true))
+		r.HandleFunc("/saves", lookerWebhookHandler)
 		r.HandleFunc("/health", transport.HealthHandlerFunc())
 		r.HandleFunc("/version", transport.VersionHandlerFunc(buildtime, sha, tag, commitMessage, strings.Split(allowedOrigins, ",")))
 		r.HandleFunc("/status", serveStatusFunc).Methods("GET")
