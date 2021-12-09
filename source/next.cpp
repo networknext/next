@@ -14034,25 +14034,29 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         {
             // direct packet
 
-            // todo: we need real data here
+            // todo: we need most recent magic here
             uint8_t magic[8];
-            uint8_t from_address_data[4];
-            uint8_t to_address_data[4];
-            next_random_bytes( magic, 8 );
-            next_random_bytes( from_address_data, 4 );
-            next_random_bytes( to_address_data, 4 );
-            uint16_t from_port = uint16_t( 1000 );
-            uint16_t to_port = uint16_t( 5000 );
+            memset( magic, 0, sizeof(magic) );
+
+            uint8_t from_address_data[32];
+            uint8_t to_address_data[32];
+            uint16_t from_address_port;
+            uint16_t to_address_port;
+            int from_address_bytes;
+            int to_address_bytes;
+
+            next_address_data( &server->address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( to_address, to_address_data, &to_address_bytes, &to_address_port );
 
             uint8_t direct_packet_data[NEXT_MAX_PACKET_BYTES];
 
-            int direct_packet_bytes = next_write_direct_packet( direct_packet_data, open_session_sequence, send_sequence, packet_data, packet_bytes, magic, from_address_data, 4, from_port, to_address_data, 4, to_port );
+            int direct_packet_bytes = next_write_direct_packet( direct_packet_data, open_session_sequence, send_sequence, packet_data, packet_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( direct_packet_bytes >= 0 );
             next_assert( direct_packet_bytes <= NEXT_MTU + 27 );
 
             next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
-            next_assert( next_advanced_packet_filter( direct_packet_data, magic, from_address_data, 4, from_port, to_address_data, 4, to_port, direct_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( direct_packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
 
             next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, size_t(packet_bytes) );
         }
