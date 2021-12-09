@@ -2,70 +2,57 @@ DONE
 
 	Fix as many packet sends as possible to use the new functions.
 
+	Add current and previous magic to pending, proxy and session entries.
+
 TODO
+
+	--------------
+
+	Server needs to track upcoming, current and previous magic values.
+
+	Upcoming is the latest value from the server backend.
+
+	When it changes, there is a 30 second timer before we move current -> previous, and upcoming -> current.
+
+	Do this next!
+
+	--------------
+
+	Actually track current and previous magic in session entries
+
+	Must be done in pending, proxy and current...
+
+	--------------
+
+	Hook up and store the current magic in the session entry (from the upgrade response)
+
+	Hook up and store the current magic, move to prev, in the session entry (from the route update ack)
+
+	Actually use the current magic for session to send packet to client (but only for direct to client packets...)
+
+	--------------
+
+	Add concept of relay_magic, 30 second delayed from current -- this relay magic ensures that we can talk with relays without race.
+
+	Actually use the relay magic when sending packets to relays from the server.
+
+	Client also sends packets to relays, so the client should be driven from the relay magic as well... yowza.
+
+	--------------
 
 	Get the client/server upgrade working and the upgraded direct packets being exchanged between client and server.
 
 	--------------
 
-	Update the func backend 5 so it can handle new SDK5 packet types.v
+	Update the func backend 5 so it can handle new SDK5 packet types.
 
 	--------------
 
-	Update the reference relay so it can handle the new SDK5 packet types.
+	Get various upgraded direct func tests passing.
 
 	--------------
 
-	Get an actual end-to-end network next route going with SDK5 client/server.
-
-	--------------
-
-	Get the func tests passing.
-
-	--------------
-
-	Now work out how to get the advanced packet filter working, with magic held at 0.
-
-	--------------
-
-	Now work out how to have non-zero magic for packets
-
-	--------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
-	Get the direct packet func test passing.
-
-	--------------
-
-	Extend the relay so it knows how to process SDK5 packets.
+	========================================================
 
 	--------------
 
@@ -77,23 +64,19 @@ TODO
 
 	--------------
 
-	Get a func test working with a network next route.
+	Update the reference relay so it can handle the new SDK5 packet types.
 
 	--------------
 
-	Now we need to work out how to make magic dynamic.
+	Get an actual end-to-end network next route going with SDK5 client/server.
 
 	--------------
 
-	Get rest of func tests passing
+	Get the rest of the func tests passing.
 
 	--------------
 
-	Switch the routing keypair and store it via a secret.
-
-	Don't actually put it in the code anywhere.
-
-	The only person who knows the keypair should be me.
+	=================================================
 
 	--------------
 
@@ -101,3 +84,4 @@ TODO
 	and the iteration time for fixes (new SDK deploy) is just too long.
 
 	--------------
+
