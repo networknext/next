@@ -12579,6 +12579,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         // todo: get current magic
         uint8_t magic[8];
+        memset( magic, 0, sizeof(magic) );
 
         uint8_t from_address_data[4];
         uint8_t to_address_data[4];
@@ -12672,15 +12673,19 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         send_sequence |= uint64_t(1) << 63;
         send_sequence |= uint64_t(1) << 62;
 
-        // todo: need real data here
+        // todo: get current magic
         uint8_t magic[8];
+        memset( magic, 0, sizeof(magic) );
+
         uint8_t from_address_data[4];
         uint8_t to_address_data[4];
-        next_random_bytes( magic, 8 );
-        next_random_bytes( from_address_data, 4 );
-        next_random_bytes( to_address_data, 4 );
-        uint16_t from_address_port = uint16_t( 1000 );
-        uint16_t to_address_port = uint16_t( 5000 );
+        uint16_t from_address_port;
+        uint16_t to_address_port;
+        int from_address_bytes;
+        int to_address_bytes;
+
+        next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( from, to_address_data, &to_address_bytes, &to_address_port );
 
         uint8_t pong_packet_data[NEXT_MAX_PACKET_BYTES];
 
@@ -13247,6 +13252,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         server->server_init_request_id = packet.request_id;
 
+        // IMPORTANT: server init request packet is always sent with magic of zero. chicken and egg otherwise
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );
 
@@ -13425,19 +13431,31 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             session->session_update_packet = packet;
 
-            // todo: update to new write backend packet
-            /*
+            // todo: we need latest magic here
+            uint8_t magic[8];
+            memset( magic, 0, sizeof(magic) );
+
+            uint8_t from_address_data[32];
+            uint8_t to_address_data[32];
+            uint16_t from_address_port;
+            uint16_t to_address_port;
+            int from_address_bytes;
+            int to_address_bytes;
+
+            next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
             int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update packet for backend" );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
                 return;
             }
 
-            // todo: packet filter
+            next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
-            */
             
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent session update packet to backend for session %" PRIx64, session->session_id );
 
@@ -13464,19 +13482,31 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent session update packet to backend for session %" PRIx64 " (%d)", session->session_id, session->session_update_packet.retry_number );
 
-            // todo: update to new write_backend_packet
-            /*
+            // todo: we need latest magic here
+            uint8_t magic[8];
+            memset( magic, 0, sizeof(magic) );
+
+            uint8_t from_address_data[32];
+            uint8_t to_address_data[32];
+            uint16_t from_address_port;
+            uint16_t to_address_port;
+            int from_address_bytes;
+            int to_address_bytes;
+
+            next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
             int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &session->session_update_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+            if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &session->session_update_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write session update packet for backend" );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init request packet for backend" );
                 return;
             }
 
-            // todo: packet filter
+            next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
-            */
 
             session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
         }
@@ -14013,19 +14043,28 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         {
             // send over network next
 
-            // todo: convert to next_write_server_to_client_packet
+            // todo: we need most recent magic here
+            uint8_t magic[8];
+            memset( magic, 0, sizeof(magic) );
+
+            uint8_t from_address_data[32];
+            uint8_t to_address_data[32];
+            uint16_t from_address_port;
+            uint16_t to_address_port;
+            int from_address_bytes;
+            int to_address_bytes;
+
+            next_address_data( &server->address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( to_address, to_address_data, &to_address_bytes, &to_address_port );
 
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
             
-            if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, session_private_key, next_packet_data ) != NEXT_OK )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server to client packet header" );
-                return;
-            }
+            int next_packet_bytes = next_write_server_to_client_packet( next_packet_data, send_sequence, session_id, session_version, session_private_key, packet_data, packet_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
-            memcpy( next_packet_data + NEXT_HEADER_BYTES, packet_data, packet_bytes );
+            next_assert( next_packet_bytes > 0 );
 
-            int next_packet_bytes = NEXT_HEADER_BYTES + packet_bytes;
+            next_assert( next_basic_packet_filter( next_packet_data, next_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( next_packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, next_packet_bytes ) );
 
             next_platform_socket_send_packet( server->internal->socket, &session_address, next_packet_data, next_packet_bytes );
         }
