@@ -194,6 +194,7 @@ const OwnerRoutes = [
 // Add or remove these to open up beta features
 const BetaRoutes = [
   'discovery',
+  'saves',
   'supply'
 ]
 

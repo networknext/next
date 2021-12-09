@@ -1,32 +1,37 @@
 <template>
   <div class="card-body" id="discoveryDashboards-page">
-    <h5 class="card-title">
-      Discovery Dashboards
-    </h5>
-    <p class="card-text">
-      Interesting one off dashboards that are created by the Network Next datascience team
-    </p>
-    <div class="row" v-for="(url, index) in urls" :key="index">
-      <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
-        <div class="card-body">
-          <iframe
-            class="col"
-            id="discoveryDashboard"
-            :src="url"
-            style="min-height: 1000px;"
-            v-show="url !== ''"
-            frameborder="0"
-          >
-          </iframe>
+    <div v-if="urls.length > 0">
+      <h5 class="card-title">
+        Discovery Dashboards
+      </h5>
+      <p class="card-text">
+        Interesting one off dashboards that are created by the Network Next datascience team
+      </p>
+      <div class="row" v-for="(url, index) in urls" :key="index">
+        <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
+          <div class="card-body">
+            <LookerEmbed :dashURL="url" dashID="discoveryDashboard" />
+          </div>
         </div>
       </div>
+      <hr class="mt-4 mb-4">
     </div>
+    <Saves />
   </div>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-@Component
+
+import LookerEmbed from '@/components/LookerEmbed.vue'
+import Saves from '@/components/Saves.vue'
+
+@Component({
+  components: {
+    LookerEmbed,
+    Saves
+  }
+})
 export default class Disccovery extends Vue {
   private urls: Array<string>
   private unwatchFilter: any
@@ -47,24 +52,10 @@ export default class Disccovery extends Vue {
       }
     )
     this.fetchDiscoveryDashboards()
-    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
     this.unwatchFilter()
-    window.removeEventListener('message', this.resizeIframes)
-  }
-
-  private resizeIframes (event: any) {
-    const iframes = document.querySelectorAll('#discoveryDashboard')
-    iframes.forEach((frame: any) => {
-      if (event.source === frame.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
-        const eventData = JSON.parse(event.data)
-        if (eventData.type === 'page:properties:changed') {
-          frame.height = eventData.height + 50
-        }
-      }
-    })
   }
 
   private fetchDiscoveryDashboards () {
