@@ -12649,15 +12649,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_PING_PACKET )
     {
-        if ( packet_bytes != NEXT_HEADER_BYTES + 8 + 2 )
+        if ( packet_bytes != NEXT_HEADER_BYTES + 8 + 8 + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. bad packet size" );            
             return;
         }
 
-        // todo: next_write_pong_packet
-
-        /*
         next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_data, packet_bytes );
         if ( !entry )
         {
@@ -12665,20 +12662,36 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
+        const uint8_t * p = packet_data + NEXT_HEADER_BYTES;
+
+        uint64_t ping_sequence = next_read_uint64( &p );
+
         entry->last_client_next_ping = next_time();
 
         uint64_t send_sequence = entry->special_send_sequence++;
         send_sequence |= uint64_t(1) << 63;
         send_sequence |= uint64_t(1) << 62;
 
-        if ( next_write_header( NEXT_DIRECTION_SERVER_TO_CLIENT, NEXT_PONG_PACKET, send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, packet_data ) != NEXT_OK )
-        {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write pong packet header" );
-            return;
-        }
+        // todo: need real data here
+        uint8_t magic[8];
+        uint8_t from_address_data[4];
+        uint8_t to_address_data[4];
+        next_random_bytes( magic, 8 );
+        next_random_bytes( from_address_data, 4 );
+        next_random_bytes( to_address_data, 4 );
+        uint16_t from_address_port = uint16_t( 1000 );
+        uint16_t to_address_port = uint16_t( 5000 );
 
-        next_platform_socket_send_packet( server->socket, from, packet_data, NEXT_HEADER_BYTES + 8 ); // todo: size
-        */
+        uint8_t pong_packet_data[NEXT_MAX_PACKET_BYTES];
+
+        int pong_packet_bytes = next_write_pong_packet( pong_packet_data, send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, ping_sequence, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+
+        next_assert( pong_packet_bytes > 0 );
+
+        next_assert( next_basic_packet_filter( pong_packet_data, pong_packet_bytes ) );
+        next_assert( next_advanced_packet_filter( pong_packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, pong_packet_bytes ) );
+
+        next_platform_socket_send_packet( server->socket, from, pong_packet_data, pong_packet_bytes );
 
         return;
     }
