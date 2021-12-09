@@ -709,9 +709,11 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
+		lookerWebhookToken := envvar.Get("LOOKER_WEBHOOK_TOKEN", "")
+
 		lookerWebhookHandler := func(w http.ResponseWriter, r *http.Request) {
 			lookerToken := r.Header.Get("X-Looker-Webhook-Token")
-			if lookerToken == "" || lookerToken != "123" { // Change this out with the actual token grabbed from env var
+			if lookerWebhookToken == "" || lookerToken != lookerWebhookToken {
 				w.WriteHeader(http.StatusBadRequest)
 				w.Write([]byte(http.StatusText(http.StatusBadRequest)))
 				return
