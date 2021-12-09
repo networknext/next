@@ -6807,7 +6807,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
 
-        // todo: need to store magic and client address/port from server POV here
+        // todo: need to store magic and client external address here
 
         NextUpgradeResponsePacket response;
 
@@ -7267,8 +7267,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignoring relay pong packet. session id does not match" );
             return;
         }
-
-        // todo: don't we need to do something here wrt. non-payload replay protection?
 
         next_relay_manager_process_pong( client->near_relay_manager, from, ping_sequence );
 
@@ -11968,10 +11966,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     next_server_internal_verify_sentinels( server );
 
-    // todo: we need magic here
-    uint8_t magic[8];
-    memset( magic, 0, sizeof(magic) );
-
     uint8_t from_address_data[32];
     uint8_t to_address_data[32];
     uint16_t from_address_port;
@@ -11988,12 +11982,21 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
-    // todo: we need to test against *both* current and previous magic here
+    // todo: we need to get current magic here
+    uint8_t current_magic[8];
+    memset( current_magic, 0, sizeof(current_magic) );
 
-    if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+    // todo: we need to get previous magic here
+    uint8_t previous_magic[8];
+    memset( previous_magic, 0, sizeof(previous_magic) );
+
+    if ( !next_advanced_packet_filter( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet" );
-        return;
+        if ( !next_advanced_packet_filter( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet" );
+            return;
+        }
     }
 
     // packet is valid

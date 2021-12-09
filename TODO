@@ -1,28 +1,14 @@
 DONE
 
-TODO
-
 	Fix as many packet sends as possible to use the new functions.
 
-	Dummy out the inputs to the packet chonkle and pittle.
+TODO
 
-	Just get the packets being sent again...
-
-	--------------------
-
-
+	Get the client/server upgrade working and the upgraded direct packets being exchanged between client and server.
 
 	--------------
 
-	Fix the packet send and recieve between the client and the server with dummy inputs so it works with basic packet filter.
-
-	--------------
-
-	Make sure the the client and server can upgrade.
-
-	--------------
-
-	Fix the session update and session response with the backend.
+	Update the func backend 5 so it can handle new SDK5 packet types.v
 
 	--------------
 
