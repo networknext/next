@@ -176,8 +176,8 @@ func mainReturnWithCode() int {
 		}
 
 		{
-			topicName := envvar.Get("RELAY_STATS_TOPIC_NAME", "ping_stats")
-			subscriptionName := envvar.Get("RELAY_STATS_SUBSCRIPTION_NAME", "ping_stats")
+			topicName := envvar.Get("RELAY_STATS_TOPIC_NAME", "relay_stats")
+			subscriptionName := envvar.Get("RELAY_STATS_SUBSCRIPTION_NAME", "relay_stats")
 
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()

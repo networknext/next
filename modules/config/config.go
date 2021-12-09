@@ -3,21 +3,22 @@ package config
 type FeatureEnum int
 
 const (
-	FEATURE_BIGTABLE           FeatureEnum = 0
-	FEATURE_NEW_RELAY_BACKEND  FeatureEnum = 1
-	FEATURE_POSTGRES           FeatureEnum = 2
-	FEATURE_VANITY_METRIC      FeatureEnum = 3
-	FEATURE_LOAD_TEST          FeatureEnum = 4
-	FEATURE_ENABLE_PPROF       FeatureEnum = 5
-	FEATURE_ROUTE_MATRIX_STATS FeatureEnum = 6
-	FEATURE_MATRIX_CLOUDSTORE  FeatureEnum = 7
-	FEATURE_VALVE_MATRIX       FeatureEnum = 8
-	FEATURE_BILLING 		   FeatureEnum = 9
-	FEATURE_BILLING2           FeatureEnum = 10
+	FEATURE_BIGTABLE             FeatureEnum = 0
+	FEATURE_NEW_RELAY_BACKEND    FeatureEnum = 1
+	FEATURE_POSTGRES             FeatureEnum = 2
+	FEATURE_VANITY_METRIC        FeatureEnum = 3
+	FEATURE_LOAD_TEST            FeatureEnum = 4
+	FEATURE_ENABLE_PPROF         FeatureEnum = 5
+	FEATURE_ROUTE_MATRIX_STATS   FeatureEnum = 6
+	FEATURE_MATRIX_CLOUDSTORE    FeatureEnum = 7
+	FEATURE_VALVE_MATRIX         FeatureEnum = 8
+	FEATURE_BILLING              FeatureEnum = 9
+	FEATURE_BILLING2             FeatureEnum = 10
+	FEATURE_RELAY_FULL_BANDWIDTH FeatureEnum = 11
 )
 
 // NumFeatures is always one more than the highest FeatureEnum
-var NumFeatures = 11
+var NumFeatures = 12
 
 type Feature struct {
 	Name        string
@@ -99,5 +100,11 @@ var defaultFeatures = []Feature{
 		Enum:        FEATURE_BILLING2,
 		Value:       true,
 		Description: "Inserts and writes BillingEntry2 to BigQuery",
+	},
+	{
+		Name:        "FEATURE_RELAY_FULL_BANDWIDTH",
+		Enum:        FEATURE_RELAY_FULL_BANDWIDTH,
+		Value:       false,
+		Description: "Consider a relay as full based on its bandwidth usage",
 	},
 }

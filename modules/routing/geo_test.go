@@ -232,3 +232,26 @@ func TestIPLocator(t *testing.T) {
 		}
 	})
 }
+
+func TestValidate(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Validate Successfully", func(t *testing.T) {
+		mmdb := routing.MaxmindDB{}
+
+		err := mmdb.OpenCity(context.Background(), "../../testdata/GeoIP2-City-Test.mmdb")
+		assert.NoError(t, err)
+		err = mmdb.OpenISP(context.Background(), "../../testdata/GeoIP2-ISP-Test.mmdb")
+		assert.NoError(t, err)
+
+		err = mmdb.Validate()
+		assert.NoError(t, err)
+	})
+
+	t.Run("Validate Failure", func(t *testing.T) {
+		mmdb := routing.MaxmindDB{}
+
+		err := mmdb.Validate()
+		assert.Contains(t, err.Error(), "Validate(): failed to locate test IP")
+	})
+}

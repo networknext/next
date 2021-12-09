@@ -4465,6 +4465,8 @@ struct relay_t
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
     relay_address_t relay_addresses[MAX_RELAYS];
+    std::atomic<uint64_t> envelope_bandwidth_kbps_up;
+    std::atomic<uint64_t> envelope_bandwidth_kbps_down;
     std::atomic<uint64_t> bytes_sent;
     std::atomic<uint64_t> bytes_received;
     float fake_packet_loss_percent;
@@ -4598,7 +4600,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 {
     // build update data
 
-    uint32_t update_version = 3;
+    uint32_t update_version = 5;
 
     uint8_t update_data[10*1024];
 
@@ -4624,6 +4626,24 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     relay_write_uint64(&p, relay->sessions->size());
     relay_write_uint8(&p, uint8_t(shutdown));
     relay_write_string(&p, "reference", 32);
+
+    uint8_t cpu = 0;
+    relay_write_uint8(&p, cpu);
+
+    relay_write_uint64(&p, relay->envelope_bandwidth_kbps_up);
+    relay_write_uint64(&p, relay->envelope_bandwidth_kbps_down);
+
+    uint64_t bandwidth_tx = uint64_t(relay->bytes_sent * 8.0 / 1000.0);
+    uint64_t bandwidth_rx = uint64_t(relay->bytes_received * 8.0 / 1000.0);
+
+    relay_write_uint64(&p, bandwidth_tx);
+    relay_write_uint64(&p, bandwidth_rx);
+
+    // reset bandwidth bytes sent / recv to accurately track bandwidth kbps
+    // this is easier than subtracting previously sent / recv bytes
+
+    relay->bytes_sent = 0;
+    relay->bytes_received = 0;
 
     int update_data_length = (int) ( p - update_data );
 
@@ -4858,6 +4878,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_replay_protection_reset( &session->replay_protection_client_to_server );
                 relay_replay_protection_reset( &session->replay_protection_server_to_client );
                 relay->sessions->insert( std::make_pair(hash, session) );
+                relay->envelope_bandwidth_kbps_up += session->kbps_up;
+                relay->envelope_bandwidth_kbps_down += session->kbps_down;
                 printf( "session created: %" PRIx64 ".%d\n", token.session_id, token.session_version );
             }
             relay_platform_mutex_release( relay->mutex );
@@ -5511,6 +5533,8 @@ int main( int argc, const char ** argv )
     relay.num_relays = 0;
     memset( relay.relay_ids, 0, sizeof(relay.relay_ids) );
     memset( relay.relay_addresses, 0, sizeof(relay.relay_addresses) );
+    relay.envelope_bandwidth_kbps_up = 0;
+    relay.envelope_bandwidth_kbps_down = 0;
     relay.bytes_sent = 0;
     relay.bytes_received = 0;
     relay.fake_packet_loss_percent = relay_fake_packet_loss_percent;
@@ -5579,6 +5603,8 @@ int main( int argc, const char ** argv )
             if ( iter->second && iter->second->expire_timestamp < relay_timestamp( &relay ) ) 
             {
                 printf( "session destroyed: %" PRIx64 ".%d\n", iter->second->session_id, iter->second->session_version );
+                relay.envelope_bandwidth_kbps_up -= iter->second->kbps_up;
+                relay.envelope_bandwidth_kbps_down -= iter->second->kbps_down;
                 iter = relay.sessions->erase( iter );
             } 
             else 

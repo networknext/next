@@ -30,6 +30,7 @@ Debug logs are available by setting `NEXT_DEBUG_LOGS=1`. Otherwise, only error l
 - `ENV`: the environment the service is running in. Should be either local, dev, staging, or prod
 - `RELAY_ROUTER_MAX_JITTER`: the max jitter value to consider a relay unroutable within the lookback period
 - `RELAY_ROUTER_MAX_PACKET_LOSS`: the max packet loss value to consider a relay unroutable within the lookback period
+- `RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE`: the bandwidth limit for a relay as a function of the relay's NIC Speed to determine if the relay is at max capacity
 - `RELAY_BACKEND_ADDRESSES`: the list of valid relay backend addresses
 - `MATRIX_STORE_ADDRESS`: the redis database address to store the relay backend live metadata
 
