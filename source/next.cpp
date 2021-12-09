@@ -12500,7 +12500,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
 
-        // todo: get current magic
+        // todo: when sending to relays we have to wait 30 seconds before using the most recent magic
         uint8_t magic[8];
 
         uint8_t from_address_data[4];
@@ -12580,9 +12580,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
 
-        // todo: get current magic
+        // todo: when sending to relays we have to wait 30 seconds before using the most recent magic
         uint8_t magic[8];
-        memset( magic, 0, sizeof(magic) );
 
         uint8_t from_address_data[4];
         uint8_t to_address_data[4];
@@ -12676,7 +12675,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         send_sequence |= uint64_t(1) << 63;
         send_sequence |= uint64_t(1) << 62;
 
-        // todo: get current magic
+        // todo: when sending to relays we have to wait 30 seconds before using the most recent magic
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );
 
