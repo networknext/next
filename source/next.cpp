@@ -17748,9 +17748,12 @@ void test_relay_ping_packet()
 
         next_check( packet_data[0] == NEXT_RELAY_PING_PACKET );
 
-        // todo: read back ping sequence and verify
+        const uint8_t * p = packet_data + 16;
+        uint64_t read_ping_sequence = next_read_uint64( &p );
+        uint64_t read_ping_session_id = next_read_uint64( &p );
 
-        // todo: read back ping session id and verify
+        next_check( read_ping_sequence == ping_sequence );
+        next_check( read_ping_session_id == ping_session_id );
         
         next_check( memcmp( packet_data + 1 + 15 + 8 + 8, ping_token, NEXT_ENCRYPTED_PING_TOKEN_BYTES ) == 0 );
     }
