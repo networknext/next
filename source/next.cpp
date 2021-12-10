@@ -10776,10 +10776,10 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(5)
 
-    uint64_t upcoming_magic;
-    uint64_t current_magic;
-    uint64_t previous_magic;
-    double swap_magic_time;
+    uint8_t upcoming_magic[8];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
+    double update_magic_time;
 
     NEXT_DECLARE_SENTINEL(6)
 };
@@ -11775,6 +11775,29 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     }
 
     return entry;
+}
+
+void next_server_internal_update_magic( next_server_internal_t * server )
+{
+    next_assert( server );
+
+    const double current_time = next_time();
+
+    if ( server->update_magic_time > 0 && server->update_magic_time < current_time )
+    {
+        server->update_magic_time = 0.0;
+        memcpy( server->previous_magic, server->current_magic, sizeof(server->previous_magic) );
+        memcpy( server->current_magic, server->upcoming_magic, sizeof(server->current_magic) );
+        next_printf( "updated magic %x,%x,%x,%x,%x,%x,%x,%x", 
+            server->current_magic[0],
+            server->current_magic[1],
+            server->current_magic[2],
+            server->current_magic[3],
+            server->current_magic[4],
+            server->current_magic[5],
+            server->current_magic[6],
+            server->current_magic[7] );
+    }
 }
 
 void next_server_internal_update_route( next_server_internal_t * server )
@@ -13574,6 +13597,8 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
         if ( current_time >= last_update_time + 0.1 )
         {
+            next_server_internal_update_magic( server );
+
             next_server_internal_update_pending_upgrades( server );
 
             next_server_internal_update_route( server );
