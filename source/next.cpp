@@ -10775,6 +10775,13 @@ struct next_server_internal_t
     uint8_t server_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(5)
+
+    uint64_t upcoming_magic;
+    uint64_t current_magic;
+    uint64_t previous_magic;
+    double swap_magic_time;
+
+    NEXT_DECLARE_SENTINEL(6)
 };
 
 void next_server_internal_initialize_sentinels( next_server_internal_t * server )
@@ -10787,6 +10794,7 @@ void next_server_internal_initialize_sentinels( next_server_internal_t * server 
     NEXT_INITIALIZE_SENTINEL( server, 3 )
     NEXT_INITIALIZE_SENTINEL( server, 4 )
     NEXT_INITIALIZE_SENTINEL( server, 5 )
+    NEXT_INITIALIZE_SENTINEL( server, 6 )
 }
 
 void next_server_internal_verify_sentinels( next_server_internal_t * server )
@@ -10799,6 +10807,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
     NEXT_VERIFY_SENTINEL( server, 3 )
     NEXT_VERIFY_SENTINEL( server, 4 )
     NEXT_VERIFY_SENTINEL( server, 5 )
+    NEXT_VERIFY_SENTINEL( server, 6 )
     if ( server->session_manager )
         next_session_manager_verify_sentinels( server->session_manager );
     if ( server->pending_session_manager )
