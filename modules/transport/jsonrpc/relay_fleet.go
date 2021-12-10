@@ -463,7 +463,12 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 			reply.SelectedService = args.ServiceName
 		} else {
 			client := &http.Client{}
-			req, _ := http.NewRequest("GET", serviceURI, nil)
+			req, err := http.NewRequest("GET", serviceURI, nil)
+			if err != nil {
+				err = fmt.Errorf("AdminFrontPage() error getting status for service: %w", err)
+				core.Error("%v", err)
+				return err
+			}
 			req.Header.Set("Authorization", authHeader)
 
 			response, err := client.Do(req)
