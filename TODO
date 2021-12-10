@@ -38,33 +38,53 @@ DONE
 
 	Make sure this is done after we verify the session update response matches a request id.
 
+	All comms with server backend (read and write) should have magic of zero.
+
 TODO
 
 	--------------
 
-	All comms with server backend (read and write) should have magic of zero.
+	Now we have to work out how to track magic per-session.
+
+	Where does magic get sent down to the client initially? Upgrade request?
+
+	The current magic should get stashed in there.
+
+	The pending session should also have the magic stashed in there... just one magic value is enough.
 
 	--------------
 
-	Actually track current and previous magic in session entries
+	Then the client should store the magic.
 
-	Must be done in pending, proxy and current...
+	Client should use the magic value when receiving packets from the server.
 
-	--------------
-
-	Hook up and store the current magic in the session entry (from the upgrade response)
-
-	Hook up and store the current magic, move to prev, in the session entry (from the route update ack)
-
-	Actually use the current magic for session to send packet to client (but only for direct to client packets...)
+	Client should use the magic value when sending packets to the server.
 
 	--------------
 
-	Add concept of relay_magic, 30 second delayed from current -- this relay magic ensures that we can talk with relays without race.
+	Route update should contain current magic on server.
 
-	Actually use the relay magic when sending packets to relays from the server.
+	Client should stash magic in the route update when it changes, and use it right away.
 
-	Client also sends packets to relays, so the client should be driven from the relay magic as well... yowza.
+	Session needs pending, current and previous magic.
+
+	When route update ack comes back, server moves move current -> previous, pending -> current in session.
+
+	--------------
+
+	The proxy should also do this, we may need a notification of new magic.
+
+	--------------
+
+	Server should use current and previous magic per-session when reading packets.
+
+	--------------
+
+	Server should use current magic per-session (in proxy), when sending packets to a client.
+
+	--------------
+
+	At this point magic should theoretically be working.
 
 	--------------
 
@@ -79,6 +99,35 @@ TODO
 	Get various upgraded direct func tests passing.
 
 	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	========================================================
 

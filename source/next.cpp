@@ -12034,26 +12034,31 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
-    // todo: we need to get current magic here
-    uint8_t current_magic[8];
-    memset( current_magic, 0, sizeof(current_magic) );
+    const int packet_id = packet_data[0];
 
-    // todo: we need to get previous magic here
-    uint8_t previous_magic[8];
-    memset( previous_magic, 0, sizeof(previous_magic) );
-
-    if ( !next_advanced_packet_filter( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+    if ( packet_id != NEXT_BACKEND_SESSION_RESPONSE_PACKET )
     {
-        if ( !next_advanced_packet_filter( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+        if ( !next_advanced_packet_filter( packet_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet" );
+            if ( !next_advanced_packet_filter( packet_data, server->previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet" );
+                return;
+            }
+        }
+    }
+    else
+    {
+        uint8_t magic[8];
+        memset( magic, 0, sizeof(magic) );
+        if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet (session response)" );
             return;
         }
     }
 
     // packet is valid
-
-    int packet_id = packet_data[0];
 
     packet_data += 16;
     packet_bytes -= 16;
@@ -13393,7 +13398,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
 
-        // todo: we need most recent magic here
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );
 
@@ -13504,7 +13508,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             session->session_update_packet = packet;
 
-            // todo: we need latest magic here
             uint8_t magic[8];
             memset( magic, 0, sizeof(magic) );
 
@@ -13555,7 +13558,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent session update packet to backend for session %" PRIx64 " (%d)", session->session_id, session->session_update_packet.retry_number );
 
-            // todo: we need latest magic here
             uint8_t magic[8];
             memset( magic, 0, sizeof(magic) );
 
