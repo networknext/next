@@ -253,7 +253,7 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 		}
 		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
 	case "AnalyticsPusher":
-		serviceURI = rfs.AnalyticsPusherURI + "/status"
+		serviceURI = fmt.Sprintf("http://%s/status", rfs.AnalyticsPusherURI)
 	case "Api":
 		serviceURI = fmt.Sprintf("https://%s/status", rfs.ApiURI)
 	case "Billing":
@@ -564,7 +564,7 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 			}
 
 			for i := 0; i < fields.NumField(); i++ {
-				reply.ServiceStatusText = append(reply.ServiceStatusText, fmt.Sprintf("%s: %s", fields.Field(i).Name, values.Field(i)))
+				reply.ServiceStatusText = append(reply.ServiceStatusText, fmt.Sprintf("%s: %v", fields.Field(i).Name, values.Field(i)))
 			}
 
 			reply.SelectedService = args.ServiceName
