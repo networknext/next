@@ -4,17 +4,45 @@ DONE
 
 	Add current and previous magic to pending, proxy and session entries.
 
-TODO
-
-	--------------
-
 	Server needs to track upcoming, current and previous magic values.
 
 	Upcoming is the latest value from the server backend.
 
 	When it changes, there is a 30 second timer before we move current -> previous, and upcoming -> current.
 
-	Do this next!
+	When the server receives a session update with new magic in it, update the magic.
+
+	The magic must not be any of the current or previous magic values.
+
+	ps. Would be nicer if it were a server update, not per-session?
+
+	Ooooooh, if we don't have any sessions then we can't get the magic down...
+
+	If the server update only occurs once every 10 seconds, then... the magic is delayed, and packet loss effects could be severe (would need retry).
+
+	Do we really want to do a server update w. response and retry just to get the latest magic down?
+
+	Probably need to :(
+
+	But then the session update is by definition needing to have a fixed magic.
+
+	Then why not have fixed magic for the comms with the server backend?
+
+	It seems pragmatic that we do this, then there is no magic concerns between the servers <-> server backend, and we can hitch the magic on the session update (which already has a retry...).
+
+	It is decided.
+
+	Extend the session update to have magic in the response.
+
+	When a session update comes in, and the magic is different to upcoming, current and previous magic, copy to upcoming and set timer to update magic in 30 seconds.
+
+	Make sure this is done after we verify the session update response matches a request id.
+
+TODO
+
+	--------------
+
+	All comms with server backend (read and write) should have magic of zero.
 
 	--------------
 
@@ -85,3 +113,6 @@ TODO
 
 	--------------
 
+	We need a server flush method to timeout all sessions and flush session updates until acked.
+
+	--------------

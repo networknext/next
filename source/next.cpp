@@ -10366,6 +10366,7 @@ struct NextBackendSessionResponsePacket
     uint32_t slice_number;
     int session_data_bytes;
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
+    uint8_t magic[8];
     uint8_t response_type;
     bool near_relays_changed;
     int num_near_relays;
@@ -10398,6 +10399,8 @@ struct NextBackendSessionResponsePacket
         {
             serialize_bytes( stream, session_data, session_data_bytes );
         }
+
+        serialize_bytes( stream, magic, 8 );
 
         serialize_int( stream, response_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
 
@@ -12310,6 +12313,25 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->exclude_near_relays = packet.exclude_near_relays;
             memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
             entry->high_frequency_pings = packet.high_frequency_pings;
+
+            // check for new magic
+
+            if ( memcmp( packet.magic, server->upcoming_magic, 8 ) != 0 && 
+                 memcmp( packet.magic, server->current_magic, 8 ) != 0 &&
+                 memcmp( packet.magic, server->previous_magic, 8 ) != 0 )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "new magic %x,%x,%x,%x,%x,%x,%x,%x", 
+                    packet.magic[0], 
+                    packet.magic[1], 
+                    packet.magic[2], 
+                    packet.magic[3], 
+                    packet.magic[4], 
+                    packet.magic[5], 
+                    packet.magic[6], 
+                    packet.magic[7] );
+                memcpy( server->upcoming_magic, packet.magic, 8 );
+                server->update_magic_time = next_time() + 30.0;
+            }
 
             return;
         }   
