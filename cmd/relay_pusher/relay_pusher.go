@@ -240,6 +240,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	maxmindServerBackendSync, err := envvar.GetBool("MAXMIND_SERVER_BACKEND_SYNC", false)
+	if err != nil {
+		core.Error("failed to parse MAXMIND_SERVER_BACKEND_SYNC: %v", err)
+		return 1
+	}
+
 	// Maxmind ISP download goroutine
 	var maxmindISPMutex sync.RWMutex
 	maxmindISPDownloadTicker := time.NewTicker(maxmindISPDownloadInterval)
@@ -444,8 +450,8 @@ func mainReturnWithCode() int {
 		}
 	}()
 
-	// Maxmind ISP sync goroutine
-	maxmindISPSyncTicker := time.NewTicker(maxmindISPSyncInterval)
+	// Maxmind ISP cloud storage goroutine
+	maxmindISPUploadTicker := time.NewTicker(maxmindISPSyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -455,53 +461,73 @@ func mainReturnWithCode() int {
 			select {
 			case <-ctx.Done():
 				return
-			case <-maxmindISPSyncTicker.C:
-				start := time.Now()
-
-				// Store the known list of instance names
-				allBackendInstanceNames := serverBackendInstanceNames
-
-				// The names of instances in a MIG can change, so get them each time
-				serverBackendMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, serverBackendMIGName)
-				if err != nil {
-					core.Error("failed to fetch server backend mig instance names: %v", err)
-				} else {
-					// Add the server backend mig instance names to the list
-					allBackendInstanceNames = append(allBackendInstanceNames, serverBackendMIGInstanceNames...)
-				}
-
+			case <-maxmindISPUploadTicker.C:
 				// Copy the ISP file to GCP Storage
+				maxmindISPMutex.RLock()
 				if err := gcpStorage.CopyFromLocalToBucket(ctx, ispOutputLocation, bucketName, ispStorageName); err != nil {
+					maxmindISPMutex.RUnlock()
 					core.Error("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP.Add(1)
 					continue
 				} else {
 					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPStorageUploads.Add(1)
 				}
-
-				// Copy the ISP file to each Server Backend
-				maxmindISPMutex.RLock()
-				for _, instanceName := range allBackendInstanceNames {
-					if err := gcpStorage.CopyFromLocalToRemote(ctx, ispOutputLocation, instanceName); err != nil {
-						core.Error("failed to copy maxmind ISP file to instance %s: %v", instanceName, err)
-						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
-					} else {
-						core.Debug("successfully copied maxmind ISP file to instance %s", instanceName)
-						relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPSCP.Add(1)
-					}
-				}
 				maxmindISPMutex.RUnlock()
-
-				updateTime := time.Since(start)
-				duration := float64(updateTime.Milliseconds())
-
-				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBISPUpdateDuration.Set(duration)
 			}
 		}
 	}()
 
-	// Maxmind City sync goroutine
-	maxmindCitySyncTicker := time.NewTicker(maxmindCitySyncInterval)
+	if maxmindServerBackendSync {
+		// Maxmind ISP sync goroutine
+		maxmindISPSyncTicker := time.NewTicker(maxmindISPSyncInterval)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-maxmindISPSyncTicker.C:
+					start := time.Now()
+
+					// Store the known list of instance names
+					allBackendInstanceNames := serverBackendInstanceNames
+
+					// The names of instances in a MIG can change, so get them each time
+					serverBackendMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, serverBackendMIGName)
+					if err != nil {
+						core.Error("failed to fetch server backend mig instance names: %v", err)
+					} else {
+						// Add the server backend mig instance names to the list
+						allBackendInstanceNames = append(allBackendInstanceNames, serverBackendMIGInstanceNames...)
+					}
+
+					// Copy the ISP file to each Server Backend
+					maxmindISPMutex.RLock()
+					for _, instanceName := range allBackendInstanceNames {
+						if err := gcpStorage.CopyFromLocalToRemote(ctx, ispOutputLocation, instanceName); err != nil {
+							core.Error("failed to copy maxmind ISP file to instance %s: %v", instanceName, err)
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+						} else {
+							core.Debug("successfully copied maxmind ISP file to instance %s", instanceName)
+							relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPSCP.Add(1)
+						}
+					}
+					maxmindISPMutex.RUnlock()
+
+					updateTime := time.Since(start)
+					duration := float64(updateTime.Milliseconds())
+
+					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBISPUpdateDuration.Set(duration)
+				}
+			}
+		}()
+	}
+
+	// Maxmind City cloud storage goroutine
+	maxmindCityUploadTicker := time.NewTicker(maxmindCitySyncInterval)
 
 	wg.Add(1)
 	go func() {
@@ -511,50 +537,70 @@ func mainReturnWithCode() int {
 			select {
 			case <-ctx.Done():
 				return
-			case <-maxmindCitySyncTicker.C:
-				start := time.Now()
-
-				// Store the known list of instance names
-				allBackendInstanceNames := serverBackendInstanceNames
-
-				// The names of instances in a MIG can change, so get them each time
-				serverBackendMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, serverBackendMIGName)
-				if err != nil {
-					core.Error("failed to fetch server backend mig instance names: %v", err)
-				} else {
-					// Add the server backend mig instance names to the list
-					allBackendInstanceNames = append(allBackendInstanceNames, serverBackendMIGInstanceNames...)
-				}
-
+			case <-maxmindCityUploadTicker.C:
 				// Copy the City file to GCP Storage
+				maxmindCityMutex.RLock()
 				if err := gcpStorage.CopyFromLocalToBucket(ctx, cityOutputLocation, bucketName, cityStorageName); err != nil {
+					maxmindCityMutex.RUnlock()
 					core.Error("failed to copy maxmind City file to GCP Cloud Storage: %v", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity.Add(1)
 					continue
 				} else {
 					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCityStorageUploads.Add(1)
 				}
-
-				// Copy the City file to each Server Backend
-				maxmindCityMutex.RLock()
-				for _, instanceName := range allBackendInstanceNames {
-					if err := gcpStorage.CopyFromLocalToRemote(ctx, cityOutputLocation, instanceName); err != nil {
-						core.Error("failed to copy maxmind City file to instance %s: %v", instanceName, err)
-						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
-					} else {
-						core.Debug("successfully copied maxmind City file to instance %s", instanceName)
-						relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCitySCP.Add(1)
-					}
-				}
 				maxmindCityMutex.RUnlock()
-
-				updateTime := time.Since(start)
-				duration := float64(updateTime.Milliseconds())
-
-				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBCityUpdateDuration.Set(duration)
 			}
 		}
 	}()
+
+	if maxmindServerBackendSync {
+		// Maxmind City sync goroutine
+		maxmindCitySyncTicker := time.NewTicker(maxmindCitySyncInterval)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-maxmindCitySyncTicker.C:
+					start := time.Now()
+
+					// Store the known list of instance names
+					allBackendInstanceNames := serverBackendInstanceNames
+
+					// The names of instances in a MIG can change, so get them each time
+					serverBackendMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, serverBackendMIGName)
+					if err != nil {
+						core.Error("failed to fetch server backend mig instance names: %v", err)
+					} else {
+						// Add the server backend mig instance names to the list
+						allBackendInstanceNames = append(allBackendInstanceNames, serverBackendMIGInstanceNames...)
+					}
+
+					// Copy the City file to each Server Backend
+					maxmindCityMutex.RLock()
+					for _, instanceName := range allBackendInstanceNames {
+						if err := gcpStorage.CopyFromLocalToRemote(ctx, cityOutputLocation, instanceName); err != nil {
+							core.Error("failed to copy maxmind City file to instance %s: %v", instanceName, err)
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+						} else {
+							core.Debug("successfully copied maxmind City file to instance %s", instanceName)
+							relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCitySCP.Add(1)
+						}
+					}
+					maxmindCityMutex.RUnlock()
+
+					updateTime := time.Since(start)
+					duration := float64(updateTime.Milliseconds())
+
+					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBCityUpdateDuration.Set(duration)
+				}
+			}
+		}()
+	}
 
 	// Database binary sync goroutine
 	dbTicker := time.NewTicker(dbSyncInterval)
