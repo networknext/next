@@ -26,17 +26,39 @@ DONE
 
 	^--- but only do this when the magic is actually different to current, since it is sent down every 10 secs, whether changed or not.
 
-TODO
-
-	--------------
-
 	When route update ack comes back, server updates magic for session.
 
 	This way the server doesn't send a new magic until the client is guaranteed to have it.
 
+	Does the server know the magic value for the route update?
+
+	No. Include it in the ack packet.
+
+	Client needs to pass current magic up in the route update ack packet.
+
+	Make sure the magic value is included in route update packet.
+
+	Added magic to client upgraded notify, so the main thread next_client_t has magic value for packet sends.
+
+	Main thread client needs client external address on upgrade, as well as magic.
+
+	Main thread client needs to clear magic values and external address on disconnect.
+
+TODO
+
 	--------------
 
-	The proxy entry needs to (lazily) update the magic value post-ack.
+	Main thread next_client_t needs magic updated each time a route changes (new notify, next_notify_updated_magic...)
+
+	--------------
+
+	Internal client needs to clear client external address and magic values on close session.
+
+	--------------
+
+	The server proxy session entry needs to (lazily) update the magic value post-ack. 
+
+	New notify? I forget if we do notifies on server side...
 
 	--------------
 
@@ -44,19 +66,15 @@ TODO
 
 	--------------
 
-	Client needs to clear magic values and external address on disconnect.
+	Client should use current magic value and client external address when sending packets to the server and relays.
 
 	--------------
 
-	Client should use current magic value when sending packets to the server and relays.
+	Server should use current magic per-session (in proxy), and address of that session, when sending packets to a client.
 
 	--------------
 
-	Server should use current magic per-session (in proxy), when sending packets to a client.
-
-	--------------
-
-	At this point magic should theoretically be working.
+	At this point magic should theoretically be working... hahahahaha
 
 	--------------
 

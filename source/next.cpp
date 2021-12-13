@@ -3266,15 +3266,18 @@ struct NextRouteUpdatePacket
 struct NextRouteUpdateAckPacket
 {
     uint64_t sequence;
+    uint8_t magic[8];
 
     NextRouteUpdateAckPacket()
     {
         sequence = 0;
+        memset( magic, 0, sizeof(magic) );
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_uint64( stream, sequence );
+        serialize_bytes( stream, magic, 8 );
         return true;
     }
 };
@@ -6244,6 +6247,7 @@ struct next_client_command_report_session_t : public next_client_command_t
 #define NEXT_CLIENT_NOTIFY_PACKET_RECEIVED          0
 #define NEXT_CLIENT_NOTIFY_UPGRADED                 1
 #define NEXT_CLIENT_NOTIFY_STATS_UPDATED            2
+#define NEXT_CLIENT_NOTIFY_MAGIC_UPDATED            3
 
 struct next_client_notify_t
 {
@@ -6260,17 +6264,20 @@ struct next_client_notify_packet_received_t : public next_client_notify_t
 struct next_client_notify_upgraded_t : public next_client_notify_t
 {
     uint64_t session_id;
-};
-
-struct next_client_notify_downgraded_t : public next_client_notify_t
-{
-    uint64_t session_id;
+    next_address_t client_external_address;
+    uint8_t magic[8];
 };
 
 struct next_client_notify_stats_updated_t : public next_client_notify_t
 {
     next_client_stats_t stats;
     bool fallback_to_direct;
+};
+
+struct next_client_notify_magic_updated_t : public next_client_notify_t
+{
+    uint64_t session_id;
+    uint8_t magic[8];
 };
 
 // ---------------------------------------------------------------
@@ -6775,6 +6782,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( from_server_address && packet_id == NEXT_UPGRADE_REQUEST_PACKET )
     {
+        // todo: what if the client is already upgraded?
+
         if ( !next_address_equal( from, &client->server_address ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. packet does not come from server address" );
@@ -6928,6 +6937,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_assert( notify );
         notify->type = NEXT_CLIENT_NOTIFY_UPGRADED;
         notify->session_id = client->session_id;
+        notify->client_external_address = client->client_external_address;
+        memcpy( notify->magic, client->current_magic, 8 );
         {
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
@@ -7415,6 +7426,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         NextRouteUpdateAckPacket ack;
         ack.sequence = packet.sequence;
+        memcpy( ack.magic, client->current_magic, 8 );
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_ROUTE_UPDATE_ACK_PACKET, &ack ) != NEXT_OK )
         {
@@ -8140,9 +8152,11 @@ struct next_client_t
     bool upgraded;
     bool fallback_to_direct;
     uint8_t open_session_sequence;
+    uint8_t magic[8];
     uint16_t bound_port;
     uint64_t session_id;
     next_address_t server_address;
+    next_address_t client_external_address;
     next_client_internal_t * internal;
     next_platform_thread_t * thread;
     void (*packet_received_callback)( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes );
@@ -8348,9 +8362,11 @@ void next_client_close_session( next_client_t * client )
     client->session_id = 0;    
     memset( &client->client_stats, 0, sizeof(next_client_stats_t ) );
     memset( &client->server_address, 0, sizeof(next_address_t) );
+    memset( &client->client_external_address, 0, sizeof(next_address_t) );
     next_bandwidth_limiter_reset( &client->next_send_bandwidth );
     next_bandwidth_limiter_reset( &client->next_receive_bandwidth );
     client->state = NEXT_CLIENT_STATE_CLOSED;
+    memset( client->magic, 0, sizeof(client->magic) );
 }
 
 void next_client_update( next_client_t * client )
@@ -8402,6 +8418,8 @@ void next_client_update( next_client_t * client )
                 next_client_notify_upgraded_t * upgraded = (next_client_notify_upgraded_t*) notify;
                 client->upgraded = true;
                 client->session_id = upgraded->session_id;
+                client->client_external_address = upgraded->client_external_address;
+                memcpy( client->magic, upgraded->magic, 8 );
                 next_printf( NEXT_LOG_LEVEL_INFO, "client upgraded to session %" PRIx64, client->session_id );
             }
             break;
@@ -11803,7 +11821,7 @@ void next_server_internal_update_magic( next_server_internal_t * server )
         server->update_magic_time = 0.0;
         memcpy( server->previous_magic, server->current_magic, sizeof(server->previous_magic) );
         memcpy( server->current_magic, server->upcoming_magic, sizeof(server->current_magic) );
-        next_printf( "server updated magic %x,%x,%x,%x,%x,%x,%x,%x", 
+        next_printf( "server updated magic: %x,%x,%x,%x,%x,%x,%x,%x", 
             server->current_magic[0],
             server->current_magic[1],
             server->current_magic[2],
@@ -11838,6 +11856,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
         if ( entry->update_dirty && !entry->client_ping_timed_out && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
         {
             NextRouteUpdatePacket packet;
+            memcpy( packet.magic, server->current_magic, 8 );
             packet.sequence = entry->update_sequence;
             packet.dont_ping_near_relays = entry->update_dont_ping_near_relays;
             packet.near_relays_changed = entry->update_near_relays_changed;
@@ -12940,8 +12959,23 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( session->update_dirty )
         {
-            // todo: if dirty, commit new magic to current, current magic to prev.
-    
+            if ( memcmp( session->magic, packet.magic, 8 ) != 0 )
+            {
+                next_printf( "server updated magic for session %" PRIx64 ": %x,%x,%x,%x,%x,%x,%x,%x",
+                    session->session_id,
+                    packet.magic[0],
+                    packet.magic[1],
+                    packet.magic[2],
+                    packet.magic[3],
+                    packet.magic[4],
+                    packet.magic[5],
+                    packet.magic[6],
+                    packet.magic[7] );
+
+                memcpy( session->magic, packet.magic, 8 );
+
+                // todo: we need a new notification here, new magic for session, to be cached on the proxy side for send
+            }
             session->update_dirty = false;
         }
 
@@ -17793,6 +17827,7 @@ void test_route_update_ack_packet()
 
         static NextRouteUpdateAckPacket in, out;
         in.sequence = 100000;
+        next_random_bytes( in.magic, 8 );
         
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
@@ -17810,6 +17845,7 @@ void test_route_update_ack_packet()
         
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
+        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
     }
 }
 
