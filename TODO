@@ -1,64 +1,20 @@
 DONE
 
-	Now we have to work out how to track magic per-session.
+	Main thread next_client_t needs magic updated each time a route changes (new notify, next_notify_updated_magic...)
 
-	Where does magic get sent down to the client initially? Upgrade request packet?
-
-	The current magic should get stashed in there.
-
-	Pending session entry only needs magic, not current and pending.
-
-	Stash the magic in there on upgrade, use the entry magic in upgrade response packet.
-
-	Then the client should store the magic.
-
-	Client should use the magic value when receiving packets from the server.
-
-	Client should use the magic value when sending packets to the server.
-
-	When the upgrade completes on the server-side, the pending entry should copy the magic to the full entry.
-
-	The proxy entry on the server-side needs a copy of the magic from the upgrade.
-
-	Route update should contain current magic from server.
-
-	Client should stash magic in the route update when it changes, and use it right away for sends, keep old magic as prev.
-
-	^--- but only do this when the magic is actually different to current, since it is sent down every 10 secs, whether changed or not.
-
-	When route update ack comes back, server updates magic for session.
-
-	This way the server doesn't send a new magic until the client is guaranteed to have it.
-
-	Does the server know the magic value for the route update?
-
-	No. Include it in the ack packet.
-
-	Client needs to pass current magic up in the route update ack packet.
-
-	Make sure the magic value is included in route update packet.
-
-	Added magic to client upgraded notify, so the main thread next_client_t has magic value for packet sends.
-
-	Main thread client needs client external address on upgrade, as well as magic.
-
-	Main thread client needs to clear magic values and external address on disconnect.
+	Internal client needs to clear client external address and magic values on close session.
 
 TODO
 
 	--------------
 
-	Main thread next_client_t needs magic updated each time a route changes (new notify, next_notify_updated_magic...)
+	Client needs to use magic value and client external address on main thread packet send.
 
 	--------------
 
-	Internal client needs to clear client external address and magic values on close session.
+	The server proxy session entry needs to (lazily) update the magic value post-route update ack. 
 
-	--------------
-
-	The server proxy session entry needs to (lazily) update the magic value post-ack. 
-
-	New notify? I forget if we do notifies on server side...
+	New server notify.
 
 	--------------
 
@@ -66,11 +22,15 @@ TODO
 
 	--------------
 
-	Client should use current magic value and client external address when sending packets to the server and relays.
+	Server needs to accept both previous and current magic on packet read.
 
 	--------------
 
-	Server should use current magic per-session (in proxy), and address of that session, when sending packets to a client.
+	Client should use magic value and client external address when sending packets to the server and relays.
+
+	--------------
+
+	Server should use magic per-session proxy entry and address of that session, when sending packets to a client.
 
 	--------------
 

@@ -5810,7 +5810,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     uint8_t magic[8];
     memset( magic, 0, sizeof(magic) );
 
-    // todo: we need the client external address passed in as a paremeter
+    // todo: we need the client external address passed in as a parameter
     next_address_t client_external_address;
 
     next_route_manager_verify_sentinels( route_manager );
@@ -6276,7 +6276,6 @@ struct next_client_notify_stats_updated_t : public next_client_notify_t
 
 struct next_client_notify_magic_updated_t : public next_client_notify_t
 {
-    uint64_t session_id;
     uint8_t magic[8];
 };
 
@@ -6642,13 +6641,6 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
 
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
 
-    // todo: we need the current magic value
-    uint8_t magic[8];
-    memset( magic, 0, sizeof(magic) );
-
-    // todo: we need the client external address
-    next_address_t client_external_address;
-
     uint8_t from_address_data[32];
     uint8_t to_address_data[32];
     uint16_t from_address_port;
@@ -6656,17 +6648,17 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
     int from_address_bytes;
     int to_address_bytes;
 
-    next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
     next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
 
-    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+    if ( next_write_packet( packet_id, packet_object, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &client->internal_send_sequence, NULL, client->client_send_key, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to write internal packet type %d", packet_id );
         return NEXT_ERROR;
     }
 
     next_assert( next_basic_packet_filter( buffer, sizeof(buffer) ) );
-    next_assert( next_advanced_packet_filter( buffer, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+    next_assert( next_advanced_packet_filter( buffer, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
     next_platform_socket_send_packet( client->socket, &client->server_address, buffer, packet_bytes );
 
@@ -6686,18 +6678,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     const int packet_id = packet_data[0];
 
-    uint8_t magic[8];
-    memset( magic, 0, sizeof(magic) );
-
-    next_address_t client_external_address;
-
-    if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
-    {
-        // todo: get magic value
-
-        // todo: get client external address
-    }
-
     uint8_t from_address_data[32];
     uint8_t to_address_data[32];
     uint16_t from_address_port;
@@ -6706,7 +6686,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     int to_address_bytes;
 
     next_address_data( from, from_address_data, &from_address_bytes, &from_address_port );
-    next_address_data( &client_external_address, to_address_data, &to_address_bytes, &to_address_port );
+    next_address_data( &client->client_external_address, to_address_data, &to_address_bytes, &to_address_port );
 
     if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
     {
@@ -6714,10 +6694,25 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         return;
     }
 
-    if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+    if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet" );
-        return;
+        if ( !next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+        {
+            if ( !next_advanced_packet_filter( packet_data, client->previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet" );
+            }
+            return;
+        }
+    }
+    else
+    {
+        uint8_t magic[8];
+        memset( magic, 0, sizeof(magic) );
+        if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet (upgrade request)" );
+        }
     }
 
     // packet is valid
@@ -6845,7 +6840,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         // stuck in an undefined state.
 
         client->upgrade_response_packet_bytes = 0;
-        const int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, NULL, NULL, NULL, NULL, NULL, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+        const int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, NULL, NULL, NULL, NULL, NULL, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
         if ( result != NEXT_OK )
         {
@@ -6856,11 +6851,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         const uint8_t * packet_data = client->upgrade_response_packet_data;
         const int packet_bytes = client->upgrade_response_packet_bytes;
 
-        next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
         next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
 
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_port, to_address_port, packet_bytes ) );
+        next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_port, to_address_port, packet_bytes ) );
 
         (void) packet_data;
         (void) packet_bytes;
@@ -7323,6 +7318,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
     {
+        // todo: what if the route update has already been received and processed?
+
         if ( client->fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state (1)" );
@@ -7414,6 +7411,15 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
                     memcpy( client->previous_magic, client->current_magic, 8 );
                     memcpy( client->current_magic, packet.magic, 8 );
+
+                    next_client_notify_magic_updated_t * notify = (next_client_notify_magic_updated_t*) next_malloc( client->context, sizeof(next_client_notify_magic_updated_t) );
+                    next_assert( notify );
+                    notify->type = NEXT_CLIENT_NOTIFY_MAGIC_UPDATED;
+                    memcpy( notify->magic, client->current_magic, 8 );
+                    {
+                        next_platform_mutex_guard( &client->notify_mutex );
+                        next_queue_push( client->notify_queue, notify );
+                    }
                 }
             }
         }
@@ -7557,7 +7563,10 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_INFO, "client closed session to %s", next_address_to_string( &client->server_address, buffer ) );
 
+                memset( client->current_magic, 0, 8 );
+                memset( client->previous_magic, 0, 8 );
                 memset( &client->server_address, 0, sizeof(next_address_t) );
+                memset( &client->client_external_address, 0, sizeof(next_address_t) );
 
                 client->session_open = false;
                 client->upgraded = false;
@@ -7937,13 +7946,6 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
         uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
-        // todo: we need the magic value here
-        uint8_t magic[8];
-        memset( magic, 0, sizeof(magic) );
-
-        // todo: we need the client external address here
-        next_address_t client_external_address;
-
         uint8_t from_address_data[32];
         uint8_t to_address_data[32];
         uint16_t from_address_port;
@@ -7951,17 +7953,17 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
         int from_address_bytes;
         int to_address_bytes;
 
-        next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
         next_address_data( &to, to_address_data, &to_address_bytes, &to_address_port );
 
         const uint64_t ping_sequence = next_ping_history_ping_sent( &client->next_ping_history, current_time );
 
-        int packet_bytes = next_write_ping_packet( packet_data, sequence, session_id, session_version, private_key, ping_sequence, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+        int packet_bytes = next_write_ping_packet( packet_data, sequence, session_id, session_version, private_key, ping_sequence, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
         next_assert( packet_bytes > 0 );
 
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+        next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
         next_platform_socket_send_packet( client->socket, &to, packet_data, packet_bytes );
 
@@ -8432,6 +8434,13 @@ void next_client_update( next_client_t * client )
             }
             break;
 
+            case NEXT_CLIENT_NOTIFY_MAGIC_UPDATED:
+            {
+                next_client_notify_magic_updated_t * magic_updated = (next_client_notify_magic_updated_t*) notify;
+                memcpy( client->magic, magic_updated->magic, 8 );
+            }
+            break;
+
             default: break;
         }
 
@@ -8551,13 +8560,6 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
         {
             // send direct from client to server
 
-            // todo: we need magic here
-            uint8_t magic[8];
-            memset( magic, 0, sizeof(magic) );
-
-            // todo: we need the client external address
-            next_address_t client_external_address;
-
             uint8_t from_address_data[32];
             uint8_t to_address_data[32];
             uint16_t from_address_port;
@@ -8565,17 +8567,17 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             int from_address_bytes;
             int to_address_bytes;
 
-            next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
             next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
 
             uint8_t direct_packet_data[NEXT_MAX_PACKET_BYTES];
 
-            const int direct_packet_bytes = next_write_direct_packet( direct_packet_data, client->open_session_sequence, send_sequence, packet_data, packet_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            const int direct_packet_bytes = next_write_direct_packet( direct_packet_data, client->open_session_sequence, send_sequence, packet_data, packet_bytes, client->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( direct_packet_bytes >= 0 );
 
             next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
-            next_assert( next_advanced_packet_filter( direct_packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( direct_packet_data, client->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
 
             (void) direct_packet_data;
             (void) direct_packet_bytes;
@@ -11667,7 +11669,7 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
 
         if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
         {
-            // todo: we need the real acked magic value for this client session
+            memcpy( magic, session->magic, 8 );
         }
     }
 
@@ -12609,9 +12611,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
 
-        // todo: when sending to relays we have to wait 30 seconds before using the most recent magic
-        uint8_t magic[8];
-
         uint8_t from_address_data[4];
         uint8_t to_address_data[4];
         uint16_t from_address_port;
@@ -12624,12 +12623,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint8_t response_data[NEXT_MAX_PACKET_BYTES];
 
-        int response_bytes = next_write_route_response_packet( response_data, session_send_sequence, entry->session_id, entry->pending_route_session_version, entry->pending_route_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+        int response_bytes = next_write_route_response_packet( response_data, session_send_sequence, entry->session_id, entry->pending_route_session_version, entry->pending_route_private_key, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
         next_assert( response_bytes > 0 );
 
         next_assert( next_basic_packet_filter( response_data, response_bytes ) );
-        next_assert( next_advanced_packet_filter( response_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, response_bytes ) );
+        next_assert( next_advanced_packet_filter( response_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, response_bytes ) );
 
         next_platform_socket_send_packet( server->socket, from, response_data, response_bytes );
 
@@ -12689,9 +12688,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint64_t session_send_sequence = entry->special_send_sequence++;
 
-        // todo: when sending to relays we have to wait 30 seconds before using the most recent magic
-        uint8_t magic[8];
-
         uint8_t from_address_data[4];
         uint8_t to_address_data[4];
         uint16_t from_address_port;
@@ -12704,12 +12700,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint8_t response_data[NEXT_MAX_PACKET_BYTES];
 
-        int response_bytes = next_write_continue_response_packet( packet_data, session_send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+        int response_bytes = next_write_continue_response_packet( packet_data, session_send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
         next_assert( response_bytes > 0 );
 
         next_assert( next_basic_packet_filter( response_data, response_bytes ) );
-        next_assert( next_advanced_packet_filter( response_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, response_bytes ) );
+        next_assert( next_advanced_packet_filter( response_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, response_bytes ) );
 
         next_platform_socket_send_packet( server->socket, from, response_data, response_bytes );
 
@@ -12784,10 +12780,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         send_sequence |= uint64_t(1) << 63;
         send_sequence |= uint64_t(1) << 62;
 
-        // todo: when sending to relays we have to wait 30 seconds before using the most recent magic
-        uint8_t magic[8];
-        memset( magic, 0, sizeof(magic) );
-
         uint8_t from_address_data[4];
         uint8_t to_address_data[4];
         uint16_t from_address_port;
@@ -12800,12 +12792,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint8_t pong_packet_data[NEXT_MAX_PACKET_BYTES];
 
-        int pong_packet_bytes = next_write_pong_packet( pong_packet_data, send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, ping_sequence, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+        int pong_packet_bytes = next_write_pong_packet( pong_packet_data, send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, ping_sequence, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
         next_assert( pong_packet_bytes > 0 );
 
         next_assert( next_basic_packet_filter( pong_packet_data, pong_packet_bytes ) );
-        next_assert( next_advanced_packet_filter( pong_packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, pong_packet_bytes ) );
+        next_assert( next_advanced_packet_filter( pong_packet_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, pong_packet_bytes ) );
 
         next_platform_socket_send_packet( server->socket, from, pong_packet_data, pong_packet_bytes );
 
@@ -12974,8 +12966,19 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
                 memcpy( session->magic, packet.magic, 8 );
 
-                // todo: we need a new notification here, new magic for session, to be cached on the proxy side for send
+                // todo: server notify
+                /*
+                next_client_notify_magic_updated_t * notify = (next_client_notify_magic_updated_t*) next_malloc( client->context, sizeof(next_client_notify_magic_updated_t) );
+                next_assert( notify );
+                notify->type = NEXT_CLIENT_NOTIFY_MAGIC_UPDATED;
+                memcpy( notify->magic, client->current_magic, 8 );
+                {
+                    next_platform_mutex_guard( &client->notify_mutex );
+                    next_queue_push( client->notify_queue, notify );
+                }
+                */
             }
+
             session->update_dirty = false;
         }
 
