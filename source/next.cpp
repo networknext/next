@@ -2988,11 +2988,11 @@ struct NextUpgradeRequestPacket
 {
     uint64_t protocol_version;
     uint64_t session_id;
-    uint64_t magic;
     next_address_t client_address;
     next_address_t server_address;
     uint8_t server_kx_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
+    uint8_t magic[8];
 
     NextUpgradeRequestPacket()
     {
@@ -3003,11 +3003,11 @@ struct NextUpgradeRequestPacket
     {
         serialize_uint64( stream, protocol_version );
         serialize_uint64( stream, session_id );
-        serialize_uint64( stream, magic );
         serialize_address( stream, client_address );
         serialize_address( stream, server_address );
         serialize_bytes( stream, server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+        serialize_bytes( stream, magic, 8 );
         return true;
     }
 };
@@ -8874,8 +8874,7 @@ struct next_pending_session_entry_t
     double last_packet_send_time;
     uint8_t private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
-    uint8_t current_magic[8];
-    uint8_t previous_magic[8];
+    uint8_t magic[8];
 
     NEXT_DECLARE_SENTINEL(1)
 };
@@ -9063,8 +9062,7 @@ next_pending_session_entry_t * next_pending_session_manager_add( next_pending_se
             {
                 pending_session_manager->max_entry_index = i;
             }
-            memset( entry->current_magic, 0, sizeof(entry->current_magic) );
-            memset( entry->previous_magic, 0, sizeof(entry->previous_magic) );
+            memset( entry->magic, 0, sizeof(entry->magic) );
             return entry;
         }        
     }  
@@ -9083,8 +9081,7 @@ next_pending_session_entry_t * next_pending_session_manager_add( next_pending_se
     entry->last_packet_send_time = -1000.0;
     memcpy( entry->private_key, private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
     memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-    memset( entry->current_magic, 0, sizeof(entry->current_magic) );
-    memset( entry->previous_magic, 0, sizeof(entry->previous_magic) );
+    memset( entry->magic, 0, sizeof(entry->magic) );
 
     next_pending_session_manager_verify_sentinels( pending_session_manager );
 
@@ -11919,11 +11916,11 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
             
             entry->last_packet_send_time = current_time;
 
-            // todo: fill in magic and the client external address
-
             NextUpgradeRequestPacket packet;
             packet.protocol_version = next_protocol_version();
+            memcpy( packet.magic, entry->magic, 8 );
             packet.session_id = entry->session_id;
+            packet.client_address = entry->address;
             packet.server_address = server->server_address;
             memcpy( packet.server_kx_public_key, server->server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
             memcpy( packet.upgrade_token, entry->upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );        
@@ -13041,6 +13038,7 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     }
 
     entry->user_hash = user_hash;
+    memcpy( entry->magic, server->current_magic, 8 );
 }
 
 void next_server_internal_tag_session( next_server_internal_t * server, const next_address_t * address, const uint64_t * tags, int num_tags )
@@ -16869,11 +16867,11 @@ void test_upgrade_request_packet()
         static NextUpgradeRequestPacket in, out;
         in.protocol_version = next_protocol_version();
         in.session_id = 1231234127431LL;
-        in.magic = 12345LL;
         next_address_parse( &in.client_address, "127.0.0.1:50000" );
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
         next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
+        next_random_bytes( in.magic, 8 );
 
         int packet_bytes = 0;
         int result = next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
@@ -16889,11 +16887,11 @@ void test_upgrade_request_packet()
 
         next_check( in.protocol_version == out.protocol_version );
         next_check( in.session_id == out.session_id );
-        next_check( in.magic == out.magic );
         next_check( next_address_equal( &in.client_address, &out.client_address ) );
         next_check( next_address_equal( &in.server_address, &out.server_address ) );
         next_check( memcmp( in.server_kx_public_key, out.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) == 0 );
         next_check( memcmp( in.upgrade_token, out.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
+        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
     }
 }
 
