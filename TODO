@@ -20,19 +20,17 @@ DONE
 
 	The proxy entry on the server-side needs a copy of the magic from the upgrade.
 
+	Route update should contain current magic from server.
+
+	Client should stash magic in the route update when it changes, and use it right away for sends, keep old magic as prev.
+
+	^--- but only do this when the magic is actually different to current, since it is sent down every 10 secs, whether changed or not.
+
 TODO
 
 	--------------
 
-	Route update should contain current magic on server.
-
-	--------------
-
-	Client should stash magic in the route update when it changes, and use it right away for sends, keep old magic as prev.
-
-	--------------
-
-	When route update ack comes back, server moves move current -> previous, pending -> current in session.
+	When route update ack comes back, server updates magic for session.
 
 	This way the server doesn't send a new magic until the client is guaranteed to have it.
 

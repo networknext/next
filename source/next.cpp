@@ -3183,7 +3183,6 @@ struct NextRouteUpdatePacket
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
     uint64_t packets_out_of_order_client_to_server;
-    uint64_t magic;
     float jitter_client_to_server;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
@@ -3191,6 +3190,7 @@ struct NextRouteUpdatePacket
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
+    uint8_t magic[8];
 
     NextRouteUpdatePacket()
     {
@@ -3234,8 +3234,6 @@ struct NextRouteUpdatePacket
 
         serialize_uint64( stream, packets_out_of_order_client_to_server );
 
-        serialize_uint64( stream, magic );
-
         serialize_float( stream, jitter_client_to_server );
 
         serialize_bool( stream, has_debug );
@@ -3258,6 +3256,8 @@ struct NextRouteUpdatePacket
 
             serialize_bool( stream, high_frequency_pings );
         }
+
+        serialize_bytes( stream, magic, 8 );
 
         return true;
     }
@@ -7388,6 +7388,22 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 client->counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] = packet.packets_lost_client_to_server;
                 client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER] = packet.packets_out_of_order_client_to_server;
                 client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
+
+                if ( memcmp( client->current_magic, packet.magic, 8 ) != 0 )
+                {
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "client updated magic: %x,%x,%x,%x,%x,%x,%x,%x", 
+                        packet.magic[0], 
+                        packet.magic[1],
+                        packet.magic[2],
+                        packet.magic[3],
+                        packet.magic[4],
+                        packet.magic[5],
+                        packet.magic[6],
+                        packet.magic[7] );
+
+                    memcpy( client->previous_magic, client->current_magic, 8 );
+                    memcpy( client->current_magic, packet.magic, 8 );
+                }
             }
         }
 
@@ -7407,8 +7423,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route update ack packet to server" );
-
-        // todo: there's going to need to be some logic here to update the magic, server will start sending us packets with new magic once it receives the ack
 
         return;
     }
@@ -11789,7 +11803,7 @@ void next_server_internal_update_magic( next_server_internal_t * server )
         server->update_magic_time = 0.0;
         memcpy( server->previous_magic, server->current_magic, sizeof(server->previous_magic) );
         memcpy( server->current_magic, server->upcoming_magic, sizeof(server->current_magic) );
-        next_printf( "updated magic %x,%x,%x,%x,%x,%x,%x,%x", 
+        next_printf( "server updated magic %x,%x,%x,%x,%x,%x,%x,%x", 
             server->current_magic[0],
             server->current_magic[1],
             server->current_magic[2],
@@ -17559,7 +17573,7 @@ void test_route_update_packet_direct()
         in.packets_sent_server_to_client = 11000;
         in.packets_lost_client_to_server = 10000;
         in.packets_out_of_order_client_to_server = 9000;
-        in.magic = i * 100;
+        next_random_bytes( in.magic, 8 );
         in.jitter_client_to_server = 0.1f;
         in.has_debug = true;
         strcpy( in.debug, "debug time" );
@@ -17593,7 +17607,7 @@ void test_route_update_packet_direct()
         next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
-        next_check( in.magic == out.magic );
+        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
@@ -17641,7 +17655,7 @@ void test_route_update_packet_new_route()
         in.packets_sent_server_to_client = 11000;
         in.packets_lost_client_to_server = 10000;
         in.packets_out_of_order_client_to_server = 9000;
-        in.magic = i * 100;
+        next_random_bytes( in.magic, 8 );
         in.jitter_client_to_server = 0.25f;
         in.high_frequency_pings = true;
         in.dont_ping_near_relays = false;
@@ -17677,7 +17691,7 @@ void test_route_update_packet_new_route()
         next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
-        next_check( in.magic == out.magic );
+        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
         next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
@@ -17753,7 +17767,7 @@ void test_route_update_packet_continue_route()
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
-        next_check( in.magic == out.magic );
+        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
         next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
     }
