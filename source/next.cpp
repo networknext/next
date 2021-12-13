@@ -6775,10 +6775,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     // upgrade request packet (not encrypted)
 
-    if ( from_server_address && packet_id == NEXT_UPGRADE_REQUEST_PACKET )
+    if ( !client->upgraded && from_server_address && packet_id == NEXT_UPGRADE_REQUEST_PACKET )
     {
-        // todo: what if the client is already upgraded?
-
         if ( !next_address_equal( from, &client->server_address ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored upgrade request packet from server. packet does not come from server address" );
@@ -6869,7 +6867,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     // upgrade confirm packet
 
-    if ( packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
+    if ( !client->upgraded && packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
     {
         if ( !client->sending_upgrade_response )
         {
@@ -7318,8 +7316,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_PACKET )
     {
-        // todo: what if the route update has already been received and processed?
-
         if ( client->fallback_to_direct )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route update packet from server. in fallback to direct state (1)" );
@@ -10709,6 +10705,7 @@ struct next_server_command_destroy_t : public next_server_command_t
 #define NEXT_SERVER_NOTIFY_SESSION_UPGRADED                     2
 #define NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT                    3
 #define NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME           4
+#define NEXT_SERVER_NOTIFY_SESSION_MAGIC_UPDATED                5
 
 struct next_server_notify_t
 {
@@ -10750,6 +10747,13 @@ struct next_server_notify_session_timed_out_t : public next_server_notify_t
 struct next_server_notify_failed_to_resolve_hostname_t : public next_server_notify_t
 {
     // ...
+};
+
+struct next_server_notify_session_magic_updated_t : public next_server_notify_t
+{
+    next_address_t address;
+    uint64_t session_id;
+    uint8_t magic[4];
 };
 
 // ---------------------------------------------------------------
@@ -12966,17 +12970,15 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
                 memcpy( session->magic, packet.magic, 8 );
 
-                // todo: server notify
-                /*
-                next_client_notify_magic_updated_t * notify = (next_client_notify_magic_updated_t*) next_malloc( client->context, sizeof(next_client_notify_magic_updated_t) );
-                next_assert( notify );
-                notify->type = NEXT_CLIENT_NOTIFY_MAGIC_UPDATED;
-                memcpy( notify->magic, client->current_magic, 8 );
+                next_server_notify_session_magic_updated_t * notify = (next_server_notify_session_magic_updated_t*) next_malloc( server->context, sizeof( next_server_notify_session_magic_updated_t ) );
+                notify->type = NEXT_SERVER_NOTIFY_SESSION_MAGIC_UPDATED;
+                notify->address = session->address;
+                notify->session_id = session->session_id;
+                memcpy( notify->magic, session->magic, 8 );
                 {
-                    next_platform_mutex_guard( &client->notify_mutex );
-                    next_queue_push( client->notify_queue, notify );
+                    next_platform_mutex_guard( &server->notify_mutex );
+                    next_queue_push( server->notify_queue, notify );            
                 }
-                */
             }
 
             session->update_dirty = false;
@@ -13934,6 +13936,17 @@ void next_server_update( next_server_t * server )
             }
             break;
 
+            case NEXT_SERVER_NOTIFY_SESSION_MAGIC_UPDATED:
+            {
+                next_server_notify_session_magic_updated_t * session_magic_updated = (next_server_notify_session_magic_updated_t*) notify;
+                next_proxy_session_entry_t * proxy_session_entry = next_proxy_session_manager_find( server->session_manager, &session_magic_updated->address );
+                if ( proxy_session_entry && proxy_session_entry->session_id == session_magic_updated->session_id )
+                {
+                    memcpy( proxy_session_entry->magic, session_magic_updated->magic, 8 );
+                }
+            }
+            break;
+
             default: break;
         }
 
@@ -14176,10 +14189,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         {
             // send over network next
 
-            // todo: we need most recent magic here
-            uint8_t magic[8];
-            memset( magic, 0, sizeof(magic) );
-
             uint8_t from_address_data[32];
             uint8_t to_address_data[32];
             uint16_t from_address_port;
@@ -14192,12 +14201,12 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
             
-            int next_packet_bytes = next_write_server_to_client_packet( next_packet_data, send_sequence, session_id, session_version, session_private_key, packet_data, packet_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            int next_packet_bytes = next_write_server_to_client_packet( next_packet_data, send_sequence, session_id, session_version, session_private_key, packet_data, packet_bytes, entry->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( next_packet_bytes > 0 );
 
             next_assert( next_basic_packet_filter( next_packet_data, next_packet_bytes ) );
-            next_assert( next_advanced_packet_filter( next_packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, next_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( next_packet_data, entry->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, next_packet_bytes ) );
 
             next_platform_socket_send_packet( server->internal->socket, &session_address, next_packet_data, next_packet_bytes );
         }
@@ -14205,10 +14214,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
         if ( send_upgraded_direct )
         {
             // direct packet
-
-            // todo: we need most recent magic here
-            uint8_t magic[8];
-            memset( magic, 0, sizeof(magic) );
 
             uint8_t from_address_data[32];
             uint8_t to_address_data[32];
@@ -14222,13 +14227,13 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
             uint8_t direct_packet_data[NEXT_MAX_PACKET_BYTES];
 
-            int direct_packet_bytes = next_write_direct_packet( direct_packet_data, open_session_sequence, send_sequence, packet_data, packet_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            int direct_packet_bytes = next_write_direct_packet( direct_packet_data, open_session_sequence, send_sequence, packet_data, packet_bytes, entry->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( direct_packet_bytes >= 0 );
             next_assert( direct_packet_bytes <= NEXT_MTU + 27 );
 
             next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
-            next_assert( next_advanced_packet_filter( direct_packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( direct_packet_data, entry->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
 
             next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, size_t(packet_bytes) );
         }
