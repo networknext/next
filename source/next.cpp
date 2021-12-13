@@ -6287,6 +6287,7 @@ struct next_client_internal_t
     next_platform_mutex_t command_mutex;
     next_platform_mutex_t notify_mutex;
     next_address_t server_address;
+    next_address_t client_external_address;     // IMPORTANT: only known post-upgrade
     uint16_t bound_port;
     bool session_open;
     bool upgraded;
@@ -6307,6 +6308,8 @@ struct next_client_internal_t
     double last_route_switch_time;
     double route_update_timeout_time;
     uint64_t route_update_sequence;
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -6807,7 +6810,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
 
-        // todo: need to store magic and client external address here
+        memset( client->previous_magic, 0, 8 );
+        memcpy( client->current_magic, packet.magic, 8 );
+        client->client_external_address = packet.client_address;
 
         NextUpgradeResponsePacket response;
 
@@ -11918,12 +11923,12 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
 
             NextUpgradeRequestPacket packet;
             packet.protocol_version = next_protocol_version();
-            memcpy( packet.magic, entry->magic, 8 );
             packet.session_id = entry->session_id;
             packet.client_address = entry->address;
             packet.server_address = server->server_address;
             memcpy( packet.server_kx_public_key, server->server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
             memcpy( packet.upgrade_token, entry->upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );        
+            memcpy( packet.magic, entry->magic, 8 );
 
             next_server_internal_send_packet( server, &entry->address, NEXT_UPGRADE_REQUEST_PACKET, &packet );
         }
