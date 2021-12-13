@@ -9178,8 +9178,7 @@ struct next_proxy_session_entry_t
 
     next_address_t address;
     uint64_t session_id;
-    uint8_t current_magic[8];
-    uint8_t previous_magic[8];
+    uint8_t magic[8];
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -9369,8 +9368,7 @@ next_proxy_session_entry_t * next_proxy_session_manager_add( next_proxy_session_
             {
                 session_manager->max_entry_index = i;
             }
-            memset( entry->current_magic, 0, sizeof(entry->current_magic) );
-            memset( entry->previous_magic, 0, sizeof(entry->previous_magic) );
+            memset( entry->magic, 0, sizeof(entry->magic) );
             return entry;
         }        
     }  
@@ -9386,8 +9384,7 @@ next_proxy_session_entry_t * next_proxy_session_manager_add( next_proxy_session_
     entry->address = *address;
     entry->session_id = session_id;
     next_bandwidth_limiter_reset( &entry->send_bandwidth );
-    memset( entry->current_magic, 0, sizeof(entry->current_magic) );
-    memset( entry->previous_magic, 0, sizeof(entry->previous_magic) );
+    memset( entry->magic, 0, sizeof(entry->magic) );
 
     next_proxy_session_manager_verify_sentinels( session_manager );
 
@@ -9766,8 +9763,7 @@ struct next_session_entry_t
     uint64_t tags[NEXT_MAX_TAGS];
     int num_tags;
     uint8_t client_open_session_sequence;
-    uint8_t current_magic[8];
-    uint8_t previous_magic[8];
+    uint8_t magic[8];
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -10206,8 +10202,7 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
     entry->last_client_direct_ping = current_time;
     entry->last_client_next_ping = current_time;
 
-    memset( entry->current_magic, 0, sizeof(entry->current_magic) );
-    memset( entry->previous_magic, 0, sizeof(entry->previous_magic) );
+    memset( entry->magic, 0, sizeof(entry->magic) );
 }
 
 next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token, const uint64_t * tags, int num_tags )
@@ -10709,6 +10704,7 @@ struct next_server_notify_session_upgraded_t : public next_server_notify_t
 {
     next_address_t address;
     uint64_t session_id;
+    uint8_t magic[8];
 };
 
 struct next_server_notify_session_timed_out_t : public next_server_notify_t
@@ -12450,6 +12446,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->stats_platform_id = packet.platform_id;
             entry->stats_connection_type = packet.connection_type;
             entry->last_upgraded_packet_receive_time = next_time();
+            memcpy( entry->magic, pending_entry->magic, 8 );
 
             // notify session upgraded
 
@@ -12457,6 +12454,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             notify->type = NEXT_SERVER_NOTIFY_SESSION_UPGRADED;
             notify->address = entry->address;
             notify->session_id = entry->session_id;
+            memcpy( notify->magic, entry->magic, 8 );
             {
                 next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );            
@@ -13838,12 +13836,16 @@ void next_server_update( next_server_t * server )
                 next_server_notify_session_upgraded_t * session_upgraded = (next_server_notify_session_upgraded_t*) notify;
                 char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_INFO, "server upgraded client %s to session %" PRIx64, next_address_to_string( &session_upgraded->address, address_buffer ), session_upgraded->session_id );
-                next_proxy_session_entry_t * pending_entry = next_proxy_session_manager_find( server->pending_session_manager, &session_upgraded->address );
-                if ( pending_entry && pending_entry->session_id == session_upgraded->session_id )
+                next_proxy_session_entry_t * proxy_entry = next_proxy_session_manager_find( server->pending_session_manager, &session_upgraded->address );
+                if ( proxy_entry && proxy_entry->session_id == session_upgraded->session_id )
                 {
                     next_proxy_session_manager_remove_by_address( server->session_manager, &session_upgraded->address );
                     next_proxy_session_manager_remove_by_address( server->pending_session_manager, &session_upgraded->address );
-                    next_proxy_session_manager_add( server->session_manager, &session_upgraded->address, session_upgraded->session_id );
+                    proxy_entry = next_proxy_session_manager_add( server->session_manager, &session_upgraded->address, session_upgraded->session_id );
+                    if ( proxy_entry )
+                    {
+                        memcpy( proxy_entry->magic, session_upgraded->magic, 8 );
+                    }
                 }
             }
             break;
