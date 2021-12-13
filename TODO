@@ -10,32 +10,39 @@ DONE
 
 	Stash the magic in there on upgrade, use the entry magic in upgrade response packet.
 
-TODO
-
-	--------------
-
 	Then the client should store the magic.
 
 	Client should use the magic value when receiving packets from the server.
 
 	Client should use the magic value when sending packets to the server.
 
-	--------------
-
-
-	The pending session should also have the magic stashed in there... just one magic value is enough.
+TODO
 
 	--------------
+
+	When the upgrade completes on the server-side, the pending entry should copy the magic to the full entry.
+
+	--------------
+
+	The proxy entry on the server-side needs a copy of the magic from the upgrade.
+
+	--------------
+
+	When the magic changes, the proxy entry needs to (lazily) update the magic value (new notify?)
 
 	--------------
 
 	Route update should contain current magic on server.
 
-	Client should stash magic in the route update when it changes, and use it right away.
-
-	Session needs pending, current and previous magic.
+	Client should stash magic in the route update when it changes, and use it right away for sends, keep old magic as prev.
 
 	When route update ack comes back, server moves move current -> previous, pending -> current in session.
+
+	This way the server doesn't send a new magic until the client is guaranteed to have it.
+
+	--------------
+
+	Client needs to clear magic values and external address on disconnect.
 
 	--------------
 
