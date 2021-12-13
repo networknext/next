@@ -4,40 +4,33 @@ DONE
 
 	Internal client needs to clear client external address and magic values on close session.
 
-TODO
-
-	--------------
-
 	Client needs to use magic value and client external address on main thread packet send.
-
-	--------------
 
 	The server proxy session entry needs to (lazily) update the magic value post-route update ack. 
 
 	New server notify.
 
-	--------------
-
 	Client needs to accept both previous and current magic on packet read.
-
-	--------------
 
 	Server needs to accept both previous and current magic on packet read.
 
-	--------------
-
 	Client should use magic value and client external address when sending packets to the server and relays.
-
-	--------------
 
 	Server should use magic per-session proxy entry and address of that session, when sending packets to a client.
 
-	--------------
-
 	At this point magic should theoretically be working... hahahahaha
 
+TODO
+
 	--------------
 
+	Actually test and get a client upgraded with a server.
+
+	To do this, first the server must connect with the reference backend.
+
+	In order for this to happen, the server update 5 packet needs to be handled by the new ref backend 5.
+
+	--------------
 
 
 
