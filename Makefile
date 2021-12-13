@@ -12,7 +12,8 @@ else
 	CXX = g++-8
 endif
 
-SDKNAME = libnext
+SDKNAME4 = libnext4
+SDKNAME5 = libnext5
 
 TIMESTAMP ?= $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 SHA ?= $(shell git rev-parse --short HEAD)
@@ -74,7 +75,6 @@ export MONDAY_API_KEY = eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjExNDIwOTg2NCwidWlkIjoxMzk
 endif
 
 ifndef RELAY_ADDRESS
-#export RELAY_ADDRESS = 127.0.0.1
 export RELAY_ADDRESS = 127.0.0.1:35000
 endif
 
@@ -123,13 +123,16 @@ ifndef RELAY_ROUTER_MAX_PACKET_LOSS
 export RELAY_ROUTER_MAX_PACKET_LOSS = 0.1
 endif
 
+ifndef RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE
+export RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE = 90.0
+endif
+
 ## By default we set only error and warning logs for server_backend and relay_backend
 ifndef BACKEND_LOG_LEVEL
 export BACKEND_LOG_LEVEL = warn
 endif
 
 ifndef ROUTE_MATRIX_URI
-# export ROUTE_MATRIX_URI = http://127.0.0.1:30000/route_matrix
 export ROUTE_MATRIX_URI = http://127.0.0.1:30005/route_matrix
 endif
 
@@ -289,6 +292,10 @@ ifndef RELAY_BACKEND_ADDRESSES
 export RELAY_BACKEND_ADDRESSES = 127.0.0.1:30001,127.0.0.1:30002
 endif
 
+ifndef FEATURE_RELAY_FULL_BANDWIDTH
+export FEATURE_RELAY_FULL_BANDWIDTH = false
+endif
+
 .PHONY: help
 help:
 	@echo "$$(grep -hE '^\S+:.*##' $(MAKEFILE_LIST) | sed -e 's/:.*##\s*/:/' -e 's/^\(.\+\):\(.*\)/\\033[36m\1\\033[m:\2/' | column -c2 -t -s :)"
@@ -303,12 +310,17 @@ dist:
 
 # Always run sqlite3
 export FEATURE_POSTGRESQL=false
-export JWT_AUDIENCES=S4WGLze2EZCPG9MeZ5509BedlWlHZGFt,kFffnEmuwB3DNfKO8tDnxV1hqQXLbnaZ
+export JWT_AUDIENCES=S4WGLze2EZCPG9MeZ5509BedlWlHZGFt,dJFD1rg3Zd8PYhAXbIb0UCKFJk7IE4ho
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/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
 export SLACK_CHANNEL=portal-test
 export LOOKER_SECRET=d61764ff20f99e672af3ec7fde75531a790acdb6d58bf46dbe55dac06a6019c0
+export LOOKER_HOST=networknextexternal.cloud.looker.com
 export GITHUB_ACCESS_TOKEN=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
 export RELEASE_NOTES_INTERVAL=30s
+
+# TODO: Change these to a permanent API user in looker
+export LOOKER_API_CLIENT_ID=QXG3cfyWd8xqsVnT7QbT
+export LOOKER_API_CLIENT_SECRET=JT2BpTYNc7fybyHNGs3S24g7
 
 .PHONY: dev-relay-gateway
 dev-relay-gateway: build-relay-gateway ## runs a local relay gateway
@@ -330,9 +342,9 @@ dev-debug-relay-backend: build-relay-backend ## runs a local debug relay backend
 dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
 	@PORT=30005 ./dist/relay_frontend
 
-.PHONY: dev-server-backend
-dev-server-backend: build-server-backend ## runs a local server backend
-	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend
+.PHONY: dev-server-backend4
+dev-server-backend4: build-server-backend4 ## runs a local server backend
+	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4
 
 .PHONY: dev-relay
 dev-relay: build-reference-relay  ## runs a local relay
@@ -342,21 +354,21 @@ dev-relay: build-reference-relay  ## runs a local relay
 dev-relays: build-reference-relay  ## runs 10 local relays
 	@./scripts/relay-spawner.sh -n 10
 
-.PHONY: dev-client
-dev-client: build-client  ## runs a local client
-	@./scripts/client-spawner.sh -n 1
+.PHONY: dev-client4
+dev-client4: build-client4  ## runs a local client
+	@./scripts/client-spawner4.sh -n 1
 
-.PHONY: dev-clients
-dev-clients: build-client  ## runs 10 local clients
-	@./scripts/client-spawner.sh -n 10
+.PHONY: dev-clients4
+dev-clients4: build-client4  ## runs 10 local clients
+	@./scripts/client-spawner4.sh -n 10
 
-.PHONY: dev-server
-dev-server: build-sdk build-server  ## runs a local server
-	@./dist/server
+.PHONY: dev-server4
+dev-server4: build-sdk4 build-server4  ## runs a local server
+	@./dist/server4
 
 .PHONY: dev-portal
 dev-portal: build-portal ## runs a local portal
-	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local RELAY_FRONTEND=http://localhost:30005 ./dist/portal
+	@PORT=20000 BASIC_AUTH_USERNAME=local BASIC_AUTH_PASSWORD=local ANALYTICS_MIG=localhost:41001 ANALYTICS_PUSHER_URI=localhost:41002 API_URI=localhost:41003 PORTAL_BACKEND_MIG=localhost:20000 PORTAL_CRUNCHER_URI=localhost:42000 BILLING_MIG=localhost:41000 RELAY_FRONTEND_URI=localhost:30005 RELAY_GATEWAY_URI=localhost:30000 RELAY_PUSHER_URI=localhost:30004 SERVER_BACKEND_MIG=localhost:40000 VANITY_URI=localhost:41005 ./dist/portal
 
 .PHONY: dev-beacon
 dev-beacon: build-beacon ## runs a local beacon
@@ -394,6 +406,10 @@ dev-api: build-api ## runs a local api endpoint service
 dev-vanity: build-vanity ## runs insertion and updating of vanity metrics
 	@HTTP_PORT=41005 FEATURE_VANITY_METRIC_PORT=6666 ./dist/vanity
 
+.PHONY: dev-pingdom
+dev-pingdom: build-pingdom ## runs the pulling and publishing of pingdom uptime
+	@PORT=41006 ./dist/pingdom
+
 #####################
 ## ESSENTIAL TOOLS ##
 #####################
@@ -410,72 +426,134 @@ build-analytics: dist
 
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-server
-build-load-test-server: dist build-sdk
+build-load-test-server: dist build-sdk4
 	@printf "Building load test server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp  $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 else
 .PHONY: build-load-test-server
-build-load-test-server: dist build-sdk
+build-load-test-server: dist build-sdk4
 	@printf "Building load test server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_server ./cmd/load_test_server/load_test_server.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 endif
 
 ifeq ($(OS),darwin)
 .PHONY: build-load-test-client
-build-load-test-client: dist build-sdk
+build-load-test-client: dist build-sdk4
 	@printf "Building load test client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp  $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 else
 .PHONY: build-load-test-client
-build-load-test-client: dist build-sdk
+build-load-test-client: dist build-sdk4
 	@printf "Building load test client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/load_test_client ./cmd/load_test_client/load_test_client.cpp -L./dist -lnext $(LDFLAGS)
 	@printf "done\n"
 endif
 
-.PHONY: build-functional-backend
-build-functional-backend: dist
-	@printf "Building functional backend... " ; \
-	$(GO) build -o ./dist/func_backend ./cmd/func_backend/*.go ; \
+########################
+
+.PHONY: build-functional-server4
+build-functional-server4: build-sdk4
+	@printf "Building functional server 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_server4 ./cmd/func_server4/func_server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-functional-client4
+build-functional-client4: build-sdk4
+	@printf "Building functional client 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/func_client4 ./cmd/func_client4/func_client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-functional4
+build-functional4: build-functional-client4 build-functional-server4 build-functional-backend4 build-functional-tests4
+
+.PHONY: build-functional-backend4
+build-functional-backend4: dist
+	@printf "Building functional backend 4... " ; \
+	$(GO) build -o ./dist/func_backend4 ./cmd/func_backend4/*.go ; \
 	printf "done\n" ; \
 
-.PHONY: build-functional-tests
-build-functional-tests: dist
-	@printf "Building functional tests... " ; \
-	$(GO) build -o ./dist/func_tests ./cmd/func_tests/*.go ; \
+.PHONY: build-functional-tests4
+build-functional-tests4: dist
+	@printf "Building functional tests 4... " ; \
+	$(GO) build -o ./dist/func_tests4 ./cmd/func_tests4/*.go ; \
 	printf "done\n" ; \
 
-.PHONY: build-test-func
-build-test-func: clean dist build-sdk build-reference-relay build-functional-server build-functional-client build-functional-backend build-functional-tests
+.PHONY: build-test-func4
+build-test-func4: clean dist build-sdk4 build-reference-relay build-functional-server4 build-functional-client4 build-functional-backend4 build-functional-tests4
 
-.PHONY: run-test-func
-run-test-func:
-	@printf "\nRunning functional tests...\n\n" ; \
-	$(GO) run ./cmd/func_tests/func_tests.go $(tests) ; \
+.PHONY: run-test-func4
+run-test-func4:
+	@printf "\nRunning functional tests 4...\n\n" ; \
+	$(GO) run ./cmd/func_tests4/func_tests4.go $(tests) ; \
 	printf "\ndone\n\n"
 
-.PHONY: test-func
-test-func: build-test-func run-test-func ## runs functional tests
+.PHONY: test-func4
+test-func4: build-test-func4 run-test-func4 ## runs functional tests
 
-.PHONY: build-test-func-parallel
-build-test-func-parallel: dist
-	@docker build -t func_tests -f ./cmd/func_tests/Dockerfile .
+.PHONY: build-test-func4-parallel
+build-test-func4-parallel: dist
+	@docker build -t func_tests -f ./cmd/func_tests4/Dockerfile .
 
-.PHONY: run-test-func-parallel
-run-test-func-parallel:
-	@./scripts/test-func-parallel.sh
+.PHONY: run-test-func4-parallel
+run-test-func4-parallel:
+	@./scripts/test-func4-parallel.sh
 
-.PHONY: test-func-parallel
-test-func-parallel: dist build-test-func-parallel run-test-func-parallel ## runs functional tests in parallel
+.PHONY: test-func4-parallel
+test-func4-parallel: dist build-test-func4-parallel run-test-func4-parallel ## runs functional tests in parallel
 
 #######################
 
-.PHONY: dev-reference-backend
-dev-reference-backend: ## runs a local reference backend
-	$(GO) run reference/backend/backend.go
+.PHONY: build-functional-server5
+build-functional-server5: build-sdk5
+	@printf "Building functional server 5... "
+	@$(CXX) -Isdk5/include -o $(DIST_DIR)/func_server5 ./cmd/func_server5/func_server5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-functional-client5
+build-functional-client5: build-sdk5
+	@printf "Building functional client 5... "
+	@$(CXX) -Isdk5/include -o $(DIST_DIR)/func_client5 ./cmd/func_client5/func_client5.cpp $(DIST_DIR)/$(SDKNAME5).so $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-functional5
+build-functional5: build-functional-client5 build-functional-server5 build-functional-backend5 build-functional-tests5
+
+.PHONY: build-functional-backend5
+build-functional-backend5: dist
+	@printf "Building functional backend 5... " ; \
+	$(GO) build -o ./dist/func_backend5 ./cmd/func_backend5/*.go ; \
+	printf "done\n" ; \
+
+.PHONY: build-functional-tests5
+build-functional-tests5: dist
+	@printf "Building functional tests 5... " ; \
+	$(GO) build -o ./dist/func_tests5 ./cmd/func_tests5/*.go ; \
+	printf "done\n" ; \
+
+.PHONY: build-test-func5
+build-test-func5: clean dist build-sdk5 build-reference-relay build-functional-server5 build-functional-client5 build-functional-backend5 build-functional-tests5
+
+.PHONY: run-test-func5
+run-test-func5:
+	@printf "\nRunning functional tests 5...\n\n" ; \
+	$(GO) run ./cmd/func_tests5/func_tests5.go $(tests) ; \
+	printf "\ndone\n\n"
+
+.PHONY: test-func5
+test-func5: build-test-func5 run-test-func5 ## runs functional tests
+
+#######################
+
+.PHONY: dev-reference-backend4
+dev-reference-backend4: ## runs a local reference backend4
+	$(GO) run reference/backend4/backend4.go
+
+.PHONY: dev-reference-backend5
+dev-reference-backend5: ## runs a local reference backend4
+	$(GO) run reference/backend5/backend5.go
 
 .PHONY: dev-mock-relay
 dev-mock-relay: ## runs a local mock relay
@@ -486,13 +564,21 @@ dev-mock-relay: ## runs a local mock relay
 dev-fake-server: build-fake-server ## runs a fake server that simulates 2 servers and 400 clients locally
 	@HTTP_PORT=50001 UDP_PORT=50000 ./dist/fake_server
 
-$(DIST_DIR)/$(SDKNAME).so: dist
-	@printf "Building sdk... "
-	@$(CXX) -fPIC -Isdk/include -shared -o $(DIST_DIR)/$(SDKNAME).so ./sdk/source/*.cpp $(LDFLAGS)
+$(DIST_DIR)/$(SDKNAME4).so: dist
+	@printf "Building sdk4... "
+	@$(CXX) -fPIC -Isdk4/include -shared -o $(DIST_DIR)/$(SDKNAME4).so ./sdk4/source/*.cpp $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-sdk
-build-sdk: $(DIST_DIR)/$(SDKNAME).so
+$(DIST_DIR)/$(SDKNAME5).so: dist
+	@printf "Building sdk5... "
+	@$(CXX) -fPIC -Isdk5/include -shared -o $(DIST_DIR)/$(SDKNAME5).so ./sdk5/source/*.cpp $(LDFLAGS)
+	@printf "done\n"
+
+.PHONY: build-sdk4
+build-sdk4: $(DIST_DIR)/$(SDKNAME4).so
+
+.PHONY: build-sdk5
+build-sdk5: $(DIST_DIR)/$(SDKNAME5).so
 
 PHONY: build-portal-cruncher
 build-portal-cruncher:
@@ -522,10 +608,10 @@ build-beacon-inserter:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon_inserter ./cmd/beacon_inserter/beacon_inserter.go
 	@printf "done\n"
 
-.PHONY: build-server-backend
-build-server-backend:
-	@printf "Building server backend... "
-	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend ./cmd/server_backend/server_backend.go
+.PHONY: build-server-backend4
+build-server-backend4:
+	@printf "Building server backend 4... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/server_backend4 ./cmd/server_backend4/server_backend4.go
 	@printf "done\n"
 
 .PHONY: build-billing
@@ -558,6 +644,12 @@ build-fake-server: dist
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
 	@printf "done\n"
 
+.PHONY: build-pingdom
+build-pingdom: dist
+	@printf "Building pingdom..."
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/pingdom ./cmd/pingdom/pingdom.go
+	@printf "done\n"
+
 .PHONY: deploy-portal-crunchers-dev
 deploy-portal-crunchers-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t portal-cruncher -n portal_cruncher -b gs://development_artifacts
@@ -571,6 +663,10 @@ deploy-vanity-dev:
 .PHONY: deploy-analytics-pusher-dev
 deploy-analytics-pusher-dev:
 	./deploy/deploy.sh -e dev -c dev-1 -t analytics-pusher -n analytics_pusher -b gs://development_artifacts
+
+.PHONY: deploy-pingdom-dev
+deploy-pingdom-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t pingdom -n pingdom -b gs://development_artifacts
 
 .PHONY: deploy-portal-crunchers-staging
 deploy-portal-crunchers-staging:
@@ -590,6 +686,10 @@ deploy-vanity-staging:
 deploy-analytics-pusher-staging:
 	./deploy/deploy.sh -e staging -c staging-1 -t analytics-pusher -n analytics_pusher -b gs://staging_artifacts
 
+.PHONY: deploy-pingdom-staging
+deploy-pingdom-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t pingdom -n pingdom -b gs://staging_artifacts
+
 .PHONY: deploy-portal-crunchers-prod
 deploy-portal-crunchers-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t portal-cruncher -n portal_cruncher -b gs://prod_artifacts
@@ -607,6 +707,10 @@ deploy-vanity-prod:
 .PHONY: deploy-analytics-pusher-prod
 deploy-analytics-pusher-prod:
 	./deploy/deploy.sh -e prod -c prod-1 -t analytics-pusher -n analytics_pusher -b gs://prod_artifacts
+
+.PHONY: deploy-pingdom-prod
+deploy-pingdom-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t pingdom -n pingdom -b gs://prod_artifacts
 
 .PHONY: build-fake-server-artifacts-staging
 build-fake-server-artifacts-staging: build-fake-server
@@ -652,6 +756,10 @@ build-vanity-artifacts-dev: build-vanity
 build-relay-artifacts-dev: build-relay
 	./deploy/build-artifacts.sh -e dev -s relay
 
+.PHONY: build-pingdom-artifacts-dev
+build-pingdom-artifacts-dev: build-pingdom
+	./deploy/build-artifacts.sh -e dev -s pingdom
+
 .PHONY: build-portal-artifacts-dev
 build-portal-artifacts-dev: build-portal
 	./deploy/build-artifacts.sh -e dev -s portal -b $(ARTIFACT_BUCKET)
@@ -664,9 +772,9 @@ build-portal-artifacts-dev-old: build-portal
 build-portal-cruncher-artifacts-dev: build-portal-cruncher
 	./deploy/build-artifacts.sh -e dev -s portal_cruncher
 
-.PHONY: build-server-backend-artifacts-dev
-build-server-backend-artifacts-dev: build-server-backend
-	./deploy/build-artifacts.sh -e dev -s server_backend
+.PHONY: build-server-backend4-artifacts-dev
+build-server-backend4-artifacts-dev: build-server-backend4
+	./deploy/build-artifacts.sh -e dev -s server_backend4
 
 .PHONY: build-billing-artifacts-staging
 build-billing-artifacts-staging: build-billing
@@ -700,6 +808,10 @@ build-vanity-artifacts-staging: build-vanity
 build-relay-artifacts-staging: build-relay
 	./deploy/build-artifacts.sh -e staging -s relay
 
+.PHONY: build-pingdom-artifacts-staging
+build-pingdom-artifacts-staging: build-pingdom
+	./deploy/build-artifacts.sh -e staging -s pingdom
+
 .PHONY: build-portal-artifacts-staging
 build-portal-artifacts-staging: build-portal
 	./deploy/build-artifacts.sh -e staging -s portal -b $(ARTIFACT_BUCKET_STAGING)
@@ -708,9 +820,9 @@ build-portal-artifacts-staging: build-portal
 build-portal-cruncher-artifacts-staging: build-portal-cruncher
 	./deploy/build-artifacts.sh -e staging -s portal_cruncher
 
-.PHONY: build-server-backend-artifacts-staging
-build-server-backend-artifacts-staging: build-server-backend
-	./deploy/build-artifacts.sh -e staging -s server_backend
+.PHONY: build-server-backend4-artifacts-staging
+build-server-backend4-artifacts-staging: build-server-backend4
+	./deploy/build-artifacts.sh -e staging -s server_backend4
 
 .PHONY: build-billing-artifacts-prod
 build-billing-artifacts-prod: build-billing
@@ -748,6 +860,10 @@ build-vanity-artifacts-prod: build-vanity
 build-relay-artifacts-prod: build-relay
 	./deploy/build-artifacts.sh -e prod -s relay
 
+.PHONY: build-pingdom-artifacts-prod
+build-pingdom-artifacts-prod: build-pingdom
+	./deploy/build-artifacts.sh -e prod -s pingdom
+
 .PHONY: build-portal-artifacts-prod
 build-portal-artifacts-prod: build-portal
 	./deploy/build-artifacts.sh -e prod -s portal -b $(ARTIFACT_BUCKET_PROD)
@@ -756,9 +872,9 @@ build-portal-artifacts-prod: build-portal
 build-portal-cruncher-artifacts-prod: build-portal-cruncher
 	./deploy/build-artifacts.sh -e prod -s portal_cruncher
 
-.PHONY: build-server-backend-artifacts-prod
-build-server-backend-artifacts-prod: build-server-backend
-	./deploy/build-artifacts.sh -e prod -s server_backend
+.PHONY: build-server-backend4-artifacts-prod
+build-server-backend4-artifacts-prod: build-server-backend4
+	./deploy/build-artifacts.sh -e prod -s server_backend4
 
 .PHONY: publish-billing-artifacts-dev
 publish-billing-artifacts-dev:
@@ -792,6 +908,10 @@ publish-vanity-artifacts-dev:
 publish-relay-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s relay
 
+.PHONY: publish-pingdom-artifacts-dev
+publish-pingdom-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s pingdom
+
 .PHONY: publish-portal-artifacts-dev
 publish-portal-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal
@@ -804,9 +924,9 @@ publish-portal-artifacts-dev-test:
 publish-portal-cruncher-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s portal_cruncher
 
-.PHONY: publish-server-backend-artifacts-dev
-publish-server-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend
+.PHONY: publish-server-backend4-artifacts-dev
+publish-server-backend4-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s server_backend4
 
 .PHONY: publish-billing-artifacts-staging
 publish-billing-artifacts-staging:
@@ -840,6 +960,10 @@ publish-vanity-artifacts-staging:
 publish-relay-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s relay
 
+.PHONY: publish-pingdom-artifacts-staging
+publish-pingdom-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s pingdom
+
 .PHONY: publish-portal-artifacts-staging
 publish-portal-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal
@@ -848,9 +972,9 @@ publish-portal-artifacts-staging:
 publish-portal-cruncher-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s portal_cruncher
 
-.PHONY: publish-server-backend-artifacts-staging
-publish-server-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend
+.PHONY: publish-server-backend4-artifacts-staging
+publish-server-backend4-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s server_backend4
 
 .PHONY: publish-fake-server-artifacts-staging
 publish-fake-server-artifacts-staging:
@@ -908,6 +1032,10 @@ publish-analytics-artifacts-prod:
 publish-relay-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s relay
 
+.PHONY: publish-pingdom-artifacts-prod
+publish-pingdom-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s pingdom
+
 .PHONY: publish-portal-artifacts-prod
 publish-portal-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal
@@ -916,9 +1044,9 @@ publish-portal-artifacts-prod:
 publish-portal-cruncher-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s portal_cruncher
 
-.PHONY: publish-server-backend-artifacts-prod
-publish-server-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend
+.PHONY: publish-server-backend4-artifacts-prod4
+publish-server-backend4-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s server_backend4
 
 .PHONY: publish-bootstrap-script-dev
 publish-bootstrap-script-dev:
@@ -944,31 +1072,16 @@ publish-bootstrap-script-prod-debug:
 	@gsutil cp $(DEPLOY_DIR)/bootstrap.sh $(ARTIFACT_BUCKET_PROD_DEBUG)/bootstrap.sh
 	@printf "done\n"
 
-.PHONY: build-server
-build-server: build-sdk
-	@printf "Building server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/server ./cmd/server/server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+.PHONY: build-server4
+build-server4: build-sdk4
+	@printf "Building server 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/server4 ./cmd/server4/server4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
-.PHONY: build-functional-server
-build-functional-server: build-sdk
-	@printf "Building functional server... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_server ./cmd/func_server/func_server.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-functional-client
-build-functional-client: build-sdk
-	@printf "Building functional client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/func_client ./cmd/func_client/func_client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
-	@printf "done\n"
-
-.PHONY: build-functional
-build-functional: build-functional-client build-functional-server build-functional-backend build-functional-tests
-
-.PHONY: build-client
-build-client: build-sdk
-	@printf "Building client... "
-	@$(CXX) -Isdk/include -o $(DIST_DIR)/client ./cmd/client/client.cpp $(DIST_DIR)/$(SDKNAME).so $(LDFLAGS)
+.PHONY: build-client4
+build-client4: build-sdk4
+	@printf "Building client 4... "
+	@$(CXX) -Isdk4/include -o $(DIST_DIR)/client4 ./cmd/client4/client4.cpp $(DIST_DIR)/$(SDKNAME4).so $(LDFLAGS)
 	@printf "done\n"
 
 .PHONY: build-next
@@ -1027,53 +1140,53 @@ publish-relay-pusher-artifacts-prod:
 #    Debug Server Backend   #
 #############################
 
-.PHONY: build-debug-server-backend-artifacts-dev
-build-debug-server-backend-artifacts-dev: build-server-backend
-	./deploy/build-artifacts.sh -e dev -s debug_server_backend
+.PHONY: build-debug-server-backend4-artifacts-dev
+build-debug-server-backend4-artifacts-dev: build-server-backend4
+	./deploy/build-artifacts.sh -e dev -s debug_server_backend4
 
-.PHONY: build-debug-server-backend-artifacts-staging
-build-debug-server-backend-artifacts-staging: build-server-backend
-	./deploy/build-artifacts.sh -e staging -s debug_server_backend
+.PHONY: build-debug-server-backend4-artifacts-staging
+build-debug-server-backend4-artifacts-staging: build-server-backend4
+	./deploy/build-artifacts.sh -e staging -s debug_server_backend4
 
-.PHONY: build-debug-server-backend-artifacts-prod
-build-debug-server-backend-artifacts-prod: build-server-backend
-	./deploy/build-artifacts.sh -e prod -s debug_server_backend
+.PHONY: build-debug-server-backend4-artifacts-prod
+build-debug-server-backend4-artifacts-prod: build-server-backend4
+	./deploy/build-artifacts.sh -e prod -s debug_server_backend4
 
-.PHONY: build-debug-server-backend-artifacts-prod-debug
-build-debug-server-backend-artifacts-prod-debug: build-server-backend
-	./deploy/build-artifacts.sh -e prod -s debug_server_backend
+.PHONY: build-debug-server-backend4-artifacts-prod-debug
+build-debug-server-backend4-artifacts-prod-debug: build-server-backend4
+	./deploy/build-artifacts.sh -e prod -s debug_server_backend4
 
-.PHONY: publish-debug-server-backend-artifacts-dev
-publish-debug-server-backend-artifacts-dev:
-	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_server_backend
+.PHONY: publish-debug-server-backend4-artifacts-dev
+publish-debug-server-backend4-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s debug_server_backend4
 
-.PHONY: publish-debug-server-backend-artifacts-staging
-publish-debug-server-backend-artifacts-staging:
-	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_server_backend
+.PHONY: publish-debug-server-backend4-artifacts-staging
+publish-debug-server-backend4-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s debug_server_backend4
 
-.PHONY: publish-debug-server-backend-artifacts-prod
-publish-debug-server-backend-artifacts-prod:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_server_backend
+.PHONY: publish-debug-server-backend4-artifacts-prod
+publish-debug-server-backend4-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s debug_server_backend4
 
-.PHONY: publish-debug-server-backend-artifacts-prod-debug
-publish-debug-server-backend-artifacts-prod-debug:
-	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_server_backend
+.PHONY: publish-debug-server-backend4-artifacts-prod-debug
+publish-debug-server-backend4-artifacts-prod-debug:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD_DEBUG) -s debug_server_backend4
 
-.PHONY: deploy-debug-server-backend-dev
-deploy-debug-server-backend-dev:
-	./deploy/deploy.sh -e dev -c dev-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET)
+.PHONY: deploy-debug-server-backend4-dev
+deploy-debug-server-backend4-dev:
+	./deploy/deploy.sh -e dev -c dev-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET)
 
-.PHONY: deploy-debug-server-backend-staging
-deploy-debug-server-backend-staging:
-	./deploy/deploy.sh -e staging -c staging-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET_STAGING)
+.PHONY: deploy-debug-server-backend4-staging
+deploy-debug-server-backend4-staging:
+	./deploy/deploy.sh -e staging -c staging-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET_STAGING)
 
-.PHONY: deploy-debug-server-backend-prod
-deploy-debug-server-backend-prod:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET_PROD)
+.PHONY: deploy-debug-server-backend4-prod
+deploy-debug-server-backend4-prod:
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET_PROD)
 
-.PHONY: deploy-debug-server-backend-prod-debug
-deploy-debug-server-backend-prod-debug:
-	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend -b $(ARTIFACT_BUCKET_PROD_DEBUG)
+.PHONY: deploy-debug-server-backend4-prod-debug
+deploy-debug-server-backend4-prod-debug:
+	./deploy/deploy.sh -e prod -c prod-1 -t debug-server-backend -n debug_server_backend4 -b $(ARTIFACT_BUCKET_PROD_DEBUG)
 
 #############################
 #    Debug Relay Backend   #
@@ -1443,14 +1556,18 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend build-client build-server build-functional build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-client4 build-server4 build-pingdom build-functional4 build-functional5 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
 
-.PHONY: update-sdk
-update-sdk:
+.PHONY: update-sdk4
+update-sdk4:
 	git submodule update --remote --merge sdk
+
+.PHONY: update-sdk5
+update-sdk5:
+	git submodule update --remote --merge sdk5
 
 .PHONY: clean
 clean: ## cleans everything

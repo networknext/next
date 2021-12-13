@@ -10,16 +10,22 @@ import (
 )
 
 type RelayData struct {
-	ID                   uint64
-	Name                 string
-	Addr                 net.UDPAddr
-	PublicKey            []byte
-	MaxSessions          uint32
-	SessionCount         int
-	ShuttingDown         bool
-	LastUpdateTime       time.Time
-	Version              string
-	CPU                  uint8
+	ID                uint64
+	Name              string
+	Addr              net.UDPAddr
+	PublicKey         []byte
+	MaxSessions       uint32
+	SessionCount      int
+	ShuttingDown      bool
+	LastUpdateTime    time.Time
+	Version           string
+	CPU               uint8
+	NICSpeedMbps      int32
+	MaxBandwidthMbps  int32
+	EnvelopeUpMbps    float32
+	EnvelopeDownMbps  float32
+	BandwidthSentMbps float32
+	BandwidthRecvMbps float32
 }
 
 type RelayCleanupCallback func(relayData RelayData) error

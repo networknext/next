@@ -191,6 +191,7 @@ type Relay struct {
 
 	NICSpeedMbps        int32 `json:"nicSpeedMbps"`
 	IncludedBandwidthGB int32 `json:"includedBandwidthGB"`
+	MaxBandwidthMbps    int32 `json:"maxBandwidthMbps"`
 
 	State RelayState `json:"state"`
 
@@ -296,6 +297,7 @@ func (r *Relay) String() string {
 	relay += "\tDatacenter         : " + fmt.Sprintf("%016x", r.Datacenter.ID) + "\n"
 	relay += "\tNICSpeedMbps       : " + fmt.Sprintf("%d", r.NICSpeedMbps) + "\n"
 	relay += "\tIncludedBandwidthGB: " + fmt.Sprintf("%d", r.IncludedBandwidthGB) + "\n"
+	relay += "\tMaxBandwidthMbps   : " + fmt.Sprintf("%d", r.MaxBandwidthMbps) + "\n"
 	// relay += "\tLastUpdateTime     : " + r.LastUpdateTime.String() + "\n"
 	relay += "\tState              : " + fmt.Sprintf("%v", r.State) + "\n"
 	relay += "\tManagementAddr     : " + r.ManagementAddr + "\n"

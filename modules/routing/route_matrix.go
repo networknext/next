@@ -15,7 +15,7 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const RouteMatrixSerializeVersion = 4
+const RouteMatrixSerializeVersion = 5
 
 type RouteMatrix struct {
 	RelayIDsToIndices   map[uint64]int32
@@ -138,7 +138,22 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 			if m.Version >= 4 {
 				stream.SerializeBool(&entry.Full)
 			}
-			
+
+			if m.Version >= 5 {
+				stream.SerializeFloat32(&entry.CPUUsage)
+
+				stream.SerializeFloat32(&entry.BandwidthSentPercent)
+				stream.SerializeFloat32(&entry.BandwidthReceivedPercent)
+
+				stream.SerializeFloat32(&entry.EnvelopeSentPercent)
+				stream.SerializeFloat32(&entry.EnvelopeReceivedPercent)
+
+				stream.SerializeFloat32(&entry.BandwidthSentMbps)
+				stream.SerializeFloat32(&entry.BandwidthReceivedMbps)
+
+				stream.SerializeFloat32(&entry.EnvelopeSentMbps)
+				stream.SerializeFloat32(&entry.EnvelopeReceivedMbps)
+			}
 		}
 
 		numPingEntries := uint32(len(m.PingStats))

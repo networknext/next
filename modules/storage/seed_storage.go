@@ -153,6 +153,7 @@ func SeedStorage(
 					Type:                routing.BareMetal,
 					State:               routing.RelayStateOffline,
 					NICSpeedMbps:        1000,
+					MaxBandwidthMbps:    0,
 				}); err != nil {
 					return fmt.Errorf("AddRelay() err: %w", err)
 				}
