@@ -373,7 +373,10 @@ func (rfs *RelayFleetService) GetIPAddressForInstanceName(instanceName string) (
 		return "", err
 	}
 
-	return string(buffer), nil
+	// Remove the \n at the end of the buffer
+	instanceInternalIP := strings.Split(string(buffer), "\n")[0]
+
+	return instanceInternalIP, nil
 }
 
 type AdminFrontPageArgs struct {
