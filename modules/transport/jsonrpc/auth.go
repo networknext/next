@@ -572,11 +572,6 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	}
 
 	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), requestCustomerCode)
-	if err != nil {
-		core.Error("AllRoles(): %v", err.Error())
-		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-		return &err
-	}
 
 	totalUsers, err := s.FetchAllAccountsFromAuth0()
 	if err != nil {
