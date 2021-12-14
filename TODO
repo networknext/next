@@ -22,11 +22,17 @@ DONE
 
 	Port across the pittle and chonkle functions plus tests into golang (I think this has already been done?)
 
+	When the server receives a backend packet, the magic should always be zero.
+
+	Move the client packet filter processing into a block, so the data doesn't get accidentally reused in response packets.
+
+	Do the same to the server packet filter processing.
+
 TODO
 
 	--------------
 
-	When the server receives a backend packet, the magic should always be zero.
+	Fix the upgrade response so it has the correct magic and address data
 
 	--------------
 
