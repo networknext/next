@@ -12073,7 +12073,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     const int packet_id = packet_data[0];
 
-    if ( packet_id != NEXT_BACKEND_SESSION_RESPONSE_PACKET )
+    if ( packet_id != NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET && 
+         packet_id != NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET &&
+         packet_id != NEXT_BACKEND_SERVER_UPDATE_PACKET && 
+         packet_id != NEXT_BACKEND_SESSION_UPDATE_PACKET &&
+         packet_id != NEXT_BACKEND_SESSION_RESPONSE_PACKET )
     {
         if ( !next_advanced_packet_filter( packet_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
         {
@@ -12090,7 +12094,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         memset( magic, 0, sizeof(magic) );
         if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet (session response)" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet (backend)" );
             return;
         }
     }

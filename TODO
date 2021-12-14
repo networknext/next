@@ -20,15 +20,31 @@ DONE
 
 	At this point magic should theoretically be working... hahahahaha
 
+	Port across the pittle and chonkle functions plus tests into golang (I think this has already been done?)
+
 TODO
 
 	--------------
 
-	Actually test and get a client upgraded with a server.
+	When the server receives a backend packet, the magic should always be zero.
 
-	To do this, first the server must connect with the reference backend.
+	--------------
 
-	In order for this to happen, the server update 5 packet needs to be handled by the new ref backend 5.
+	Get the reference backend 5 up, and have it working with the pittle and chonkle -- hold magic at zero for all backend comms.
+
+	--------------
+
+	Verify the server inits gets through, and the server gets a response.
+
+	The server init response should contain the initial magic value.
+
+	--------------
+
+	Now the server can init, verify that server updates get through to the reference backend 5.
+
+	--------------
+
+	Now verify that the server can upgrade a client and exchange direct packets.
 
 	--------------
 
