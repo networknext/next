@@ -26,6 +26,7 @@ type Buyer struct {
 	InternalConfig      core.InternalConfig
 	DatabaseID          int64 // sql PK
 	CustomerID          int64 // sql FK
+	LookerSeats         int64
 }
 
 func (b *Buyer) String() string {
@@ -47,6 +48,7 @@ func (b *Buyer) String() string {
 	buyer += "\tInternalConfig        : TBD\n"
 	buyer += "\tDatabaseID            : " + fmt.Sprintf("%d", b.DatabaseID) + "\n"
 	buyer += "\tCustomerID            : " + fmt.Sprintf("%d", b.CustomerID) + "\n"
+	buyer += "\tLooker Seats          : " + fmt.Sprintf("%d", b.LookerSeats) + "\n"
 
 	return buyer
 }
