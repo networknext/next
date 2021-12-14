@@ -564,6 +564,10 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 		return &err
 	}
 
+	if isAdmin {
+		reply.Roles = append(reply.Roles, s.RoleCache["Admin"])
+	}
+
 	requestCustomerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
@@ -572,7 +576,13 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	}
 
 	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), requestCustomerCode)
+	if err != nil {
+		// Buyer account doesn't exist - this could be due to the customer not entering a public key yet so return Owner role only
+		reply.Roles = append(reply.Roles, s.RoleCache["Owner"])
+		return nil
+	}
 
+	// If valid buyer account, grab all users to determine Looker usage
 	totalUsers, err := s.FetchAllAccountsFromAuth0()
 	if err != nil {
 		core.Error("AllRoles(): %v", err.Error())
@@ -601,10 +611,7 @@ func (s *AuthService) AllRoles(r *http.Request, args *RolesArgs, reply *RolesRep
 	}
 
 	for name, role := range s.RoleCache {
-		if name == "Admin" && !isAdmin {
-			continue
-		}
-		if !isAdmin && name == "Explorer" && buyer.LookerSeats <= seatsTaken {
+		if name == "Admin" || (!isAdmin && name == "Explorer" && buyer.LookerSeats <= seatsTaken) {
 			continue
 		}
 		reply.Roles = append(reply.Roles, role)
