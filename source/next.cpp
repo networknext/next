@@ -5995,7 +5995,7 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     uint8_t magic[8];
     memset( magic, 0, sizeof(magic) );
 
-    // todo: we need the client external address passed in as a paremeter
+    // todo: we need the client external address passed in as a parameter
     next_address_t client_external_address;
 
     next_route_manager_verify_sentinels( route_manager );
@@ -6840,9 +6840,16 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         // Without this, under very rare packet loss conditions it's possible for the client to get
         // stuck in an undefined state.
 
-        // todo: need data for response packet sent to server here
+        uint8_t from_address_data[32];
+        uint8_t to_address_data[32];
+        uint16_t from_address_port;
+        uint16_t to_address_port;
+        int from_address_bytes;
+        int to_address_bytes;
 
-        /*
+        next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
+
         client->upgrade_response_packet_bytes = 0;
         const int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, NULL, NULL, NULL, NULL, NULL, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
@@ -6855,19 +6862,12 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         const uint8_t * packet_data = client->upgrade_response_packet_data;
         const int packet_bytes = client->upgrade_response_packet_bytes;
 
-        next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
-        next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
-
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
         next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_port, to_address_port, packet_bytes ) );
-
-        (void) packet_data;
-        (void) packet_bytes;
 
         client->sending_upgrade_response = true;
         client->upgrade_response_start_time = next_time();
         client->last_upgrade_response_send_time = next_time();
-        */
 
         return;
     }
