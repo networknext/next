@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net"
 	"os"
@@ -293,7 +294,13 @@ func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, file string) (*geoip2.
 		return nil, err
 	}
 
-	return geoip2.Open(file)
+	// Read in the file from disk into memory
+	maxmindBytes, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return geoip2.FromBytes(maxmindBytes)
 }
 
 // LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
