@@ -6678,40 +6678,43 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     const int packet_id = packet_data[0];
 
-    uint8_t from_address_data[32];
-    uint8_t to_address_data[32];
-    uint16_t from_address_port;
-    uint16_t to_address_port;
-    int from_address_bytes;
-    int to_address_bytes;
-
-    next_address_data( from, from_address_data, &from_address_bytes, &from_address_port );
-    next_address_data( &client->client_external_address, to_address_data, &to_address_bytes, &to_address_port );
-
-    if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
+    // run packet filters
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client basic packet filter dropped packet" );
-        return;
-    }
+        uint8_t from_address_data[32];
+        uint8_t to_address_data[32];
+        uint16_t from_address_port;
+        uint16_t to_address_port;
+        int from_address_bytes;
+        int to_address_bytes;
 
-    if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
-    {
-        if ( !next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+        next_address_data( from, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( &client->client_external_address, to_address_data, &to_address_bytes, &to_address_port );
+
+        if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
         {
-            if ( !next_advanced_packet_filter( packet_data, client->previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet" );
-            }
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client basic packet filter dropped packet" );
             return;
         }
-    }
-    else
-    {
-        uint8_t magic[8];
-        memset( magic, 0, sizeof(magic) );
-        if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+
+        if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet (upgrade request)" );
+            if ( !next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+            {
+                if ( !next_advanced_packet_filter( packet_data, client->previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                {
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet" );
+                }
+                return;
+            }
+        }
+        else
+        {
+            uint8_t magic[8];
+            memset( magic, 0, sizeof(magic) );
+            if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet (upgrade request)" );
+            }
         }
     }
 
@@ -6837,6 +6840,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         // Without this, under very rare packet loss conditions it's possible for the client to get
         // stuck in an undefined state.
 
+        // todo: need data for response packet sent to server here
+
+        /*
         client->upgrade_response_packet_bytes = 0;
         const int result = next_write_packet( NEXT_UPGRADE_RESPONSE_PACKET, &response, client->upgrade_response_packet_data, &client->upgrade_response_packet_bytes, NULL, NULL, NULL, NULL, NULL, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
@@ -6861,6 +6867,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->sending_upgrade_response = true;
         client->upgrade_response_start_time = next_time();
         client->last_upgrade_response_send_time = next_time();
+        */
 
         return;
     }
