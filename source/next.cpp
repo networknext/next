@@ -16665,6 +16665,55 @@ void test_chonkle()
     }
 }
 
+void test_abi()
+{
+    uint8_t output[256];
+    memset( output, 0, sizeof(output) );
+
+    uint8_t magic[8];
+    magic[0] = 1;
+    magic[1] = 2;
+    magic[2] = 3;
+    magic[3] = 4;
+    magic[4] = 5;
+    magic[5] = 6;
+    magic[6] = 7;
+    magic[7] = 8;
+    
+    uint8_t from_address[4];
+    from_address[0] = 1;
+    from_address[1] = 2;
+    from_address[2] = 3;
+    from_address[3] = 4;
+
+    uint8_t to_address[4];
+    to_address[0] = 4;
+    to_address[1] = 3;
+    to_address[2] = 2;
+    to_address[3] = 1;
+
+    uint16_t from_port = 1000;
+    uint16_t to_port = 5000;
+
+    int packet_length = 1000;
+    
+    next_generate_pittle( output, from_address, 4, from_port, to_address, 4, to_port, packet_length );
+
+    next_check( output[0] == 187 );
+    next_check( output[1] == 53 );
+
+    next_generate_chonkle( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length );
+    
+    next_check( output[0] == 45 );
+    next_check( output[1] == 203 );
+    next_check( output[2] == 67 );
+    next_check( output[3] == 96 );
+    next_check( output[4] == 78 );
+    next_check( output[5] == 180 );
+    next_check( output[6] == 127 );
+    next_check( output[7] == 7 );
+}
+
 void test_pittle_and_chonkle()
 {
     uint8_t output[1500];
@@ -19769,6 +19818,7 @@ void next_test()
         RUN_TEST( test_ping_token );
         RUN_TEST( test_pittle );
         RUN_TEST( test_chonkle );
+        RUN_TEST( test_abi );
         RUN_TEST( test_pittle_and_chonkle );
         RUN_TEST( test_basic_packet_filter );
         RUN_TEST( test_advanced_packet_filter );
