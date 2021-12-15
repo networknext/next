@@ -2043,22 +2043,22 @@ func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddres
     output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
 }
 
-func GenerateChonkle(output []byte, magic []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) {
+func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, fromPort uint16, toAddressData []byte, toPort uint16, packetLength int) {
 
 	var fromPortData [2]byte
 	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
 
 	var toPortData [2]byte
-	binary.LittleEndian.PutUint16(fromPortData[:], toPort)
+	binary.LittleEndian.PutUint16(toPortData[:], toPort)
 
 	var packetLengthData [4]byte
 	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
 
 	hash := fnv.New64a()
 	hash.Write(magic)
-	hash.Write(fromAddress)
+	hash.Write(fromAddressData)
 	hash.Write(fromPortData[:])
-	hash.Write(toAddress)
+	hash.Write(toAddressData)
 	hash.Write(toPortData[:])
 	hash.Write(packetLengthData[:])
 	hashValue := hash.Sum64()
@@ -2186,7 +2186,7 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
     return true;
 }
 
-func GetAddressData(address *net.UDPAddr, addressData byte[], addressPort *uint64, addressBytes *int) {
+func GetAddressData(address *net.UDPAddr, addressData []byte, addressPort *uint16, addressBytes *int) {
 
 	// todo
 	*addressPort = 0

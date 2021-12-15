@@ -293,47 +293,25 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
         return false;
     }
     var a [15]byte
-    var b [2]byte
+    // var b [2]byte
     GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
-    GeneratePittle( b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
+    // GeneratePittle( b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
     if bytes.Compare(a[0:15], data[1:16]) != 0 {
         return false
     }
+    /*
     if bytes.Compare(b[0:2], data[packetLength-2:packetLength]) != 0 {
         return false
     }
+    */
     return true;
 }
 
 func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
-
-	return []byte{}, 0
-
-	/*
-    next_assert( address );
-    if ( address->type == NEXT_ADDRESS_IPV4 )
-    {
-        address_data[0] = address->data.ipv4[0];
-        address_data[1] = address->data.ipv4[1];
-        address_data[2] = address->data.ipv4[2];
-        address_data[3] = address->data.ipv4[3];
-        *address_bytes = 4;
-    }
-    else if ( address->type == NEXT_ADDRESS_IPV6 )
-    {
-        for ( int i = 0; i < 8; ++i )
-        {
-            address_data[i*2]   = address->data.ipv6[i] >> 8;
-            address_data[i*2+1] = address->data.ipv6[i] & 0xFF;
-        }
-        *address_bytes = 16;
-    }
-    else
-    {
-        *address_bytes = 0;
-    }
-    *address_port = address->port;
-    */
+	addressData := address.IP[12:16] // todo: hack
+	addressPort := uint16(address.Port)
+	fmt.Printf("%d.%d.%d.%d:%d\n", addressData[0], addressData[1], addressData[2], addressData[3], addressPort)
+	return addressData, addressPort
 }
 
 type Serializable interface {
@@ -347,7 +325,7 @@ func randomBytes(buffer []byte) {
 	}
 }
 
-func WriteBackendPacket(packetType int, packetObject Serializable, privateKey []byte) ([]byte, error) {
+func WriteBackendPacket(packetType int, packetObject Serializable, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
 
 	packet := make([]byte, NEXT_MAX_PACKET_BYTES)
 	packet[0] = byte(packetType)
@@ -374,20 +352,19 @@ func WriteBackendPacket(packetType int, packetObject Serializable, privateKey []
 	C.crypto_sign_update(&state, (*C.uchar)(&packet[16]), C.ulonglong(serializeBytes))
 	C.crypto_sign_final_create(&state, (*C.uchar)(&packet[16+serializeBytes]), nil, (*C.uchar)(&privateKey[0]))
 
-	// todo: use dummy data for now
-	var magic [8]byte
-	var fromAddress [4]byte
-	var toAddress [4]byte
-	randomBytes(magic[:])
-	randomBytes(fromAddress[:])
-	randomBytes(toAddress[:])
-	fromPort := uint16(1000)
-	toPort := uint16(5000)
+	var magic [8]byte 
+
+	var fromAddressBuffer [32]byte
+	var toAddressBuffer [32]byte
+
+	fromAddressData, fromAddressPort := GetAddressData(from, fromAddressBuffer[:])
+	toAddressData, toAddressPort := GetAddressData(to, toAddressBuffer[:])
+
 	packetLength := len(packet)
 
-    GenerateChonkle(packet[1:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+    GenerateChonkle(packet[1:], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
 
-    GeneratePittle(packet[packetLength-2:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+    GeneratePittle(packet[packetLength-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
 
 	return packet, nil
 }
@@ -2284,6 +2261,7 @@ func ParseAddress(input string) *net.UDPAddr {
 	address := &net.UDPAddr{}
 	ip_string, port_string, err := net.SplitHostPort(input)
 	if err != nil {
+		// todo: do we need to truncate the IP here?
 		address.IP = net.ParseIP(input)
 		address.Port = 0
 		return address
@@ -2580,10 +2558,10 @@ func main() {
 
 		fmt.Printf("passed basic packet filter\n")
 
-		var magic [8]byte 
-
 		{
 			to := receiveAddress
+
+			var magic [8]byte 
 
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
@@ -2618,7 +2596,10 @@ func main() {
 			initResponse.RequestId = serverInitRequest.RequestId
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
 
-			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, initResponse, backendPrivateKey[:])
+			toAddress := from
+			fromAddress := sendAddress
+
+			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, initResponse, fromAddress, toAddress, backendPrivateKey[:])
 			if err != nil {
 				fmt.Printf( "error: could not write server init response packet: %v\n", err)
 				continue
