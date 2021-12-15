@@ -9544,6 +9544,7 @@ struct NextBackendServerInitResponsePacket
 {
     uint64_t request_id;
     uint32_t response;
+    uint8_t magic[8];
 
     NextBackendServerInitResponsePacket()
     {
@@ -9554,6 +9555,7 @@ struct NextBackendServerInitResponsePacket
     {
         serialize_uint64( stream, request_id );
         serialize_bits( stream, response, 8 );
+        serialize_bytes( stream, magic, 8 );
         return true;
     }
 };
@@ -12243,6 +12245,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             next_printf( NEXT_LOG_LEVEL_INFO, "welcome to network next :)" );
 
             server->state = NEXT_SERVER_STATE_INITIALIZED;
+
+            // todo: we need to stash magic from packet here, but can't use it for another 30 seconds 
 
             return;
         }
@@ -18012,6 +18016,7 @@ void test_server_init_response_packet()
         static NextBackendServerInitResponsePacket in, out;
         in.request_id = next_random_uint64();
         in.response = NEXT_SERVER_INIT_RESPONSE_OK;
+        next_random_bytes( in.magic, 8 );
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -18023,6 +18028,7 @@ void test_server_init_response_packet()
 
         next_check( in.request_id == out.request_id );
         next_check( in.response == out.response );
+        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
     }
 }
 
