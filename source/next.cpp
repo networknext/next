@@ -12233,6 +12233,16 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             server->state = NEXT_SERVER_STATE_INITIALIZED;
 
             // todo: we need to stash magic from packet here, but can't use it for another 30 seconds 
+            
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server initial magic: %d,%d,%d,%d,%d,%d,%d,%d\n",
+                packet.magic[0],
+                packet.magic[1],
+                packet.magic[2],
+                packet.magic[3],
+                packet.magic[4],
+                packet.magic[5],
+                packet.magic[6],
+                packet.magic[7] );
 
             return;
         }
@@ -13388,7 +13398,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         server->server_init_request_id = packet.request_id;
 
-        // IMPORTANT: server init request packet is always sent with magic of zero. chicken and egg otherwise
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );
 
@@ -13398,10 +13407,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         uint16_t to_address_port;
         int from_address_bytes;
         int to_address_bytes;
-
-        char buffer[256];
-        printf( "server address: %s\n", next_address_to_string( &server->server_address, buffer ) );
-        printf( "backend address: %s\n", next_address_to_string( &server->backend_address, buffer ) );
 
         next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
         next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
