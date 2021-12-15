@@ -40,15 +40,11 @@ DONE
 
 	Hacked it up for now, needs better fix in future.
 
+	There's a mismatch between chonkle in C++ and Golang. Confirmed with test.
+
 TODO
 
-	--------------
-
-	There's a mismatch between chonkle in C++ and Golang.
-
-	Write a test with standard inputs for the chonkle, and verify that we get the same values in C++ and Golang.
-
-	If we do, then there is something wrong with the inputs, probably the byte order for the address that needs to be fixed...
+	Fix the desync in golang. It's probably some transformation of the inputs to byte arrays...
 
 	--------------
 
