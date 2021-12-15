@@ -293,36 +293,26 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
         return false;
     }
     var a [15]byte
-    // var b [2]byte
+    var b [2]byte
     GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
-    // GeneratePittle( b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
+    GeneratePittle( b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
     if bytes.Compare(a[0:15], data[1:16]) != 0 {
         return false
     }
-    /*
     if bytes.Compare(b[0:2], data[packetLength-2:packetLength]) != 0 {
         return false
     }
-    */
     return true;
 }
 
 func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
 	addressData := address.IP[12:16] // todo: hack
 	addressPort := uint16(address.Port)
-	fmt.Printf("%d.%d.%d.%d:%d\n", addressData[0], addressData[1], addressData[2], addressData[3], addressPort)
 	return addressData, addressPort
 }
 
 type Serializable interface {
     Serialize(Stream) error
-}
-
-// todo: we don't need this
-func randomBytes(buffer []byte) {
-	for i := 0; i < len(buffer); i++ {
-		buffer[i] = byte(rand.Intn(256))
-	}
 }
 
 func WriteBackendPacket(packetType int, packetObject Serializable, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
@@ -2581,8 +2571,6 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("passed basic packet filter\n")
-
 		{
 			to := receiveAddress
 
@@ -2598,8 +2586,6 @@ func main() {
 				fmt.Printf("advanced packet filter failed\n")
 				continue
 			}
-
-			fmt.Printf("passed advanced packet filter\n")
 		}
 
 		packetType := packetData[0]
@@ -2620,6 +2606,7 @@ func main() {
 			initResponse := NextBackendServerInitResponsePacket{}
 			initResponse.RequestId = serverInitRequest.RequestId
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
+			initResponse.Magic = getMagic()
 
 			toAddress := from
 			fromAddress := sendAddress
@@ -2634,7 +2621,23 @@ func main() {
 				panic("basic packet filter failed on server init response?")
 			}
 
-			// todo: advanced packet filter
+			{
+				var magic [8]byte
+
+				fromAddress := sendAddress
+				toAddress := from
+
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+
+				fromAddressData, fromAddressPort := GetAddressData(fromAddress, fromAddressBuffer[:])
+				toAddressData, toAddressPort := GetAddressData(toAddress, toAddressBuffer[:])
+
+				if !AdvancedPacketFilter(response, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(response)) {
+					panic("advanced packet filter failed on server init response\n")
+					continue
+				}
+			}
 
 			_, err = connection.WriteToUDP(response, from)
 			if err != nil {
