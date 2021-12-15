@@ -2497,6 +2497,16 @@ type ContinueToken struct {
 
 // -------------------------------------------------------
 
+var magicValue [8]byte
+var magicMutex sync.RWMutex
+
+func getMagic() [8]byte {
+	magicMutex.RLock()
+	value := magicValue
+	magicMutex.RUnlock()
+	return value
+}
+
 func main() {
 
 	sendAddress := ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
@@ -2508,6 +2518,19 @@ func main() {
 	backend.relayDatabase = make(map[string]RelayEntry)
 	backend.serverDatabase = make(map[string]ServerEntry)
 	backend.sessionDatabase = make(map[uint64]SessionEntry)
+
+	go func() {
+		for {
+			newMagic := RandomBytes(8)
+			fmt.Printf("magic %d,%d,%d,%d,%d,%d,%d,%d\n", newMagic[0], newMagic[1], newMagic[2], newMagic[3], newMagic[4], newMagic[5], newMagic[6], newMagic[7])
+			magicMutex.Lock()
+			for i := range newMagic {
+				magicValue[i] = newMagic[i]
+			}
+			magicMutex.Unlock()
+			time.Sleep(time.Second * 60)
+		}
+	}()
 
 	go TimeoutThread()
 
