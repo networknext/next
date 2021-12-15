@@ -46,13 +46,37 @@ DONE
 
 	It was a copy pasta. Also, signed vs. unsigned error in C (via char*).
 
+	Get advanced packet filter working reading server init request packet backend side, with magic of zero.
+
 TODO
 
 	--------------
 
-	Get advanced packet filter working on server init request packet, with magic of zero.
+	read_backend_packet needs to be updated so that it works when the header at the front is skipped past with += 16
 
-	Get server init response packet working with and passing advanced packet filter on send.
+	At this point, the server should receive and process the init response packet from the ref backend 5.
+
+	--------------
+
+	Add a goroutine to the reference backend 5 to generate a new magic every 60 seconds.
+
+	Add a "getMagic" function to safely get the magic w. read lock as needed.
+
+	Log the magic when it changes in the ref backend.
+
+	--------------
+	
+	Extend server init response packet to include current magic value.
+
+	Verify that the server gets the initial magic value.
+
+	--------------
+
+
+
+
+
+
 
 	--------------
 
@@ -68,7 +92,54 @@ TODO
 
 	--------------
 
-	Make the server wait 30 seconds before it has completed initializion and the current magic is ready, before being fully initialized.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	--------------
+
+	Think through exactly how the server should wait 30 seconds before it uses the magic value... ?
+
+	Seems like it should wait until it gets 3 server update responses until it considers itself fully inited?
+
+	--------------
+
+	But the server can't upgrade players until it knows the magic...
+
+	This means we have a new state, where the server is unable to upgrade players, for the first 30 seconds.
+
+	This kinda sucks.
+
+	--------------
+
+	Maybe the server should remember each player to be upgraded, if the upgrade is performed while the init is in progress,
+	and then actually start the upgrade process, post-30 seconds and init... ?
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
 
 	--------------
 
@@ -210,5 +281,19 @@ TODO
 	--------------
 
 	We need a server flush method to timeout all sessions and flush session updates until acked.
+
+	--------------
+
+
+
+
+
+
+
+
+
+	--------------
+
+	Routing private key should be properly secured and not included in source code.
 
 	--------------
