@@ -305,11 +305,42 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
     return true;
 }
 
+func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
+
+	return []byte{}, 0
+
+	/*
+    next_assert( address );
+    if ( address->type == NEXT_ADDRESS_IPV4 )
+    {
+        address_data[0] = address->data.ipv4[0];
+        address_data[1] = address->data.ipv4[1];
+        address_data[2] = address->data.ipv4[2];
+        address_data[3] = address->data.ipv4[3];
+        *address_bytes = 4;
+    }
+    else if ( address->type == NEXT_ADDRESS_IPV6 )
+    {
+        for ( int i = 0; i < 8; ++i )
+        {
+            address_data[i*2]   = address->data.ipv6[i] >> 8;
+            address_data[i*2+1] = address->data.ipv6[i] & 0xFF;
+        }
+        *address_bytes = 16;
+    }
+    else
+    {
+        *address_bytes = 0;
+    }
+    *address_port = address->port;
+    */
+}
+
 type Serializable interface {
     Serialize(Stream) error
 }
 
-// todo
+// todo: we don't need this
 func randomBytes(buffer []byte) {
 	for i := 0; i < len(buffer); i++ {
 		buffer[i] = byte(rand.Intn(256))
@@ -2488,6 +2519,10 @@ type ContinueToken struct {
 
 func main() {
 
+	sendAddress := ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+
+	receiveAddress := sendAddress
+
 	rand.Seed(time.Now().UnixNano())
 
 	backend.relayDatabase = make(map[string]RelayEntry)
@@ -2540,12 +2575,29 @@ func main() {
 
 		if !BasicPacketFilter(packetData[:], len(packetData)) {
 			fmt.Printf("basic packet filter failed\n")
-			return
+			continue
 		}
 
 		fmt.Printf("passed basic packet filter\n")
 
-		// todo: check advanced packet filter
+		var magic [8]byte 
+
+		{
+			to := receiveAddress
+
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+
+			fromAddressData, fromAddressPort := GetAddressData(from, fromAddressBuffer[:])
+			toAddressData, toAddressPort := GetAddressData(to, toAddressBuffer[:])
+
+			if !AdvancedPacketFilter(packetData, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
+				fmt.Printf("advanced packet filter failed\n")
+				continue
+			}
+
+			fmt.Printf("passed advanced packet filter\n")
+		}
 
 		packetType := packetData[0]
 
