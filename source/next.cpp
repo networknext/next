@@ -12234,7 +12234,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             // todo: we need to stash magic from packet here, but can't use it for another 30 seconds 
             
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server initial magic: %d,%d,%d,%d,%d,%d,%d,%d\n",
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server initial magic: %d,%d,%d,%d,%d,%d,%d,%d",
                 packet.magic[0],
                 packet.magic[1],
                 packet.magic[2],
