@@ -146,7 +146,7 @@ func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddres
 	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
 
 	var toPortData [2]byte
-	binary.LittleEndian.PutUint16(fromPortData[:], toPort)
+	binary.LittleEndian.PutUint16(toPortData[:], toPort)
 
 	var packetLengthData [4]byte
 	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
@@ -179,22 +179,22 @@ func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddres
     output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
 }
 
-func GenerateChonkle(output []byte, magic []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) {
+func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, fromPort uint16, toAddressData []byte, toPort uint16, packetLength int) {
 
 	var fromPortData [2]byte
 	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
 
 	var toPortData [2]byte
-	binary.LittleEndian.PutUint16(fromPortData[:], toPort)
+	binary.LittleEndian.PutUint16(toPortData[:], toPort)
 
 	var packetLengthData [4]byte
 	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
 
 	hash := fnv.New64a()
 	hash.Write(magic)
-	hash.Write(fromAddress)
+	hash.Write(fromAddressData)
 	hash.Write(fromPortData[:])
-	hash.Write(toAddress)
+	hash.Write(toAddressData)
 	hash.Write(toPortData[:])
 	hash.Write(packetLengthData[:])
 	hashValue := hash.Sum64()
@@ -340,7 +340,7 @@ func WriteBackendPacket(packetType int, packetObject Serializable, from *net.UDP
 	writeStream.Flush()
 
 	serializeBytes := writeStream.GetBytesProcessed()
-	serializeData := writeStream.GetData()[0:serializeBytes]
+	serializeData := writeStream.GetData()[:serializeBytes]
 	for i := 0; i < serializeBytes; i++ {
 		packet[16+i] = serializeData[i]
 	}
@@ -395,11 +395,13 @@ func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error
 type NextBackendServerInitResponsePacket struct {
 	RequestId uint64
 	Response  uint32
+	Magic [8]byte
 }
 
 func (packet NextBackendServerInitResponsePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeBits(&packet.Response, 8)
+	stream.SerializeBytes(packet.Magic[:])
 	return stream.Error()
 }
 

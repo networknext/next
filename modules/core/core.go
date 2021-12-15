@@ -2010,7 +2010,7 @@ func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddres
 	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
 
 	var toPortData [2]byte
-	binary.LittleEndian.PutUint16(fromPortData[:], toPort)
+	binary.LittleEndian.PutUint16(toPortData[:], toPort)
 
 	var packetLengthData [4]byte
 	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
@@ -2176,7 +2176,7 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
     var a [15]byte
     var b [2]byte
     GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
-    GeneratePittle( b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
+    GeneratePittle(b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
     if bytes.Compare(a[0:15], data[1:16]) != 0 {
         return false
     }

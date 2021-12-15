@@ -7503,13 +7503,21 @@ func TestChonkle(t *testing.T) {
 func TestABI(t *testing.T) {
 
 	var output [1024]byte
+	
 	magic := [8]byte{1,2,3,4,5,6,7,8}
 	fromAddress := [4]byte{1,2,3,4}
 	toAddress := [4]byte{4,3,2,1}
 	fromPort := uint16(1000)
 	toPort := uint16(5000)
     packetLength := 1000
+    
+    GeneratePittle(output[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+
+	assert.Equal(t, output[0], uint8(71) )
+	assert.Equal(t, output[1], uint8(201) )
+
     GenerateChonkle(output[:], magic[:], fromAddress[:], fromPort, toAddress[:], toPort, packetLength)
+	
 	assert.Equal(t, output[0], uint8(45) )
 	assert.Equal(t, output[1], uint8(203) )
 	assert.Equal(t, output[2], uint8(67) )
@@ -7518,8 +7526,6 @@ func TestABI(t *testing.T) {
 	assert.Equal(t, output[5], uint8(180) )
 	assert.Equal(t, output[6], uint8(127) )
 	assert.Equal(t, output[7], uint8(7) )
-
-	// todo: chonkle
 }
 
 func TestPittleAndChonkle(t *testing.T) {
