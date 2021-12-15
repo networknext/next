@@ -3295,36 +3295,24 @@ static void next_generate_pittle( uint8_t * output, const uint8_t * from_address
     next_bswap( to_port );
     next_bswap( packet_length );
 #endif // #if NEXT_BIG_ENDIAN
-
     uint16_t sum = 0;
-    
     for ( int i = 0; i < from_address_bytes; ++i ) { sum += uint8_t(from_address[i]); }
-    
     const char * from_port_data = (const char*) &from_port;
-    
     sum += uint8_t(from_port_data[0]);
     sum += uint8_t(from_port_data[1]);
-    
     for ( int i = 0; i < to_address_bytes; ++i ) { sum += uint8_t(to_address[i]); }
-    
-    const char * to_port_data = (const char*) &to_port;
-    
+    const char * to_port_data = (const char*) &to_port;    
     sum += uint8_t(to_port_data[0]);
     sum += uint8_t(to_port_data[1]);
-    
     const char * packet_length_data = (const char*) &packet_length;
-    
     sum += uint8_t(packet_length_data[0]);
     sum += uint8_t(packet_length_data[1]);
     sum += uint8_t(packet_length_data[2]);
     sum += uint8_t(packet_length_data[3]);
-
 #if NEXT_BIG_ENDIAN
     next_bswap( sum );
 #endif // #if NEXT_BIG_ENDIAN
-
     const char * sum_data = (const char*) &sum;
-
     output[0] = 1 | ( uint8_t(sum_data[0]) ^ uint8_t(sum_data[1]) ^ 193 );
     output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
 }

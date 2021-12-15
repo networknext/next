@@ -42,9 +42,11 @@ DONE
 
 	There's a mismatch between chonkle in C++ and Golang. Confirmed with test.
 
-TODO
-
 	Fix the desync in golang. It's probably some transformation of the inputs to byte arrays...
+
+	It was a copy pasta. Also, signed vs. unsigned error in C (via char*).
+
+TODO
 
 	--------------
 
