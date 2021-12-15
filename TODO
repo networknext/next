@@ -32,31 +32,69 @@ DONE
 
 	Get the reference backend 5 up, and have it working with the pittle and chonkle -- hold magic at zero for all server backend comms.
 
-TODO
-
 	Extend the server init response packet to include the initial magic value.
+
+	Reference backend needs to know its send and receive addresses and ports, so it can apply the advanced packet filter.
+
+TODO
 
 	--------------
 
-	Port across "GetPacketData" function into core.go and test it.
+	Port across "GetAddressData" function backend.go
 
-	Reference backend needs to know its send and receive addresses and ports, so it can apply the advanced packet filter.
+	--------------
 
 	Get advanced packet filter working on server init request packet, with magic of zero.
 
 	Get server init response packet working with and passing advanced packet filter on send.
 
-	Get server receiving and processing the 
-
-	--------------
-
-	Verify the server inits gets through, and the server gets a response.
-
-	The server init response should contain the initial magic value.
-
 	--------------
 
 	Now the server can init, verify that server updates get through to the reference backend 5.
+
+	--------------
+
+	Extend the server update to have a server update response which includes the current magic.
+
+	--------------
+
+	Verify that the server gets updated magic every minute, as they charge 
+
+	--------------
+
+	Make the server wait 30 seconds before it has completed initializion and the current magic is ready, before being fully initialized.
+
+	--------------
+
+	The server is in a mode where it will send server init request forever until it gets a response.
+
+	Did I manually disable the timeout here, or is something wrong?
+
+	Server init should timeout after 30 seconds with no response...
+
+	--------------
+
+	Bring across "GetAddressData" function into core.go and port across tests from C++
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	--------------
 

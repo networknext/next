@@ -13413,6 +13413,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         int from_address_bytes;
         int to_address_bytes;
 
+        char buffer[256];
+        printf( "server address: %s\n", next_address_to_string( &server->server_address, buffer ) );
+        printf( "backend address: %s\n", next_address_to_string( &server->backend_address, buffer ) );
+
         next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
         next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
 
