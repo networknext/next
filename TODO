@@ -39,11 +39,91 @@ DONE
 
 	Server needs to store upcoming, current and previous magic values from server init.
 
+	Extend server so it is able to read packets sent with current, upcoming and previous magic (in that order).
+
+	Work out how the server will associate the response with its update (prefer not to use sequence number, instead random 32 byte value that is compared, eg. request id?)
+
 TODO
 
 	--------------
 
-	Extend server so it is able to read packets sent with current, upcoming and previous magic (in that order).
+	Extend the server update packet to have a 32 byte request id.
+
+	Extend the test to verify this is serialized.
+
+	--------------
+
+	Sketch out the server response packet. 
+
+	It should have a random 32 byte request id. 
+
+	It should return the upcoming, current and previous magic values (8 bytes each).
+
+	Add a test to verify the server update response serializes correctly.
+
+	--------------
+
+	Extend the server to roll a random 32 byte request id for each server update packet.
+
+	--------------
+
+	Hook up the server response packet in read backend packet, and processing on the server internal.
+
+	--------------
+
+	Extend server to resend the server update 5 times, once per-second, until it gets an response with matching request id.
+
+	If the server doesn't get response, it should fall back to direct mode and stop communicating with the server backend.
+
+	--------------
+
+	When the server response comes back, the server should compare the upcoming magic in the with its value.
+
+	If the value is different, then copy across all magic values from the packet into the magic values for the server and print them.
+
+	--------------
+
+	Add the server response packet type to the reference backend 5.
+
+	--------------
+
+	Extend the reference backend 5 so it responds to the server update packet with a server response packet, with the same request id, and including the current magic values.
+
+	--------------
+
+	Change all logs of magic to use %02x in next.cpp
+
+	--------------
+
+	Verify the server gets upcoming, current and previous magic values by printing them when upcoming changes.
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	--------------
 
