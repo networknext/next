@@ -168,11 +168,12 @@
 #define NEXT_RELAY_PING_PACKET                                         18
 #define NEXT_RELAY_PONG_PACKET                                         19
 
-#define NEXT_BACKEND_SERVER_UPDATE_PACKET                              50
-#define NEXT_BACKEND_SESSION_UPDATE_PACKET                             51
-#define NEXT_BACKEND_SESSION_RESPONSE_PACKET                           52
-#define NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET                        53
-#define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET                       54
+#define NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET                        50
+#define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET                       51
+#define NEXT_BACKEND_SERVER_UPDATE_PACKET                              52
+#define NEXT_BACKEND_SERVER_RESPONSE_PACKET                            53
+#define NEXT_BACKEND_SESSION_UPDATE_PACKET                             54
+#define NEXT_BACKEND_SESSION_RESPONSE_PACKET                           55
 
 #define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
 
