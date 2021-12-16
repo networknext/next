@@ -33,15 +33,13 @@ DONE
 
 	Server now gets the three magic values in server init response packet.
 
-TODO
+	Remove the delay code that waits 30 seconds before using magic on server.
 
-	--------------
+	Remove the magic from the session update response packet. It will come down in the server update response instead.
 
 	Server needs to store upcoming, current and previous magic values from server init.
 
-	--------------
-
-	Remove the delay code that waits 30 seconds before using magic on server.
+TODO
 
 	--------------
 

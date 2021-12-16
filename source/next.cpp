@@ -6815,6 +6815,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
 
+        // todo: we need the full trifecta of magic here: upcoming, current and previous.
         memset( client->previous_magic, 0, 8 );
         memcpy( client->current_magic, packet.magic, 8 );
         client->client_external_address = packet.client_address;
@@ -7400,6 +7401,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER] = packet.packets_out_of_order_client_to_server;
                 client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
 
+                // todo: we need the trifecta of magic here: upcoming, current and previous.
+
                 if ( memcmp( client->current_magic, packet.magic, 8 ) != 0 )
                 {
                     next_printf( NEXT_LOG_LEVEL_DEBUG, "client updated magic: %x,%x,%x,%x,%x,%x,%x,%x", 
@@ -7566,6 +7569,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_INFO, "client closed session to %s", next_address_to_string( &client->server_address, buffer ) );
 
+                // todo: magic trifecta
                 memset( client->current_magic, 0, 8 );
                 memset( client->previous_magic, 0, 8 );
                 memset( &client->server_address, 0, sizeof(next_address_t) );
@@ -12050,15 +12054,19 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( packet_id != NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET && 
              packet_id != NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET &&
              packet_id != NEXT_BACKEND_SERVER_UPDATE_PACKET && 
+             // todo: NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET
              packet_id != NEXT_BACKEND_SESSION_UPDATE_PACKET &&
              packet_id != NEXT_BACKEND_SESSION_RESPONSE_PACKET )
         {
             if ( !next_advanced_packet_filter( packet_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
             {
-                if ( !next_advanced_packet_filter( packet_data, server->previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                if ( !next_advanced_packet_filter( packet_data, server->upcoming_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
                 {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet" );
-                    return;
+                    if ( !next_advanced_packet_filter( packet_data, server->previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                    {
+                        next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet" );
+                        return;
+                    }
                 }
             }
         }
@@ -12209,7 +12217,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             server->state = NEXT_SERVER_STATE_INITIALIZED;
 
-            // todo: we need to stash magic values here
+            memcpy( server->upcoming_magic, packet.upcoming_magic, 8 );
+            memcpy( server->current_magic, packet.current_magic, 8 );
+            memcpy( server->previous_magic, packet.previous_magic, 8 );
             
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server initial magic: %d,%d,%d,%d,%d,%d,%d,%d | %d,%d,%d,%d,%d,%d,%d,%d | %d,%d,%d,%d,%d,%d,%d,%d",
                 packet.upcoming_magic[0],
