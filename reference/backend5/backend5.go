@@ -46,11 +46,12 @@ const NEXT_MAX_NEAR_RELAYS = 32
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 40000
 
-const NEXT_BACKEND_SERVER_UPDATE_PACKET = 50
-const NEXT_BACKEND_SESSION_UPDATE_PACKET = 51
-const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 52
-const NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET = 53
-const NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET = 54
+const NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET = 50
+const NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET = 51
+const NEXT_BACKEND_SERVER_UPDATE_PACKET = 52
+const NEXT_BACKEND_SERVER_RESPONSE_PACKET = 53
+const NEXT_BACKEND_SESSION_UPDATE_PACKET = 54
+const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 55
 
 const NEXT_MAX_PACKET_BYTES = 4096
 const NEXT_MTU = 1300
@@ -412,8 +413,7 @@ type NextBackendServerUpdatePacket struct {
 	ServerAddress net.UDPAddr
 }
 
-func (packet NextBackendServerUpdatePacket) Serialize(stream Stream) error {
-	// IMPORTANT: read only
+func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
@@ -496,7 +496,7 @@ type NextBackendSessionUpdatePacket struct {
 	JitterServerToClient            float32
 }
 
-func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
+func (packet NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
@@ -645,7 +645,7 @@ type NextBackendSessionResponsePacket struct {
 	HighFrequencyPings bool
 }
 
-func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
+func (packet NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
 
 	stream.SerializeUint64(&packet.SessionId)
 
@@ -723,7 +723,7 @@ type SessionData struct {
 	Route           []uint64
 }
 
-func (packet *SessionData) Serialize(stream Stream) error {
+func (packet SessionData) Serialize(stream Stream) error {
 
 	stream.SerializeBits(&packet.Version, 8)
 	if stream.IsReading() && packet.Version != SessionDataVersion {
@@ -2684,7 +2684,6 @@ func main() {
 
 				if !AdvancedPacketFilter(response, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(response)) {
 					panic("advanced packet filter failed on server init response\n")
-					continue
 				}
 			}
 
@@ -2717,6 +2716,48 @@ func main() {
 			}
 			backend.serverDatabase[key] = serverEntry
 			backend.mutex.Unlock()
+
+			updateResponse := NextBackendServerResponsePacket{}
+			updateResponse.RequestId = serverUpdate.RequestId
+			updateResponse.UpcomingMagic, updateResponse.CurrentMagic, updateResponse.PreviousMagic  = getMagic()
+
+			// todo: package all below into "SendResponsePacket" function
+
+			toAddress := from
+			fromAddress := sendAddress
+
+			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_RESPONSE_PACKET, updateResponse, fromAddress, toAddress, backendPrivateKey[:])
+			if err != nil {
+				fmt.Printf( "error: could not write server response packet: %v\n", err)
+				continue
+			}
+
+			if !BasicPacketFilter(response[:], len(response)) {
+				panic("basic packet filter failed on server response?")
+			}
+
+			{
+				var magic [8]byte
+
+				fromAddress := sendAddress
+				toAddress := from
+
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+
+				fromAddressData, fromAddressPort := GetAddressData(fromAddress, fromAddressBuffer[:])
+				toAddressData, toAddressPort := GetAddressData(toAddress, toAddressBuffer[:])
+
+				if !AdvancedPacketFilter(response, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(response)) {
+					panic("advanced packet filter failed on server response\n")
+				}
+			}
+
+			_, err = connection.WriteToUDP(response, from)
+			if err != nil {
+				fmt.Printf("error: failed to send server response packet: %v\n", err)
+				continue
+			}
 
 		} else if packetType == NEXT_BACKEND_SESSION_UPDATE_PACKET {
 
