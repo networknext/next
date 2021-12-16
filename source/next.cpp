@@ -12306,7 +12306,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         // todo: check request id vs. last update request id if still outstanding, discard otherwise...
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received update response packet from backend" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received server response packet from backend" );
 
         // todo: clear the update pending response
 
