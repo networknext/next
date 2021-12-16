@@ -12,10 +12,6 @@ DONE
 	
 	Verify that the server gets the initial magic value sent down in init response (via log).
 
-TODO
-
-	--------------
-
 	Instead of having any complex logic on the server, client or relays...
 
 	There should be three magics at any time.
@@ -34,6 +30,28 @@ TODO
 	Then these three values are simply transmitted down to the server and relays, which just run the simple logic described above, without timers or change overs or caching or any delay waiting for upcoming to be ready.
 
 	This works. Switch to this now.
+
+	Server now gets the three magic values in server init response packet.
+
+TODO
+
+	--------------
+
+	Server needs to store upcoming, current and previous magic values from server init.
+
+	--------------
+
+	Remove the delay code that waits 30 seconds before using magic on server.
+
+	--------------
+
+	Extend server so it is able to read packets sent with current, upcoming and previous magic (in that order).
+
+	--------------
+
+	Client also needs to be able to read packets sent with current, upcoming and previous magic (in that order).
+
+	Do we still need complicated acks between the client and server for which magic to send with? I don't think so...
 
 	--------------
 
@@ -67,39 +85,6 @@ TODO
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
-	Think through exactly how the server should wait 30 seconds before it uses the magic value... ?
-
-	Seems like it should wait until it gets 3 server update responses until it considers itself fully inited?
-
-	--------------
-
-	But the server can't upgrade players until it knows the magic...
-
-	This means we have a new state, where the server is unable to upgrade players, for the first 30 seconds.
-
-	This kinda sucks.
-
-	--------------
-
-	Maybe the server should remember each player to be upgraded, if the upgrade is performed while the init is in progress,
-	and then actually start the upgrade process, post-30 seconds and init... ?
-
-	--------------
 
 
 

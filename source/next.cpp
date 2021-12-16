@@ -10406,7 +10406,6 @@ struct NextBackendSessionResponsePacket
     uint32_t slice_number;
     int session_data_bytes;
     uint8_t session_data[NEXT_MAX_SESSION_DATA_BYTES];
-    uint8_t magic[8];
     uint8_t response_type;
     bool near_relays_changed;
     int num_near_relays;
@@ -10439,8 +10438,6 @@ struct NextBackendSessionResponsePacket
         {
             serialize_bytes( stream, session_data, session_data_bytes );
         }
-
-        serialize_bytes( stream, magic, 8 );
 
         serialize_int( stream, response_type, 0, NEXT_UPDATE_TYPE_CONTINUE );
 
@@ -10817,7 +10814,6 @@ struct next_server_internal_t
     uint8_t upcoming_magic[8];
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
-    double update_magic_time;
 
     NEXT_DECLARE_SENTINEL(6)
 };
@@ -11815,29 +11811,6 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     return entry;
 }
 
-void next_server_internal_update_magic( next_server_internal_t * server )
-{
-    next_assert( server );
-
-    const double current_time = next_time();
-
-    if ( server->update_magic_time > 0 && server->update_magic_time < current_time )
-    {
-        server->update_magic_time = 0.0;
-        memcpy( server->previous_magic, server->current_magic, sizeof(server->previous_magic) );
-        memcpy( server->current_magic, server->upcoming_magic, sizeof(server->current_magic) );
-        next_printf( "server updated magic: %x,%x,%x,%x,%x,%x,%x,%x", 
-            server->current_magic[0],
-            server->current_magic[1],
-            server->current_magic[2],
-            server->current_magic[3],
-            server->current_magic[4],
-            server->current_magic[5],
-            server->current_magic[6],
-            server->current_magic[7] );
-    }
-}
-
 void next_server_internal_update_route( next_server_internal_t * server )
 {
     next_assert( server );
@@ -12389,25 +12362,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->exclude_near_relays = packet.exclude_near_relays;
             memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
             entry->high_frequency_pings = packet.high_frequency_pings;
-
-            // check for new magic
-
-            if ( memcmp( packet.magic, server->upcoming_magic, 8 ) != 0 && 
-                 memcmp( packet.magic, server->current_magic, 8 ) != 0 &&
-                 memcmp( packet.magic, server->previous_magic, 8 ) != 0 )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "new magic %x,%x,%x,%x,%x,%x,%x,%x", 
-                    packet.magic[0], 
-                    packet.magic[1], 
-                    packet.magic[2], 
-                    packet.magic[3], 
-                    packet.magic[4], 
-                    packet.magic[5], 
-                    packet.magic[6], 
-                    packet.magic[7] );
-                memcpy( server->upcoming_magic, packet.magic, 8 );
-                server->update_magic_time = next_time() + 30.0;
-            }
 
             return;
         }   
@@ -13708,8 +13662,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
         if ( current_time >= last_update_time + 0.1 )
         {
-            next_server_internal_update_magic( server );
-
             next_server_internal_update_pending_upgrades( server );
 
             next_server_internal_update_route( server );
