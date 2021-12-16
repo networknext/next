@@ -385,13 +385,17 @@ func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error
 type NextBackendServerInitResponsePacket struct {
 	RequestId uint64
 	Response  uint32
-	Magic [8]byte
+	UpcomingMagic [8]byte
+	CurrentMagic [8]byte
+	PreviousMagic [8]byte
 }
 
 func (packet NextBackendServerInitResponsePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeBits(&packet.Response, 8)
-	stream.SerializeBytes(packet.Magic[:])
+	stream.SerializeBytes(packet.UpcomingMagic[:])
+	stream.SerializeBytes(packet.CurrentMagic[:])
+	stream.SerializeBytes(packet.PreviousMagic[:])
 	return stream.Error()
 }
 
@@ -2487,14 +2491,25 @@ type ContinueToken struct {
 
 // -------------------------------------------------------
 
-var magicValue [8]byte
+var magicUpcoming [8]byte
+var magicCurrent [8]byte
+var magicPrevious [8]byte
 var magicMutex sync.RWMutex
 
-func getMagic() [8]byte {
+func getMagic() ([8]byte, [8]byte, [8]byte) {
 	magicMutex.RLock()
-	value := magicValue
+	upcoming := magicUpcoming
+	current := magicCurrent
+	previous := magicPrevious
 	magicMutex.RUnlock()
-	return value
+	return upcoming, current, previous
+}
+
+func generateMagic(magic []byte) {
+	newMagic := RandomBytes(8)
+	for i := range newMagic {
+		magic[i] = newMagic[i]
+	}
 }
 
 func main() {
@@ -2509,16 +2524,31 @@ func main() {
 	backend.serverDatabase = make(map[string]ServerEntry)
 	backend.sessionDatabase = make(map[uint64]SessionEntry)
 
+	generateMagic(magicUpcoming[:])
+	generateMagic(magicCurrent[:])
+	generateMagic(magicPrevious[:])
+
+	fmt.Printf("magic %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n", 
+		magicUpcoming[0], magicUpcoming[1], magicUpcoming[2], magicUpcoming[3], magicUpcoming[4], magicUpcoming[5], magicUpcoming[6], magicUpcoming[7],
+		magicCurrent[0], magicCurrent[1], magicCurrent[2], magicCurrent[3], magicCurrent[4], magicCurrent[5], magicCurrent[6], magicCurrent[7],
+		magicPrevious[0], magicPrevious[1], magicPrevious[2], magicPrevious[3], magicPrevious[4], magicPrevious[5], magicPrevious[6], magicPrevious[7])
+
 	go func() {
 		for {
-			newMagic := RandomBytes(8)
-			fmt.Printf("magic %d,%d,%d,%d,%d,%d,%d,%d\n", newMagic[0], newMagic[1], newMagic[2], newMagic[3], newMagic[4], newMagic[5], newMagic[6], newMagic[7])
-			magicMutex.Lock()
-			for i := range newMagic {
-				magicValue[i] = newMagic[i]
-			}
-			magicMutex.Unlock()
 			time.Sleep(time.Second * 60)
+
+			magicMutex.Lock()
+
+			magicPrevious = magicCurrent
+			magicCurrent = magicUpcoming
+			generateMagic(magicUpcoming[:])
+
+			fmt.Printf("magic %d,%d,%d,%d,%d,%d,%d,%d | %d,%d,%d,%d,%d,%d,%d,%d | %d,%d,%d,%d,%d,%d,%d,%d\n", 
+				magicUpcoming[0], magicUpcoming[1], magicUpcoming[2], magicUpcoming[3], magicUpcoming[4], magicUpcoming[5], magicUpcoming[6], magicUpcoming[7],
+				magicCurrent[0], magicCurrent[1], magicCurrent[2], magicCurrent[3], magicCurrent[4], magicCurrent[5], magicCurrent[6], magicCurrent[7],
+				magicPrevious[0], magicPrevious[1], magicPrevious[2], magicPrevious[3], magicPrevious[4], magicPrevious[5], magicPrevious[6], magicPrevious[7])
+
+			magicMutex.Unlock()
 		}
 	}()
 
@@ -2606,7 +2636,7 @@ func main() {
 			initResponse := NextBackendServerInitResponsePacket{}
 			initResponse.RequestId = serverInitRequest.RequestId
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
-			initResponse.Magic = getMagic()
+			initResponse.UpcomingMagic, initResponse.CurrentMagic, initResponse.PreviousMagic  = getMagic()
 
 			toAddress := from
 			fromAddress := sendAddress
