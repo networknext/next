@@ -4,13 +4,13 @@ DONE
 
 	Add test for server response packet.
 
-TODO
-
 	Why does the ref backend 5 get a bad server address at the end of the server update packet?
 
 	Is the packet getting truncated somehow?
 
-	--------------
+	No, it was non-pointer receiver for the interface. Needed for write packets. Doesn't work for read.
+
+TODO
 
 	Clean up ref backend 5 by adding SendResponsePacket function.
 
