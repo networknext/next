@@ -12062,7 +12062,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( packet_id != NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET && 
              packet_id != NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET &&
              packet_id != NEXT_BACKEND_SERVER_UPDATE_PACKET && 
-             // todo: NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET
+             packet_id != NEXT_BACKEND_SERVER_RESPONSE_PACKET &&
              packet_id != NEXT_BACKEND_SESSION_UPDATE_PACKET &&
              packet_id != NEXT_BACKEND_SESSION_RESPONSE_PACKET )
         {
