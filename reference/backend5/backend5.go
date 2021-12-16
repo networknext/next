@@ -2562,7 +2562,7 @@ func main() {
 			magicCurrent = magicUpcoming
 			generateMagic(magicUpcoming[:])
 
-			fmt.Printf("magic %d,%d,%d,%d,%d,%d,%d,%d | %d,%d,%d,%d,%d,%d,%d,%d | %d,%d,%d,%d,%d,%d,%d,%d\n", 
+			fmt.Printf("magic %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n", 
 				magicUpcoming[0], magicUpcoming[1], magicUpcoming[2], magicUpcoming[3], magicUpcoming[4], magicUpcoming[5], magicUpcoming[6], magicUpcoming[7],
 				magicCurrent[0], magicCurrent[1], magicCurrent[2], magicCurrent[3], magicCurrent[4], magicCurrent[5], magicCurrent[6], magicCurrent[7],
 				magicPrevious[0], magicPrevious[1], magicPrevious[2], magicPrevious[3], magicPrevious[4], magicPrevious[5], magicPrevious[6], magicPrevious[7])
