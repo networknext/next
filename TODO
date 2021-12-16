@@ -43,15 +43,7 @@ DONE
 
 	Work out how the server will associate the response with its update (prefer not to use sequence number, instead random 32 byte value that is compared, eg. request id?)
 
-TODO
-
-	--------------
-
 	Extend the server update packet to have a 32 byte request id.
-
-	Extend the test to verify this is serialized.
-
-	--------------
 
 	Sketch out the server response packet. 
 
@@ -61,9 +53,17 @@ TODO
 
 	Add a test to verify the server update response serializes correctly.
 
+	Extend the server to roll a random request id for each server update packet.
+
+TODO
+
 	--------------
 
-	Extend the server to roll a random 32 byte request id for each server update packet.
+	Test for server update packet.
+
+	--------------
+
+	Test for server response packet.
 
 	--------------
 
@@ -73,11 +73,13 @@ TODO
 
 	Extend server to resend the server update 5 times, once per-second, until it gets an response with matching request id.
 
+	This can be modelled on how it is done for the server init request packet...
+
 	If the server doesn't get response, it should fall back to direct mode and stop communicating with the server backend.
 
 	--------------
 
-	When the server response comes back, the server should compare the upcoming magic in the with its value.
+	When the server response comes back, the server should compare the upcoming magic in the packet with its value.
 
 	If the value is different, then copy across all magic values from the packet into the magic values for the server and print them.
 
