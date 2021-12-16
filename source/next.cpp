@@ -10543,30 +10543,6 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
 
     switch ( packet_id )
     {
-        case NEXT_BACKEND_SERVER_UPDATE_PACKET:
-        {
-            NextBackendServerUpdatePacket * packet = (NextBackendServerUpdatePacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-        
-        case NEXT_BACKEND_SESSION_UPDATE_PACKET:
-        {
-            NextBackendSessionUpdatePacket * packet = (NextBackendSessionUpdatePacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
-        case NEXT_BACKEND_SESSION_RESPONSE_PACKET:
-        {
-            NextBackendSessionResponsePacket * packet = (NextBackendSessionResponsePacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
         case NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET:
         {
             NextBackendServerInitRequestPacket * packet = (NextBackendServerInitRequestPacket*) packet_object;
@@ -10578,6 +10554,38 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
         case NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET:
         {
             NextBackendServerInitResponsePacket * packet = (NextBackendServerInitResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SERVER_UPDATE_PACKET:
+        {
+            NextBackendServerUpdatePacket * packet = (NextBackendServerUpdatePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+        
+        case NEXT_BACKEND_SERVER_RESPONSE_PACKET:
+        {
+            NextBackendServerResponsePacket * packet = (NextBackendServerResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SESSION_UPDATE_PACKET:
+        {
+            NextBackendSessionUpdatePacket * packet = (NextBackendSessionUpdatePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SESSION_RESPONSE_PACKET:
+        {
+            NextBackendSessionResponsePacket * packet = (NextBackendSessionResponsePacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -10643,9 +10651,33 @@ int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int pack
 
     switch ( packet_id )
     {
+        case NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET:
+        {
+            NextBackendServerInitRequestPacket * packet = (NextBackendServerInitRequestPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET:
+        {
+            NextBackendServerInitResponsePacket * packet = (NextBackendServerInitResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
         case NEXT_BACKEND_SERVER_UPDATE_PACKET:
         {
             NextBackendServerUpdatePacket * packet = (NextBackendServerUpdatePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+        
+        case NEXT_BACKEND_SERVER_RESPONSE_PACKET:
+        {
+            NextBackendServerResponsePacket * packet = (NextBackendServerResponsePacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -10662,22 +10694,6 @@ int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int pack
         case NEXT_BACKEND_SESSION_RESPONSE_PACKET:
         {
             NextBackendSessionResponsePacket * packet = (NextBackendSessionResponsePacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
-        case NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET:
-        {
-            NextBackendServerInitRequestPacket * packet = (NextBackendServerInitRequestPacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
-        case NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET:
-        {
-            NextBackendServerInitResponsePacket * packet = (NextBackendServerInitResponsePacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -17417,7 +17433,45 @@ void test_server_update_packet()
 
 void test_server_response_packet()
 {
-    // todo
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_random_bytes( magic, 8 );
+        next_random_bytes( from_address, 4 );
+        next_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
+
+        static NextBackendServerResponsePacket in, out;
+        in.request_id = next_random_uint64();
+        next_random_bytes( in.upcoming_magic, 8 );
+        next_random_bytes( in.current_magic, 8 );
+        next_random_bytes( in.previous_magic, 8 );
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        
+        const uint8_t packet_id = packet_data[0];
+        next_check( packet_id == NEXT_BACKEND_SERVER_RESPONSE_PACKET );
+
+        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+
+        next_check( next_read_backend_packet( packet_id, packet_data + 16, packet_bytes - 18, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SERVER_RESPONSE_PACKET );
+
+        next_check( in.request_id == out.request_id );
+        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
+        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
+        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
+    }
 }
 
 void test_session_update_packet()
