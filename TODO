@@ -61,11 +61,17 @@ DONE
 
 	Remove ping system
 
+	Server address in update packet appears to be empty, or not serializing correctly. What's going on?
+
 TODO
 
 	--------------
 
-	Server address in update packet appears to be empty, or not serializing correctly. What's going on?
+	Add test for server update packet.
+
+	--------------
+
+	Add test for server response packet.
 
 	--------------
 
@@ -73,23 +79,7 @@ TODO
 
 	--------------
 
-	Test for server update packet.
-
-	--------------
-
-	Test for server response packet.
-
-	--------------
-
-	Hook up the server response packet in read backend packet, and processing on the server internal.
-
-	--------------
-
-	Extend server to resend the server update 5 times, once per-second, until it gets an response with matching request id.
-
-	This can be modelled on how it is done for the server init request packet...
-
-	If the server doesn't get response, it should fall back to direct mode and stop communicating with the server backend.
+	Hook up code to process the server update response in the server internal.
 
 	--------------
 
@@ -99,19 +89,19 @@ TODO
 
 	--------------
 
-	Add the server response packet type to the reference backend 5.
-
-	--------------
-
-	Extend the reference backend 5 so it responds to the server update packet with a server response packet, with the same request id, and including the current magic values.
-
-	--------------
-
 	Change all logs of magic to use %02x in next.cpp
 
 	--------------
 
 	Verify the server gets upcoming, current and previous magic values by printing them when upcoming changes.
+
+	--------------
+
+	Extend server to resend the server update 5 times, once per-second, until it gets an response with matching request id.
+
+	This can be modelled on how it is done for the server init request packet...
+
+	If the server doesn't get response, it should fall back to direct mode and stop communicating with the server backend.
 
 	--------------
 
