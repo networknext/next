@@ -65,6 +65,10 @@ TODO
 
 	--------------
 
+	Server address in update packet appears to be empty, or not serializing correctly. What's going on?
+
+	--------------
+
 	Clean up ref backend 5 by adding SendResponsePacket function.
 
 	--------------

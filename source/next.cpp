@@ -13447,13 +13447,15 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     {
         NextBackendServerUpdatePacket packet;
 
-        // todo: stash request id here, wait for response and keep resending like init
-
         packet.request_id = next_random_uint64();
         packet.customer_id = server->customer_id;
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
+
+        // todo
+        char buffer[1024];
+        printf( "server address is %s\n", next_address_to_string( &packet.server_address, buffer ) );
 
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );
