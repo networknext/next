@@ -365,18 +365,18 @@ type NextBackendServerInitRequestPacket struct {
 	VersionMajor uint32
 	VersionMinor uint32
 	VersionPatch uint32
+	RequestId    uint64
 	CustomerId   uint64
 	DatacenterId uint64
-	RequestId    uint64
 }
 
 func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
+	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
-	stream.SerializeUint64(&packet.RequestId)
 	return stream.Error()
 }
 
@@ -405,6 +405,7 @@ type NextBackendServerUpdatePacket struct {
 	VersionMajor  uint32
 	VersionMinor  uint32
 	VersionPatch  uint32
+	RequestId     uint64
 	CustomerId    uint64
 	DatacenterId  uint64
 	NumSessions   uint32
@@ -416,10 +417,28 @@ func (packet NextBackendServerUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
+	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
+	return stream.Error()
+}
+
+// -------------------------------------------------------------------------------------
+
+type NextBackendServerResponsePacket struct {
+	RequestId     uint64
+	UpcomingMagic [8]byte
+	CurrentMagic  [8]byte
+	PreviousMagic [8]byte
+}
+
+func (packet NextBackendServerResponsePacket) Serialize(stream Stream) error {
+	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeBytes(packet.UpcomingMagic[:])
+	stream.SerializeBytes(packet.CurrentMagic[:])
+	stream.SerializeBytes(packet.PreviousMagic[:])
 	return stream.Error()
 }
 
