@@ -2547,26 +2547,13 @@ func main() {
 	generateMagic(magicCurrent[:])
 	generateMagic(magicPrevious[:])
 
-	fmt.Printf("magic %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n", 
-		magicUpcoming[0], magicUpcoming[1], magicUpcoming[2], magicUpcoming[3], magicUpcoming[4], magicUpcoming[5], magicUpcoming[6], magicUpcoming[7],
-		magicCurrent[0], magicCurrent[1], magicCurrent[2], magicCurrent[3], magicCurrent[4], magicCurrent[5], magicCurrent[6], magicCurrent[7],
-		magicPrevious[0], magicPrevious[1], magicPrevious[2], magicPrevious[3], magicPrevious[4], magicPrevious[5], magicPrevious[6], magicPrevious[7])
-
 	go func() {
 		for {
 			time.Sleep(time.Second * 60)
-
 			magicMutex.Lock()
-
 			magicPrevious = magicCurrent
 			magicCurrent = magicUpcoming
 			generateMagic(magicUpcoming[:])
-
-			fmt.Printf("magic %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x\n", 
-				magicUpcoming[0], magicUpcoming[1], magicUpcoming[2], magicUpcoming[3], magicUpcoming[4], magicUpcoming[5], magicUpcoming[6], magicUpcoming[7],
-				magicCurrent[0], magicCurrent[1], magicCurrent[2], magicCurrent[3], magicCurrent[4], magicCurrent[5], magicCurrent[6], magicCurrent[7],
-				magicPrevious[0], magicPrevious[1], magicPrevious[2], magicPrevious[3], magicPrevious[4], magicPrevious[5], magicPrevious[6], magicPrevious[7])
-
 			magicMutex.Unlock()
 		}
 	}()
@@ -2607,8 +2594,6 @@ func main() {
 		packetBytes, from, err := connection.ReadFromUDP(packetData)
 
 		packetData = packetData[:packetBytes]
-
-		fmt.Printf("received %d byte packet from %s\n", packetBytes, from.String())
 
 		if err != nil {
 			fmt.Printf("socket error: %v\n", err)
@@ -2720,8 +2705,6 @@ func main() {
 			updateResponse := NextBackendServerResponsePacket{}
 			updateResponse.RequestId = serverUpdate.RequestId
 			updateResponse.UpcomingMagic, updateResponse.CurrentMagic, updateResponse.PreviousMagic  = getMagic()
-
-			// todo: package all below into "SendResponsePacket" function
 
 			toAddress := from
 			fromAddress := sendAddress
