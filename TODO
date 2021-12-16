@@ -1,14 +1,14 @@
 DONE
 
-TODO
-
-	--------------
-
 	Add test for server update packet.
 
-	--------------
-
 	Add test for server response packet.
+
+TODO
+
+	Why does the ref backend 5 get a bad server address at the end of the server update packet?
+
+	Is the packet getting truncated somehow?
 
 	--------------
 

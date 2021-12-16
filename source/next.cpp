@@ -13403,10 +13403,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     // server init
 
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    
-    next_assert( ( size_t(packet_data) % 4 ) == 0 );
-
     if ( server->state == NEXT_SERVER_STATE_INITIALIZING && !server->resolving_hostname )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
@@ -13432,6 +13428,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
         next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
+        uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+        
+        next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
         int packet_bytes = 0;
         if ( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
@@ -13505,6 +13505,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
         next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
+        uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+        
+        next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
         int packet_bytes = 0;
         if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
@@ -13616,6 +13620,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
             next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
 
+            uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+            
+            next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
             int packet_bytes = 0;
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
             {
@@ -13665,6 +13673,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
             next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
+            uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+            
+            next_assert( ( size_t(packet_data) % 4 ) == 0 );
 
             int packet_bytes = 0;
             if ( next_write_backend_packet( NEXT_BACKEND_SESSION_UPDATE_PACKET, &session->session_update_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
