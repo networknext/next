@@ -13489,10 +13489,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
         packet.server_address = server->server_address;
 
-        // todo
-        char buffer[1024];
-        printf( "server address is %s\n", next_address_to_string( &packet.server_address, buffer ) );
-
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );
 
@@ -16033,8 +16029,6 @@ void test_pittle_and_chonkle()
         next_check( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) );
     }
 }
-
-// todo: we need a 100% repeatable sequence of pseudorandom numbers for the tests below
 
 void test_basic_packet_filter()
 {
