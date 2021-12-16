@@ -4084,7 +4084,6 @@ void * next_global_context = NULL;
 struct next_config_internal_t
 {
     char server_backend_hostname[256];
-    char ping_backend_hostname[256];
     uint64_t customer_id;
     uint8_t customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
     uint8_t customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
@@ -4102,8 +4101,6 @@ void next_default_config( next_config_t * config )
     memset( config, 0, sizeof(next_config_t) );
     strncpy( config->server_backend_hostname, NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config->server_backend_hostname) );
     config->server_backend_hostname[sizeof(config->server_backend_hostname)-1] = '\0';
-    strncpy( config->ping_backend_hostname, NEXT_PING_BACKEND_HOSTNAME, sizeof(config->ping_backend_hostname) );
-    config->ping_backend_hostname[sizeof(config->ping_backend_hostname)-1] = '\0';
     config->socket_send_buffer_size = NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE;
     config->socket_receive_buffer_size = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
 }
@@ -4197,9 +4194,6 @@ int next_init( void * context, next_config_t * config_in )
 
     strncpy( config.server_backend_hostname, config_in ? config_in->server_backend_hostname : NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config.server_backend_hostname) );
     config.server_backend_hostname[sizeof(config.server_backend_hostname)-1] = '\0';
-
-    strncpy( config.ping_backend_hostname, config_in ? config_in->ping_backend_hostname : NEXT_PING_BACKEND_HOSTNAME, sizeof(config.ping_backend_hostname) );
-    config.ping_backend_hostname[sizeof(config.ping_backend_hostname)-1] = '\0';
 
     if ( config_in )
     {
