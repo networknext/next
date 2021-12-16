@@ -13493,7 +13493,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         int packet_bytes = 0;
         if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
         {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server init update packet for backend" );
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server update packet for backend" );
             return;
         }
 
@@ -17369,7 +17369,50 @@ void test_server_init_response_packet()
 
 void test_server_update_packet()
 {
-    // todo
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_random_bytes( magic, 8 );
+        next_random_bytes( from_address, 4 );
+        next_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
+
+        static NextBackendServerUpdatePacket in, out;
+        in.request_id = next_random_uint64();
+        in.customer_id = next_random_uint64();
+        in.datacenter_id = next_random_uint64();
+        in.num_sessions = 1000;
+        next_address_parse( &in.server_address, "127.0.0.1:40000" );
+    
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
+        
+        const uint8_t packet_id = packet_data[0];
+        next_check( packet_id == NEXT_BACKEND_SERVER_UPDATE_PACKET );
+
+        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+
+        next_check( next_read_backend_packet( packet_id, packet_data + 16, packet_bytes - 18, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SERVER_UPDATE_PACKET );
+
+        next_check( in.version_major == out.version_major );
+        next_check( in.version_minor == out.version_minor );
+        next_check( in.version_patch == out.version_patch );
+        next_check( in.request_id == out.request_id );
+        next_check( in.customer_id == out.customer_id );
+        next_check( in.datacenter_id == out.datacenter_id );
+        next_check( in.num_sessions == out.num_sessions );
+        next_check( next_address_equal( &in.server_address, &out.server_address ) );
+    }
 }
 
 void test_server_response_packet()
