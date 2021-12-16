@@ -9513,9 +9513,9 @@ struct NextBackendServerInitRequestPacket
     int version_major;
     int version_minor;
     int version_patch;
+    uint64_t request_id;
     uint64_t customer_id;
     uint64_t datacenter_id;
-    uint64_t request_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
     NextBackendServerInitRequestPacket()
@@ -9523,9 +9523,9 @@ struct NextBackendServerInitRequestPacket
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
+        request_id = 0;
         customer_id = 0;
         datacenter_id = 0;
-        request_id = 0;
         datacenter_name[0] = '\0';
     }
 
@@ -9534,9 +9534,9 @@ struct NextBackendServerInitRequestPacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
+        serialize_uint64( stream, request_id );
         serialize_uint64( stream, customer_id );
         serialize_uint64( stream, datacenter_id );
-        serialize_uint64( stream, request_id );
         serialize_string( stream, datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         return true;
     }
@@ -9575,6 +9575,7 @@ struct NextBackendServerUpdatePacket
     int version_major;
     int version_minor;
     int version_patch;
+    uint64_t request_id;
     uint64_t customer_id;
     uint64_t datacenter_id;
     uint32_t num_sessions;
@@ -9585,6 +9586,7 @@ struct NextBackendServerUpdatePacket
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
+        request_id = 0;
         customer_id = 0;
         datacenter_id = 0;
         num_sessions = 0;
@@ -9596,6 +9598,7 @@ struct NextBackendServerUpdatePacket
         serialize_bits( stream, version_major, 8 );
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
+        serialize_uint64( stream, request_id );
         serialize_uint64( stream, customer_id );
         serialize_uint64( stream, datacenter_id );
         serialize_uint32( stream, num_sessions );
@@ -9603,6 +9606,10 @@ struct NextBackendServerUpdatePacket
         return true;
     }
 };
+
+// ---------------------------------------------------------------
+
+// todo: NextBackendServerResponsePacket
 
 // ---------------------------------------------------------------
 
@@ -13444,6 +13451,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     if ( server->last_backend_server_update + NEXT_SECONDS_BETWEEN_SERVER_UPDATES <= current_time )
     {
         NextBackendServerUpdatePacket packet;
+
+        // todo: stash request id here, wait for response and keep resending like init
+
+        packet.request_id = next_random_uint64();
         packet.customer_id = server->customer_id;
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
@@ -18067,6 +18078,10 @@ void test_server_init_response_packet()
         next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
     }
 }
+
+// todo: test_server_update_packet
+
+// todo: test_server_response_packet
 
 void test_session_update_packet()
 {
