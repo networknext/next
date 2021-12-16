@@ -23,16 +23,16 @@
                 title="Unique ID of the session">Session ID</span>
             </th>
             <th>
-              <span>RTT</span>
+              <span>Save Score</span>
             </th>
             <th>
-              <span>Jitter</span>
+              <span>RTT Score</span>
             </th>
             <th>
-              <span>PL</span>
+              <span>PL Score</span>
             </th>
             <th>
-              <span>Score</span>
+              <span>Duration (Hours)</span>
             </th>
           </tr>
         </thead>
@@ -54,16 +54,16 @@
               >{{ save.id }}</router-link>
             </td>
             <td>
-              0
+              {{ save.score }}
             </td>
             <td>
-              0
+              {{ save.rtt_score }}
             </td>
             <td>
-              0
+              {{ save.pl_score }}
             </td>
             <td>
-              0
+              {{ save.duration }}
             </td>
           </tr>
         </tbody>
