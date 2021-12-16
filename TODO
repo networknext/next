@@ -12,8 +12,6 @@ DONE
 
 TODO
 
-	Clean up ref backend 5 by adding SendResponsePacket function.
-
 	--------------
 
 	Hook up code to process the server update response in the server internal.

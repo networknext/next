@@ -12125,71 +12125,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     packet_data += 16;
     packet_bytes -= 18;
 
-    // direct packet (255)
-
-    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 11 && packet_bytes <= 11 + NEXT_MTU )
-    {
-        const uint8_t * p = packet_data;
-
-        uint8_t packet_session_sequence = next_read_uint8( &p );
-        
-        uint64_t packet_sequence = next_read_uint64( &p );
-        
-        next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, from );
-        if ( !entry )
-        {
-            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. could not find session for address", next_address_to_string( from, address_buffer ) );
-            return;
-        }
-
-        if ( packet_session_sequence != entry->client_open_session_sequence )
-        {
-            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. session mismatch", next_address_to_string( from, address_buffer ) );
-            return;
-        }
-
-        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-
-        if ( next_replay_protection_already_received( &entry->payload_replay_protection, clean_sequence ) )
-        {
-            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. already received (%" PRIx64 " vs. %" PRIx64 ")", next_address_to_string( from, address_buffer ), clean_sequence, entry->payload_replay_protection.most_recent_sequence );
-            return;
-        }
-
-        next_replay_protection_advance_sequence( &entry->payload_replay_protection, clean_sequence );
-
-        next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, clean_sequence );
-        
-        next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, clean_sequence );
-        
-        next_jitter_tracker_packet_received( &entry->jitter_tracker, clean_sequence, next_time() );
-
-        next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
-        notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
-        notify->from = *from;
-        notify->packet_bytes = packet_bytes - 11;
-        next_assert( notify->packet_bytes > 0 );
-        next_assert( notify->packet_bytes <= NEXT_MTU );
-        memcpy( notify->packet_data, packet_data + 9, size_t(notify->packet_bytes) );
-        {
-            next_platform_mutex_guard( &server->notify_mutex );
-            next_queue_push( server->notify_queue, notify );            
-        }
-
-        if ( server->wake_up_callback )
-        {
-            server->wake_up_callback( server->context );
-        }
-
-        return;
-    }
-
-    // backend response packets
-
-    if ( server->state == NEXT_SERVER_STATE_INITIALIZING || server->state == NEXT_SERVER_STATE_INITIALIZED )
+    if ( server->state == NEXT_SERVER_STATE_INITIALIZING )
     {
         // server init response
 
@@ -12287,133 +12223,202 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             return;
         }
+    }
 
-        // session update response
+    // don't process network next packets until the server is initialized
 
-        if ( packet_id == NEXT_BACKEND_SESSION_RESPONSE_PACKET )
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+        return;
+
+    // direct packet (255)
+
+    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 11 && packet_bytes <= 11 + NEXT_MTU )
+    {
+        const uint8_t * p = packet_data;
+
+        uint8_t packet_session_sequence = next_read_uint8( &p );
+        
+        uint64_t packet_sequence = next_read_uint64( &p );
+        
+        next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, from );
+        if ( !entry )
         {
-            if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server is not initialized" );
-                return;
-            }
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. could not find session for address", next_address_to_string( from, address_buffer ) );
+            return;
+        }
 
-            NextBackendSessionResponsePacket packet;
+        if ( packet_session_sequence != entry->client_open_session_sequence )
+        {
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. session mismatch", next_address_to_string( from, address_buffer ) );
+            return;
+        }
 
-            if ( next_read_backend_packet( packet_id, packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. packet failed to read" );
-                return;
-            }
+        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
 
-            next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
-            if ( !entry )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. could not find session %" PRIx64, packet.session_id );
-                return;
-            }
+        if ( next_replay_protection_already_received( &entry->payload_replay_protection, clean_sequence ) )
+        {
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. already received (%" PRIx64 " vs. %" PRIx64 ")", next_address_to_string( from, address_buffer ), clean_sequence, entry->payload_replay_protection.most_recent_sequence );
+            return;
+        }
 
-            if ( !entry->waiting_for_update_response )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. not waiting for session response" );
-                return;
-            }
+        next_replay_protection_advance_sequence( &entry->payload_replay_protection, clean_sequence );
 
-            if ( packet.slice_number != entry->update_sequence - 1 )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. wrong sequence number" );
-                return;
-            }
+        next_packet_loss_tracker_packet_received( &entry->packet_loss_tracker, clean_sequence );
+        
+        next_out_of_order_tracker_packet_received( &entry->out_of_order_tracker, clean_sequence );
+        
+        next_jitter_tracker_packet_received( &entry->jitter_tracker, clean_sequence, next_time() );
 
-            const char * update_type = "???";
+        next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
+        notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
+        notify->from = *from;
+        notify->packet_bytes = packet_bytes - 11;
+        next_assert( notify->packet_bytes > 0 );
+        next_assert( notify->packet_bytes <= NEXT_MTU );
+        memcpy( notify->packet_data, packet_data + 9, size_t(notify->packet_bytes) );
+        {
+            next_platform_mutex_guard( &server->notify_mutex );
+            next_queue_push( server->notify_queue, notify );            
+        }
 
-            switch ( packet.response_type )
-            {   
-                case NEXT_UPDATE_TYPE_DIRECT:    update_type = "direct route";     break;
-                case NEXT_UPDATE_TYPE_ROUTE:     update_type = "next route";       break;
-                case NEXT_UPDATE_TYPE_CONTINUE:  update_type = "continue route";   break;
-            }
+        if ( server->wake_up_callback )
+        {
+            server->wake_up_callback( server->context );
+        }
 
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
+        return;
+    }
 
-            bool multipath = packet.multipath;
+    // todo: backend server response
 
-            if ( multipath && !entry->multipath )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server multipath enabled for session %" PRIx64, entry->session_id );
-                entry->multipath = true;
-                next_platform_mutex_acquire( &server->session_mutex );
-                entry->mutex_multipath = true;
-                next_platform_mutex_release( &server->session_mutex );
-            }
+    // backend session response
 
-            entry->committed = packet.committed;
+    if ( packet_id == NEXT_BACKEND_SESSION_RESPONSE_PACKET )
+    {
+        if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server is not initialized" );
+            return;
+        }
+
+        NextBackendSessionResponsePacket packet;
+
+        if ( next_read_backend_packet( packet_id, packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. packet failed to read" );
+            return;
+        }
+
+        next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
+        if ( !entry )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. could not find session %" PRIx64, packet.session_id );
+            return;
+        }
+
+        if ( !entry->waiting_for_update_response )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. not waiting for session response" );
+            return;
+        }
+
+        if ( packet.slice_number != entry->update_sequence - 1 )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. wrong sequence number" );
+            return;
+        }
+
+        const char * update_type = "???";
+
+        switch ( packet.response_type )
+        {   
+            case NEXT_UPDATE_TYPE_DIRECT:    update_type = "direct route";     break;
+            case NEXT_UPDATE_TYPE_ROUTE:     update_type = "next route";       break;
+            case NEXT_UPDATE_TYPE_CONTINUE:  update_type = "continue route";   break;
+        }
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
+
+        bool multipath = packet.multipath;
+
+        if ( multipath && !entry->multipath )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server multipath enabled for session %" PRIx64, entry->session_id );
+            entry->multipath = true;
             next_platform_mutex_acquire( &server->session_mutex );
-            entry->mutex_committed = packet.committed;
+            entry->mutex_multipath = true;
+            next_platform_mutex_release( &server->session_mutex );
+        }
+
+        entry->committed = packet.committed;
+        next_platform_mutex_acquire( &server->session_mutex );
+        entry->mutex_committed = packet.committed;
+        next_platform_mutex_release( &server->session_mutex );
+
+        entry->update_dirty = true;
+
+        entry->update_type = (uint8_t) packet.response_type;
+
+        entry->update_num_tokens = packet.num_tokens;
+
+        if ( packet.response_type == NEXT_UPDATE_TYPE_ROUTE )
+        {
+            memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * size_t(packet.num_tokens) );
+        }
+        else if ( packet.response_type == NEXT_UPDATE_TYPE_CONTINUE )
+        {
+            memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(packet.num_tokens) );
+        }
+
+        entry->update_dont_ping_near_relays = packet.dont_ping_near_relays;
+        entry->update_near_relays_changed = packet.near_relays_changed;
+        if ( packet.near_relays_changed )
+        {
+            entry->update_num_near_relays = packet.num_near_relays;
+            memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
+            memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
+        }
+
+        entry->update_last_send_time = -1000.0;
+
+        entry->session_data_bytes = packet.session_data_bytes;
+        memcpy( entry->session_data, packet.session_data, packet.session_data_bytes );
+
+        entry->waiting_for_update_response = false;
+
+        if ( packet.response_type == NEXT_UPDATE_TYPE_DIRECT )
+        {
+            bool session_transitions_to_direct = false;
+
+            next_platform_mutex_acquire( &server->session_mutex );
+            if ( entry->mutex_send_over_network_next )
+            {
+                entry->mutex_send_over_network_next = false;
+                session_transitions_to_direct = true;
+            }
             next_platform_mutex_release( &server->session_mutex );
 
-            entry->update_dirty = true;
-
-            entry->update_type = (uint8_t) packet.response_type;
-
-            entry->update_num_tokens = packet.num_tokens;
-
-            if ( packet.response_type == NEXT_UPDATE_TYPE_ROUTE )
+            if ( session_transitions_to_direct )
             {
-                memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * size_t(packet.num_tokens) );
+                entry->has_previous_route = entry->has_current_route;
+                entry->has_current_route = false;
+                entry->previous_route_send_address = entry->current_route_send_address;
+                memcpy( entry->previous_route_private_key, entry->current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
             }
-            else if ( packet.response_type == NEXT_UPDATE_TYPE_CONTINUE )
-            {
-                memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(packet.num_tokens) );
-            }
+        }
 
-            entry->update_dont_ping_near_relays = packet.dont_ping_near_relays;
-            entry->update_near_relays_changed = packet.near_relays_changed;
-            if ( packet.near_relays_changed )
-            {
-                entry->update_num_near_relays = packet.num_near_relays;
-                memcpy( entry->update_near_relay_ids, packet.near_relay_ids, 8 * size_t(packet.num_near_relays) );
-                memcpy( entry->update_near_relay_addresses, packet.near_relay_addresses, sizeof(next_address_t) * size_t(packet.num_near_relays) );
-            }
+        entry->has_debug = packet.has_debug;
+        memcpy( entry->debug, packet.debug, NEXT_MAX_SESSION_DEBUG );
 
-            entry->update_last_send_time = -1000.0;
+        entry->exclude_near_relays = packet.exclude_near_relays;
+        memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
+        entry->high_frequency_pings = packet.high_frequency_pings;
 
-            entry->session_data_bytes = packet.session_data_bytes;
-            memcpy( entry->session_data, packet.session_data, packet.session_data_bytes );
-
-            entry->waiting_for_update_response = false;
-
-            if ( packet.response_type == NEXT_UPDATE_TYPE_DIRECT )
-            {
-                bool session_transitions_to_direct = false;
-
-                next_platform_mutex_acquire( &server->session_mutex );
-                if ( entry->mutex_send_over_network_next )
-                {
-                    entry->mutex_send_over_network_next = false;
-                    session_transitions_to_direct = true;
-                }
-                next_platform_mutex_release( &server->session_mutex );
-
-                if ( session_transitions_to_direct )
-                {
-                    entry->has_previous_route = entry->has_current_route;
-                    entry->has_current_route = false;
-                    entry->previous_route_send_address = entry->current_route_send_address;
-                    memcpy( entry->previous_route_private_key, entry->current_route_private_key, NEXT_CRYPTO_BOX_SECRETKEYBYTES );
-                }
-            }
-
-            entry->has_debug = packet.has_debug;
-            memcpy( entry->debug, packet.debug, NEXT_MAX_SESSION_DEBUG );
-
-            entry->exclude_near_relays = packet.exclude_near_relays;
-            memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
-            entry->high_frequency_pings = packet.high_frequency_pings;
-
-            return;
-        }   
-    }
+        return;
+    }   
 
     // upgrade response packet
 
