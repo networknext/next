@@ -9544,7 +9544,9 @@ struct NextBackendServerInitResponsePacket
 {
     uint64_t request_id;
     uint32_t response;
-    uint8_t magic[8];
+    uint8_t upcoming_magic[8];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
 
     NextBackendServerInitResponsePacket()
     {
@@ -9555,7 +9557,9 @@ struct NextBackendServerInitResponsePacket
     {
         serialize_uint64( stream, request_id );
         serialize_bits( stream, response, 8 );
-        serialize_bytes( stream, magic, 8 );
+        serialize_bytes( stream, upcoming_magic, 8 );
+        serialize_bytes( stream, current_magic, 8 );
+        serialize_bytes( stream, previous_magic, 8 );
         return true;
     }
 };
@@ -12232,17 +12236,33 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             server->state = NEXT_SERVER_STATE_INITIALIZED;
 
-            // todo: we need to stash magic from packet here, but can't use it for another 30 seconds 
+            // todo: we need to stash magic values here
             
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server initial magic: %d,%d,%d,%d,%d,%d,%d,%d",
-                packet.magic[0],
-                packet.magic[1],
-                packet.magic[2],
-                packet.magic[3],
-                packet.magic[4],
-                packet.magic[5],
-                packet.magic[6],
-                packet.magic[7] );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server initial magic: %d,%d,%d,%d,%d,%d,%d,%d | %d,%d,%d,%d,%d,%d,%d,%d | %d,%d,%d,%d,%d,%d,%d,%d",
+                packet.upcoming_magic[0],
+                packet.upcoming_magic[1],
+                packet.upcoming_magic[2],
+                packet.upcoming_magic[3],
+                packet.upcoming_magic[4],
+                packet.upcoming_magic[5],
+                packet.upcoming_magic[6],
+                packet.upcoming_magic[7], 
+                packet.current_magic[0],
+                packet.current_magic[1],
+                packet.current_magic[2],
+                packet.current_magic[3],
+                packet.current_magic[4],
+                packet.current_magic[5],
+                packet.current_magic[6],
+                packet.current_magic[7], 
+                packet.previous_magic[0],
+                packet.previous_magic[1],
+                packet.previous_magic[2],
+                packet.previous_magic[3],
+                packet.previous_magic[4],
+                packet.previous_magic[5],
+                packet.previous_magic[6],
+                packet.previous_magic[7] );
 
             return;
         }
@@ -18063,7 +18083,9 @@ void test_server_init_response_packet()
         static NextBackendServerInitResponsePacket in, out;
         in.request_id = next_random_uint64();
         in.response = NEXT_SERVER_INIT_RESPONSE_OK;
-        next_random_bytes( in.magic, 8 );
+        next_random_bytes( in.upcoming_magic, 8 );
+        next_random_bytes( in.current_magic, 8 );
+        next_random_bytes( in.previous_magic, 8 );
 
         int packet_bytes = 0;
         next_check( next_write_backend_packet( NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, 4, from_port, to_address, 4, to_port ) == NEXT_OK );
@@ -18078,7 +18100,9 @@ void test_server_init_response_packet()
 
         next_check( in.request_id == out.request_id );
         next_check( in.response == out.response );
-        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
+        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
+        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
+        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
     }
 }
 

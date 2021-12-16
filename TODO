@@ -10,24 +10,30 @@ DONE
 
 	Extend the server init response packet send to check the packet filters before sending.
 	
+	Verify that the server gets the initial magic value sent down in init response (via log).
+
 TODO
 
 	--------------
 
-	Verify that the server gets the initial magic value sent down in init response (via log).
+	Instead of having any complex logic on the server, client or relays...
 
-	--------------
+	There should be three magics at any time.
 
-	I think we need a concept of read and write magic across the board (relay, client, server).
+	1. Upcoming
+	2. Current
+	3. Previous
 
-	This means that a new magic value goes out, but it's not used for writing, until all components in the system
-	are sure to have it, eg. relays, clients and servers.
+	The relay, client and server will always use #2, current for sending, but will be able to read any of the 3.
 
-	When the number flips over, we fix race conditions by having all components knowing the upcoming write magic value, but not writing with it until 30 seconds.
+	This way clients, servers and relays don't have any waiting time until they can communicate, they don't need to cache
+	upcoming/current/previous and run timers. This is all done on the backend.
 
-	eg. a relay might switch over 1 sec earlier than a server -- but the server already knows how to read packets encoded with the upcoming magic for 30 seconds now...
+	On the backend, initially three random magics are selected. Then every 60 seconds, current -> previous, upcoming -> current, and roll a new upcoming.
 
-	think this through. it has to be perfectly robust.
+	Then these three values are simply transmitted down to the server and relays, which just run the simple logic described above, without timers or change overs or caching or any delay waiting for upcoming to be ready.
+
+	This works. Switch to this now.
 
 	--------------
 
