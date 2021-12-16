@@ -12071,9 +12071,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     const int packet_id = packet_data[0];
 
-    // todo
-    printf("received packet type %d\n", packet_id);
-
     // run packet filters
     {
         uint8_t from_address_data[32];
@@ -12299,9 +12296,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_BACKEND_SERVER_RESPONSE_PACKET )
     {
-        // todo
-        printf("received server response packet\n");
-
         NextBackendServerResponsePacket packet;
 
         if ( next_read_backend_packet( packet_id, packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
