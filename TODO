@@ -10,21 +10,17 @@ DONE
 
 	No, it was non-pointer receiver for the interface. Needed for write packets. Doesn't work for read.
 
-TODO
-
-	--------------
+	Don't process any packet except server init response until server is initialized.
 
 	Hook up code to process the server update response in the server internal.
-
-	--------------
 
 	When the server response comes back, the server should compare the upcoming magic in the packet with its value.
 
 	If the value is different, then copy across all magic values from the packet into the magic values for the server and print them.
 
-	--------------
-
 	Change all logs of magic to use %02x in next.cpp
+
+TODO
 
 	--------------
 
@@ -40,7 +36,13 @@ TODO
 
 	--------------
 
+	Extend the server init request packet to have a timeout (30 seconds).
 
+	--------------
+
+	Extend the server update packet to have a timeout (10 seconds)
+
+	--------------
 
 
 

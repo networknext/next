@@ -12071,6 +12071,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     const int packet_id = packet_data[0];
 
+    // todo
+    printf("received packet type %d\n", packet_id);
+
     // run packet filters
     {
         uint8_t from_address_data[32];
@@ -12195,7 +12198,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( server->current_magic, packet.current_magic, 8 );
             memcpy( server->previous_magic, packet.previous_magic, 8 );
             
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server initial magic: %d,%d,%d,%d,%d,%d,%d,%d | %d,%d,%d,%d,%d,%d,%d,%d | %d,%d,%d,%d,%d,%d,%d,%d",
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server initial magic: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
                 packet.upcoming_magic[0],
                 packet.upcoming_magic[1],
                 packet.upcoming_magic[2],
@@ -12292,18 +12295,61 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
-    // todo: backend server response
+    // backend server response
+
+    if ( packet_id == NEXT_BACKEND_SERVER_RESPONSE_PACKET )
+    {
+        // todo
+        printf("received server response packet\n");
+
+        NextBackendServerResponsePacket packet;
+
+        if ( next_read_backend_packet( packet_id, packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server response packet from backend. packet failed to read" );
+            return;
+        }
+
+        // todo: check request id vs. last update request id if still outstanding, discard otherwise...
+
+        if ( memcmp( packet.upcoming_magic, server->upcoming_magic, 8 ) != 0 )
+        {
+            memcpy( server->upcoming_magic, packet.upcoming_magic, 8 );
+            memcpy( server->current_magic, packet.current_magic, 8 );
+            memcpy( server->previous_magic, packet.previous_magic, 8 );
+
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server updated magic: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+                packet.upcoming_magic[0],
+                packet.upcoming_magic[1],
+                packet.upcoming_magic[2],
+                packet.upcoming_magic[3],
+                packet.upcoming_magic[4],
+                packet.upcoming_magic[5],
+                packet.upcoming_magic[6],
+                packet.upcoming_magic[7], 
+                packet.current_magic[0],
+                packet.current_magic[1],
+                packet.current_magic[2],
+                packet.current_magic[3],
+                packet.current_magic[4],
+                packet.current_magic[5],
+                packet.current_magic[6],
+                packet.current_magic[7], 
+                packet.previous_magic[0],
+                packet.previous_magic[1],
+                packet.previous_magic[2],
+                packet.previous_magic[3],
+                packet.previous_magic[4],
+                packet.previous_magic[5],
+                packet.previous_magic[6],
+                packet.previous_magic[7] );
+        }
+    }
 
     // backend session response
 
     if ( packet_id == NEXT_BACKEND_SESSION_RESPONSE_PACKET )
     {
-        if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server is not initialized" );
-            return;
-        }
-
         NextBackendSessionResponsePacket packet;
 
         if ( next_read_backend_packet( packet_id, packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
