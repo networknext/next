@@ -55,7 +55,15 @@ DONE
 
 	Extend the server to roll a random request id for each server update packet.
 
+	Shuffle packet ids to fit in the server update, server response.
+
+	Sketch out the handler for server update -> server response in the ref backend5.
+
 TODO
+
+	--------------
+
+	Clean up ref backend 5 by adding SendResponsePacket function.
 
 	--------------
 
