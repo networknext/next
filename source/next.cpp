@@ -12306,6 +12306,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         // todo: check request id vs. last update request id if still outstanding, discard otherwise...
 
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received update response packet from backend" );
+
+        // todo: clear the update pending response
+
         if ( memcmp( packet.upcoming_magic, server->upcoming_magic, 8 ) != 0 )
         {
             memcpy( server->upcoming_magic, packet.upcoming_magic, 8 );
