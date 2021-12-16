@@ -9604,7 +9604,27 @@ struct NextBackendServerUpdatePacket
 
 // ---------------------------------------------------------------
 
-// todo: NextBackendServerResponsePacket
+struct NextBackendServerResponsePacket
+{
+    uint64_t request_id;
+    uint8_t upcoming_magic[8];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
+
+    NextBackendServerResponsePacket()
+    {
+        memset( this, 0, sizeof(NextBackendServerResponsePacket) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint64( stream, request_id );
+        serialize_bytes( stream, upcoming_magic, 8 );
+        serialize_bytes( stream, current_magic, 8 );
+        serialize_bytes( stream, previous_magic, 8 );
+        return true;
+    }
+};
 
 // ---------------------------------------------------------------
 
@@ -17247,9 +17267,12 @@ void test_relay_pong_packet()
 
         next_check( packet_data[0] == NEXT_RELAY_PONG_PACKET );
 
-        // todo: read back pong sequence and verify
+        const uint8_t * p = packet_data + 16;
+        uint64_t read_pong_sequence = next_read_uint64( &p );
+        uint64_t read_pong_session_id = next_read_uint64( &p );
 
-        // todo: read back pong session id and verify
+        next_check( read_pong_sequence == pong_sequence );
+        next_check( read_pong_session_id == pong_session_id );
     }
 }
 
@@ -17344,9 +17367,15 @@ void test_server_init_response_packet()
     }
 }
 
-// todo: test_server_update_packet
+void test_server_update_packet()
+{
+    // todo
+}
 
-// todo: test_server_response_packet
+void test_server_response_packet()
+{
+    // todo
+}
 
 void test_session_update_packet()
 {
@@ -19110,6 +19139,8 @@ void next_test()
         RUN_TEST( test_relay_pong_packet );
         RUN_TEST( test_server_init_request_packet );
         RUN_TEST( test_server_init_response_packet );
+        RUN_TEST( test_server_update_packet );
+        RUN_TEST( test_server_response_packet );
         RUN_TEST( test_session_update_packet );
         RUN_TEST( test_session_response_packet_direct_near_relays_changed );
         RUN_TEST( test_session_response_packet_route_near_relays_changed );
