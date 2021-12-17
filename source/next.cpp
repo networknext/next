@@ -13479,10 +13479,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
-        if ( server->server_init_request_id != 0 && current_time < server->server_init_resend_time )
+        if ( server->server_init_request_id != 0 && server->server_init_resend_time > current_time )
             return;
 
-        if ( server->server_init_request_id != 0 && current_time < server->server_init_start_time + NEXT_SERVER_INIT_TIMEOUT )
+        if ( server->server_init_request_id != 0 && server->server_init_start_time + NEXT_SERVER_INIT_TIMEOUT < current_time )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server init response timed out. falling back to direct mode only :(" );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
