@@ -13645,9 +13645,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-        server->last_backend_server_update = current_time;
-
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent server update packet to backend", packet.num_sessions );
+
+        server->server_update_resend_time = current_time + 1.0;
     }    
 
     // session updates
