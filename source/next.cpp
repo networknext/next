@@ -13479,9 +13479,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
-        if ( server->server_init_request_id != 0 && server->server_init_resend_time > current_time )
-            return;
-
         if ( server->server_init_request_id != 0 && server->server_init_timeout_time < current_time )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server init response timed out. falling back to direct mode only :(" );
@@ -13489,13 +13486,16 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             return;
         }
 
+        if ( server->server_init_request_id != 0 && server->server_init_resend_time > current_time )
+            return;
+
         while ( server->server_init_request_id == 0 )    
         {
             server->server_init_request_id = next_random_uint64();
+            server->server_init_timeout_time = current_time + NEXT_SERVER_INIT_TIMEOUT;
         }
 
         server->server_init_resend_time = current_time + 1.0;
-        server->server_init_timeout_time = current_time + NEXT_SERVER_INIT_TIMEOUT;
 
         NextBackendServerInitRequestPacket packet;
 
