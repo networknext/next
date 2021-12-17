@@ -13543,7 +13543,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         if ( server->server_update_request_id != 0 )
         {
-            next_printf( NEXT_LOG_LEVEL_WARN, "server update response timed out. falling back to direct mode only" );
+            next_printf( NEXT_LOG_LEVEL_WARN, "server update response timed out. falling back to direct mode only :(" );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
             return;
         }
@@ -13553,7 +13553,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             server->server_update_request_id = next_random_uint64();
         }
 
-        packet.request_id = next_random_uint64();
+        packet.request_id = server->server_update_request_id;
         packet.customer_id = server->customer_id;
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = next_session_manager_num_entries( server->session_manager );
