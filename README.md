@@ -328,5 +328,5 @@ or
 ## Functional Tests
 
 In addition to unit tests, the system also take advantage of functional tests that run real world scenarios to make sure that all of the components are working properly.
-To run the functional tests for SDK5, run `make test-func4`, or more preferably, `make test-func4-parallel`, since the func tests take a long time to run in series. Functional tests for SDK5 can be run using `make test-func5` and `make test-func5-parallel`.
+To run the functional tests for SDK4, run `make test-func4`, or more preferably, `make test-func4-parallel`, since the func tests take a long time to run in series. Functional tests for SDK5 can be run using `make test-func5` and `make test-func5-parallel`.
 
