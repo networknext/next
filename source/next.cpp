@@ -13482,7 +13482,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( server->server_init_request_id != 0 && current_time < server->server_init_resend_time )
             return;
 
-        if ( server->server_init_request_id != 0 && current_time > server->server_init_start_time + NEXT_SERVER_INIT_TIMEOUT )
+        if ( server->server_init_request_id != 0 && current_time < server->server_init_start_time + NEXT_SERVER_INIT_TIMEOUT )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server init response timed out. falling back to direct mode only :(" );
             server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
