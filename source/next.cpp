@@ -13468,13 +13468,18 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     double current_time = next_time();
 
+    // don't do anything until we resolve the backend hostname
+
+    if ( server->resolving_hostname )
+        return;
+
     // server init
 
-    if ( server->state == NEXT_SERVER_STATE_INITIALIZING && !server->resolving_hostname )
+    if ( server->state == NEXT_SERVER_STATE_INITIALIZING )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
-        if ( server->server_init_request_id != 0 && current_time > server->server_init_resend_time )
+        if ( server->server_init_request_id != 0 && current_time < server->server_init_resend_time )
             return;
 
         if ( server->server_init_request_id != 0 && current_time > server->server_init_start_time + NEXT_SERVER_INIT_TIMEOUT )
@@ -13556,10 +13561,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         }
     }
 
-    // server update
-
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
+
+    // server update
 
     bool first_server_update = server->server_update_first;
 
