@@ -10819,11 +10819,8 @@ struct next_server_internal_t
 
     bool valid_customer_private_key;
     bool no_datacenter_specified;
-    bool first_server_update;
     uint64_t upgrade_sequence;
-    uint64_t server_update_sequence;
     uint64_t server_init_request_id;
-    double last_backend_server_update;
     double next_resolve_hostname_time;
     next_address_t backend_address;
     next_address_t server_address;
@@ -10858,6 +10855,12 @@ struct next_server_internal_t
     uint8_t previous_magic[8];
 
     NEXT_DECLARE_SENTINEL(6)
+
+    bool first_server_update;
+    double last_backend_server_update;
+    uint64_t server_update_request_id;
+
+    NEXT_DECLARE_SENTINEL(7)
 };
 
 void next_server_internal_initialize_sentinels( next_server_internal_t * server )
@@ -10871,6 +10874,7 @@ void next_server_internal_initialize_sentinels( next_server_internal_t * server 
     NEXT_INITIALIZE_SENTINEL( server, 4 )
     NEXT_INITIALIZE_SENTINEL( server, 5 )
     NEXT_INITIALIZE_SENTINEL( server, 6 )
+    NEXT_INITIALIZE_SENTINEL( server, 7 )
 }
 
 void next_server_internal_verify_sentinels( next_server_internal_t * server )
@@ -10884,6 +10888,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
     NEXT_VERIFY_SENTINEL( server, 4 )
     NEXT_VERIFY_SENTINEL( server, 5 )
     NEXT_VERIFY_SENTINEL( server, 6 )
+    NEXT_VERIFY_SENTINEL( server, 7 )
     if ( server->session_manager )
         next_session_manager_verify_sentinels( server->session_manager );
     if ( server->pending_session_manager )
@@ -12304,11 +12309,15 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        // todo: check request id vs. last update request id if still outstanding, discard otherwise...
+        if ( packet.request_id != server->server_update_request_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server response packet from backend. request id does not match" );
+            return;
+        }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received server response packet from backend" );
 
-        // todo: clear the update pending response
+        server->server_update_request_id = 0;
 
         if ( memcmp( packet.upcoming_magic, server->upcoming_magic, 8 ) != 0 )
         {
@@ -13531,6 +13540,18 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     if ( server->last_backend_server_update + NEXT_SECONDS_BETWEEN_SERVER_UPDATES <= current_time )
     {
         NextBackendServerUpdatePacket packet;
+
+        if ( server->server_update_request_id != 0 )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "server update response timed out. falling back to direct mode only" );
+            server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+            return;
+        }
+
+        while ( server->server_update_request_id == 0 )
+        {
+            server->server_update_request_id = next_random_uint64();
+        }
 
         packet.request_id = next_random_uint64();
         packet.customer_id = server->customer_id;

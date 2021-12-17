@@ -20,27 +20,29 @@ DONE
 
 	Change all logs of magic to use %02x in next.cpp
 
+	Verify the server gets upcoming, current and previous magic values by printing them when upcoming changes.
+
+	If the server doesn't get a response within 10 seconds, timeout and fall back to direct mode.
+
+	Find out where I can put state for the server update.
+
+	Check the request id matches before accepting the server response packet.
+
+	Clear the request id when the response is received.
+
+	Check for timeout by seeing if the request id is still non-zero at the time of 
+
 TODO
 
 	--------------
 
-	Verify the server gets upcoming, current and previous magic values by printing them when upcoming changes.
-
 	--------------
 
-	Extend server to resend the server update 5 times, once per-second, until it gets an response with matching request id.
-
-	This can be modelled on how it is done for the server init request packet...
-
-	If the server doesn't get response, it should fall back to direct mode and stop communicating with the server backend.
+	Extend server to resend the server update once per-second, until the response is received.
 
 	--------------
 
 	Extend the server init request packet to have a timeout (30 seconds).
-
-	--------------
-
-	Extend the server update packet to have a timeout (10 seconds)
 
 	--------------
 
