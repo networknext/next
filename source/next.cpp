@@ -66,6 +66,7 @@
 #define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
 #define NEXT_SERVER_PING_TIMEOUT                                      5.0
 #define NEXT_SERVER_SESSION_TIMEOUT                                  60.0
+#define NEXT_SERVER_INIT_TIMEOUT                                     10.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
 #define NEXT_PINGS_PER_SECOND                                          10
@@ -10820,7 +10821,6 @@ struct next_server_internal_t
     bool valid_customer_private_key;
     bool no_datacenter_specified;
     uint64_t upgrade_sequence;
-    uint64_t server_init_request_id;
     double next_resolve_hostname_time;
     next_address_t backend_address;
     next_address_t server_address;
@@ -10856,13 +10856,19 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(6)
 
-    bool first_server_update;
-    int server_update_num_sessions;
-    double last_backend_server_update;
-    double server_update_resend_time;
-    uint64_t server_update_request_id;
+    uint64_t server_init_request_id;    
+    double server_init_start_time;
+    double server_init_resend_time;
 
     NEXT_DECLARE_SENTINEL(7)
+
+    uint64_t server_update_request_id;
+    double server_update_last_time;
+    double server_update_resend_time;
+    int server_update_num_sessions;
+    bool server_update_first;
+
+    NEXT_DECLARE_SENTINEL(8)
 };
 
 void next_server_internal_initialize_sentinels( next_server_internal_t * server )
@@ -11634,9 +11640,9 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     next_crypto_box_keypair( server->server_route_public_key, server->server_route_private_key );
 
-    server->last_backend_server_update = next_time() - NEXT_SECONDS_BETWEEN_SERVER_UPDATES * next_random_float();
+    server->server_update_last_time = next_time() - NEXT_SECONDS_BETWEEN_SERVER_UPDATES * next_random_float();
 
-    server->first_server_update = true;
+    server->server_update_first = true;
 
     return server;
 }
@@ -13468,14 +13474,31 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     {
         next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
 
+        if ( server->server_init_request_id != 0 && current_time > server->server_init_resend_time )
+            return;
+
+        if ( server->server_init_request_id != 0 && current_time > server->server_init_start_time + NEXT_SERVER_INIT_TIMEOUT )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "server init response timed out. falling back to direct mode only :(" );
+            server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+            return;
+        }
+
+        while ( server->server_init_request_id == 0 )    
+        {
+            server->server_init_request_id = next_random_uint64();
+        }
+
+        server->server_init_resend_time = current_time + 1.0;
+        server->server_init_start_time = current_time;
+
         NextBackendServerInitRequestPacket packet;
-        packet.request_id = next_random_uint64();
+
+        packet.request_id = server->server_init_request_id;
         packet.customer_id = server->customer_id;
         packet.datacenter_id = server->datacenter_id;
         strncpy( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
-
-        server->server_init_request_id = packet.request_id;
 
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );
@@ -13538,9 +13561,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
-    bool first_server_update = server->first_server_update;
+    bool first_server_update = server->server_update_first;
 
-    if ( server->last_backend_server_update + NEXT_SECONDS_BETWEEN_SERVER_UPDATES <= current_time )
+    if ( server->server_update_last_time + NEXT_SECONDS_BETWEEN_SERVER_UPDATES <= current_time )
     {
         if ( server->server_update_request_id != 0 )
         {
@@ -13594,11 +13617,11 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-        server->last_backend_server_update = current_time;
+        server->server_update_last_time = current_time;
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent server update packet to backend (%d sessions)", packet.num_sessions );
 
-        server->first_server_update = false;
+        server->server_update_first = false;
     }
 
     if ( first_server_update )

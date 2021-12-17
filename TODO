@@ -32,11 +32,9 @@ DONE
 
 	Check for timeout by seeing if the request id is still non-zero at the time of 
 
-TODO
-
-	--------------
-
 	Extend server to resend the server update once per-second, until the response is received.
+
+TODO
 
 	--------------
 
@@ -44,7 +42,7 @@ TODO
 
 	--------------
 
-	Extend the server init request to have a timeout (30 seconds).
+	Extend the server init request to have a timeout (10 seconds).
 
 	--------------
 
