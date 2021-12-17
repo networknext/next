@@ -36,13 +36,15 @@ TODO
 
 	--------------
 
-	--------------
-
 	Extend server to resend the server update once per-second, until the response is received.
 
 	--------------
 
-	Extend the server init request packet to have a timeout (30 seconds).
+	Extend the server init request packet to only send once per-second.
+
+	--------------
+
+	Extend the server init request to have a timeout (30 seconds).
 
 	--------------
 

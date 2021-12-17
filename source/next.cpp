@@ -10857,7 +10857,9 @@ struct next_server_internal_t
     NEXT_DECLARE_SENTINEL(6)
 
     bool first_server_update;
+    int server_update_num_sessions;
     double last_backend_server_update;
+    double server_update_resend_time;
     uint64_t server_update_request_id;
 
     NEXT_DECLARE_SENTINEL(7)
@@ -12318,6 +12320,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received server response packet from backend" );
 
         server->server_update_request_id = 0;
+        server->server_update_resend_time = 0.0;
 
         if ( memcmp( packet.upcoming_magic, server->upcoming_magic, 8 ) != 0 )
         {
@@ -13539,8 +13542,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     if ( server->last_backend_server_update + NEXT_SECONDS_BETWEEN_SERVER_UPDATES <= current_time )
     {
-        NextBackendServerUpdatePacket packet;
-
         if ( server->server_update_request_id != 0 )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server update response timed out. falling back to direct mode only :(" );
@@ -13553,10 +13554,15 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             server->server_update_request_id = next_random_uint64();
         }
 
+        server->server_update_resend_time = current_time + 1.0;
+        server->server_update_num_sessions = next_session_manager_num_entries( server->session_manager );
+
+        NextBackendServerUpdatePacket packet;
+
         packet.request_id = server->server_update_request_id;
         packet.customer_id = server->customer_id;
         packet.datacenter_id = server->datacenter_id;
-        packet.num_sessions = next_session_manager_num_entries( server->session_manager );
+        packet.num_sessions = server->server_update_num_sessions;
         packet.server_address = server->server_address;
 
         uint8_t magic[8];
@@ -13597,6 +13603,52 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
     if ( first_server_update )
         return;
+
+    // server update resend
+
+    if ( server->server_update_request_id && server->server_update_resend_time <= current_time )
+    {
+        NextBackendServerUpdatePacket packet;
+
+        packet.request_id = server->server_update_request_id;
+        packet.customer_id = server->customer_id;
+        packet.datacenter_id = server->datacenter_id;
+        packet.num_sessions = server->server_update_num_sessions;
+        packet.server_address = server->server_address;
+
+        uint8_t magic[8];
+        memset( magic, 0, sizeof(magic) );
+
+        uint8_t from_address_data[32];
+        uint8_t to_address_data[32];
+        uint16_t from_address_port;
+        uint16_t to_address_port;
+        int from_address_bytes;
+        int to_address_bytes;
+
+        next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
+        next_address_data( &server->backend_address, to_address_data, &to_address_bytes, &to_address_port );
+
+        uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+        
+        next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
+        int packet_bytes = 0;
+        if ( next_write_backend_packet( NEXT_BACKEND_SERVER_UPDATE_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server update packet for backend" );
+            return;
+        }
+
+        next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
+
+        next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
+
+        server->last_backend_server_update = current_time;
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent server update packet to backend", packet.num_sessions );
+    }    
 
     // session updates
 
