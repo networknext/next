@@ -3374,6 +3374,12 @@ static void next_generate_chonkle( uint8_t * output, const uint8_t * magic, cons
 
 bool next_basic_packet_filter( const uint8_t * data, int packet_length )
 {
+    if ( packet_length == 0 )
+        return;
+
+    if ( data[0] == 0 )
+        return true;
+
     if ( packet_length < 18 )
         return false;
 
@@ -3456,6 +3462,8 @@ void next_address_data( const next_address_t * address, uint8_t * address_data, 
 
 bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
 {
+    if ( data[0] == 0 )
+        return true;
     if ( packet_length < 18 )
         return false;
     uint8_t a[15];

@@ -70,9 +70,22 @@ DONE
 
 	Fixed.
 
+	Client is now sending upgrade response packet to server, but the server is not receiving it?
+
+	Problem with difference in handling backend and regular packets. Fixed.
+
+
 TODO
 
-	Client is now sending upgrade response packet to server, but the server is not receiving it?
+	Server is now sending upgrade confirm packets to the client, but the client is filtering them out. 
+
+	Problem with magic and/or address?
+
+	--------------
+
+	Basic filter is dropping passthrough packets.
+
+	This isn't supposed to happen, any packet with first byte being zero should pass basic and advanced packet filters.
 
 	--------------
 
