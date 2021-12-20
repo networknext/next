@@ -48,9 +48,6 @@ DONE
 
 	Done. Works fine.
 
-
-TODO
-
 	What is left to do to get client and server communicating with valid magic numbers across direct packets?
 
 	The client gets the current magic from the upgrade request initially.
@@ -62,6 +59,10 @@ TODO
 	The client and server will always send with current magic, but can receive with upcoming, current or previous.
 
 	At this point the client should be able to theoretically upgrade and exchange direct packets with the server.
+
+TODO
+
+	Client is receiving the upgrade request packet, but it's not decoding correctly yet. What's wrong?
 
 	--------------
 
