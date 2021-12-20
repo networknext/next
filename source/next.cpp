@@ -13180,13 +13180,18 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
 
     next_server_internal_verify_sentinels( server );
 
-    char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    if ( next_global_config.disable_network_next )
+        return;
+
+    next_assert( server->state == NEXT_SERVER_STATE_INITIALIZED || server->state == NEXT_SERVER_STATE_DIRECT_ONLY );
 
     if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server cannot upgrade client. direct only mode" );
         return;
     }
+
+    char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server upgrading client %s to session %" PRIx64, next_address_to_string( address, buffer ), session_id );
 
@@ -13229,6 +13234,8 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
 
     if ( next_global_config.disable_network_next )
         return;
+
+    next_assert( server->state == NEXT_SERVER_STATE_INITIALIZED || server->state == NEXT_SERVER_STATE_DIRECT_ONLY );
 
     next_pending_session_entry_t * pending_entry = next_pending_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry )
