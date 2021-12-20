@@ -91,9 +91,7 @@ type BuyersService struct {
 	Metrics *metrics.BuyerEndpointMetrics
 	Storage storage.Storer
 
-	SavesCache *map[string][]looker.LookerSave
-
-	LookerSecret string
+	LookerClient *looker.LookerClient
 
 	SlackClient notifications.SlackClient
 }
@@ -2580,7 +2578,7 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 			return &err
 		}
 
-		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerSecret, nonce, requestID))
+		reply.AnalyticsNotifications = append(reply.AnalyticsNotifications, notifications.NewTrialAnalyticsNotification(s.LookerClient.Secret, nonce, requestID))
 	}
 
 	return nil
@@ -2738,7 +2736,7 @@ func (s *BuyersService) FetchAnalyticsSummaryDashboards(r *http.Request, args *F
 	for _, dashURL := range AnalyticsDashURIs {
 		urlOptions := notifications.LookerURLOptions{
 			Host:            notifications.LOOKER_HOST,
-			Secret:          s.LookerSecret,
+			Secret:          s.LookerClient.Secret,
 			ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 			GroupsIds:       []int{EmbeddedUserGroupID},
 			ExternalGroupId: "",
@@ -2831,7 +2829,7 @@ func (s *BuyersService) FetchUsageSummaryDashboard(r *http.Request, args *FetchU
 	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
 	urlOptions := notifications.LookerURLOptions{
 		Host:            notifications.LOOKER_HOST,
-		Secret:          s.LookerSecret,
+		Secret:          s.LookerClient.Secret,
 		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EmbeddedUserGroupID},
 		ExternalGroupId: "",
@@ -2986,7 +2984,7 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 	for _, dashURL := range DiscoveryDashURIs {
 		urlOptions := notifications.LookerURLOptions{
 			Host:            notifications.LOOKER_HOST,
-			Secret:          s.LookerSecret,
+			Secret:          s.LookerClient.Secret,
 			ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 			GroupsIds:       []int{EmbeddedUserGroupID},
 			ExternalGroupId: "",
@@ -3008,15 +3006,12 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 	return nil
 }
 
-func (s *BuyersService) ReloadSavesCache(newCache *map[string][]looker.LookerSave) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.SavesCache = newCache
-}
-
 type SavedSession struct {
 	SessionID string `json:"id"`
+	SaveScore string `json:"save_score"`
+	RTTScore  string `json:"rtt_score"`
+	PLScore   string `json:"pl_score"`
+	Duration  string `json:"duration"`
 }
 
 type FetchCurrentSavesArgs struct {
@@ -3033,27 +3028,52 @@ func (s *BuyersService) FetchCurrentSaves(r *http.Request, args *FetchCurrentSav
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.ExplorerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-		core.Error("FetchUsageSummaryDashboard(): %v", err.Error())
+		core.Error("FetchCurrentSaves(): %v", err.Error())
 		return &err
 	}
 
-	if args.CustomerCode == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "CustomerCode"
-		core.Error("FetchCurrentSaves(): %v: CustomerCode is required", err.Error())
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	if !ok && !middleware.VerifyAllRoles(r, middleware.AdminRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("FetchCurrentSaves(): %v", err.Error())
 		return &err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	// Admin's will be able to search any company's billing info
+	if isAdmin {
+		customerCode = args.CustomerCode
+	}
 
-	savesCache := *s.SavesCache
-	reply.Saves = make([]SavedSession, len(savesCache[args.CustomerCode]))
-
-	for i, save := range savesCache[args.CustomerCode] {
-		reply.Saves[i] = SavedSession{
-			SessionID: fmt.Sprintf("%016x", save.SessionID),
+	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
+		customerCode = "esl"
+	} else {
+		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			core.Error("FetchCurrentSaves(): %v: Failed to fetch buyer", err.Error())
+			return &err
 		}
+
+		if !buyer.Analytics && !isAdmin {
+			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+			core.Error("FetchCurrentSaves(): %v", err.Error())
+			return &err
+		}
+	}
+
+	saves, err := s.LookerClient.RunSavesQuery(customerCode)
+	if err != nil {
+		return err
+	}
+
+	for _, save := range saves {
+		reply.Saves = append(reply.Saves, SavedSession{
+			SessionID: fmt.Sprintf("%016x", uint64(save.SessionID)),
+			SaveScore: fmt.Sprintf("%.2f", save.SaveScore),
+			RTTScore:  fmt.Sprintf("%.2f", save.RTTScore),
+			PLScore:   fmt.Sprintf("%.2f", save.PLScore),
+			Duration:  fmt.Sprintf("%.2f", save.Duration),
+		})
 	}
 
 	return nil
@@ -3139,7 +3159,7 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	// TODO: These are semi hard coded options for the billing summary dash. Look into how to store these better rather than hard coding. Maybe consts within a dashboard module or something
 	urlOptions := notifications.LookerURLOptions{
 		Host:            notifications.LOOKER_HOST,
-		Secret:          s.LookerSecret,
+		Secret:          s.LookerClient.Secret,
 		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EmbeddedUserGroupID},
 		ExternalGroupId: "",
