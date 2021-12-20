@@ -13894,15 +13894,13 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     double last_update_time = next_time();
 
-    while ( !finished_hostname_resolve )
+    while ( true )
     {
+        if ( server->finished_hostname_resolve )
         {
             next_platform_mutex_guard( &server->quit_mutex );
             if ( server->quit ) 
-            {
-                printf( "*** quit ***\n" );
                 break;
-            }
         }
 
         next_server_internal_block_and_receive_packet( server );
