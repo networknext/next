@@ -82,15 +82,17 @@ TODO
 
 	--------------
 
-	Suspect that server isn't property prefixing NEXT_PASSTHROUGH_PACKET for first byte for passthrough packets sent to client.
-
-	Verify this and fix.
-
-	--------------
-
 	Server is now sending upgrade confirm packets to the client, but the client is filtering them out. 
 
 	Problem with magic and/or address?
+
+	Client is dropping the upgrade confirm packet (6) with advanced packet filter.
+
+	Check the send is encoding it correctly vs. the client external address and the server address?
+
+	Seems correct...
+
+	Check the client has the magic actually saved, and is decoding relative to it?
 
 	--------------
 

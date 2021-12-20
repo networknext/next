@@ -6814,7 +6814,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         memcpy( client->upcoming_magic, packet.upcoming_magic, 8 );
         memcpy( client->current_magic, packet.current_magic, 8 );
-        memcpy( client->current_magic, packet.previous_magic, 8 );
+        memcpy( client->previous_magic, packet.previous_magic, 8 );
 
         client->client_external_address = packet.client_address;
 
@@ -7487,7 +7487,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
                     memcpy( client->upcoming_magic, packet.upcoming_magic, 8 );
                     memcpy( client->current_magic, packet.current_magic, 8 );
-                    memcpy( client->previous_magic, packet.current_magic, 8 );
+                    memcpy( client->previous_magic, packet.previous_magic, 8 );
 
                     next_client_notify_magic_updated_t * notify = (next_client_notify_magic_updated_t*) next_malloc( client->context, sizeof(next_client_notify_magic_updated_t) );
                     next_assert( notify );
@@ -10848,7 +10848,7 @@ struct next_server_notify_failed_to_resolve_hostname_t : public next_server_noti
 
 struct next_server_notify_magic_updated_t : public next_server_notify_t
 {
-    uint8_t current_magic[4];
+    uint8_t current_magic[8];
 };
 
 // ---------------------------------------------------------------
@@ -16354,6 +16354,23 @@ void test_advanced_packet_filter()
     next_check( pass == 0 );
 }
 
+void test_passthrough()
+{
+    uint8_t output[256];
+    memset( output, 0, sizeof(output) );
+    uint8_t magic[8];
+    uint8_t from_address[4];
+    uint8_t to_address[4];
+    next_random_bytes( magic, 8 );
+    next_random_bytes( from_address, 4 );
+    next_random_bytes( to_address, 4 );
+    uint16_t from_port = uint16_t( 1000 );
+    uint16_t to_port = uint16_t( 5000 );
+    int packet_length = sizeof(output);
+    next_check( next_basic_packet_filter( output, packet_length ) );
+    next_check( next_advanced_packet_filter( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length ) );
+}
+
 void test_address_data_none()
 {
     next_address_t address;
@@ -19498,6 +19515,7 @@ void next_test()
         RUN_TEST( test_pittle_and_chonkle );
         RUN_TEST( test_basic_packet_filter );
         RUN_TEST( test_advanced_packet_filter );
+        RUN_TEST( test_passthrough );
         RUN_TEST( test_address_data_none );
         RUN_TEST( test_address_data_ipv4 );
 #if defined(NEXT_PLATFORM_HAS_IPV6)
