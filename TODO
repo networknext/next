@@ -90,13 +90,19 @@ DONE
 
 	Check the client has the magic actually saved, and is decoding relative to it?
 
+	Client upgrades but it seems it is not delivering the correct payload data for direct packets on the server.
+
+	Server is blowing up with invalid packet data check.
+
+	Fixed the server direct packet read.
+
 TODO
 
 	--------------
 
-	Client upgrades but it seems it is not delivering the correct payload data for direct packets on the server.
+	Now the client is filtering out the server -> client direct packet (1) with the advanced packet filter.
 
-	Server is blowing up with invalid packet data check.
+	What's causing this?
 
 	--------------
 
