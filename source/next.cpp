@@ -10711,7 +10711,6 @@ int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int pack
 
 #define NEXT_SERVER_COMMAND_UPGRADE_SESSION             0
 #define NEXT_SERVER_COMMAND_TAG_SESSION                 1
-#define NEXT_SERVER_COMMAND_DESTROY                     2
 
 struct next_server_command_t
 {
@@ -10730,11 +10729,6 @@ struct next_server_command_tag_session_t : public next_server_command_t
     next_address_t address;
     uint64_t tags[NEXT_MAX_TAGS];
     int num_tags;
-};
-
-struct next_server_command_destroy_t : public next_server_command_t
-{
-    // ...
 };
 
 // ---------------------------------------------------------------
@@ -10869,6 +10863,11 @@ struct next_server_internal_t
     bool server_update_first;
 
     NEXT_DECLARE_SENTINEL(8)
+
+    next_platform_mutex_t quit_mutex;    
+    bool quit;
+
+    NEXT_DECLARE_SENTINEL(9)
 };
 
 void next_server_internal_initialize_sentinels( next_server_internal_t * server )
@@ -10883,6 +10882,8 @@ void next_server_internal_initialize_sentinels( next_server_internal_t * server 
     NEXT_INITIALIZE_SENTINEL( server, 5 )
     NEXT_INITIALIZE_SENTINEL( server, 6 )
     NEXT_INITIALIZE_SENTINEL( server, 7 )
+    NEXT_INITIALIZE_SENTINEL( server, 8 )
+    NEXT_INITIALIZE_SENTINEL( server, 9 )
 }
 
 void next_server_internal_verify_sentinels( next_server_internal_t * server )
@@ -10897,6 +10898,8 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
     NEXT_VERIFY_SENTINEL( server, 5 )
     NEXT_VERIFY_SENTINEL( server, 6 )
     NEXT_VERIFY_SENTINEL( server, 7 )
+    NEXT_VERIFY_SENTINEL( server, 8 )
+    NEXT_VERIFY_SENTINEL( server, 9 )
     if ( server->session_manager )
         next_session_manager_verify_sentinels( server->session_manager );
     if ( server->pending_session_manager )
@@ -11613,6 +11616,15 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
+    result = next_platform_mutex_create( &server->quit_mutex );
+    
+    if ( result != NEXT_OK )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create quit mutex" );
+        next_server_internal_destroy( server );
+        return NULL;
+    }
+
     server->pending_session_manager = next_pending_session_manager_create( context, NEXT_INITIAL_PENDING_SESSION_SIZE );
     if ( server->pending_session_manager == NULL )
     {
@@ -11684,10 +11696,18 @@ void next_server_internal_destroy( next_server_internal_t * server )
     next_platform_mutex_destroy( &server->command_mutex );
     next_platform_mutex_destroy( &server->notify_mutex );
     next_platform_mutex_destroy( &server->resolve_hostname_mutex );
+    next_platform_mutex_destroy( &server->quit_mutex );
 
     next_server_internal_verify_sentinels( server );
 
     clear_and_free( server->context, server, sizeof(next_server_internal_t) );
+}
+
+void next_server_internal_quit( next_server_internal_t * server )
+{
+    next_assert( server );
+    next_platform_mutex_guard( &server->quit_mutex );
+    server->quit = true;
 }
 
 int next_server_internal_send_packet( next_server_internal_t * server, const next_address_t * to_address, uint8_t packet_id, void * packet_object )
@@ -13235,8 +13255,19 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not find any session to tag for address %s", next_address_to_string( address, buffer ) );    
 }
 
-bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
+void next_server_internal_pump_commands( next_server_internal_t * server )
 {
+    // IMPORTANT: do not pump commands until after server has initialized (or initialize has timed out)
+    // This delays any upgrades until after the server has initialized and received magic values from the backend.
+    // This is necessary to avoid clients getting upgraded with incorrect magic values that stops them from being able
+    // to communicate with relays, since magic values come down in the server init. If the server is in direct only
+    // mode it has stopped communicating with the backend and relays, so it is OK for it to have garbage magic numbers.
+
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED && server->state != NEXT_SERVER_STATE_DIRECT_ONLY )
+    {
+        return;
+    }
+
     while ( true )
     {
         next_server_internal_verify_sentinels( server );
@@ -13268,19 +13299,11 @@ bool next_server_internal_pump_commands( next_server_internal_t * server, bool q
             }
             break;
 
-            case NEXT_SERVER_COMMAND_DESTROY:
-            {
-                quit = true;
-            }
-            break;
-
             default: break;                
         }
 
         next_free( server->context, command );
     }
-
-    return quit;
 }
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context )
@@ -13860,14 +13883,18 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     next_server_internal_t * server = (next_server_internal_t*) context;
 
-    bool quit = false;
-
     bool finished_hostname_resolve = false;
 
     double last_update_time = next_time();
 
-    while ( !quit || !finished_hostname_resolve )
+    while ( !finished_hostname_resolve )
     {
+        {
+            next_platform_mutex_guard( &server->quit_mutex );
+            if ( server->quit ) 
+                break;
+        }
+
         next_server_internal_block_and_receive_packet( server );
 
         double current_time = next_time();
@@ -13882,7 +13909,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
             next_server_internal_backend_update( server );
 
-            quit = next_server_internal_pump_commands( server, quit );
+            next_server_internal_pump_commands( server );
 
             finished_hostname_resolve = next_server_internal_update_resolve_hostname( server );
 
@@ -14028,18 +14055,7 @@ void next_server_destroy( next_server_t * server )
 
     if ( server->thread )
     {
-        next_server_command_destroy_t * command = (next_server_command_destroy_t*) next_malloc( server->context, sizeof( next_server_command_destroy_t ) );
-        if ( !command )
-        {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "server destroy failed. could not create destroy command" );
-            return;
-        }
-        command->type = NEXT_SERVER_COMMAND_DESTROY;
-        {
-            next_platform_mutex_guard( &server->internal->command_mutex );
-            next_queue_push( server->internal->command_queue, command );
-        }
-
+        next_server_internal_quit( server->internal );
         next_platform_thread_join( server->thread );
         next_platform_thread_destroy( server->thread );
     }

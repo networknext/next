@@ -34,16 +34,25 @@ DONE
 
 	Extend server to resend the server update once per-second, until the response is received.
 
-TODO
-
-	--------------
-
 	Extend the server init request packet to only send once per-second.
-
-	--------------
 
 	Extend the server init request to have a timeout (10 seconds).
 
+	There is a race condition now between server init and upgrading clients.
+
+	We must queue upgrade requests until the server init completes, otherwise the upgrade will occur with incorrect magic and screw up the client.
+
+	If I move the destroy command to a mutex protected bool, then I can just buffer commands until the server upgrade completes or has timed out.
+
+	This will do the buffering we need for upgrades... easy.
+
+	Done. Works fine.
+
+
+TODO
+
+	What is left to do to get client and server communicating with valid magic numbers across direct packets?
+
 	--------------
 
 
@@ -53,6 +62,33 @@ TODO
 
 
 
+
+
+
+
+
+
+B2S:
+
+	Turtle Rock
+
+	Photon
+
+	Velan
+
+	Albion Online
+
+	Mountain Top
+
+	Follow up with Jon and Drew
+
+	Tech follow up with Pragma
+
+	Supercell
+
+	Rec Room
+
+	----------------------
 
 
 
