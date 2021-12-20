@@ -64,11 +64,15 @@ DONE
 
 	Fixed.
 
-TODO
-
 	Session update packet is now failing to read. Problem with write packet on server side, or read on client side?
 
 	Almost certainly a problem with read on client side. Probably missing the packet_data += 16 and packet_bytes -= 18?
+
+	Fixed.
+
+TODO
+
+	Client is now sending upgrade response packet to server, but the server is not receiving it?
 
 	--------------
 
