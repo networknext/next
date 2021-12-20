@@ -13209,6 +13209,10 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
     if ( packet_bytes == 0 )
         return;
 
+    // todo
+    char address_buffer[1024];
+    printf( "server received %d byte packet from %s\n", packet_bytes, next_address_to_string( &from, address_buffer ) );
+
 #if NEXT_DEVELOPMENT
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
          return;
