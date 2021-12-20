@@ -8153,7 +8153,7 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
 
     next_platform_socket_send_packet( client->socket, &client->server_address, client->upgrade_response_packet_data, client->upgrade_response_packet_bytes );
 
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent upgrade response packet to server" );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent cached upgrade response packet to server" );
 
     client->last_upgrade_response_send_time = current_time;
 
