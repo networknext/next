@@ -3329,9 +3329,9 @@ static void next_generate_chonkle( uint8_t * output, const uint8_t * magic, cons
     next_assert( output );
     next_assert( magic );
     next_assert( from_address );
-    next_assert( from_address_bytes > 0 );
+    next_assert( from_address_bytes >= 0 );
     next_assert( to_address );
-    next_assert( to_address_bytes > 0 );
+    next_assert( to_address_bytes >= 0 );
     next_assert( packet_length > 0 );
 #if NEXT_BIG_ENDIAN
     next_bswap( from_port );
