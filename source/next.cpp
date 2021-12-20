@@ -12349,8 +12349,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         // todo
         printf( "NEXT_DIRECT_PACKET\n" );
 
-        const uint8_t * p = packet_data + 16;
-        packet_bytes -= 2;
+        packet_data += 16;
+        packet_bytes -= 18;
+
+        const uint8_t * p = packet_data;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
         
@@ -12391,7 +12393,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = *from;
-        notify->packet_bytes = packet_bytes - 11;
+        notify->packet_bytes = packet_bytes - 9;
         next_assert( notify->packet_bytes > 0 );
         next_assert( notify->packet_bytes <= NEXT_MTU );
         memcpy( notify->packet_data, packet_data + 9, size_t(notify->packet_bytes) );
