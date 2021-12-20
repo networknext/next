@@ -427,6 +427,9 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
+// todo
+#define NEXT_ENABLE_MEMORY_CHECKS 1
+
 #if NEXT_ENABLE_MEMORY_CHECKS
 
     #define NEXT_DECLARE_SENTINEL(n) uint32_t next_sentinel_##n[64];
@@ -6850,7 +6853,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_assert( packet_bytes > 0 );
 
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
-        next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_port, to_address_port, packet_bytes ) );
+        next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) );
 
         client->sending_upgrade_response = true;
         client->upgrade_response_start_time = next_time();
