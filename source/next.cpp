@@ -6721,6 +6721,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             memset( magic, 0, sizeof(magic) );
             next_assert( to_address_bytes == 0 );
             next_assert( to_address_port == 0 );
+            next_assert( memcmp( magic, 0, sizeof(magic) ) == 0 );
             if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet (upgrade request)" );
@@ -11804,8 +11805,8 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
 
     next_address_data( &server->server_address, from_address_data, &from_address_bytes, &from_address_port );
 
-    // IMPORTANT: client doesn't know it's external address yet
-    // so we encode against an address of zero bytes for the upgrade request packet initially
+    // IMPORTANT: when the upgrade request packet is sent, the client doesn't know it's external address yet
+    // so we must encode with a to address of zero bytes for the upgrade request packet
     if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
     {
         next_address_data( to_address, to_address_data, &to_address_bytes, &to_address_port );
