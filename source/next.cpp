@@ -12159,7 +12159,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
     }
 }
 
-void `( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+void next_server_internal_process_network_next_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( server );
     next_assert( from );
@@ -12230,6 +12230,9 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
 
         if ( packet_id == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET )
         {
+            // todo
+            printf( "NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET\n" );
+                
             if ( server->state != NEXT_SERVER_STATE_INITIALIZING )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored init response packet from backend. server is not initializing" );
@@ -12329,7 +12332,7 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
     {
         // todo
-        printf( "*** server in not initialized yet! ***" );
+        printf( "*** server in not initialized ***" );
         return;
     }
 
@@ -12594,7 +12597,7 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
     if ( packet_id == NEXT_UPGRADE_RESPONSE_PACKET )
     {
         // todo
-        printf( "NEXT_BACKEND_UPGRADE_RESPONSE_PACKET\n" );
+        printf( "NEXT_UPGRADE_RESPONSE_PACKET\n" );
 
         NextUpgradeResponsePacket packet;
 
@@ -12775,6 +12778,9 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
 
     if ( packet_id == NEXT_ROUTE_REQUEST_PACKET )
     {
+        // todo
+        printf( "NEXT_ROUTE_REQUEST_PACKET\n" );
+
         if ( packet_bytes != NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. wrong size" );
@@ -12856,6 +12862,9 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
 
     if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
     {
+        // todo
+        printf( "NEXT_CONTINUE_REQUEST_PACKET\n" );
+
         if ( packet_bytes != NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet. wrong size" );
@@ -12933,6 +12942,9 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
 
     if ( packet_id == NEXT_CLIENT_TO_SERVER_PACKET )
     {
+        // todo
+        printf( "NEXT_CLIENT_TO_SERVER_PACKET\n" );
+
         if ( packet_bytes <= NEXT_HEADER_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet too small to be valid" );
@@ -12972,6 +12984,9 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
 
     if ( packet_id == NEXT_PING_PACKET )
     {
+        // todo
+        printf( "NEXT_PING_PACKET\n" );
+
         if ( packet_bytes != NEXT_HEADER_BYTES + 8 + 8 + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. bad packet size" );            
@@ -13038,6 +13053,9 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
 
     if ( packet_id == NEXT_DIRECT_PING_PACKET )
     {
+        // todo
+        printf( "NEXT_DIRECT_PING_PACKET\n" );
+
         next_assert( session );
         if ( session == NULL )
             return;
@@ -13068,6 +13086,9 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
 
     if ( packet_id == NEXT_CLIENT_STATS_PACKET )
     {
+        // todo
+        printf( "NEXT_CLIENT_STATS_PACKET\n" );
+
         next_assert( session );
         
         if ( session == NULL )
@@ -13147,6 +13168,9 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_ACK_PACKET && session != NULL )
     {
+        // todo
+        printf( "NEXT_ROUTE_UPDATE_ACK_PACKET\n" );
+
         NextRouteUpdateAckPacket packet;
 
         uint64_t packet_sequence = 0;
@@ -13164,7 +13188,11 @@ void `( next_server_internal_t * server, const next_address_t * from, uint8_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route update ack from client for session %" PRIx64, session->session_id );
 
-        session->update_dirty = false;
+        // todo: is update_dirty needed anymore?
+        if ( session->update_dirty )
+        {
+            session->update_dirty = false;
+        }
 
         return;
     }
