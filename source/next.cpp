@@ -12602,7 +12602,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         NextUpgradeResponsePacket packet;
 
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, NULL, NULL, NULL, NULL, NULL ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored upgrade response packet. did not read" );
             return;
+        }
         
         NextUpgradeToken upgrade_token;
 
