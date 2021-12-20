@@ -6700,6 +6700,12 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     // run packet filters
     {
+        if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client basic packet filter dropped packet (%d)", packet_id );
+            return;
+        }
+
         uint8_t from_address_data[32];
         uint8_t to_address_data[32];
         uint16_t from_address_port = 0;
@@ -6709,12 +6715,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_address_data( from, from_address_data, &from_address_bytes, &from_address_port );
         next_address_data( &client->client_external_address, to_address_data, &to_address_bytes, &to_address_port );
-
-        if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client basic packet filter dropped packet" );
-            return;
-        }
 
         if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
         {
@@ -6727,7 +6727,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 {
                     if ( !next_advanced_packet_filter( packet_data, client->previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
                     {
-                        next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet" );
+                        next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet (%d)", packet_id );
                     }
                     return;
                 }
