@@ -8146,7 +8146,7 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
 
     const double current_time = next_time();
 
-    if ( client->last_upgrade_response_send_time + 0.1 > current_time )
+    if ( client->last_upgrade_response_send_time + 1.0 > current_time )
         return;
 
     next_assert( client->upgrade_response_packet_bytes > 0 );
