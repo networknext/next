@@ -12159,7 +12159,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
     }
 }
 
-void next_server_internal_process_network_next_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
+void `( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( server );
     next_assert( from );
@@ -12329,7 +12329,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
     {
         // todo
-        printf( "*** server in not initialized ***" );
+        printf( "*** server in not initialized yet! ***" );
         return;
     }
 
@@ -12337,6 +12337,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 11 && packet_bytes <= 11 + NEXT_MTU )
     {
+        // todo
+        printf( "NEXT_DIRECT_PACKET\n" );
+
         const uint8_t * p = packet_data;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
@@ -12399,6 +12402,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_BACKEND_SERVER_RESPONSE_PACKET )
     {
+        // todo
+        printf( "NEXT_BACKEND_SERVER_RESPONSE_PACKET\n" );
+
         NextBackendServerResponsePacket packet;
 
         if ( next_read_backend_packet( packet_id, packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
@@ -12464,6 +12470,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_BACKEND_SESSION_RESPONSE_PACKET )
     {
+        // todo
+        printf( "NEXT_BACKEND_SESSION_RESPONSE_PACKET\n" );
+
         NextBackendSessionResponsePacket packet;
 
         if ( next_read_backend_packet( packet_id, packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
@@ -12584,6 +12593,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_UPGRADE_RESPONSE_PACKET )
     {
+        // todo
+        printf( "NEXT_BACKEND_UPGRADE_RESPONSE_PACKET\n" );
+
         NextUpgradeResponsePacket packet;
 
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, NULL, NULL, NULL, NULL, NULL ) != packet_id )
@@ -13152,11 +13164,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route update ack from client for session %" PRIx64, session->session_id );
 
-        // todo: is update_dirty needed anymore?
-        if ( session->update_dirty )
-        {
-            session->update_dirty = false;
-        }
+        session->update_dirty = false;
 
         return;
     }
