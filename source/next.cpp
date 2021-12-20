@@ -2994,7 +2994,9 @@ struct NextUpgradeRequestPacket
     next_address_t server_address;
     uint8_t server_kx_public_key[NEXT_CRYPTO_KX_PUBLICKEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
-    uint8_t magic[8];
+    uint8_t upcoming_magic[8];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
 
     NextUpgradeRequestPacket()
     {
@@ -3009,7 +3011,9 @@ struct NextUpgradeRequestPacket
         serialize_address( stream, server_address );
         serialize_bytes( stream, server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
         serialize_bytes( stream, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-        serialize_bytes( stream, magic, 8 );
+        serialize_bytes( stream, upcoming_magic, 8 );
+        serialize_bytes( stream, current_magic, 8 );
+        serialize_bytes( stream, previous_magic, 8 );
         return true;
     }
 };
@@ -3192,7 +3196,9 @@ struct NextRouteUpdatePacket
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
-    uint8_t magic[8];
+    uint8_t upcoming_magic[8];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
 
     NextRouteUpdatePacket()
     {
@@ -3259,7 +3265,9 @@ struct NextRouteUpdatePacket
             serialize_bool( stream, high_frequency_pings );
         }
 
-        serialize_bytes( stream, magic, 8 );
+        serialize_bytes( stream, upcoming_magic, 8 );
+        serialize_bytes( stream, current_magic, 8 );
+        serialize_bytes( stream, previous_magic, 8 );
 
         return true;
     }
@@ -3268,18 +3276,15 @@ struct NextRouteUpdatePacket
 struct NextRouteUpdateAckPacket
 {
     uint64_t sequence;
-    uint8_t magic[8];
 
     NextRouteUpdateAckPacket()
     {
         sequence = 0;
-        memset( magic, 0, sizeof(magic) );
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
         serialize_uint64( stream, sequence );
-        serialize_bytes( stream, magic, 8 );
         return true;
     }
 };
@@ -6261,7 +6266,7 @@ struct next_client_notify_upgraded_t : public next_client_notify_t
 {
     uint64_t session_id;
     next_address_t client_external_address;
-    uint8_t magic[8];
+    uint8_t current_magic[8];
 };
 
 struct next_client_notify_stats_updated_t : public next_client_notify_t
@@ -6272,7 +6277,7 @@ struct next_client_notify_stats_updated_t : public next_client_notify_t
 
 struct next_client_notify_magic_updated_t : public next_client_notify_t
 {
-    uint8_t magic[8];
+    uint8_t current_magic[8];
 };
 
 // ---------------------------------------------------------------
@@ -6310,6 +6315,7 @@ struct next_client_internal_t
     double last_route_switch_time;
     double route_update_timeout_time;
     uint64_t route_update_sequence;
+    uint8_t upcoming_magic[8];
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
 
@@ -6696,11 +6702,14 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         {
             if ( !next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
             {
-                if ( !next_advanced_packet_filter( packet_data, client->previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                if ( !next_advanced_packet_filter( packet_data, client->upcoming_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
                 {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet" );
+                    if ( !next_advanced_packet_filter( packet_data, client->previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                    {
+                        next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet" );
+                    }
+                    return;
                 }
-                return;
             }
         }
         else
@@ -6811,9 +6820,36 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received upgrade request packet from server" );
 
-        // todo: we need the full trifecta of magic here: upcoming, current and previous.
-        memset( client->previous_magic, 0, 8 );
-        memcpy( client->current_magic, packet.magic, 8 );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client initial magic: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x | %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+            packet.upcoming_magic[0],
+            packet.upcoming_magic[1],
+            packet.upcoming_magic[2],
+            packet.upcoming_magic[3],
+            packet.upcoming_magic[4],
+            packet.upcoming_magic[5],
+            packet.upcoming_magic[6],
+            packet.upcoming_magic[7], 
+            packet.current_magic[0],
+            packet.current_magic[1],
+            packet.current_magic[2],
+            packet.current_magic[3],
+            packet.current_magic[4],
+            packet.current_magic[5],
+            packet.current_magic[6],
+            packet.current_magic[7], 
+            packet.previous_magic[0],
+            packet.previous_magic[1],
+            packet.previous_magic[2],
+            packet.previous_magic[3],
+            packet.previous_magic[4],
+            packet.previous_magic[5],
+            packet.previous_magic[6],
+            packet.previous_magic[7] );
+
+        memcpy( client->upcoming_magic, packet.upcoming_magic, 8 );
+        memcpy( client->current_magic, packet.current_magic, 8 );
+        memcpy( client->current_magic, packet.previous_magic, 8 );
+
         client->client_external_address = packet.client_address;
 
         NextUpgradeResponsePacket response;
@@ -6935,7 +6971,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         notify->type = NEXT_CLIENT_NOTIFY_UPGRADED;
         notify->session_id = client->session_id;
         notify->client_external_address = client->client_external_address;
-        memcpy( notify->magic, client->current_magic, 8 );
+        memcpy( notify->current_magic, client->current_magic, 8 );
         {
             next_platform_mutex_guard( &client->notify_mutex );
             next_queue_push( client->notify_queue, notify );
@@ -7397,27 +7433,44 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 client->counters[NEXT_CLIENT_COUNTER_PACKETS_OUT_OF_ORDER_CLIENT_TO_SERVER] = packet.packets_out_of_order_client_to_server;
                 client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
 
-                // todo: we need the trifecta of magic here: upcoming, current and previous.
-
-                if ( memcmp( client->current_magic, packet.magic, 8 ) != 0 )
+                if ( memcmp( client->upcoming_magic, packet.upcoming_magic, 8 ) != 0 )
                 {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "client updated magic: %x,%x,%x,%x,%x,%x,%x,%x", 
-                        packet.magic[0], 
-                        packet.magic[1],
-                        packet.magic[2],
-                        packet.magic[3],
-                        packet.magic[4],
-                        packet.magic[5],
-                        packet.magic[6],
-                        packet.magic[7] );
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "client updated magic: %x,%x,%x,%x,%x,%x,%x,%x | %x,%x,%x,%x,%x,%x,%x,%x | %x,%x,%x,%x,%x,%x,%x,%x", 
+                        packet.upcoming_magic[0], 
+                        packet.upcoming_magic[1],
+                        packet.upcoming_magic[2],
+                        packet.upcoming_magic[3],
+                        packet.upcoming_magic[4],
+                        packet.upcoming_magic[5],
+                        packet.upcoming_magic[6],
+                        packet.upcoming_magic[7], 
 
-                    memcpy( client->previous_magic, client->current_magic, 8 );
-                    memcpy( client->current_magic, packet.magic, 8 );
+                        packet.current_magic[0], 
+                        packet.current_magic[1],
+                        packet.current_magic[2],
+                        packet.current_magic[3],
+                        packet.current_magic[4],
+                        packet.current_magic[5],
+                        packet.current_magic[6],
+                        packet.current_magic[7], 
+
+                        packet.previous_magic[0], 
+                        packet.previous_magic[1],
+                        packet.previous_magic[2],
+                        packet.previous_magic[3],
+                        packet.previous_magic[4],
+                        packet.previous_magic[5],
+                        packet.previous_magic[6],
+                        packet.previous_magic[7] );
+
+                    memcpy( client->upcoming_magic, packet.upcoming_magic, 8 );
+                    memcpy( client->current_magic, packet.current_magic, 8 );
+                    memcpy( client->previous_magic, packet.current_magic, 8 );
 
                     next_client_notify_magic_updated_t * notify = (next_client_notify_magic_updated_t*) next_malloc( client->context, sizeof(next_client_notify_magic_updated_t) );
                     next_assert( notify );
                     notify->type = NEXT_CLIENT_NOTIFY_MAGIC_UPDATED;
-                    memcpy( notify->magic, client->current_magic, 8 );
+                    memcpy( notify->current_magic, client->current_magic, 8 );
                     {
                         next_platform_mutex_guard( &client->notify_mutex );
                         next_queue_push( client->notify_queue, notify );
@@ -7434,7 +7487,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         NextRouteUpdateAckPacket ack;
         ack.sequence = packet.sequence;
-        memcpy( ack.magic, client->current_magic, 8 );
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_ROUTE_UPDATE_ACK_PACKET, &ack ) != NEXT_OK )
         {
@@ -7565,7 +7617,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_INFO, "client closed session to %s", next_address_to_string( &client->server_address, buffer ) );
 
-                // todo: magic trifecta
+                memset( client->upcoming_magic, 0, 8 );
                 memset( client->current_magic, 0, 8 );
                 memset( client->previous_magic, 0, 8 );
                 memset( &client->server_address, 0, sizeof(next_address_t) );
@@ -8157,7 +8209,7 @@ struct next_client_t
     bool upgraded;
     bool fallback_to_direct;
     uint8_t open_session_sequence;
-    uint8_t magic[8];
+    uint8_t current_magic[8];
     uint16_t bound_port;
     uint64_t session_id;
     next_address_t server_address;
@@ -8371,7 +8423,7 @@ void next_client_close_session( next_client_t * client )
     next_bandwidth_limiter_reset( &client->next_send_bandwidth );
     next_bandwidth_limiter_reset( &client->next_receive_bandwidth );
     client->state = NEXT_CLIENT_STATE_CLOSED;
-    memset( client->magic, 0, sizeof(client->magic) );
+    memset( client->current_magic, 0, sizeof(client->current_magic) );
 }
 
 void next_client_update( next_client_t * client )
@@ -8424,7 +8476,7 @@ void next_client_update( next_client_t * client )
                 client->upgraded = true;
                 client->session_id = upgraded->session_id;
                 client->client_external_address = upgraded->client_external_address;
-                memcpy( client->magic, upgraded->magic, 8 );
+                memcpy( client->current_magic, upgraded->current_magic, 8 );
                 next_printf( NEXT_LOG_LEVEL_INFO, "client upgraded to session %" PRIx64, client->session_id );
             }
             break;
@@ -8440,7 +8492,7 @@ void next_client_update( next_client_t * client )
             case NEXT_CLIENT_NOTIFY_MAGIC_UPDATED:
             {
                 next_client_notify_magic_updated_t * magic_updated = (next_client_notify_magic_updated_t*) notify;
-                memcpy( client->magic, magic_updated->magic, 8 );
+                memcpy( client->current_magic, magic_updated->current_magic, 8 );
             }
             break;
 
@@ -8575,12 +8627,12 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             uint8_t direct_packet_data[NEXT_MAX_PACKET_BYTES];
 
-            const int direct_packet_bytes = next_write_direct_packet( direct_packet_data, client->open_session_sequence, send_sequence, packet_data, packet_bytes, client->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            const int direct_packet_bytes = next_write_direct_packet( direct_packet_data, client->open_session_sequence, send_sequence, packet_data, packet_bytes, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( direct_packet_bytes >= 0 );
 
             next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
-            next_assert( next_advanced_packet_filter( direct_packet_data, client->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( direct_packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
 
             (void) direct_packet_data;
             (void) direct_packet_bytes;
@@ -8916,8 +8968,7 @@ struct next_pending_session_entry_t
     double last_packet_send_time;
     uint8_t private_key[NEXT_CRYPTO_SECRETBOX_KEYBYTES];
     uint8_t upgrade_token[NEXT_UPGRADE_TOKEN_BYTES];
-    uint8_t magic[8];
-
+ 
     NEXT_DECLARE_SENTINEL(1)
 };
 
@@ -9104,7 +9155,6 @@ next_pending_session_entry_t * next_pending_session_manager_add( next_pending_se
             {
                 pending_session_manager->max_entry_index = i;
             }
-            memset( entry->magic, 0, sizeof(entry->magic) );
             return entry;
         }        
     }  
@@ -9123,7 +9173,6 @@ next_pending_session_entry_t * next_pending_session_manager_add( next_pending_se
     entry->last_packet_send_time = -1000.0;
     memcpy( entry->private_key, private_key, NEXT_CRYPTO_SECRETBOX_KEYBYTES );
     memcpy( entry->upgrade_token, upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-    memset( entry->magic, 0, sizeof(entry->magic) );
 
     next_pending_session_manager_verify_sentinels( pending_session_manager );
 
@@ -9215,8 +9264,7 @@ struct next_proxy_session_entry_t
 
     next_address_t address;
     uint64_t session_id;
-    uint8_t magic[8];
-
+ 
     NEXT_DECLARE_SENTINEL(1)
 
     next_bandwidth_limiter_t send_bandwidth;
@@ -9405,7 +9453,6 @@ next_proxy_session_entry_t * next_proxy_session_manager_add( next_proxy_session_
             {
                 session_manager->max_entry_index = i;
             }
-            memset( entry->magic, 0, sizeof(entry->magic) );
             return entry;
         }        
     }  
@@ -9421,8 +9468,7 @@ next_proxy_session_entry_t * next_proxy_session_manager_add( next_proxy_session_
     entry->address = *address;
     entry->session_id = session_id;
     next_bandwidth_limiter_reset( &entry->send_bandwidth );
-    memset( entry->magic, 0, sizeof(entry->magic) );
-
+    
     next_proxy_session_manager_verify_sentinels( session_manager );
 
     return entry;
@@ -9833,8 +9879,7 @@ struct next_session_entry_t
     uint64_t tags[NEXT_MAX_TAGS];
     int num_tags;
     uint8_t client_open_session_sequence;
-    uint8_t magic[8];
-
+ 
     NEXT_DECLARE_SENTINEL(1)
 
     bool stats_reported;
@@ -10271,8 +10316,6 @@ void next_clear_session_entry( next_session_entry_t * entry, const next_address_
 
     entry->last_client_direct_ping = current_time;
     entry->last_client_next_ping = current_time;
-
-    memset( entry->magic, 0, sizeof(entry->magic) );
 }
 
 next_session_entry_t * next_session_manager_add( next_session_manager_t * session_manager, const next_address_t * address, uint64_t session_id, const uint8_t * ephemeral_private_key, const uint8_t * upgrade_token, const uint64_t * tags, int num_tags )
@@ -10738,7 +10781,7 @@ struct next_server_command_tag_session_t : public next_server_command_t
 #define NEXT_SERVER_NOTIFY_SESSION_UPGRADED                     2
 #define NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT                    3
 #define NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME           4
-#define NEXT_SERVER_NOTIFY_SESSION_MAGIC_UPDATED                5
+#define NEXT_SERVER_NOTIFY_MAGIC_UPDATED                        5
 
 struct next_server_notify_t
 {
@@ -10768,7 +10811,6 @@ struct next_server_notify_session_upgraded_t : public next_server_notify_t
 {
     next_address_t address;
     uint64_t session_id;
-    uint8_t magic[8];
 };
 
 struct next_server_notify_session_timed_out_t : public next_server_notify_t
@@ -10782,11 +10824,9 @@ struct next_server_notify_failed_to_resolve_hostname_t : public next_server_noti
     // ...
 };
 
-struct next_server_notify_session_magic_updated_t : public next_server_notify_t
+struct next_server_notify_magic_updated_t : public next_server_notify_t
 {
-    next_address_t address;
-    uint64_t session_id;
-    uint8_t magic[4];
+    uint8_t current_magic[4];
 };
 
 // ---------------------------------------------------------------
@@ -11726,7 +11766,14 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
     uint8_t * send_key = NULL;
 
     uint8_t magic[8];
-    memset( magic, 0, sizeof(magic) );
+    if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
+    {
+        memcpy( magic, server->current_magic, 8 );
+    }
+    else
+    {
+        memset( magic, 0, sizeof(magic) );        
+    }
 
     if ( next_encrypted_packets[packet_id] )
     {
@@ -11740,11 +11787,6 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
 
         sequence = &session->internal_send_sequence;
         send_key = session->send_key;
-
-        if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
-        {
-            memcpy( magic, session->magic, 8 );
-        }
     }
 
     uint8_t from_address_data[32];
@@ -11909,7 +11951,9 @@ void next_server_internal_update_route( next_server_internal_t * server )
         if ( entry->update_dirty && !entry->client_ping_timed_out && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
         {
             NextRouteUpdatePacket packet;
-            memcpy( packet.magic, server->current_magic, 8 );
+            memcpy( packet.upcoming_magic, server->upcoming_magic, 8 );
+            memcpy( packet.current_magic, server->current_magic, 8 );
+            memcpy( packet.previous_magic, server->previous_magic, 8 );
             packet.sequence = entry->update_sequence;
             packet.dont_ping_near_relays = entry->update_dont_ping_near_relays;
             packet.near_relays_changed = entry->update_near_relays_changed;
@@ -12010,7 +12054,9 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
             packet.server_address = server->server_address;
             memcpy( packet.server_kx_public_key, server->server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
             memcpy( packet.upgrade_token, entry->upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );        
-            memcpy( packet.magic, entry->magic, 8 );
+            memcpy( packet.upcoming_magic, server->upcoming_magic, 8 );
+            memcpy( packet.current_magic, server->current_magic, 8 );
+            memcpy( packet.previous_magic, server->previous_magic, 8 );
 
             next_server_internal_send_packet( server, &entry->address, NEXT_UPGRADE_REQUEST_PACKET, &packet );
         }
@@ -12608,7 +12654,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->stats_platform_id = packet.platform_id;
             entry->stats_connection_type = packet.connection_type;
             entry->last_upgraded_packet_receive_time = next_time();
-            memcpy( entry->magic, pending_entry->magic, 8 );
 
             // notify session upgraded
 
@@ -12616,7 +12661,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             notify->type = NEXT_SERVER_NOTIFY_SESSION_UPGRADED;
             notify->address = entry->address;
             notify->session_id = entry->session_id;
-            memcpy( notify->magic, entry->magic, 8 );
             {
                 next_platform_mutex_guard( &server->notify_mutex );
                 next_queue_push( server->notify_queue, notify );            
@@ -13076,8 +13120,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route update ack from client for session %" PRIx64, session->session_id );
 
+        // todo: is update_dirty needed anymore?
         if ( session->update_dirty )
         {
+            // todo: send notify when magic changes on server only
+            /*
             if ( memcmp( session->magic, packet.magic, 8 ) != 0 )
             {
                 next_printf( "server updated magic for session %" PRIx64 ": %x,%x,%x,%x,%x,%x,%x,%x",
@@ -13103,6 +13150,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                     next_queue_push( server->notify_queue, notify );            
                 }
             }
+            */
 
             session->update_dirty = false;
         }
@@ -13222,7 +13270,6 @@ void next_server_internal_upgrade_session( next_server_internal_t * server, cons
     }
 
     entry->user_hash = user_hash;
-    memcpy( entry->magic, server->current_magic, 8 );
 }
 
 void next_server_internal_tag_session( next_server_internal_t * server, const next_address_t * address, const uint64_t * tags, int num_tags )
@@ -13943,6 +13990,7 @@ struct next_server_t
     next_proxy_session_manager_t * session_manager;
     next_address_t address;
     uint16_t bound_port;
+    uint8_t current_magic[8];
 
     NEXT_DECLARE_SENTINEL(1)
 };
@@ -14116,10 +14164,6 @@ void next_server_update( next_server_t * server )
                     next_proxy_session_manager_remove_by_address( server->session_manager, &session_upgraded->address );
                     next_proxy_session_manager_remove_by_address( server->pending_session_manager, &session_upgraded->address );
                     proxy_entry = next_proxy_session_manager_add( server->session_manager, &session_upgraded->address, session_upgraded->session_id );
-                    if ( proxy_entry )
-                    {
-                        memcpy( proxy_entry->magic, session_upgraded->magic, 8 );
-                    }
                 }
             }
             break;
@@ -14157,14 +14201,10 @@ void next_server_update( next_server_t * server )
             }
             break;
 
-            case NEXT_SERVER_NOTIFY_SESSION_MAGIC_UPDATED:
+            case NEXT_SERVER_NOTIFY_MAGIC_UPDATED:
             {
-                next_server_notify_session_magic_updated_t * session_magic_updated = (next_server_notify_session_magic_updated_t*) notify;
-                next_proxy_session_entry_t * proxy_session_entry = next_proxy_session_manager_find( server->session_manager, &session_magic_updated->address );
-                if ( proxy_session_entry && proxy_session_entry->session_id == session_magic_updated->session_id )
-                {
-                    memcpy( proxy_session_entry->magic, session_magic_updated->magic, 8 );
-                }
+                next_server_notify_magic_updated_t * magic_updated = (next_server_notify_magic_updated_t*) notify;
+                memcpy( server->current_magic, magic_updated->current_magic, 8 );
             }
             break;
 
@@ -14422,12 +14462,12 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
             
-            int next_packet_bytes = next_write_server_to_client_packet( next_packet_data, send_sequence, session_id, session_version, session_private_key, packet_data, packet_bytes, entry->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            int next_packet_bytes = next_write_server_to_client_packet( next_packet_data, send_sequence, session_id, session_version, session_private_key, packet_data, packet_bytes, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( next_packet_bytes > 0 );
 
             next_assert( next_basic_packet_filter( next_packet_data, next_packet_bytes ) );
-            next_assert( next_advanced_packet_filter( next_packet_data, entry->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, next_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( next_packet_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, next_packet_bytes ) );
 
             next_platform_socket_send_packet( server->internal->socket, &session_address, next_packet_data, next_packet_bytes );
         }
@@ -14448,13 +14488,13 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
             uint8_t direct_packet_data[NEXT_MAX_PACKET_BYTES];
 
-            int direct_packet_bytes = next_write_direct_packet( direct_packet_data, open_session_sequence, send_sequence, packet_data, packet_bytes, entry->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+            int direct_packet_bytes = next_write_direct_packet( direct_packet_data, open_session_sequence, send_sequence, packet_data, packet_bytes, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
             next_assert( direct_packet_bytes >= 0 );
             next_assert( direct_packet_bytes <= NEXT_MTU + 27 );
 
             next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
-            next_assert( next_advanced_packet_filter( direct_packet_data, entry->magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
+            next_assert( next_advanced_packet_filter( direct_packet_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
 
             next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, size_t(packet_bytes) );
         }
@@ -16470,7 +16510,9 @@ void test_upgrade_request_packet()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_random_bytes( in.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
         next_random_bytes( in.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES );
-        next_random_bytes( in.magic, 8 );
+        next_random_bytes( in.upcoming_magic, 8 );
+        next_random_bytes( in.current_magic, 8 );
+        next_random_bytes( in.previous_magic, 8 );
 
         int packet_bytes = 0;
         int result = next_write_packet( NEXT_UPGRADE_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, NULL, NULL, private_key, NULL, magic, from_address, 4, from_port, to_address, 4, to_port );
@@ -16490,7 +16532,9 @@ void test_upgrade_request_packet()
         next_check( next_address_equal( &in.server_address, &out.server_address ) );
         next_check( memcmp( in.server_kx_public_key, out.server_kx_public_key, NEXT_CRYPTO_KX_PUBLICKEYBYTES ) == 0 );
         next_check( memcmp( in.upgrade_token, out.upgrade_token, NEXT_UPGRADE_TOKEN_BYTES ) == 0 );
-        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
+        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
+        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
+        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
     }
 }
 
@@ -17151,7 +17195,9 @@ void test_route_update_packet_direct()
         in.packets_sent_server_to_client = 11000;
         in.packets_lost_client_to_server = 10000;
         in.packets_out_of_order_client_to_server = 9000;
-        next_random_bytes( in.magic, 8 );
+        next_random_bytes( in.upcoming_magic, 8 );
+        next_random_bytes( in.current_magic, 8 );
+        next_random_bytes( in.previous_magic, 8 );
         in.jitter_client_to_server = 0.1f;
         in.has_debug = true;
         strcpy( in.debug, "debug time" );
@@ -17185,7 +17231,9 @@ void test_route_update_packet_direct()
         next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
-        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
+        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
+        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
+        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
         next_check( in.has_debug == out.has_debug );
         next_check( strcmp( in.debug, out.debug ) == 0 );
@@ -17233,7 +17281,9 @@ void test_route_update_packet_new_route()
         in.packets_sent_server_to_client = 11000;
         in.packets_lost_client_to_server = 10000;
         in.packets_out_of_order_client_to_server = 9000;
-        next_random_bytes( in.magic, 8 );
+        next_random_bytes( in.upcoming_magic, 8 );
+        next_random_bytes( in.current_magic, 8 );
+        next_random_bytes( in.previous_magic, 8 );
         in.jitter_client_to_server = 0.25f;
         in.high_frequency_pings = true;
         in.dont_ping_near_relays = false;
@@ -17269,7 +17319,9 @@ void test_route_update_packet_new_route()
         next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
-        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
+        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
+        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
+        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
         next_check( in.jitter_client_to_server == out.jitter_client_to_server );
         next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
@@ -17345,7 +17397,9 @@ void test_route_update_packet_continue_route()
         next_check( in.num_tokens == out.num_tokens );
         next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
-        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
+        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
+        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
+        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
         next_check( in.high_frequency_pings == out.high_frequency_pings );
         next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
     }
@@ -17371,7 +17425,6 @@ void test_route_update_ack_packet()
 
         static NextRouteUpdateAckPacket in, out;
         in.sequence = 100000;
-        next_random_bytes( in.magic, 8 );
         
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
@@ -17389,7 +17442,6 @@ void test_route_update_ack_packet()
         
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
-        next_check( memcmp( in.magic, out.magic, 8 ) == 0 );
     }
 }
 
