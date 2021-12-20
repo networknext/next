@@ -6721,7 +6721,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             memset( magic, 0, sizeof(magic) );
             next_assert( to_address_bytes == 0 );
             next_assert( to_address_port == 0 );
-            next_assert( memcmp( magic, 0, sizeof(magic) ) == 0 );
             if ( !next_advanced_packet_filter( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet (upgrade request)" );
@@ -12438,6 +12437,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 packet.previous_magic[5],
                 packet.previous_magic[6],
                 packet.previous_magic[7] );
+
+            next_server_notify_magic_updated_t * notify = (next_server_notify_magic_updated_t*) next_malloc( server->context, sizeof( next_server_notify_magic_updated_t ) );
+            notify->type = NEXT_SERVER_NOTIFY_MAGIC_UPDATED;
+            memcpy( notify->current_magic, server->current_magic, 8 );
+            {
+                next_platform_mutex_guard( &server->notify_mutex );
+                next_queue_push( server->notify_queue, notify );            
+            }
         }
     }
 
@@ -13136,35 +13143,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         // todo: is update_dirty needed anymore?
         if ( session->update_dirty )
         {
-            // todo: send notify when magic changes on server only
-            /*
-            if ( memcmp( session->magic, packet.magic, 8 ) != 0 )
-            {
-                next_printf( "server updated magic for session %" PRIx64 ": %x,%x,%x,%x,%x,%x,%x,%x",
-                    session->session_id,
-                    packet.magic[0],
-                    packet.magic[1],
-                    packet.magic[2],
-                    packet.magic[3],
-                    packet.magic[4],
-                    packet.magic[5],
-                    packet.magic[6],
-                    packet.magic[7] );
-
-                memcpy( session->magic, packet.magic, 8 );
-
-                next_server_notify_session_magic_updated_t * notify = (next_server_notify_session_magic_updated_t*) next_malloc( server->context, sizeof( next_server_notify_session_magic_updated_t ) );
-                notify->type = NEXT_SERVER_NOTIFY_SESSION_MAGIC_UPDATED;
-                notify->address = session->address;
-                notify->session_id = session->session_id;
-                memcpy( notify->magic, session->magic, 8 );
-                {
-                    next_platform_mutex_guard( &server->notify_mutex );
-                    next_queue_push( server->notify_queue, notify );            
-                }
-            }
-            */
-
             session->update_dirty = false;
         }
 
