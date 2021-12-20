@@ -117,6 +117,8 @@ func (sc SlackClient) sendHttpRequest(slackRequest SlackMessage) error {
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
