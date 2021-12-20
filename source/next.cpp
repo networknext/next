@@ -6671,6 +6671,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 {
     next_client_internal_verify_sentinels( client );
 
+    // todo
+    (void) packet_receive_time;
+
     next_assert( from );
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
@@ -6727,64 +6730,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 return;
             }
         }
-    }
-
-    // packet is valid
-
-    packet_data += 16;
-    packet_bytes -= 18;
-
-    // upgraded direct packet (255)
-
-    if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes > 11 && packet_bytes <= NEXT_MTU + 11 && from_server_address )
-    {
-        const uint8_t * p = packet_data;
-
-        uint8_t packet_session_sequence = next_read_uint8( &p );
-        
-        if ( packet_session_sequence != client->open_session_sequence )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. session mismatch" );
-            return;
-        }
-        
-        uint64_t packet_sequence = next_read_uint64( &p );
-        
-        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
-        if ( next_replay_protection_already_received( &client->payload_replay_protection, clean_sequence ) )
-        {
-            if ( !client->multipath )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received direct packet %" PRIu64 " (%" PRIu64 ")", clean_sequence, client->payload_replay_protection.most_recent_sequence );
-            }
-            return;
-        }
-
-        next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
-
-        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
-
-        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
-
-        next_jitter_tracker_packet_received( &client->jitter_tracker, clean_sequence, packet_receive_time );
-
-        next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
-        notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
-        notify->direct = true;
-        notify->payload_bytes = packet_bytes - 11;
-        memcpy( notify->payload_data, packet_data + 9, size_t(notify->payload_bytes) );
-        {
-            next_platform_mutex_guard( &client->notify_mutex );
-            next_queue_push( client->notify_queue, notify );            
-        }
-        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
-
-        if ( client->wake_up_callback )
-        {
-            client->wake_up_callback( client->context );
-        }
-
-        return;
     }
 
     // upgrade request packet (not encrypted)
@@ -6911,6 +6856,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         return;
     }
 
+    // todo
+
+    /*
     // upgrade confirm packet
 
     if ( !client->upgraded && packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
@@ -6988,6 +6936,59 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         client->sending_upgrade_response = false;
 
         client->route_update_timeout_time = next_time() + NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT;
+
+        return;
+    }
+
+    // upgraded direct packet (255)
+
+    if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes > 11 && packet_bytes <= NEXT_MTU + 11 && from_server_address )
+    {
+        const uint8_t * p = packet_data;
+
+        uint8_t packet_session_sequence = next_read_uint8( &p );
+        
+        if ( packet_session_sequence != client->open_session_sequence )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. session mismatch" );
+            return;
+        }
+        
+        uint64_t packet_sequence = next_read_uint64( &p );
+        
+        uint64_t clean_sequence = next_clean_sequence( packet_sequence );
+        if ( next_replay_protection_already_received( &client->payload_replay_protection, clean_sequence ) )
+        {
+            if ( !client->multipath )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client already received direct packet %" PRIu64 " (%" PRIu64 ")", clean_sequence, client->payload_replay_protection.most_recent_sequence );
+            }
+            return;
+        }
+
+        next_replay_protection_advance_sequence( &client->payload_replay_protection, clean_sequence );
+
+        next_packet_loss_tracker_packet_received( &client->packet_loss_tracker, clean_sequence );
+
+        next_out_of_order_tracker_packet_received( &client->out_of_order_tracker, clean_sequence );
+
+        next_jitter_tracker_packet_received( &client->jitter_tracker, clean_sequence, packet_receive_time );
+
+        next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
+        notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
+        notify->direct = true;
+        notify->payload_bytes = packet_bytes - 11;
+        memcpy( notify->payload_data, packet_data + 9, size_t(notify->payload_bytes) );
+        {
+            next_platform_mutex_guard( &client->notify_mutex );
+            next_queue_push( client->notify_queue, notify );            
+        }
+        client->counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]++;
+
+        if ( client->wake_up_callback )
+        {
+            client->wake_up_callback( client->context );
+        }
 
         return;
     }
@@ -7504,6 +7505,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         return;
     }
+    */
 }
 
 void next_client_internal_process_passthrough_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
