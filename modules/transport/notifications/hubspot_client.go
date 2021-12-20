@@ -137,6 +137,8 @@ func (hsc *HubSpotClient) CompanyEntrySearch(companyName string, companyWebsite 
 		return noCompanies, err
 	}
 
+	defer resp.Body.Close()
+
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
 		return noCompanies, errors.New("HubSpot returned non-200 status code")
@@ -194,6 +196,8 @@ func (hsc *HubSpotClient) CreateNewCompanyEntry(companyName string, companyWebsi
 	if err != nil {
 		return "", err
 	}
+
+	defer resp.Body.Close()
 
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
@@ -283,6 +287,8 @@ func (hsc *HubSpotClient) ContactEntrySearch(firstName string, lastName string, 
 		return noContacts, err
 	}
 
+	defer resp.Body.Close()
+
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
 		return noContacts, errors.New("HubSpot returned non-200 status code")
@@ -339,6 +345,8 @@ func (hsc *HubSpotClient) CreateNewContactEntry(firstName string, lastName strin
 		return "", err
 	}
 
+	defer resp.Body.Close()
+
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
 		return "", errors.New("HubSpot returned non-200 status code")
@@ -383,6 +391,8 @@ func (hsc *HubSpotClient) AssociateCompanyToContact(companyID string, contactID 
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
 		return errors.New(fmt.Sprintf("HubSpot returned non-200 status code: %d", resp.StatusCode))
@@ -409,6 +419,8 @@ func (hsc *HubSpotClient) AssociateContactToCompany(contactID string, companyID 
 	if err != nil {
 		return err
 	}
+
+	defer resp.Body.Close()
 
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
@@ -463,6 +475,8 @@ func (hsc *HubSpotClient) CreateHubSpotDealEntry(action string) error {
 	if err != nil {
 		return err
 	}
+
+	defer resp.Body.Close()
 
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
@@ -544,6 +558,8 @@ func (hsc *HubSpotClient) CreateCompanyNote(message string, companyID string) er
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
 		return errors.New(fmt.Sprintf("HubSpot returned non-200 status code: %d", resp.StatusCode))
@@ -590,6 +606,8 @@ func (hsc *HubSpotClient) CreateContactNote(message string, contactID string) er
 	if err != nil {
 		return err
 	}
+
+	defer resp.Body.Close()
 
 	// Check if the status code is outside the range of possible 200 level responses
 	if resp.StatusCode-200 > 26 {
