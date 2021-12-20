@@ -6862,9 +6862,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         return;
     }
 
-    // todo
-
-    /*
     // upgrade confirm packet
 
     if ( !client->upgraded && packet_id == NEXT_UPGRADE_CONFIRM_PACKET )
@@ -7511,7 +7508,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         return;
     }
-    */
 }
 
 void next_client_internal_process_passthrough_packet( next_client_internal_t * client, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
