@@ -53,6 +53,16 @@ TODO
 
 	What is left to do to get client and server communicating with valid magic numbers across direct packets?
 
+	The client gets the current magic from the upgrade request initially.
+
+	The client should be extended to get both the upcoming, current and previous magic values instead...
+
+	We can remove the complicated, per-session magic synchronization each route update, and just send down the upcoming/current/previous magic values in each route update, and the client can copy them along.
+
+	The client and server will always send with current magic, but can receive with upcoming, current or previous.
+
+	At this point the client should be able to theoretically upgrade and exchange direct packets with the server.
+
 	--------------
 
 
