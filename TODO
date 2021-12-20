@@ -74,18 +74,23 @@ DONE
 
 	Problem with difference in handling backend and regular packets. Fixed.
 
+	Basic filter is dropping passthrough packets.
+
+	This isn't supposed to happen, any packet with first byte being zero should pass basic and advanced packet filters.
 
 TODO
+
+	--------------
+
+	Suspect that server isn't property prefixing NEXT_PASSTHROUGH_PACKET for first byte for passthrough packets sent to client.
+
+	Verify this and fix.
+
+	--------------
 
 	Server is now sending upgrade confirm packets to the client, but the client is filtering them out. 
 
 	Problem with magic and/or address?
-
-	--------------
-
-	Basic filter is dropping passthrough packets.
-
-	This isn't supposed to happen, any packet with first byte being zero should pass basic and advanced packet filters.
 
 	--------------
 

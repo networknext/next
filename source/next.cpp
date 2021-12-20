@@ -14545,13 +14545,14 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
             int direct_packet_bytes = next_write_direct_packet( direct_packet_data, open_session_sequence, send_sequence, packet_data, packet_bytes, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
-            next_assert( direct_packet_bytes >= 0 );
+            next_assert( direct_packet_bytes >= 27 );
             next_assert( direct_packet_bytes <= NEXT_MTU + 27 );
+            next_assert( direct_packet_data[0] == NEXT_DIRECT_PACKET );
 
             next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
             next_assert( next_advanced_packet_filter( direct_packet_data, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, direct_packet_bytes ) );
 
-            next_platform_socket_send_packet( server->internal->socket, to_address, packet_data, size_t(packet_bytes) );
+            next_platform_socket_send_packet( server->internal->socket, to_address, direct_packet_data, size_t(direct_packet_bytes) );
         }
     }
     else
@@ -14564,6 +14565,9 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
 void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
 {
+    // todo
+    printf( "server sent passthrough packet to client\n" );
+
     next_server_verify_sentinels( server );
 
     next_assert( to_address );
@@ -14584,7 +14588,7 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     }
 
     uint8_t buffer[NEXT_MAX_PACKET_BYTES];
-    buffer[0] = 0;
+    buffer[0] = NEXT_PASSTHROUGH_PACKET;
     memcpy( buffer + 1, packet_data, packet_bytes );
     next_platform_socket_send_packet( server->internal->socket, to_address, buffer, packet_bytes + 1 );
 }
