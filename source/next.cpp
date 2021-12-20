@@ -12323,7 +12323,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     // don't process network next packets until the server is initialized
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+    {
+        // todo
+        printf( "*** server in not initialized ***" );
         return;
+    }
 
     // direct packet (255)
 
