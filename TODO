@@ -78,10 +78,6 @@ DONE
 
 	This isn't supposed to happen, any packet with first byte being zero should pass basic and advanced packet filters.
 
-TODO
-
-	--------------
-
 	Server is now sending upgrade confirm packets to the client, but the client is filtering them out. 
 
 	Problem with magic and/or address?
@@ -93,6 +89,14 @@ TODO
 	Seems correct...
 
 	Check the client has the magic actually saved, and is decoding relative to it?
+
+TODO
+
+	--------------
+
+	Client upgrades but it seems it is not delivering the correct payload data for direct packets on the server.
+
+	Server is blowing up with invalid packet data check.
 
 	--------------
 

@@ -12349,7 +12349,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         // todo
         printf( "NEXT_DIRECT_PACKET\n" );
 
-        const uint8_t * p = packet_data;
+        const uint8_t * p = packet_data + 16;
+        packet_bytes -= 2;
 
         uint8_t packet_session_sequence = next_read_uint8( &p );
         
