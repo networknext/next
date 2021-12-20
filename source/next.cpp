@@ -3375,7 +3375,7 @@ static void next_generate_chonkle( uint8_t * output, const uint8_t * magic, cons
 bool next_basic_packet_filter( const uint8_t * data, int packet_length )
 {
     if ( packet_length == 0 )
-        return;
+        return false;
 
     if ( data[0] == 0 )
         return true;
