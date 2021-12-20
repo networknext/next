@@ -13896,7 +13896,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
 
     while ( true )
     {
-        if ( server->finished_hostname_resolve )
+        if ( finished_hostname_resolve )
         {
             next_platform_mutex_guard( &server->quit_mutex );
             if ( server->quit ) 
