@@ -54,7 +54,7 @@
               >{{ save.id }}</router-link>
             </td>
             <td>
-              {{ save.score }}
+              {{ save.save_score }}
             </td>
             <td>
               {{ save.rtt_score }}
@@ -166,7 +166,6 @@ export default class Saves extends Vue {
 
     Promise.all(promises)
       .then((responses: any) => {
-        console.log(responses)
         this.savesDashURL = responses[0].url || ''
         this.saves = responses[1].saves || []
       })
