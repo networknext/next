@@ -60,9 +60,15 @@ DONE
 
 	At this point the client should be able to theoretically upgrade and exchange direct packets with the server.
 
+	Client is receiving the upgrade request packet, but it's not decoding correctly yet. What's wrong?
+
+	Fixed.
+
 TODO
 
-	Client is receiving the upgrade request packet, but it's not decoding correctly yet. What's wrong?
+	Session update packet is now failing to read. Problem with write packet on server side, or read on client side?
+
+	Almost certainly a problem with read on client side. Probably missing the packet_data += 16 and packet_bytes -= 18?
 
 	--------------
 

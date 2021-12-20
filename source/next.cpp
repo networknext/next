@@ -6044,7 +6044,7 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
     uint8_t packet_type = packet_data[0];
 
     packet_data += 16;
-    packet_bytes -= 16;
+    packet_bytes -= 18;
 
     uint64_t packet_sequence = 0;
     uint64_t packet_session_id = 0;
@@ -6732,7 +6732,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     // packet is valid
 
     packet_data += 16;
-    packet_bytes -= 16;
+    packet_bytes -= 18;
 
     // upgraded direct packet (255)
 
