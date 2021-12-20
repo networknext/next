@@ -6826,10 +6826,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         uint8_t from_address_data[32];
         uint8_t to_address_data[32];
-        uint16_t from_address_port;
-        uint16_t to_address_port;
-        int from_address_bytes;
-        int to_address_bytes;
+        uint16_t from_address_port = 0;
+        uint16_t to_address_port = 0;
+        int from_address_bytes = 0;
+        int to_address_bytes = 0;
 
         next_address_data( &client->client_external_address, from_address_data, &from_address_bytes, &from_address_port );
         next_address_data( &client->server_address, to_address_data, &to_address_bytes, &to_address_port );
@@ -6845,6 +6845,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         
         const uint8_t * packet_data = client->upgrade_response_packet_data;
         const int packet_bytes = client->upgrade_response_packet_bytes;
+
+        next_assert( packet_data );
+        next_assert( packet_bytes > 0 );
 
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
         next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_port, to_address_port, packet_bytes ) );
