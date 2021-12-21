@@ -9842,10 +9842,6 @@ struct NextBackendSessionUpdatePacket
         bool has_out_of_order_packets = Stream::IsWriting && ( packets_out_of_order_client_to_server + packets_out_of_order_server_to_client ) > 0;
 
         serialize_bool( stream, has_tags );
-        bool has_flags = false;
-        bool has_user_flags = false;
-        serialize_bool( stream, has_flags );
-        serialize_bool( stream, has_user_flags );
         serialize_bool( stream, has_lost_packets );
         serialize_bool( stream, has_out_of_order_packets );
 
@@ -12365,6 +12361,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         }
     }
 
+    // todo: this is wrong. what is the correct test here?
+    /*
     // don't process network next packets until the server is initialized
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
@@ -12372,6 +12370,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored network next packet because it is not initialized" );
         return;
     }
+    */
 
     // direct packet
 

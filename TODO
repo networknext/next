@@ -30,15 +30,19 @@ DONE
 
 	Fixed a crash around packet bound checks for direct packet.
 
-TODO
-
-	--------------
-
 	ref backend 5 shows the session id as 0.
 
 	Does this mean there is something wrong with the session update packet, perhaps a desync?
 
 	Get the ref backend showing the correct session counts.
+
+	It was that thing with the serialize as value type, not pointer to value again...
+
+	Now the serialize read is desynced with the SDK. Track it down and it will work.
+
+TODO
+
+	--------------
 
 	--------------
 
@@ -55,6 +59,26 @@ TODO
 	--------------
 
 	Get the first few tests passing, comment out the rest.
+
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	--------------
+
+	Get user flags in, serialized from SDK, but don't do anything with them yet.
 
 	--------------
 
