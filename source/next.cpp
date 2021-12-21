@@ -12263,9 +12263,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( packet_id == NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET )
         {
-            // todo
-            printf( "NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET\n" );
-                
             if ( server->state != NEXT_SERVER_STATE_INITIALIZING )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored init response packet from backend. server is not initializing" );
@@ -12372,8 +12369,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
     {
-        // todo
-        printf( "*** server in not initialized ***" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored network next packet because is not initialized" );
         return;
     }
 
@@ -12381,9 +12377,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PACKET )
     {
-        // todo
-        printf( "NEXT_DIRECT_PACKET\n" );
-
         packet_data += 16;
         packet_bytes -= 18;
 
@@ -12463,9 +12456,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_BACKEND_SERVER_RESPONSE_PACKET )
     {
-        // todo
-        printf( "NEXT_BACKEND_SERVER_RESPONSE_PACKET\n" );
-
         NextBackendServerResponsePacket packet;
 
         if ( next_read_backend_packet( packet_id, packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
@@ -12531,9 +12521,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_BACKEND_SESSION_RESPONSE_PACKET )
     {
-        // todo
-        printf( "NEXT_BACKEND_SESSION_RESPONSE_PACKET\n" );
-
         NextBackendSessionResponsePacket packet;
 
         if ( next_read_backend_packet( packet_id, packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
@@ -12654,9 +12641,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_UPGRADE_RESPONSE_PACKET )
     {
-        // todo
-        printf( "NEXT_UPGRADE_RESPONSE_PACKET\n" );
-
         NextUpgradeResponsePacket packet;
 
         if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, NULL, NULL, NULL, NULL, NULL ) != packet_id )
@@ -12839,9 +12823,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_REQUEST_PACKET )
     {
-        // todo
-        printf( "NEXT_ROUTE_REQUEST_PACKET\n" );
-
         if ( packet_bytes != NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. wrong size" );
@@ -12923,9 +12904,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
     {
-        // todo
-        printf( "NEXT_CONTINUE_REQUEST_PACKET\n" );
-
         if ( packet_bytes != NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet. wrong size" );
@@ -13003,9 +12981,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CLIENT_TO_SERVER_PACKET )
     {
-        // todo
-        printf( "NEXT_CLIENT_TO_SERVER_PACKET\n" );
-
         if ( packet_bytes <= NEXT_HEADER_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet too small to be valid" );
@@ -13045,9 +13020,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_PING_PACKET )
     {
-        // todo
-        printf( "NEXT_PING_PACKET\n" );
-
         if ( packet_bytes != NEXT_HEADER_BYTES + 8 + 8 + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. bad packet size" );            
@@ -13114,10 +13086,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_DIRECT_PING_PACKET )
     {
-        // todo
-        printf( "NEXT_DIRECT_PING_PACKET\n" );
-
         next_assert( session );
+
         if ( session == NULL )
             return;
 
@@ -13147,11 +13117,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CLIENT_STATS_PACKET )
     {
-        // todo
-        printf( "NEXT_CLIENT_STATS_PACKET\n" );
-
         next_assert( session );
-        
+
         if ( session == NULL )
             return;
 
@@ -13229,9 +13196,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_UPDATE_ACK_PACKET && session != NULL )
     {
-        // todo
-        printf( "NEXT_ROUTE_UPDATE_ACK_PACKET\n" );
-
         NextRouteUpdateAckPacket packet;
 
         uint64_t packet_sequence = 0;
@@ -13249,7 +13213,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route update ack from client for session %" PRIx64, session->session_id );
 
-        // todo: is update_dirty needed anymore?
         if ( session->update_dirty )
         {
             session->update_dirty = false;
@@ -13261,9 +13224,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
 void next_server_internal_process_passthrough_packet( next_server_internal_t * server, const next_address_t * from, uint8_t * packet_data, int packet_bytes )
 {
-    // todo
-    printf( "NEXT_PASSTHROUGH_PACKET\n" );
-
     next_assert( server );
     next_assert( from );
     next_assert( packet_data );
@@ -13308,10 +13268,6 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
 
     if ( packet_bytes == 0 )
         return;
-
-    // todo
-    char address_buffer[1024];
-    printf( "server received %d byte packet from %s\n", packet_bytes, next_address_to_string( &from, address_buffer ) );
 
 #if NEXT_DEVELOPMENT
     if ( next_packet_loss && ( rand() % 10 ) == 0 )
@@ -14601,10 +14557,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             int from_address_bytes = 0;
             int to_address_bytes = 0;
 
-            // todo
-            char address_buffer[256];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent direct packet to %s", next_address_to_string( to_address, address_buffer ) );
-
             next_address_data( &server->address, from_address_data, &from_address_bytes, &from_address_port );
             next_address_data( to_address, to_address_data, &to_address_bytes, &to_address_port );
 
@@ -14632,9 +14584,6 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
 void next_server_send_packet_direct( next_server_t * server, const next_address_t * to_address, const uint8_t * packet_data, int packet_bytes )
 {
-    // todo
-    printf( "server sent passthrough packet to client\n" );
-
     next_server_verify_sentinels( server );
 
     next_assert( to_address );
