@@ -14273,7 +14273,7 @@ void next_server_update( next_server_t * server )
                 
                 memcpy( server->current_magic, magic_updated->current_magic, 8 );
 
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server current magic updated: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server current magic: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
                     server->current_magic[0],
                     server->current_magic[1],
                     server->current_magic[2],
