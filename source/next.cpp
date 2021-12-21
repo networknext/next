@@ -6675,10 +6675,6 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
 
     next_platform_socket_send_packet( client->socket, &client->server_address, buffer, packet_bytes );
 
-    // todo
-    char address_buffer[1024];
-    printf( "client sent %d byte packet to %s\n", packet_bytes, next_address_to_string( &client->server_address, address_buffer ) );
-
     return NEXT_OK;
 }
 
