@@ -7017,6 +7017,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_RESPONSE_PACKET )
     {
+        packet_data += 16;
+        packet_bytes -= 18;
+
         if ( packet_bytes != NEXT_HEADER_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. bad packet size" );
@@ -7142,6 +7145,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_RESPONSE_PACKET )
     {
+        packet_data += 16;
+        packet_bytes -= 18;
+
         if ( packet_bytes != NEXT_HEADER_BYTES + 2 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. bad packet size" );
@@ -7228,6 +7234,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_SERVER_TO_CLIENT_PACKET )
     {
+        packet_data += 16;
+        packet_bytes -= 18;
+
         uint64_t payload_sequence = 0;
 
         next_platform_mutex_acquire( &client->route_manager_mutex );
@@ -7288,6 +7297,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
     if ( packet_id == NEXT_PONG_PACKET )
     {
+        packet_data += 16;
+        packet_bytes -= 18;
+
         uint64_t payload_sequence = 0;
  
         next_platform_mutex_acquire( &client->route_manager_mutex );
@@ -7330,6 +7342,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored relay pong packet. not upgraded yet" );
             return;
         }            
+
+        packet_data += 16;
+        packet_bytes -= 18;
 
         const uint8_t * p = packet_data + NEXT_HEADER_BYTES; 
 
