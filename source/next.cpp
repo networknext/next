@@ -14536,10 +14536,14 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
             uint8_t from_address_data[32];
             uint8_t to_address_data[32];
-            uint16_t from_address_port;
-            uint16_t to_address_port;
-            int from_address_bytes;
-            int to_address_bytes;
+            uint16_t from_address_port = 0;
+            uint16_t to_address_port = 0;
+            int from_address_bytes = 0;
+            int to_address_bytes = 0;
+
+            // todo
+            char address_buffer[256];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent direct packet to %s", next_address_to_string( to_address, address_buffer ) );
 
             next_address_data( &server->address, from_address_data, &from_address_bytes, &from_address_port );
             next_address_data( to_address, to_address_data, &to_address_bytes, &to_address_port );
