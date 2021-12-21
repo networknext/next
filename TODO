@@ -1,100 +1,16 @@
 DONE
 
-	Add test for server update packet.
+	Need to seriously consider the implementation of advanced packet filter and how it will work with load balanced routers, eg. my firewalla with multi-WAN.
 
-	Add test for server response packet.
+	Can it work? 
 
-	Why does the ref backend 5 get a bad server address at the end of the server update packet?
+	Maybe the hashes need to not be tied to the source address/port?
 
-	Is the packet getting truncated somehow?
+	Maybe the advanced packet filter can't work with the first hop relays?
 
-	No, it was non-pointer receiver for the interface. Needed for write packets. Doesn't work for read.
+	Maybe we need n addresses "approved" in the ping token?
 
-	Don't process any packet except server init response until server is initialized.
-
-	Hook up code to process the server update response in the server internal.
-
-	When the server response comes back, the server should compare the upcoming magic in the packet with its value.
-
-	If the value is different, then copy across all magic values from the packet into the magic values for the server and print them.
-
-	Change all logs of magic to use %02x in next.cpp
-
-	Verify the server gets upcoming, current and previous magic values by printing them when upcoming changes.
-
-	If the server doesn't get a response within 10 seconds, timeout and fall back to direct mode.
-
-	Find out where I can put state for the server update.
-
-	Check the request id matches before accepting the server response packet.
-
-	Clear the request id when the response is received.
-
-	Check for timeout by seeing if the request id is still non-zero at the time of 
-
-	Extend server to resend the server update once per-second, until the response is received.
-
-	Extend the server init request packet to only send once per-second.
-
-	Extend the server init request to have a timeout (10 seconds).
-
-	There is a race condition now between server init and upgrading clients.
-
-	We must queue upgrade requests until the server init completes, otherwise the upgrade will occur with incorrect magic and screw up the client.
-
-	If I move the destroy command to a mutex protected bool, then I can just buffer commands until the server upgrade completes or has timed out.
-
-	This will do the buffering we need for upgrades... easy.
-
-	Done. Works fine.
-
-	What is left to do to get client and server communicating with valid magic numbers across direct packets?
-
-	The client gets the current magic from the upgrade request initially.
-
-	The client should be extended to get both the upcoming, current and previous magic values instead...
-
-	We can remove the complicated, per-session magic synchronization each route update, and just send down the upcoming/current/previous magic values in each route update, and the client can copy them along.
-
-	The client and server will always send with current magic, but can receive with upcoming, current or previous.
-
-	At this point the client should be able to theoretically upgrade and exchange direct packets with the server.
-
-	Client is receiving the upgrade request packet, but it's not decoding correctly yet. What's wrong?
-
-	Fixed.
-
-	Session update packet is now failing to read. Problem with write packet on server side, or read on client side?
-
-	Almost certainly a problem with read on client side. Probably missing the packet_data += 16 and packet_bytes -= 18?
-
-	Fixed.
-
-	Client is now sending upgrade response packet to server, but the server is not receiving it?
-
-	Problem with difference in handling backend and regular packets. Fixed.
-
-	Basic filter is dropping passthrough packets.
-
-	This isn't supposed to happen, any packet with first byte being zero should pass basic and advanced packet filters.
-
-	Server is now sending upgrade confirm packets to the client, but the client is filtering them out. 
-
-	Problem with magic and/or address?
-
-	Client is dropping the upgrade confirm packet (6) with advanced packet filter.
-
-	Check the send is encoding it correctly vs. the client external address and the server address?
-
-	Seems correct...
-
-	Check the client has the magic actually saved, and is decoding relative to it?
-
-	Client upgrades but it seems it is not delivering the correct payload data for direct packets on the server.
-
-	Server is blowing up with invalid packet data check.
-
-	Fixed the server direct packet read.
+	Think this through, it's complicated, and maybe it just doesn't work. Think about it -- will it pass the challenge/response from gcore, and then not be able to connect, because it comes through to a different dest address? No, it's the same dest address the whole time, so it should pin.
 
 TODO
 
@@ -105,7 +21,6 @@ TODO
 	What's causing this?
 
 	--------------
-
 
 
 

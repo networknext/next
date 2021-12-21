@@ -6686,9 +6686,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 {
     next_client_internal_verify_sentinels( client );
 
-    // todo
-    (void) packet_receive_time;
-
     next_assert( from );
     next_assert( packet_data );
     next_assert( packet_bytes > 0 );
@@ -6817,6 +6814,9 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         memcpy( client->previous_magic, packet.previous_magic, 8 );
 
         client->client_external_address = packet.client_address;
+
+        char address_buffer[256];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client external address is %s", next_address_to_string( &client->client_external_address, address_buffer ) );
 
         NextUpgradeResponsePacket response;
 
