@@ -26,17 +26,37 @@ DONE
 	
 	Fixed. Client is upgrading and successfully sending and receiving direct packets :)
 
+	Verify that the client works across magic changes, and sees the updated magic (witchout any logs from advanced packet filter).
+
+	Fixed a crash around packet bound checks for direct packet.
+
 TODO
 
 	--------------
 
-	Verify that the client works across magic changes, and sees the updated magic (witchout any logs from advanced packet filter).
+	ref backend 5 shows the session id as 0.
+
+	Does this mean there is something wrong with the session update packet, perhaps a desync?
+
+	Get the ref backend showing the correct session counts.
 
 	--------------
 
+	Ref backend needs to response to the session update packet, so the server keeps the session alive.
 
+	--------------
 
+	Verify that we have stable upgraded direct sessions for long periods.
 
+	--------------
+
+	Get the func backend 5 up and working.
+
+	--------------
+
+	Get the first few tests passing, comment out the rest.
+
+	--------------
 
 
 
