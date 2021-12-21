@@ -12,10 +12,6 @@ DONE
 
 	Think this through, it's complicated, and maybe it just doesn't work. Think about it -- will it pass the challenge/response from gcore, and then not be able to connect, because it comes through to a different dest address? No, it's the same dest address the whole time, so it should pin.
 
-TODO
-
-	--------------
-
 	Now the client is filtering out the server -> client direct packet (1) with the advanced packet filter.
 
 	What's causing this?
@@ -23,6 +19,35 @@ TODO
 	I'll bet it's a problem where the magic isn't communicated to the server from internal.
 
 	Encoding with magic of zero. It's the only difference.
+
+TODO
+
+	--------------
+
+	Client is now receiving direct packets, but they are garbage.
+
+	It's going to be another problem with the += 16 on the packet data or whatever.
+	
+	--------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	--------------
 
