@@ -12369,7 +12369,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored network next packet because is not initialized" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored network next packet it is not initialized" );
         return;
     }
 
