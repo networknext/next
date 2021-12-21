@@ -469,11 +469,14 @@ type NextBackendSessionUpdatePacket struct {
 	ClientBandwidthOverLimit        bool
 	ServerBandwidthOverLimit        bool
 	ClientPingTimedOut              bool
+	HasNearRelayPings               bool
 	NumTags                         int32
 	Tags                            [NEXT_MAX_TAGS]uint64
 	Flags                           uint32
 	UserFlags                       uint64
-	DirectRTT                       float32
+	DirectMinRTT                    float32
+	DirectMaxRTT                    float32
+	DirectPrimeRTT                  float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
 	NextRTT                         float32
@@ -496,7 +499,7 @@ type NextBackendSessionUpdatePacket struct {
 	JitterServerToClient            float32
 }
 
-func (packet NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
+func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
@@ -542,16 +545,13 @@ func (packet NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
 	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
 	stream.SerializeBool(&packet.ClientPingTimedOut)
+	stream.SerializeBool(&packet.HasNearRelayPings)
 
 	hasTags := stream.IsWriting() && packet.NumTags > 0
-	hasFlags := stream.IsWriting() && packet.Flags != 0
-	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
 	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
 	hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
 
 	stream.SerializeBool(&hasTags)
-	stream.SerializeBool(&hasFlags)
-	stream.SerializeBool(&hasUserFlags)
 	stream.SerializeBool(&hasLostPackets)
 	stream.SerializeBool(&hasOutOfOrderPackets)
 
@@ -562,15 +562,9 @@ func (packet NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 		}
 	}
 
-	if hasFlags {
-		stream.SerializeBits(&packet.Flags, NEXT_FLAGS_COUNT)
-	}
-
-	if hasUserFlags {
-		stream.SerializeUint64(&packet.UserFlags)
-	}
-
-	stream.SerializeFloat32(&packet.DirectRTT)
+	stream.SerializeFloat32(&packet.DirectMinRTT)
+	stream.SerializeFloat32(&packet.DirectMaxRTT)
+	stream.SerializeFloat32(&packet.DirectPrimeRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
 
@@ -590,9 +584,11 @@ func (packet NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	var i int32
 	for i = 0; i < packet.NumNearRelays; i++ {
 		stream.SerializeUint64(&packet.NearRelayIds[i])
-		stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
-		stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
-		stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
+		if packet.HasNearRelayPings {
+			stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
+			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
+			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
+		}
 	}
 
 	if packet.Next {
@@ -2747,7 +2743,7 @@ func main() {
 			readStream := CreateReadStream(packetData)
 			sessionUpdate := &NextBackendSessionUpdatePacket{}
 			if err := sessionUpdate.Serialize(readStream); err != nil {
-				fmt.Printf("error: failed to read server session update packet: %v\n", err)
+				fmt.Printf("error: failed to read session update packet: %v\n", err)
 				continue
 			}
 
