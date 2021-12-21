@@ -20,6 +20,10 @@ TODO
 
 	What's causing this?
 
+	I'll bet it's a problem where the magic isn't communicated to the server from internal.
+
+	Encoding with magic of zero. It's the only difference.
+
 	--------------
 
 	Idea, challenge response encoded in ping/pong packets, eg. some sort of data passed back in the pong, expected to be passed back to the relay in the next ping...

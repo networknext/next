@@ -12329,6 +12329,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 packet.previous_magic[6],
                 packet.previous_magic[7] );
 
+            next_server_notify_magic_updated_t * notify = (next_server_notify_magic_updated_t*) next_malloc( server->context, sizeof( next_server_notify_magic_updated_t ) );
+            notify->type = NEXT_SERVER_NOTIFY_MAGIC_UPDATED;
+            memcpy( notify->current_magic, server->current_magic, 8 );
+            {
+                next_platform_mutex_guard( &server->notify_mutex );
+                next_queue_push( server->notify_queue, notify );            
+            }
+
             return;
         }
     }
@@ -14262,7 +14270,18 @@ void next_server_update( next_server_t * server )
             case NEXT_SERVER_NOTIFY_MAGIC_UPDATED:
             {
                 next_server_notify_magic_updated_t * magic_updated = (next_server_notify_magic_updated_t*) notify;
+                
                 memcpy( server->current_magic, magic_updated->current_magic, 8 );
+
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server current magic updated: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+                    server->current_magic[0],
+                    server->current_magic[1],
+                    server->current_magic[2],
+                    server->current_magic[3],
+                    server->current_magic[4],
+                    server->current_magic[5],
+                    server->current_magic[6],
+                    server->current_magic[7] );
             }
             break;
 
