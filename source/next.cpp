@@ -6951,12 +6951,24 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         return;
     }
 
-    // upgraded direct packet (255)
+    // direct packet
 
-    if ( client->upgraded && packet_id == NEXT_DIRECT_PACKET && packet_bytes > 11 && packet_bytes <= NEXT_MTU + 11 && from_server_address )
+    if ( packet_id == NEXT_DIRECT_PACKET && client->upgraded && from_server_address )
     {
         packet_data += 16;
         packet_bytes -= 18;
+
+        if ( packet_bytes <= 9 )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. packet is too small to be valid" );
+            return;
+        }
+
+        if ( packet_bytes > NEXT_MTU + 9 )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored direct packet. packet is too large to be valid" );
+            return;
+        }
 
         const uint8_t * p = packet_data;
 
@@ -6991,7 +7003,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_client_notify_packet_received_t * notify = (next_client_notify_packet_received_t*) next_malloc( client->context, sizeof( next_client_notify_packet_received_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_PACKET_RECEIVED;
         notify->direct = true;
-        notify->payload_bytes = packet_bytes - 11;
+        notify->payload_bytes = packet_bytes - 9;
+        next_assert( notify->payload_bytes > 0 );
         memcpy( notify->payload_data, packet_data + 9, size_t(notify->payload_bytes) );
         {
             next_platform_mutex_guard( &client->notify_mutex );
@@ -12364,15 +12377,29 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
-    // direct packet (255)
+    // direct packet
 
-    if ( packet_id == NEXT_DIRECT_PACKET && packet_bytes > 11 && packet_bytes <= 11 + NEXT_MTU )
+    if ( packet_id == NEXT_DIRECT_PACKET )
     {
         // todo
         printf( "NEXT_DIRECT_PACKET\n" );
 
         packet_data += 16;
         packet_bytes -= 18;
+
+        if ( packet_bytes <= 9 )
+        {
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. packet is too small to be valid", next_address_to_string( from, address_buffer ) );
+            return;
+        }
+
+        if ( packet_bytes > NEXT_MTU + 9 )
+        {
+            char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. packet is too large to be valid", next_address_to_string( from, address_buffer ) );
+            return;
+        }
 
         const uint8_t * p = packet_data;
 

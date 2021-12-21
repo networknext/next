@@ -20,14 +20,18 @@ DONE
 
 	Encoding with magic of zero. It's the only difference.
 
-TODO
-
-	--------------
-
 	Client is now receiving direct packets, but they are garbage.
 
 	It's going to be another problem with the += 16 on the packet data or whatever.
 	
+	Fixed. Client is upgrading and successfully sending and receiving direct packets :)
+
+TODO
+
+	--------------
+
+	Verify that the client works across magic changes, and sees the updated magic (witchout any logs from advanced packet filter).
+
 	--------------
 
 
