@@ -1,5 +1,5 @@
 /*
-	Network Next Reference Backend (SDK4)
+	Network Next Reference Backend (SDK5)
 	Copyright © 2017 - 2022 Network Next, Inc. All rights reserved.
 */
 
@@ -28,6 +28,8 @@ import (
 	"sync"
 	"time"
 	"unsafe"
+	"bytes"
+	"errors"
 
 	"github.com/gorilla/mux"
 )
@@ -44,11 +46,12 @@ const NEXT_MAX_NEAR_RELAYS = 32
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 40000
 
-const NEXT_BACKEND_SERVER_UPDATE_PACKET = 220
-const NEXT_BACKEND_SESSION_UPDATE_PACKET = 221
-const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 222
-const NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET = 223
-const NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET = 224
+const NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET = 50
+const NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET = 51
+const NEXT_BACKEND_SERVER_UPDATE_PACKET = 52
+const NEXT_BACKEND_SERVER_RESPONSE_PACKET = 53
+const NEXT_BACKEND_SESSION_UPDATE_PACKET = 54
+const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 55
 
 const NEXT_MAX_PACKET_BYTES = 4096
 const NEXT_MTU = 1300
@@ -136,7 +139,226 @@ var routerPrivateKey = [...]byte{0x96, 0xce, 0x57, 0x8b, 0x00, 0x19, 0x44, 0x27,
 
 var backendPrivateKey = []byte{21, 124, 5, 171, 56, 198, 148, 140, 20, 15, 8, 170, 212, 222, 84, 155, 149, 84, 122, 199, 107, 225, 243, 246, 133, 85, 118, 114, 114, 126, 200, 4, 76, 97, 202, 140, 71, 135, 62, 212, 160, 181, 151, 195, 202, 224, 207, 113, 8, 45, 37, 60, 145, 14, 212, 111, 25, 34, 175, 186, 37, 150, 163, 64}
 
-var packetHashKey = []byte{0xe3, 0x18, 0x61, 0x72, 0xee, 0x70, 0x62, 0x37, 0x40, 0xf6, 0x0a, 0xea, 0xe0, 0xb5, 0x1a, 0x2c, 0x2a, 0x47, 0x98, 0x8f, 0x27, 0xec, 0x63, 0x2c, 0x25, 0x04, 0x74, 0x89, 0xaf, 0x5a, 0xeb, 0x24}
+// ===================================================================================================================
+
+func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) {
+
+	var fromPortData [2]byte
+	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
+
+	var toPortData [2]byte
+	binary.LittleEndian.PutUint16(toPortData[:], toPort)
+
+	var packetLengthData [4]byte
+	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
+
+	sum := uint16(0)
+
+    for i := 0; i < len(fromAddress); i++ {
+    	sum += uint16(fromAddress[i])
+    }
+
+    sum += uint16(fromPortData[0])
+    sum += uint16(fromPortData[1])
+
+    for i := 0; i < len(toAddress); i++ {
+    	sum += uint16(toAddress[i])
+    }
+
+    sum += uint16(toPortData[0])
+    sum += uint16(toPortData[1])
+
+    sum += uint16(packetLengthData[0])
+    sum += uint16(packetLengthData[1])
+    sum += uint16(packetLengthData[2])
+    sum += uint16(packetLengthData[3])
+
+	var sumData [2]byte
+	binary.LittleEndian.PutUint16(sumData[:], sum)
+
+    output[0] = 1 | ( sumData[0] ^ sumData[1] ^ 193 );
+    output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
+}
+
+func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, fromPort uint16, toAddressData []byte, toPort uint16, packetLength int) {
+
+	var fromPortData [2]byte
+	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
+
+	var toPortData [2]byte
+	binary.LittleEndian.PutUint16(toPortData[:], toPort)
+
+	var packetLengthData [4]byte
+	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
+
+	hash := fnv.New64a()
+	hash.Write(magic)
+	hash.Write(fromAddressData)
+	hash.Write(fromPortData[:])
+	hash.Write(toAddressData)
+	hash.Write(toPortData[:])
+	hash.Write(packetLengthData[:])
+	hashValue := hash.Sum64()
+
+	var data [8]byte
+	binary.LittleEndian.PutUint64(data[:], uint64(hashValue))
+
+    output[0] = ( ( data[6] & 0xC0 ) >> 6 ) + 42
+    output[1] = ( data[3] & 0x1F ) + 200
+    output[2] = ( ( data[2] & 0xFC ) >> 2 ) + 5
+    output[3] = data[0]
+    output[4] = ( data[2] & 0x03 ) + 78
+    output[5] = ( data[4] & 0x7F ) + 96
+    output[6] = ( ( data[1] & 0xFC ) >> 2 ) + 100
+    if ( data[7] & 1 ) == 0 { 
+    	output[7] = 79
+    } else { 
+    	output[7] = 7 
+    }
+    if ( data[4] & 0x80 ) == 0 {
+    	output[8] = 37
+    } else { 
+    	output[8] = 83
+    }
+    output[9] = ( data[5] & 0x07 ) + 124
+    output[10] = ( ( data[1] & 0xE0 ) >> 5 ) + 175
+    output[11] = ( data[6] & 0x3F ) + 33
+    value := ( data[1] & 0x03 ); 
+    if value == 0 { 
+    	output[12] = 97
+    } else if value == 1 { 
+    	output[12] = 5
+    } else if value == 2 { 
+    	output[12] = 43
+    } else { 
+    	output[12] = 13
+    }
+    output[13] = ( ( data[5] & 0xF8 ) >> 3 ) + 210
+    output[14] = ( ( data[7] & 0xFE ) >> 1 ) + 17
+}
+
+func BasicPacketFilter(data []byte, packetLength int) bool {
+    if packetLength < 18 {
+    	return false
+    }
+    if data[0] < 0x01 || data[0] > 0x63 {
+    	return false
+    }
+    if data[1] < 0x2A || data[1] > 0x2D {
+        return false
+    }
+    if data[2] < 0xC8 || data[2] > 0xE7 {
+        return false
+    }
+    if data[3] < 0x05 || data[3] > 0x44 {
+        return false
+    }
+    if data[5] < 0x4E || data[5] > 0x51 {
+        return false
+    }
+    if data[6] < 0x60 || data[6] > 0xDF {
+        return false
+    }
+    if data[7] < 0x64 || data[7] > 0xE3 {
+        return false
+    }
+    if data[8] != 0x07 && data[8] != 0x4F {
+        return false
+    }
+    if data[9] != 0x25 && data[9] != 0x53 {
+        return false
+    }
+    if data[10] < 0x7C || data[10] > 0x83 {
+        return false
+    }
+    if data[11] < 0xAF || data[11] > 0xB6 {
+        return false
+    }
+    if data[12] < 0x21 || data[12] > 0x60 {
+        return false
+    }
+    if data[13] != 0x61 && data[13] != 0x05 && data[13] != 0x2B && data[13] != 0x0D {
+        return false
+    }
+    if data[14] < 0xD2 || data[14] > 0xF1 {
+        return false
+    }
+    if data[15] < 0x11 || data[15] > 0x90 {
+        return false
+    }
+    return true
+}
+
+func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) bool {
+    if packetLength < 18 {
+        return false;
+    }
+    var a [15]byte
+    var b [2]byte
+    GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
+    GeneratePittle( b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
+    if bytes.Compare(a[0:15], data[1:16]) != 0 {
+        return false
+    }
+    if bytes.Compare(b[0:2], data[packetLength-2:packetLength]) != 0 {
+        return false
+    }
+    return true;
+}
+
+func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
+	addressData := address.IP[12:16] // todo: hack
+	addressPort := uint16(address.Port)
+	return addressData, addressPort
+}
+
+type Serializable interface {
+    Serialize(Stream) error
+}
+
+func WriteBackendPacket(packetType int, packetObject Serializable, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
+
+	packet := make([]byte, NEXT_MAX_PACKET_BYTES)
+	packet[0] = byte(packetType)
+
+	writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+	if err != nil {
+		return nil, errors.New("could not create write stream")
+	}
+	if err := packetObject.Serialize(writeStream); err != nil {
+		return nil, errors.New(fmt.Sprintf("failed to write backend packet: %v\n", err))
+	}
+	writeStream.Flush()
+
+	serializeBytes := writeStream.GetBytesProcessed()
+	serializeData := writeStream.GetData()[:serializeBytes]
+	for i := 0; i < serializeBytes; i++ {
+		packet[16+i] = serializeData[i]
+	}
+	packet = packet[:1+15+serializeBytes+int(C.crypto_sign_BYTES)+2]
+
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packet[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packet[16]), C.ulonglong(serializeBytes))
+	C.crypto_sign_final_create(&state, (*C.uchar)(&packet[16+serializeBytes]), nil, (*C.uchar)(&privateKey[0]))
+
+	var magic [8]byte 
+
+	var fromAddressBuffer [32]byte
+	var toAddressBuffer [32]byte
+
+	fromAddressData, fromAddressPort := GetAddressData(from, fromAddressBuffer[:])
+	toAddressData, toAddressPort := GetAddressData(to, toAddressBuffer[:])
+
+	packetLength := len(packet)
+
+    GenerateChonkle(packet[1:], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
+
+    GeneratePittle(packet[packetLength-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
+
+	return packet, nil
+}
 
 // ===================================================================================================================
 
@@ -144,18 +366,18 @@ type NextBackendServerInitRequestPacket struct {
 	VersionMajor uint32
 	VersionMinor uint32
 	VersionPatch uint32
+	RequestId    uint64
 	CustomerId   uint64
 	DatacenterId uint64
-	RequestId    uint64
 }
 
 func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error {
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
+	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
-	stream.SerializeUint64(&packet.RequestId)
 	return stream.Error()
 }
 
@@ -164,11 +386,17 @@ func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error
 type NextBackendServerInitResponsePacket struct {
 	RequestId uint64
 	Response  uint32
+	UpcomingMagic [8]byte
+	CurrentMagic [8]byte
+	PreviousMagic [8]byte
 }
 
-func (packet *NextBackendServerInitResponsePacket) Serialize(stream Stream) error {
+func (packet NextBackendServerInitResponsePacket) Serialize(stream Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeBits(&packet.Response, 8)
+	stream.SerializeBytes(packet.UpcomingMagic[:])
+	stream.SerializeBytes(packet.CurrentMagic[:])
+	stream.SerializeBytes(packet.PreviousMagic[:])
 	return stream.Error()
 }
 
@@ -178,6 +406,7 @@ type NextBackendServerUpdatePacket struct {
 	VersionMajor  uint32
 	VersionMinor  uint32
 	VersionPatch  uint32
+	RequestId     uint64
 	CustomerId    uint64
 	DatacenterId  uint64
 	NumSessions   uint32
@@ -185,14 +414,31 @@ type NextBackendServerUpdatePacket struct {
 }
 
 func (packet *NextBackendServerUpdatePacket) Serialize(stream Stream) error {
-	// IMPORTANT: read only
 	stream.SerializeBits(&packet.VersionMajor, 8)
 	stream.SerializeBits(&packet.VersionMinor, 8)
 	stream.SerializeBits(&packet.VersionPatch, 8)
+	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.CustomerId)
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
+	return stream.Error()
+}
+
+// -------------------------------------------------------------------------------------
+
+type NextBackendServerResponsePacket struct {
+	RequestId     uint64
+	UpcomingMagic [8]byte
+	CurrentMagic  [8]byte
+	PreviousMagic [8]byte
+}
+
+func (packet NextBackendServerResponsePacket) Serialize(stream Stream) error {
+	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeBytes(packet.UpcomingMagic[:])
+	stream.SerializeBytes(packet.CurrentMagic[:])
+	stream.SerializeBytes(packet.PreviousMagic[:])
 	return stream.Error()
 }
 
@@ -223,11 +469,14 @@ type NextBackendSessionUpdatePacket struct {
 	ClientBandwidthOverLimit        bool
 	ServerBandwidthOverLimit        bool
 	ClientPingTimedOut              bool
+	HasNearRelayPings               bool
 	NumTags                         int32
 	Tags                            [NEXT_MAX_TAGS]uint64
 	Flags                           uint32
 	UserFlags                       uint64
-	DirectRTT                       float32
+	DirectMinRTT                    float32
+	DirectMaxRTT                    float32
+	DirectPrimeRTT                  float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
 	NextRTT                         float32
@@ -296,16 +545,13 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	stream.SerializeBool(&packet.ClientBandwidthOverLimit)
 	stream.SerializeBool(&packet.ServerBandwidthOverLimit)
 	stream.SerializeBool(&packet.ClientPingTimedOut)
+	stream.SerializeBool(&packet.HasNearRelayPings)
 
 	hasTags := stream.IsWriting() && packet.NumTags > 0
-	hasFlags := stream.IsWriting() && packet.Flags != 0
-	hasUserFlags := stream.IsWriting() && packet.UserFlags != 0
 	hasLostPackets := stream.IsWriting() && (packet.PacketsLostClientToServer+packet.PacketsLostServerToClient) > 0
 	hasOutOfOrderPackets := stream.IsWriting() && (packet.PacketsOutOfOrderClientToServer+packet.PacketsOutOfOrderServerToClient) > 0
 
 	stream.SerializeBool(&hasTags)
-	stream.SerializeBool(&hasFlags)
-	stream.SerializeBool(&hasUserFlags)
 	stream.SerializeBool(&hasLostPackets)
 	stream.SerializeBool(&hasOutOfOrderPackets)
 
@@ -316,15 +562,9 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 		}
 	}
 
-	if hasFlags {
-		stream.SerializeBits(&packet.Flags, NEXT_FLAGS_COUNT)
-	}
-
-	if hasUserFlags {
-		stream.SerializeUint64(&packet.UserFlags)
-	}
-
-	stream.SerializeFloat32(&packet.DirectRTT)
+	stream.SerializeFloat32(&packet.DirectMinRTT)
+	stream.SerializeFloat32(&packet.DirectMaxRTT)
+	stream.SerializeFloat32(&packet.DirectPrimeRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
 
@@ -344,9 +584,11 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 	var i int32
 	for i = 0; i < packet.NumNearRelays; i++ {
 		stream.SerializeUint64(&packet.NearRelayIds[i])
-		stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
-		stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
-		stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
+		if packet.HasNearRelayPings {
+			stream.SerializeInteger(&packet.NearRelayRTT[i], 0, 255)
+			stream.SerializeInteger(&packet.NearRelayJitter[i], 0, 255)
+			stream.SerializeInteger(&packet.NearRelayPacketLoss[i], 0, 100)
+		}
 	}
 
 	if packet.Next {
@@ -399,7 +641,7 @@ type NextBackendSessionResponsePacket struct {
 	HighFrequencyPings bool
 }
 
-func (packet *NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
+func (packet NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
 
 	stream.SerializeUint64(&packet.SessionId)
 
@@ -477,7 +719,7 @@ type SessionData struct {
 	Route           []uint64
 }
 
-func (packet *SessionData) Serialize(stream Stream) error {
+func (packet SessionData) Serialize(stream Stream) error {
 
 	stream.SerializeBits(&packet.Version, 8)
 	if stream.IsReading() && packet.Version != SessionDataVersion {
@@ -627,72 +869,6 @@ func RouteChanged(previous []uint64, current []uint64) bool {
 		}
 	}
 	return false
-}
-
-func IsNetworkNextPacket(packetData []byte) bool {
-	packetBytes := len(packetData)
-	if packetBytes <= 1+NEXT_PACKET_HASH_BYTES {
-		fmt.Printf("packet too small\n")
-		return false
-	}
-	if packetBytes > NEXT_MAX_PACKET_BYTES {
-		fmt.Printf("packet too big\n")
-		return false
-	}
-	messageLength := packetBytes - 1 - NEXT_PACKET_HASH_BYTES
-	if messageLength > 32 {
-		messageLength = 32
-	}
-	hash := make([]byte, NEXT_PACKET_HASH_BYTES)
-	C.crypto_generichash(
-		(*C.uchar)(&hash[0]),
-		C.ulong(NEXT_PACKET_HASH_BYTES),
-		(*C.uchar)(&packetData[1+NEXT_PACKET_HASH_BYTES]),
-		C.ulonglong(messageLength),
-		(*C.uchar)(&packetHashKey[0]),
-		C.ulong(C.crypto_generichash_KEYBYTES),
-	)
-	for i := 0; i < NEXT_PACKET_HASH_BYTES; i++ {
-		if hash[i] != packetData[i+1] {
-			fmt.Printf("signature check failed\n")
-			return false
-		}
-	}
-	return true
-}
-
-func SignNetworkNextPacket(packetData []byte, privateKey []byte) []byte {
-	signedPacketData := make([]byte, len(packetData)+C.crypto_sign_BYTES)
-	for i := 0; i < len(packetData); i++ {
-		signedPacketData[i] = packetData[i]
-	}
-	messageLength := len(packetData) - 9
-	if messageLength < 0 {
-		panic("wtf")
-	}
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&signedPacketData[9]), C.ulonglong(messageLength))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&signedPacketData[len(packetData)]), nil, (*C.uchar)(&privateKey[0]))
-	return signedPacketData
-}
-
-func HashNetworkNextPacket(packetData []byte) {
-	messageLength := len(packetData) - 9
-	if messageLength <= 0 {
-		panic("wtf")
-	}
-	if messageLength > 32 {
-		messageLength = 32
-	}
-	C.crypto_generichash(
-		(*C.uchar)(&packetData[1]),
-		C.ulong(NEXT_PACKET_HASH_BYTES),
-		(*C.uchar)(&packetData[9]),
-		C.ulonglong(messageLength),
-		(*C.uchar)(&packetHashKey[0]),
-		C.ulong(C.crypto_generichash_KEYBYTES),
-	)
 }
 
 // -----------------------------------------------------------
@@ -2096,6 +2272,7 @@ func ParseAddress(input string) *net.UDPAddr {
 	address := &net.UDPAddr{}
 	ip_string, port_string, err := net.SplitHostPort(input)
 	if err != nil {
+		// todo: do we need to truncate the IP here?
 		address.IP = net.ParseIP(input)
 		address.Port = 0
 		return address
@@ -2329,13 +2506,53 @@ type ContinueToken struct {
 
 // -------------------------------------------------------
 
+var magicUpcoming [8]byte
+var magicCurrent [8]byte
+var magicPrevious [8]byte
+var magicMutex sync.RWMutex
+
+func getMagic() ([8]byte, [8]byte, [8]byte) {
+	magicMutex.RLock()
+	upcoming := magicUpcoming
+	current := magicCurrent
+	previous := magicPrevious
+	magicMutex.RUnlock()
+	return upcoming, current, previous
+}
+
+func generateMagic(magic []byte) {
+	newMagic := RandomBytes(8)
+	for i := range newMagic {
+		magic[i] = newMagic[i]
+	}
+}
+
 func main() {
+
+	sendAddress := ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
+
+	receiveAddress := sendAddress
 
 	rand.Seed(time.Now().UnixNano())
 
 	backend.relayDatabase = make(map[string]RelayEntry)
 	backend.serverDatabase = make(map[string]ServerEntry)
 	backend.sessionDatabase = make(map[uint64]SessionEntry)
+
+	generateMagic(magicUpcoming[:])
+	generateMagic(magicCurrent[:])
+	generateMagic(magicPrevious[:])
+
+	go func() {
+		for {
+			time.Sleep(time.Second * 60)
+			magicMutex.Lock()
+			magicPrevious = magicCurrent
+			magicCurrent = magicUpcoming
+			generateMagic(magicUpcoming[:])
+			magicMutex.Unlock()
+		}
+	}()
 
 	go TimeoutThread()
 
@@ -2379,23 +2596,36 @@ func main() {
 			continue
 		}
 
-		if packetBytes <= 0 {
+		if !BasicPacketFilter(packetData[:], len(packetData)) {
+			fmt.Printf("basic packet filter failed\n")
 			continue
+		}
+
+		{
+			to := receiveAddress
+
+			var magic [8]byte 
+
+			var fromAddressBuffer [32]byte
+			var toAddressBuffer [32]byte
+
+			fromAddressData, fromAddressPort := GetAddressData(from, fromAddressBuffer[:])
+			toAddressData, toAddressPort := GetAddressData(to, toAddressBuffer[:])
+
+			if !AdvancedPacketFilter(packetData, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(packetData)) {
+				fmt.Printf("advanced packet filter failed\n")
+				continue
+			}
 		}
 
 		packetType := packetData[0]
 
-		if !IsNetworkNextPacket(packetData) {
-			fmt.Printf("error: not network next packet (%d)\n", packetData[8])
-			continue
-		}
-
-		packetData = packetData[NEXT_PACKET_HASH_BYTES:]
-		packetBytes -= NEXT_PACKET_HASH_BYTES
+		packetData = packetData[16:len(packetData)-2]
+		packetBytes -= 18
 
 		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
 
-			readStream := CreateReadStream(packetData[1:])
+			readStream := CreateReadStream(packetData)
 
 			serverInitRequest := &NextBackendServerInitRequestPacket{}
 			if err := serverInitRequest.Serialize(readStream); err != nil {
@@ -2403,41 +2633,50 @@ func main() {
 				continue
 			}
 
-			initResponse := &NextBackendServerInitResponsePacket{}
+			initResponse := NextBackendServerInitResponsePacket{}
 			initResponse.RequestId = serverInitRequest.RequestId
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
+			initResponse.UpcomingMagic, initResponse.CurrentMagic, initResponse.PreviousMagic  = getMagic()
 
-			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			toAddress := from
+			fromAddress := sendAddress
+
+			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, initResponse, fromAddress, toAddress, backendPrivateKey[:])
 			if err != nil {
-				fmt.Printf("error: failed to write server init response packet: %v\n", err)
+				fmt.Printf( "error: could not write server init response packet: %v\n", err)
 				continue
 			}
 
-			responsePacketType := uint32(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
-			hash := uint64(0)
-			writeStream.SerializeUint64(&hash)
-			if err := initResponse.Serialize(writeStream); err != nil {
-				fmt.Printf("error: failed to write server init response packet: %v\n", err)
-				continue
+			if !BasicPacketFilter(response[:], len(response)) {
+				panic("basic packet filter failed on server init response?")
 			}
-			writeStream.Flush()
 
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
+			{
+				var magic [8]byte
 
-			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
+				fromAddress := sendAddress
+				toAddress := from
 
-			HashNetworkNextPacket(responsePacketData)
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
 
-			_, err = connection.WriteToUDP(responsePacketData, from)
+				fromAddressData, fromAddressPort := GetAddressData(fromAddress, fromAddressBuffer[:])
+				toAddressData, toAddressPort := GetAddressData(toAddress, toAddressBuffer[:])
+
+				if !AdvancedPacketFilter(response, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(response)) {
+					panic("advanced packet filter failed on server init response\n")
+				}
+			}
+
+			_, err = connection.WriteToUDP(response, from)
 			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
+				fmt.Printf("error: failed to send server init response packet: %v\n", err)
 				continue
 			}
 
 		} else if packetType == NEXT_BACKEND_SERVER_UPDATE_PACKET {
 
-			readStream := CreateReadStream(packetData[1:])
+			readStream := CreateReadStream(packetData)
 
 			serverUpdate := &NextBackendServerUpdatePacket{}
 			if err := serverUpdate.Serialize(readStream); err != nil {
@@ -2459,12 +2698,52 @@ func main() {
 			backend.serverDatabase[key] = serverEntry
 			backend.mutex.Unlock()
 
+			updateResponse := NextBackendServerResponsePacket{}
+			updateResponse.RequestId = serverUpdate.RequestId
+			updateResponse.UpcomingMagic, updateResponse.CurrentMagic, updateResponse.PreviousMagic  = getMagic()
+
+			toAddress := from
+			fromAddress := sendAddress
+
+			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_RESPONSE_PACKET, updateResponse, fromAddress, toAddress, backendPrivateKey[:])
+			if err != nil {
+				fmt.Printf( "error: could not write server response packet: %v\n", err)
+				continue
+			}
+
+			if !BasicPacketFilter(response[:], len(response)) {
+				panic("basic packet filter failed on server response?")
+			}
+
+			{
+				var magic [8]byte
+
+				fromAddress := sendAddress
+				toAddress := from
+
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+
+				fromAddressData, fromAddressPort := GetAddressData(fromAddress, fromAddressBuffer[:])
+				toAddressData, toAddressPort := GetAddressData(toAddress, toAddressBuffer[:])
+
+				if !AdvancedPacketFilter(response, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(response)) {
+					panic("advanced packet filter failed on server response\n")
+				}
+			}
+
+			_, err = connection.WriteToUDP(response, from)
+			if err != nil {
+				fmt.Printf("error: failed to send server response packet: %v\n", err)
+				continue
+			}
+
 		} else if packetType == NEXT_BACKEND_SESSION_UPDATE_PACKET {
 
-			readStream := CreateReadStream(packetData[1:])
+			readStream := CreateReadStream(packetData)
 			sessionUpdate := &NextBackendSessionUpdatePacket{}
 			if err := sessionUpdate.Serialize(readStream); err != nil {
-				fmt.Printf("error: failed to read server session update packet: %v\n", err)
+				fmt.Printf("error: failed to read session update packet: %v\n", err)
 				continue
 			}
 
@@ -2657,32 +2936,26 @@ func main() {
 			sessionResponse.HasDebug = true
 			sessionResponse.Debug = "test session debug"
 
-			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			// todo: unfuck
+			/*
+			response, err := WriteBackendPacket(NEXT_BACKEND_SESSION_RESPONSE_PACKET, sessionResponse, backendPrivateKey[:])
 			if err != nil {
-				fmt.Printf("error: failed to create write stream for session response packet: %v\n", err)
+				fmt.Printf( "error: could not write session response packet: %v\n", err)
 				continue
 			}
-			responsePacketType := uint32(NEXT_BACKEND_SESSION_RESPONSE_PACKET)
-			writeStream.SerializeBits(&responsePacketType, 8)
-			hash := uint64(0)
-			writeStream.SerializeUint64(&hash)
-			if err := sessionResponse.Serialize(writeStream, sessionUpdate.VersionMajor, sessionUpdate.VersionMinor, sessionUpdate.VersionPatch); err != nil {
-				fmt.Printf("error: failed to write session response packet: %v\n", err)
-				continue
+
+			if !BasicPacketFilter(response[:], len(response)) {
+				panic("basic packet filter failed on session response?")
 			}
-			writeStream.Flush()
 
-			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
+			// todo: advanced packet filter
 
-			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
-
-			HashNetworkNextPacket(responsePacketData)
-
-			_, err = connection.WriteToUDP(responsePacketData, from)
+			_, err = connection.WriteToUDP(response, from)
 			if err != nil {
-				fmt.Printf("error: failed to send udp response: %v\n", err)
+				fmt.Printf("error: failed to send session response packet: %v\n", err)
 				continue
 			}
+			*/
 		}
 	}
 }
