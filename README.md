@@ -22,9 +22,10 @@ This is a monorepo that contains the Network Next backend.
 4. Once your pull request has been reviewed merge it into `master`
 5. To deploy to dev, merge either your branch or `master` into the `dev` branch
 6. Semaphore will build your PR and copy artifacts to the google cloud gs://dev_artifacts bucket automatically.
-7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. For dev, there are managed instances for all services except the `relay_backend` and `portal_cruncher`.
-8. The relay backends are deployed with the make tool via `make deploy-relay-backend-dev-1` and `make deploy-relay-backend-dev-2`. Wait 5 - 10 minutes between each deploy to avoid sessions falling back to direct.
-9. The portal crunchers are deployed with the make tool via `make deploy-portal-cruncher-1` and `make deploy-portal-cruncher-2`.
+7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. Follow the instructions and deployment process in [Production Release](#Production-Release) to ensure nothing goes wrong when deploying your changes to prod.
+8. The relay backend VMs are deployed with the make tool via `make deploy-relay-backend-dev-1` and `make deploy-relay-backend-dev-2`. Wait 5 - 10 minutes between each deploy to avoid sessions falling back to direct.
+9. The portal crunchers VMs are deployed with the make tool via `make deploy-portal-crunchers-dev`.
+10. The vanity metric VMs are deployd with the make tools via `make deploy-vanity-dev`.
 
 ### Production Release
 
@@ -34,36 +35,35 @@ This is a monorepo that contains the Network Next backend.
 4. Deploy the Server Backend half of the backend first, since it only relies on the route matrix. Deploy supporting services in order of consumer to producer, and roll the Server Backend MIG as the last step:
 	
 	----
-	1. Portal (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
-	2. Portal Cruncher (`make deploy-portal-cruncher-prod-#`)
+	1. Portal Backend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
+	2. Portal Cruncher (`make deploy-portal-crunchers-prod`)
 	3. Ghost Army (`make deploy-ghost-army-prod`)
 	----
 	1. Billing (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
 	----
 	1. API (Rolling Replace, Maximum Surge 2, Maximum Unavailable 0, Minimum Wait Time 0)
-	2. Vanity (`make deploy-vanity-prod-#`)
+	2. Vanity (`make deploy-vanity-prod`)
 	---- 
-	1. Server Backend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
+	1. Server Backend 4 (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
 		- Note: there is a 1 hour connection drain on server backend instances to reduce fallbacks to direct.
-		- Once the new server backend instances are healthy and running, force the UDP load balancer to stop sending traffic to the old instance by setting the metadata field of each server backend instance. Use the template below to set the metadata value per old instance before the connection drain ends, and make sure you have the correct permissions by setting `GOOGLE_APPLICATION_CREDENTIALS` to the prod credentials.
-			- Example: `gcloud compute instances add-metadata server-backend-mig-6mr0 --metadata connection-drain=true --project=network-next-v3-prod`
-5. Deploy the Relay Backend half of the backend next because it provides the route matrix. If any changes were made to the route matrix, wait for the Server Backend connection drain to finish before proceeding.
+		- Once the new server backend instances are healthy and running, force the UDP load balancer to stop sending traffic to the old instance by setting the metadata field of each **old** server backend instances. Use the template below to set the metadata value per **old** instance before the connection drain ends. You will need the prod credentials to do this (i.e. setting `GOOGLE_APPLICATION_CREDENTIALS` to the prod credentials file downloaded from GCP).
+			- Example: `gcloud compute instances add-metadata server-backend4-mig-6mr0 --metadata connection-drain=true --project=network-next-v3-prod`
+5. Deploy the Relay Backend half of the backend next because it provides the route matrix. If any changes were made to the route matrix, wait for the new Server Backend instances to become healthy and the old ones to become unhealthy (no need to wait for the connection drain to fully finish).
 	1. Analytics (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
-	2. Relay Frontend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
-	3. Relay Backend (`make deploy-relay-backend-prod-1`, and after 10 minutes, `make deploy-relay-backend-prod-2`)
-		- Check the `/status` and `/relay_dashboard` of Relay Backend 1 to ensure routes are produced before deploying Relay Backend 2
-	4. Relay Gateway (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
-	5. Relay Forwarder (`make deploy-relay-forwarder-prod`)
+	2. Analytics Pusher (`make deploy-analytics-pusher-prod`)
+	3. Relay Frontend (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
+	4. Relay Backend (`make deploy-relay-backend-prod-1`, and after 10 minutes, `make deploy-relay-backend-prod-2`)
+		- Check the `/status` endpoint of Relay Backend 1 to ensure a similar amount of routes are generated compared to Relay Backend 2 before deploying Relay Backend 2
+	5. Relay Gateway (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30s)
+	6. Relay Forwarder (`make deploy-relay-forwarder-prod`)
 6. The following services can be deployed at any time:
 	1. Relay Pusher (`make deploy-relay-pusher-prod`)
-	----
-	1. Beacon Inserter (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
-	2. Beacon (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 30)
+	2. Pingdom (`make deploy-pingdom-prod`)
 
 
 ## Development
 
-IMPORTANT: This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to link in the [SDK](https://github.com/networknext/console) and the [Relay](https://github.com/networknext/relay). In order for this to work you need clone and interact with this repo over [SSH](https://help.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh).
+IMPORTANT: This repo uses [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules) to link in [SDK4](https://github.com/networknext/sdk4) and [SDK5](https://github.com/networknext/sdk5/). In order for this to work you need clone and interact with this repo over [SSH](https://help.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh).
 
 ```bash
 git clone git@github.com:networknext/backend.git
@@ -75,8 +75,6 @@ The tool chain used for development is kept simple to make it easy for any opera
 
 - [GCP Cloud SDK](https://cloud.google.com/sdk/docs/quickstarts): needed for the `gsutil` command to publish artifacts
 - [Redis](https://redis.io)
-- [Docker](https://docs.docker.com/install/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
 - [make](http://man7.org/linux/man-pages/man1/make.1.html)
 - [sh](https://linux.die.net/man/1/sh)
 - [Go](https://golang.org/dl/#stable) (at least Go 1.13)
@@ -152,11 +150,7 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 10. Install Redis
 	`sudo apt install redis-server`
 
-11. Install Docker
-	NOTE: If you're running Windows with WSL 1, follow this article: https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly
-	For WSL 2 these steps aren't necessary, installing Docker Desktop by itself is sufficient.
-
-12. Clone the repo with an SSH key
+11. Clone the repo with an SSH key
 	Instructions from `https://help.github.com/en/github/authenticating-to-github/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent`
 
 	`ssh-keygen -t rsa -b 4096 -C "your_email@example.com"`
@@ -168,11 +162,11 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
   `git clone git@github.com:networknext/backend.git`
   `cd <clone_path>` where `<clone_path>` is the directory you cloned the repo to (usually `~/backend`)
 
-13. Init and update git submodules
+12. Init and update git submodules
 	`git submodule init`
 	`git submodule update`
 
-14. Install Google Cloud SDK
+13. Install Google Cloud SDK
 	Instructions from `https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu`
 	For other platforms, see `https://cloud.google.com/sdk/docs/quickstarts`
 
@@ -182,18 +176,19 @@ NOTE: This is NOT the only way to set up the project, this is just ONE way. Feel
 	`gcloud init`
 	When asked to choose a cloud project, choose `network-next-v3-dev`
 
-15. Install the Firestore emulator
-	`sudo apt install google-cloud-sdk-firestore-emulator`
+14. Install the Bigtable emulator
+	`sudo apt install google-cloud-sdk-bigtable-emulator`
+	`sudo apt install google-cloud-sdk-cbt`
 
-16. Install the Pub/Sub emulator
+15. Install the Pub/Sub emulator
 	`sudo apt install google-cloud-sdk-pubsub-emulator`
 
-17. Install SQLite3
+16. Install SQLite3
 	`sudo apt install sqlite3`
 
 	With the sqlite3 package installed no other setup is required to use sqlite3 for unit testing.
 
-18. Run tests to confirm everything is working properly
+17. Run tests to confirm everything is working properly
 	`make test`
 	`make test-func-parallel`
 
@@ -203,27 +198,27 @@ A good test to see if everything works and is installed is to run the "Happy Pat
 
 1. `./next select local`: setup local environment
 2. `make dev-relay-gateway`: run the relay gateway
-3. `make dev-relay-backend-1`: run the relay backend 1 (require redis-server)
-4. `make dev-relay-backend-2`: run the relay backend 2 (require redis-server)
+3. `make dev-relay-backend-1`: run the relay backend 1 (requires redis-server)
+4. `make dev-relay-backend-2`: run the relay backend 2 (requires redis-server)
 5. `make dev-relay-frontend`: run the relay frontend (require redis-server)
 6. `make dev-relay`: this will run a reference relay that will talk to the relay gateway. You can also run `make dev-relays` to create 10 relays.
-7. `make dev-server-backend`: run the server backend
-8. `make dev-server`: this will run a fake game server and register itself with the server backend
-9. `make dev-client`: this will run a fake game client and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-clients` to create 10 client sessions.
+7. `make dev-server-backend4`: run the server backend for sdk4
+8. `make dev-server4`: this will run a fake game server for sdk4 and register itself with the server backend
+9. `make dev-client4`: this will run a fake game client for sdk4 and request a route from the server which will ask the server backend for a new route for the game client. You can also run `make dev-clients4` to create 10 client sessions.
 10. `make dev-portal-cruncher-1`: run portal cruncher 1
 11. `make dev-portal-cruncher-2`: run portal cruncher 2
-12. `make dev-portal`: this will run the Portal RPC API
+12. `make dev-portal`: this will run the Portal Backend RPC API
 13. You will then need to clone the portal repo, https://github.com/networknext/portal, run through its setup, and run `npm run serve`. This will launch the portal at http://127.0.0.1:8080
 
 You should see the fake game server upgrade the clients session and get `(next route)` and `(continue route)` from the server backend which it sends to the fake game client.
 
 Simultaneously you will see the terminal with the relays logging `session created` indicating traffic is passing through relays.
 
-NOTE: It will take 5 minutes before sessions are served network next routes. Until then, you will only see `(direct route)`.
+NOTE: In local testing, network next routes are provided immediately, but in practice it will take 5 minutes of relays sending updates before network next routes are generated.
 
 ## SQL Storers and the Happy Path
 
-The `FEATURE_POSTGRESQL` environment variable is used to setup SQL storers. If this variable is unset a Firestore or in_memory storer will be used instead.
+The `FEATURE_POSTGRESQL` environment variable is used to setup SQL storers. If this variable is unset an in_memory storer will be used instead.
 
 ### SQLite3
 
@@ -231,7 +226,7 @@ Set the feature environment variable `FEATURE_POSTGRESQL=false` to use sqlite3 a
 
 ### PostgreSQL
 
-For a more functional test, set the feature environment variable `FEATURE_POSTGRESQL=true` to use PostgreSQL as a storer database. The `SeedSQLStorage()` function will not be used to sideload Happy Path data in this case. There are 2 SQL files in the `testdata` directory which can be used to sideload all the data _prior_ to running the Happy Path. Log into your local PostgreSQL server with `psql` and load the SQL files:
+For a more functional test, set the feature environment variable `FEATURE_POSTGRESQL=true` to use PostgreSQL as a storer database. The `SeedSQLStorage()` function will not be used to sideload Happy Path data in this case. There are 2 SQL files in the `testdata` directory which can be used to sideload all the data _prior_ to running the Happy Path. Log into your **local** PostgreSQL server with `psql` and load the SQL files:
 
 ```
 postgres=> drop database nn; -- if it already exists - this is critical!
@@ -243,23 +238,27 @@ nn=> \i hp-pgsql-seed.sql
 
 At this point your local PostgreSQL server is ready to go. Note: installing and setting up a local PostgreSQL server is beyond the scope of this document.  
 
-## Local Billing, Analytics, Beacon Inserter, 
+## Local Billing and Analytics
 
-It is also possible to locally debug what data is being sent to the `billing`, `analytics`, or `beacon_inserter` services. To verify that the data being sent to the service is correct:
+It is also possible to locally debug what data is being sent to the `billing` and `analytics` services. To verify that the data being sent to the service is correct:
 
 1. Make sure you have the pubsub emulator installed (instructions are in [Recommended Setup](#Recommended-Setup))
 2. Define `PUBSUB_EMULATOR_HOST` in the makefile or in the command (ex. define it as `127.0.0.1:9000`)
 3. Along with the rest of the [Happy Path](#Running-the-"Happy-Path"), run the Google Pub/Sub Emulator with `gcloud beta emulators pubsub start --project=local --host-port=127.0.0.1:9000`
-3. run `make BACKEND_LOG_LEVEL=debug dev-billing`, `make BACKEND_LOG_LEVEL=debug dev-analytics`, or `make BACKEND_LOG_LEVEL=debug dev-beacon-inserter`
+3. Run `make dev-billing` or `make dev-analytics`
+	- NOTE: the server backend has to be running prior to starting local billing to create the Pub/Sub topic
+	- NOTE: the analytics pusher has to be running prior to starting local analytics to create the Pub/Sub topics
 
 This will use a local implementation to print out the entry to the console window.
 
 ## SDK
 
-The [`SDK`](./sdk) is shipped to customers to use in their game client and server implementations. The client and server here are slim reference implementations so we can use the SDK locally.
+The [`SDK4`](./sdk4) is shipped to customers to use in their game client and server implementations ([`SDK5`](./sdk5) is on the way). The client and server here are slim reference implementations so we can use the SDK locally.
 
-- [`cmd/server`](./cmd/server)
-- [`cmd/client`](./cmd/client)
+- [`cmd/server4`](./cmd/server4)
+- [`cmd/client4`](./cmd/client4)
+- [`cmd/server5`](./cmd/server5)
+- [`cmd/client5`](./cmd/client5)
 
 ## High-Level Flow Diagram
 
@@ -300,18 +299,9 @@ Unit tests and functional tests are used in order to test code before it ships.
 
 ## Unit Tests
 
-To run the unit tests, run `make test`. This will run unit tests for the SDK, relay, and all backend components.
+To run the unit tests, run `make test`. This will run unit tests for all backend components.
 Because there are some remote services such as GCP that the backend components talk to, not all unit tests can be run without gcloud emulators or certain environment variables set. If the requirements for each of unit tests aren't met, they will be skipped.
 Here are the requirements to run each of the GCP related unit tests:
-
-Firestore:
-Install the gcloud firestore emulator: (Note that the emulator needs a Java Runtime Environment version 1.8 or higher installed and added to PATH)
-`gcloud components install beta`
-`gcloud components install cloud-firestore-emulator`
-or
-`sudo apt install google-cloud-sdk-firestore-emulator`
-
-    Add the environment variable `FIRESTORE_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `127.0.0.1:8000`).
 
 Stackdriver Metrics:
 Add the environment variable `GOOGLE_PROJECT_ID` to your makefile. Set it to a GCP project you have credentials to (ex. `network-next-v3-dev`).
@@ -324,7 +314,7 @@ Install the gcloud pubsub emulator: (Note that the emulator needs a Java Runtime
 or
 `sudo apt install google-cloud-sdk-pubsub-emulator`
 
-    Add the environment variable `FIRESTORE_PUBSUB_HOST` to your makefile with the local address of the emulator (ex. `127.0.0.1:9000`).
+    Add the environment variable `PUBSUB_EMULATOR_HOST` to your makefile with the local address of the emulator (ex. `127.0.0.1:9000`).
 
 Bigtable:
 Install the gcloud bigtable emulator:
@@ -338,40 +328,5 @@ or
 ## Functional Tests
 
 In addition to unit tests, the system also take advantage of functional tests that run real world scenarios to make sure that all of the components are working properly.
-To run the functional tests, run `make test-func`, or more preferably, `make test-func-parallel`, since the func tests take a long time to run in series.
+To run the functional tests for SDK4, run `make test-func4`, or more preferably, `make test-func4-parallel`, since the func tests take a long time to run in series. Functional tests for SDK5 can be run using `make test-func5` and `make test-func5-parallel`.
 
-## Docker and Docker Compose
-
-While all of the components can be run locally either independently or collectively it can be tedious to run multiple relays to get a true test of everything. We can leverage Docker and Docker Compose to easily stand everything up as a system. There is a [`./cmd/docker-compose.yaml`](./cmd/docker-compose.yaml) along with all required `Dockerfile`s in each of the binary directories to create the system of backend services (`relay_backend` and `server_backend`).
-
-### First Time
-
-The first time you run the system with Docker Compose it will build all the required `Dockerfile`s and run them.
-
-From the root of the project you can run `docker-compose` and specify the configuration file to stand everything up.
-
-```bash
-$ docker-compose -f ./cmd/docker-compose.yaml up
-```
-
-### Second, Third, Fourth, and N Times
-
-After all of the `Dockerfile`s have been built subsequent runs of `docker-compose up` will ONLY run them. If you make changes to any of the code you need to rebuild all of the services.
-
-```bash
-$ docker-compose -f ./cmd/docker-compose.yaml build
-```
-
-Once everything is rebuilt you can run everything again to see your changes.
-
-```bash
-$ docker-compose -f ./cmd/docker-compose.yaml up
-```
-
-### One Service at a Time
-
-Some instances you only want to run some instances at a time and you would use `docker-compose run SERVICE_NAME`. Read the `./cmd/docker-compose.yaml` for all the service names.
-
-```bash
-$ docker-compose -f ./cmd/docker-compose.yaml run relay_backend
-```
