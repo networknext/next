@@ -32,7 +32,7 @@ namespace core
 {
   extern const char* RELAY_VERSION;
 
-  const uint32_t UPDATE_REQUEST_VERSION = 4;
+  const uint32_t UPDATE_REQUEST_VERSION = 5;
   const uint32_t UPDATE_RESPONSE_VERSION = 0;
 
   const uint8_t MAX_UPDATE_ATTEMPTS = 11;  // 1 initial + 10 more for failures
@@ -44,34 +44,13 @@ namespace core
     GenericKey public_key;
     RelayStats ping_stats;
     uint64_t session_count;
+    bool shutting_down;
+    std::string relay_version = RELAY_VERSION;
+    uint8_t cpu_usage;
     uint64_t envelope_up;
     uint64_t envelope_down;
-    uint64_t outbound_ping_tx;
-    uint64_t route_request_rx;
-    uint64_t route_request_tx;
-    uint64_t route_response_rx;
-    uint64_t route_response_tx;
-    uint64_t client_to_server_rx;
-    uint64_t client_to_server_tx;
-    uint64_t server_to_client_rx;
-    uint64_t server_to_client_tx;
-    uint64_t inbound_ping_rx;
-    uint64_t inbound_ping_tx;
-    uint64_t pong_rx;
-    uint64_t session_ping_rx;
-    uint64_t session_ping_tx;
-    uint64_t session_pong_rx;
-    uint64_t session_pong_tx;
-    uint64_t continue_request_rx;
-    uint64_t continue_request_tx;
-    uint64_t continue_response_rx;
-    uint64_t continue_response_tx;
-    uint64_t near_ping_rx;
-    uint64_t near_ping_tx;
-    uint64_t unknown_rx;
-    bool shutting_down;
-    double cpu_usage;
-    double mem_usage;
+    uint64_t bandwidth_sent;
+    uint64_t bandwidth_recv;
 
     auto from(const std::vector<uint8_t>& v) -> bool;
   };
