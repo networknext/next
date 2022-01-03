@@ -92,6 +92,20 @@ func getRouteMatrix(t *testing.T, version uint32) routing.RouteMatrix {
 		expected.FullRelayIDs = []uint64{1}
 	}
 
+	if version >= 5 {
+		expected.Version = 5
+
+		expected.RelayStats[0].CPUUsage = float32(50)
+		expected.RelayStats[0].BandwidthSentPercent = float32(51)
+		expected.RelayStats[0].BandwidthReceivedPercent = float32(49)
+		expected.RelayStats[0].EnvelopeSentPercent = float32(75)
+		expected.RelayStats[0].EnvelopeReceivedPercent = float32(70)
+		expected.RelayStats[0].BandwidthSentMbps = float32(510)
+		expected.RelayStats[0].BandwidthReceivedMbps = float32(490)
+		expected.RelayStats[0].EnvelopeSentMbps = float32(680)
+		expected.RelayStats[0].EnvelopeReceivedMbps = float32(700)
+	}
+
 	return expected
 }
 
@@ -163,6 +177,30 @@ func TestRouteMatrixSerialize(t *testing.T) {
 
 	t.Run("serialize v4", func(t *testing.T) {
 		expected := getRouteMatrix(t, 4)
+
+		buffer := make([]byte, 10000)
+
+		ws, err := encoding.CreateWriteStream(buffer)
+		assert.NoError(t, err)
+		err = expected.Serialize(ws)
+		assert.NoError(t, err)
+
+		ws.Flush()
+		data := ws.GetData()[:ws.GetBytesProcessed()]
+
+		var actual routing.RouteMatrix
+		rs := encoding.CreateReadStream(data)
+		err = actual.Serialize(rs)
+		assert.NoError(t, err)
+
+		assert.NotEmpty(t, actual.FullRelayIndicesSet)
+		actual.FullRelayIndicesSet = nil
+
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("serialize v5", func(t *testing.T) {
+		expected := getRouteMatrix(t, 5)
 
 		buffer := make([]byte, 10000)
 
@@ -409,4 +447,35 @@ func TestRouteMatrixRelayFull(t *testing.T) {
 	assert.True(t, ok)
 	assert.NotEmpty(t, val)
 
+}
+
+func TestRouteMatrixRelayStatsBandwidth(t *testing.T) {
+	t.Parallel()
+
+	expected := getRouteMatrix(t, 5)
+
+	buffer := make([]byte, 20000)
+
+	ws, err := encoding.CreateWriteStream(buffer)
+	assert.NoError(t, err)
+	err = expected.Serialize(ws)
+	assert.NoError(t, err)
+
+	ws.Flush()
+	data := ws.GetData()[:ws.GetBytesProcessed()]
+
+	var actual routing.RouteMatrix
+	rs := encoding.CreateReadStream(data)
+	err = actual.Serialize(rs)
+	assert.NoError(t, err)
+
+	assert.Equal(t, float32(50), actual.RelayStats[0].CPUUsage)
+	assert.Equal(t, float32(51), actual.RelayStats[0].BandwidthSentPercent)
+	assert.Equal(t, float32(49), actual.RelayStats[0].BandwidthReceivedPercent)
+	assert.Equal(t, float32(75), actual.RelayStats[0].EnvelopeSentPercent)
+	assert.Equal(t, float32(70), actual.RelayStats[0].EnvelopeReceivedPercent)
+	assert.Equal(t, float32(510), actual.RelayStats[0].BandwidthSentMbps)
+	assert.Equal(t, float32(490), actual.RelayStats[0].BandwidthReceivedMbps)
+	assert.Equal(t, float32(680), actual.RelayStats[0].EnvelopeSentMbps)
+	assert.Equal(t, float32(700), actual.RelayStats[0].EnvelopeReceivedMbps)
 }

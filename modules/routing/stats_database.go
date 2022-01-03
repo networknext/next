@@ -43,9 +43,9 @@ func HistoryMean(history []float32) float32 {
 		}
 	}
 	if count > 0 {
-		return float32(sum/float64(count))
+		return float32(sum / float64(count))
 	} else {
-		return InvalidRouteValue		
+		return InvalidRouteValue
 	}
 }
 
