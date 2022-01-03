@@ -38,6 +38,8 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 	}
 
 	switch r.Version {
+	case 3:
+		return r.unmarshalBinaryV3(buff, index)
 	case 4:
 		return r.unmarshalBinaryV4(buff, index)
 	case 5:
@@ -45,6 +47,56 @@ func (r *RelayUpdateRequest) UnmarshalBinary(buff []byte) error {
 	default:
 		return fmt.Errorf("invalid packet, unknown version: %d", r.Version)
 	}
+}
+
+func (r *RelayUpdateRequest) unmarshalBinaryV3(buff []byte, index int) error {
+	var numRelays uint32
+
+	var addr string
+	if !encoding.ReadString(buff, &index, &addr, routing.MaxRelayAddressLength) {
+		return errors.New("could not read relay address")
+	}
+
+	if udp, err := net.ResolveUDPAddr("udp", addr); udp != nil && err == nil {
+		r.Address = *udp
+	} else {
+		return fmt.Errorf("could not convert address '%s' with reason: %v", addr, err)
+	}
+
+	if !encoding.ReadBytes(buff, &index, &r.Token, crypto.KeySize) {
+		return errors.New("could not read relay token")
+	}
+
+	if !encoding.ReadUint32(buff, &index, &numRelays) {
+		return errors.New("could not read num relays")
+	}
+
+	r.PingStats = make([]routing.RelayStatsPing, numRelays)
+
+	for i := 0; i < int(numRelays); i++ {
+
+		stats := &r.PingStats[i]
+
+		// todo: these could be much more efficient as byte values [0,255]
+		encoding.ReadUint64(buff, &index, &stats.RelayID)
+		encoding.ReadFloat32(buff, &index, &stats.RTT)
+		encoding.ReadFloat32(buff, &index, &stats.Jitter)
+		encoding.ReadFloat32(buff, &index, &stats.PacketLoss)
+	}
+
+	if !encoding.ReadUint64(buff, &index, &r.SessionCount) {
+		return errors.New("invalid packet, could not read session count")
+	}
+
+	if !encoding.ReadBool(buff, &index, &r.ShuttingDown) {
+		return errors.New("invalid packet, could not read shutdown flag")
+	}
+
+	if !encoding.ReadString(buff, &index, &r.RelayVersion, MaxVersionStringLength) {
+		return errors.New("invalid relay version string")
+	}
+
+	return nil
 }
 
 func (r *RelayUpdateRequest) unmarshalBinaryV4(buff []byte, index int) error {
@@ -174,6 +226,8 @@ func (r *RelayUpdateRequest) unmarshalBinaryV5(buff []byte, index int) error {
 // Marshals a RelayUpdateRequest. Useful for tests and fake relays.
 func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 	switch r.Version {
+	case 3:
+		return r.marshalBinaryV3()
 	case 4:
 		return r.marshalBinaryV4()
 	case 5:
@@ -181,6 +235,31 @@ func (r RelayUpdateRequest) MarshalBinary() ([]byte, error) {
 	default:
 		return nil, fmt.Errorf("invalid update request version: %d", r.Version)
 	}
+}
+
+func (r *RelayUpdateRequest) marshalBinaryV3() ([]byte, error) {
+	data := make([]byte, r.sizeV3())
+
+	index := 0
+	encoding.WriteUint32(data, &index, r.Version)
+	encoding.WriteString(data, &index, r.Address.String(), routing.MaxRelayAddressLength)
+	encoding.WriteBytes(data, &index, r.Token, crypto.KeySize)
+
+	encoding.WriteUint32(data, &index, uint32(len(r.PingStats)))
+	for i := 0; i < len(r.PingStats); i++ {
+		stats := r.PingStats[i]
+
+		encoding.WriteUint64(data, &index, stats.RelayID)
+		encoding.WriteFloat32(data, &index, stats.RTT)
+		encoding.WriteFloat32(data, &index, stats.Jitter)
+		encoding.WriteFloat32(data, &index, stats.PacketLoss)
+	}
+
+	encoding.WriteUint64(data, &index, r.SessionCount)
+	encoding.WriteBool(data, &index, r.ShuttingDown)
+	encoding.WriteString(data, &index, r.RelayVersion, uint32(len(r.RelayVersion)))
+
+	return data[:index], nil
 }
 
 func (r *RelayUpdateRequest) marshalBinaryV4() ([]byte, error) {
@@ -240,6 +319,17 @@ func (r *RelayUpdateRequest) marshalBinaryV5() ([]byte, error) {
 	encoding.WriteUint64(data, &index, r.BandwidthRecvKbps)
 
 	return data[:index], nil
+}
+
+func (r *RelayUpdateRequest) sizeV3() int {
+	return (4 + // version
+		len(r.Address.String()) + // address
+		crypto.KeySize + // public key
+		4 + // number of ping stats
+		len(r.PingStats)*(8+4+4+4) + // ping stats list
+		8 + // session count
+		1 + // shutting down
+		MaxVersionStringLength) // relay version
 }
 
 func (r *RelayUpdateRequest) sizeV4() int {
