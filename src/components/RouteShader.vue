@@ -101,7 +101,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import { cloneDeep } from 'lodash'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from './types/AlertTypes'
-import { UserProfile } from '@/components/types/AuthTypes.ts'
+import { UserProfile } from './types/AuthTypes'
 
 /**
  * This component displays all of the necessary information for the route shader tab

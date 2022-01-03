@@ -180,15 +180,6 @@ const ViewerRoutes = [
 ]
 
 const ExplorerRoutes = [
-  'map',
-  'sessions',
-  'session-details',
-  'session-tool',
-  'user-sessions',
-  'user-tool',
-  'downloads',
-  'settings',
-  'account-settings',
   'explore',
   'usage',
   'invoice',
@@ -196,25 +187,14 @@ const ExplorerRoutes = [
 ]
 
 const OwnerRoutes = [
-  'map',
-  'sessions',
-  'session-details',
-  'session-tool',
-  'user-sessions',
-  'user-tool',
-  'downloads',
-  'settings',
-  'account-settings',
   'config',
-  'users',
-  'explore',
-  'usage',
-  'analytics'
+  'users'
 ]
 
 // Add or remove these to open up beta features
 const BetaRoutes = [
   'discovery',
+  'saves',
   'supply'
 ]
 
@@ -225,6 +205,13 @@ function updateCurrentPage (name: string) {
   }
 }
 
+function checkMapModal (toName: string, fromName: string) {
+  // Close modal if open on map page
+  if (toName === 'session-details' && fromName === 'map') {
+    router.app.$root.$emit('hideMapPointsModal')
+  }
+}
+
 router.onError(() => {
   updateCurrentPage('map')
   router.push('/map')
@@ -232,7 +219,10 @@ router.onError(() => {
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  if (to.name === '404') {
+  const toName = to.name || ''
+  const fromName = from.name || ''
+
+  if (toName === '404') {
     next(new Error('Route does not exist'))
     return
   }
@@ -245,91 +235,85 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     return
   }
 
-  // Anonymous filters
-  if (store.getters.isAnonymous && AnonymousRoutes.indexOf(to.name || '') === -1) {
+  if (store.getters.isAnonymous && AnonymousRoutes.indexOf(toName) === -1) {
     // Prompt user to login and try the route again afterwards
-    updateCurrentPage('login')
+    updateCurrentPage('/login')
     next('/login?redirectURI=' + to.fullPath)
     return
   }
 
-  // AnonymousPlus filters
-  if (store.getters.isAnonymousPlus && AnonymousPlusRoutes.indexOf(to.name || '') === -1) {
-    next(new Error('Insufficient privileges'))
+  // Anonymous filters
+  if (store.getters.isAnonymous && AnonymousRoutes.indexOf(toName) !== -1) {
+    checkMapModal(toName, fromName)
+
+    updateCurrentPage(toName)
+    next()
     return
   }
 
-  if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && !store.getters.isExplorer && !store.getters.isOwner && !store.getters.isAdmin && ViewerRoutes.indexOf(to.name || '') === -1) {
-    next(new Error('Insufficient privileges'))
+  // AnonymousPlus filters
+  if (store.getters.isAnonymousPlus && AnonymousPlusRoutes.indexOf(toName) !== -1) {
+    checkMapModal(toName, fromName)
+
+    updateCurrentPage(toName)
+    next()
+    return
+  }
+
+  // Viewer filters (User that is setup and verified but doesn't have a company and/or any roles)
+  if (!(store.getters.isAnonymous || store.getters.isAnonymousPlus) && ViewerRoutes.indexOf(toName) !== -1) {
+    checkMapModal(toName, fromName)
+
+    if (toName === 'settings') {
+      updateCurrentPage('account-settings')
+      next('/settings/account')
+      return
+    }
+
+    updateCurrentPage(toName)
+    next()
     return
   }
 
   // Explorer Filters
-  if (store.getters.isExplorer && !store.getters.isOwner && !store.getters.isAdmin && ExplorerRoutes.indexOf(to.name || '') === -1) {
+  if (store.getters.isExplorer && ExplorerRoutes.indexOf(toName) !== -1) {
+    if (toName === 'explore') {
+      if (store.getters.hasBilling) {
+        updateCurrentPage('usage')
+        next('/explore/usage')
+        return
+      }
+
+      if (store.getters.hasAnalytics) {
+        updateCurrentPage('analytics')
+        next('/explore/analytics')
+        return
+      }
+    } else {
+      updateCurrentPage(toName)
+      next()
+      return
+    }
+
     next(new Error('Insufficient privileges'))
     return
   }
 
   // Owner Filters
-  if (store.getters.isOwner && !store.getters.isAdmin && OwnerRoutes.indexOf(to.name || '') === -1) {
-    next(new Error('Insufficient privileges'))
+  if (store.getters.isOwner && OwnerRoutes.indexOf(toName) !== -1) {
+    updateCurrentPage(toName)
+    next()
     return
   }
 
   // If user isn't an admin and they are trying to access beta content block them
-  if (!store.getters.isAdmin && BetaRoutes.indexOf(to.name || '') !== -1) {
-    next(new Error('Insufficient privileges'))
+  if (store.getters.isAdmin && BetaRoutes.indexOf(toName) !== -1) {
+    updateCurrentPage(toName)
+    next()
     return
   }
 
-  if (to.name === 'explore') {
-    if (store.getters.hasBilling) {
-      updateCurrentPage('usage')
-      next('/explore/usage')
-      return
-    }
-
-    if (store.getters.hasAnalytics) {
-      updateCurrentPage('analytics')
-      next('/explore/analytics')
-      return
-    }
-
-    next(new Error('Insufficient privileges'))
-    return
-  }
-
-  // Beta / Premium features given to the user at a buyer level
-  if (!store.getters.hasBilling && (to.name === 'usage' || to.name === 'invoice')) {
-    next(new Error('Insufficient privileges'))
-    return
-  }
-  if (!store.getters.hasAnalytics && (to.name === 'analytics')) {
-    next(new Error('Insufficient privileges'))
-    return
-  }
-  if (!store.getters.isAdmin && !store.getters.hasAnalytics && (to.name === 'discovery')) {
-    next(new Error('Insufficient privileges'))
-    return
-  }
-  if (!store.getters.isAdmin && !store.getters.isSeller && (to.name === 'supply')) {
-    next(new Error('Insufficient privileges'))
-    return
-  }
-
-  if (to.name === 'settings') {
-    updateCurrentPage('account-settings')
-    next('/settings/account')
-    return
-  }
-
-  // Close modal if open on map page
-  if (to.name === 'session-details' && from.name === 'map') {
-    router.app.$root.$emit('hideMapPointsModal')
-  }
-
-  updateCurrentPage(to.name || '')
-  next()
+  next(new Error('Insufficient privileges'))
 })
 
 export default router

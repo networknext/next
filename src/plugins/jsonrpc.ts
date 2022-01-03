@@ -111,6 +111,14 @@ export class JSONRPCService {
     return this.call('AuthService.AllAccounts', {})
   }
 
+  public fetchCurrentSaves (args: any): Promise<any> {
+    return this.call('BuyersService.FetchCurrentSaves', args)
+  }
+
+  public fetchSavesDashboard (args: any): Promise<any> {
+    return this.call('BuyersService.FetchSavesDashboard', args)
+  }
+
   public updateUserRoles (args: any): Promise<any> {
     return this.call('AuthService.UpdateUserRoles', args)
   }
