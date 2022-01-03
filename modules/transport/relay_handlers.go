@@ -76,7 +76,7 @@ func RelayUpdateHandlerFunc(params *RelayUpdateHandlerConfig) func(writer http.R
 
 				var relayUpdateRequest RelayUpdateRequest
 				if err = relayUpdateRequest.UnmarshalBinary(updates[i]); err != nil {
-					core.Error("%s: relay update could not read request packet", request.RemoteAddr)
+					core.Error("%s: relay update could not read request packet: %v", request.RemoteAddr, err)
 					params.Metrics.ErrorMetrics.UnmarshalFailure.Add(1)
 					return
 				}
