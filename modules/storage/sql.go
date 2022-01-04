@@ -33,8 +33,8 @@ type SQL struct {
 }
 
 const (
-	SQL_TIMEOUT = 5 * time.Second
-	MAX_RETRIES = 4
+	SQL_TIMEOUT = 10 * time.Second
+	MAX_RETRIES = 8
 )
 
 func QueryMultipleRowsRetry(ctx context.Context, db *SQL, queryString bytes.Buffer, queryArgs ...interface{}) (*sql.Rows, error) {
