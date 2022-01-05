@@ -6,7 +6,6 @@ FROM semaphoreci/golang:1.13
 RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && apt-get --allow-releaseinfo-change update && apt-get install google-cloud-sdk -y
 
 # Install emulators
-RUN apt-get -y install google-cloud-sdk-firestore-emulator 
 RUN apt-get -y install google-cloud-sdk-pubsub-emulator 
 RUN apt-get -y install google-cloud-sdk-bigtable-emulator
 

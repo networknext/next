@@ -28,8 +28,6 @@ blocks:
           commands:
             - make test
       env_vars:
-        - name: FIRESTORE_EMULATOR_HOST
-          value: "127.0.0.1:11000"
         - name: PUBSUB_EMULATOR_HOST
           value: "127.0.0.1:12000"
         - name: BIGTABLE_EMULATOR_HOST
