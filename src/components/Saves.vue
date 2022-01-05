@@ -1,5 +1,13 @@
 <template>
   <div>
+    <div
+      class="spinner-border"
+      role="status"
+      id="sessions-spinner"
+      v-show="savesDashURL === ''"
+    >
+      <span class="sr-only">Loading...</span>
+    </div>
     <div v-if="savesDashURL !== ''">
       <div class="row">
         <LookerEmbed dashID="savesDash" :dashURL="savesDashURL" />
