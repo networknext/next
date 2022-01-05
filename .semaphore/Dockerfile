@@ -13,9 +13,11 @@ RUN apt-get -y install google-cloud-sdk-bigtable-emulator
 # Install sodium and zmq
 RUN apt-get -y install libsodium-dev libzmq3-dev
 
-# Requires the go.mod and go.sum files to be located at /
+# Requires the go.mod and go.sum files to be copied to /
 # Docker image must be built from the root of the repo to have access to the go.mod and go.sum files
 # Example: docker build -f ./.semaphore/Dockerfile -tag docker-networknext-backend . 
+
+WORKDIR /
 
 COPY go.mod /
 COPY go.sum /
