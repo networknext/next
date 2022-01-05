@@ -3,33 +3,48 @@ import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 
 describe('Alert.vue', () => {
+  // Run bare minimum mount test
   it('mounts an alert successfully', () => {
     const wrapper = shallowMount(Alert)
-    expect(wrapper.exists()).toBe(true)
+    expect(wrapper.exists()).toBeTruthy()
     wrapper.destroy()
   })
 
-  it('mounts an alert with a message', async () => {
+  it('mounts a default alert hidden', () => {
     const wrapper = shallowMount(Alert)
 
+    expect(wrapper.exists()).toBeTruthy()
+
+    // Main element should be hidden by default until a message is set
+    expect(wrapper.find('div').exists()).toBeFalsy()
+
+    wrapper.destroy()
+  })
+
+  it('show alert by setting message property', () => {
+    const wrapper = shallowMount(Alert)
+
+    expect(wrapper.exists()).toBeTruthy()
+    expect(wrapper.find('div').exists()).toBeFalsy()
+
     wrapper.setData({
-      message: 'This is a test',
-      alertType: AlertType.DEFAULT
+      message: 'This is a test'
     })
 
     wrapper.vm.$mount()
 
-    expect(wrapper.exists()).toBe(true)
-    // TODO combine these some how
-    expect(wrapper.find('div').classes('alert')).toBe(true)
-    expect(wrapper.find('div').classes(AlertType.DEFAULT)).toBe(true)
-    // ^^^
-    expect(wrapper.find('div').text()).toBe('This is a test')
-    wrapper.destroy()
+    const mainDiv = wrapper.find('div')
+    expect(mainDiv.exists()).toBeTruthy()
+    expect(mainDiv.classes('alert')).toBeTruthy()
+    expect(mainDiv.classes(AlertType.DEFAULT)).toBeTruthy()
+    expect(mainDiv.text()).toBe('This is a test')
   })
 
   it('mounts an alert with a message and alert type', () => {
     const wrapper = shallowMount(Alert)
+
+    expect(wrapper.exists()).toBeTruthy()
+    expect(wrapper.find('div').exists()).toBeFalsy()
 
     wrapper.setData({
       message: 'This is still a test',
@@ -37,11 +52,11 @@ describe('Alert.vue', () => {
     })
     wrapper.vm.$mount()
 
-    // TODO combine these some how
-    expect(wrapper.find('div').classes('alert')).toBe(true)
-    expect(wrapper.find('div').classes(AlertType.SUCCESS)).toBe(true)
-    // ^^^
-    expect(wrapper.find('div').text()).toBe('This is still a test')
+    const mainDiv = wrapper.find('div')
+    expect(mainDiv.exists()).toBeTruthy()
+    expect(mainDiv.classes('alert')).toBeTruthy()
+    expect(mainDiv.classes(AlertType.SUCCESS)).toBeTruthy()
+    expect(mainDiv.text()).toBe('This is still a test')
     wrapper.destroy()
   })
 
@@ -52,13 +67,20 @@ describe('Alert.vue', () => {
       }
     })
 
+    expect(wrapper.exists()).toBeTruthy()
+    expect(wrapper.find('div').exists()).toBeFalsy()
+
     wrapper.setData({
       message: 'This is a test with a link: ',
       alertType: AlertType.INFO
     })
     wrapper.vm.$mount()
 
-    expect(wrapper.find('div').text()).toBe('This is a test with a link: \n  I am a link!')
+    const mainDiv = wrapper.find('div')
+    expect(mainDiv.exists()).toBeTruthy()
+    expect(mainDiv.classes('alert')).toBeTruthy()
+    expect(mainDiv.classes(AlertType.INFO)).toBeTruthy()
+    expect(mainDiv.text()).toBe('This is a test with a link: \n  I am a link!')
     expect(wrapper.find('a').text()).toBe('I am a link!')
     wrapper.destroy()
   })
@@ -66,11 +88,17 @@ describe('Alert.vue', () => {
   it('tests computed properties', () => {
     const wrapper = shallowMount(Alert)
 
+    expect(wrapper.exists()).toBeTruthy()
+    expect(wrapper.find('div').exists()).toBeFalsy()
+
     wrapper.setData({
       message: 'This is a test',
       alertType: AlertType.ERROR
     })
     wrapper.vm.$mount()
+
+    const mainDiv = wrapper.find('div')
+    expect(mainDiv.exists()).toBeTruthy()
 
     expect((wrapper.vm as any).alertMessage).toBe('This is a test')
     expect((wrapper.vm as any).className).toBe(AlertType.ERROR)
@@ -82,6 +110,7 @@ describe('Alert.vue', () => {
 
     expect((wrapper.vm as any).alertMessage).toBe('This is also a test')
     expect((wrapper.vm as any).className).toBe(AlertType.SUCCESS)
+
     wrapper.destroy()
   })
 })

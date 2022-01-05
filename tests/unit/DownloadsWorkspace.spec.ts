@@ -88,7 +88,7 @@ describe('DownloadsWorkspace.vue', () => {
   // Run bare minimum mount test
   it('mounts the downloads workspace successfully', () => {
     const wrapper = shallowMount(DownloadsWorkspace, { localVue, store })
-    expect(wrapper.exists()).toBe(true)
+    expect(wrapper.exists()).toBeTruthy()
     wrapper.destroy()
   })
 
