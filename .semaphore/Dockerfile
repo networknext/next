@@ -15,7 +15,7 @@ RUN apt-get -y install libsodium-dev libzmq3-dev
 
 # Requires the go.mod and go.sum files to be located at /
 # Docker image must be built from the root of the repo to have access to the go.mod and go.sum files
-# Example: docker build -f ./.semaphore/Dockerfile . 
+# Example: docker build -f ./.semaphore/Dockerfile -tag docker-networknext-backend . 
 
 COPY go.mod /
 COPY go.sum /
