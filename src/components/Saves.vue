@@ -3,7 +3,7 @@
     <div
       class="spinner-border"
       role="status"
-      id="sessions-spinner"
+      id="saves-spinner"
       v-show="savesDashURL === ''"
     >
       <span class="sr-only">Loading...</span>
