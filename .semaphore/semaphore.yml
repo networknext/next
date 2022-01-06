@@ -13,17 +13,13 @@ global_job_config:
       - checkout
       - mv /node_modules ./node_modules
 blocks:
-  - name: Lint & Unit Tests
+  - name: Lint & Tests
     task:
       jobs:
         - name: Frontend Linting
           commands:
             - npm run lint
-        - name: Frontend Unit
-          commands:
             - npm run test:unit
-        ## - name: Frontend E2E
-          ## commands:
             ## - npm run test:e2e
 promotions:
   - name: Development Deployment
