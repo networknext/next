@@ -13,12 +13,12 @@ RUN apt-get -y install google-cloud-sdk-bigtable-emulator
 RUN apt-get -y install libsodium-dev libzmq3-dev
 
 # Install go modules
-# Requires the go.mod and go.sum files to be copied to semaphore home directory
+# Requires the go.mod and go.sum files to be copied in order to download them
 # Docker image must be built from the root of the repo to have access to the go.mod and go.sum files
 # Example: docker build -f ./.semaphore/Dockerfile -t nbopardi/networknext:backend .
 
-# Set the current working directory to semaphore home directory
-WORKDIR /home/semaphore
+# Set the current working directory to root
+WORKDIR /
 
 COPY go.mod .
 COPY go.sum .
