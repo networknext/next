@@ -12,14 +12,21 @@ global_job_config:
     commands:
       - checkout
       - mv /node_modules ./node_modules
+
+fail_fast:
+  stop:
+    when: "true" # stop all jobs upon first failure
 blocks:
   - name: Lint & Tests
     task:
       jobs:
-        - name: Frontend
+        - name: Frontend Linting
           commands:
             - npm run lint
+        - name: Frontend Unit
             - npm run test:unit
+        ## - name: Frontend E2E
+          ## commands:
             ## - npm run test:e2e
 promotions:
   - name: Development Deployment
