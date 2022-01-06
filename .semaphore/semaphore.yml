@@ -4,12 +4,14 @@ agent:
   machine:
     type: e1-standard-8
     os_image: ubuntu1804
+  containers:
+    - name: main
+      image: nbopardi/networknext:portal
 global_job_config:
   prologue:
     commands:
       - checkout
-      - sem-version node 14
-      - npm i
+      - cp /node_modules .
 blocks:
   - name: Linting
     task:
