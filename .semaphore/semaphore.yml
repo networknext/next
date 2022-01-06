@@ -11,7 +11,7 @@ global_job_config:
   prologue:
     commands:
       - checkout
-      - cp /node_modules .
+      - mv /node_modules ./node_modules
 blocks:
   - name: Linting
     task:
