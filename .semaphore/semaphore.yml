@@ -12,9 +12,7 @@ global_job_config:
     - name: sdk5-repo-access
   prologue:
     commands:
-      # - sudo apt-get update && sudo apt-get -y install libsodium-dev google-cloud-sdk-firestore-emulator google-cloud-sdk-pubsub-emulator google-cloud-sdk-bigtable-emulator libzmq3-dev
       - checkout
-      # - sem-version go 1.13
       - make clean
       - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
       - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
