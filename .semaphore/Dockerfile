@@ -1,13 +1,15 @@
 # syntax=docker/dockerfile:1
 
-FROM semaphoreci/golang:1.13
+FROM google/cloud-sdk:alpine
 
-# Install gcloud sdk, pubsub emulator, bigtable emulator, libsodium, and libzmq
-RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add - && \
-	apt-get --allow-releaseinfo-change update && \
-	apt-get -y install google-cloud-sdk google-cloud-sdk-pubsub-emulator google-cloud-sdk-bigtable-emulator libsodium-dev libzmq3-dev && \
-	rm -rf /var/lib/apt/lists/*
+# Install go via copy
+COPY --from=golang:1.13-alpine /usr/local/go/ /usr/local/go/
 
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+# Install necessary packages
+RUN apk add --no-cache coreutils build-base pkgconfig libsodium-dev zeromq-dev musl-dev openjdk8-jre && \
+	gcloud components install --quiet beta pubsub-emulator bigtable
 
 # Install go modules
 # Requires the go.mod and go.sum files to be copied in order to download them
