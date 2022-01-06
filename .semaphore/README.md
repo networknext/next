@@ -23,11 +23,10 @@ Update the Docker image when the following occurs:
 To update the Docker image, make sure you have Docker installed and are a collaborator for the `nbopardi/networknext` docker repo.
 Then run the following from the root of the portal repo:
 
-1. `go mod tidy`
-2. `docker build -f ./.semaphore/Dockerfile -t nbopardi/networknext:portal .`
-3. `docker history nbopardi/networknext:portal`
+1. `docker build -f ./.semaphore/Dockerfile -t nbopardi/networknext:portal .`
+2. `docker history nbopardi/networknext:portal`
 	- This is to verify the size of each layer of the Docker image.
 	- Make sure the total image size is relatively small (under 3 GB).
-4. `docker push nbopardi/networknext:portal`
+3. `docker push nbopardi/networknext:portal`
 
 Once complete, Semaphore will now use the latest Docker image.
