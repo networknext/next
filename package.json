@@ -108,6 +108,8 @@
   ],
   "jest": {
     "preset": "@vue/cli-plugin-unit-jest/presets/typescript-and-babel",
-    "setupFilesAfterEnv": ["./tests/unit/jest-setup.ts"]
+    "setupFilesAfterEnv": [
+      "./tests/unit/jest-setup.ts"
+    ]
   }
 }

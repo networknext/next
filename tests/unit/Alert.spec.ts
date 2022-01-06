@@ -4,7 +4,7 @@ import { AlertType } from '@/components/types/AlertTypes'
 
 describe('Alert.vue', () => {
   // Run bare minimum mount test
-  it('mounts an alert successfully', () => {
+  it('mounts the component successfully', () => {
     const wrapper = shallowMount(Alert)
     expect(wrapper.exists()).toBeTruthy()
     wrapper.destroy()
