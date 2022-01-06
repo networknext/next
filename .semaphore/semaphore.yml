@@ -12,7 +12,6 @@ global_job_config:
     commands:
       - checkout
       - mv /node_modules ./node_modules
-
 fail_fast:
   stop:
     when: "true" # stop all jobs upon first failure
@@ -24,6 +23,7 @@ blocks:
           commands:
             - npm run lint
         - name: Frontend Unit
+          commands:
             - npm run test:unit
         ## - name: Frontend E2E
           ## commands:
