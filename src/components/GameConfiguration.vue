@@ -46,7 +46,8 @@ import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { cloneDeep } from 'lodash'
-import { UPDATE_PUBLIC_KEY_FAILURE, UPDATE_PUBLIC_KEY_SUCCESS } from './types/Constants'
+import { UPDATE_PUBLIC_KEY_SUCCESS } from './types/Constants'
+import { ErrorTypes } from './types/ErrorTypes'
 
 /**
  * This component displays all of the necessary information for the game configuration tab
@@ -106,22 +107,26 @@ export default class GameConfiguration extends Vue {
           }
         }, 5000)
         this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
-        return this.$apiService.fetchAllBuyers()
+        this.$apiService.fetchAllBuyers()
+          .then((response: any) => {
+            const allBuyers = response.buyers
+            this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
+          })
+          .catch((error: Error) => {
+            console.log('Failed to refresh buyer list')
+            console.log(error)
+          })
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
         console.log(error)
-        this.$refs.responseAlert.setMessage(UPDATE_PUBLIC_KEY_FAILURE)
+        this.$refs.responseAlert.setMessage(ErrorTypes.UPDATE_PUBLIC_KEY_FAILURE)
         this.$refs.responseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
           if (this.$refs.responseAlert) {
             this.$refs.responseAlert.resetAlert()
           }
         }, 5000)
-      })
-      .then((response: any) => {
-        const allBuyers = response.buyers
-        this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
       })
   }
 }

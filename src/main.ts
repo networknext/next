@@ -88,7 +88,10 @@ const clientID = process.env.VUE_APP_AUTH0_CLIENTID
 const domain = process.env.VUE_APP_AUTH0_DOMAIN
 Vue.use(AuthPlugin, {
   domain: domain,
-  clientID: clientID
+  clientID: clientID,
+  store: store,
+  flagService: Vue.prototype.$flagService,
+  gtagService: Vue.prototype.$gtag
 })
 
 // Setup jsonrpc plugin - This handles all communication with the backend both auth'd and unauth'd

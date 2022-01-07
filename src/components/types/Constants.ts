@@ -10,4 +10,3 @@ export const SDK_DOCUMENTATION_URL = 'https://network-next-sdk.readthedocs-hoste
 export const SDK_DOCUMENTATION_EVENT = 'SDK-docs-download'
 export const IMPORTANT_CLICKS_CATEGORY = 'Important Clicks'
 export const UPDATE_PUBLIC_KEY_SUCCESS = 'Updated public key successfully'
-export const UPDATE_PUBLIC_KEY_FAILURE = 'Failed to update public key'

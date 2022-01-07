@@ -3,9 +3,10 @@ import Vuex from 'vuex'
 import GameConfiguration from '@/components/GameConfiguration.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
-import { cloneDeep, reject } from 'lodash'
+import { cloneDeep } from 'lodash'
 import { AlertType } from '@/components/types/AlertTypes'
-import { UPDATE_PUBLIC_KEY_FAILURE, UPDATE_PUBLIC_KEY_SUCCESS } from '@/components/types/Constants'
+import { UPDATE_PUBLIC_KEY_SUCCESS } from '@/components/types/Constants'
+import { ErrorTypes } from '@/components/types/ErrorTypes'
 
 describe('GameConfiguration.vue', () => {
   const localVue = createLocalVue()
@@ -113,7 +114,7 @@ describe('GameConfiguration.vue', () => {
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
     newProfile.roles = ['Owner']
-    newProfile.pubKey = btoa('blah blah blah pubkey')
+    newProfile.pubKey = btoa('test pubkey')
 
     store.commit('UPDATE_USER_PROFILE', newProfile)
 
@@ -206,15 +207,12 @@ describe('GameConfiguration.vue', () => {
     const pubKeyTextArea = wrapper.find('#pubkey-input')
     const newPubKey = btoa('some random public key')
 
-    pubKeyTextArea.setValue(newPubKey)
+    await pubKeyTextArea.setValue(newPubKey)
 
     // Check public key input - should not be empty here
     const pubKeyTextAreaElement = pubKeyTextArea.element as HTMLTextAreaElement
 
     expect(pubKeyTextAreaElement.value).toBe(newPubKey)
-
-    // Wait for UI to react
-    await wrapper.vm.$nextTick()
 
     // Check save button - should not be disabled
     const gameConfigButton = wrapper.find('#game-config-button')
@@ -226,10 +224,7 @@ describe('GameConfiguration.vue', () => {
     expect(store.getters.allBuyers.length).toBe(0)
 
     // Submit new public key
-    gameConfigButton.trigger('submit')
-
-    // Wait for UI to react
-    await wrapper.vm.$nextTick()
+    await gameConfigButton.trigger('submit')
 
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
@@ -245,7 +240,7 @@ describe('GameConfiguration.vue', () => {
     expect(alert.classes(AlertType.SUCCESS)).toBeTruthy()
     expect(alert.text()).toBe(UPDATE_PUBLIC_KEY_SUCCESS)
 
-    // Wait for UI to react
+    // Wait for all buyers call to finish
     await wrapper.vm.$nextTick()
 
     // Check buyers list to make sure the new buyer was added correctly
@@ -297,15 +292,13 @@ describe('GameConfiguration.vue', () => {
     const pubKeyTextArea = wrapper.find('#pubkey-input')
     const newPubKey = btoa('some random public key')
 
-    pubKeyTextArea.setValue(newPubKey)
+    // Set the public key and wait for the reactive fields to update
+    await pubKeyTextArea.setValue(newPubKey)
 
     // Check public key input - should not be empty here
     const pubKeyTextAreaElement = pubKeyTextArea.element as HTMLTextAreaElement
 
     expect(pubKeyTextAreaElement.value).toBe(newPubKey)
-
-    // Wait for UI to react
-    await wrapper.vm.$nextTick()
 
     // Check save button - should not be disabled
     const gameConfigButton = wrapper.find('#game-config-button')
@@ -317,10 +310,7 @@ describe('GameConfiguration.vue', () => {
     expect(store.getters.allBuyers.length).toBe(0)
 
     // Submit new public key
-    gameConfigButton.trigger('submit')
-
-    // Wait for UI to react
-    await wrapper.vm.$nextTick()
+    await gameConfigButton.trigger('submit')
 
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
@@ -335,9 +325,6 @@ describe('GameConfiguration.vue', () => {
     expect(alert.exists()).toBeTruthy()
     expect(alert.classes(AlertType.SUCCESS)).toBeTruthy()
     expect(alert.text()).toBe(UPDATE_PUBLIC_KEY_SUCCESS)
-
-    // Wait for UI to react
-    await wrapper.vm.$nextTick()
 
     // Check buyers list to make sure it is still empty
     expect(store.getters.allBuyers.length).toBe(0)
@@ -383,15 +370,12 @@ describe('GameConfiguration.vue', () => {
     const pubKeyTextArea = wrapper.find('#pubkey-input')
     const newPubKey = btoa('some random public key')
 
-    pubKeyTextArea.setValue(newPubKey)
+    await pubKeyTextArea.setValue(newPubKey)
 
     // Check public key input - should not be empty here
     const pubKeyTextAreaElement = pubKeyTextArea.element as HTMLTextAreaElement
 
     expect(pubKeyTextAreaElement.value).toBe(newPubKey)
-
-    // Wait for UI to react
-    await wrapper.vm.$nextTick()
 
     // Check save button - should not be disabled
     const gameConfigButton = wrapper.find('#game-config-button')
@@ -403,10 +387,7 @@ describe('GameConfiguration.vue', () => {
     expect(store.getters.allBuyers.length).toBe(0)
 
     // Submit new public key
-    gameConfigButton.trigger('submit')
-
-    // Wait for UI to react
-    await wrapper.vm.$nextTick()
+    await gameConfigButton.trigger('submit')
 
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
@@ -420,10 +401,7 @@ describe('GameConfiguration.vue', () => {
     const alert = wrapper.find('.alert')
     expect(alert.exists()).toBeTruthy()
     expect(alert.classes(AlertType.ERROR)).toBeTruthy()
-    expect(alert.text()).toBe(UPDATE_PUBLIC_KEY_FAILURE)
-
-    // Wait for UI to react
-    await wrapper.vm.$nextTick()
+    expect(alert.text()).toBe(ErrorTypes.UPDATE_PUBLIC_KEY_FAILURE)
 
     // Check buyers list to make sure the new buyer was added correctly
     expect(store.getters.allBuyers.length).toBe(0)
