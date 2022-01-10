@@ -100,8 +100,8 @@ func TestGatewayRelayUpdate_UnmarshalFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	updateRequest := &transport.RelayUpdateRequest{
-		Version:      4,
-		RelayVersion: "2.0.6",
+		Version:      5,
+		RelayVersion: "2.0.9",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -129,8 +129,8 @@ func TestGatewayRelayUpdate_ExceedMaxRelays(t *testing.T) {
 	assert.NoError(t, err)
 
 	updateRequest := &transport.RelayUpdateRequest{
-		Version:      4,
-		RelayVersion: "2.0.6",
+		Version:      5,
+		RelayVersion: "2.0.9",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 		PingStats:    make([]routing.RelayStatsPing, transport.MaxRelays+1),
@@ -159,8 +159,8 @@ func TestGatewayRelayUpdate_RelayNotFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	updateRequest := &transport.RelayUpdateRequest{
-		Version:      4,
-		RelayVersion: "2.0.6",
+		Version:      5,
+		RelayVersion: "2.0.9",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -195,7 +195,7 @@ func TestGatewayRelayUpdate_Success(t *testing.T) {
 			Name: "seller name",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.6",
+		Version: "2.0.9",
 	}
 
 	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1})
@@ -204,7 +204,7 @@ func TestGatewayRelayUpdate_Success(t *testing.T) {
 	defer svr.Close()
 
 	updateRequest := &transport.RelayUpdateRequest{
-		Version:      4,
+		Version:      5,
 		RelayVersion: relay1.Version,
 		Address:      relay1.Addr,
 		Token:        make([]byte, crypto.KeySize),
@@ -227,4 +227,272 @@ func TestGatewayRelayUpdate_Success(t *testing.T) {
 	response := &transport.RelayUpdateResponse{}
 	err = response.UnmarshalBinary(body)
 	assert.NoError(t, err)
+}
+
+func TestGatewayRelayUpdate_PingInternalOnly_NotSameSeller(t *testing.T) {
+	t.Parallel()
+
+	addr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+	intAddr1, err := net.ResolveUDPAddr("udp", "10.128.0.1:40000")
+	assert.NoError(t, err)
+
+	relay1 := routing.Relay{
+		ID:           crypto.HashID("127.0.0.1:40000"),
+		Addr:         *addr1,
+		InternalAddr: *intAddr1,
+		Datacenter: routing.Datacenter{
+			ID:   1,
+			Name: "some name",
+		},
+		PublicKey: make([]byte, crypto.KeySize),
+		Seller: routing.Seller{
+			ID:   "sellerID1",
+			Name: "seller name 1",
+		},
+		State:            routing.RelayStateEnabled,
+		Version:          "2.0.9",
+		PingInternalOnly: true,
+	}
+
+	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+	assert.NoError(t, err)
+	intAddr2, err := net.ResolveUDPAddr("udp", "10.128.0.2:40000")
+	assert.NoError(t, err)
+
+	relay2 := routing.Relay{
+		ID:           crypto.HashID("127.0.0.2:40000"),
+		Addr:         *addr2,
+		InternalAddr: *intAddr2,
+		Datacenter: routing.Datacenter{
+			ID:   2,
+			Name: "some name 2",
+		},
+		PublicKey: make([]byte, crypto.KeySize),
+		Seller: routing.Seller{
+			ID:   "sellerID2",
+			Name: "seller name 2",
+		},
+		State:            routing.RelayStateEnabled,
+		Version:          "2.0.9",
+		PingInternalOnly: true,
+	}
+
+	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1, relay2})
+
+	svr := httptest.NewServer(http.HandlerFunc(transport.GatewayRelayUpdateHandlerFunc(config)))
+	defer svr.Close()
+
+	updateRequest := &transport.RelayUpdateRequest{
+		Version:      5,
+		RelayVersion: relay1.Version,
+		Address:      relay1.Addr,
+		Token:        make([]byte, crypto.KeySize),
+	}
+
+	bin, err := updateRequest.MarshalBinary()
+	assert.NoError(t, err)
+
+	client := svr.Client()
+	res, err := client.Post(svr.URL, "application/octet-stream", bytes.NewBuffer(bin))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 200, res.StatusCode)
+	assert.Equal(t, 1, len(config.RequestChan))
+
+	body, err := ioutil.ReadAll(res.Body)
+	assert.NoError(t, err)
+	defer res.Body.Close()
+
+	response := &transport.RelayUpdateResponse{}
+	err = response.UnmarshalBinary(body)
+	assert.NoError(t, err)
+
+	assert.Zero(t, len(response.RelaysToPing))
+}
+
+func TestGatewayRelayUpdate_PingInternalOnly_NoInternalIP(t *testing.T) {
+	t.Parallel()
+
+	addr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+	intAddr1, err := net.ResolveUDPAddr("udp", "10.128.0.1:40000")
+	assert.NoError(t, err)
+
+	relay1 := routing.Relay{
+		ID:           crypto.HashID("127.0.0.1:40000"),
+		Addr:         *addr1,
+		InternalAddr: *intAddr1,
+		Datacenter: routing.Datacenter{
+			ID:   1,
+			Name: "some name",
+		},
+		PublicKey: make([]byte, crypto.KeySize),
+		Seller: routing.Seller{
+			ID:   "sellerID1",
+			Name: "seller name 1",
+		},
+		State:            routing.RelayStateEnabled,
+		Version:          "2.0.9",
+		PingInternalOnly: true,
+	}
+
+	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+	assert.NoError(t, err)
+
+	relay2 := routing.Relay{
+		ID:   crypto.HashID("127.0.0.2:40000"),
+		Addr: *addr2,
+		Datacenter: routing.Datacenter{
+			ID:   2,
+			Name: "some name 2",
+		},
+		PublicKey: make([]byte, crypto.KeySize),
+		Seller: routing.Seller{
+			ID:   "sellerID1",
+			Name: "seller name 1",
+		},
+		State:            routing.RelayStateEnabled,
+		Version:          "2.0.9",
+		PingInternalOnly: true,
+	}
+
+	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1, relay2})
+
+	svr := httptest.NewServer(http.HandlerFunc(transport.GatewayRelayUpdateHandlerFunc(config)))
+	defer svr.Close()
+
+	updateRequest := &transport.RelayUpdateRequest{
+		Version:      5,
+		RelayVersion: relay1.Version,
+		Address:      relay1.Addr,
+		Token:        make([]byte, crypto.KeySize),
+	}
+
+	bin, err := updateRequest.MarshalBinary()
+	assert.NoError(t, err)
+
+	client := svr.Client()
+	res, err := client.Post(svr.URL, "application/octet-stream", bytes.NewBuffer(bin))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 200, res.StatusCode)
+	assert.Equal(t, 1, len(config.RequestChan))
+
+	body, err := ioutil.ReadAll(res.Body)
+	assert.NoError(t, err)
+	defer res.Body.Close()
+
+	response := &transport.RelayUpdateResponse{}
+	err = response.UnmarshalBinary(body)
+	assert.NoError(t, err)
+
+	assert.Zero(t, len(response.RelaysToPing))
+}
+
+func TestGatewayRelayUpdate_PingInternalOnly_Success(t *testing.T) {
+	t.Parallel()
+
+	addr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:40000")
+	assert.NoError(t, err)
+	intAddr1, err := net.ResolveUDPAddr("udp", "10.128.0.1:40000")
+	assert.NoError(t, err)
+
+	relay1 := routing.Relay{
+		ID:           crypto.HashID("127.0.0.1:40000"),
+		Addr:         *addr1,
+		InternalAddr: *intAddr1,
+		Datacenter: routing.Datacenter{
+			ID:   1,
+			Name: "some name",
+		},
+		PublicKey: make([]byte, crypto.KeySize),
+		Seller: routing.Seller{
+			ID:   "sellerID1",
+			Name: "seller name 1",
+		},
+		State:            routing.RelayStateEnabled,
+		Version:          "2.0.9",
+		PingInternalOnly: true,
+	}
+
+	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
+	assert.NoError(t, err)
+	intAddr2, err := net.ResolveUDPAddr("udp", "10.128.0.2:40000")
+	assert.NoError(t, err)
+
+	relay2 := routing.Relay{
+		ID:           crypto.HashID("127.0.0.2:40000"),
+		Addr:         *addr2,
+		InternalAddr: *intAddr2,
+		Datacenter: routing.Datacenter{
+			ID:   2,
+			Name: "some name 2",
+		},
+		PublicKey: make([]byte, crypto.KeySize),
+		Seller: routing.Seller{
+			ID:   "sellerID1",
+			Name: "seller name 1",
+		},
+		State:            routing.RelayStateEnabled,
+		Version:          "2.0.9",
+		PingInternalOnly: true,
+	}
+
+	addr3, err := net.ResolveUDPAddr("udp", "127.0.0.3:40000")
+	assert.NoError(t, err)
+	intAddr3, err := net.ResolveUDPAddr("udp", "10.128.0.3:40000")
+	assert.NoError(t, err)
+
+	relay3 := routing.Relay{
+		ID:           crypto.HashID("127.0.0.3:40000"),
+		Addr:         *addr3,
+		InternalAddr: *intAddr3,
+		Datacenter: routing.Datacenter{
+			ID:   3,
+			Name: "some name 3",
+		},
+		PublicKey: make([]byte, crypto.KeySize),
+		Seller: routing.Seller{
+			ID:   "sellerID2",
+			Name: "seller name 2",
+		},
+		State:            routing.RelayStateEnabled,
+		Version:          "2.0.9",
+		PingInternalOnly: true,
+	}
+
+	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1, relay2, relay3})
+
+	svr := httptest.NewServer(http.HandlerFunc(transport.GatewayRelayUpdateHandlerFunc(config)))
+	defer svr.Close()
+
+	updateRequest := &transport.RelayUpdateRequest{
+		Version:      5,
+		RelayVersion: relay1.Version,
+		Address:      relay1.Addr,
+		Token:        make([]byte, crypto.KeySize),
+	}
+
+	bin, err := updateRequest.MarshalBinary()
+	assert.NoError(t, err)
+
+	client := svr.Client()
+	res, err := client.Post(svr.URL, "application/octet-stream", bytes.NewBuffer(bin))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 200, res.StatusCode)
+	assert.Equal(t, 1, len(config.RequestChan))
+
+	body, err := ioutil.ReadAll(res.Body)
+	assert.NoError(t, err)
+	defer res.Body.Close()
+
+	response := &transport.RelayUpdateResponse{}
+	err = response.UnmarshalBinary(body)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 1, len(response.RelaysToPing))
+	assert.Equal(t, relay2.ID, response.RelaysToPing[0].ID)
+	assert.Equal(t, relay2.InternalAddr.String(), response.RelaysToPing[0].Address)
 }
