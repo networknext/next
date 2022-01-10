@@ -156,6 +156,7 @@ func SeedStorage(
 					MaxBandwidthMbps:    0,
 					PingInternalOnly:    false,
 					DestFirst:           false,
+					CanPingInternalAddr: false,
 				}); err != nil {
 					return fmt.Errorf("AddRelay() err: %w", err)
 				}

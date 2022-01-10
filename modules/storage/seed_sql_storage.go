@@ -422,6 +422,7 @@ func SeedSQLStorage(
 				Version:             "2.0.9",
 				PingInternalOnly:    false,
 				DestFirst:           false,
+				CanPingInternalAddr: false,
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding local relay: %w", err)
 			}
@@ -477,6 +478,7 @@ func SeedSQLStorage(
 				Version:             "2.0.9",
 				PingInternalOnly:    false,
 				DestFirst:           false,
+				CanPingInternalAddr: false,
 			}); err != nil {
 				return fmt.Errorf("AddRelay() error adding ghost relay: %w", err)
 			}

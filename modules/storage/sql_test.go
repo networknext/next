@@ -190,6 +190,7 @@ func TestInsertSQL(t *testing.T) {
 			Version:             initialRelayVersion,
 			PingInternalOnly:    false,
 			DestFirst:           false,
+			CanPingInternalAddr: false,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -237,6 +238,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, initialRelayVersion, checkRelay.Version)
 		assert.Equal(t, relay.PingInternalOnly, checkRelay.PingInternalOnly)
 		assert.Equal(t, relay.DestFirst, checkRelay.DestFirst)
+		assert.Equal(t, relay.CanPingInternalAddr, checkRelay.CanPingInternalAddr)
 
 		// overwrite with SetRelay - test nullable fields, possible in relay_backend
 		var relayMod routing.Relay
@@ -341,6 +343,7 @@ func TestInsertSQL(t *testing.T) {
 			Version:             initialRelayVersion,
 			PingInternalOnly:    true,
 			DestFirst:           true,
+			CanPingInternalAddr: true,
 		}
 
 		err = db.AddRelay(ctx, relay3)
@@ -381,6 +384,7 @@ func TestInsertSQL(t *testing.T) {
 			Version:             initialRelayVersion,
 			PingInternalOnly:    true,
 			DestFirst:           true,
+			CanPingInternalAddr: true,
 		}
 
 		err = db.AddRelay(ctx, relay4)
@@ -434,9 +438,10 @@ func TestInsertSQL(t *testing.T) {
 			NICSpeedMbps:        1000,
 			MaxBandwidthMbps:    900,
 			// Notes: "the original notes"
-			Version:          initialRelayVersion,
-			PingInternalOnly: true,
-			DestFirst:        true,
+			Version:             initialRelayVersion,
+			PingInternalOnly:    true,
+			DestFirst:           true,
+			CanPingInternalAddr: true,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -477,6 +482,7 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, int32(900), checkRelay.MaxBandwidthMbps)
 		assert.Equal(t, relay.PingInternalOnly, checkRelay.PingInternalOnly)
 		assert.Equal(t, relay.DestFirst, checkRelay.DestFirst)
+		assert.Equal(t, relay.CanPingInternalAddr, checkRelay.CanPingInternalAddr)
 
 		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
@@ -1011,6 +1017,7 @@ func TestUpdateSQL(t *testing.T) {
 			Version:             initialRelayVersion,
 			PingInternalOnly:    false,
 			DestFirst:           false,
+			CanPingInternalAddr: false,
 		}
 
 		err = db.AddRelay(ctx, relay)
@@ -1266,6 +1273,18 @@ func TestUpdateSQL(t *testing.T) {
 		checkRelay, err = db.Relay(ctx, rid)
 		assert.NoError(t, err)
 		assert.Equal(t, true, checkRelay.DestFirst)
+
+		// relay.CanPingInternalAddr
+		err = db.UpdateRelay(ctx, rid, "CanPingInternalAddr", "not a bool")
+		assert.Error(t, err)
+		err = db.UpdateRelay(ctx, rid, "CanPingInternalAddr", "")
+		assert.Error(t, err)
+
+		err = db.UpdateRelay(ctx, rid, "CanPingInternalAddr", true)
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(ctx, rid)
+		assert.NoError(t, err)
+		assert.Equal(t, true, checkRelay.CanPingInternalAddr)
 	})
 }
 

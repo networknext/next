@@ -1153,7 +1153,8 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes, "))
-	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.ping_internal_only, relays.dest_first from relays where hex_id = $1"))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.ping_internal_only, relays.dest_first, "))
+	sqlQuery.Write([]byte("relays.can_ping_internal_addr from relays where hex_id = $1"))
 
 	for retryCount < MAX_RETRIES {
 		row = db.Client.QueryRowContext(ctx, sqlQuery.String(), hexID)
@@ -1188,6 +1189,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			&relay.Version,
 			&relay.PingInternalOnly,
 			&relay.DestFirst,
+			&relay.CanPingInternalAddr,
 		)
 		switch err {
 		case context.Canceled:
@@ -1259,6 +1261,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			Version:             relay.Version,
 			PingInternalOnly:    relay.PingInternalOnly,
 			DestFirst:           relay.DestFirst,
+			CanPingInternalAddr: relay.CanPingInternalAddr,
 		}
 
 		// nullable values follow
@@ -1335,7 +1338,8 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
-	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.ping_internal_only, relays.dest_first from relays "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.ping_internal_only, relays.dest_first, "))
+	sqlQuery.Write([]byte("relays.can_ping_internal_addr from relays "))
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
@@ -1377,6 +1381,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			&relay.Version,
 			&relay.PingInternalOnly,
 			&relay.DestFirst,
+			&relay.CanPingInternalAddr,
 		)
 		if err != nil {
 			core.Error("Relays(): error parsing returned row: %v", err)
@@ -1437,6 +1442,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			Version:             relay.Version,
 			PingInternalOnly:    relay.PingInternalOnly,
 			DestFirst:           relay.DestFirst,
+			CanPingInternalAddr: relay.CanPingInternalAddr,
 		}
 
 		// nullable values follow
@@ -1826,6 +1832,15 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		updateSQL.Write([]byte("update relays set dest_first=$1 where id=$2"))
 		args = append(args, destFirst, relay.DatabaseID)
 
+	case "CanPingInternalAddr":
+		canPingInternalAddr, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean value", value)
+		}
+
+		updateSQL.Write([]byte("update relays set can_ping_internal_addr=$1 where id=$2"))
+		args = append(args, canPingInternalAddr, relay.DatabaseID)
+
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
 
@@ -1881,6 +1896,7 @@ type sqlRelay struct {
 	Version             string
 	PingInternalOnly    bool
 	DestFirst           bool
+	CanPingInternalAddr bool
 	DatabaseID          int64
 }
 
@@ -2013,6 +2029,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		Version:             r.Version,
 		PingInternalOnly:    r.PingInternalOnly,
 		DestFirst:           r.DestFirst,
+		CanPingInternalAddr: r.CanPingInternalAddr,
 	}
 
 	sqlQuery.Write([]byte("insert into relays ("))
@@ -2020,9 +2037,9 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
-	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version, ping_internal_only, dest_first"))
+	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version, ping_internal_only, dest_first, can_ping_internal_addr"))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -2057,6 +2074,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.Version,
 		relay.PingInternalOnly,
 		relay.DestFirst,
+		relay.CanPingInternalAddr,
 	)
 	if err != nil {
 		core.Error("AddRelay() error adding relay: %v", err)
@@ -2207,15 +2225,17 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		HexID:               hexID,
 		PingInternalOnly:    r.PingInternalOnly,
 		DestFirst:           r.DestFirst,
+		CanPingInternalAddr: r.CanPingInternalAddr,
 	}
 
 	sqlQuery.Write([]byte("update relays set ("))
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port, ping_internal_only, dest_first "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port, "))
+	sqlQuery.Write([]byte("ping_internal_only, dest_first, can_ping_internal_addr"))
 	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) where id = $27"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) where id = $28"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -2247,6 +2267,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.InternalIPPort,
 		relay.PingInternalOnly,
 		relay.DestFirst,
+		relay.CanPingInternalAddr,
 		r.DatabaseID,
 	)
 	if err != nil {

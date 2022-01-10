@@ -604,6 +604,7 @@ type relay struct {
 	Notes               string                `json:"notes"`
 	PingInternalOnly    bool                  `json:"pingInternalOnly"`
 	DestFirst           bool                  `json:"destFirst"`
+	CanPingInternalAddr bool                  `json:"canPingInternalAddr"`
 	DatabaseID          int64
 	DatacenterID        uint64
 }
@@ -648,6 +649,7 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Version:             r.Version,
 			PingInternalOnly:    r.PingInternalOnly,
 			DestFirst:           r.DestFirst,
+			CanPingInternalAddr: r.CanPingInternalAddr,
 			DatabaseID:          r.DatabaseID,
 		}
 
@@ -756,6 +758,7 @@ func (s *OpsService) RelaysWithEgressPriceOverride(r *http.Request, args *RelayE
 			Version:             r.Version,
 			PingInternalOnly:    r.PingInternalOnly,
 			DestFirst:           r.DestFirst,
+			CanPingInternalAddr: r.CanPingInternalAddr,
 			DatabaseID:          r.DatabaseID,
 		}
 
@@ -825,6 +828,7 @@ type JSAddRelayArgs struct {
 	Version             string `json:"relay_version"`
 	PingInternalOnly    bool   `json:"pingInternalOnly"`
 	DestFirst           bool   `json:"destFirst"`
+	CanPingInternalAddr bool   `json:"canPingInternalAddr"`
 }
 
 type JSAddRelayReply struct{}
@@ -891,6 +895,7 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		Version:             args.Version,
 		PingInternalOnly:    args.PingInternalOnly,
 		DestFirst:           args.DestFirst,
+		CanPingInternalAddr: args.CanPingInternalAddr,
 	}
 
 	var internalAddr *net.UDPAddr
@@ -1445,6 +1450,7 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		Version:             routingRelay.Version,
 		PingInternalOnly:    routingRelay.PingInternalOnly,
 		DestFirst:           routingRelay.DestFirst,
+		CanPingInternalAddr: routingRelay.CanPingInternalAddr,
 	}
 
 	reply.Relay = relay
@@ -1492,7 +1498,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		}
 
 	// sent to storer as bool
-	case "PingInternalOnly", "DestFirst":
+	case "PingInternalOnly", "DestFirst", "CanPingInternalAddr":
 		newBool, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
