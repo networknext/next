@@ -229,6 +229,9 @@ type Relay struct {
 
 	// Determines if relay should only ping other relays under the same supplier
 	PingInternalOnly bool `json:"pingInternalOnly"`
+
+	// Relay is destination first when looking up near relays
+	DestFirst bool `json:"destFirst"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -319,6 +322,8 @@ func (r *Relay) String() string {
 	relay += "\tType               : " + fmt.Sprintf("%v", r.Type) + "\n"
 	relay += "\tDatabaseID         : " + fmt.Sprintf("%d", r.DatabaseID) + "\n"
 	relay += "\tVersion            : " + r.Version + "\n"
+	relay += "\tPingInternalOnly   : " + fmt.Sprintf("%v", r.PingInternalOnly) + "\n"
+	relay += "\tDestFirst          : " + fmt.Sprintf("%v", r.DestFirst) + "\n"
 	relay += "\tNotes:\n" + fmt.Sprintf("%v", r.Notes) + "\n"
 
 	return relay
