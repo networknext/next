@@ -7,9 +7,9 @@ import { faCheck } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { AuthPlugin } from '@/plugins/auth'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
-import VueGtag from 'vue-gtag'
 import { FeatureFlagService, FlagPlugin } from '@/plugins/flags'
 import { AlertType } from '@/components/types/AlertTypes'
+import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 
 describe('GetAccessModal.vue', () => {
   const ICONS = [
@@ -38,6 +38,8 @@ describe('GetAccessModal.vue', () => {
       useAPI: false
     })
   })
+
+  localVue.use(JSONRPCPlugin)
 
   const $route = {
     query: ''
@@ -424,8 +426,16 @@ describe('GetAccessModal.vue', () => {
   })
 
   it('checks for alert on auto login failure', async () => {
-    const wrapper = shallowMount(GetAccessModal, {
+    const wrapper = mount(GetAccessModal, {
       localVue, mocks, stubs
+    })
+
+    const processNewSignupSpy = jest.spyOn(localVue.prototype.$apiService, 'processNewSignup').mockImplementation(() => {
+      return Promise.resolve()
+    })
+
+    const loginSpy = jest.spyOn(localVue.prototype.$authService, 'login').mockImplementation(() => {
+      return Promise.reject()
     })
 
     expect(wrapper.exists()).toBeTruthy()
@@ -471,7 +481,8 @@ describe('GetAccessModal.vue', () => {
     const companyWebsiteError = wrapper.find('#company-website-error')
     expect(companyWebsiteError.exists()).toBeFalsy()
 
-    // TODO: add mock here for login failure
+    expect(processNewSignupSpy).toBeCalledTimes(1)
+    expect(loginSpy).toBeCalledTimes(1)
 
     await wrapper.vm.$nextTick()
 
@@ -479,12 +490,83 @@ describe('GetAccessModal.vue', () => {
     const alert = wrapper.find('.alert')
     expect(alert.exists()).toBeTruthy()
     expect(alert.classes(AlertType.ERROR)).toBeTruthy()
-    expect(alert.text()).toBe(ErrorTypes.AUTOMATIC_LOGIN_FAILURE + 'here to login manually')
+    expect(alert.text()).toBe(ErrorTypes.AUTOMATIC_LOGIN_FAILURE + '\n  here to login manually')
+
+    processNewSignupSpy.mockReset()
+    loginSpy.mockReset()
 
     wrapper.destroy()
   })
 
   it('checks auto login success behavior', async () => {
+    const wrapper = mount(GetAccessModal, {
+      localVue, mocks, stubs
+    })
+
+    const processNewSignupSpy = jest.spyOn(localVue.prototype.$apiService, 'processNewSignup').mockImplementation(() => {
+      return Promise.resolve()
+    })
+
+    const loginSpy = jest.spyOn(localVue.prototype.$authService, 'login').mockImplementation(() => {
+      return Promise.resolve()
+    })
+
+    expect(wrapper.exists()).toBeTruthy()
+
+    wrapper.vm.$data.stepOne = false
+
+    await wrapper.vm.$nextTick()
+
+    const firstNameInput = wrapper.find('#first-name-input')
+    expect(firstNameInput.exists()).toBeTruthy()
+
+    firstNameInput.setValue('FirstName')
+
+    const lastNameInput = wrapper.find('#last-name-input')
+    expect(lastNameInput.exists()).toBeTruthy()
+
+    lastNameInput.setValue('LastName')
+
+    const companyNameInput = wrapper.find('#company-name-input')
+    expect(companyNameInput.exists()).toBeTruthy()
+
+    companyNameInput.setValue('Test Company')
+
+    const companyWebsiteInput = wrapper.find('#company-website-input')
+    expect(companyWebsiteInput.exists()).toBeTruthy()
+
+    companyWebsiteInput.setValue('https://networknext.com')
+
+    const form = wrapper.find('#get-access-form')
+    expect(form.exists()).toBeTruthy()
+
+    await form.trigger('submit')
+
+    const firstNameError = wrapper.find('#first-name-error')
+    expect(firstNameError.exists()).toBeFalsy()
+
+    const lastNameError = wrapper.find('#last-name-error')
+    expect(lastNameError.exists()).toBeFalsy()
+
+    const companyNameError = wrapper.find('#company-name-error')
+    expect(companyNameError.exists()).toBeFalsy()
+
+    const companyWebsiteError = wrapper.find('#company-website-error')
+    expect(companyWebsiteError.exists()).toBeFalsy()
+
+    expect(processNewSignupSpy).toBeCalledTimes(1)
+    expect(loginSpy).toBeCalledTimes(1)
+
+    await wrapper.vm.$nextTick()
+
+    // Check for alert
+    const alert = wrapper.find('.alert')
+    expect(alert.exists()).toBeFalsy()
+
+    processNewSignupSpy.mockReset()
+    loginSpy.mockReset()
+
+    wrapper.destroy()
 
   })
 })
