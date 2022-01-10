@@ -226,6 +226,9 @@ type Relay struct {
 
 	// Version, checked by fleet relays to see if they need to update
 	Version string `json:"relay_version"`
+
+	// Determines if relay should only ping other relays under the same supplier
+	PingInternalOnly bool `json:"pingInternalOnly"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
