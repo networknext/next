@@ -47,7 +47,8 @@
 <script lang="ts">
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
-import { EMAIL_CONFIRMATION_MESSAGE, RELOAD_MESSAGE } from '@/components/types/Constants'
+import { EMAIL_CONFIRMATION_MESSAGE } from '@/components/types/Constants'
+import { ErrorTypes } from '@/components/types/ErrorTypes'
 import { Component, Vue } from 'vue-property-decorator'
 import { FeatureEnum } from '../components/types/FeatureTypes'
 
@@ -89,7 +90,7 @@ export default class SettingsWorkspace extends Vue {
 
   private showErrorAlert () {
     this.$refs.verifyAlert.toggleSlots(false)
-    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.verifyAlert.setMessage(ErrorTypes.SYSTEM_FAILURE)
     this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
   }
 }

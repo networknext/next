@@ -56,7 +56,8 @@ import UserSessions from '@/components/UserSessions.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import { NavigationGuardNext, Route } from 'vue-router'
-import { EMAIL_CONFIRMATION_MESSAGE, RELOAD_MESSAGE } from '@/components/types/Constants'
+import { EMAIL_CONFIRMATION_MESSAGE } from '@/components/types/Constants'
+import { ErrorTypes } from '@/components/types/ErrorTypes'
 
 /**
  * This component holds the workspace elements related to the user tool page in the Portal
@@ -136,7 +137,7 @@ export default class UserToolWorkspace extends Vue {
 
   private showErrorAlert () {
     this.$refs.verifyAlert.toggleSlots(false)
-    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.verifyAlert.setMessage(ErrorTypes.SYSTEM_FAILURE)
     this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
   }
 }

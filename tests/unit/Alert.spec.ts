@@ -113,4 +113,6 @@ describe('Alert.vue', () => {
 
     wrapper.destroy()
   })
+
+  // TODO: Add tests for the resend verification transition
 })
