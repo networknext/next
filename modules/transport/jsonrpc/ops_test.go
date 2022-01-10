@@ -1900,6 +1900,7 @@ func TestModifyRelayField(t *testing.T) {
 	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "MaxBandwidthMbps", "ContractTerm", "SSHPort", "MaxSessions"}
 	addressFields := []string{"Addr", "InternalAddr"}
 	timeFields := []string{"StartDate", "EndDate"}
+	boolFields := []string{"PingInternalOnly", "DestFirst"}
 	stringFields := []string{"ManagementAddr", "SSHUser", "Version"}
 	nibblinFields := []string{"EgressPriceOverride", "MRC", "Overage"}
 
@@ -1929,6 +1930,15 @@ func TestModifyRelayField(t *testing.T) {
 			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "-"}, &reply)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), fmt.Sprintf("UpdateRelay() error updating field for relay %016x", 1))
+		}
+	})
+
+	t.Run("invalid bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "-"}, &reply)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), fmt.Sprintf("Value: %s is not a valid boolean type", "-"))
 		}
 	})
 
@@ -2007,6 +2017,14 @@ func TestModifyRelayField(t *testing.T) {
 		for _, field := range stringFields {
 			var reply jsonrpc.ModifyRelayFieldReply
 			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "some string"}, &reply)
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			var reply jsonrpc.ModifyRelayFieldReply
+			err := svc.ModifyRelayField(req, &jsonrpc.ModifyRelayFieldArgs{RelayID: 1, Field: field, Value: "true"}, &reply)
 			assert.NoError(t, err)
 		}
 	})

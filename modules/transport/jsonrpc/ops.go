@@ -602,6 +602,8 @@ type relay struct {
 	EndDate             time.Time             `json:"endDate"`
 	Type                routing.MachineType   `json:"machineType"`
 	Notes               string                `json:"notes"`
+	PingInternalOnly    bool                  `json:"pingInternalOnly"`
+	DestFirst           bool                  `json:"destFirst"`
 	DatabaseID          int64
 	DatacenterID        uint64
 }
@@ -644,6 +646,8 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Type:                r.Type,
 			Notes:               r.Notes,
 			Version:             r.Version,
+			PingInternalOnly:    r.PingInternalOnly,
+			DestFirst:           r.DestFirst,
 			DatabaseID:          r.DatabaseID,
 		}
 
@@ -750,6 +754,8 @@ func (s *OpsService) RelaysWithEgressPriceOverride(r *http.Request, args *RelayE
 			Type:                r.Type,
 			Notes:               r.Notes,
 			Version:             r.Version,
+			PingInternalOnly:    r.PingInternalOnly,
+			DestFirst:           r.DestFirst,
 			DatabaseID:          r.DatabaseID,
 		}
 
@@ -817,6 +823,8 @@ type JSAddRelayArgs struct {
 	Notes               string `json:"notes"`
 	BillingSupplier     string `json:"billingSupplier"`
 	Version             string `json:"relay_version"`
+	PingInternalOnly    bool   `json:"pingInternalOnly"`
+	DestFirst           bool   `json:"destFirst"`
 }
 
 type JSAddRelayReply struct{}
@@ -881,6 +889,8 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		Notes:               args.Notes,
 		BillingSupplier:     args.BillingSupplier,
 		Version:             args.Version,
+		PingInternalOnly:    args.PingInternalOnly,
+		DestFirst:           args.DestFirst,
 	}
 
 	var internalAddr *net.UDPAddr
@@ -1433,6 +1443,8 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		DatacenterID:        routingRelay.Datacenter.ID,
 		BillingSupplier:     routingRelay.BillingSupplier,
 		Version:             routingRelay.Version,
+		PingInternalOnly:    routingRelay.PingInternalOnly,
+		DestFirst:           routingRelay.DestFirst,
 	}
 
 	reply.Relay = relay
@@ -1473,6 +1485,19 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 	// net.UDPAddr, time.Time - all sent to storer as strings
 	case "Addr", "InternalAddr", "ManagementAddr", "SSHUser", "StartDate", "EndDate", "BillingSupplier", "Version":
 		err := s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, args.Value)
+		if err != nil {
+			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
+			core.Error("%v", err)
+			return err
+		}
+
+	// sent to storer as bool
+	case "PingInternalOnly", "DestFirst":
+		newBool, err := strconv.ParseBool(args.Value)
+		if err != nil {
+			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)
+		}
+		err = s.Storage.UpdateRelay(r.Context(), args.RelayID, args.Field, newBool)
 		if err != nil {
 			err = fmt.Errorf("UpdateRelay() error updating field for relay %016x: %v", args.RelayID, err)
 			core.Error("%v", err)
