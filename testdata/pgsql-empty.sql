@@ -174,6 +174,8 @@ create table relays (
   datacenter integer not null,
   machine_type integer not null,
   relay_state integer not null,
+  ping_internal_only boolean not null,
+  dest_first boolean not null,
   primary key (id),
   constraint fk_bw_billing_rule foreign key (bw_billing_rule) references bw_billing_rules(id),
   constraint fk_datacenter foreign key (datacenter) references datacenters(id),

@@ -1152,8 +1152,8 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
-	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
-	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays where hex_id = $1"))
+	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes, "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.ping_internal_only, relays.dest_first from relays where hex_id = $1"))
 
 	for retryCount < MAX_RETRIES {
 		row = db.Client.QueryRowContext(ctx, sqlQuery.String(), hexID)
@@ -1186,6 +1186,8 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			&relay.Notes,
 			&relay.BillingSupplier,
 			&relay.Version,
+			&relay.PingInternalOnly,
+			&relay.DestFirst,
 		)
 		switch err {
 		case context.Canceled:
@@ -1255,6 +1257,8 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
 			Version:             relay.Version,
+			PingInternalOnly:    relay.PingInternalOnly,
+			DestFirst:           relay.DestFirst,
 		}
 
 		// nullable values follow
@@ -1800,6 +1804,24 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		updateSQL.Write([]byte("update relays set relay_version=$1 where id=$2"))
 		args = append(args, version, relay.DatabaseID)
 
+	case "PingInternalOnly":
+		pingInternalOnly, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean value", value)
+		}
+
+		updateSQL.Write([]byte("update relays set ping_internal_only=$1 where id=$2"))
+		args = append(args, pingInternalOnly, relay.DatabaseID)
+
+	case "DestFirst":
+		destFirst, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean value", value)
+		}
+
+		updateSQL.Write([]byte("update relays set dest_first=$1 where id=$2"))
+		args = append(args, destFirst, relay.DatabaseID)
+
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
 
@@ -1853,6 +1875,8 @@ type sqlRelay struct {
 	EndDate             sql.NullTime
 	MachineType         int64
 	Version             string
+	PingInternalOnly    bool
+	DestFirst           bool
 	DatabaseID          int64
 }
 
@@ -1983,6 +2007,8 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		MachineType:         int64(r.Type),
 		Notes:               nullableNotes,
 		Version:             r.Version,
+		PingInternalOnly:    r.PingInternalOnly,
+		DestFirst:           r.DestFirst,
 	}
 
 	sqlQuery.Write([]byte("insert into relays ("))
@@ -1990,9 +2016,9 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
-	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version "))
+	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version, ping_internal_only, dest_first"))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -2025,6 +2051,8 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.Notes,
 		relay.BillingSupplier,
 		relay.Version,
+		relay.PingInternalOnly,
+		relay.DestFirst,
 	)
 	if err != nil {
 		core.Error("AddRelay() error adding relay: %v", err)
@@ -2173,15 +2201,17 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		EndDate:             endDate,
 		MachineType:         int64(r.Type),
 		HexID:               hexID,
+		PingInternalOnly:    r.PingInternalOnly,
+		DestFirst:           r.DestFirst,
 	}
 
 	sqlQuery.Write([]byte("update relays set ("))
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port, ping_internal_only, dest_first "))
 	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) where id = $25"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) where id = $27"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -2211,6 +2241,8 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.State,
 		relay.InternalIP,
 		relay.InternalIPPort,
+		relay.PingInternalOnly,
+		relay.DestFirst,
 		r.DatabaseID,
 	)
 	if err != nil {
