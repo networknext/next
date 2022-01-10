@@ -141,14 +141,17 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 			}
 
 			if relay.PingInternalOnly {
-				// Only ping other relays under the same supplier
+				// Only ping other relays under the same supplier via internal address
 				if sellerName != relayArray[i].Seller.Name {
+					continue
+				}
+				if relayArray[i].InternalAddr.String() == "" || relayArray[i].InternalAddr.String() == ":0" {
 					continue
 				}
 			}
 
 			var address string
-			if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != ":0" {
+			if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != "" && relayArray[i].InternalAddr.String() != ":0" {
 				address = relayArray[i].InternalAddr.String()
 			} else {
 				address = relayArray[i].Addr.String()
