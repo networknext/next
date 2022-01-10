@@ -1335,7 +1335,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
-	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.ping_internal_only, relays.dest_first from relays "))
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
@@ -1375,6 +1375,8 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			&relay.Notes,
 			&relay.BillingSupplier,
 			&relay.Version,
+			&relay.PingInternalOnly,
+			&relay.DestFirst,
 		)
 		if err != nil {
 			core.Error("Relays(): error parsing returned row: %v", err)
@@ -1433,6 +1435,8 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			Seller:              seller,
 			DatabaseID:          relay.DatabaseID,
 			Version:             relay.Version,
+			PingInternalOnly:    relay.PingInternalOnly,
+			DestFirst:           relay.DestFirst,
 		}
 
 		// nullable values follow
