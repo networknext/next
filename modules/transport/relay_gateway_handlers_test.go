@@ -308,7 +308,9 @@ func TestGatewayRelayUpdate_PingInternalOnly_NotSameSeller(t *testing.T) {
 	err = response.UnmarshalBinary(body)
 	assert.NoError(t, err)
 
-	assert.Zero(t, len(response.RelaysToPing))
+	assert.Equal(t, 1, len(response.RelaysToPing))
+	assert.Equal(t, relay2.ID, response.RelaysToPing[0].ID)
+	assert.Equal(t, relay2.Addr.String(), response.RelaysToPing[0].Address)
 }
 
 func TestGatewayRelayUpdate_PingInternalOnly_NoInternalIP(t *testing.T) {
@@ -492,7 +494,9 @@ func TestGatewayRelayUpdate_PingInternalOnly_Success(t *testing.T) {
 	err = response.UnmarshalBinary(body)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, len(response.RelaysToPing))
+	assert.Equal(t, 2, len(response.RelaysToPing))
 	assert.Equal(t, relay2.ID, response.RelaysToPing[0].ID)
 	assert.Equal(t, relay2.InternalAddr.String(), response.RelaysToPing[0].Address)
+	assert.Equal(t, relay3.ID, response.RelaysToPing[1].ID)
+	assert.Equal(t, relay3.Addr.String(), response.RelaysToPing[1].Address)
 }

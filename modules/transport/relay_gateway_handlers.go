@@ -140,20 +140,20 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 				continue
 			}
 
-			if relay.PingInternalOnly {
-				// Only ping other relays under the same supplier via internal address
-				if sellerName != relayArray[i].Seller.Name {
-					continue
-				}
-				if relayArray[i].InternalAddr.String() == "" || relayArray[i].InternalAddr.String() == ":0" {
-					continue
-				}
-			}
-
 			var address string
-			if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != "" && relayArray[i].InternalAddr.String() != ":0" {
+			if relay.PingInternalOnly && sellerName == relayArray[i].Seller.Name {
+				// Pinging other relays under the same supplier should **ONLY** be done on the internal address
+				if relayArray[i].InternalAddr.String() == "" || relayArray[i].InternalAddr.String() == ":0" {
+					// Don't ping the relay if it doesn't have an internal address
+					continue
+				}
+
+				address = relayArray[i].InternalAddr.String()
+			} else if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != "" && relayArray[i].InternalAddr.String() != ":0" {
+				// If the relay is under the same seller, prefer the internal address
 				address = relayArray[i].InternalAddr.String()
 			} else {
+				// Use the relay's external address
 				address = relayArray[i].Addr.String()
 			}
 
