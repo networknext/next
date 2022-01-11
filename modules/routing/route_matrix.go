@@ -36,7 +36,7 @@ type RouteMatrix struct {
 	FullRelayIDs                                []uint64
 	FullRelayIndicesSet                         map[int32]bool
 	InternalAddressClientRoutableRelayIDs       []uint64
-	InternalAddressClientRoutableRelayAddresses []net.UDPAddr
+	InternalAddressClientRoutableRelayAddresses []net.UDPAddr // internal IPs only
 	InternalAddressClientRoutableRelayAddrMap   map[uint64]net.UDPAddr
 	DestFirstRelayIDs                           []uint64
 	DestFirstRelayIDsSet                        map[uint64]bool
