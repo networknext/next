@@ -1900,7 +1900,7 @@ func TestModifyRelayField(t *testing.T) {
 	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "MaxBandwidthMbps", "ContractTerm", "SSHPort", "MaxSessions"}
 	addressFields := []string{"Addr", "InternalAddr"}
 	timeFields := []string{"StartDate", "EndDate"}
-	boolFields := []string{"PingInternalOnly", "DestFirst", "CanPingInternalAddr"}
+	boolFields := []string{"PingInternalOnly", "DestFirst", "InternalAddressClientRoutable"}
 	stringFields := []string{"ManagementAddr", "SSHUser", "Version"}
 	nibblinFields := []string{"EgressPriceOverride", "MRC", "Overage"}
 

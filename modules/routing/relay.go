@@ -235,7 +235,8 @@ type Relay struct {
 	DestFirst bool `json:"destFirst"`
 
 	// Relay can receive pings from any client via its internal address
-	CanPingInternalAddr bool `json:"canPingInternalAddr"`
+	// Other servers and relays should ping via external address
+	InternalAddressClientRoutable bool `json:"internalAddressClientRoutable"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -328,7 +329,7 @@ func (r *Relay) String() string {
 	relay += "\tVersion            : " + r.Version + "\n"
 	relay += "\tPingInternalOnly   : " + fmt.Sprintf("%v", r.PingInternalOnly) + "\n"
 	relay += "\tDestFirst          : " + fmt.Sprintf("%v", r.DestFirst) + "\n"
-	relay += "\tCanPingInternalAddr: " + fmt.Sprintf("%v", r.CanPingInternalAddr) + "\n"
+	relay += "\tInternalAddressClientRoutable: " + fmt.Sprintf("%v", r.InternalAddressClientRoutable) + "\n"
 	relay += "\tNotes:\n" + fmt.Sprintf("%v", r.Notes) + "\n"
 
 	return relay

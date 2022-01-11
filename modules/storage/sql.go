@@ -1154,7 +1154,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes, "))
 	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.ping_internal_only, relays.dest_first, "))
-	sqlQuery.Write([]byte("relays.can_ping_internal_addr from relays where hex_id = $1"))
+	sqlQuery.Write([]byte("relays.internal_address_client_routable from relays where hex_id = $1"))
 
 	for retryCount < MAX_RETRIES {
 		row = db.Client.QueryRowContext(ctx, sqlQuery.String(), hexID)
@@ -1189,7 +1189,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			&relay.Version,
 			&relay.PingInternalOnly,
 			&relay.DestFirst,
-			&relay.CanPingInternalAddr,
+			&relay.InternalAddressClientRoutable,
 		)
 		switch err {
 		case context.Canceled:
@@ -1238,30 +1238,30 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 		}
 
 		r := routing.Relay{
-			ID:                  internalID,
-			Name:                relay.Name,
-			PublicKey:           relay.PublicKey,
-			Datacenter:          datacenter,
-			NICSpeedMbps:        int32(relay.NICSpeedMbps),
-			IncludedBandwidthGB: int32(relay.IncludedBandwithGB),
-			MaxBandwidthMbps:    int32(relay.MaxBandwidthMbps),
-			State:               relayState,
-			ManagementAddr:      relay.ManagementIP,
-			SSHUser:             relay.SSHUser,
-			SSHPort:             relay.SSHPort,
-			MaxSessions:         uint32(relay.MaxSessions),
-			EgressPriceOverride: routing.Nibblin(relay.EgressPriceOverride),
-			MRC:                 routing.Nibblin(relay.MRC),
-			Overage:             routing.Nibblin(relay.Overage),
-			BWRule:              bwRule,
-			ContractTerm:        int32(relay.ContractTerm),
-			Type:                machineType,
-			Seller:              seller,
-			DatabaseID:          relay.DatabaseID,
-			Version:             relay.Version,
-			PingInternalOnly:    relay.PingInternalOnly,
-			DestFirst:           relay.DestFirst,
-			CanPingInternalAddr: relay.CanPingInternalAddr,
+			ID:                            internalID,
+			Name:                          relay.Name,
+			PublicKey:                     relay.PublicKey,
+			Datacenter:                    datacenter,
+			NICSpeedMbps:                  int32(relay.NICSpeedMbps),
+			IncludedBandwidthGB:           int32(relay.IncludedBandwithGB),
+			MaxBandwidthMbps:              int32(relay.MaxBandwidthMbps),
+			State:                         relayState,
+			ManagementAddr:                relay.ManagementIP,
+			SSHUser:                       relay.SSHUser,
+			SSHPort:                       relay.SSHPort,
+			MaxSessions:                   uint32(relay.MaxSessions),
+			EgressPriceOverride:           routing.Nibblin(relay.EgressPriceOverride),
+			MRC:                           routing.Nibblin(relay.MRC),
+			Overage:                       routing.Nibblin(relay.Overage),
+			BWRule:                        bwRule,
+			ContractTerm:                  int32(relay.ContractTerm),
+			Type:                          machineType,
+			Seller:                        seller,
+			DatabaseID:                    relay.DatabaseID,
+			Version:                       relay.Version,
+			PingInternalOnly:              relay.PingInternalOnly,
+			DestFirst:                     relay.DestFirst,
+			InternalAddressClientRoutable: relay.InternalAddressClientRoutable,
 		}
 
 		// nullable values follow
@@ -1339,7 +1339,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
 	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.ping_internal_only, relays.dest_first, "))
-	sqlQuery.Write([]byte("relays.can_ping_internal_addr from relays "))
+	sqlQuery.Write([]byte("relays.internal_address_client_routable from relays "))
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
@@ -1381,7 +1381,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			&relay.Version,
 			&relay.PingInternalOnly,
 			&relay.DestFirst,
-			&relay.CanPingInternalAddr,
+			&relay.InternalAddressClientRoutable,
 		)
 		if err != nil {
 			core.Error("Relays(): error parsing returned row: %v", err)
@@ -1419,30 +1419,30 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 		}
 
 		r := routing.Relay{
-			ID:                  internalID,
-			Name:                relay.Name,
-			PublicKey:           relay.PublicKey,
-			Datacenter:          datacenter,
-			NICSpeedMbps:        int32(relay.NICSpeedMbps),
-			IncludedBandwidthGB: int32(relay.IncludedBandwithGB),
-			MaxBandwidthMbps:    int32(relay.MaxBandwidthMbps),
-			State:               relayState,
-			ManagementAddr:      relay.ManagementIP,
-			SSHUser:             relay.SSHUser,
-			SSHPort:             relay.SSHPort,
-			MaxSessions:         uint32(relay.MaxSessions),
-			EgressPriceOverride: routing.Nibblin(relay.EgressPriceOverride),
-			MRC:                 routing.Nibblin(relay.MRC),
-			Overage:             routing.Nibblin(relay.Overage),
-			BWRule:              bwRule,
-			ContractTerm:        int32(relay.ContractTerm),
-			Type:                machineType,
-			Seller:              seller,
-			DatabaseID:          relay.DatabaseID,
-			Version:             relay.Version,
-			PingInternalOnly:    relay.PingInternalOnly,
-			DestFirst:           relay.DestFirst,
-			CanPingInternalAddr: relay.CanPingInternalAddr,
+			ID:                            internalID,
+			Name:                          relay.Name,
+			PublicKey:                     relay.PublicKey,
+			Datacenter:                    datacenter,
+			NICSpeedMbps:                  int32(relay.NICSpeedMbps),
+			IncludedBandwidthGB:           int32(relay.IncludedBandwithGB),
+			MaxBandwidthMbps:              int32(relay.MaxBandwidthMbps),
+			State:                         relayState,
+			ManagementAddr:                relay.ManagementIP,
+			SSHUser:                       relay.SSHUser,
+			SSHPort:                       relay.SSHPort,
+			MaxSessions:                   uint32(relay.MaxSessions),
+			EgressPriceOverride:           routing.Nibblin(relay.EgressPriceOverride),
+			MRC:                           routing.Nibblin(relay.MRC),
+			Overage:                       routing.Nibblin(relay.Overage),
+			BWRule:                        bwRule,
+			ContractTerm:                  int32(relay.ContractTerm),
+			Type:                          machineType,
+			Seller:                        seller,
+			DatabaseID:                    relay.DatabaseID,
+			Version:                       relay.Version,
+			PingInternalOnly:              relay.PingInternalOnly,
+			DestFirst:                     relay.DestFirst,
+			InternalAddressClientRoutable: relay.InternalAddressClientRoutable,
 		}
 
 		// nullable values follow
@@ -1832,14 +1832,14 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		updateSQL.Write([]byte("update relays set dest_first=$1 where id=$2"))
 		args = append(args, destFirst, relay.DatabaseID)
 
-	case "CanPingInternalAddr":
-		canPingInternalAddr, ok := value.(bool)
+	case "InternalAddressClientRoutable":
+		InternalAddressClientRoutable, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("%v is not a valid boolean value", value)
 		}
 
-		updateSQL.Write([]byte("update relays set can_ping_internal_addr=$1 where id=$2"))
-		args = append(args, canPingInternalAddr, relay.DatabaseID)
+		updateSQL.Write([]byte("update relays set internal_address_client_routable=$1 where id=$2"))
+		args = append(args, InternalAddressClientRoutable, relay.DatabaseID)
 
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
@@ -1866,38 +1866,38 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 }
 
 type sqlRelay struct {
-	ID                  uint64
-	HexID               string
-	Name                string
-	PublicIP            sql.NullString
-	PublicIPPort        sql.NullInt64
-	InternalIP          sql.NullString
-	InternalIPPort      sql.NullInt64
-	BillingSupplier     sql.NullInt64
-	PublicKey           []byte
-	NICSpeedMbps        int64
-	IncludedBandwithGB  int64
-	MaxBandwidthMbps    int64
-	DatacenterID        int64
-	ManagementIP        string
-	SSHUser             string
-	SSHPort             int64
-	State               int64
-	MaxSessions         int64
-	EgressPriceOverride int64
-	MRC                 int64
-	Overage             int64
-	BWRule              int64
-	ContractTerm        int64
-	Notes               sql.NullString
-	StartDate           sql.NullTime
-	EndDate             sql.NullTime
-	MachineType         int64
-	Version             string
-	PingInternalOnly    bool
-	DestFirst           bool
-	CanPingInternalAddr bool
-	DatabaseID          int64
+	ID                            uint64
+	HexID                         string
+	Name                          string
+	PublicIP                      sql.NullString
+	PublicIPPort                  sql.NullInt64
+	InternalIP                    sql.NullString
+	InternalIPPort                sql.NullInt64
+	BillingSupplier               sql.NullInt64
+	PublicKey                     []byte
+	NICSpeedMbps                  int64
+	IncludedBandwithGB            int64
+	MaxBandwidthMbps              int64
+	DatacenterID                  int64
+	ManagementIP                  string
+	SSHUser                       string
+	SSHPort                       int64
+	State                         int64
+	MaxSessions                   int64
+	EgressPriceOverride           int64
+	MRC                           int64
+	Overage                       int64
+	BWRule                        int64
+	ContractTerm                  int64
+	Notes                         sql.NullString
+	StartDate                     sql.NullTime
+	EndDate                       sql.NullTime
+	MachineType                   int64
+	Version                       string
+	PingInternalOnly              bool
+	DestFirst                     bool
+	InternalAddressClientRoutable bool
+	DatabaseID                    int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
@@ -2000,36 +2000,36 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	relay := sqlRelay{
-		Name:                r.Name,
-		HexID:               fmt.Sprintf("%016x", rid),
-		PublicIP:            nullablePublicIP,
-		PublicIPPort:        nullablePublicIPPort,
-		InternalIP:          internalIP,
-		InternalIPPort:      internalIPPort,
-		PublicKey:           r.PublicKey,
-		NICSpeedMbps:        int64(r.NICSpeedMbps),
-		IncludedBandwithGB:  int64(r.IncludedBandwidthGB),
-		MaxBandwidthMbps:    int64(r.MaxBandwidthMbps),
-		DatacenterID:        r.Datacenter.DatabaseID,
-		ManagementIP:        r.ManagementAddr,
-		BillingSupplier:     billingSupplier,
-		SSHUser:             r.SSHUser,
-		SSHPort:             r.SSHPort,
-		State:               int64(r.State),
-		MaxSessions:         int64(r.MaxSessions),
-		EgressPriceOverride: int64(r.EgressPriceOverride),
-		MRC:                 int64(r.MRC),
-		Overage:             int64(r.Overage),
-		BWRule:              int64(r.BWRule),
-		ContractTerm:        int64(r.ContractTerm),
-		StartDate:           startDate,
-		EndDate:             endDate,
-		MachineType:         int64(r.Type),
-		Notes:               nullableNotes,
-		Version:             r.Version,
-		PingInternalOnly:    r.PingInternalOnly,
-		DestFirst:           r.DestFirst,
-		CanPingInternalAddr: r.CanPingInternalAddr,
+		Name:                          r.Name,
+		HexID:                         fmt.Sprintf("%016x", rid),
+		PublicIP:                      nullablePublicIP,
+		PublicIPPort:                  nullablePublicIPPort,
+		InternalIP:                    internalIP,
+		InternalIPPort:                internalIPPort,
+		PublicKey:                     r.PublicKey,
+		NICSpeedMbps:                  int64(r.NICSpeedMbps),
+		IncludedBandwithGB:            int64(r.IncludedBandwidthGB),
+		MaxBandwidthMbps:              int64(r.MaxBandwidthMbps),
+		DatacenterID:                  r.Datacenter.DatabaseID,
+		ManagementIP:                  r.ManagementAddr,
+		BillingSupplier:               billingSupplier,
+		SSHUser:                       r.SSHUser,
+		SSHPort:                       r.SSHPort,
+		State:                         int64(r.State),
+		MaxSessions:                   int64(r.MaxSessions),
+		EgressPriceOverride:           int64(r.EgressPriceOverride),
+		MRC:                           int64(r.MRC),
+		Overage:                       int64(r.Overage),
+		BWRule:                        int64(r.BWRule),
+		ContractTerm:                  int64(r.ContractTerm),
+		StartDate:                     startDate,
+		EndDate:                       endDate,
+		MachineType:                   int64(r.Type),
+		Notes:                         nullableNotes,
+		Version:                       r.Version,
+		PingInternalOnly:              r.PingInternalOnly,
+		DestFirst:                     r.DestFirst,
+		InternalAddressClientRoutable: r.InternalAddressClientRoutable,
 	}
 
 	sqlQuery.Write([]byte("insert into relays ("))
@@ -2037,7 +2037,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
-	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version, ping_internal_only, dest_first, can_ping_internal_addr"))
+	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version, ping_internal_only, dest_first, internal_address_client_routable"))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
 	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)"))
 
@@ -2074,7 +2074,7 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.Version,
 		relay.PingInternalOnly,
 		relay.DestFirst,
-		relay.CanPingInternalAddr,
+		relay.InternalAddressClientRoutable,
 	)
 	if err != nil {
 		core.Error("AddRelay() error adding relay: %v", err)
@@ -2199,33 +2199,33 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	relay := sqlRelay{
-		Name:                r.Name,
-		PublicIP:            publicIP,
-		PublicIPPort:        publicIPPort,
-		InternalIP:          internalIP,
-		InternalIPPort:      internalIPPort,
-		PublicKey:           r.PublicKey,
-		NICSpeedMbps:        int64(r.NICSpeedMbps),
-		IncludedBandwithGB:  int64(r.IncludedBandwidthGB),
-		MaxBandwidthMbps:    int64(r.MaxBandwidthMbps),
-		DatacenterID:        r.Datacenter.DatabaseID,
-		ManagementIP:        r.ManagementAddr,
-		SSHUser:             r.SSHUser,
-		SSHPort:             r.SSHPort,
-		State:               int64(r.State),
-		MaxSessions:         int64(r.MaxSessions),
-		EgressPriceOverride: int64(r.EgressPriceOverride),
-		MRC:                 int64(r.MRC),
-		Overage:             int64(r.Overage),
-		BWRule:              int64(r.BWRule),
-		ContractTerm:        int64(r.ContractTerm),
-		StartDate:           startDate,
-		EndDate:             endDate,
-		MachineType:         int64(r.Type),
-		HexID:               hexID,
-		PingInternalOnly:    r.PingInternalOnly,
-		DestFirst:           r.DestFirst,
-		CanPingInternalAddr: r.CanPingInternalAddr,
+		Name:                          r.Name,
+		PublicIP:                      publicIP,
+		PublicIPPort:                  publicIPPort,
+		InternalIP:                    internalIP,
+		InternalIPPort:                internalIPPort,
+		PublicKey:                     r.PublicKey,
+		NICSpeedMbps:                  int64(r.NICSpeedMbps),
+		IncludedBandwithGB:            int64(r.IncludedBandwidthGB),
+		MaxBandwidthMbps:              int64(r.MaxBandwidthMbps),
+		DatacenterID:                  r.Datacenter.DatabaseID,
+		ManagementIP:                  r.ManagementAddr,
+		SSHUser:                       r.SSHUser,
+		SSHPort:                       r.SSHPort,
+		State:                         int64(r.State),
+		MaxSessions:                   int64(r.MaxSessions),
+		EgressPriceOverride:           int64(r.EgressPriceOverride),
+		MRC:                           int64(r.MRC),
+		Overage:                       int64(r.Overage),
+		BWRule:                        int64(r.BWRule),
+		ContractTerm:                  int64(r.ContractTerm),
+		StartDate:                     startDate,
+		EndDate:                       endDate,
+		MachineType:                   int64(r.Type),
+		HexID:                         hexID,
+		PingInternalOnly:              r.PingInternalOnly,
+		DestFirst:                     r.DestFirst,
+		InternalAddressClientRoutable: r.InternalAddressClientRoutable,
 	}
 
 	sqlQuery.Write([]byte("update relays set ("))
@@ -2233,7 +2233,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port, "))
-	sqlQuery.Write([]byte("ping_internal_only, dest_first, can_ping_internal_addr"))
+	sqlQuery.Write([]byte("ping_internal_only, dest_first, internal_address_client_routable"))
 	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
 	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) where id = $28"))
 
@@ -2267,7 +2267,7 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.InternalIPPort,
 		relay.PingInternalOnly,
 		relay.DestFirst,
-		relay.CanPingInternalAddr,
+		relay.InternalAddressClientRoutable,
 		r.DatabaseID,
 	)
 	if err != nil {

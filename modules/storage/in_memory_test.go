@@ -1535,7 +1535,7 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 
 	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "MaxBandwidthMbps", "ContractTerm", "SSHPort", "MaxSessions"}
 	stringFields := []string{"ManagementAddr", "SSHUser", "Version"}
-	boolFields := []string{"PingInternalOnly", "DestFirst", "CanPingInternalAddr"}
+	boolFields := []string{"PingInternalOnly", "DestFirst", "InternalAddressClientRoutable"}
 	timeFields := []string{"StartDate", "EndDate"}
 	addressFields := []string{"Addr", "InternalAddr"}
 	nibblinFields := []string{"EgressPriceOverride", "MRC", "Overage"}

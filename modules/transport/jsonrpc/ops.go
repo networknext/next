@@ -572,41 +572,41 @@ type RelaysReply struct {
 }
 
 type relay struct {
-	ID                  uint64                `json:"id"`
-	HexID               string                `json:"hexID"`
-	DatacenterHexID     string                `json:"datacenterHexID"`
-	BillingSupplier     string                `json:"billingSupplier"`
-	SignedID            int64                 `json:"signed_id"`
-	Name                string                `json:"name"`
-	Addr                string                `json:"addr"`
-	InternalAddr        string                `json:"internalAddr"`
-	Latitude            float64               `json:"latitude"`
-	Longitude           float64               `json:"longitude"`
-	NICSpeedMbps        int32                 `json:"nicSpeedMbps"`
-	IncludedBandwidthGB int32                 `json:"includedBandwidthGB"`
-	MaxBandwidthMbps    int32                 `json:"maxBandwidthMbps"`
-	State               string                `json:"state"`
-	ManagementAddr      string                `json:"management_addr"`
-	SSHUser             string                `json:"ssh_user"`
-	SSHPort             int64                 `json:"ssh_port"`
-	MaxSessionCount     uint32                `json:"maxSessionCount"`
-	PublicKey           string                `json:"public_key"`
-	Version             string                `json:"relay_version"`
-	SellerName          string                `json:"seller_name"`
-	EgressPriceOverride routing.Nibblin       `json:"egressPriceOverride"`
-	MRC                 routing.Nibblin       `json:"monthlyRecurringChargeNibblins"`
-	Overage             routing.Nibblin       `json:"overage"`
-	BWRule              routing.BandWidthRule `json:"bandwidthRule"`
-	ContractTerm        int32                 `json:"contractTerm"`
-	StartDate           time.Time             `json:"startDate"`
-	EndDate             time.Time             `json:"endDate"`
-	Type                routing.MachineType   `json:"machineType"`
-	Notes               string                `json:"notes"`
-	PingInternalOnly    bool                  `json:"pingInternalOnly"`
-	DestFirst           bool                  `json:"destFirst"`
-	CanPingInternalAddr bool                  `json:"canPingInternalAddr"`
-	DatabaseID          int64
-	DatacenterID        uint64
+	ID                            uint64                `json:"id"`
+	HexID                         string                `json:"hexID"`
+	DatacenterHexID               string                `json:"datacenterHexID"`
+	BillingSupplier               string                `json:"billingSupplier"`
+	SignedID                      int64                 `json:"signed_id"`
+	Name                          string                `json:"name"`
+	Addr                          string                `json:"addr"`
+	InternalAddr                  string                `json:"internalAddr"`
+	Latitude                      float64               `json:"latitude"`
+	Longitude                     float64               `json:"longitude"`
+	NICSpeedMbps                  int32                 `json:"nicSpeedMbps"`
+	IncludedBandwidthGB           int32                 `json:"includedBandwidthGB"`
+	MaxBandwidthMbps              int32                 `json:"maxBandwidthMbps"`
+	State                         string                `json:"state"`
+	ManagementAddr                string                `json:"management_addr"`
+	SSHUser                       string                `json:"ssh_user"`
+	SSHPort                       int64                 `json:"ssh_port"`
+	MaxSessionCount               uint32                `json:"maxSessionCount"`
+	PublicKey                     string                `json:"public_key"`
+	Version                       string                `json:"relay_version"`
+	SellerName                    string                `json:"seller_name"`
+	EgressPriceOverride           routing.Nibblin       `json:"egressPriceOverride"`
+	MRC                           routing.Nibblin       `json:"monthlyRecurringChargeNibblins"`
+	Overage                       routing.Nibblin       `json:"overage"`
+	BWRule                        routing.BandWidthRule `json:"bandwidthRule"`
+	ContractTerm                  int32                 `json:"contractTerm"`
+	StartDate                     time.Time             `json:"startDate"`
+	EndDate                       time.Time             `json:"endDate"`
+	Type                          routing.MachineType   `json:"machineType"`
+	Notes                         string                `json:"notes"`
+	PingInternalOnly              bool                  `json:"pingInternalOnly"`
+	DestFirst                     bool                  `json:"destFirst"`
+	InternalAddressClientRoutable bool                  `json:"InternalAddressClientRoutable"`
+	DatabaseID                    int64
+	DatacenterID                  uint64
 }
 
 func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysReply) error {
@@ -618,39 +618,39 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 
 	for _, r := range s.Storage.Relays(r.Context()) {
 		relay := relay{
-			ID:                  r.ID,
-			HexID:               fmt.Sprintf("%016x", r.ID),
-			DatacenterHexID:     fmt.Sprintf("%016x", r.Datacenter.ID),
-			BillingSupplier:     r.BillingSupplier,
-			SignedID:            r.SignedID,
-			Name:                r.Name,
-			Addr:                r.Addr.String(),
-			Latitude:            float64(r.Datacenter.Location.Latitude),
-			Longitude:           float64(r.Datacenter.Location.Longitude),
-			NICSpeedMbps:        r.NICSpeedMbps,
-			IncludedBandwidthGB: r.IncludedBandwidthGB,
-			MaxBandwidthMbps:    r.MaxBandwidthMbps,
-			ManagementAddr:      r.ManagementAddr,
-			SSHUser:             r.SSHUser,
-			SSHPort:             r.SSHPort,
-			State:               r.State.String(),
-			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
-			MaxSessionCount:     r.MaxSessions,
-			SellerName:          r.Seller.Name,
-			EgressPriceOverride: r.EgressPriceOverride,
-			MRC:                 r.MRC,
-			Overage:             r.Overage,
-			BWRule:              r.BWRule,
-			ContractTerm:        r.ContractTerm,
-			StartDate:           r.StartDate,
-			EndDate:             r.EndDate,
-			Type:                r.Type,
-			Notes:               r.Notes,
-			Version:             r.Version,
-			PingInternalOnly:    r.PingInternalOnly,
-			DestFirst:           r.DestFirst,
-			CanPingInternalAddr: r.CanPingInternalAddr,
-			DatabaseID:          r.DatabaseID,
+			ID:                            r.ID,
+			HexID:                         fmt.Sprintf("%016x", r.ID),
+			DatacenterHexID:               fmt.Sprintf("%016x", r.Datacenter.ID),
+			BillingSupplier:               r.BillingSupplier,
+			SignedID:                      r.SignedID,
+			Name:                          r.Name,
+			Addr:                          r.Addr.String(),
+			Latitude:                      float64(r.Datacenter.Location.Latitude),
+			Longitude:                     float64(r.Datacenter.Location.Longitude),
+			NICSpeedMbps:                  r.NICSpeedMbps,
+			IncludedBandwidthGB:           r.IncludedBandwidthGB,
+			MaxBandwidthMbps:              r.MaxBandwidthMbps,
+			ManagementAddr:                r.ManagementAddr,
+			SSHUser:                       r.SSHUser,
+			SSHPort:                       r.SSHPort,
+			State:                         r.State.String(),
+			PublicKey:                     base64.StdEncoding.EncodeToString(r.PublicKey),
+			MaxSessionCount:               r.MaxSessions,
+			SellerName:                    r.Seller.Name,
+			EgressPriceOverride:           r.EgressPriceOverride,
+			MRC:                           r.MRC,
+			Overage:                       r.Overage,
+			BWRule:                        r.BWRule,
+			ContractTerm:                  r.ContractTerm,
+			StartDate:                     r.StartDate,
+			EndDate:                       r.EndDate,
+			Type:                          r.Type,
+			Notes:                         r.Notes,
+			Version:                       r.Version,
+			PingInternalOnly:              r.PingInternalOnly,
+			DestFirst:                     r.DestFirst,
+			InternalAddressClientRoutable: r.InternalAddressClientRoutable,
+			DatabaseID:                    r.DatabaseID,
 		}
 
 		if addrStr := r.InternalAddr.String(); addrStr != ":0" {
@@ -727,39 +727,39 @@ func (s *OpsService) RelaysWithEgressPriceOverride(r *http.Request, args *RelayE
 		}
 
 		relay := relay{
-			ID:                  r.ID,
-			HexID:               fmt.Sprintf("%016x", r.ID),
-			DatacenterHexID:     fmt.Sprintf("%016x", r.Datacenter.ID),
-			BillingSupplier:     r.BillingSupplier,
-			SignedID:            r.SignedID,
-			Name:                r.Name,
-			Addr:                r.Addr.String(),
-			Latitude:            float64(r.Datacenter.Location.Latitude),
-			Longitude:           float64(r.Datacenter.Location.Longitude),
-			NICSpeedMbps:        r.NICSpeedMbps,
-			IncludedBandwidthGB: r.IncludedBandwidthGB,
-			MaxBandwidthMbps:    r.MaxBandwidthMbps,
-			ManagementAddr:      r.ManagementAddr,
-			SSHUser:             r.SSHUser,
-			SSHPort:             r.SSHPort,
-			State:               r.State.String(),
-			PublicKey:           base64.StdEncoding.EncodeToString(r.PublicKey),
-			MaxSessionCount:     r.MaxSessions,
-			SellerName:          r.Seller.Name,
-			EgressPriceOverride: r.EgressPriceOverride,
-			MRC:                 r.MRC,
-			Overage:             r.Overage,
-			BWRule:              r.BWRule,
-			ContractTerm:        r.ContractTerm,
-			StartDate:           r.StartDate,
-			EndDate:             r.EndDate,
-			Type:                r.Type,
-			Notes:               r.Notes,
-			Version:             r.Version,
-			PingInternalOnly:    r.PingInternalOnly,
-			DestFirst:           r.DestFirst,
-			CanPingInternalAddr: r.CanPingInternalAddr,
-			DatabaseID:          r.DatabaseID,
+			ID:                            r.ID,
+			HexID:                         fmt.Sprintf("%016x", r.ID),
+			DatacenterHexID:               fmt.Sprintf("%016x", r.Datacenter.ID),
+			BillingSupplier:               r.BillingSupplier,
+			SignedID:                      r.SignedID,
+			Name:                          r.Name,
+			Addr:                          r.Addr.String(),
+			Latitude:                      float64(r.Datacenter.Location.Latitude),
+			Longitude:                     float64(r.Datacenter.Location.Longitude),
+			NICSpeedMbps:                  r.NICSpeedMbps,
+			IncludedBandwidthGB:           r.IncludedBandwidthGB,
+			MaxBandwidthMbps:              r.MaxBandwidthMbps,
+			ManagementAddr:                r.ManagementAddr,
+			SSHUser:                       r.SSHUser,
+			SSHPort:                       r.SSHPort,
+			State:                         r.State.String(),
+			PublicKey:                     base64.StdEncoding.EncodeToString(r.PublicKey),
+			MaxSessionCount:               r.MaxSessions,
+			SellerName:                    r.Seller.Name,
+			EgressPriceOverride:           r.EgressPriceOverride,
+			MRC:                           r.MRC,
+			Overage:                       r.Overage,
+			BWRule:                        r.BWRule,
+			ContractTerm:                  r.ContractTerm,
+			StartDate:                     r.StartDate,
+			EndDate:                       r.EndDate,
+			Type:                          r.Type,
+			Notes:                         r.Notes,
+			Version:                       r.Version,
+			PingInternalOnly:              r.PingInternalOnly,
+			DestFirst:                     r.DestFirst,
+			InternalAddressClientRoutable: r.InternalAddressClientRoutable,
+			DatabaseID:                    r.DatabaseID,
 		}
 
 		if addrStr := r.InternalAddr.String(); addrStr != ":0" {
@@ -802,33 +802,33 @@ func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRel
 }
 
 type JSAddRelayArgs struct {
-	Name                string `json:"name"`
-	Addr                string `json:"addr"`
-	InternalAddr        string `json:"internal_addr"`
-	PublicKey           string `json:"public_key"`
-	SellerID            string `json:"seller"`
-	DatacenterID        string `json:"datacenter"`
-	NICSpeedMbps        int64  `json:"nicSpeedMbps"`
-	IncludedBandwidthGB int64  `json:"includedBandwidthGB"`
-	MaxBandwidthMbps    int64  `json:"maxBandwidthMbps"`
-	ManagementAddr      string `json:"management_addr"`
-	SSHUser             string `json:"ssh_user"`
-	SSHPort             int64  `json:"ssh_port"`
-	MaxSessions         int64  `json:"max_sessions"`
-	EgressPriceOverride int64  `json:"egressPriceOverride"`
-	MRC                 int64  `json:"monthlyRecurringChargeNibblins"`
-	Overage             int64  `json:"overage"`
-	BWRule              int64  `json:"bandwidthRule"`
-	ContractTerm        int64  `json:"contractTerm"`
-	StartDate           string `json:"startDate"`
-	EndDate             string `json:"endDate"`
-	Type                int64  `json:"machineType"`
-	Notes               string `json:"notes"`
-	BillingSupplier     string `json:"billingSupplier"`
-	Version             string `json:"relay_version"`
-	PingInternalOnly    bool   `json:"pingInternalOnly"`
-	DestFirst           bool   `json:"destFirst"`
-	CanPingInternalAddr bool   `json:"canPingInternalAddr"`
+	Name                          string `json:"name"`
+	Addr                          string `json:"addr"`
+	InternalAddr                  string `json:"internal_addr"`
+	PublicKey                     string `json:"public_key"`
+	SellerID                      string `json:"seller"`
+	DatacenterID                  string `json:"datacenter"`
+	NICSpeedMbps                  int64  `json:"nicSpeedMbps"`
+	IncludedBandwidthGB           int64  `json:"includedBandwidthGB"`
+	MaxBandwidthMbps              int64  `json:"maxBandwidthMbps"`
+	ManagementAddr                string `json:"management_addr"`
+	SSHUser                       string `json:"ssh_user"`
+	SSHPort                       int64  `json:"ssh_port"`
+	MaxSessions                   int64  `json:"max_sessions"`
+	EgressPriceOverride           int64  `json:"egressPriceOverride"`
+	MRC                           int64  `json:"monthlyRecurringChargeNibblins"`
+	Overage                       int64  `json:"overage"`
+	BWRule                        int64  `json:"bandwidthRule"`
+	ContractTerm                  int64  `json:"contractTerm"`
+	StartDate                     string `json:"startDate"`
+	EndDate                       string `json:"endDate"`
+	Type                          int64  `json:"machineType"`
+	Notes                         string `json:"notes"`
+	BillingSupplier               string `json:"billingSupplier"`
+	Version                       string `json:"relay_version"`
+	PingInternalOnly              bool   `json:"pingInternalOnly"`
+	DestFirst                     bool   `json:"destFirst"`
+	InternalAddressClientRoutable bool   `json:"InternalAddressClientRoutable"`
 }
 
 type JSAddRelayReply struct{}
@@ -871,31 +871,31 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 
 	rid := crypto.HashID(args.Addr)
 	relay := routing.Relay{
-		ID:                  rid,
-		Name:                args.Name,
-		Addr:                *addr,
-		PublicKey:           publicKey,
-		Datacenter:          datacenter,
-		NICSpeedMbps:        int32(args.NICSpeedMbps),
-		IncludedBandwidthGB: int32(args.IncludedBandwidthGB),
-		MaxBandwidthMbps:    int32(args.MaxBandwidthMbps),
-		State:               routing.RelayStateEnabled,
-		ManagementAddr:      args.ManagementAddr,
-		SSHUser:             args.SSHUser,
-		SSHPort:             args.SSHPort,
-		MaxSessions:         uint32(args.MaxSessions),
-		EgressPriceOverride: routing.Nibblin(args.EgressPriceOverride),
-		MRC:                 routing.Nibblin(args.MRC),
-		Overage:             routing.Nibblin(args.Overage),
-		BWRule:              routing.BandWidthRule(args.BWRule),
-		ContractTerm:        int32(args.ContractTerm),
-		Type:                routing.MachineType(args.Type),
-		Notes:               args.Notes,
-		BillingSupplier:     args.BillingSupplier,
-		Version:             args.Version,
-		PingInternalOnly:    args.PingInternalOnly,
-		DestFirst:           args.DestFirst,
-		CanPingInternalAddr: args.CanPingInternalAddr,
+		ID:                            rid,
+		Name:                          args.Name,
+		Addr:                          *addr,
+		PublicKey:                     publicKey,
+		Datacenter:                    datacenter,
+		NICSpeedMbps:                  int32(args.NICSpeedMbps),
+		IncludedBandwidthGB:           int32(args.IncludedBandwidthGB),
+		MaxBandwidthMbps:              int32(args.MaxBandwidthMbps),
+		State:                         routing.RelayStateEnabled,
+		ManagementAddr:                args.ManagementAddr,
+		SSHUser:                       args.SSHUser,
+		SSHPort:                       args.SSHPort,
+		MaxSessions:                   uint32(args.MaxSessions),
+		EgressPriceOverride:           routing.Nibblin(args.EgressPriceOverride),
+		MRC:                           routing.Nibblin(args.MRC),
+		Overage:                       routing.Nibblin(args.Overage),
+		BWRule:                        routing.BandWidthRule(args.BWRule),
+		ContractTerm:                  int32(args.ContractTerm),
+		Type:                          routing.MachineType(args.Type),
+		Notes:                         args.Notes,
+		BillingSupplier:               args.BillingSupplier,
+		Version:                       args.Version,
+		PingInternalOnly:              args.PingInternalOnly,
+		DestFirst:                     args.DestFirst,
+		InternalAddressClientRoutable: args.InternalAddressClientRoutable,
 	}
 
 	var internalAddr *net.UDPAddr
@@ -1418,39 +1418,39 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 	}
 
 	relay := relay{
-		ID:                  routingRelay.ID,
-		SignedID:            routingRelay.SignedID,
-		Name:                routingRelay.Name,
-		Addr:                routingRelay.Addr.String(),
-		InternalAddr:        routingRelay.InternalAddr.String(),
-		Latitude:            float64(routingRelay.Datacenter.Location.Latitude),
-		Longitude:           float64(routingRelay.Datacenter.Location.Longitude),
-		NICSpeedMbps:        routingRelay.NICSpeedMbps,
-		IncludedBandwidthGB: routingRelay.IncludedBandwidthGB,
-		MaxBandwidthMbps:    routingRelay.MaxBandwidthMbps,
-		ManagementAddr:      routingRelay.ManagementAddr,
-		SSHUser:             routingRelay.SSHUser,
-		SSHPort:             routingRelay.SSHPort,
-		State:               routingRelay.State.String(),
-		PublicKey:           base64.StdEncoding.EncodeToString(routingRelay.PublicKey),
-		MaxSessionCount:     routingRelay.MaxSessions,
-		SellerName:          routingRelay.Seller.Name,
-		EgressPriceOverride: routingRelay.EgressPriceOverride,
-		MRC:                 routingRelay.MRC,
-		Overage:             routingRelay.Overage,
-		BWRule:              routingRelay.BWRule,
-		ContractTerm:        routingRelay.ContractTerm,
-		StartDate:           routingRelay.StartDate,
-		EndDate:             routingRelay.EndDate,
-		Type:                routingRelay.Type,
-		Notes:               routingRelay.Notes,
-		DatabaseID:          routingRelay.DatabaseID,
-		DatacenterID:        routingRelay.Datacenter.ID,
-		BillingSupplier:     routingRelay.BillingSupplier,
-		Version:             routingRelay.Version,
-		PingInternalOnly:    routingRelay.PingInternalOnly,
-		DestFirst:           routingRelay.DestFirst,
-		CanPingInternalAddr: routingRelay.CanPingInternalAddr,
+		ID:                            routingRelay.ID,
+		SignedID:                      routingRelay.SignedID,
+		Name:                          routingRelay.Name,
+		Addr:                          routingRelay.Addr.String(),
+		InternalAddr:                  routingRelay.InternalAddr.String(),
+		Latitude:                      float64(routingRelay.Datacenter.Location.Latitude),
+		Longitude:                     float64(routingRelay.Datacenter.Location.Longitude),
+		NICSpeedMbps:                  routingRelay.NICSpeedMbps,
+		IncludedBandwidthGB:           routingRelay.IncludedBandwidthGB,
+		MaxBandwidthMbps:              routingRelay.MaxBandwidthMbps,
+		ManagementAddr:                routingRelay.ManagementAddr,
+		SSHUser:                       routingRelay.SSHUser,
+		SSHPort:                       routingRelay.SSHPort,
+		State:                         routingRelay.State.String(),
+		PublicKey:                     base64.StdEncoding.EncodeToString(routingRelay.PublicKey),
+		MaxSessionCount:               routingRelay.MaxSessions,
+		SellerName:                    routingRelay.Seller.Name,
+		EgressPriceOverride:           routingRelay.EgressPriceOverride,
+		MRC:                           routingRelay.MRC,
+		Overage:                       routingRelay.Overage,
+		BWRule:                        routingRelay.BWRule,
+		ContractTerm:                  routingRelay.ContractTerm,
+		StartDate:                     routingRelay.StartDate,
+		EndDate:                       routingRelay.EndDate,
+		Type:                          routingRelay.Type,
+		Notes:                         routingRelay.Notes,
+		DatabaseID:                    routingRelay.DatabaseID,
+		DatacenterID:                  routingRelay.Datacenter.ID,
+		BillingSupplier:               routingRelay.BillingSupplier,
+		Version:                       routingRelay.Version,
+		PingInternalOnly:              routingRelay.PingInternalOnly,
+		DestFirst:                     routingRelay.DestFirst,
+		InternalAddressClientRoutable: routingRelay.InternalAddressClientRoutable,
 	}
 
 	reply.Relay = relay
@@ -1498,7 +1498,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		}
 
 	// sent to storer as bool
-	case "PingInternalOnly", "DestFirst", "CanPingInternalAddr":
+	case "PingInternalOnly", "DestFirst", "InternalAddressClientRoutable":
 		newBool, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)

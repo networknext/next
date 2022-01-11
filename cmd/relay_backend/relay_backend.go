@@ -511,7 +511,7 @@ func mainReturnWithCode() int {
 
 						relayData := ActiveRelayData{}
 						relayData.ID = relay.ID
-						if relay.CanPingInternalAddr {
+						if relay.InternalAddressClientRoutable {
 							relayData.Addr = relay.InternalAddr
 						} else {
 							relayData.Addr = relay.Addr
