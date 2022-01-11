@@ -15,26 +15,31 @@ import (
 	"github.com/networknext/backend/modules/encoding"
 )
 
-const RouteMatrixSerializeVersion = 5
+const RouteMatrixSerializeVersion = 6
 
 type RouteMatrix struct {
-	RelayIDsToIndices   map[uint64]int32
-	RelayIDs            []uint64
-	RelayAddresses      []net.UDPAddr // external IPs only
-	RelayNames          []string
-	RelayLatitudes      []float32
-	RelayLongitudes     []float32
-	RelayDatacenterIDs  []uint64
-	RouteEntries        []core.RouteEntry
-	BinFileBytes        int32
-	BinFileData         []byte
-	CreatedAt           uint64
-	Version             uint32
-	DestRelays          []bool
-	PingStats           []analytics.PingStatsEntry
-	RelayStats          []analytics.RelayStatsEntry
-	FullRelayIDs        []uint64
-	FullRelayIndicesSet map[int32]bool
+	RelayIDsToIndices                           map[uint64]int32
+	RelayIDs                                    []uint64
+	RelayAddresses                              []net.UDPAddr // external IPs only
+	RelayNames                                  []string
+	RelayLatitudes                              []float32
+	RelayLongitudes                             []float32
+	RelayDatacenterIDs                          []uint64
+	RouteEntries                                []core.RouteEntry
+	BinFileBytes                                int32
+	BinFileData                                 []byte
+	CreatedAt                                   uint64
+	Version                                     uint32
+	DestRelays                                  []bool
+	PingStats                                   []analytics.PingStatsEntry
+	RelayStats                                  []analytics.RelayStatsEntry
+	FullRelayIDs                                []uint64
+	FullRelayIndicesSet                         map[int32]bool
+	InternalAddressClientRoutableRelayIDs       []uint64
+	InternalAddressClientRoutableRelayAddresses []net.UDPAddr
+	InternalAddressClientRoutableRelayAddrMap   map[uint64]net.UDPAddr
+	DestFirstRelayIDs                           []uint64
+	DestFirstRelayIDsSet                        map[uint64]bool
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -198,10 +203,48 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		}
 	}
 
+	if m.Version >= 6 {
+
+		numInternalAddressClientRoutableRelayIDs := uint32(len(m.InternalAddressClientRoutableRelayIDs))
+		stream.SerializeUint32(&numInternalAddressClientRoutableRelayIDs)
+
+		if stream.IsReading() {
+			m.InternalAddressClientRoutableRelayIDs = make([]uint64, numInternalAddressClientRoutableRelayIDs)
+			m.InternalAddressClientRoutableRelayAddresses = make([]net.UDPAddr, numInternalAddressClientRoutableRelayIDs)
+			m.InternalAddressClientRoutableRelayAddrMap = make(map[uint64]net.UDPAddr)
+		}
+
+		for i := uint32(0); i < numInternalAddressClientRoutableRelayIDs; i++ {
+			stream.SerializeUint64(&m.InternalAddressClientRoutableRelayIDs[i])
+			stream.SerializeAddress(&m.InternalAddressClientRoutableRelayAddresses[i])
+
+			if stream.IsReading() {
+				m.InternalAddressClientRoutableRelayAddrMap[m.InternalAddressClientRoutableRelayIDs[i]] = m.InternalAddressClientRoutableRelayAddresses[i]
+			}
+		}
+
+		numDestFirstRelayIDs := uint32(len(m.DestFirstRelayIDs))
+
+		stream.SerializeUint32(&numDestFirstRelayIDs)
+
+		if stream.IsReading() {
+			m.DestFirstRelayIDs = make([]uint64, numDestFirstRelayIDs)
+			m.DestFirstRelayIDsSet = make(map[uint64]bool)
+		}
+
+		for i := uint32(0); i < numDestFirstRelayIDs; i++ {
+			stream.SerializeUint64(&m.DestFirstRelayIDs[i])
+
+			if stream.IsReading() {
+				m.DestFirstRelayIDsSet[m.DestFirstRelayIDs[i]] = true
+			}
+		}
+	}
+
 	return stream.Error()
 }
 
-func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int) ([]uint64, []net.UDPAddr) {
+func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float32, source_longitude float32, dest_latitude float32, dest_longitude float32, maxNearRelays int, destDatacenterID uint64) ([]uint64, []net.UDPAddr) {
 
 	// Quantize to integer values so we don't have noise in low bits
 
@@ -231,6 +274,11 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 
 	nearRelayData := make([]NearRelayData, len(m.RelayIDs))
 
+	nearRelayIDs := make([]uint64, 0, maxNearRelays)
+	nearRelayAddresses := make([]net.UDPAddr, 0, maxNearRelays)
+
+	nearRelayIDMap := map[uint64]struct{}{}
+
 	for i, relayID := range m.RelayIDs {
 		nearRelayData[i].ID = relayID
 		nearRelayData[i].Addr = m.RelayAddresses[i]
@@ -238,6 +286,29 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		nearRelayData[i].Latitude = float64(int64(m.RelayLatitudes[i]))
 		nearRelayData[i].Longitude = float64(int64(m.RelayLongitudes[i]))
 		nearRelayData[i].Distance = int(core.HaversineDistance(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude))
+
+		if _, isDestFirstRelay := m.DestFirstRelayIDsSet[relayID]; isDestFirstRelay && destDatacenterID == m.RelayDatacenterIDs[i] {
+			// Always add "destination first" relays if we have a relay with the flag enabled in the destination datacenter
+			if len(nearRelayIDs) == maxNearRelays {
+				break
+			}
+
+			nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
+			nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
+
+			if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
+				// Client should ping this relay using its internal address
+				nearRelayAddresses = append(nearRelayAddresses, internalAddr)
+			} else {
+				nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
+			}
+		}
+	}
+
+	// If we already have enough relays, stop and return them
+
+	if len(nearRelayIDs) == maxNearRelays {
+		return nearRelayIDs, nearRelayAddresses
 	}
 
 	sort.SliceStable(nearRelayData, func(i, j int) bool { return nearRelayData[i].Distance < nearRelayData[j].Distance })
@@ -249,11 +320,6 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 
 	latencyThreshold := float32(30.0)
 
-	nearRelayIDs := make([]uint64, 0, maxNearRelays)
-	nearRelayAddresses := make([]net.UDPAddr, 0, maxNearRelays)
-
-	nearRelayIDMap := map[uint64]struct{}{}
-
 	for i := 0; i < len(nearRelayData); i++ {
 		if len(nearRelayIDs) == maxNearRelays {
 			break
@@ -263,14 +329,25 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 			break
 		}
 
+		// don't add the same relay twice
+		if _, ok := nearRelayIDMap[nearRelayData[i].ID]; ok {
+			continue
+		}
+
 		nearRelayLatency := 3.0 / 2.0 * float32(core.SpeedOfLightTimeMilliseconds(sourceLatitude, sourceLongitude, nearRelayData[i].Latitude, nearRelayData[i].Longitude, destLatitude, destLongitude))
 		if nearRelayLatency > directLatency+latencyThreshold {
 			continue
 		}
 
 		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-		nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
 		nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
+
+		if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
+			// Client should ping this relay using its internal address
+			nearRelayAddresses = append(nearRelayAddresses, internalAddr)
+		} else {
+			nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
+		}
 	}
 
 	// If we already have enough relays, stop and return them
@@ -305,7 +382,13 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		}
 
 		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-		nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
+
+		if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
+			// Client should ping this relay using its internal address
+			nearRelayAddresses = append(nearRelayAddresses, internalAddr)
+		} else {
+			nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
+		}
 	}
 
 	return nearRelayIDs, nearRelayAddresses

@@ -278,10 +278,11 @@ func relays(
 	}
 
 	relays := []struct {
-		Name    string
-		ID      string
-		Address string
-		State   string
+		Name     string
+		ID       string
+		Address  string
+		Internal string
+		State    string
 	}{}
 
 	relaysCSV := [][]string{{}}
@@ -329,6 +330,7 @@ func relays(
 		}
 
 		address := relay.Addr
+		internal := relay.InternalAddr
 
 		// return csv file
 		if csvOutputFlag {
@@ -359,15 +361,17 @@ func relays(
 				relayID = fmt.Sprintf("%016x", relay.ID)
 			}
 			relays = append(relays, struct {
-				Name    string
-				ID      string
-				Address string
-				State   string
+				Name     string
+				ID       string
+				Address  string
+				Internal string
+				State    string
 			}{
-				Name:    relay.Name,
-				ID:      relayID,
-				Address: address,
-				State:   relay.State,
+				Name:     relay.Name,
+				ID:       relayID,
+				Address:  address,
+				Internal: internal,
+				State:    relay.State,
 			})
 		}
 
