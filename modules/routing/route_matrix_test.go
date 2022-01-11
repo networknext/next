@@ -45,7 +45,7 @@ func getRouteMatrix(t *testing.T, version uint32) routing.RouteMatrix {
 		RelayNames:         []string{"test.relay.1", "test.relay.2", "test.relay.3", "test.relay.4"},
 		RelayLatitudes:     []float32{TokyoLatitude, PapuaNewGuineaLatitude, HonoluluLatitude, LosAngelesLatitude},
 		RelayLongitudes:    []float32{TokyoLongitude, PapuaNewGuineaLongitude, HonoluluLongitude, LosAngelesLongitude},
-		RelayDatacenterIDs: []uint64{10, 10, 10, 10},
+		RelayDatacenterIDs: []uint64{11, 12, 13, 14},
 		RouteEntries:       []core.RouteEntry{},
 	}
 
@@ -104,6 +104,12 @@ func getRouteMatrix(t *testing.T, version uint32) routing.RouteMatrix {
 		expected.RelayStats[0].BandwidthReceivedMbps = float32(490)
 		expected.RelayStats[0].EnvelopeSentMbps = float32(680)
 		expected.RelayStats[0].EnvelopeReceivedMbps = float32(700)
+	}
+
+	if version >= 6 {
+		expected.Version = 6
+
+		expected.DestFirstRelayIDs = []uint64{2}
 	}
 
 	return expected
@@ -222,6 +228,33 @@ func TestRouteMatrixSerialize(t *testing.T) {
 
 		assert.Equal(t, expected, actual)
 	})
+
+	t.Run("serialize v6", func(t *testing.T) {
+		expected := getRouteMatrix(t, 6)
+
+		buffer := make([]byte, 10000)
+
+		ws, err := encoding.CreateWriteStream(buffer)
+		assert.NoError(t, err)
+		err = expected.Serialize(ws)
+		assert.NoError(t, err)
+
+		ws.Flush()
+		data := ws.GetData()[:ws.GetBytesProcessed()]
+
+		var actual routing.RouteMatrix
+		rs := encoding.CreateReadStream(data)
+		err = actual.Serialize(rs)
+		assert.NoError(t, err)
+
+		assert.NotEmpty(t, actual.FullRelayIndicesSet)
+		actual.FullRelayIndicesSet = nil
+
+		assert.NotEmpty(t, actual.DestFirstRelayIDsSet)
+		actual.DestFirstRelayIDsSet = nil
+
+		assert.Equal(t, expected, actual)
+	})
 }
 
 func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
@@ -262,42 +295,42 @@ func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
 
 // todo: GetNearRelays tests should be extended to also check the second value returned, array of relay addresses is correct
 
-func TestRouteMatrixNoNearRelays(t *testing.T) {
+func TestRouteMatrix_GetNearRelays_NoNearRelays(t *testing.T) {
 	t.Parallel()
 
 	routeMatrix := routing.RouteMatrix{}
 
-	nearRelayIDs, nearRelayAddresses := routeMatrix.GetNearRelays(0, 0, 0, 0, 0, core.MaxNearRelays)
+	nearRelayIDs, nearRelayAddresses := routeMatrix.GetNearRelays(0, 0, 0, 0, 0, core.MaxNearRelays, 0)
 
 	assert.Empty(t, nearRelayIDs)
 	assert.Empty(t, nearRelayAddresses)
 }
 
-func TestRouteMatrixGetNearRelays(t *testing.T) {
+func TestRouteMatrix_GetNearRelays_Success(t *testing.T) {
 	t.Parallel()
 
 	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
 
 	expected := []uint64{1, 4, 3}
 
-	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
 
 	assert.Equal(t, expected, actual)
 }
 
-func TestRouteMatrixGetNearRelaysWithMax(t *testing.T) {
+func TestRouteMatrix_GetNearRelays_WithMax(t *testing.T) {
 	t.Parallel()
 
 	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
 
 	expected := routeMatrix.RelayIDs[:1]
 
-	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, 1)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, 1, 5)
 
 	assert.Equal(t, expected, actual)
 }
 
-func TestRouteMatrixGetNearRelaysNoNearRelaysAroundSource(t *testing.T) {
+func TestRouteMatrix_GetNearRelays_NoNearRelaysAroundSource(t *testing.T) {
 	t.Parallel()
 
 	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
@@ -309,12 +342,12 @@ func TestRouteMatrixGetNearRelaysNoNearRelaysAroundSource(t *testing.T) {
 
 	expected := []uint64{4, 3}
 
-	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
 
 	assert.Equal(t, expected, actual)
 }
 
-func TestRouteMatrixGetNearRelaysNoNearRelaysAroundDest(t *testing.T) {
+func TestRouteMatrix_GetNearRelays_NoNearRelaysAroundDest(t *testing.T) {
 	t.Parallel()
 
 	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
@@ -326,9 +359,43 @@ func TestRouteMatrixGetNearRelaysNoNearRelaysAroundDest(t *testing.T) {
 
 	expected := []uint64{1, 3}
 
-	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays)
+	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
 
 	assert.Equal(t, expected, actual)
+}
+
+func TestRouteMatrix_GetNearRelays_DestFirst(t *testing.T) {
+	t.Parallel()
+
+	// Serialize the route matrix so we get the dest first relay set
+	expected := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
+
+	buffer := make([]byte, 20000)
+
+	ws, err := encoding.CreateWriteStream(buffer)
+	assert.NoError(t, err)
+	err = expected.Serialize(ws)
+	assert.NoError(t, err)
+
+	ws.Flush()
+	data := ws.GetData()[:ws.GetBytesProcessed()]
+
+	var actual routing.RouteMatrix
+	rs := encoding.CreateReadStream(data)
+	err = actual.Serialize(rs)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected.DestFirstRelayIDs, actual.DestFirstRelayIDs)
+	assert.Equal(t, 1, len(actual.DestFirstRelayIDsSet))
+
+	// Datacenter ID 12 maps to Relay 2
+	// Even though Relay 2 does not have the same lat/long as the destination,
+	// it is marked as a dest first relay and its datacenter ID is passed in
+	expectedRelays := []uint64{2, 1, 4, 3}
+
+	actualRelays, _ := actual.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 12)
+
+	assert.Equal(t, expectedRelays, actualRelays)
 }
 
 func TestRouteMatrixGetDatacenterIDsEmpty(t *testing.T) {
@@ -346,9 +413,25 @@ func TestRouteMatrixGetDatacenterIDsSuccess(t *testing.T) {
 
 	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
 
-	expected := routeMatrix.RelayIDs
-	actual := routeMatrix.GetDatacenterRelayIDs(10)
-	assert.Equal(t, expected, actual)
+	expected := routeMatrix.RelayIDs[0]
+	actual := routeMatrix.GetDatacenterRelayIDs(11)
+	assert.Equal(t, 1, len(actual))
+	assert.Equal(t, expected, actual[0])
+
+	expected = routeMatrix.RelayIDs[1]
+	actual = routeMatrix.GetDatacenterRelayIDs(12)
+	assert.Equal(t, 1, len(actual))
+	assert.Equal(t, expected, actual[0])
+
+	expected = routeMatrix.RelayIDs[2]
+	actual = routeMatrix.GetDatacenterRelayIDs(13)
+	assert.Equal(t, 1, len(actual))
+	assert.Equal(t, expected, actual[0])
+
+	expected = routeMatrix.RelayIDs[3]
+	actual = routeMatrix.GetDatacenterRelayIDs(14)
+	assert.Equal(t, 1, len(actual))
+	assert.Equal(t, expected, actual[0])
 }
 
 func TestRouteMatrixGetJsonAnalysis(t *testing.T) {

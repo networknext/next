@@ -133,15 +133,25 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 
 		// Get relays to ping
 		relaysToPing := make([]routing.RelayPingData, 0)
-		sellerName := relayHash[id].Seller.Name
+		sellerName := relay.Seller.Name
 
 		for i := range relayArray {
 			if relayArray[i].ID == id {
 				continue
 			}
 
+			if relay.PingInternalOnly {
+				// Only ping other relays under the same supplier via internal address
+				if sellerName != relayArray[i].Seller.Name {
+					continue
+				}
+				if relayArray[i].InternalAddr.String() == "" || relayArray[i].InternalAddr.String() == ":0" {
+					continue
+				}
+			}
+
 			var address string
-			if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != ":0" {
+			if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != "" && relayArray[i].InternalAddr.String() != ":0" {
 				address = relayArray[i].InternalAddr.String()
 			} else {
 				address = relayArray[i].Addr.String()
