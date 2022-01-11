@@ -494,6 +494,7 @@ func mainReturnWithCode() int {
 					Longitude    float32
 					SellerID     string
 					DatacenterID uint64
+					DestFirst    bool
 				}
 
 				activeRelays := make([]ActiveRelayData, 0)
@@ -510,7 +511,11 @@ func mainReturnWithCode() int {
 
 						relayData := ActiveRelayData{}
 						relayData.ID = relay.ID
-						relayData.Addr = relay.Addr
+						if relay.InternalAddressClientRoutable {
+							relayData.Addr = relay.InternalAddr
+						} else {
+							relayData.Addr = relay.Addr
+						}
 						relayData.Name = relay.Name
 						relayData.Latitude = float32(relay.Datacenter.Location.Latitude)
 						relayData.Longitude = float32(relay.Datacenter.Location.Longitude)
@@ -518,6 +523,7 @@ func mainReturnWithCode() int {
 						relayData.DatacenterID = relay.Datacenter.ID
 						relayData.SessionCount = activeRelaySessionCounts[i]
 						relayData.Version = activeRelayVersions[i]
+						relayData.DestFirst = relay.DestFirst
 
 						activeRelays = append(activeRelays, relayData)
 					}
@@ -535,6 +541,7 @@ func mainReturnWithCode() int {
 				relayLatitudes := make([]float32, numActiveRelays)
 				relayLongitudes := make([]float32, numActiveRelays)
 				relayDatacenterIDs := make([]uint64, numActiveRelays)
+				var relayDestFirst []uint64
 
 				for i := range activeRelays {
 					relayIDs[i] = activeRelays[i].ID
@@ -543,6 +550,9 @@ func mainReturnWithCode() int {
 					relayLatitudes[i] = float32(activeRelays[i].Latitude)
 					relayLongitudes[i] = float32(activeRelays[i].Longitude)
 					relayDatacenterIDs[i] = activeRelays[i].DatacenterID
+					if activeRelays[i].DestFirst {
+						relayDestFirst = append(relayDestFirst, activeRelays[i].ID)
+					}
 				}
 
 				// build relays data to serve up on "relays" endpoint (CSV)
@@ -835,6 +845,7 @@ func mainReturnWithCode() int {
 					PingStats:          pingStats,
 					RelayStats:         relayStats,
 					FullRelayIDs:       fullRelayIDs,
+					DestFirstRelayIDs:  relayDestFirst,
 				}
 
 				if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {

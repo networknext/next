@@ -1535,6 +1535,7 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 
 	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "MaxBandwidthMbps", "ContractTerm", "SSHPort", "MaxSessions"}
 	stringFields := []string{"ManagementAddr", "SSHUser", "Version"}
+	boolFields := []string{"DestFirst", "InternalAddressClientRoutable"}
 	timeFields := []string{"StartDate", "EndDate"}
 	addressFields := []string{"Addr", "InternalAddr"}
 	nibblinFields := []string{"EgressPriceOverride", "MRC", "Overage"}
@@ -1585,6 +1586,14 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
 			assert.Error(t, err)
 			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string value", float64(-1)))
+		}
+	})
+
+	t.Run("invalid bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
+			assert.Error(t, err)
+			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid boolean value", float64(-1)))
 		}
 	})
 
@@ -1701,6 +1710,13 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 	t.Run("success string fields", func(t *testing.T) {
 		for _, field := range stringFields {
 			err := inMemory.UpdateRelay(ctx, 0, field, "a")
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, true)
 			assert.NoError(t, err)
 		}
 	})

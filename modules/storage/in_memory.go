@@ -1184,6 +1184,22 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 
 		relay.Version = version
 
+	case "DestFirst":
+		destFirst, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean value", value)
+		}
+
+		relay.DestFirst = destFirst
+
+	case "InternalAddressClientRoutable":
+		InternalAddressClientRoutable, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean value", value)
+		}
+
+		relay.InternalAddressClientRoutable = InternalAddressClientRoutable
+
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
 
