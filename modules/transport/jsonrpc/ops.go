@@ -602,7 +602,6 @@ type relay struct {
 	EndDate                       time.Time             `json:"endDate"`
 	Type                          routing.MachineType   `json:"machineType"`
 	Notes                         string                `json:"notes"`
-	PingInternalOnly              bool                  `json:"pingInternalOnly"`
 	DestFirst                     bool                  `json:"destFirst"`
 	InternalAddressClientRoutable bool                  `json:"InternalAddressClientRoutable"`
 	DatabaseID                    int64
@@ -647,7 +646,6 @@ func (s *OpsService) Relays(r *http.Request, args *RelaysArgs, reply *RelaysRepl
 			Type:                          r.Type,
 			Notes:                         r.Notes,
 			Version:                       r.Version,
-			PingInternalOnly:              r.PingInternalOnly,
 			DestFirst:                     r.DestFirst,
 			InternalAddressClientRoutable: r.InternalAddressClientRoutable,
 			DatabaseID:                    r.DatabaseID,
@@ -756,7 +754,6 @@ func (s *OpsService) RelaysWithEgressPriceOverride(r *http.Request, args *RelayE
 			Type:                          r.Type,
 			Notes:                         r.Notes,
 			Version:                       r.Version,
-			PingInternalOnly:              r.PingInternalOnly,
 			DestFirst:                     r.DestFirst,
 			InternalAddressClientRoutable: r.InternalAddressClientRoutable,
 			DatabaseID:                    r.DatabaseID,
@@ -826,7 +823,6 @@ type JSAddRelayArgs struct {
 	Notes                         string `json:"notes"`
 	BillingSupplier               string `json:"billingSupplier"`
 	Version                       string `json:"relay_version"`
-	PingInternalOnly              bool   `json:"pingInternalOnly"`
 	DestFirst                     bool   `json:"destFirst"`
 	InternalAddressClientRoutable bool   `json:"InternalAddressClientRoutable"`
 }
@@ -893,7 +889,6 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		Notes:                         args.Notes,
 		BillingSupplier:               args.BillingSupplier,
 		Version:                       args.Version,
-		PingInternalOnly:              args.PingInternalOnly,
 		DestFirst:                     args.DestFirst,
 		InternalAddressClientRoutable: args.InternalAddressClientRoutable,
 	}
@@ -1448,7 +1443,6 @@ func (s *OpsService) GetRelay(r *http.Request, args *GetRelayArgs, reply *GetRel
 		DatacenterID:                  routingRelay.Datacenter.ID,
 		BillingSupplier:               routingRelay.BillingSupplier,
 		Version:                       routingRelay.Version,
-		PingInternalOnly:              routingRelay.PingInternalOnly,
 		DestFirst:                     routingRelay.DestFirst,
 		InternalAddressClientRoutable: routingRelay.InternalAddressClientRoutable,
 	}
@@ -1498,7 +1492,7 @@ func (s *OpsService) ModifyRelayField(r *http.Request, args *ModifyRelayFieldArg
 		}
 
 	// sent to storer as bool
-	case "PingInternalOnly", "DestFirst", "InternalAddressClientRoutable":
+	case "DestFirst", "InternalAddressClientRoutable":
 		newBool, err := strconv.ParseBool(args.Value)
 		if err != nil {
 			return fmt.Errorf("Value: %v is not a valid boolean type", args.Value)

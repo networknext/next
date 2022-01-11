@@ -188,7 +188,6 @@ func TestInsertSQL(t *testing.T) {
 			MaxBandwidthMbps:              900,
 			Notes:                         "the original notes",
 			Version:                       initialRelayVersion,
-			PingInternalOnly:              false,
 			DestFirst:                     false,
 			InternalAddressClientRoutable: false,
 		}
@@ -236,7 +235,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.Notes, checkRelay.Notes)
 		assert.Equal(t, outerSeller.ShortName, checkRelay.BillingSupplier)
 		assert.Equal(t, initialRelayVersion, checkRelay.Version)
-		assert.Equal(t, relay.PingInternalOnly, checkRelay.PingInternalOnly)
 		assert.Equal(t, relay.DestFirst, checkRelay.DestFirst)
 		assert.Equal(t, relay.InternalAddressClientRoutable, checkRelay.InternalAddressClientRoutable)
 
@@ -341,7 +339,6 @@ func TestInsertSQL(t *testing.T) {
 			MaxBandwidthMbps:              900,
 			Notes:                         "the original notes",
 			Version:                       initialRelayVersion,
-			PingInternalOnly:              true,
 			DestFirst:                     true,
 			InternalAddressClientRoutable: true,
 		}
@@ -382,7 +379,6 @@ func TestInsertSQL(t *testing.T) {
 			MaxBandwidthMbps:              900,
 			Notes:                         "the original notes",
 			Version:                       initialRelayVersion,
-			PingInternalOnly:              true,
 			DestFirst:                     true,
 			InternalAddressClientRoutable: true,
 		}
@@ -439,7 +435,6 @@ func TestInsertSQL(t *testing.T) {
 			MaxBandwidthMbps:    900,
 			// Notes: "the original notes"
 			Version:                       initialRelayVersion,
-			PingInternalOnly:              true,
 			DestFirst:                     true,
 			InternalAddressClientRoutable: true,
 		}
@@ -480,7 +475,6 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
 		assert.Equal(t, int32(1000), checkRelay.NICSpeedMbps)
 		assert.Equal(t, int32(900), checkRelay.MaxBandwidthMbps)
-		assert.Equal(t, relay.PingInternalOnly, checkRelay.PingInternalOnly)
 		assert.Equal(t, relay.DestFirst, checkRelay.DestFirst)
 		assert.Equal(t, relay.InternalAddressClientRoutable, checkRelay.InternalAddressClientRoutable)
 
@@ -1015,7 +1009,6 @@ func TestUpdateSQL(t *testing.T) {
 			State:                         routing.RelayStateMaintenance,
 			Notes:                         "the original notes",
 			Version:                       initialRelayVersion,
-			PingInternalOnly:              false,
 			DestFirst:                     false,
 			InternalAddressClientRoutable: false,
 		}
@@ -1249,18 +1242,6 @@ func TestUpdateSQL(t *testing.T) {
 		checkRelay, err = db.Relay(ctx, rid)
 		assert.NoError(t, err)
 		assert.Equal(t, "7.6.4", checkRelay.Version)
-
-		// relay.PingInternalOnly
-		err = db.UpdateRelay(ctx, rid, "PingInternalOnly", "not a bool")
-		assert.Error(t, err)
-		err = db.UpdateRelay(ctx, rid, "PingInternalOnly", "")
-		assert.Error(t, err)
-
-		err = db.UpdateRelay(ctx, rid, "PingInternalOnly", true)
-		assert.NoError(t, err)
-		checkRelay, err = db.Relay(ctx, rid)
-		assert.NoError(t, err)
-		assert.Equal(t, true, checkRelay.PingInternalOnly)
 
 		// relay.DestFirst
 		err = db.UpdateRelay(ctx, rid, "DestFirst", "not a bool")

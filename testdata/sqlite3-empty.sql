@@ -146,7 +146,6 @@ create table relays (
   relay_state integer not null,
   billing_supplier integer,
   relay_version varchar not null,
-  ping_internal_only boolean not null,
   dest_first boolean not null,
   internal_address_client_routable boolean not null,
   notes varchar,

@@ -1153,7 +1153,7 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes, "))
-	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.ping_internal_only, relays.dest_first, "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.dest_first, "))
 	sqlQuery.Write([]byte("relays.internal_address_client_routable from relays where hex_id = $1"))
 
 	for retryCount < MAX_RETRIES {
@@ -1187,7 +1187,6 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			&relay.Notes,
 			&relay.BillingSupplier,
 			&relay.Version,
-			&relay.PingInternalOnly,
 			&relay.DestFirst,
 			&relay.InternalAddressClientRoutable,
 		)
@@ -1259,7 +1258,6 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			Seller:                        seller,
 			DatabaseID:                    relay.DatabaseID,
 			Version:                       relay.Version,
-			PingInternalOnly:              relay.PingInternalOnly,
 			DestFirst:                     relay.DestFirst,
 			InternalAddressClientRoutable: relay.InternalAddressClientRoutable,
 		}
@@ -1338,7 +1336,7 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
-	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.ping_internal_only, relays.dest_first, "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.dest_first, "))
 	sqlQuery.Write([]byte("relays.internal_address_client_routable from relays "))
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
@@ -1379,7 +1377,6 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			&relay.Notes,
 			&relay.BillingSupplier,
 			&relay.Version,
-			&relay.PingInternalOnly,
 			&relay.DestFirst,
 			&relay.InternalAddressClientRoutable,
 		)
@@ -1440,7 +1437,6 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			Seller:                        seller,
 			DatabaseID:                    relay.DatabaseID,
 			Version:                       relay.Version,
-			PingInternalOnly:              relay.PingInternalOnly,
 			DestFirst:                     relay.DestFirst,
 			InternalAddressClientRoutable: relay.InternalAddressClientRoutable,
 		}
@@ -1814,15 +1810,6 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		updateSQL.Write([]byte("update relays set relay_version=$1 where id=$2"))
 		args = append(args, version, relay.DatabaseID)
 
-	case "PingInternalOnly":
-		pingInternalOnly, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("%v is not a valid boolean value", value)
-		}
-
-		updateSQL.Write([]byte("update relays set ping_internal_only=$1 where id=$2"))
-		args = append(args, pingInternalOnly, relay.DatabaseID)
-
 	case "DestFirst":
 		destFirst, ok := value.(bool)
 		if !ok {
@@ -1894,7 +1881,6 @@ type sqlRelay struct {
 	EndDate                       sql.NullTime
 	MachineType                   int64
 	Version                       string
-	PingInternalOnly              bool
 	DestFirst                     bool
 	InternalAddressClientRoutable bool
 	DatabaseID                    int64
@@ -2027,7 +2013,6 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		MachineType:                   int64(r.Type),
 		Notes:                         nullableNotes,
 		Version:                       r.Version,
-		PingInternalOnly:              r.PingInternalOnly,
 		DestFirst:                     r.DestFirst,
 		InternalAddressClientRoutable: r.InternalAddressClientRoutable,
 	}
@@ -2037,9 +2022,9 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
-	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version, ping_internal_only, dest_first, internal_address_client_routable"))
+	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version, dest_first, internal_address_client_routable"))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -2072,7 +2057,6 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.Notes,
 		relay.BillingSupplier,
 		relay.Version,
-		relay.PingInternalOnly,
 		relay.DestFirst,
 		relay.InternalAddressClientRoutable,
 	)
@@ -2223,7 +2207,6 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		EndDate:                       endDate,
 		MachineType:                   int64(r.Type),
 		HexID:                         hexID,
-		PingInternalOnly:              r.PingInternalOnly,
 		DestFirst:                     r.DestFirst,
 		InternalAddressClientRoutable: r.InternalAddressClientRoutable,
 	}
@@ -2233,9 +2216,9 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port, "))
-	sqlQuery.Write([]byte("ping_internal_only, dest_first, internal_address_client_routable"))
+	sqlQuery.Write([]byte("dest_first, internal_address_client_routable"))
 	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27) where id = $28"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) where id = $27"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -2265,7 +2248,6 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.State,
 		relay.InternalIP,
 		relay.InternalIPPort,
-		relay.PingInternalOnly,
 		relay.DestFirst,
 		relay.InternalAddressClientRoutable,
 		r.DatabaseID,

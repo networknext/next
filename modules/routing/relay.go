@@ -227,10 +227,6 @@ type Relay struct {
 	// Version, checked by fleet relays to see if they need to update
 	Version string `json:"relay_version"`
 
-	// Determines if relay should only ping other relays under the same supplier
-	// via internal address. Other relays are pinged via external address.
-	PingInternalOnly bool `json:"pingInternalOnly"`
-
 	// Relay is prioritized when looking up near relays
 	DestFirst bool `json:"destFirst"`
 
@@ -297,39 +293,38 @@ func RelayAddrs(relays []Relay) string {
 func (r *Relay) String() string {
 	relay := "\nrouting.Relay:\n"
 
-	relay += "\tID                 : " + fmt.Sprintf("%d", r.ID) + "\n"
-	relay += "\tHex ID             : " + fmt.Sprintf("%016x", r.ID) + "\n"
-	relay += "\tName               : " + r.Name + "\n"
-	relay += "\tAddr               : " + r.Addr.String() + "\n"
-	relay += "\tInternalAddr       : " + r.InternalAddr.String() + "\n"
-	relay += "\tPublicKey          : " + base64.StdEncoding.EncodeToString(r.PublicKey) + "\n"
-	relay += "\tSeller             : " + fmt.Sprintf("%d", r.Seller.DatabaseID) + "\n"
-	relay += "\tBillingSupplier    : " + fmt.Sprintf("%s", r.BillingSupplier) + "\n"
-	relay += "\tDatacenter         : " + fmt.Sprintf("%016x", r.Datacenter.ID) + "\n"
-	relay += "\tNICSpeedMbps       : " + fmt.Sprintf("%d", r.NICSpeedMbps) + "\n"
-	relay += "\tIncludedBandwidthGB: " + fmt.Sprintf("%d", r.IncludedBandwidthGB) + "\n"
-	relay += "\tMaxBandwidthMbps   : " + fmt.Sprintf("%d", r.MaxBandwidthMbps) + "\n"
-	// relay += "\tLastUpdateTime     : " + r.LastUpdateTime.String() + "\n"
-	relay += "\tState              : " + fmt.Sprintf("%v", r.State) + "\n"
-	relay += "\tManagementAddr     : " + r.ManagementAddr + "\n"
-	relay += "\tSSHUser            : " + r.SSHUser + "\n"
-	relay += "\tSSHPort            : " + fmt.Sprintf("%d", r.SSHPort) + "\n"
-	relay += "\tMaxSessions        : " + fmt.Sprintf("%d", r.MaxSessions) + "\n"
-	// relay += "\tCPUUsage           : " + fmt.Sprintf("%f", r.CPUUsage) + "\n"
-	// relay += "\tMemUsage           : " + fmt.Sprintf("%f", r.MemUsage) + "\n"
-	relay += "\tEgressPriceOverride: " + fmt.Sprintf("%v", r.EgressPriceOverride) + "\n"
-	relay += "\tMRC                : " + fmt.Sprintf("%v", r.MRC) + "\n"
-	relay += "\tOverage            : " + fmt.Sprintf("%v", r.Overage) + "\n"
-	relay += "\tBWRule             : " + fmt.Sprintf("%v", r.BWRule) + "\n"
-	relay += "\tContractTerm       : " + fmt.Sprintf("%d", r.ContractTerm) + "\n"
-	relay += "\tStartDate          : " + r.StartDate.String() + "\n"
-	relay += "\tEndDate            : " + r.EndDate.String() + "\n"
-	relay += "\tType               : " + fmt.Sprintf("%v", r.Type) + "\n"
-	relay += "\tDatabaseID         : " + fmt.Sprintf("%d", r.DatabaseID) + "\n"
-	relay += "\tVersion            : " + r.Version + "\n"
-	relay += "\tPingInternalOnly   : " + fmt.Sprintf("%v", r.PingInternalOnly) + "\n"
-	relay += "\tDestFirst          : " + fmt.Sprintf("%v", r.DestFirst) + "\n"
-	relay += "\tInternalAddressClientRoutable: " + fmt.Sprintf("%v", r.InternalAddressClientRoutable) + "\n"
+	relay += "\tID                 				: " + fmt.Sprintf("%d", r.ID) + "\n"
+	relay += "\tHex ID             				: " + fmt.Sprintf("%016x", r.ID) + "\n"
+	relay += "\tName              		 		: " + r.Name + "\n"
+	relay += "\tAddr              				: " + r.Addr.String() + "\n"
+	relay += "\tInternalAddr       				: " + r.InternalAddr.String() + "\n"
+	relay += "\tPublicKey          				: " + base64.StdEncoding.EncodeToString(r.PublicKey) + "\n"
+	relay += "\tSeller             				: " + fmt.Sprintf("%d", r.Seller.DatabaseID) + "\n"
+	relay += "\tBillingSupplier    				: " + fmt.Sprintf("%s", r.BillingSupplier) + "\n"
+	relay += "\tDatacenter         				: " + fmt.Sprintf("%016x", r.Datacenter.ID) + "\n"
+	relay += "\tNICSpeedMbps       				: " + fmt.Sprintf("%d", r.NICSpeedMbps) + "\n"
+	relay += "\tIncludedBandwidthGB				: " + fmt.Sprintf("%d", r.IncludedBandwidthGB) + "\n"
+	relay += "\tMaxBandwidthMbps   				: " + fmt.Sprintf("%d", r.MaxBandwidthMbps) + "\n"
+	// relay += "\tLastUpdateTime     			: " + r.LastUpdateTime.String() + "\n"
+	relay += "\tState              				: " + fmt.Sprintf("%v", r.State) + "\n"
+	relay += "\tManagementAddr     				: " + r.ManagementAddr + "\n"
+	relay += "\tSSHUser            				: " + r.SSHUser + "\n"
+	relay += "\tSSHPort            				: " + fmt.Sprintf("%d", r.SSHPort) + "\n"
+	relay += "\tMaxSessions        				: " + fmt.Sprintf("%d", r.MaxSessions) + "\n"
+	// relay += "\tCPUUsage           			: " + fmt.Sprintf("%f", r.CPUUsage) + "\n"
+	// relay += "\tMemUsage           			: " + fmt.Sprintf("%f", r.MemUsage) + "\n"
+	relay += "\tEgressPriceOverride				: " + fmt.Sprintf("%v", r.EgressPriceOverride) + "\n"
+	relay += "\tMRC                				: " + fmt.Sprintf("%v", r.MRC) + "\n"
+	relay += "\tOverage            				: " + fmt.Sprintf("%v", r.Overage) + "\n"
+	relay += "\tBWRule             				: " + fmt.Sprintf("%v", r.BWRule) + "\n"
+	relay += "\tContractTerm       				: " + fmt.Sprintf("%d", r.ContractTerm) + "\n"
+	relay += "\tStartDate          				: " + r.StartDate.String() + "\n"
+	relay += "\tEndDate            				: " + r.EndDate.String() + "\n"
+	relay += "\tType               				: " + fmt.Sprintf("%v", r.Type) + "\n"
+	relay += "\tDatabaseID         				: " + fmt.Sprintf("%d", r.DatabaseID) + "\n"
+	relay += "\tVersion            				: " + r.Version + "\n"
+	relay += "\tDestFirst          				: " + fmt.Sprintf("%v", r.DestFirst) + "\n"
+	relay += "\tInternalAddressClientRoutable	: " + fmt.Sprintf("%v", r.InternalAddressClientRoutable) + "\n"
 	relay += "\tNotes:\n" + fmt.Sprintf("%v", r.Notes) + "\n"
 
 	return relay

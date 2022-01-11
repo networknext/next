@@ -154,7 +154,6 @@ func SeedStorage(
 					State:                         routing.RelayStateOffline,
 					NICSpeedMbps:                  1000,
 					MaxBandwidthMbps:              0,
-					PingInternalOnly:              false,
 					DestFirst:                     false,
 					InternalAddressClientRoutable: false,
 				}); err != nil {

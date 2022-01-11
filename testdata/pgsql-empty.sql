@@ -174,7 +174,6 @@ create table relays (
   datacenter integer not null,
   machine_type integer not null,
   relay_state integer not null,
-  ping_internal_only boolean not null,
   dest_first boolean not null,
   internal_address_client_routable boolean not null,
   primary key (id),

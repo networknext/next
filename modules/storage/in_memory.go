@@ -1184,14 +1184,6 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 
 		relay.Version = version
 
-	case "PingInternalOnly":
-		pingInternalOnly, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("%v is not a valid boolean value", value)
-		}
-
-		relay.PingInternalOnly = pingInternalOnly
-
 	case "DestFirst":
 		destFirst, ok := value.(bool)
 		if !ok {
