@@ -18,25 +18,28 @@ import (
 const RouteMatrixSerializeVersion = 6
 
 type RouteMatrix struct {
-	RelayIDsToIndices    map[uint64]int32
-	RelayIDs             []uint64
-	RelayAddresses       []net.UDPAddr // external IPs only
-	RelayNames           []string
-	RelayLatitudes       []float32
-	RelayLongitudes      []float32
-	RelayDatacenterIDs   []uint64
-	RouteEntries         []core.RouteEntry
-	BinFileBytes         int32
-	BinFileData          []byte
-	CreatedAt            uint64
-	Version              uint32
-	DestRelays           []bool
-	PingStats            []analytics.PingStatsEntry
-	RelayStats           []analytics.RelayStatsEntry
-	FullRelayIDs         []uint64
-	FullRelayIndicesSet  map[int32]bool
-	DestFirstRelayIDs    []uint64
-	DestFirstRelayIDsSet map[uint64]bool
+	RelayIDsToIndices                           map[uint64]int32
+	RelayIDs                                    []uint64
+	RelayAddresses                              []net.UDPAddr // external IPs only
+	RelayNames                                  []string
+	RelayLatitudes                              []float32
+	RelayLongitudes                             []float32
+	RelayDatacenterIDs                          []uint64
+	RouteEntries                                []core.RouteEntry
+	BinFileBytes                                int32
+	BinFileData                                 []byte
+	CreatedAt                                   uint64
+	Version                                     uint32
+	DestRelays                                  []bool
+	PingStats                                   []analytics.PingStatsEntry
+	RelayStats                                  []analytics.RelayStatsEntry
+	FullRelayIDs                                []uint64
+	FullRelayIndicesSet                         map[int32]bool
+	InternalAddressClientRoutableRelayIDs       []uint64
+	InternalAddressClientRoutableRelayAddresses []net.UDPAddr
+	InternalAddressClientRoutableRelayAddrMap   map[uint64]net.UDPAddr
+	DestFirstRelayIDs                           []uint64
+	DestFirstRelayIDsSet                        map[uint64]bool
 
 	cachedResponse      []byte
 	cachedResponseMutex sync.RWMutex
@@ -202,7 +205,26 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	if m.Version >= 6 {
 
+		numInternalAddressClientRoutableRelayIDs := uint32(len(m.InternalAddressClientRoutableRelayIDs))
+		stream.SerializeUint32(&numInternalAddressClientRoutableRelayIDs)
+
+		if stream.IsReading() {
+			m.InternalAddressClientRoutableRelayIDs = make([]uint64, numInternalAddressClientRoutableRelayIDs)
+			m.InternalAddressClientRoutableRelayAddresses = make([]net.UDPAddr, numInternalAddressClientRoutableRelayIDs)
+			m.InternalAddressClientRoutableRelayAddrMap = make(map[uint64]net.UDPAddr)
+		}
+
+		for i := uint32(0); i < numInternalAddressClientRoutableRelayIDs; i++ {
+			stream.SerializeUint64(&m.InternalAddressClientRoutableRelayIDs[i])
+			stream.SerializeAddress(&m.InternalAddressClientRoutableRelayAddresses[i])
+
+			if stream.IsReading() {
+				m.InternalAddressClientRoutableRelayAddrMap[m.InternalAddressClientRoutableRelayIDs[i]] = m.InternalAddressClientRoutableRelayAddresses[i]
+			}
+		}
+
 		numDestFirstRelayIDs := uint32(len(m.DestFirstRelayIDs))
+
 		stream.SerializeUint32(&numDestFirstRelayIDs)
 
 		if stream.IsReading() {
@@ -272,8 +294,14 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 			}
 
 			nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-			nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
 			nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
+
+			if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
+				// Client should ping this relay using its internal address
+				nearRelayAddresses = append(nearRelayAddresses, internalAddr)
+			} else {
+				nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
+			}
 		}
 	}
 
@@ -312,8 +340,14 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		}
 
 		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-		nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
 		nearRelayIDMap[nearRelayData[i].ID] = struct{}{}
+
+		if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
+			// Client should ping this relay using its internal address
+			nearRelayAddresses = append(nearRelayAddresses, internalAddr)
+		} else {
+			nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
+		}
 	}
 
 	// If we already have enough relays, stop and return them
@@ -348,7 +382,13 @@ func (m *RouteMatrix) GetNearRelays(directLatency float32, source_latitude float
 		}
 
 		nearRelayIDs = append(nearRelayIDs, nearRelayData[i].ID)
-		nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
+
+		if internalAddr, exists := m.InternalAddressClientRoutableRelayAddrMap[nearRelayData[i].ID]; exists {
+			// Client should ping this relay using its internal address
+			nearRelayAddresses = append(nearRelayAddresses, internalAddr)
+		} else {
+			nearRelayAddresses = append(nearRelayAddresses, nearRelayData[i].Addr)
+		}
 	}
 
 	return nearRelayIDs, nearRelayAddresses

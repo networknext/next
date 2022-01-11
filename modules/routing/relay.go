@@ -227,11 +227,15 @@ type Relay struct {
 	// Version, checked by fleet relays to see if they need to update
 	Version string `json:"relay_version"`
 
-	// Relay is prioritized when looking up near relays
+	// Relay is prioritized when looking up near relays since it is
+	// in the same datacenter as the destination datacenter.
 	DestFirst bool `json:"destFirst"`
 
-	// Relay can receive pings from any client via its internal address
-	// Other servers and relays should ping via external address
+	// Relay can receive pings from any client via its internal address,
+	// which is used for pinging near relays and if this relay is the first
+	// hop in the route token. Other servers and relays should ping this
+	// relay via external address (unless belong to same supplier of course).
+	// IMPORTANT: relay must have InternalAddr field filled out
 	InternalAddressClientRoutable bool `json:"internalAddressClientRoutable"`
 }
 

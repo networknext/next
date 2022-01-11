@@ -485,16 +485,18 @@ func mainReturnWithCode() int {
 				_, relayHash := GetRelayData()
 
 				type ActiveRelayData struct {
-					ID           uint64
-					Name         string
-					Addr         net.UDPAddr
-					SessionCount int
-					Version      string
-					Latitude     float32
-					Longitude    float32
-					SellerID     string
-					DatacenterID uint64
-					DestFirst    bool
+					ID                            uint64
+					Name                          string
+					Addr                          net.UDPAddr
+					InternalAddr                  net.UDPAddr
+					SessionCount                  int
+					Version                       string
+					Latitude                      float32
+					Longitude                     float32
+					SellerID                      string
+					DatacenterID                  uint64
+					InternalAddressClientRoutable bool
+					DestFirst                     bool
 				}
 
 				activeRelays := make([]ActiveRelayData, 0)
@@ -511,11 +513,8 @@ func mainReturnWithCode() int {
 
 						relayData := ActiveRelayData{}
 						relayData.ID = relay.ID
-						if relay.InternalAddressClientRoutable {
-							relayData.Addr = relay.InternalAddr
-						} else {
-							relayData.Addr = relay.Addr
-						}
+						relayData.Addr = relay.Addr
+						relayData.InternalAddr = relay.InternalAddr
 						relayData.Name = relay.Name
 						relayData.Latitude = float32(relay.Datacenter.Location.Latitude)
 						relayData.Longitude = float32(relay.Datacenter.Location.Longitude)
@@ -523,6 +522,7 @@ func mainReturnWithCode() int {
 						relayData.DatacenterID = relay.Datacenter.ID
 						relayData.SessionCount = activeRelaySessionCounts[i]
 						relayData.Version = activeRelayVersions[i]
+						relayData.InternalAddressClientRoutable = relay.InternalAddressClientRoutable
 						relayData.DestFirst = relay.DestFirst
 
 						activeRelays = append(activeRelays, relayData)
@@ -541,6 +541,8 @@ func mainReturnWithCode() int {
 				relayLatitudes := make([]float32, numActiveRelays)
 				relayLongitudes := make([]float32, numActiveRelays)
 				relayDatacenterIDs := make([]uint64, numActiveRelays)
+				var relayInternalAddressClientRoutable []uint64
+				var relayInternalAddressClientRoutableAddresses []net.UDPAddr
 				var relayDestFirst []uint64
 
 				for i := range activeRelays {
@@ -550,6 +552,17 @@ func mainReturnWithCode() int {
 					relayLatitudes[i] = float32(activeRelays[i].Latitude)
 					relayLongitudes[i] = float32(activeRelays[i].Longitude)
 					relayDatacenterIDs[i] = activeRelays[i].DatacenterID
+
+					if activeRelays[i].InternalAddressClientRoutable {
+						if activeRelays[i].InternalAddr.String() == ":0" {
+							// Do not add this relay as client routable if it is missing an internal address
+							core.Error("relay %s (%016x) internal address is client routable but is missing internal address (%s)", activeRelays[i].Name, activeRelays[i].ID, activeRelays[i].InternalAddr)
+						} else {
+							relayInternalAddressClientRoutable = append(relayInternalAddressClientRoutable, activeRelays[i].ID)
+							relayInternalAddressClientRoutableAddresses = append(relayInternalAddressClientRoutableAddresses, activeRelays[i].InternalAddr)
+						}
+					}
+
 					if activeRelays[i].DestFirst {
 						relayDestFirst = append(relayDestFirst, activeRelays[i].ID)
 					}
@@ -830,22 +843,24 @@ func mainReturnWithCode() int {
 				relayStats := entries[:count]
 
 				routeMatrixNew := routing.RouteMatrix{
-					RelayIDs:           relayIDs,
-					RelayAddresses:     relayAddresses,
-					RelayNames:         relayNames,
-					RelayLatitudes:     relayLatitudes,
-					RelayLongitudes:    relayLongitudes,
-					RelayDatacenterIDs: relayDatacenterIDs,
-					RouteEntries:       routeEntries,
-					BinFileBytes:       int32(len(databaseBuffer.Bytes())),
-					BinFileData:        databaseBuffer.Bytes(),
-					CreatedAt:          uint64(time.Now().Unix()),
-					Version:            routing.RouteMatrixSerializeVersion,
-					DestRelays:         destRelays,
-					PingStats:          pingStats,
-					RelayStats:         relayStats,
-					FullRelayIDs:       fullRelayIDs,
-					DestFirstRelayIDs:  relayDestFirst,
+					RelayIDs:                              relayIDs,
+					RelayAddresses:                        relayAddresses,
+					RelayNames:                            relayNames,
+					RelayLatitudes:                        relayLatitudes,
+					RelayLongitudes:                       relayLongitudes,
+					RelayDatacenterIDs:                    relayDatacenterIDs,
+					RouteEntries:                          routeEntries,
+					BinFileBytes:                          int32(len(databaseBuffer.Bytes())),
+					BinFileData:                           databaseBuffer.Bytes(),
+					CreatedAt:                             uint64(time.Now().Unix()),
+					Version:                               routing.RouteMatrixSerializeVersion,
+					DestRelays:                            destRelays,
+					PingStats:                             pingStats,
+					RelayStats:                            relayStats,
+					FullRelayIDs:                          fullRelayIDs,
+					InternalAddressClientRoutableRelayIDs: relayInternalAddressClientRoutable,
+					InternalAddressClientRoutableRelayAddresses: relayInternalAddressClientRoutableAddresses,
+					DestFirstRelayIDs: relayDestFirst,
 				}
 
 				if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {

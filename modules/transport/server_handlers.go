@@ -466,16 +466,24 @@ func GetRouteAddressesAndPublicKeys(
 			core.Debug("relay %x doesn't exist?!\n", relayID)
 		}
 
-		/*
-			If the relay has a private address defined and the previous relay in the route
-			is from the same seller, prefer to send to the relay private address instead.
-			These private addresses often have better performance than the public addresses,
-			and in the case of google cloud, have cheaper bandwidth prices.
-		*/
-
 		relayAddresses[i] = &relay.Addr
 
-		if i > 0 {
+		if i == 0 && relay.InternalAddressClientRoutable && relay.InternalAddr.String() != ":0" {
+			/*
+				If the relay is the first hop and has an internal address
+				that can be pinged by the client, prefer to use this address
+				instead of the external address.
+			*/
+
+			relayAddresses[i] = &relay.InternalAddr
+		} else if i > 0 {
+			/*
+				If the relay has a private address defined and the previous relay in the route
+				is from the same seller, prefer to send to the relay private address instead.
+				These private addresses often have better performance than the public addresses,
+				and in the case of google cloud, have cheaper bandwidth prices.
+			*/
+
 			prevRelayIndex := routeRelays[i-1]
 			prevID := allRelayIDs[prevRelayIndex]
 			prev, _ := database.RelayMap[prevID] // IMPORTANT: Relay DOES exist.

@@ -141,7 +141,7 @@ func GatewayRelayUpdateHandlerFunc(params GatewayRelayUpdateHandlerConfig) func(
 			}
 
 			var address string
-			if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != "" && relayArray[i].InternalAddr.String() != ":0" {
+			if sellerName == relayArray[i].Seller.Name && relayArray[i].InternalAddr.String() != ":0" {
 				// If the relay is under the same seller, prefer the internal address
 				address = relayArray[i].InternalAddr.String()
 			} else {
