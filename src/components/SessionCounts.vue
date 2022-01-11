@@ -32,7 +32,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import { AlertType } from './types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import BuyerFilter from '@/components/BuyerFilter.vue'
-import { EMAIL_CONFIRMATION_MESSAGE } from '@/components/types/Constants'
+import { EMAIL_CONFIRMATION_MESSAGE, MAX_RETRIES } from '@/components/types/Constants'
 import { ErrorTypes } from './types/ErrorTypes'
 
 /**
@@ -54,8 +54,6 @@ interface TotalSessionsReply {
   direct: number;
   onNN: number;
 }
-
-const MAX_RETRIES = 4
 
 @Component({
   components: {
@@ -148,13 +146,12 @@ export default class SessionCounts extends Vue {
 
         this.stopLoop()
         this.retryCount = this.retryCount + 1
+        console.log(this.retryCount)
         if (this.retryCount < MAX_RETRIES) {
           setTimeout(() => {
             this.restartLoop()
           }, 3000 * this.retryCount)
-        }
-
-        if (this.retryCount >= MAX_RETRIES) {
+        } else {
           this.$store.dispatch('toggleKillLoops', true)
         }
       })

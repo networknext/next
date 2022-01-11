@@ -131,7 +131,7 @@
                 <b>{{ parseFloat(session.delta_rtt).toFixed(2) }}</b>
               </span>
               <span v-if="session.delta_rtt < 0 || !session.on_network_next">
-                <b>-</b>
+                -
               </span>
             </td>
           </tr>
@@ -145,6 +145,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import SessionCounts from '@/components/SessionCounts.vue'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
+import { MAX_RETRIES } from '@/components/types/Constants'
 
 /**
  * This component holds the workspace elements related to the top sessions page in the Portal
@@ -154,8 +155,6 @@ import { FeatureEnum } from '@/components/types/FeatureTypes'
  * TODO: Cleanup template
  * TODO: Make this a View
  */
-
-const MAX_RETRIES = 4
 
 @Component({
   components: {
@@ -275,9 +274,7 @@ export default class SessionsWorkspace extends Vue {
           setTimeout(() => {
             this.restartLoop()
           }, 3000 * this.retryCount)
-        }
-
-        if (this.retryCount >= MAX_RETRIES) {
+        } else {
           this.$store.dispatch('toggleKillLoops', true)
         }
       })

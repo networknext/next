@@ -6,14 +6,29 @@ import { Filter } from '@/components/types/FilterTypes'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { AlertType } from '@/components/types/AlertTypes'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
+import { VueConstructor } from 'vue/types/umd'
+import { MAX_RETRIES } from '@/components/types/Constants'
 
-describe('UserManagement.vue', () => {
+function totalSessionCountsMock (vueInstance: VueConstructor<any>, success: boolean, direct: number, next: number, customerCode: string): jest.SpyInstance<any, unknown[]> {
+  return jest.spyOn(vueInstance.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation((args: any) => {
+    expect(args.company_code).toBe(customerCode)
+
+    return success ? Promise.resolve(
+      {
+        direct: direct,
+        next: next
+      }
+    ) : Promise.reject()
+  })
+}
+
+describe('SessionCounts.vue', () => {
   const localVue = createLocalVue()
 
   localVue.use(Vuex)
   localVue.use(JSONRPCPlugin)
 
-  const store = new Vuex.Store({
+  const defaultStore = {
     state: {
       allBuyers: [],
       userProfile: newDefaultProfile(),
@@ -35,6 +50,11 @@ describe('UserManagement.vue', () => {
       isBuyer: (state: any) => state.isBuyer,
       isAdmin: (state: any) => state.isAdmin,
       killLoops: (state: any) => state.killLoops
+    },
+    actions: {
+      toggleKillLoops ({ commit }: any, killLoops: boolean) {
+        commit('TOGGLE_KILL_LOOPS', killLoops)
+      }
     },
     mutations: {
       UPDATE_USER_PROFILE (state: any, userProfile: UserProfile) {
@@ -62,104 +82,79 @@ describe('UserManagement.vue', () => {
         state.isAdmin = isAdmin
       }
     }
-  })
+  }
 
   jest.useFakeTimers()
 
-  describe('SessionCounts.vue', () => {
-    it('checks to see if everything is correct by default', () => {
-      const spyMapPoints = jest.spyOn(localVue.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation(() => {
-        return Promise.resolve({
-          direct: 0,
-          next: 0
-        })
-      })
+  it('checks to see if everything is correct by default', () => {
+    const spy = totalSessionCountsMock(localVue, true, 0, 0, '')
+    const store = new Vuex.Store(defaultStore)
 
-      const wrapper = shallowMount(SessionCounts, { localVue, store })
-      expect(wrapper.exists()).toBe(true)
+    const wrapper = shallowMount(SessionCounts, { localVue, store })
+    expect(wrapper.exists()).toBe(true)
 
-      spyMapPoints.mockReset()
+    spy.mockReset()
 
-      wrapper.destroy()
-    })
-
-    it('checks count polling logic', async () => {
-      const spyMapPoints = jest.spyOn(localVue.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation(() => {
-        return Promise.resolve({
-          direct: 0,
-          next: 0
-        })
-      })
-
-      const wrapper = shallowMount(SessionCounts, { localVue, store })
-      expect(wrapper.exists()).toBeTruthy()
-
-      expect(spyMapPoints).toBeCalled()
-      expect(spyMapPoints).toBeCalledTimes(1)
-      jest.advanceTimersByTime(1000)
-      expect(spyMapPoints).toBeCalledTimes(2)
-      jest.advanceTimersByTime(1000)
-      expect(spyMapPoints).toBeCalledTimes(3)
-      jest.advanceTimersByTime(1000)
-      expect(spyMapPoints).toBeCalledTimes(4)
-
-      spyMapPoints.mockReset()
-
-      wrapper.destroy()
-    })
-
-    it('checks to see if loop interrupt works as expected', async () => {
-      let spyMapPoints = jest.spyOn(localVue.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation((args: any) => {
-        expect(args.company_code).toBe('')
-
-        return Promise.resolve({
-          direct: 0,
-          next: 0
-        })
-      })
-
-      const wrapper = shallowMount(SessionCounts, { localVue, store })
-      expect(wrapper.exists()).toBeTruthy()
-
-      await wrapper.vm.$nextTick()
-
-      spyMapPoints.mockReset()
-      expect(spyMapPoints).not.toBeCalled()
-
-      spyMapPoints = jest.spyOn(localVue.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation((args: any) => {
-        expect(args.company_code).toBe('test-company')
-
-        return Promise.resolve({
-          direct: 10,
-          next: 100
-        })
-      })
-
-      store.commit('UPDATE_CURRENT_FILTER', { companyCode: 'test-company' })
-
-      await wrapper.vm.$nextTick()
-
-      expect(spyMapPoints).toBeCalled()
-
-      spyMapPoints.mockReset()
-      wrapper.destroy()
-    })
+    wrapper.destroy()
   })
 
-  it('checks display update functionality', async () => {
-    let spyMapPoints = jest.spyOn(localVue.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation(() => {
-      return Promise.resolve({
-        direct: 0,
-        next: 0
-      })
-    })
+  it('checks count polling logic', async () => {
+    const spy = totalSessionCountsMock(localVue, true, 0, 0, '')
+    const store = new Vuex.Store(defaultStore)
+
+    const wrapper = shallowMount(SessionCounts, { localVue, store })
+    expect(wrapper.exists()).toBeTruthy()
+
+    expect(spy).toBeCalled()
+    expect(spy).toBeCalledTimes(1)
+    jest.advanceTimersByTime(1000)
+    expect(spy).toBeCalledTimes(2)
+    jest.advanceTimersByTime(1000)
+    expect(spy).toBeCalledTimes(3)
+    jest.advanceTimersByTime(1000)
+    expect(spy).toBeCalledTimes(4)
+
+    spy.mockReset()
+
+    wrapper.destroy()
+  })
+
+  it('checks to see if loop interrupt works as expected', async () => {
+    let spy = totalSessionCountsMock(localVue, true, 0, 0, '')
+    const store = new Vuex.Store(defaultStore)
 
     const wrapper = shallowMount(SessionCounts, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
 
     await wrapper.vm.$nextTick()
 
-    expect(spyMapPoints).toBeCalledTimes(1)
+    spy.mockReset()
+    expect(spy).not.toBeCalled()
+
+    spy = totalSessionCountsMock(localVue, true, 10, 100, 'test-company')
+
+    store.commit('UPDATE_CURRENT_FILTER', { companyCode: 'test-company' })
+
+    await wrapper.vm.$nextTick()
+
+    expect(spy).toBeCalled()
+
+    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '' })
+
+    spy.mockReset()
+    wrapper.destroy()
+  })
+
+  it('checks display update functionality', async () => {
+    let spy = totalSessionCountsMock(localVue, true, 0, 0, '')
+    const store = new Vuex.Store(defaultStore)
+
+    const wrapper = shallowMount(SessionCounts, { localVue, store })
+    expect(wrapper.exists()).toBeTruthy()
+
+    await wrapper.vm.$nextTick()
+
+    expect(spy).toBeCalledTimes(1)
 
     await wrapper.vm.$nextTick()
 
@@ -171,17 +166,12 @@ describe('UserManagement.vue', () => {
     expect(headerElement.text()).toContain('0 Total Sessions')
     expect(headerElement.text()).toContain('0 on Network Next')
 
-    spyMapPoints.mockReset()
+    spy.mockReset()
 
-    spyMapPoints = jest.spyOn(localVue.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation(() => {
-      return Promise.resolve({
-        direct: 10,
-        next: 100
-      })
-    })
+    spy = totalSessionCountsMock(localVue, true, 10, 100, '')
 
     jest.advanceTimersByTime(1000)
-    expect(spyMapPoints).toBeCalledTimes(1)
+    expect(spy).toBeCalledTimes(1)
 
     await wrapper.vm.$nextTick()
 
@@ -193,26 +183,22 @@ describe('UserManagement.vue', () => {
     expect(headerElement.text()).toContain('110 Total Sessions')
     expect(headerElement.text()).toContain('100 on Network Next')
 
-    spyMapPoints.mockReset()
+    spy.mockReset()
 
     wrapper.destroy()
   })
 
   // More of an integration test -> errors here will probably be thrown by BuyerFilter component
   it('checks buyer filter', async () => {
-    const spyMapPoints = jest.spyOn(localVue.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation(() => {
-      return Promise.resolve({
-        direct: 0,
-        next: 0
-      })
-    })
+    const spy = totalSessionCountsMock(localVue, true, 0, 0, '')
+    const store = new Vuex.Store(defaultStore)
 
     const wrapper = mount(SessionCounts, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
 
     await wrapper.vm.$nextTick()
 
-    expect(spyMapPoints).toBeCalledTimes(1)
+    expect(spy).toBeCalledTimes(1)
 
     await wrapper.vm.$nextTick()
 
@@ -243,18 +229,14 @@ describe('UserManagement.vue', () => {
     expect(store.getters.isBuyer).toBeFalsy()
     expect(store.getters.isAdmin).toBeTruthy()
 
-    spyMapPoints.mockReset()
+    spy.mockReset()
 
     wrapper.destroy()
   })
 
   it('checks verification alert', async () => {
-    const spyMapPoints = jest.spyOn(localVue.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation(() => {
-      return Promise.resolve({
-        direct: 0,
-        next: 0
-      })
-    })
+    const spy = totalSessionCountsMock(localVue, true, 0, 0, '')
+    const store = new Vuex.Store(defaultStore)
 
     store.commit('UPDATE_IS_ANONYMOUSPLUS', true)
 
@@ -276,18 +258,14 @@ describe('UserManagement.vue', () => {
     expect(alert.text()).toContain('Please check your email to verify your email address: test@test.com')
     expect(alert.text()).toContain('Resend email')
 
-    spyMapPoints.mockReset()
+    spy.mockReset()
 
     wrapper.destroy()
   })
 
   it('checks kill loops alert', async () => {
-    const spyMapPoints = jest.spyOn(localVue.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation(() => {
-      return Promise.resolve({
-        direct: 0,
-        next: 0
-      })
-    })
+    const spy = totalSessionCountsMock(localVue, true, 0, 0, '')
+    const store = new Vuex.Store(defaultStore)
 
     let wrapper = mount(SessionCounts, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -317,18 +295,16 @@ describe('UserManagement.vue', () => {
     expect(alert.classes(AlertType.ERROR)).toBeTruthy()
     expect(alert.text()).toBe(ErrorTypes.SYSTEM_FAILURE)
 
-    spyMapPoints.mockReset()
+    store.commit('TOGGLE_KILL_LOOPS', false)
+
+    spy.mockReset()
 
     wrapper.destroy()
   })
 
   it('checks failed map lookup alert', async () => {
-    const spyMapPoints = jest.spyOn(localVue.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation(() => {
-      return Promise.resolve({
-        direct: 0,
-        next: 0
-      })
-    })
+    const spy = totalSessionCountsMock(localVue, true, 0, 0, '')
+    const store = new Vuex.Store(defaultStore)
 
     const wrapper = mount(SessionCounts, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -343,7 +319,43 @@ describe('UserManagement.vue', () => {
     expect(alert.classes(AlertType.WARNING)).toBeTruthy()
     expect(alert.text()).toBe(ErrorTypes.FAILED_MAP_POINT_LOOKUP)
 
-    spyMapPoints.mockReset()
+    spy.mockReset()
+
+    wrapper.destroy()
+  })
+
+  it('checks failed api call', async () => {
+    const store = new Vuex.Store(defaultStore)
+
+    const spy = totalSessionCountsMock(localVue, false, 0, 0, '')
+
+    const wrapper = mount(SessionCounts, { localVue, store })
+
+    expect(store.getters.killLoops).toBeFalsy()
+
+    await wrapper.vm.$nextTick()
+
+    expect(spy).toBeCalledTimes(1)
+
+    await wrapper.vm.$nextTick()
+
+    let retryCount = wrapper.vm.$data.retryCount
+    expect(retryCount).toBe(1)
+
+    for (let i = 2; i <= MAX_RETRIES; i++) {
+      jest.advanceTimersByTime(3000 * retryCount)
+
+      await wrapper.vm.$nextTick()
+
+      expect(spy).toBeCalledTimes(i)
+
+      await wrapper.vm.$nextTick()
+
+      retryCount = wrapper.vm.$data.retryCount
+      expect(retryCount).toBe(i)
+    }
+
+    expect(store.getters.killLoops).toBeTruthy()
 
     wrapper.destroy()
   })
