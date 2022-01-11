@@ -228,12 +228,13 @@ type Relay struct {
 	Version string `json:"relay_version"`
 
 	// Determines if relay should only ping other relays under the same supplier
+	// via internal address. Other relays are pinged via external address.
 	PingInternalOnly bool `json:"pingInternalOnly"`
 
 	// Relay is prioritized when looking up near relays
 	DestFirst bool `json:"destFirst"`
 
-	// Client can ping the internal address of the relay
+	// Relay can receive pings from any client via its internal address
 	CanPingInternalAddr bool `json:"canPingInternalAddr"`
 }
 
