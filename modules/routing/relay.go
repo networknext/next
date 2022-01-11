@@ -226,6 +226,16 @@ type Relay struct {
 
 	// Version, checked by fleet relays to see if they need to update
 	Version string `json:"relay_version"`
+
+	// Determines if relay should only ping other relays under the same supplier
+	// via internal address. Other relays are pinged via external address.
+	PingInternalOnly bool `json:"pingInternalOnly"`
+
+	// Relay is prioritized when looking up near relays
+	DestFirst bool `json:"destFirst"`
+
+	// Relay can receive pings from any client via its internal address
+	CanPingInternalAddr bool `json:"canPingInternalAddr"`
 }
 
 func (r *Relay) EncodedPublicKey() string {
@@ -316,6 +326,9 @@ func (r *Relay) String() string {
 	relay += "\tType               : " + fmt.Sprintf("%v", r.Type) + "\n"
 	relay += "\tDatabaseID         : " + fmt.Sprintf("%d", r.DatabaseID) + "\n"
 	relay += "\tVersion            : " + r.Version + "\n"
+	relay += "\tPingInternalOnly   : " + fmt.Sprintf("%v", r.PingInternalOnly) + "\n"
+	relay += "\tDestFirst          : " + fmt.Sprintf("%v", r.DestFirst) + "\n"
+	relay += "\tCanPingInternalAddr: " + fmt.Sprintf("%v", r.CanPingInternalAddr) + "\n"
 	relay += "\tNotes:\n" + fmt.Sprintf("%v", r.Notes) + "\n"
 
 	return relay
