@@ -109,6 +109,12 @@ func getRouteMatrix(t *testing.T, version uint32) routing.RouteMatrix {
 	if version >= 6 {
 		expected.Version = 6
 
+		internalAddr2, err := net.ResolveUDPAddr("udp", "128.0.0.1:10001")
+		assert.NoError(t, err)
+
+		expected.InternalAddressClientRoutableRelayIDs = []uint64{2}
+		expected.InternalAddressClientRoutableRelayAddresses = []net.UDPAddr{*internalAddr2}
+
 		expected.DestFirstRelayIDs = []uint64{2}
 	}
 
@@ -250,6 +256,9 @@ func TestRouteMatrixSerialize(t *testing.T) {
 		assert.NotEmpty(t, actual.FullRelayIndicesSet)
 		actual.FullRelayIndicesSet = nil
 
+		assert.NotEmpty(t, actual.InternalAddressClientRoutableRelayAddrMap)
+		actual.InternalAddressClientRoutableRelayAddrMap = nil
+
 		assert.NotEmpty(t, actual.DestFirstRelayIDsSet)
 		actual.DestFirstRelayIDsSet = nil
 
@@ -293,8 +302,6 @@ func TestRouteMatrixSerializeWithTimestampBackwardsComp(t *testing.T) {
 	assert.Equal(t, expected.CreatedAt, uint64(0))
 }
 
-// todo: GetNearRelays tests should be extended to also check the second value returned, array of relay addresses is correct
-
 func TestRouteMatrix_GetNearRelays_NoNearRelays(t *testing.T) {
 	t.Parallel()
 
@@ -313,9 +320,47 @@ func TestRouteMatrix_GetNearRelays_Success(t *testing.T) {
 
 	expected := []uint64{1, 4, 3}
 
-	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
+	actual, actualRelayAddrs := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
 
 	assert.Equal(t, expected, actual)
+
+	// All relay addresses should be external
+	expectedRelayAddrs := []net.UDPAddr{
+		routeMatrix.RelayAddresses[0],
+		routeMatrix.RelayAddresses[3],
+		routeMatrix.RelayAddresses[2],
+	}
+
+	assert.Equal(t, expectedRelayAddrs, actualRelayAddrs)
+}
+
+func TestRouteMatrix_GetNearRelays_Success_InternalAddrClientRoutable(t *testing.T) {
+	t.Parallel()
+
+	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
+	// Add in internal address for relay 1
+	internalAddr1, err := net.ResolveUDPAddr("udp", "128.0.0.1:10000")
+	assert.NoError(t, err)
+
+	routeMatrix.InternalAddressClientRoutableRelayIDs = []uint64{1}
+	routeMatrix.InternalAddressClientRoutableRelayAddresses = []net.UDPAddr{*internalAddr1}
+	routeMatrix.InternalAddressClientRoutableRelayAddrMap = make(map[uint64]net.UDPAddr)
+	routeMatrix.InternalAddressClientRoutableRelayAddrMap[uint64(1)] = *internalAddr1
+
+	expected := []uint64{1, 4, 3}
+
+	actual, actualRelayAddrs := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
+
+	assert.Equal(t, expected, actual)
+
+	// Relay 1's address should be internal
+	expectedRelayAddrs := []net.UDPAddr{
+		routeMatrix.InternalAddressClientRoutableRelayAddresses[0],
+		routeMatrix.RelayAddresses[3],
+		routeMatrix.RelayAddresses[2],
+	}
+
+	assert.Equal(t, expectedRelayAddrs, actualRelayAddrs)
 }
 
 func TestRouteMatrix_GetNearRelays_WithMax(t *testing.T) {
@@ -325,9 +370,43 @@ func TestRouteMatrix_GetNearRelays_WithMax(t *testing.T) {
 
 	expected := routeMatrix.RelayIDs[:1]
 
-	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, 1, 5)
+	actual, actualRelayAddrs := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, 1, 5)
 
 	assert.Equal(t, expected, actual)
+
+	// All relay addresses should be external
+	expectedRelayAddrs := []net.UDPAddr{
+		routeMatrix.RelayAddresses[0],
+	}
+
+	assert.Equal(t, expectedRelayAddrs, actualRelayAddrs)
+}
+
+func TestRouteMatrix_GetNearRelays_WithMax_InternalAddrClientRoutable(t *testing.T) {
+	t.Parallel()
+
+	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
+	// Add in internal address for relay 1
+	internalAddr1, err := net.ResolveUDPAddr("udp", "128.0.0.1:10000")
+	assert.NoError(t, err)
+
+	routeMatrix.InternalAddressClientRoutableRelayIDs = []uint64{1}
+	routeMatrix.InternalAddressClientRoutableRelayAddresses = []net.UDPAddr{*internalAddr1}
+	routeMatrix.InternalAddressClientRoutableRelayAddrMap = make(map[uint64]net.UDPAddr)
+	routeMatrix.InternalAddressClientRoutableRelayAddrMap[uint64(1)] = *internalAddr1
+
+	expected := routeMatrix.RelayIDs[:1]
+
+	actual, actualRelayAddrs := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, 1, 5)
+
+	assert.Equal(t, expected, actual)
+
+	// Relay 1's address should be internal
+	expectedRelayAddrs := []net.UDPAddr{
+		routeMatrix.InternalAddressClientRoutableRelayAddresses[0],
+	}
+
+	assert.Equal(t, expectedRelayAddrs, actualRelayAddrs)
 }
 
 func TestRouteMatrix_GetNearRelays_NoNearRelaysAroundSource(t *testing.T) {
@@ -342,9 +421,51 @@ func TestRouteMatrix_GetNearRelays_NoNearRelaysAroundSource(t *testing.T) {
 
 	expected := []uint64{4, 3}
 
-	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
+	actual, actualRelayAddrs := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
 
 	assert.Equal(t, expected, actual)
+
+	// All relay addresses should be external
+	expectedRelayAddrs := []net.UDPAddr{
+		routeMatrix.RelayAddresses[3],
+		routeMatrix.RelayAddresses[2],
+	}
+
+	assert.Equal(t, expectedRelayAddrs, actualRelayAddrs)
+}
+
+func TestRouteMatrix_GetNearRelays_NoNearRelaysAroundSource_InternalAddrClientRoutable(t *testing.T) {
+	t.Parallel()
+
+	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
+
+	// Add in internal address for relay 4
+	internalAddr4, err := net.ResolveUDPAddr("udp", "128.0.0.1:10003")
+	assert.NoError(t, err)
+
+	routeMatrix.InternalAddressClientRoutableRelayIDs = []uint64{4}
+	routeMatrix.InternalAddressClientRoutableRelayAddresses = []net.UDPAddr{*internalAddr4}
+	routeMatrix.InternalAddressClientRoutableRelayAddrMap = make(map[uint64]net.UDPAddr)
+	routeMatrix.InternalAddressClientRoutableRelayAddrMap[uint64(4)] = *internalAddr4
+
+	// Zero out the Tokyo relay lat/long so that it is far enough away that it
+	// won't be picked up by the speed of light check
+	routeMatrix.RelayLatitudes[0] = 0
+	routeMatrix.RelayLongitudes[0] = 0
+
+	expected := []uint64{4, 3}
+
+	actual, actualRelayAddrs := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
+
+	assert.Equal(t, expected, actual)
+
+	// Relay 4's address should be internal
+	expectedRelayAddrs := []net.UDPAddr{
+		routeMatrix.InternalAddressClientRoutableRelayAddresses[0],
+		routeMatrix.RelayAddresses[2],
+	}
+
+	assert.Equal(t, expectedRelayAddrs, actualRelayAddrs)
 }
 
 func TestRouteMatrix_GetNearRelays_NoNearRelaysAroundDest(t *testing.T) {
@@ -359,12 +480,102 @@ func TestRouteMatrix_GetNearRelays_NoNearRelaysAroundDest(t *testing.T) {
 
 	expected := []uint64{1, 3}
 
-	actual, _ := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
+	actual, actualRelayAddrs := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
 
 	assert.Equal(t, expected, actual)
+
+	// All relay addresses should be external
+	expectedRelayAddrs := []net.UDPAddr{
+		routeMatrix.RelayAddresses[0],
+		routeMatrix.RelayAddresses[2],
+	}
+
+	assert.Equal(t, expectedRelayAddrs, actualRelayAddrs)
+}
+
+func TestRouteMatrix_GetNearRelays_NoNearRelaysAroundDest_InternalAddrClientRoutable(t *testing.T) {
+	t.Parallel()
+
+	routeMatrix := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
+
+	// Add in internal address for relay 1
+	internalAddr1, err := net.ResolveUDPAddr("udp", "128.0.0.1:10000")
+	assert.NoError(t, err)
+
+	routeMatrix.InternalAddressClientRoutableRelayIDs = []uint64{1}
+	routeMatrix.InternalAddressClientRoutableRelayAddresses = []net.UDPAddr{*internalAddr1}
+	routeMatrix.InternalAddressClientRoutableRelayAddrMap = make(map[uint64]net.UDPAddr)
+	routeMatrix.InternalAddressClientRoutableRelayAddrMap[uint64(1)] = *internalAddr1
+
+	// Zero out the Los Angeles relay lat/long so that it is far enough away that it
+	// won't be picked up by the speed of light check
+	routeMatrix.RelayLatitudes[len(routeMatrix.RelayLatitudes)-1] = 0
+	routeMatrix.RelayLongitudes[len(routeMatrix.RelayLatitudes)-1] = 0
+
+	expected := []uint64{1, 3}
+
+	actual, actualRelayAddrs := routeMatrix.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 5)
+
+	assert.Equal(t, expected, actual)
+
+	// Relay 1's address should be internal
+	expectedRelayAddrs := []net.UDPAddr{
+		routeMatrix.InternalAddressClientRoutableRelayAddresses[0],
+		routeMatrix.RelayAddresses[2],
+	}
+
+	assert.Equal(t, expectedRelayAddrs, actualRelayAddrs)
 }
 
 func TestRouteMatrix_GetNearRelays_DestFirst(t *testing.T) {
+	t.Parallel()
+
+	// Serialize the route matrix so we get the dest first relay set
+	expected := getRouteMatrix(t, routing.RouteMatrixSerializeVersion)
+
+	// Remove the InternalAddressClientRoutableRelayIDs to ensure external addresses are used
+	expected.InternalAddressClientRoutableRelayIDs = []uint64{}
+	expected.InternalAddressClientRoutableRelayAddresses = []net.UDPAddr{}
+
+	buffer := make([]byte, 20000)
+
+	ws, err := encoding.CreateWriteStream(buffer)
+	assert.NoError(t, err)
+	err = expected.Serialize(ws)
+	assert.NoError(t, err)
+
+	ws.Flush()
+	data := ws.GetData()[:ws.GetBytesProcessed()]
+
+	var actual routing.RouteMatrix
+	rs := encoding.CreateReadStream(data)
+	err = actual.Serialize(rs)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected.DestFirstRelayIDs, actual.DestFirstRelayIDs)
+	assert.Equal(t, 1, len(actual.DestFirstRelayIDsSet))
+
+	// Datacenter ID 12 maps to Relay 2
+	// Even though Relay 2 does not have the same lat/long as the destination,
+	// it is marked as a dest first relay and its datacenter ID is passed in
+	expectedRelays := []uint64{2, 1, 4, 3}
+
+	actualRelays, actualRelayAddrs := actual.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 12)
+
+	assert.Equal(t, expectedRelays, actualRelays)
+
+	// All relay addresses should be external
+	expectedRelayAddrs := []net.UDPAddr{
+		expected.RelayAddresses[1],
+		expected.RelayAddresses[0],
+		expected.RelayAddresses[3],
+		expected.RelayAddresses[2],
+	}
+
+	assert.Equal(t, expectedRelayAddrs, actualRelayAddrs)
+}
+
+func TestRouteMatrix_GetNearRelays_DestFirst_InternalAddrClientRoutable(t *testing.T) {
 	t.Parallel()
 
 	// Serialize the route matrix so we get the dest first relay set
@@ -393,9 +604,17 @@ func TestRouteMatrix_GetNearRelays_DestFirst(t *testing.T) {
 	// it is marked as a dest first relay and its datacenter ID is passed in
 	expectedRelays := []uint64{2, 1, 4, 3}
 
-	actualRelays, _ := actual.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 12)
-
+	actualRelays, actualRelayAddrs := actual.GetNearRelays(30, TokyoLatitude, TokyoLongitude, LosAngelesLatitude, LosAngelesLongitude, core.MaxNearRelays, 12)
 	assert.Equal(t, expectedRelays, actualRelays)
+
+	// Relay 2's address should be the internal
+	expectedRelayAddrs := []net.UDPAddr{
+		expected.InternalAddressClientRoutableRelayAddresses[0],
+		expected.RelayAddresses[0],
+		expected.RelayAddresses[3],
+		expected.RelayAddresses[2],
+	}
+	assert.Equal(t, expectedRelayAddrs, actualRelayAddrs)
 }
 
 func TestRouteMatrixGetDatacenterIDsEmpty(t *testing.T) {

@@ -417,6 +417,9 @@ func TestRelayFrontendSvc_ResetRouteMatrix(t *testing.T) {
 		RelayStats:           []analytics.RelayStatsEntry{},
 		FullRelayIDs:         []uint64{},
 		FullRelayIndicesSet:  make(map[int32]bool),
+		InternalAddressClientRoutableRelayIDs: []uint64{},
+		InternalAddressClientRoutableRelayAddresses: []net.UDPAddr{},
+		InternalAddressClientRoutableRelayAddrMap: make(map[uint64]net.UDPAddr),
 		DestFirstRelayIDs:    []uint64{},
 		DestFirstRelayIDsSet: make(map[uint64]bool),
 	}
