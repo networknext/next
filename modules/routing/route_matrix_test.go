@@ -415,19 +415,23 @@ func TestRouteMatrixGetDatacenterIDsSuccess(t *testing.T) {
 
 	expected := routeMatrix.RelayIDs[0]
 	actual := routeMatrix.GetDatacenterRelayIDs(11)
-	assert.Equal(t, expected, actual)
+	assert.Equal(t, 1, len(actual))
+	assert.Equal(t, expected, actual[0])
 
 	expected = routeMatrix.RelayIDs[1]
 	actual = routeMatrix.GetDatacenterRelayIDs(12)
-	assert.Equal(t, expected, actual)
+	assert.Equal(t, 1, len(actual))
+	assert.Equal(t, expected, actual[0])
 
 	expected = routeMatrix.RelayIDs[2]
 	actual = routeMatrix.GetDatacenterRelayIDs(13)
-	assert.Equal(t, expected, actual)
+	assert.Equal(t, 1, len(actual))
+	assert.Equal(t, expected, actual[0])
 
 	expected = routeMatrix.RelayIDs[3]
 	actual = routeMatrix.GetDatacenterRelayIDs(14)
-	assert.Equal(t, expected, actual)
+	assert.Equal(t, 1, len(actual))
+	assert.Equal(t, expected, actual[0])
 }
 
 func TestRouteMatrixGetJsonAnalysis(t *testing.T) {
