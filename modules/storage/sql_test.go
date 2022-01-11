@@ -189,18 +189,30 @@ func TestInsertSQL(t *testing.T) {
 			Notes:                         "the original notes",
 			Version:                       initialRelayVersion,
 			DestFirst:                     false,
-			InternalAddressClientRoutable: false,
+			InternalAddressClientRoutable: true,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
 		err = db.AddRelay(ctx, relay)
 		assert.Error(t, err)
 
-		// TODO repeat the above test with bwrule, type and state
-
 		relay.Datacenter = outerDatacenter
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
+
+		err = db.RemoveRelay(ctx, relay.ID)
+		assert.NoError(t, err)
+
+		// adding a relay w/o an internal address should return an error if InternalAddressClientRoutable is true
+		relay.InternalAddr = net.UDPAddr{}
+		err = db.AddRelay(ctx, relay)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "relay flag InternalAddressClientRoutable cannot be true without valid internal IP")
+
+		relay.InternalAddr = *internalAddr
+		err = db.AddRelay(ctx, relay)
+		assert.NoError(t, err)
+		// TODO repeat the above test with bwrule, type and state
 
 		// check only the fields set above
 		checkRelay, err := db.Relay(ctx, rid)
@@ -340,7 +352,7 @@ func TestInsertSQL(t *testing.T) {
 			Notes:                         "the original notes",
 			Version:                       initialRelayVersion,
 			DestFirst:                     true,
-			InternalAddressClientRoutable: true,
+			InternalAddressClientRoutable: false,
 		}
 
 		err = db.AddRelay(ctx, relay3)
@@ -380,7 +392,7 @@ func TestInsertSQL(t *testing.T) {
 			Notes:                         "the original notes",
 			Version:                       initialRelayVersion,
 			DestFirst:                     true,
-			InternalAddressClientRoutable: true,
+			InternalAddressClientRoutable: false,
 		}
 
 		err = db.AddRelay(ctx, relay4)
@@ -436,7 +448,7 @@ func TestInsertSQL(t *testing.T) {
 			// Notes: "the original notes"
 			Version:                       initialRelayVersion,
 			DestFirst:                     true,
-			InternalAddressClientRoutable: true,
+			InternalAddressClientRoutable: false,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -1260,6 +1272,18 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Error(t, err)
 		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", "")
 		assert.Error(t, err)
+
+		err = db.UpdateRelay(ctx, rid, "InternalAddr", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(ctx, rid)
+		assert.NoError(t, err)
+		assert.Equal(t, net.UDPAddr{}, checkRelay.InternalAddr)
+
+		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", true)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "relay must have valid internal address before InternalAddressClientRoutable is true")
+		err = db.UpdateRelay(ctx, rid, "InternalAddr", "192.168.0.2:40000")
+		assert.NoError(t, err)
 
 		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", true)
 		assert.NoError(t, err)

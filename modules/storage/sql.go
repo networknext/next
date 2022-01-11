@@ -1820,13 +1820,18 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		args = append(args, destFirst, relay.DatabaseID)
 
 	case "InternalAddressClientRoutable":
-		InternalAddressClientRoutable, ok := value.(bool)
+		internalAddressClientRoutable, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("%v is not a valid boolean value", value)
 		}
 
+		if internalAddressClientRoutable && relay.InternalAddr.String() == ":0" {
+			// Enforce that the relay has an valid internal address
+			return fmt.Errorf("relay must have valid internal address before InternalAddressClientRoutable is true")
+		}
+
 		updateSQL.Write([]byte("update relays set internal_address_client_routable=$1 where id=$2"))
-		args = append(args, InternalAddressClientRoutable, relay.DatabaseID)
+		args = append(args, internalAddressClientRoutable, relay.DatabaseID)
 
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
@@ -1982,7 +1987,12 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	// field is not null but we also don't want an empty string
 	if r.Version == "" {
-		return fmt.Errorf("relay version can not be an empty string and must be a valid value (e.g. '2.0.6')")
+		return fmt.Errorf("relay version cannot be an empty string and must be a valid value (e.g. '2.0.6')")
+	}
+
+	// flag is not null but should not be true unless internal address is valid
+	if r.InternalAddressClientRoutable && (!internalIP.Valid || !internalIPPort.Valid) {
+		return fmt.Errorf("relay flag InternalAddressClientRoutable cannot be true without valid internal IP")
 	}
 
 	relay := sqlRelay{
