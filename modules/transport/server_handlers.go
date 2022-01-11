@@ -944,7 +944,7 @@ func SessionGetNearRelays(state *SessionHandlerState) bool {
 	serverLatitude := state.Datacenter.Location.Latitude
 	serverLongitude := state.Datacenter.Location.Longitude
 
-	state.Response.NearRelayIDs, state.Response.NearRelayAddresses = state.RouteMatrix.GetNearRelays(directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays)
+	state.Response.NearRelayIDs, state.Response.NearRelayAddresses = state.RouteMatrix.GetNearRelays(directLatency, clientLatitude, clientLongitude, serverLatitude, serverLongitude, core.MaxNearRelays, state.Datacenter.ID)
 	if len(state.Response.NearRelayIDs) == 0 {
 		core.Debug("no near relays :(")
 		state.Metrics.NearRelaysLocateFailure.Add(1)
