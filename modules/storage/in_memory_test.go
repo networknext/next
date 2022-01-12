@@ -1754,6 +1754,20 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
+	t.Run("cannot remove internal ip while InternalAddressClientRoutable is true", func(t *testing.T) {
+
+		err = inMemory.UpdateRelay(ctx, 0, "InternalAddressClientRoutable", true)
+		assert.NoError(t, err)
+
+		err := inMemory.UpdateRelay(ctx, 0, "InternalAddr", "")
+		assert.Error(t, err)
+		assert.EqualError(t, err, "cannot remove internal address while InternalAddressClientRoutable is true")
+
+		// Reset to false for test later
+		err = inMemory.UpdateRelay(ctx, 0, "InternalAddressClientRoutable", false)
+		assert.NoError(t, err)
+	})
+
 	t.Run("success float64 fields", func(t *testing.T) {
 		for _, field := range float64Fields {
 			err := inMemory.UpdateRelay(ctx, 0, field, float64(1))

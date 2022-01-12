@@ -1064,6 +1064,14 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, *intAddr, checkRelay.InternalAddr)
 
 		// relay.InternalAddr (null)
+		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", true)
+		assert.NoError(t, err)
+		err = db.UpdateRelay(ctx, rid, "InternalAddr", "")
+		assert.Error(t, err)
+		assert.EqualError(t, err, "cannot remove internal address while InternalAddressClientRoutable is true")
+		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", false)
+		assert.NoError(t, err)
+
 		err = db.UpdateRelay(ctx, rid, "InternalAddr", "")
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(ctx, rid)

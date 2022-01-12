@@ -972,6 +972,9 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 		}
 
 		if addrString == "" {
+			if relay.InternalAddressClientRoutable {
+				return fmt.Errorf("cannot remove internal address while InternalAddressClientRoutable is true")
+			}
 			relay.InternalAddr = net.UDPAddr{}
 
 		} else {

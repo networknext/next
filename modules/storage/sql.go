@@ -1559,6 +1559,10 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 
 		if addrString == "" {
+			if relay.InternalAddressClientRoutable {
+				return fmt.Errorf("cannot remove internal address while InternalAddressClientRoutable is true")
+			}
+
 			updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = (null, null) "))
 			updateSQL.Write([]byte("where id=$1"))
 			args = append(args, relay.DatabaseID)
