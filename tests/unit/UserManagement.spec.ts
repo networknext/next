@@ -344,18 +344,6 @@ describe('UserManagement.vue', () => {
 
     await localVue.nextTick()
 
-    const form = wrapper.find('#auto-signup-form')
-    expect(form.exists()).toBeTruthy()
-
-    const label = form.find('label')
-    expect(label.exists()).toBeTruthy()
-    expect(label.text()).toBe('Automatic Sign up Domains')
-
-    const textArea = form.find('#auto-signup-domains')
-    const textAreaElement = textArea.element as HTMLTextAreaElement
-    expect(textArea.exists()).toBeTruthy()
-    expect(textAreaElement.value).toBe('test.com')
-
     wrapper.destroy()
 
     expect(allAccountsSpy).toBeCalledTimes(1)
@@ -376,14 +364,6 @@ describe('UserManagement.vue', () => {
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
-
-    const form = wrapper.find('#auto-signup-form')
-    expect(form.exists()).toBeTruthy()
-
-    const textArea = form.find('#auto-signup-domains')
-    const textAreaElement = textArea.element as HTMLTextAreaElement
-    expect(textArea.exists()).toBeTruthy()
-    expect(textAreaElement.value).toBe('test.com, google.com, networknext.com')
 
     wrapper.destroy()
 
