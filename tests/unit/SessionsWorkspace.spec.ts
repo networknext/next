@@ -127,7 +127,7 @@ describe('SessionsWorkspace.vue', () => {
     // Make sure that the api calls are being mocked
     expect(spy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Look for 1 table
     expect(wrapper.findAll('table').length).toBe(1)
@@ -185,7 +185,7 @@ describe('SessionsWorkspace.vue', () => {
     // Make sure that the api calls are being mocked
     expect(spy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Look for 1 table
     expect(wrapper.findAll('table').length).toBe(1)
@@ -254,7 +254,7 @@ describe('SessionsWorkspace.vue', () => {
     // Make sure that the api calls are being mocked
     expect(spy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Look for 1 table
     expect(wrapper.findAll('table').length).toBe(1)
@@ -316,7 +316,7 @@ describe('SessionsWorkspace.vue', () => {
     // Make sure that the api calls are being mocked
     expect(spy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Look for 1 table
     expect(wrapper.findAll('table').length).toBe(1)
@@ -357,7 +357,7 @@ describe('SessionsWorkspace.vue', () => {
 
     expect(spy).toBeCalledTimes(2)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     dataRows = wrapper.findAll('tbody tr td')
     expect(dataRows.length).toBe(8)
@@ -381,7 +381,7 @@ describe('SessionsWorkspace.vue', () => {
 
     expect(spy).toBeCalledTimes(3)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     dataRows = wrapper.findAll('tbody tr td')
     expect(dataRows.length).toBe(8)
@@ -405,7 +405,7 @@ describe('SessionsWorkspace.vue', () => {
 
     expect(spy).toBeCalledTimes(4)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     dataRows = wrapper.findAll('tbody tr td')
     expect(dataRows.length).toBe(8)
@@ -445,7 +445,7 @@ describe('SessionsWorkspace.vue', () => {
 
     store.commit('TOGGLE_KILL_LOOPS', true)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     expect(spy).toBeCalled()
 
@@ -457,7 +457,7 @@ describe('SessionsWorkspace.vue', () => {
 
     wrapper = shallowMount(SessionsWorkspace, { localVue, store })
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     expect(spy).not.toBeCalled()
 
@@ -490,14 +490,14 @@ describe('SessionsWorkspace.vue', () => {
     // Make sure that the api calls are being mocked
     expect(spy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     spy = topSessionsMock(localVue, true, [session], 'test')
 
     const newFilter: Filter = { companyCode: 'test', dateRange: DateFilterType.CURRENT_MONTH }
     store.commit('UPDATE_CURRENT_FILTER', newFilter)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     expect(spy).toBeCalledTimes(2)
 
@@ -515,13 +515,13 @@ describe('SessionsWorkspace.vue', () => {
 
     const wrapper = shallowMount(SessionsWorkspace, { localVue, store, stubs })
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     expect(store.getters.killLoops).toBeFalsy()
 
     expect(spy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     let retryCount = wrapper.vm.$data.retryCount
     expect(retryCount).toBe(1)
@@ -550,11 +550,11 @@ describe('SessionsWorkspace.vue', () => {
     for (let i = 2; i <= MAX_RETRIES; i++) {
       jest.advanceTimersByTime(3000 * retryCount)
 
-      await wrapper.vm.$nextTick()
+      await localVue.nextTick()
 
       expect(spy).toBeCalledTimes(i)
 
-      await wrapper.vm.$nextTick()
+      await localVue.nextTick()
 
       retryCount = wrapper.vm.$data.retryCount
       expect(retryCount).toBe(i)

@@ -56,7 +56,7 @@ import { Route, NavigationGuardNext } from 'vue-router'
 
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
-import { EMAIL_CONFIRMATION_MESSAGE } from '@/components/types/Constants'
+import { EMAIL_CONFIRMATION_MESSAGE, SESSION_TOOL_ALERT } from '@/components/types/Constants'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
 /**
  * This component holds the workspace elements related to the session tool in the Portal
@@ -91,7 +91,7 @@ export default class SessionToolWorkspace extends Vue {
       this.$refs.verifyAlert.setAlertType(AlertType.INFO)
     }
     if (this.$route.path === '/session-tool') {
-      this.$refs.inputAlert.setMessage('Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.')
+      this.$refs.inputAlert.setMessage(SESSION_TOOL_ALERT)
       this.$refs.inputAlert.setAlertType(AlertType.INFO)
     }
 

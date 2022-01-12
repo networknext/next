@@ -8,7 +8,7 @@
         Save time by allowing users with verified email addresses automatic access to your Network Next account.
       </p>
       <Alert ref="autoDomainsAlert"/>
-      <form v-on:submit.prevent="saveAutoSignUp()">
+      <form id="auto-signup-form" @submit.prevent="saveAutoSignUp()">
         <div class="form-group">
           <label for="auto-signup-domains">
             Automatic Sign up Domains
@@ -24,7 +24,7 @@
         <p class="text-muted text-small mt-2"></p>
       </form>
       <hr class="mt-4 mb-4">
-  </div>
+    </div>
     <h5 class="card-title">
       Add new users
     </h5>
@@ -37,7 +37,7 @@
       </div>
     </div>
     <Alert ref="newUsersAlert"/>
-    <form @submit.prevent="addNewUsers()">
+    <form id="new-user-form" @submit.prevent="addNewUsers()">
       <div class="form-group">
         <label for="customerId">
           Add users by email address
@@ -257,10 +257,10 @@ export default class UserManagement extends Vue {
 
     this.$apiService
       .updateAutoSignupDomains({ domains: domains })
-      .then((response: any) => {
+      .then(() => {
         this.userProfile.domains = domains
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.$refs.autoDomainsAlert.setMessage('Successfully update signup domains')
+        this.$refs.autoDomainsAlert.setMessage('Successfully updated signup domains')
         this.$refs.autoDomainsAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
           if (this.$refs.autoDomainsAlert) {
@@ -271,7 +271,7 @@ export default class UserManagement extends Vue {
       .catch((error: Error) => {
         console.log('Something went wrong adding auto signup domains')
         console.log(error)
-        this.$refs.autoDomainsAlert.setMessage('Failed to edit user account')
+        this.$refs.autoDomainsAlert.setMessage('Failed to update signup domains')
         this.$refs.autoDomainsAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
           if (this.$refs.autoDomainsAlert) {

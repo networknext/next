@@ -55,7 +55,7 @@ describe('GameConfiguration.vue', () => {
   })
 
   it('checks elements - Owner - No pubkey', async () => {
-    const newProfile = cloneDeep(defaultProfile)
+    const newProfile = newDefaultProfile()
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
     newProfile.roles = ['Owner']
@@ -67,7 +67,7 @@ describe('GameConfiguration.vue', () => {
     expect(wrapper.find('div').exists()).toBeTruthy()
 
     // Allow the mounted function to update the UI
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Check card information
     expect(wrapper.find('.card-title').text()).toBe('Game Configuration')
@@ -110,7 +110,7 @@ describe('GameConfiguration.vue', () => {
   })
 
   it('checks elements - Owner - Pubkey', async () => {
-    const newProfile = cloneDeep(defaultProfile)
+    const newProfile = newDefaultProfile()
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
     newProfile.roles = ['Owner']
@@ -123,7 +123,7 @@ describe('GameConfiguration.vue', () => {
     expect(wrapper.find('div').exists()).toBeTruthy()
 
     // Allow the mounted function to update the UI
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Check card information
     expect(wrapper.find('.card-title').text()).toBe('Game Configuration')
@@ -189,7 +189,7 @@ describe('GameConfiguration.vue', () => {
 
     const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {})
 
-    const newProfile = cloneDeep(defaultProfile)
+    const newProfile = newDefaultProfile()
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
     newProfile.roles = ['Owner']
@@ -201,7 +201,7 @@ describe('GameConfiguration.vue', () => {
     expect(wrapper.find('div').exists()).toBeTruthy()
 
     // Allow the mounted function to update the UI
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Input public key
     const pubKeyTextArea = wrapper.find('#pubkey-input')
@@ -232,7 +232,7 @@ describe('GameConfiguration.vue', () => {
     expect(fetchAllBuyersSpy).toBeCalledTimes(1)
 
     // Wait for UI to react
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Check for alert
     const alert = wrapper.find('.alert')
@@ -241,7 +241,7 @@ describe('GameConfiguration.vue', () => {
     expect(alert.text()).toBe(UPDATE_PUBLIC_KEY_SUCCESS)
 
     // Wait for all buyers call to finish
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Check buyers list to make sure the new buyer was added correctly
     expect(store.getters.allBuyers.length).toBe(1)
@@ -274,7 +274,7 @@ describe('GameConfiguration.vue', () => {
 
     const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {})
 
-    const newProfile = cloneDeep(defaultProfile)
+    const newProfile = newDefaultProfile()
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
     newProfile.roles = ['Owner']
@@ -286,7 +286,7 @@ describe('GameConfiguration.vue', () => {
     expect(wrapper.find('div').exists()).toBeTruthy()
 
     // Allow the mounted function to update the UI
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Input public key
     const pubKeyTextArea = wrapper.find('#pubkey-input')
@@ -318,7 +318,7 @@ describe('GameConfiguration.vue', () => {
     expect(fetchAllBuyersSpy).toBeCalledTimes(1)
 
     // Wait for UI to react
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Check for alert
     const alert = wrapper.find('.alert')
@@ -352,7 +352,7 @@ describe('GameConfiguration.vue', () => {
 
     const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {})
 
-    const newProfile = cloneDeep(defaultProfile)
+    const newProfile = newDefaultProfile()
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
     newProfile.roles = ['Owner']
@@ -364,7 +364,7 @@ describe('GameConfiguration.vue', () => {
     expect(wrapper.find('div').exists()).toBeTruthy()
 
     // Allow the mounted function to update the UI
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Input public key
     const pubKeyTextArea = wrapper.find('#pubkey-input')
@@ -395,7 +395,7 @@ describe('GameConfiguration.vue', () => {
     expect(fetchAllBuyersSpy).toBeCalledTimes(0)
 
     // Wait for UI to react
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Check for alert
     const alert = wrapper.find('.alert')

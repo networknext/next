@@ -7,7 +7,7 @@ import { faCheck } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { AuthPlugin } from '@/plugins/auth'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
-import { FeatureFlagService, FlagPlugin } from '@/plugins/flags'
+import { FeatureFlagService } from '@/plugins/flags'
 import { AlertType } from '@/components/types/AlertTypes'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 
@@ -246,7 +246,7 @@ describe('GetAccessModal.vue', () => {
 
     expect(getAccessSpy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     const secondPageHeader = wrapper.find('p')
     expect(secondPageHeader.text()).toBe('Please enter a company name and website so that our team can learn more about your company to help make your onboarding experience smoother.')
@@ -265,7 +265,7 @@ describe('GetAccessModal.vue', () => {
     // Skip the first page
     wrapper.vm.$data.stepOne = false
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     const firstNameInput = wrapper.find('#first-name-input')
     expect(firstNameInput.exists()).toBeTruthy()
@@ -309,7 +309,7 @@ describe('GetAccessModal.vue', () => {
 
     wrapper.vm.$data.stepOne = false
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     const lastNameInput = wrapper.find('#last-name-input')
     expect(lastNameInput.exists()).toBeTruthy()
@@ -353,7 +353,7 @@ describe('GetAccessModal.vue', () => {
 
     wrapper.vm.$data.stepOne = false
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     const companyNameInput = wrapper.find('#company-name-input')
     expect(companyNameInput.exists()).toBeTruthy()
@@ -390,7 +390,7 @@ describe('GetAccessModal.vue', () => {
 
     wrapper.vm.$data.stepOne = false
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     const companyWebsiteInput = wrapper.find('#company-website-input')
     expect(companyWebsiteInput.exists()).toBeTruthy()
@@ -442,7 +442,7 @@ describe('GetAccessModal.vue', () => {
 
     wrapper.vm.$data.stepOne = false
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     const firstNameInput = wrapper.find('#first-name-input')
     expect(firstNameInput.exists()).toBeTruthy()
@@ -484,7 +484,7 @@ describe('GetAccessModal.vue', () => {
     expect(processNewSignupSpy).toBeCalledTimes(1)
     expect(loginSpy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Check for alert
     const alert = wrapper.find('.alert')
@@ -515,7 +515,7 @@ describe('GetAccessModal.vue', () => {
 
     wrapper.vm.$data.stepOne = false
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     const firstNameInput = wrapper.find('#first-name-input')
     expect(firstNameInput.exists()).toBeTruthy()
@@ -557,7 +557,7 @@ describe('GetAccessModal.vue', () => {
     expect(processNewSignupSpy).toBeCalledTimes(1)
     expect(loginSpy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     // Check for alert
     const alert = wrapper.find('.alert')

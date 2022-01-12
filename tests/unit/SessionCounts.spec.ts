@@ -7,7 +7,7 @@ import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { AlertType } from '@/components/types/AlertTypes'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
 import { VueConstructor } from 'vue/types/umd'
-import { MAX_RETRIES } from '@/components/types/Constants'
+import { EMAIL_CONFIRMATION_MESSAGE, MAX_RETRIES } from '@/components/types/Constants'
 
 function totalSessionCountsMock (vueInstance: VueConstructor<any>, success: boolean, direct: number, next: number, customerCode: string): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchTotalSessionCounts').mockImplementation((args: any) => {
@@ -69,9 +69,6 @@ describe('SessionCounts.vue', () => {
       TOGGLE_KILL_LOOPS (state: any, killLoops: boolean) {
         state.killLoops = killLoops
       },
-      SET_SESSION_COUNT_ALERT_MESSAGE (state: any, sessionCountAlertMessage: string) {
-        state.sessionCountAlertMessage = sessionCountAlertMessage
-      },
       UPDATE_IS_ANONYMOUSPLUS (state: any, isAnonymousPlus: boolean) {
         state.isAnonymousPlus = isAnonymousPlus
       },
@@ -91,7 +88,7 @@ describe('SessionCounts.vue', () => {
     const store = new Vuex.Store(defaultStore)
 
     const wrapper = shallowMount(SessionCounts, { localVue, store })
-    expect(wrapper.exists()).toBe(true)
+    expect(wrapper.exists()).toBeTruthy()
 
     spy.mockReset()
 
@@ -126,7 +123,7 @@ describe('SessionCounts.vue', () => {
     const wrapper = shallowMount(SessionCounts, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     spy.mockReset()
     expect(spy).not.toBeCalled()
@@ -135,7 +132,7 @@ describe('SessionCounts.vue', () => {
 
     store.commit('UPDATE_CURRENT_FILTER', { companyCode: 'test-company' })
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     expect(spy).toBeCalled()
 
@@ -152,11 +149,11 @@ describe('SessionCounts.vue', () => {
     const wrapper = shallowMount(SessionCounts, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     expect(spy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     let headerElement = wrapper.find('h1')
     expect(headerElement.exists()).toBeTruthy()
@@ -173,7 +170,7 @@ describe('SessionCounts.vue', () => {
     jest.advanceTimersByTime(1000)
     expect(spy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     headerElement = wrapper.find('h1')
     expect(headerElement.exists()).toBeTruthy()
@@ -196,11 +193,11 @@ describe('SessionCounts.vue', () => {
     const wrapper = mount(SessionCounts, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     expect(spy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     let buyerFilter = wrapper.find('#buyer-filter')
     expect(buyerFilter.exists()).toBeFalsy()
@@ -209,19 +206,19 @@ describe('SessionCounts.vue', () => {
     defaultProfile.pubKey = 'test pub key'
     store.commit('UPDATE_IS_BUYER', true)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     buyerFilter = wrapper.find('#buyer-filter')
     expect(buyerFilter.exists()).toBeTruthy()
 
     store.commit('UPDATE_IS_BUYER', false)
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     buyerFilter = wrapper.find('#buyer-filter')
     expect(buyerFilter.exists()).toBeFalsy()
 
     store.commit('UPDATE_IS_ADMIN', true)
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     buyerFilter = wrapper.find('#buyer-filter')
     expect(buyerFilter.exists()).toBeTruthy()
@@ -238,8 +235,6 @@ describe('SessionCounts.vue', () => {
     const spy = totalSessionCountsMock(localVue, true, 0, 0, '')
     const store = new Vuex.Store(defaultStore)
 
-    store.commit('UPDATE_IS_ANONYMOUSPLUS', true)
-
     const profile = newDefaultProfile()
     profile.email = 'test@test.com'
 
@@ -249,14 +244,16 @@ describe('SessionCounts.vue', () => {
     const wrapper = mount(SessionCounts, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     const alert = wrapper.find('.alert')
     expect(alert.exists()).toBeTruthy()
 
     expect(alert.classes(AlertType.INFO)).toBeTruthy()
-    expect(alert.text()).toContain('Please check your email to verify your email address: test@test.com')
+    expect(alert.text()).toContain(`${EMAIL_CONFIRMATION_MESSAGE} ${store.getters.userProfile.email}`)
     expect(alert.text()).toContain('Resend email')
+
+    store.commit('UPDATE_IS_ANONYMOUSPLUS', false)
 
     spy.mockReset()
 
@@ -275,7 +272,7 @@ describe('SessionCounts.vue', () => {
 
     store.commit('TOGGLE_KILL_LOOPS', true)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     alert = wrapper.find('.alert')
     expect(alert.exists()).toBeTruthy()
@@ -287,7 +284,7 @@ describe('SessionCounts.vue', () => {
 
     wrapper = mount(SessionCounts, { localVue, store })
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     alert = wrapper.find('.alert')
     expect(alert.exists()).toBeTruthy()
@@ -311,7 +308,7 @@ describe('SessionCounts.vue', () => {
 
     wrapper.vm.$root.$emit('failedMapPointLookup')
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     const alert = wrapper.find('.alert')
     expect(alert.exists()).toBeTruthy()
@@ -333,11 +330,11 @@ describe('SessionCounts.vue', () => {
 
     expect(store.getters.killLoops).toBeFalsy()
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     expect(spy).toBeCalledTimes(1)
 
-    await wrapper.vm.$nextTick()
+    await localVue.nextTick()
 
     let retryCount = wrapper.vm.$data.retryCount
     expect(retryCount).toBe(1)
@@ -345,11 +342,11 @@ describe('SessionCounts.vue', () => {
     for (let i = 2; i <= MAX_RETRIES; i++) {
       jest.advanceTimersByTime(3000 * retryCount)
 
-      await wrapper.vm.$nextTick()
+      await localVue.nextTick()
 
       expect(spy).toBeCalledTimes(i)
 
-      await wrapper.vm.$nextTick()
+      await localVue.nextTick()
 
       retryCount = wrapper.vm.$data.retryCount
       expect(retryCount).toBe(i)

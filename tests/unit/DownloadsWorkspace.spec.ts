@@ -1,4 +1,4 @@
-import { shallowMount, createLocalVue, Wrapper } from '@vue/test-utils'
+import { shallowMount, createLocalVue } from '@vue/test-utils'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
 import Vuex from 'vuex'
 import {
@@ -10,7 +10,6 @@ import VueTour from 'vue-tour'
 import { FlagPlugin } from '@/plugins/flags'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import VueGtag from 'vue-gtag'
-import { CombinedVueInstance } from 'vue/types/vue'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { IMPORTANT_CLICKS_CATEGORY, SDK_DOCUMENTATION_EVENT, SDK_DOCUMENTATION_URL, SDK_DOWNLOAD_EVENT, SDK_DOWNLOAD_URL, UE4_PLUGIN_DOWNLOAD_EVENT, UE4_PLUGIN_DOWNLOAD_URL } from '@/components/types/Constants'
 
