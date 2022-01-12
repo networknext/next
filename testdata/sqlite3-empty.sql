@@ -146,6 +146,8 @@ create table relays (
   relay_state integer not null,
   billing_supplier integer,
   relay_version varchar not null,
+  dest_first boolean not null,
+  internal_address_client_routable boolean not null,
   notes varchar,
   constraint fk_bw_billing_rule foreign key (bw_billing_rule) references bw_billing_rules(id),
   constraint fk_datacenter foreign key (datacenter) references datacenters(id),
