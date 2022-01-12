@@ -556,7 +556,7 @@ func mainReturnWithCode() int {
 					if activeRelays[i].InternalAddressClientRoutable {
 						if activeRelays[i].InternalAddr.String() == ":0" {
 							// Do not add this relay as client routable if it is missing an internal address
-							core.Error("relay %s (%016x) internal address is client routable but is missing internal address (%s)", activeRelays[i].Name, activeRelays[i].ID, activeRelays[i].InternalAddr)
+							core.Error("relay %s (%016x) internal address is client routable but is missing internal address (%s)", activeRelays[i].Name, activeRelays[i].ID, activeRelays[i].InternalAddr.String())
 						} else {
 							relayInternalAddressClientRoutable = append(relayInternalAddressClientRoutable, activeRelays[i].ID)
 							relayInternalAddressClientRoutableAddresses = append(relayInternalAddressClientRoutableAddresses, activeRelays[i].InternalAddr)
