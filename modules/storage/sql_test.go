@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -175,30 +176,47 @@ func TestInsertSQL(t *testing.T) {
 			PublicKey:       publicKey,
 			BillingSupplier: outerSeller.ShortName,
 			// Datacenter:     outerDatacenter,
-			EgressPriceOverride: 10000000000000,
-			MRC:                 19700000000000,
-			Overage:             26000000000000,
-			BWRule:              routing.BWRuleBurst,
-			ContractTerm:        12,
-			StartDate:           time.Now(),
-			EndDate:             time.Now(),
-			Type:                routing.BareMetal,
-			IncludedBandwidthGB: 10000,
-			NICSpeedMbps:        1000,
-			MaxBandwidthMbps:    900,
-			Notes:               "the original notes",
-			Version:             initialRelayVersion,
+			EgressPriceOverride:           10000000000000,
+			MRC:                           19700000000000,
+			Overage:                       26000000000000,
+			BWRule:                        routing.BWRuleBurst,
+			ContractTerm:                  12,
+			StartDate:                     time.Now(),
+			EndDate:                       time.Now(),
+			Type:                          routing.BareMetal,
+			IncludedBandwidthGB:           10000,
+			NICSpeedMbps:                  1000,
+			MaxBandwidthMbps:              900,
+			Notes:                         "the original notes",
+			Version:                       initialRelayVersion,
+			DestFirst:                     false,
+			InternalAddressClientRoutable: true,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
 		err = db.AddRelay(ctx, relay)
 		assert.Error(t, err)
-
-		// TODO repeat the above test with bwrule, type and state
+		assert.EqualError(t, err, "FOREIGN KEY constraint failed")
 
 		relay.Datacenter = outerDatacenter
+
+		// adding a relay w/o an internal address should return an error if InternalAddressClientRoutable is true
+		relay.InternalAddr = net.UDPAddr{}
+		err = db.AddRelay(ctx, relay)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "relay flag InternalAddressClientRoutable cannot be true without valid internal IP")
+
+		relay.InternalAddr = *internalAddr
+
+		// TODO: repeat the above test with bwrule, type and state
+
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
+
+		// Trying to add this relay again should throw an error
+		err = db.AddRelay(ctx, relay)
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("relay %s (%016x) (state: %s) already exists with this IP address. please reuse this relay.", relay.Name, relay.ID, relay.State.String()))
 
 		// check only the fields set above
 		checkRelay, err := db.Relay(ctx, rid)
@@ -233,6 +251,8 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, relay.Notes, checkRelay.Notes)
 		assert.Equal(t, outerSeller.ShortName, checkRelay.BillingSupplier)
 		assert.Equal(t, initialRelayVersion, checkRelay.Version)
+		assert.Equal(t, relay.DestFirst, checkRelay.DestFirst)
+		assert.Equal(t, relay.InternalAddressClientRoutable, checkRelay.InternalAddressClientRoutable)
 
 		// overwrite with SetRelay - test nullable fields, possible in relay_backend
 		var relayMod routing.Relay
@@ -328,13 +348,15 @@ func TestInsertSQL(t *testing.T) {
 			ContractTerm:        12,
 			// StartDate:           time.Now(), <-- nullable
 			// EndDate:             time.Now(), <-- nullable
-			Type:                routing.BareMetal,
-			State:               routing.RelayStateMaintenance,
-			IncludedBandwidthGB: 10000,
-			NICSpeedMbps:        1000,
-			MaxBandwidthMbps:    900,
-			Notes:               "the original notes",
-			Version:             initialRelayVersion,
+			Type:                          routing.BareMetal,
+			State:                         routing.RelayStateMaintenance,
+			IncludedBandwidthGB:           10000,
+			NICSpeedMbps:                  1000,
+			MaxBandwidthMbps:              900,
+			Notes:                         "the original notes",
+			Version:                       initialRelayVersion,
+			DestFirst:                     true,
+			InternalAddressClientRoutable: false,
 		}
 
 		err = db.AddRelay(ctx, relay3)
@@ -366,13 +388,15 @@ func TestInsertSQL(t *testing.T) {
 			ContractTerm:        12,
 			// StartDate:           time.Now(), <-- nullable
 			// EndDate:             time.Now(), <-- nullable
-			Type:                routing.BareMetal,
-			State:               routing.RelayStateMaintenance,
-			IncludedBandwidthGB: 10000,
-			NICSpeedMbps:        1000,
-			MaxBandwidthMbps:    900,
-			Notes:               "the original notes",
-			Version:             initialRelayVersion,
+			Type:                          routing.BareMetal,
+			State:                         routing.RelayStateMaintenance,
+			IncludedBandwidthGB:           10000,
+			NICSpeedMbps:                  1000,
+			MaxBandwidthMbps:              900,
+			Notes:                         "the original notes",
+			Version:                       initialRelayVersion,
+			DestFirst:                     true,
+			InternalAddressClientRoutable: false,
 		}
 
 		err = db.AddRelay(ctx, relay4)
@@ -385,8 +409,10 @@ func TestInsertSQL(t *testing.T) {
 		err = db.UpdateRelay(ctx, rid2, "State", float64(routing.RelayStateDecommissioned))
 		assert.NoError(t, err)
 
+		// Don't allow a relay to be readded with the same ID, even if it is decommissioned
 		err = db.AddRelay(ctx, relay4)
-		assert.NoError(t, err)
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("relay %s (%016x) (state: %s) already exists with this IP address. please reuse this relay.", relayMod.Name, relayMod.ID, relayMod.State.String()))
 
 	})
 
@@ -426,7 +452,9 @@ func TestInsertSQL(t *testing.T) {
 			NICSpeedMbps:        1000,
 			MaxBandwidthMbps:    900,
 			// Notes: "the original notes"
-			Version: initialRelayVersion,
+			Version:                       initialRelayVersion,
+			DestFirst:                     true,
+			InternalAddressClientRoutable: false,
 		}
 
 		// adding a relay w/o a valid datacenter should return an FK violation error
@@ -465,6 +493,8 @@ func TestInsertSQL(t *testing.T) {
 		assert.Equal(t, int32(10000), checkRelay.IncludedBandwidthGB)
 		assert.Equal(t, int32(1000), checkRelay.NICSpeedMbps)
 		assert.Equal(t, int32(900), checkRelay.MaxBandwidthMbps)
+		assert.Equal(t, relay.DestFirst, checkRelay.DestFirst)
+		assert.Equal(t, relay.InternalAddressClientRoutable, checkRelay.InternalAddressClientRoutable)
 
 		assert.Equal(t, customerShortname, checkRelay.Seller.ID)
 		assert.Equal(t, customerShortname, checkRelay.Seller.ShortName)
@@ -972,31 +1002,33 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		relay := routing.Relay{
-			ID:                  rid,
-			Name:                "test.1",
-			Addr:                *addr,
-			InternalAddr:        *internalAddr,
-			ManagementAddr:      "1.2.3.4",
-			BillingSupplier:     sellerWithID.ShortName,
-			SSHPort:             22,
-			SSHUser:             "fred",
-			MaxSessions:         1000,
-			PublicKey:           publicKey,
-			Datacenter:          datacenterWithID,
-			EgressPriceOverride: 10000000000000,
-			MRC:                 19700000000000,
-			Overage:             26000000000000,
-			BWRule:              routing.BWRuleBurst,
-			NICSpeedMbps:        1000,
-			MaxBandwidthMbps:    900,
-			IncludedBandwidthGB: 10000,
-			ContractTerm:        12,
-			StartDate:           time.Now(),
-			EndDate:             time.Now(),
-			Type:                routing.BareMetal,
-			State:               routing.RelayStateMaintenance,
-			Notes:               "the original notes",
-			Version:             initialRelayVersion,
+			ID:                            rid,
+			Name:                          "test.1",
+			Addr:                          *addr,
+			InternalAddr:                  *internalAddr,
+			ManagementAddr:                "1.2.3.4",
+			BillingSupplier:               sellerWithID.ShortName,
+			SSHPort:                       22,
+			SSHUser:                       "fred",
+			MaxSessions:                   1000,
+			PublicKey:                     publicKey,
+			Datacenter:                    datacenterWithID,
+			EgressPriceOverride:           10000000000000,
+			MRC:                           19700000000000,
+			Overage:                       26000000000000,
+			BWRule:                        routing.BWRuleBurst,
+			NICSpeedMbps:                  1000,
+			MaxBandwidthMbps:              900,
+			IncludedBandwidthGB:           10000,
+			ContractTerm:                  12,
+			StartDate:                     time.Now(),
+			EndDate:                       time.Now(),
+			Type:                          routing.BareMetal,
+			State:                         routing.RelayStateMaintenance,
+			Notes:                         "the original notes",
+			Version:                       initialRelayVersion,
+			DestFirst:                     false,
+			InternalAddressClientRoutable: false,
 		}
 
 		err = db.AddRelay(ctx, relay)
@@ -1038,6 +1070,14 @@ func TestUpdateSQL(t *testing.T) {
 		assert.Equal(t, *intAddr, checkRelay.InternalAddr)
 
 		// relay.InternalAddr (null)
+		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", true)
+		assert.NoError(t, err)
+		err = db.UpdateRelay(ctx, rid, "InternalAddr", "")
+		assert.Error(t, err)
+		assert.EqualError(t, err, "cannot remove internal address while InternalAddressClientRoutable is true")
+		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", false)
+		assert.NoError(t, err)
+
 		err = db.UpdateRelay(ctx, rid, "InternalAddr", "")
 		assert.NoError(t, err)
 		checkRelay, err = db.Relay(ctx, rid)
@@ -1229,6 +1269,41 @@ func TestUpdateSQL(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "7.6.4", checkRelay.Version)
 
+		// relay.DestFirst
+		err = db.UpdateRelay(ctx, rid, "DestFirst", "not a bool")
+		assert.Error(t, err)
+		err = db.UpdateRelay(ctx, rid, "DestFirst", "")
+		assert.Error(t, err)
+
+		err = db.UpdateRelay(ctx, rid, "DestFirst", true)
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(ctx, rid)
+		assert.NoError(t, err)
+		assert.Equal(t, true, checkRelay.DestFirst)
+
+		// relay.InternalAddressClientRoutable
+		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", "not a bool")
+		assert.Error(t, err)
+		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", "")
+		assert.Error(t, err)
+
+		err = db.UpdateRelay(ctx, rid, "InternalAddr", "")
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(ctx, rid)
+		assert.NoError(t, err)
+		assert.Equal(t, net.UDPAddr{}, checkRelay.InternalAddr)
+
+		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", true)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "relay must have valid internal address before InternalAddressClientRoutable is true")
+		err = db.UpdateRelay(ctx, rid, "InternalAddr", "192.168.0.2:40000")
+		assert.NoError(t, err)
+
+		err = db.UpdateRelay(ctx, rid, "InternalAddressClientRoutable", true)
+		assert.NoError(t, err)
+		checkRelay, err = db.Relay(ctx, rid)
+		assert.NoError(t, err)
+		assert.Equal(t, true, checkRelay.InternalAddressClientRoutable)
 	})
 }
 
