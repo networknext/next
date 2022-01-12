@@ -789,6 +789,14 @@ func (s *OpsService) AddRelay(r *http.Request, args *AddRelayArgs, reply *AddRel
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
+	existingRelay, err := s.Storage.Relay(ctx, args.Relay.ID)
+	if err == nil && existingRelay.ID == args.Relay.ID {
+		// The relay exists and should be reserrected
+		err := JSONRPCErrorCodes[int(ERROR_RELAY_NEEDS_RESURRECTION)]
+		core.Error("AddRelay(): %v", err.Error())
+		return &err
+	}
+
 	if err := s.Storage.AddRelay(ctx, args.Relay); err != nil {
 		err = fmt.Errorf("AddRelay() error: %w", err)
 		core.Error("%v", err)
@@ -839,6 +847,17 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 	ctx, cancelFunc := context.WithDeadline(r.Context(), time.Now().Add(10*time.Second))
 	defer cancelFunc()
 
+	rid := crypto.HashID(args.Addr)
+
+	existingRelay, err := s.Storage.Relay(ctx, rid)
+	if err == nil && existingRelay.ID == rid {
+		// The relay exists and should be reserrected
+		err := JSONRPCErrorCodes[int(ERROR_RELAY_NEEDS_RESURRECTION)]
+		err.Data = fmt.Sprintf("%016x", existingRelay.ID)
+		core.Error("JSAddRelay(): %v", err.Error())
+		return &err
+	}
+
 	addr, err := net.ResolveUDPAddr("udp", args.Addr)
 	if err != nil {
 		core.Error("%v", err)
@@ -865,7 +884,6 @@ func (s *OpsService) JSAddRelay(r *http.Request, args *JSAddRelayArgs, reply *JS
 		return err
 	}
 
-	rid := crypto.HashID(args.Addr)
 	relay := routing.Relay{
 		ID:                            rid,
 		Name:                          args.Name,

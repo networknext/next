@@ -1914,17 +1914,12 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	relays := db.Relays(ctx)
 
-	existingRelay := false
+	// Check that we don't have a relay with the same Hex ID already
 	for _, relay := range relays {
-		if relay.ID == rid && relay.State != routing.RelayStateDecommissioned {
-			existingRelay = true
-			break
+		if relay.ID == rid {
+			// If a relay with this IP exists already, throw an error
+			return fmt.Errorf("relay %s (%016x) (state: %s) already exists with this IP address. please reuse this relay.", relay.Name, relay.ID, relay.State.String())
 		}
-	}
-
-	// If a relay with this IP exists already and isn't removed, throw an error
-	if existingRelay {
-		return fmt.Errorf("a relay already exists with this IP address. please remove the existing relay before adding a new one under the same IP")
 	}
 
 	var internalIP sql.NullString

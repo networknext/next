@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"net"
 	"os"
@@ -200,6 +201,10 @@ func TestInsertSQL(t *testing.T) {
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
 
+		// Trying to add this relay again should throw an error
+		err = db.AddRelay(ctx, relay)
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("relay %s (%016x) (state: %s) already exists with this IP address. please reuse this relay.", relay.Name, relay.ID, relay.State.String()))
 		err = db.RemoveRelay(ctx, relay.ID)
 		assert.NoError(t, err)
 
@@ -405,8 +410,10 @@ func TestInsertSQL(t *testing.T) {
 		err = db.UpdateRelay(ctx, rid2, "State", float64(routing.RelayStateDecommissioned))
 		assert.NoError(t, err)
 
+		// Don't allow a relay to be readded with the same ID, even if it is decommissioned
 		err = db.AddRelay(ctx, relay4)
-		assert.NoError(t, err)
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("relay %s (%016x) (state: %s) already exists with this IP address. please reuse this relay.", relayMod.Name, relayMod.ID, relayMod.State.String()))
 
 	})
 
