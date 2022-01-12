@@ -602,8 +602,8 @@ type relay struct {
 	EndDate                       time.Time             `json:"endDate"`
 	Type                          routing.MachineType   `json:"machineType"`
 	Notes                         string                `json:"notes"`
-	DestFirst                     bool                  `json:"destFirst"`
-	InternalAddressClientRoutable bool                  `json:"internalAddressClientRoutable"`
+	DestFirst                     bool                  `json:"dest_first"`
+	InternalAddressClientRoutable bool                  `json:"internal_address_client_routable"`
 	DatabaseID                    int64
 	DatacenterID                  uint64
 }
@@ -823,8 +823,8 @@ type JSAddRelayArgs struct {
 	Notes                         string `json:"notes"`
 	BillingSupplier               string `json:"billingSupplier"`
 	Version                       string `json:"relay_version"`
-	DestFirst                     bool   `json:"destFirst"`
-	InternalAddressClientRoutable bool   `json:"internalAddressClientRoutable"`
+	DestFirst                     bool   `json:"dest_first"`
+	InternalAddressClientRoutable bool   `json:"internal_address_client_routable"`
 }
 
 type JSAddRelayReply struct{}
