@@ -196,17 +196,9 @@ func TestInsertSQL(t *testing.T) {
 		// adding a relay w/o a valid datacenter should return an FK violation error
 		err = db.AddRelay(ctx, relay)
 		assert.Error(t, err)
+		assert.EqualError(t, err, "FOREIGN KEY constraint failed")
 
 		relay.Datacenter = outerDatacenter
-		err = db.AddRelay(ctx, relay)
-		assert.NoError(t, err)
-
-		// Trying to add this relay again should throw an error
-		err = db.AddRelay(ctx, relay)
-		assert.Error(t, err)
-		assert.EqualError(t, err, fmt.Sprintf("relay %s (%016x) (state: %s) already exists with this IP address. please reuse this relay.", relay.Name, relay.ID, relay.State.String()))
-		err = db.RemoveRelay(ctx, relay.ID)
-		assert.NoError(t, err)
 
 		// adding a relay w/o an internal address should return an error if InternalAddressClientRoutable is true
 		relay.InternalAddr = net.UDPAddr{}
@@ -215,9 +207,16 @@ func TestInsertSQL(t *testing.T) {
 		assert.EqualError(t, err, "relay flag InternalAddressClientRoutable cannot be true without valid internal IP")
 
 		relay.InternalAddr = *internalAddr
+
+		// TODO: repeat the above test with bwrule, type and state
+
 		err = db.AddRelay(ctx, relay)
 		assert.NoError(t, err)
-		// TODO repeat the above test with bwrule, type and state
+
+		// Trying to add this relay again should throw an error
+		err = db.AddRelay(ctx, relay)
+		assert.Error(t, err)
+		assert.EqualError(t, err, fmt.Sprintf("relay %s (%016x) (state: %s) already exists with this IP address. please reuse this relay.", relay.Name, relay.ID, relay.State.String()))
 
 		// check only the fields set above
 		checkRelay, err := db.Relay(ctx, rid)
