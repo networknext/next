@@ -24,6 +24,7 @@ const (
 	ERROR_NONCE_GENERATION_FAILURE    json2.ErrorCode = 10
 	ERROR_UNKNOWN_NOTIFICATION_TYPE   json2.ErrorCode = 11
 	ERROR_HUBSPOT_FAILURE             json2.ErrorCode = 12
+	ERROR_RELAY_NEEDS_RESURRECTION    json2.ErrorCode = 13
 )
 
 var JSONRPCErrorCodes []json2.Error = []json2.Error{
@@ -116,6 +117,13 @@ var JSONRPCErrorCodes []json2.Error = []json2.Error{
 		Code:    ERROR_HUBSPOT_FAILURE,
 		Data: &JSONRPCErrorData{
 			Name: "ERROR_HUBSPOT_FAILURE",
+		},
+	},
+	{
+		Message: "Relay hex ID exists already. Please resurrect the removed relay",
+		Code:    ERROR_RELAY_NEEDS_RESURRECTION,
+		Data: &JSONRPCErrorData{
+			Name: "ERROR_RELAY_NEEDS_RESURRECTION",
 		},
 	},
 }

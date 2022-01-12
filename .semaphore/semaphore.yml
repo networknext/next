@@ -4,17 +4,18 @@ agent:
   machine:
     type: e1-standard-8
     os_image: ubuntu1804
+  containers:
+    - name: main
+      image: nbopardi/networknext:backend
 global_job_config:
   secrets:
     - name: sdk5-repo-access
   prologue:
     commands:
-      - sudo apt-get update && sudo apt-get -y install libsodium-dev google-cloud-sdk-firestore-emulator google-cloud-sdk-pubsub-emulator google-cloud-sdk-bigtable-emulator libzmq3-dev
       - checkout
-      - sem-version go 1.13
       - make clean
-      - chmod 0600 ~/.ssh/id_rsa_semaphoreci_sdk5
-      - ssh-add ~/.ssh/id_rsa_semaphoreci_sdk5
+      - chmod 0600 /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
+      - ssh-add /home/semaphore/.ssh/id_rsa_semaphoreci_sdk5
       - git submodule init
       - git submodule update
 blocks:
@@ -25,8 +26,6 @@ blocks:
           commands:
             - make test
       env_vars:
-        - name: FIRESTORE_EMULATOR_HOST
-          value: "127.0.0.1:11000"
         - name: PUBSUB_EMULATOR_HOST
           value: "127.0.0.1:12000"
         - name: BIGTABLE_EMULATOR_HOST
