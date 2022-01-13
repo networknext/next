@@ -16,13 +16,6 @@
       <h1 class="h2">
         User Tool
       </h1>
-      <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
-        <Alert ref="verifyAlert">
-          <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
-            Resend email
-          </a>
-        </Alert>
-      </div>
     </div>
     <form class="flow-stats-form" @submit.prevent="fetchUserSessions()">
       <div class="form-group">
@@ -33,7 +26,7 @@
           <div class="col">
             <input class="form-control"
                     type="text"
-                    placeholder="Enter a User ID to view their sessions"
+                    placeholder="Enter a User ID to view their sessions."
                     v-model="searchID"
             >
           </div>
@@ -56,7 +49,6 @@ import UserSessions from '@/components/UserSessions.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import { NavigationGuardNext, Route } from 'vue-router'
-import { EMAIL_CONFIRMATION_MESSAGE } from '@/components/types/Constants'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
 
 /**
@@ -88,10 +80,6 @@ export default class UserToolWorkspace extends Vue {
   }
 
   private mounted () {
-    if (this.$store.getters.isAnonymousPlus) {
-      this.$refs.verifyAlert.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
-      this.$refs.verifyAlert.setAlertType(AlertType.INFO)
-    }
     if (this.$route.path === '/user-tool') {
       this.$refs.inputAlert.setMessage('Please enter a User ID to view their sessions.')
       this.$refs.inputAlert.setAlertType(AlertType.INFO)
@@ -136,9 +124,9 @@ export default class UserToolWorkspace extends Vue {
   }
 
   private showErrorAlert () {
-    this.$refs.verifyAlert.toggleSlots(false)
-    this.$refs.verifyAlert.setMessage(ErrorTypes.SYSTEM_FAILURE)
-    this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
+    this.$refs.inputAlert.toggleSlots(false)
+    this.$refs.inputAlert.setMessage(ErrorTypes.SYSTEM_FAILURE)
+    this.$refs.inputAlert.setAlertType(AlertType.ERROR)
   }
 }
 </script>

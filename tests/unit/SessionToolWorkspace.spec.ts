@@ -62,7 +62,7 @@ describe('SessionToolWorkspace.vue', () => {
     'router-view'
   ]
 
-  it('mounts the user session tool successfully', () => {
+  it('mounts the session tool successfully', () => {
     const store = new Vuex.Store(defaultStore)
     const wrapper = mount(SessionToolWorkspace, {
       localVue, mocks, stubs, store
