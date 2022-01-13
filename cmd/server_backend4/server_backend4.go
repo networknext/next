@@ -268,7 +268,7 @@ func mainReturnWithCode() int {
 
 		syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
 		if err != nil {
-			core.Error("invalid ROUTE_MATRIX_SYNC_INTERVAL")
+			core.Error("invalid ROUTE_MATRIX_SYNC_INTERVAL: %v", err)
 			return 1
 		}
 
