@@ -220,11 +220,6 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	staleDuration, err := envvar.GetDuration("MATRIX_STALE_DURATION", 20*time.Second)
-	if err != nil {
-		core.Error("invalid MATRIX_STALE_DURATION: %v", err)
-	}
-
 	// function to get the route matrix pointer under mutex
 
 	routeMatrix := &routing.RouteMatrix{}
@@ -273,13 +268,25 @@ func mainReturnWithCode() int {
 
 		syncInterval, err := envvar.GetDuration("ROUTE_MATRIX_SYNC_INTERVAL", time.Second)
 		if err != nil {
-			core.Error("ROUTE_MATRIX_SYNC_INTERVAL not set")
+			core.Error("invalid ROUTE_MATRIX_SYNC_INTERVAL: %v", err)
+			return 1
+		}
+
+		readTimeout, err := envvar.GetDuration("ROUTE_MATRIX_READ_DURATION", 10*time.Second)
+		if err != nil {
+			core.Error("invaild ROUTE_MATRIX_READ_DURATION: %v", err)
+			return 1
+		}
+
+		staleDuration, err := envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
+		if err != nil {
+			core.Error("invalid ROUTE_MATRIX_STALE_DURATION: %v", err)
 			return 1
 		}
 
 		go func() {
 			httpClient := &http.Client{
-				Timeout: time.Second * 4,
+				Timeout: readTimeout,
 			}
 
 			ticker := time.NewTicker(syncInterval)
@@ -312,7 +319,7 @@ func mainReturnWithCode() int {
 					routeMatrixReader.Close()
 
 					if err != nil {
-						core.Error("faired to read route matrix data: %v", err)
+						core.Error("failed to read route matrix data: %v", err)
 						clearEverything()
 						backendMetrics.ErrorMetrics.RouteMatrixReadFailure.Add(1)
 						continue
