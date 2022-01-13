@@ -52,7 +52,7 @@
         <label for="customerId">
           Permission Level
         </label>
-        <multiselect placeholder="" track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple>
+        <multiselect id="role-drop-down" placeholder="" track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple>
           <template slot="option" slot-scope="props">
             <div class="option__desc row" style="margin-right: 0px;">
               <div class="option__title col" style="max-width: 10%;">{{ props.option.name }}</div>
@@ -71,11 +71,11 @@
       <p class="text-muted text-small mt-2"></p>
     </form>
     <hr class="mt-4 mb-4">
-    <h5 class="card-title">
+    <h5 id="user-table-title" class="card-title">
       Manage existing users
     </h5>
-    <p class="card-text">
-      Manage the list of users that currently have access to your Network Next account.
+    <p id="user-table-details" class="card-text">
+      Manage the list of users that currently have access to your Network Next company account.
     </p>
     <Alert ref="editUserAlert"/>
     <table class="table table-sm mt-4">
@@ -129,6 +129,7 @@
               />
             </button>&nbsp;
             <button
+              id="delete-user-button"
               class="btn btn-xs btn-danger"
               data-toggle="tooltip"
               data-placement="bottom"
@@ -142,6 +143,7 @@
           </td>
           <td class="td-btn" v-show="account.edit || account.delete">
             <button
+              id="save-user-button"
               class="btn btn-xs btn-success"
               data-toggle="tooltip"
               data-placement="bottom"
@@ -153,6 +155,7 @@
               />
             </button>&nbsp;
             <button
+              id="cancel-user-button"
               class="btn btn-xs btn-secondary"
               data-toggle="tooltip"
               data-placement="bottom"
@@ -323,7 +326,7 @@ export default class UserManagement extends Vue {
     if (account.delete) {
       this.$apiService
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
-        .then((response: any) => {
+        .then(() => {
           this.companyUsers.splice(index, 1)
           this.$refs.editUserAlert.setMessage('User account deleted successfully')
           this.$refs.editUserAlert.setAlertType(AlertType.SUCCESS)
