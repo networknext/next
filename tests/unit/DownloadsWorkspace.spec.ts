@@ -72,9 +72,15 @@ describe('DownloadsWorkspace.vue', () => {
         expect(url).toBe(expectedURL)
       }
     }))
-    spyDownloadSDK = jest.spyOn(apiService, 'sendSDKDownloadSlackNotification').mockImplementation(() => {})
-    spyDownloadUE4 = jest.spyOn(apiService, 'sendUE4DownloadNotifications').mockImplementation(() => {})
-    spyDownloadDocs = jest.spyOn(apiService, 'sendDocsViewSlackNotification').mockImplementation(() => {})
+    spyDownloadSDK = jest.spyOn(apiService, 'sendSDKDownloadSlackNotification').mockImplementation(() => {
+      return Promise.resolve()
+    })
+    spyDownloadUE4 = jest.spyOn(apiService, 'sendUE4DownloadNotifications').mockImplementation(() => {
+      return Promise.resolve()
+    })
+    spyDownloadDocs = jest.spyOn(apiService, 'sendDocsViewSlackNotification').mockImplementation(() => {
+      return Promise.resolve()
+    })
   })
 
   afterEach(() => {

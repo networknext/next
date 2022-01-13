@@ -137,14 +137,14 @@ describe('SessionToolWorkspace.vue', () => {
 
     store.commit('TOGGLE_KILL_LOOPS', true)
 
-    let wrapper = mount(SessionToolWorkspace, {
+    const wrapper = mount(SessionToolWorkspace, {
       localVue, mocks, stubs, store
     })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
 
-    let alert = wrapper.find('.alert')
+    const alert = wrapper.find('.alert')
     expect(alert.exists()).toBeTruthy()
 
     expect(alert.classes(AlertType.ERROR)).toBeTruthy()
@@ -158,7 +158,7 @@ describe('SessionToolWorkspace.vue', () => {
   it('checks invalid input', async () => {
     const store = new Vuex.Store(defaultStore)
 
-    let wrapper = mount(SessionToolWorkspace, {
+    const wrapper = mount(SessionToolWorkspace, {
       localVue, mocks, stubs, store
     })
     expect(wrapper.exists()).toBeTruthy()

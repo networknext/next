@@ -12,10 +12,9 @@ function allAccountsMock (vueInstance: VueConstructor<any>, success: boolean, ac
       {
         accounts: accounts
       }
-    ) : Promise.reject()
+    ) : Promise.reject(new Error('Mock Error'))
   })
 }
-
 
 function allRolesMock (vueInstance: VueConstructor<any>, success: boolean, roles: Array<any>): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchAllRoles').mockImplementation(() => {
@@ -23,7 +22,7 @@ function allRolesMock (vueInstance: VueConstructor<any>, success: boolean, roles
       {
         roles: roles
       }
-    ) : Promise.reject()
+    ) : Promise.reject(new Error('Mock Error'))
   })
 }
 
@@ -33,7 +32,7 @@ function updateAutoSignupDomainsMock (vueInstance: VueConstructor<any>, success:
       {
         domains: domains
       }
-    ) : Promise.reject()
+    ) : Promise.reject(new Error('Mock Error'))
   })
 }
 
@@ -375,5 +374,18 @@ describe('UserManagement.vue', () => {
     allRolesSpy.mockReset()
   })
 
-  it('checks existing users manager', () => {})
+  it('checks existing users manager', () => {
+    const allAccountsSpy = allAccountsMock(localVue, true, [])
+    const allRolesSpy = allRolesMock(localVue, true, [])
+
+    const store = new Vuex.Store(defaultStore)
+
+    const wrapper = shallowMount(UserManagement, { localVue, store })
+    expect(wrapper.exists()).toBeTruthy()
+
+    allAccountsSpy.mockReset()
+    allRolesSpy.mockReset()
+
+    wrapper.destroy()
+  })
 })

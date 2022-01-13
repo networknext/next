@@ -435,7 +435,7 @@ describe('GetAccessModal.vue', () => {
     })
 
     const loginSpy = jest.spyOn(localVue.prototype.$authService, 'login').mockImplementation(() => {
-      return Promise.reject()
+      return Promise.reject(new Error('Mock Error'))
     })
 
     expect(wrapper.exists()).toBeTruthy()
@@ -567,6 +567,5 @@ describe('GetAccessModal.vue', () => {
     loginSpy.mockReset()
 
     wrapper.destroy()
-
   })
 })

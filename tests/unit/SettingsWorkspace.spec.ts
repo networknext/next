@@ -122,7 +122,7 @@ describe('SettingsWorkspace.vue', () => {
         name: FeatureEnum.FEATURE_ROUTE_SHADER,
         description: 'Route shader page for users to update their route shader',
         value: true
-      },
+      }
     ]
 
     wrapper = shallowMount(SettingsWorkspace, { localVue, store, mocks, stubs })
@@ -149,14 +149,14 @@ describe('SettingsWorkspace.vue', () => {
 
     store.commit('TOGGLE_KILL_LOOPS', true)
 
-    let wrapper = mount(SettingsWorkspace, {
+    const wrapper = mount(SettingsWorkspace, {
       localVue, mocks, stubs, store
     })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
 
-    let alert = wrapper.find('.alert')
+    const alert = wrapper.find('.alert')
     expect(alert.exists()).toBeTruthy()
 
     expect(alert.classes(AlertType.ERROR)).toBeTruthy()

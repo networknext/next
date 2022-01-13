@@ -18,7 +18,7 @@ function topSessionsMock (vueInstance: VueConstructor<any>, success: boolean, se
       {
         sessions: sessions
       }
-    ) : Promise.reject()
+    ) : Promise.reject(new Error('Mock Error'))
   })
 }
 
@@ -73,7 +73,6 @@ describe('SessionsWorkspace.vue', () => {
       }
     }
   }
-
 
   const ICONS = [
     faCircle

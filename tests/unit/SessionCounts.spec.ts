@@ -18,7 +18,7 @@ function totalSessionCountsMock (vueInstance: VueConstructor<any>, success: bool
         direct: direct,
         next: next
       }
-    ) : Promise.reject()
+    ) : Promise.reject(new Error('Mock Error'))
   })
 }
 

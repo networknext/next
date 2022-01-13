@@ -89,7 +89,7 @@ describe('GameConfiguration.vue', () => {
 
     expect(companyNameInput.exists()).toBeTruthy()
     expect(companyNameInputElement.value).toBe(store.getters.userProfile.companyName)
-    expect(companyNameInput.attributes()['disabled']).toBe('disabled')
+    expect(companyNameInput.attributes().disabled).toBe('disabled')
 
     // Check public key input - should be empty here
     const publicKeyInput = wrapper.find('#pubkey-input')
@@ -102,7 +102,7 @@ describe('GameConfiguration.vue', () => {
     const gameConfigButton = wrapper.find('#game-config-button')
 
     expect(gameConfigButton.text()).toBe('Save game configuration')
-    expect(gameConfigButton.attributes()['disabled']).toBe('disabled')
+    expect(gameConfigButton.attributes().disabled).toBe('disabled')
 
     store.commit('UPDATE_USER_PROFILE', defaultProfile)
 
@@ -145,7 +145,7 @@ describe('GameConfiguration.vue', () => {
 
     expect(companyNameInput.exists()).toBeTruthy()
     expect(companyNameInputElement.value).toBe(store.getters.userProfile.companyName)
-    expect(companyNameInput.attributes()['disabled']).toBe('disabled')
+    expect(companyNameInput.attributes().disabled).toBe('disabled')
 
     // Check public key input - should not be empty here
     const publicKeyInput = wrapper.find('#pubkey-input')
@@ -157,7 +157,7 @@ describe('GameConfiguration.vue', () => {
     const gameConfigButton = wrapper.find('#game-config-button')
 
     expect(gameConfigButton.text()).toBe('Save game configuration')
-    expect(gameConfigButton.attributes()['disabled']).toBeUndefined()
+    expect(gameConfigButton.attributes().disabled).toBeUndefined()
 
     store.commit('UPDATE_USER_PROFILE', defaultProfile)
 
@@ -187,7 +187,9 @@ describe('GameConfiguration.vue', () => {
       })
     })
 
-    const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {})
+    const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
+      return Promise.resolve()
+    })
 
     const newProfile = newDefaultProfile()
     newProfile.companyName = 'Test Company'
@@ -218,7 +220,7 @@ describe('GameConfiguration.vue', () => {
     const gameConfigButton = wrapper.find('#game-config-button')
 
     expect(gameConfigButton.text()).toBe('Save game configuration')
-    expect(gameConfigButton.attributes()['disabled']).toBeUndefined()
+    expect(gameConfigButton.attributes().disabled).toBeUndefined()
 
     // Check buyers list to make sure it is empty
     expect(store.getters.allBuyers.length).toBe(0)
@@ -269,10 +271,12 @@ describe('GameConfiguration.vue', () => {
     })
 
     const fetchAllBuyersSpy = jest.spyOn(localVue.prototype.$apiService, 'fetchAllBuyers').mockImplementationOnce(() => {
-      return Promise.reject('Failed to fetch all buyers')
+      return Promise.reject(new Error('Failed to fetch all buyers'))
     })
 
-    const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {})
+    const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
+      return Promise.resolve()
+    })
 
     const newProfile = newDefaultProfile()
     newProfile.companyName = 'Test Company'
@@ -304,7 +308,7 @@ describe('GameConfiguration.vue', () => {
     const gameConfigButton = wrapper.find('#game-config-button')
 
     expect(gameConfigButton.text()).toBe('Save game configuration')
-    expect(gameConfigButton.attributes()['disabled']).toBeUndefined()
+    expect(gameConfigButton.attributes().disabled).toBeUndefined()
 
     // Check buyers list to make sure it is empty
     expect(store.getters.allBuyers.length).toBe(0)
@@ -341,7 +345,7 @@ describe('GameConfiguration.vue', () => {
 
   it('checks failed pubkey update', async () => {
     const updateGameConfigurationSpy = jest.spyOn(localVue.prototype.$apiService, 'updateGameConfiguration').mockImplementationOnce(() => {
-      return Promise.reject('Failed to update public key')
+      return Promise.reject(new Error('Failed to update public key'))
     })
 
     const fetchAllBuyersSpy = jest.spyOn(localVue.prototype.$apiService, 'fetchAllBuyers').mockImplementationOnce(() => {
@@ -350,7 +354,9 @@ describe('GameConfiguration.vue', () => {
       })
     })
 
-    const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {})
+    const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
+      return Promise.resolve()
+    })
 
     const newProfile = newDefaultProfile()
     newProfile.companyName = 'Test Company'
@@ -381,7 +387,7 @@ describe('GameConfiguration.vue', () => {
     const gameConfigButton = wrapper.find('#game-config-button')
 
     expect(gameConfigButton.text()).toBe('Save game configuration')
-    expect(gameConfigButton.attributes()['disabled']).toBeUndefined()
+    expect(gameConfigButton.attributes().disabled).toBeUndefined()
 
     // Check buyers list to make sure it is empty
     expect(store.getters.allBuyers.length).toBe(0)
