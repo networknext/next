@@ -257,6 +257,8 @@ func mainReturnWithCode() int {
 		routeMatrixMutex.RUnlock()
 	}
 
+	var staleDuration time.Duration
+
 	// Sync route matrix
 	{
 		uri := envvar.Get("ROUTE_MATRIX_URI", "")
@@ -278,7 +280,7 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		staleDuration, err := envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
+		staleDuration, err = envvar.GetDuration("ROUTE_MATRIX_STALE_DURATION", 20*time.Second)
 		if err != nil {
 			core.Error("invalid ROUTE_MATRIX_STALE_DURATION: %v", err)
 			return 1
