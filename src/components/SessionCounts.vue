@@ -146,7 +146,6 @@ export default class SessionCounts extends Vue {
 
         this.stopLoop()
         this.retryCount = this.retryCount + 1
-        console.log(this.retryCount)
         if (this.retryCount < MAX_RETRIES) {
           setTimeout(() => {
             this.restartLoop()
