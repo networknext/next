@@ -185,5 +185,5 @@ describe('DownloadsWorkspace.vue', () => {
     expect(spyDownloadDocs).toBeCalledTimes(1)
 
     analyticsSpy.mockReset()
-  })*/
+  }) */
 })

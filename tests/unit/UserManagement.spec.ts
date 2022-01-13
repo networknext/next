@@ -84,7 +84,6 @@ describe('UserManagement.vue', () => {
   // Mount FontAwesomeIcons
   localVue.component('font-awesome-icon', FontAwesomeIcon)
 
-
   // Setup plugins
   localVue.use(Vuex)
   localVue.use(JSONRPCPlugin)
@@ -631,7 +630,6 @@ describe('UserManagement.vue', () => {
     allRolesSpy.mockReset()
   })
 
-
   it('checks existing users manager - empty', () => {
     const allAccountsSpy = allAccountsMock(localVue, true, [])
     const allRolesSpy = allRolesMock(localVue, true, [])
@@ -739,8 +737,11 @@ describe('UserManagement.vue', () => {
     const submitCancelButtons = dataRows.at(3).findAll('button')
     expect(submitCancelButtons.length).toBe(2)
 
-    expect(dataRows.at(2).element.style.display).toBe('')
-    expect(dataRows.at(3).element.style.display).toBe('none')
+    const dataRowElement1 = dataRows.at(2).element as HTMLElement
+    const dataRowElement2 = dataRows.at(3).element as HTMLElement
+
+    expect(dataRowElement1.style.display).toBe('')
+    expect(dataRowElement2.style.display).toBe('none')
 
     expect(editDeleteButtons.at(0).attributes('id')).toBe('edit-user-button')
     expect(editDeleteButtons.at(1).attributes('id')).toBe('delete-user-button')
@@ -753,8 +754,8 @@ describe('UserManagement.vue', () => {
     expect(wrapper.vm.$data.companyUsers[0].edit).toBeTruthy()
     expect(wrapper.vm.$data.companyUsers[0].delete).toBeFalsy()
 
-    expect(dataRows.at(2).element.style.display).toBe('none')
-    expect(dataRows.at(3).element.style.display).toBe('')
+    expect(dataRowElement1.style.display).toBe('none')
+    expect(dataRowElement2.style.display).toBe('')
 
     expect(submitCancelButtons.at(0).attributes('id')).toBe('save-user-button')
     expect(submitCancelButtons.at(1).attributes('id')).toBe('cancel-user-button')
@@ -764,27 +765,27 @@ describe('UserManagement.vue', () => {
 
     await cancelButton.trigger('click')
 
-    expect(dataRows.at(2).element.style.display).toBe('')
-    expect(dataRows.at(3).element.style.display).toBe('none')
+    expect(dataRowElement1.style.display).toBe('')
+    expect(dataRowElement2.style.display).toBe('none')
 
     expect(wrapper.vm.$data.companyUsers[0].edit).toBeFalsy()
     expect(wrapper.vm.$data.companyUsers[0].delete).toBeFalsy()
 
-    expect(dataRows.at(2).element.style.display).toBe('')
-    expect(dataRows.at(3).element.style.display).toBe('none')
+    expect(dataRowElement1.style.display).toBe('')
+    expect(dataRowElement2.style.display).toBe('none')
 
     await deleteButton.trigger('click')
 
     expect(wrapper.vm.$data.companyUsers[0].edit).toBeFalsy()
     expect(wrapper.vm.$data.companyUsers[0].delete).toBeTruthy()
 
-    expect(dataRows.at(2).element.style.display).toBe('none')
-    expect(dataRows.at(3).element.style.display).toBe('')
+    expect(dataRowElement1.style.display).toBe('none')
+    expect(dataRowElement2.style.display).toBe('')
 
     await cancelButton.trigger('click')
 
-    expect(dataRows.at(2).element.style.display).toBe('')
-    expect(dataRows.at(3).element.style.display).toBe('none')
+    expect(dataRowElement1.style.display).toBe('')
+    expect(dataRowElement2.style.display).toBe('none')
 
     expect(wrapper.vm.$data.companyUsers[0].edit).toBeFalsy()
     expect(wrapper.vm.$data.companyUsers[0].delete).toBeFalsy()
@@ -899,8 +900,11 @@ describe('UserManagement.vue', () => {
     const submitCancelButtons = dataRows.at(3).findAll('button')
     expect(submitCancelButtons.length).toBe(2)
 
-    expect(dataRows.at(2).element.style.display).toBe('')
-    expect(dataRows.at(3).element.style.display).toBe('none')
+    const dataRowElement1 = dataRows.at(2).element as HTMLElement
+    const dataRowElement2 = dataRows.at(3).element as HTMLElement
+
+    expect(dataRowElement1.style.display).toBe('')
+    expect(dataRowElement2.style.display).toBe('none')
 
     expect(editDeleteButtons.at(0).attributes('id')).toBe('edit-user-button')
     expect(editDeleteButtons.at(1).attributes('id')).toBe('delete-user-button')
