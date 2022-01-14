@@ -5,3 +5,4 @@ videos
 portal-dist*
 test_data
 portal.nginx.conf
+coverage

@@ -110,6 +110,15 @@
     "preset": "@vue/cli-plugin-unit-jest/presets/typescript-and-babel",
     "setupFilesAfterEnv": [
       "./tests/unit/jest-setup.ts"
+    ],
+    "collectCoverage": true,
+    "collectCoverageFrom": [
+      "src/**/*.{js,vue}",
+      "!**/node_modules/**"
+    ],
+    "coverageReporters": [
+      "html",
+      "text-summary"
     ]
   }
 }
