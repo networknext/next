@@ -101,6 +101,7 @@ describe('NavBar.vue', () => {
   ]
 
   it('mount default navbar', () => {
+    process.env.VUE_APP_MODE = 'local'
     const versionSpy = jest.spyOn(localVue.prototype.$apiService, 'fetchPortalVersion').mockImplementation(() => {
       return Promise.resolve({ sha: '123456789', commit_message: 'test commit message' })
     })
