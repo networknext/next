@@ -247,7 +247,9 @@ export default class NavBar extends Vue {
   }
 
   private created () {
-    this.fetchPortalVersion()
+    if (process.env.VUE_APP_MODE === 'dev' || process.env.VUE_APP_MODE === 'local') {
+      this.fetchPortalVersion()
+    }
     this.FeatureEnum = FeatureEnum
   }
 
@@ -290,35 +292,16 @@ export default class NavBar extends Vue {
   }
 
   private fetchPortalVersion (): void {
-    let url = ''
-
-    if (process.env.VUE_APP_MODE === 'local') {
-      url = `${process.env.VUE_APP_API_URL}`
-    }
-
-    if (process.env.VUE_APP_MODE === 'dev' || process.env.VUE_APP_MODE === 'local') {
-      fetch(`${url}/version`, {
-        headers: {
-          Accept: 'application/json',
-          'Accept-Encoding': 'gzip',
-          'Content-Type': 'application/json'
-        },
-        method: 'POST'
-      }).then((response: any) => {
-        response.json().then((json: any) => {
-          if (json.error) {
-            throw new Error(json.error)
-          }
-          this.portalVersion = `Git Hash: ${json.sha}`
-          if (json.commit_message) {
-            this.portalVersion = `${this.portalVersion} - Commit: ${json.commit_message}`
-          }
-        })
+    this.$apiService.fetchPortalVersion()
+      .then((response: any) => {
+        this.portalVersion = `Git Hash: ${response.sha}`
+        if (response.commit_message) {
+          this.portalVersion = `${this.portalVersion} - Commit: ${response.commit_message}`
+        }
       }).catch((error: Error) => {
         console.log('Something went wrong fetching the software version')
         console.log(error)
       })
-    }
   }
 
   private openNotificationsModal () {

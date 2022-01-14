@@ -1,6 +1,7 @@
 <template>
   <div class="card-body" id="usageDash-page">
-    <div class="row">
+    <Alert ref="failureAlert"/>
+    <div class="row" v-if="usageDashURL !== ''">
       <LookerEmbed dashID="usageDash" :dashURL="usageDashURL"/>
     </div>
     <div class="row">
@@ -124,14 +125,22 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { DateTime } from 'luxon'
 
+import Alert from '@/components/Alert.vue'
 import LookerEmbed from '@/components/LookerEmbed.vue'
+import { AlertType } from './types/AlertTypes'
 
 @Component({
   components: {
+    Alert,
     LookerEmbed
   }
 })
 export default class Usage extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    failureAlert: Alert;
+  }
+
   private dateString: string
   private usageDashURL: string
 
@@ -159,20 +168,24 @@ export default class Usage extends Vue {
     }
 
     // This is only necessary for admins - when the filter changes, grab the new billing URL
-    this.unwatchFilter = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.currentFilter
-      },
-      () => {
-        this.fetchUsageSummary()
-      }
-    )
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter = this.$store.watch(
+        (state: any, getters: any) => {
+          return getters.currentFilter
+        },
+        () => {
+          this.fetchUsageSummary()
+        }
+      )
+    }
 
     this.fetchUsageSummary()
   }
 
   private beforeDestroy () {
-    this.unwatchFilter()
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter()
+    }
   }
 
   private fetchUsageSummary () {
@@ -187,6 +200,8 @@ export default class Usage extends Vue {
       .catch((error: Error) => {
         console.log('There was an issue fetching the billing summary dashboard')
         console.log(error)
+        this.$refs.failureAlert.setMessage('Failed to fetch usage dashboard. Please refresh the page')
+        this.$refs.failureAlert.setAlertType(AlertType.ERROR)
       })
   }
 }

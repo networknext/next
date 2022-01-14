@@ -2,6 +2,7 @@ import store from '@/store'
 
 export class JSONRPCService {
   private headers: any
+  private url: string
 
   constructor () {
     this.headers = {
@@ -9,6 +10,30 @@ export class JSONRPCService {
       'Accept-Encoding': 'gzip',
       'Content-Type': 'application/json'
     }
+    this.url = process.env.VUE_APP_MODE === 'local' ? `${process.env.VUE_APP_API_URL}` : ''
+  }
+
+  private internalCall (endpoint: string): Promise<any> {
+    return new Promise((resolve: any, reject: any) => {
+      fetch(`${this.url}/${endpoint}`, {
+        headers: {
+          Accept: 'application/json',
+          'Accept-Encoding': 'gzip',
+          'Content-Type': 'application/json'
+        },
+        method: 'POST'
+      }).then((response: Response) => {
+        return response.json()
+      }).then((json: any) => {
+        if (json.error) {
+          reject(json.error)
+          return
+        }
+        resolve(json)
+      }).catch((error: Error) => {
+        reject(error)
+      })
+    })
   }
 
   private call (method: string, params: any): Promise<any> {
@@ -65,6 +90,10 @@ export class JSONRPCService {
 
   public upgradeAccount (args: any): Promise<any> {
     return this.call('AuthService.UpgradeAccount', args)
+  }
+
+  public fetchPortalVersion (): Promise<any> {
+    return this.internalCall('version')
   }
 
   public fetchTotalSessionCounts (args: any): Promise<any> {

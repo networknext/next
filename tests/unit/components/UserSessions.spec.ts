@@ -1,4 +1,4 @@
-import {  createLocalVue, mount, shallowMount } from '@vue/test-utils'
+import { createLocalVue, mount, shallowMount } from '@vue/test-utils'
 import UserSessions from '@/components/UserSessions.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import Vuex from 'vuex'

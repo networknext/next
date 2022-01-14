@@ -1,21 +1,22 @@
 import { shallowMount, createLocalVue, mount } from '@vue/test-utils'
 import Vuex from 'vuex'
-import Analytics from '@/components/Analytics.vue'
+import Usage from '@/components/Usage.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { VueConstructor } from 'vue/types/umd'
 import { Filter } from '@/components/types/FilterTypes'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { AlertType } from '@/components/types/AlertTypes'
 
-function fetchAnalyticsSummaryMock (vueInstance: VueConstructor<any>, success: boolean, urls: Array<string>, customerCode: string): jest.SpyInstance<any, unknown[]> {
-  return jest.spyOn(vueInstance.prototype.$apiService, 'fetchAnalyticsSummary').mockImplementation((args: any) => {
+function fetchUsageSummaryMock (vueInstance: VueConstructor<any>, success: boolean, url: string, customerCode: string, dateString: string): jest.SpyInstance<any, unknown[]> {
+  return jest.spyOn(vueInstance.prototype.$apiService, 'fetchUsageSummary').mockImplementation((args: any) => {
     expect(args.company_code).toBe(customerCode)
+    expect(args.date_string).toBe(dateString)
     expect(args.origin).toBe('127.0.0.1')
-    return success ? Promise.resolve({urls: urls}) : Promise.reject(new Error('fetchAnalyticsSummaryMock Mock Error'))
+    return success ? Promise.resolve({ url: url }) : Promise.reject(new Error('fetchUsageSummaryMock Mock Error'))
   })
 }
 
-describe('Analytics.vue', () => {
+describe('Usage.vue', () => {
   const localVue = createLocalVue()
 
   localVue.use(Vuex)
@@ -63,13 +64,28 @@ describe('Analytics.vue', () => {
     windowSpy.mockRestore()
   })
 
+  const $route = {
+    path: '/explore/usage',
+    params: {
+      pathMatch: ''
+    }
+  }
+
+  const mocks = {
+    $route,
+    $router: {
+      push: (newRoute: any) => {
+        $route.path = newRoute.path
+      }
+    }
+  }
 
   // Run bare minimum mount test
   it('mounts the component successfully', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, [], '')
+    const analyticDashSpy = fetchUsageSummaryMock(localVue, true, '', '', '')
 
-    const wrapper = shallowMount(Analytics, { localVue, store })
+    const wrapper = shallowMount(Usage, { localVue, store, mocks })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -81,11 +97,11 @@ describe('Analytics.vue', () => {
     analyticDashSpy.mockReset()
   })
 
-  it('mounts a single analytics dashboard', async () => {
+  it('mounts a single Usage dashboard', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.1'], '')
+    const analyticDashSpy = fetchUsageSummaryMock(localVue, true, 'https://127.0.0.1', '', '')
 
-    const wrapper = shallowMount(Analytics, { localVue, store })
+    const wrapper = shallowMount(Usage, { localVue, store, mocks })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -96,36 +112,8 @@ describe('Analytics.vue', () => {
 
     expect(lookEmbeds.length).toBe(1)
 
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
+    expect(lookEmbeds.at(0).attributes('dashid')).toBe('usageDash')
     expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
-
-    wrapper.destroy()
-
-    analyticDashSpy.mockReset()
-  })
-
-  it('mounts multiple analytics dashboards', async () => {
-    const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, [
-      'https://127.0.0.1', 'https://127.0.0.2'
-    ], '')
-
-    const wrapper = shallowMount(Analytics, { localVue, store })
-    expect(wrapper.exists()).toBeTruthy()
-
-    await localVue.nextTick()
-
-    expect(analyticDashSpy).toBeCalledTimes(1)
-
-    const lookEmbeds = wrapper.findAll('lookerembed-stub')
-
-    expect(lookEmbeds.length).toBe(2)
-
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
-    expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
-
-    expect(lookEmbeds.at(1).attributes('dashid')).toBe('analyticsDash')
-    expect(lookEmbeds.at(1).attributes('dashurl')).toBe('https://127.0.0.2')
 
     wrapper.destroy()
 
@@ -134,9 +122,9 @@ describe('Analytics.vue', () => {
 
   it('checks filter change update - !admin', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.1'], '')
+    const analyticDashSpy = fetchUsageSummaryMock(localVue, true, 'https://127.0.0.1', '', '')
 
-    const wrapper = shallowMount(Analytics, { localVue, store })
+    const wrapper = shallowMount(Usage, { localVue, store, mocks })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -147,7 +135,7 @@ describe('Analytics.vue', () => {
 
     expect(lookEmbeds.length).toBe(1)
 
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
+    expect(lookEmbeds.at(0).attributes('dashid')).toBe('usageDash')
     expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
 
     const newFilter = { companyCode: 'test' }
@@ -163,7 +151,7 @@ describe('Analytics.vue', () => {
 
     expect(lookEmbeds.length).toBe(1)
 
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
+    expect(lookEmbeds.at(0).attributes('dashid')).toBe('usageDash')
     expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
 
     store.commit('UPDATE_CURRENT_FILTER', { companyCode: '' })
@@ -174,12 +162,12 @@ describe('Analytics.vue', () => {
   })
 
   it('checks filter change update - admin', async () => {
-    let analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.1'], '')
+    let analyticDashSpy = fetchUsageSummaryMock(localVue, true, 'https://127.0.0.1', '', '')
 
     const store = new Vuex.Store(defaultStore)
     store.commit('UPDATE_IS_ADMIN', true)
 
-    const wrapper = shallowMount(Analytics, { localVue, store })
+    const wrapper = shallowMount(Usage, { localVue, store, mocks })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -190,10 +178,10 @@ describe('Analytics.vue', () => {
 
     expect(lookEmbeds.length).toBe(1)
 
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
+    expect(lookEmbeds.at(0).attributes('dashid')).toBe('usageDash')
     expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
 
-    analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.2'], 'test')
+    analyticDashSpy = fetchUsageSummaryMock(localVue, true, 'https://127.0.0.2', 'test', '')
 
     const newFilter = { companyCode: 'test' }
     store.commit('UPDATE_CURRENT_FILTER', newFilter)
@@ -208,7 +196,7 @@ describe('Analytics.vue', () => {
 
     expect(lookEmbeds.length).toBe(1)
 
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
+    expect(lookEmbeds.at(0).attributes('dashid')).toBe('usageDash')
     expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.2')
 
     wrapper.destroy()
@@ -220,9 +208,9 @@ describe('Analytics.vue', () => {
 
   it('checks failure alert', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, false, [], '')
+    const analyticDashSpy = fetchUsageSummaryMock(localVue, false, '', '', '')
 
-    const wrapper = mount(Analytics, { localVue, store })
+    const wrapper = mount(Usage, { localVue, store, mocks })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
@@ -234,10 +222,12 @@ describe('Analytics.vue', () => {
     const alert = wrapper.find('.alert')
     expect(alert.exists()).toBeTruthy()
     expect(alert.classes(AlertType.ERROR)).toBeTruthy()
-    expect(alert.text()).toBe('Failed to fetch analytics dashboards. Please refresh the page')
+    expect(alert.text()).toBe('Failed to fetch usage dashboard. Please refresh the page')
 
     analyticDashSpy.mockReset()
 
     wrapper.destroy()
   })
+
+  // TODO: Add in checks for payment instructions
 })

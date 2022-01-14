@@ -43,19 +43,23 @@ export default class Disccovery extends Vue {
 
   private mounted () {
     // This is only necessary for admins - when the filter changes, grab the new billing URL
-    this.unwatchFilter = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.currentFilter
-      },
-      () => {
-        this.fetchDiscoveryDashboards()
-      }
-    )
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter = this.$store.watch(
+        (state: any, getters: any) => {
+          return getters.currentFilter
+        },
+        () => {
+          this.fetchDiscoveryDashboards()
+        }
+      )
+    }
     this.fetchDiscoveryDashboards()
   }
 
   private beforeDestroy () {
-    this.unwatchFilter()
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter()
+    }
   }
 
   private fetchDiscoveryDashboards () {

@@ -1,7 +1,7 @@
 <template>
   <div>
     <div v-if="savesDashURL !== ''">
-      <div class="row">
+      <div class="row" v-if="savesDashURL !== ''">
         <LookerEmbed dashID="savesDash" :dashURL="savesDashURL" />
       </div>
       <hr class="mt-4 mb-4">
@@ -74,7 +74,6 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { DateTime } from 'luxon'
 
 import LookerEmbed from '@/components/LookerEmbed.vue'
 
@@ -94,7 +93,6 @@ import LookerEmbed from '@/components/LookerEmbed.vue'
   }
 })
 export default class Saves extends Vue {
-  private dateString: string
   private saves: Array<any>
   private savesDashURL: string
 
@@ -102,53 +100,29 @@ export default class Saves extends Vue {
 
   constructor () {
     super()
-    this.dateString = ''
     this.saves = []
     this.savesDashURL = ''
   }
 
   private mounted () {
-    const now = DateTime.now()
-    const currentDateString = `${now.year}-${now.month}`
-
-    // Check URL date and set to default if empty
-    this.dateString = this.$route.params.pathMatch || ''
-
-    if (this.dateString !== currentDateString) {
-      const passedInDate = this.dateString.split('-')
-      // check for invalid date
-      if (parseInt(passedInDate[0]) > now.year || (parseInt(passedInDate[0]) === now.year && parseInt(passedInDate[1]) > now.month)) {
-        this.dateString = ''
-      }
+    // This is only necessary for admins - when the filter changes, grab the new billing URL
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter = this.$store.watch(
+        (state: any, getters: any) => {
+          return getters.currentFilter
+        },
+        () => {
+          this.fetchCurrentSavesData()
+        }
+      )
     }
 
-    // This is only necessary for admins - when the filter changes, grab the new billing URL
-    this.unwatchFilter = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.currentFilter
-      },
-      () => {
-        this.fetchCurrentSavesData()
-      }
-    )
-
     this.fetchCurrentSavesData()
-
-    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
-    this.unwatchFilter()
-    window.removeEventListener('message', this.resizeIframes)
-  }
-
-  private resizeIframes (event: any) {
-    const iframe = document.getElementById('savesDash') as HTMLIFrameElement
-    if (iframe && event.source === iframe.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
-      const eventData = JSON.parse(event.data)
-      if (eventData.type === 'page:properties:changed') {
-        iframe.height = eventData.height + 50
-      }
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter()
     }
   }
 
