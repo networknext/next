@@ -16,7 +16,6 @@ function fetchUserSessionsMock (vueInstance: VueConstructor<any>, success: boole
 
 describe('UserSessions.vue no sessions', () => {
   const localVue = createLocalVue()
-  localVue.use(Vuex)
 
   const $route = {
     path: '/user-tool',
@@ -36,46 +35,13 @@ describe('UserSessions.vue no sessions', () => {
 
   localVue.use(JSONRPCPlugin)
 
-  const defaultStore = {
-    state: {
-      userProfile: newDefaultProfile(),
-      killLoops: false,
-      isAnonymousPlus: false,
-      isAdmin: false,
-      isBuyer: false
-    },
-    getters: {
-      allBuyers: (state: any) => state.allBuyers,
-      userProfile: (state: any) => state.userProfile,
-      isAnonymousPlus: (state: any) => state.isAnonymousPlus,
-      killLoops: (state: any) => state.killLoops
-    },
-    actions: {
-      toggleKillLoops ({ commit }: any, killLoops: boolean) {
-        commit('TOGGLE_KILL_LOOPS', killLoops)
-      }
-    },
-    mutations: {
-      UPDATE_USER_PROFILE (state: any, userProfile: UserProfile) {
-        state.userProfile = userProfile
-      },
-      TOGGLE_KILL_LOOPS (state: any, killLoops: boolean) {
-        state.killLoops = killLoops
-      },
-      UPDATE_IS_ANONYMOUSPLUS (state: any, isAnonymousPlus: boolean) {
-        state.isAnonymousPlus = isAnonymousPlus
-      }
-    }
-  }
-
   const stubs = [
     'router-link'
   ]
 
   it('mounts the user sessions table successfully', () => {
-    const store = new Vuex.Store(defaultStore)
     const wrapper = shallowMount(UserSessions, {
-      localVue, stubs, mocks, store
+      localVue, stubs, mocks
     })
     expect(wrapper.exists()).toBeTruthy()
     wrapper.destroy()
@@ -87,9 +53,8 @@ describe('UserSessions.vue no sessions', () => {
 
     const sessionsSpy = fetchUserSessionsMock(localVue, true, [], 10, '00000000', 0)
 
-    const store = new Vuex.Store(defaultStore)
     const wrapper = shallowMount(UserSessions, {
-      localVue, stubs, mocks, store
+      localVue, stubs, mocks
     })
     expect(wrapper.exists()).toBeTruthy()
 
@@ -162,9 +127,8 @@ describe('UserSessions.vue no sessions', () => {
       }
     ], 10, '00000000', 0)
 
-    const store = new Vuex.Store(defaultStore)
     const wrapper = shallowMount(UserSessions, {
-      localVue, stubs, mocks, store
+      localVue, stubs, mocks
     })
     expect(wrapper.exists()).toBeTruthy()
 
@@ -249,9 +213,8 @@ describe('UserSessions.vue no sessions', () => {
       }
     ], 1, '00000000', 0)
 
-    const store = new Vuex.Store(defaultStore)
     const wrapper = shallowMount(UserSessions, {
-      localVue, stubs, mocks, store
+      localVue, stubs, mocks
     })
     expect(wrapper.exists()).toBeTruthy()
 
