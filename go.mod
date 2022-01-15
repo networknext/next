@@ -16,26 +16,22 @@ require (
 	github.com/auth0/go-jwt-middleware v0.0.0-20190805220309-36081240882b
 	github.com/aybabtme/iocontrol v0.0.0-20150809002002-ad15bcfc95a0 // indirect
 	github.com/benbjohnson/clock v1.0.1 // indirect
-	github.com/bradleyfalzon/ghinstallation v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
-	github.com/go-fsnotify/fsnotify v0.0.0-20180321022601-755488143dae // indirect
 	github.com/go-kit/kit v0.9.0
 	github.com/go-logfmt/logfmt v0.5.0
 	github.com/go-redis/redis/v7 v7.0.0-beta.5
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/gomodule/redigo v1.8.2
 	github.com/google/go-cmp v0.5.6
-	github.com/google/go-github/v29 v29.0.3 // indirect
 	github.com/google/go-github/v36 v36.0.0
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/rpc v1.2.0
 	github.com/lib/pq v1.8.0
+	github.com/looker-open-source/sdk-codegen/go v0.0.1
 	github.com/mattn/go-sqlite3 v1.14.4
 	github.com/modood/table v0.0.0-20200225102042-88de94bb9876
 	github.com/onsi/ginkgo v1.10.3 // indirect
@@ -43,18 +39,15 @@ require (
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/pebbe/zmq4 v1.2.1
 	github.com/peterbourgon/ff/v3 v3.0.0
-	github.com/rjeczalik/notify v0.9.2
 	github.com/rs/cors v1.7.0
-	github.com/russellcardullo/go-pingdom v1.3.0 // indirect
+	github.com/russellcardullo/go-pingdom v1.3.0
 	github.com/smartystreets/goconvey v1.6.4 // indirect
-	github.com/spaolacci/murmur3 v1.1.0
 	github.com/stretchr/testify v1.5.1
 	github.com/tidwall/gjson v1.6.0
 	github.com/tidwall/pretty v1.0.1 // indirect
 	github.com/urfave/negroni v1.0.0 // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
-	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/mod v0.4.0 // indirect
 	golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 	golang.org/x/oauth2 v0.0.0-20200902213428-5d25da1a8d43

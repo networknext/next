@@ -198,6 +198,23 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	if !envvar.Exists("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE") {
+		core.Error("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE not set")
+		return 1
+	}
+
+	maxBandwidthPercentage, err := envvar.GetFloat("RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE", 0)
+	if err != nil {
+		core.Error("failed to parse RELAY_ROUTER_MAX_BANDWIDTH_PERCENTAGE: %v", err)
+		return 1
+	}
+
+	featureRelayFullBandwidth, err := envvar.GetBool("FEATURE_RELAY_FULL_BANDWIDTH", false)
+	if err != nil {
+		core.Error("failed to parse FEATURE_RELAY_FULL_BANDWIDTH: %v", err)
+		return 1
+	}
+
 	instanceID, err := getInstanceID(env)
 	if err != nil {
 		core.Error("failed to get relay backend instance ID: %v", err)
@@ -468,15 +485,18 @@ func mainReturnWithCode() int {
 				_, relayHash := GetRelayData()
 
 				type ActiveRelayData struct {
-					ID           uint64
-					Name         string
-					Addr         net.UDPAddr
-					SessionCount int
-					Version      string
-					Latitude     float32
-					Longitude    float32
-					SellerID     string
-					DatacenterID uint64
+					ID                            uint64
+					Name                          string
+					Addr                          net.UDPAddr
+					InternalAddr                  net.UDPAddr
+					SessionCount                  int
+					Version                       string
+					Latitude                      float32
+					Longitude                     float32
+					SellerID                      string
+					DatacenterID                  uint64
+					InternalAddressClientRoutable bool
+					DestFirst                     bool
 				}
 
 				activeRelays := make([]ActiveRelayData, 0)
@@ -494,6 +514,7 @@ func mainReturnWithCode() int {
 						relayData := ActiveRelayData{}
 						relayData.ID = relay.ID
 						relayData.Addr = relay.Addr
+						relayData.InternalAddr = relay.InternalAddr
 						relayData.Name = relay.Name
 						relayData.Latitude = float32(relay.Datacenter.Location.Latitude)
 						relayData.Longitude = float32(relay.Datacenter.Location.Longitude)
@@ -501,6 +522,8 @@ func mainReturnWithCode() int {
 						relayData.DatacenterID = relay.Datacenter.ID
 						relayData.SessionCount = activeRelaySessionCounts[i]
 						relayData.Version = activeRelayVersions[i]
+						relayData.InternalAddressClientRoutable = relay.InternalAddressClientRoutable
+						relayData.DestFirst = relay.DestFirst
 
 						activeRelays = append(activeRelays, relayData)
 					}
@@ -518,6 +541,9 @@ func mainReturnWithCode() int {
 				relayLatitudes := make([]float32, numActiveRelays)
 				relayLongitudes := make([]float32, numActiveRelays)
 				relayDatacenterIDs := make([]uint64, numActiveRelays)
+				var relayInternalAddressClientRoutable []uint64
+				var relayInternalAddressClientRoutableAddresses []net.UDPAddr
+				var relayDestFirst []uint64
 
 				for i := range activeRelays {
 					relayIDs[i] = activeRelays[i].ID
@@ -526,6 +552,20 @@ func mainReturnWithCode() int {
 					relayLatitudes[i] = float32(activeRelays[i].Latitude)
 					relayLongitudes[i] = float32(activeRelays[i].Longitude)
 					relayDatacenterIDs[i] = activeRelays[i].DatacenterID
+
+					if activeRelays[i].InternalAddressClientRoutable {
+						if activeRelays[i].InternalAddr.String() == ":0" {
+							// Do not add this relay as client routable if it is missing an internal address
+							core.Error("relay %s (%016x) internal address is client routable but is missing internal address (%s)", activeRelays[i].Name, activeRelays[i].ID, activeRelays[i].InternalAddr.String())
+						} else {
+							relayInternalAddressClientRoutable = append(relayInternalAddressClientRoutable, activeRelays[i].ID)
+							relayInternalAddressClientRoutableAddresses = append(relayInternalAddressClientRoutableAddresses, activeRelays[i].InternalAddr)
+						}
+					}
+
+					if activeRelays[i].DestFirst {
+						relayDestFirst = append(relayDestFirst, activeRelays[i].ID)
+					}
 				}
 
 				// build relays data to serve up on "relays" endpoint (CSV)
@@ -737,10 +777,25 @@ func mainReturnWithCode() int {
 						}
 					}
 
-					// Track the relays that are near max capacity
-					// Relays with MaxSessions set to 0 are never considered full
+					var bwSentPercent float32
+					var bwRecvPercent float32
+					var envSentPercent float32
+					var envRecvPercent float32
+
+					if relay.NICSpeedMbps > 0 {
+						bwSentPercent = relay.BandwidthSentMbps / float32(relay.NICSpeedMbps) * 100.0
+						bwRecvPercent = relay.BandwidthRecvMbps / float32(relay.NICSpeedMbps) * 100.0
+
+						if relay.EnvelopeUpMbps > 0 {
+							envSentPercent = relay.BandwidthSentMbps / relay.EnvelopeUpMbps * 100.0
+							envRecvPercent = relay.BandwidthRecvMbps / relay.EnvelopeDownMbps * 100.0
+						}
+					}
+
+					// Track the relays that are near max capacity based on max sessions and bandwidth
 					var full bool
 
+					// Relays with MaxSessions set to 0 are never considered full based on session count
 					maxSessions := int(relay.MaxSessions)
 					if maxSessions != 0 && numSessions >= maxSessions {
 						fullRelayIDs = append(fullRelayIDs, relay.ID)
@@ -748,14 +803,38 @@ func mainReturnWithCode() int {
 						core.Debug("Relay ID %016x is full (%d/%d sessions)", relay.ID, numSessions, maxSessions)
 					}
 
+					// Relays with MaxBandwidthMbps set to 0 use maxBandwidthPercentage by default to determine if full
+					if featureRelayFullBandwidth && !full {
+						if relay.MaxBandwidthMbps != 0 {
+							if relay.BandwidthSentMbps > float32(relay.MaxBandwidthMbps) || relay.BandwidthRecvMbps > float32(relay.MaxBandwidthMbps) {
+								fullRelayIDs = append(fullRelayIDs, relay.ID)
+								full = true
+								core.Debug("Relay ID %016x is full (BW Sent Mbps: %.2f | BW Recv Mbps: %.2f | Max BW Mbps: %d)", relay.ID, relay.BandwidthSentMbps, relay.BandwidthRecvMbps, relay.MaxBandwidthMbps)
+							}
+						} else if float64(bwSentPercent) > maxBandwidthPercentage || float64(bwRecvPercent) > maxBandwidthPercentage {
+							fullRelayIDs = append(fullRelayIDs, relay.ID)
+							full = true
+							core.Debug(`Relay ID %016x is full (BW Sent Percent: %.2f | BW Recv Percent: %.2f | Max BW Percent: %.2f)`, relay.ID, bwSentPercent, bwRecvPercent, maxBandwidthPercentage)
+						}
+					}
+
 					entries[count] = analytics.RelayStatsEntry{
-						ID:            relay.ID,
-						MaxSessions:   relay.MaxSessions,
-						NumSessions:   uint32(numSessions),
-						NumRoutable:   numRouteable,
-						NumUnroutable: uint32(len(allRelayData)) - 1 - numRouteable,
-						Timestamp:     uint64(time.Now().Unix()),
-						Full:          full,
+						ID:                       relay.ID,
+						MaxSessions:              relay.MaxSessions,
+						NumSessions:              uint32(numSessions),
+						NumRoutable:              numRouteable,
+						NumUnroutable:            uint32(len(allRelayData)) - 1 - numRouteable,
+						Timestamp:                uint64(time.Now().Unix()),
+						Full:                     full,
+						CPUUsage:                 float32(relay.CPU),
+						BandwidthSentPercent:     bwSentPercent,
+						BandwidthReceivedPercent: bwRecvPercent,
+						EnvelopeSentPercent:      envSentPercent,
+						EnvelopeReceivedPercent:  envRecvPercent,
+						BandwidthSentMbps:        relay.BandwidthSentMbps,
+						BandwidthReceivedMbps:    relay.BandwidthRecvMbps,
+						EnvelopeSentMbps:         relay.EnvelopeUpMbps,
+						EnvelopeReceivedMbps:     relay.EnvelopeDownMbps,
 					}
 
 					count++
@@ -764,21 +843,24 @@ func mainReturnWithCode() int {
 				relayStats := entries[:count]
 
 				routeMatrixNew := routing.RouteMatrix{
-					RelayIDs:           relayIDs,
-					RelayAddresses:     relayAddresses,
-					RelayNames:         relayNames,
-					RelayLatitudes:     relayLatitudes,
-					RelayLongitudes:    relayLongitudes,
-					RelayDatacenterIDs: relayDatacenterIDs,
-					RouteEntries:       routeEntries,
-					BinFileBytes:       int32(len(databaseBuffer.Bytes())),
-					BinFileData:        databaseBuffer.Bytes(),
-					CreatedAt:          uint64(time.Now().Unix()),
-					Version:            routing.RouteMatrixSerializeVersion,
-					DestRelays:         destRelays,
-					PingStats:          pingStats,
-					RelayStats:         relayStats,
-					FullRelayIDs:       fullRelayIDs,
+					RelayIDs:                              relayIDs,
+					RelayAddresses:                        relayAddresses,
+					RelayNames:                            relayNames,
+					RelayLatitudes:                        relayLatitudes,
+					RelayLongitudes:                       relayLongitudes,
+					RelayDatacenterIDs:                    relayDatacenterIDs,
+					RouteEntries:                          routeEntries,
+					BinFileBytes:                          int32(len(databaseBuffer.Bytes())),
+					BinFileData:                           databaseBuffer.Bytes(),
+					CreatedAt:                             uint64(time.Now().Unix()),
+					Version:                               routing.RouteMatrixSerializeVersion,
+					DestRelays:                            destRelays,
+					PingStats:                             pingStats,
+					RelayStats:                            relayStats,
+					FullRelayIDs:                          fullRelayIDs,
+					InternalAddressClientRoutableRelayIDs: relayInternalAddressClientRoutable,
+					InternalAddressClientRoutableRelayAddresses: relayInternalAddressClientRoutableAddresses,
+					DestFirstRelayIDs: relayDestFirst,
 				}
 
 				if err := routeMatrixNew.WriteResponseData(matrixBufferSize); err != nil {

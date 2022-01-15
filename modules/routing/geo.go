@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net"
 	"os"
@@ -293,7 +294,13 @@ func (mmdb *MaxmindDB) openMaxmindDB(ctx context.Context, file string) (*geoip2.
 		return nil, err
 	}
 
-	return geoip2.Open(file)
+	// Read in the file from disk into memory
+	maxmindBytes, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	return geoip2.FromBytes(maxmindBytes)
 }
 
 // LocateIP queries the Maxmind geoip2.Reader for the net.IP and parses the response into a routing.Location
@@ -346,4 +353,23 @@ func (mmdb *MaxmindDB) LocateStagingIP(sessionID uint64) (Location, error) {
 		Latitude:  (-90.0 + lat*180.0) * 0.5,
 		Longitude: -180.0 + long*360.0,
 	}, nil
+}
+
+// Checks if the Maxmind DB can locate an IP
+func (mmdb *MaxmindDB) Validate() error {
+	ipStr := "192.0.2.1"
+	testIP := net.ParseIP(ipStr)
+	if testIP == nil {
+		return fmt.Errorf("Validate(): failed to create test IP %s", ipStr)
+	}
+
+	loc, err := mmdb.LocateIP(testIP, 0)
+	if err != nil {
+		return fmt.Errorf("Validate(): failed to locate test IP %s: %v", testIP.String(), err)
+	}
+	if loc == LocationNullIsland {
+		return fmt.Errorf("Validate(): location is null island: %v", loc)
+	}
+
+	return nil
 }

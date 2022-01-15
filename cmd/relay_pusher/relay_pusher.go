@@ -179,15 +179,15 @@ func mainReturnWithCode() int {
 		Timeout: time.Second * 30,
 	}
 
-	ispFileName := envvar.Get("MAXMIND_ISP_DB_FILE_NAME", "")
-	if ispFileName == "" {
-		core.Error("MAXMIND_ISP_DB_FILE_NAME not set")
+	ispOutputLocation := envvar.Get("MAXMIND_ISP_OUTPUT_LOCATION", "")
+	if ispOutputLocation == "" {
+		core.Error("MAXMIND_ISP_OUTPUT_LOCATION not set")
 		return 1
 	}
 
-	cityFileName := envvar.Get("MAXMIND_CITY_DB_FILE_NAME", "")
-	if cityFileName == "" {
-		core.Error("MAXMIND_CITY_DB_FILE_NAME not set")
+	cityOutputLocation := envvar.Get("MAXMIND_CITY_OUTPUT_LOCATION", "")
+	if cityOutputLocation == "" {
+		core.Error("MAXMIND_CITY_OUTPUT_LOCATION not set")
 		return 1
 	}
 
@@ -215,22 +215,52 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Setup maxmind download go routine
-	maxmindSyncInterval, err := envvar.GetDuration("MAXMIND_SYNC_DB_INTERVAL", time.Hour*24)
+	// Setup maxmind download and sync go routine
+	maxmindISPDownloadInterval, err := envvar.GetDuration("MAXMIND_ISP_DOWNLOAD_DB_INTERVAL", time.Hour*24)
 	if err != nil {
-		core.Error("failed to parse MAXMIND_SYNC_DB_INTERVAL: %v", err)
+		core.Error("failed to parse MAXMIND_ISP_DOWNLOAD_DB_INTERVAL: %v", err)
 		return 1
 	}
 
-	// Maxmind sync routine
-	maxmindTicker := time.NewTicker(maxmindSyncInterval)
+	maxmindISPSyncInterval, err := envvar.GetDuration("MAXMIND_ISP_SYNC_DB_INTERVAL", time.Hour*25)
+	if err != nil {
+		core.Error("failed to parse MAXMIND_ISP_SYNC_DB_INTERVAL: %v", err)
+		return 1
+	}
+
+	maxmindCityDownloadInterval, err := envvar.GetDuration("MAXMIND_CITY_DOWNLOAD_DB_INTERVAL", time.Hour*24)
+	if err != nil {
+		core.Error("failed to parse MAXMIND_CITY_DOWNLOAD_DB_INTERVAL: %v", err)
+		return 1
+	}
+
+	maxmindCitySyncInterval, err := envvar.GetDuration("MAXMIND_CITY_SYNC_DB_INTERVAL", time.Hour*25)
+	if err != nil {
+		core.Error("failed to parse MAXMIND_CITY_SYNC_DB_INTERVAL: %v", err)
+		return 1
+	}
+
+	maxmindServerBackendSync, err := envvar.GetBool("MAXMIND_SERVER_BACKEND_SYNC", false)
+	if err != nil {
+		core.Error("failed to parse MAXMIND_SERVER_BACKEND_SYNC: %v", err)
+		return 1
+	}
+
+	// Maxmind ISP download goroutine
+	var maxmindISPMutex sync.RWMutex
+	maxmindISPDownloadTicker := time.NewTicker(maxmindISPDownloadInterval)
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
 		for {
 			select {
-			case <-maxmindTicker.C:
+			case <-ctx.Done():
+				return
+			case <-maxmindISPDownloadTicker.C:
+				var err error
+
 				start := time.Now()
 
 				ispRes, err := maxmindHttpClient.Get(ispURI)
@@ -240,67 +270,100 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				defer ispRes.Body.Close()
-
 				if ispRes.StatusCode != http.StatusOK {
 					core.Error("HTTP GET was not successful for ISP file. Status Code: %d, Status Text: %s", ispRes.StatusCode, http.StatusText(ispRes.StatusCode))
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindHTTPFailureISP.Add(1)
+					ispRes.Body.Close()
 					continue
 				}
 
 				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulHTTPCallsISP.Add(1)
 
+				// Decompress file in memory
 				gz, err := gzip.NewReader(ispRes.Body)
 				if err != nil {
 					core.Error("failed to open ISP file with GZIP: %v", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
+					ispRes.Body.Close()
 					continue
 				}
 
-				buf := bytes.NewBuffer(nil)
+				bufISP := bytes.NewBuffer(nil)
 				tr := tar.NewReader(gz)
 				for {
-					hdr, err := tr.Next()
+					var hdr *tar.Header
+
+					hdr, err = tr.Next()
 					if err == io.EOF {
 						break
 					}
 					if err != nil {
 						core.Error("failed to read from GZIP file: %v", err)
 						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
-						continue
+						break
 					}
 
 					if strings.HasSuffix(hdr.Name, "mmdb") {
-						_, err := io.Copy(buf, tr)
+						_, err = io.Copy(bufISP, tr)
 						if err != nil {
 							core.Error("failed to copy ISP data to buffer: %v", err)
 							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
-							continue
+							break
 						}
 					}
 				}
+
 				gz.Close()
+				ispRes.Body.Close()
 
-				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), serverBackendInstanceNames, ispFileName); err != nil {
-					core.Error("failed to copy maxmind ISP file to server backends: %v", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
-					// Don't continue here, we need to try out the city file as well
-				} else {
-					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPSCP.Add(1)
+				if err != nil && err != io.EOF {
+					continue
 				}
 
-				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), ispStorageName); err != nil {
-					core.Error("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP.Add(1)
-					// Don't continue here, we need to try out the city file as well
-				} else {
-					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPStorageUploads.Add(1)
+				// Write file to disk
+				maxmindISPMutex.Lock()
+				ispFilePath, err := os.Create(ispOutputLocation)
+				if err != nil {
+					core.Error("failed to create ISP file at %s: %v", ispOutputLocation, err)
+					maxmindISPMutex.Unlock()
+					continue
 				}
+
+				bytesWritten, err := io.Copy(ispFilePath, bufISP)
+				if err != nil {
+					core.Error("failed to write ISP file to disk at %s: %v", ispOutputLocation, err)
+					maxmindISPMutex.Unlock()
+					continue
+				}
+
+				maxmindISPMutex.Unlock()
 
 				updateTime := time.Since(start)
 				duration := float64(updateTime.Milliseconds())
 
 				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBISPUpdateDuration.Set(duration)
+
+				core.Debug("Wrote ISP file to disk at %s (%d bytes)", ispOutputLocation, bytesWritten)
+			}
+		}
+	}()
+
+	// Maxmind City download goroutine
+	var maxmindCityMutex sync.RWMutex
+	maxmindCityDownloadTicker := time.NewTicker(maxmindCityDownloadInterval)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-maxmindCityDownloadTicker.C:
+				var err error
+
+				start := time.Now()
 
 				cityRes, err := maxmindHttpClient.Get(cityURI)
 				if err != nil {
@@ -309,87 +372,237 @@ func mainReturnWithCode() int {
 					continue
 				}
 
-				defer cityRes.Body.Close()
-
 				if cityRes.StatusCode != http.StatusOK {
 					core.Error("HTTP GET was not successful for City file. Status Code: %d, Status Text: %s", cityRes.StatusCode, http.StatusText(cityRes.StatusCode))
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindHTTPFailureCity.Add(1)
+					cityRes.Body.Close()
 					continue
 				}
 
 				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulHTTPCallsCity.Add(1)
 
-				gz, err = gzip.NewReader(cityRes.Body)
+				// Decompress file in memory
+				gz, err := gzip.NewReader(cityRes.Body)
 				if err != nil {
 					core.Error("failed to open City file with GZIP: %v", err)
 					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
+					cityRes.Body.Close()
 					continue
 				}
 
-				buf = bytes.NewBuffer(nil)
-				tr = tar.NewReader(gz)
+				bufCity := bytes.NewBuffer(nil)
+				tr := tar.NewReader(gz)
 				for {
-					hdr, err := tr.Next()
+					var hdr *tar.Header
+
+					hdr, err = tr.Next()
 					if err == io.EOF {
 						break
 					}
 					if err != nil {
 						core.Error("failed to read from GZIP file: %v", err)
 						relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
-						continue
+						break
 					}
 
 					if strings.HasSuffix(hdr.Name, "mmdb") {
-						_, err := io.Copy(buf, tr)
+						_, err = io.Copy(bufCity, tr)
 						if err != nil {
 							core.Error("failed to copy City data to buffer: %v", err)
 							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindGZIPReadFailure.Add(1)
-							continue
+							break
 						}
 					}
 				}
+
 				gz.Close()
+				cityRes.Body.Close()
 
-				// Store the known list of instance names
-				maxmindInstanceNames := serverBackendInstanceNames
+				if err != nil && err != io.EOF {
+					continue
+				}
 
-				// The names of instances in a MIG can change, so get them each time
-				serverBackendMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, serverBackendMIGName)
+				// Write file to disk
+				maxmindCityMutex.Lock()
+				cityFilePath, err := os.Create(cityOutputLocation)
 				if err != nil {
-					core.Error("failed to fetch server backend mig instance names: %v", err)
-				} else {
-					// Add the server backend mig instance names to the list
-					maxmindInstanceNames = append(maxmindInstanceNames, serverBackendMIGInstanceNames...)
+					core.Error("failed to create City file at %s: %v", cityOutputLocation, err)
+					maxmindCityMutex.Unlock()
+					continue
 				}
 
-				if err := gcpStorage.CopyFromBytesToStorage(ctx, buf.Bytes(), cityStorageName); err != nil {
-					core.Error("failed to copy maxmind City file to GCP Cloud Storage: %v", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity.Add(1)
-				} else {
-					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCityStorageUploads.Add(1)
+				bytesWritten, err := io.Copy(cityFilePath, bufCity)
+				if err != nil {
+					core.Error("failed to write City file to disk at %s: %v", cityOutputLocation, err)
+					maxmindCityMutex.Unlock()
+					continue
 				}
 
-				if err := gcpStorage.CopyFromBytesToRemote(buf.Bytes(), maxmindInstanceNames, cityFileName); err != nil {
-					core.Error("failed to copy maxmind City file to server backends: %v", err)
-					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
-					// Don't continue here, need to record update duration
-				} else {
-					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCitySCP.Add(1)
-				}
+				maxmindCityMutex.Unlock()
 
-				updateTime = time.Since(start)
-				duration = float64(updateTime.Milliseconds())
+				updateTime := time.Since(start)
+				duration := float64(updateTime.Milliseconds())
 
 				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBCityUpdateDuration.Set(duration)
-				relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBTotalUpdateDuration.Set(duration)
 
-			case <-ctx.Done():
-				return
+				core.Debug("Wrote City file to disk at %s (%d bytes)", cityOutputLocation, bytesWritten)
 			}
 		}
 	}()
 
-	// database binary sync routine
+	// Maxmind ISP cloud storage goroutine
+	maxmindISPUploadTicker := time.NewTicker(maxmindISPSyncInterval)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-maxmindISPUploadTicker.C:
+				// Copy the ISP file to GCP Storage
+				maxmindISPMutex.RLock()
+				if err := gcpStorage.CopyFromLocalToBucket(ctx, ispOutputLocation, bucketName, ispStorageName); err != nil {
+					maxmindISPMutex.RUnlock()
+					core.Error("failed to copy maxmind ISP file to GCP Cloud Storage: %v", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureISP.Add(1)
+					continue
+				} else {
+					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPStorageUploads.Add(1)
+				}
+				maxmindISPMutex.RUnlock()
+			}
+		}
+	}()
+
+	if maxmindServerBackendSync {
+		// Maxmind ISP sync goroutine
+		maxmindISPSyncTicker := time.NewTicker(maxmindISPSyncInterval)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-maxmindISPSyncTicker.C:
+					start := time.Now()
+
+					// Store the known list of instance names
+					allBackendInstanceNames := serverBackendInstanceNames
+
+					// The names of instances in a MIG can change, so get them each time
+					serverBackendMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, serverBackendMIGName)
+					if err != nil {
+						core.Error("failed to fetch server backend mig instance names: %v", err)
+					} else {
+						// Add the server backend mig instance names to the list
+						allBackendInstanceNames = append(allBackendInstanceNames, serverBackendMIGInstanceNames...)
+					}
+
+					// Copy the ISP file to each Server Backend
+					maxmindISPMutex.RLock()
+					for _, instanceName := range allBackendInstanceNames {
+						if err := gcpStorage.CopyFromLocalToRemote(ctx, ispOutputLocation, instanceName); err != nil {
+							core.Error("failed to copy maxmind ISP file to instance %s: %v", instanceName, err)
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+						} else {
+							core.Debug("successfully copied maxmind ISP file to instance %s", instanceName)
+							relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulISPSCP.Add(1)
+						}
+					}
+					maxmindISPMutex.RUnlock()
+
+					updateTime := time.Since(start)
+					duration := float64(updateTime.Milliseconds())
+
+					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBISPUpdateDuration.Set(duration)
+				}
+			}
+		}()
+	}
+
+	// Maxmind City cloud storage goroutine
+	maxmindCityUploadTicker := time.NewTicker(maxmindCitySyncInterval)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-maxmindCityUploadTicker.C:
+				// Copy the City file to GCP Storage
+				maxmindCityMutex.RLock()
+				if err := gcpStorage.CopyFromLocalToBucket(ctx, cityOutputLocation, bucketName, cityStorageName); err != nil {
+					maxmindCityMutex.RUnlock()
+					core.Error("failed to copy maxmind City file to GCP Cloud Storage: %v", err)
+					relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindStorageUploadFailureCity.Add(1)
+					continue
+				} else {
+					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCityStorageUploads.Add(1)
+				}
+				maxmindCityMutex.RUnlock()
+			}
+		}
+	}()
+
+	if maxmindServerBackendSync {
+		// Maxmind City sync goroutine
+		maxmindCitySyncTicker := time.NewTicker(maxmindCitySyncInterval)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-maxmindCitySyncTicker.C:
+					start := time.Now()
+
+					// Store the known list of instance names
+					allBackendInstanceNames := serverBackendInstanceNames
+
+					// The names of instances in a MIG can change, so get them each time
+					serverBackendMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, serverBackendMIGName)
+					if err != nil {
+						core.Error("failed to fetch server backend mig instance names: %v", err)
+					} else {
+						// Add the server backend mig instance names to the list
+						allBackendInstanceNames = append(allBackendInstanceNames, serverBackendMIGInstanceNames...)
+					}
+
+					// Copy the City file to each Server Backend
+					maxmindCityMutex.RLock()
+					for _, instanceName := range allBackendInstanceNames {
+						if err := gcpStorage.CopyFromLocalToRemote(ctx, cityOutputLocation, instanceName); err != nil {
+							core.Error("failed to copy maxmind City file to instance %s: %v", instanceName, err)
+							relayPusherServiceMetrics.RelayPusherMetrics.ErrorMetrics.MaxmindSCPWriteFailure.Add(1)
+						} else {
+							core.Debug("successfully copied maxmind City file to instance %s", instanceName)
+							relayPusherServiceMetrics.RelayPusherMetrics.MaxmindSuccessfulCitySCP.Add(1)
+						}
+					}
+					maxmindCityMutex.RUnlock()
+
+					updateTime := time.Since(start)
+					duration := float64(updateTime.Milliseconds())
+
+					relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBCityUpdateDuration.Set(duration)
+				}
+			}
+		}()
+	}
+
+	// Database binary sync goroutine
 	dbTicker := time.NewTicker(dbSyncInterval)
 	wg.Add(1)
 	go func() {
@@ -488,7 +701,6 @@ func mainReturnWithCode() int {
 
 				// Durations
 				newStatusData.DBBinaryTotalUpdateDurationMs = relayPusherServiceMetrics.RelayPusherMetrics.DBBinaryTotalUpdateDuration.Value()
-				newStatusData.MaxmindDBTotalUpdateDurationMs = relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBTotalUpdateDuration.Value()
 				newStatusData.MaxmindDBCityUpdateDurationMs = relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBCityUpdateDuration.Value()
 				newStatusData.MaxmindDBISPUpdateDurationMs = relayPusherServiceMetrics.RelayPusherMetrics.MaxmindDBISPUpdateDuration.Value()
 

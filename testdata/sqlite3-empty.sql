@@ -44,6 +44,7 @@ create table buyers (
   public_key bytea not null,
   short_name varchar unique,
   customer_id integer not null,
+  looker_seats integer not null default 0,
   constraint fk_customer_id foreign key (customer_id) references customers(id)
 );
 
@@ -132,6 +133,7 @@ create table relays (
   mrc bigint not null,
   overage bigint not null,
   port_speed integer not null,
+  max_bandwidth_mbps integer not null,
   public_ip inet,
   public_ip_port integer,
   public_key bytea not null,
@@ -144,6 +146,8 @@ create table relays (
   relay_state integer not null,
   billing_supplier integer,
   relay_version varchar not null,
+  dest_first boolean not null,
+  internal_address_client_routable boolean not null,
   notes varchar,
   constraint fk_bw_billing_rule foreign key (bw_billing_rule) references bw_billing_rules(id),
   constraint fk_datacenter foreign key (datacenter) references datacenters(id),
@@ -164,6 +168,25 @@ create table datacenter_maps (
 
 create table metadata (
   sync_sequence_number bigint not null
+);
+
+create table analytics_dashboard_categories (
+  id integer primary key autoincrement,
+  tab_label varchar not null unique,
+  premium boolean not null,
+  admin_only boolean not null,
+  seller_only boolean not null
+);
+
+create table analytics_dashboards (
+  id integer primary key autoincrement,
+  dashboard_name varchar not null,
+  looker_dashboard_id integer not null,
+  discovery boolean not null,
+  customer_id integer not null,
+  category_id integer not null,
+  constraint fk_customer_id foreign key (customer_id) references customers(id),
+  constraint fk_category_id foreign key (category_id) references analytics_dashboard_categories(id)
 );
 
 -- File generation: 2021/06/10 16:24:45
