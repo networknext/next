@@ -4,28 +4,27 @@ agent:
   machine:
     type: e1-standard-8
     os_image: ubuntu1804
+  containers:
+    - name: main
+      image: nbopardi/networknext:portal
 global_job_config:
   prologue:
     commands:
       - checkout
-      - sem-version node 14
-      - npm i
+      - mv /node_modules ./node_modules
+fail_fast:
+  stop:
+    when: "true" # stop all jobs upon first failure
 blocks:
-  - name: Linting
+  - name: Lint & Tests
     task:
       jobs:
         - name: Frontend Linting
           commands:
             - npm run lint
-  - name: Unit Tests
-    task:
-      jobs:
         - name: Frontend Unit
           commands:
             - npm run test:unit
-  ## - name: E2E Tests
-    ## task:
-      ## jobs:
         ## - name: Frontend E2E
           ## commands:
             ## - npm run test:e2e
