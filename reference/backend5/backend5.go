@@ -641,7 +641,7 @@ type NextBackendSessionResponsePacket struct {
 	HighFrequencyPings bool
 }
 
-func (packet NextBackendSessionResponsePacket) Serialize(stream Stream, versionMajor uint32, versionMinor uint32, versionPatch uint32) error {
+func (packet NextBackendSessionResponsePacket) Serialize(stream Stream) error {
 
 	stream.SerializeUint64(&packet.SessionId)
 
@@ -2935,6 +2935,42 @@ func main() {
 
 			sessionResponse.HasDebug = true
 			sessionResponse.Debug = "test session debug"
+
+			toAddress := from
+			fromAddress := sendAddress
+
+			response, err := WriteBackendPacket(NEXT_BACKEND_SESSION_RESPONSE_PACKET, sessionResponse, fromAddress, toAddress, backendPrivateKey[:])
+			if err != nil {
+				fmt.Printf( "error: could not write session response packet: %v\n", err)
+				continue
+			}
+
+			if !BasicPacketFilter(response[:], len(response)) {
+				panic("basic packet filter failed on session response?")
+			}
+
+			{
+				var magic [8]byte
+
+				fromAddress := sendAddress
+				toAddress := from
+
+				var fromAddressBuffer [32]byte
+				var toAddressBuffer [32]byte
+
+				fromAddressData, fromAddressPort := GetAddressData(fromAddress, fromAddressBuffer[:])
+				toAddressData, toAddressPort := GetAddressData(toAddress, toAddressBuffer[:])
+
+				if !AdvancedPacketFilter(response, magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, len(response)) {
+					panic("advanced packet filter failed on server response\n")
+				}
+			}
+
+			_, err = connection.WriteToUDP(response, from)
+			if err != nil {
+				fmt.Printf("error: failed to send session response packet: %v\n", err)
+				continue
+			}
 
 			// todo: unfuck
 			/*
