@@ -1,5 +1,5 @@
 <template>
-  <div class="px-2" v-if="$store.getters.isBuyer || $store.getters.isAdmin">
+  <div id="buyer-filter" class="px-2" v-if="$store.getters.isBuyer || $store.getters.isAdmin">
     <select class="form-control" @change="updateFilter($event.target.value)">
       <option v-for="option in filterOptions" :key="option.value" :value="option.value" :selected="$store.getters.currentFilter.companyCode === option.value">
         {{ option.name }}
@@ -37,7 +37,10 @@ export default class BuyerFilter extends Vue {
     }
 
     this.$store.getters.allBuyers.forEach((buyer: any) => {
-      if (!this.$store.getters.isAdmin || (this.$store.getters.isAdmin && buyer.is_live)) {
+      if (
+        (!this.$store.getters.isAdmin && this.$store.getters.userProfile.companyCode === buyer.company_code) ||
+        (this.$store.getters.isAdmin && buyer.is_live)
+      ) {
         this.filterOptions.push({
           name: buyer.company_name,
           value: buyer.company_code
@@ -52,7 +55,7 @@ export default class BuyerFilter extends Vue {
         dateRange: this.$store.getters.currentFilter.dateRange
       }
 
-      this.$store.commit('UPDATE_CURRENT_FILTER', newFilter)
+      this.$store.dispatch('updateCurrentFilter', newFilter)
     }
   }
 
@@ -73,7 +76,7 @@ export default class BuyerFilter extends Vue {
       dateRange: this.$store.getters.currentFilter.dateRange
     }
 
-    this.$store.commit('UPDATE_CURRENT_FILTER', newFilter)
+    this.$store.dispatch('updateCurrentFilter', newFilter)
   }
 }
 
