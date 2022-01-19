@@ -1291,13 +1291,6 @@ func (m *InMemory) UpdateBuyer(ctx context.Context, buyerID uint64, field string
 		}
 
 		buyer.Debug = debug
-	case "AnalysisOnly":
-		analysisOnly, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("AnalysisOnly: %v is not a valid boolean type (%T)", value, value)
-		}
-
-		buyer.AnalysisOnly = analysisOnly
 	case "Analytics":
 		analytics, ok := value.(bool)
 		if !ok {

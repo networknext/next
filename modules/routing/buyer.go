@@ -16,7 +16,6 @@ type Buyer struct {
 	HexID               string // needed by external (non-go) clients
 	Live                bool
 	Debug               bool
-	AnalysisOnly        bool
 	Analytics           bool
 	Billing             bool
 	Trial               bool
@@ -39,7 +38,6 @@ func (b *Buyer) String() string {
 	buyer += "\tCompanyCode           : '" + b.CompanyCode + "'\n"
 	buyer += "\tLive                  : " + strconv.FormatBool(b.Live) + "\n"
 	buyer += "\tDebug                 : " + strconv.FormatBool(b.Debug) + "\n"
-	buyer += "\tAnalysisOnly          : " + strconv.FormatBool(b.AnalysisOnly) + "\n"
 	buyer += "\tAnalytics             : " + strconv.FormatBool(b.Analytics) + "\n"
 	buyer += "\tBilling               : " + strconv.FormatBool(b.Billing) + "\n"
 	buyer += "\tTrial                 : " + strconv.FormatBool(b.Trial) + "\n"

@@ -2017,7 +2017,7 @@ func TestInMemoryUpdateBuyer(t *testing.T) {
 
 	stringFields := []string{"ShortName", "PublicKey"}
 
-	boolFields := []string{"Live", "Debug", "AnalysisOnly", "Analytics", "Billing", "Trial"}
+	boolFields := []string{"Live", "Debug", "Analytics", "Billing", "Trial"}
 
 	float64Fields := []string{"ExoticLocationFee", "StandardLocationFee"}
 
