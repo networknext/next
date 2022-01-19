@@ -1608,7 +1608,7 @@ func main() {
 				ShortHelp:  "Get detailed information for the specified buyer",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) != 1 {
-						handleRunTimeError(fmt.Sprintln("Please provide the seller ID in hex, only."), 0)
+						handleRunTimeError(fmt.Sprintln("Please provide the buyer ID in hex, only."), 0)
 					}
 
 					getBuyerInfo(env, args[0])
