@@ -1610,7 +1610,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 		return true
 	}
 
-	if routeShader.DisableNetworkNext {
+	if routeShader.DisableNetworkNext || routeShader.AnalysisOnly {
 		routeState.Disabled = true
 		return true
 	}
