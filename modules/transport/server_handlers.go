@@ -49,7 +49,12 @@ func datacenterEnabled(database *routing.DatabaseBinWrapper, buyerID uint64, dat
 }
 
 func getDatacenter(database *routing.DatabaseBinWrapper, datacenterID uint64) routing.Datacenter {
-	value, _ := database.DatacenterMap[datacenterID]
+	value, exists := database.DatacenterMap[datacenterID]
+
+	if !exists {
+		return routing.UnknownDatacenter
+	}
+
 	return value
 }
 
@@ -669,14 +674,31 @@ func SessionPre(state *SessionHandlerState) bool {
 		}()
 	}
 
+	/*
+		If the buyer is "Analysis Only", allow the session to proceed
+		even if the datacenter does not exist, is not enabled, or has zero
+		destination relays in the database.
+
+		The session will always go direct since the Route State will be disabled.
+
+		The billing entry will still contain the UnknownDatacenter flag to let
+		us know if we need to add this datacenter for the buyer.
+
+		It does not make sense to record the DatacenterNotEnabled flag or
+		NoRelaysInDatacenter metric for an "Analysis Only" buyer.
+	*/
+
 	if !datacenterExists(state.Database, state.Packet.DatacenterID) {
 		core.Debug("unknown datacenter")
 		state.Metrics.DatacenterNotFound.Add(1)
 		state.UnknownDatacenter = true
-		return true
+
+		if !state.Buyer.RouteShader.AnalysisOnly {
+			return true
+		}
 	}
 
-	if !datacenterEnabled(state.Database, state.Packet.BuyerID, state.Packet.DatacenterID) {
+	if !datacenterEnabled(state.Database, state.Packet.BuyerID, state.Packet.DatacenterID) && !state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("datacenter not enabled")
 		state.Metrics.DatacenterNotEnabled.Add(1)
 		state.DatacenterNotEnabled = true
@@ -686,7 +708,7 @@ func SessionPre(state *SessionHandlerState) bool {
 	state.Datacenter = getDatacenter(state.Database, state.Packet.DatacenterID)
 
 	destRelayIDs := state.RouteMatrix.GetDatacenterRelayIDs(state.Packet.DatacenterID)
-	if len(destRelayIDs) == 0 {
+	if len(destRelayIDs) == 0 && !state.Buyer.RouteShader.AnalysisOnly {
 		core.Debug("no relays in datacenter %x", state.Packet.DatacenterID)
 		state.Metrics.NoRelaysInDatacenter.Add(1)
 		return true
@@ -942,7 +964,15 @@ func SessionGetNearRelays(state *SessionHandlerState) bool {
 		by adding the latency to the first relay to the total route cost,
 		and by excluding near relays with higher jitter or packet loss
 		than the default internet route.
+
+		This function is skipped for "Analysis Only" buyers because sessions
+		will always take direct.
 	*/
+
+	if state.Buyer.RouteShader.AnalysisOnly {
+		core.Debug("analysis only, not getting near relays")
+		return false
+	}
 
 	directLatency := state.Packet.DirectMinRTT
 
@@ -979,9 +1009,17 @@ func SessionUpdateNearRelayStats(state *SessionHandlerState) bool {
 		It also runs various filters inside core.ReframeRelays, which look at
 		the history of latency, jitter and packet loss across the entire session
 		in order to exclude near relays with bad performance from being selected.
+
+		This function is skipped for "Analysis Only" buyers because sessions
+		will always take direct.
 	*/
 
 	routeShader := &state.Buyer.RouteShader
+
+	if routeShader.AnalysisOnly {
+		core.Debug("analysis only, not updating near relay stats")
+		return false
+	}
 
 	routeState := &state.Output.RouteState
 
