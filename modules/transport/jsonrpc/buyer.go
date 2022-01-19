@@ -2221,6 +2221,7 @@ func (s *BuyersService) RemoveInternalConfig(r *http.Request, arg *RemoveInterna
 
 type JSRouteShader struct {
 	DisableNetworkNext        bool            `json:"disableNetworkNext"`
+	AnalysisOnly              bool            `json:"analysis_only"`
 	SelectionPercent          int64           `json:"selectionPercent"`
 	ABTest                    bool            `json:"abTest"`
 	ProMode                   bool            `json:"proMode"`
@@ -2264,6 +2265,7 @@ func (s *BuyersService) RouteShader(r *http.Request, arg *RouteShaderArg, reply 
 
 	jsonRS := JSRouteShader{
 		DisableNetworkNext:        rs.DisableNetworkNext,
+		AnalysisOnly:              rs.AnalysisOnly,
 		SelectionPercent:          int64(rs.SelectionPercent),
 		ABTest:                    rs.ABTest,
 		ProMode:                   rs.ProMode,
@@ -2303,6 +2305,7 @@ func (s *BuyersService) JSAddRouteShader(r *http.Request, arg *JSAddRouteShaderA
 
 	rs := core.RouteShader{
 		DisableNetworkNext:        arg.RouteShader.DisableNetworkNext,
+		AnalysisOnly:              arg.RouteShader.AnalysisOnly,
 		SelectionPercent:          int(arg.RouteShader.SelectionPercent),
 		ABTest:                    arg.RouteShader.ABTest,
 		ProMode:                   arg.RouteShader.ProMode,
@@ -2423,7 +2426,7 @@ func (s *BuyersService) UpdateRouteShader(r *http.Request, args *UpdateRouteShad
 			return err
 		}
 
-	case "DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
+	case "AnalysisOnly", "DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
 		"ReduceJitter", "ReducePacketLoss", "Multipath":
 		newValue, err := strconv.ParseBool(args.Value)
 		if err != nil {

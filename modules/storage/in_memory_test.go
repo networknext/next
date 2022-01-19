@@ -1355,7 +1355,7 @@ func TestInMemoryUpdateRouteShader(t *testing.T) {
 	int32Fields := []string{"AcceptableLatency", "LatencyThreshold", "BandwidthEnvelopeUpKbps",
 		"BandwidthEnvelopeDownKbps"}
 
-	boolFields := []string{"DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
+	boolFields := []string{"AnalysisOnly", "DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
 		"ReduceJitter", "ReducePacketLoss", "Multipath"}
 
 	float32Fields := []string{"AcceptablePacketLoss", "PacketLossSustained"}

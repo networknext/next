@@ -1481,6 +1481,7 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 
 type RouteShader struct {
 	DisableNetworkNext        bool
+	AnalysisOnly              bool
 	SelectionPercent          int
 	ABTest                    bool
 	ProMode                   bool
@@ -1500,6 +1501,7 @@ type RouteShader struct {
 func NewRouteShader() RouteShader {
 	return RouteShader{
 		DisableNetworkNext:        false,
+		AnalysisOnly:              false,
 		SelectionPercent:          100,
 		ABTest:                    false,
 		ReduceLatency:             true,

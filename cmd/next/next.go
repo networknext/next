@@ -463,6 +463,7 @@ type internalConfig struct {
 
 type routeShader struct {
 	DisableNetworkNext        bool
+	AnalysisOnly              bool
 	SelectionPercent          int
 	ABTest                    bool
 	ProMode                   bool
@@ -1932,6 +1933,7 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 
 							addRouteShader(env, buyerID, localjsonrpc.JSRouteShader{
 								DisableNetworkNext:        rs.DisableNetworkNext,
+								AnalysisOnly:              rs.AnalysisOnly,
 								SelectionPercent:          int64(rs.SelectionPercent),
 								ABTest:                    rs.ABTest,
 								ProMode:                   rs.ProMode,
