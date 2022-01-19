@@ -122,12 +122,18 @@ func TestInsertSQL(t *testing.T) {
 		internalID := uint64(3142537350691193170)
 
 		buyer := routing.Buyer{
-			ID:          internalID,
-			ShortName:   outerCustomer.Code,
-			CompanyCode: outerCustomer.Code,
-			Live:        true,
-			Debug:       true,
-			PublicKey:   publicKey,
+			ID:                  internalID,
+			ShortName:           outerCustomer.Code,
+			CompanyCode:         outerCustomer.Code,
+			Live:                true,
+			Debug:               true,
+			AnalysisOnly:        false,
+			Analytics:           true,
+			Billing:             true,
+			Trial:               true,
+			ExoticLocationFee:   float64(300),
+			StandardLocationFee: float64(300),
+			PublicKey:           publicKey,
 			// CustomerID:  outerCustomer.DatabaseID,
 		}
 
@@ -138,12 +144,19 @@ func TestInsertSQL(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, internalID, outerBuyer.ID)
-		assert.Equal(t, buyer.Live, outerBuyer.Live)
-		assert.Equal(t, buyer.Debug, outerBuyer.Debug)
-		assert.Equal(t, publicKey, outerBuyer.PublicKey)
-		// assert.Equal(t, buyer.CustomerID, outerBuyer.CustomerID)
 		assert.Equal(t, buyer.ShortName, outerBuyer.ShortName)
 		assert.Equal(t, buyer.CompanyCode, outerBuyer.CompanyCode)
+		assert.Equal(t, buyer.Live, outerBuyer.Live)
+		assert.Equal(t, buyer.Debug, outerBuyer.Debug)
+		assert.Equal(t, buyer.AnalysisOnly, outerBuyer.AnalysisOnly)
+		assert.Equal(t, buyer.Analytics, outerBuyer.Analytics)
+		assert.Equal(t, buyer.Billing, outerBuyer.Billing)
+		assert.Equal(t, buyer.Trial, outerBuyer.Trial)
+		assert.Equal(t, buyer.ExoticLocationFee, outerBuyer.ExoticLocationFee)
+		assert.Equal(t, buyer.StandardLocationFee, outerBuyer.StandardLocationFee)
+		assert.Equal(t, publicKey, outerBuyer.PublicKey)
+		// assert.Equal(t, buyer.CustomerID, outerBuyer.CustomerID)
+
 	})
 
 	t.Run("AddRelay", func(t *testing.T) {
@@ -920,10 +933,22 @@ func TestUpdateSQL(t *testing.T) {
 	})
 
 	t.Run("UpdateBuyer", func(t *testing.T) {
-		err := db.UpdateBuyer(ctx, buyerWithID.ID, "Live", false)
+		err := db.UpdateBuyer(ctx, buyerWithID.ID, "Live", true)
 		assert.NoError(t, err)
 
-		err = db.UpdateBuyer(ctx, buyerWithID.ID, "Debug", false)
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "Debug", true)
+		assert.NoError(t, err)
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "AnalysisOnly", true)
+		assert.NoError(t, err)
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "Analytics", true)
+		assert.NoError(t, err)
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "Billing", true)
+		assert.NoError(t, err)
+
+		err = db.UpdateBuyer(ctx, buyerWithID.ID, "Trial", true)
 		assert.NoError(t, err)
 
 		err = db.UpdateBuyer(ctx, buyerWithID.ID, "ShortName", "newname")
@@ -950,8 +975,12 @@ func TestUpdateSQL(t *testing.T) {
 		checkBuyer, err := db.Buyer(ctx, newBuyerID)
 		assert.NoError(t, err)
 
-		assert.Equal(t, false, checkBuyer.Live)
-		assert.Equal(t, false, checkBuyer.Debug)
+		assert.Equal(t, true, checkBuyer.Live)
+		assert.Equal(t, true, checkBuyer.Debug)
+		assert.Equal(t, true, checkBuyer.AnalysisOnly)
+		assert.Equal(t, true, checkBuyer.Analytics)
+		assert.Equal(t, true, checkBuyer.Billing)
+		assert.Equal(t, true, checkBuyer.Trial)
 		assert.Equal(t, "newname", checkBuyer.ShortName)
 		assert.Equal(t, int64(100), checkBuyer.LookerSeats)
 		assert.Equal(t, float64(100), checkBuyer.ExoticLocationFee)
