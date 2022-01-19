@@ -437,6 +437,7 @@ func getRouteShader(
 
 	fmt.Printf("RouteShader for buyer %s:\n", buyerName)
 	fmt.Printf("  DisableNetworkNext       : %t\n", reply.RouteShader.DisableNetworkNext)
+	fmt.Printf("  AnalysisOnly             : %t\n", reply.RouteShader.AnalysisOnly)
 	fmt.Printf("  SelectionPercent         : %d\n", reply.RouteShader.SelectionPercent)
 	fmt.Printf("  ABTest                   : %t\n", reply.RouteShader.ABTest)
 	fmt.Printf("  ProMode                  : %t\n", reply.RouteShader.ProMode)

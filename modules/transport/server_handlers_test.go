@@ -1088,6 +1088,42 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
 	assert.Equal(t, float64(1), state.Metrics.DatacenterNotFound.Value())
 }
 
+func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound_AnalysisOnly(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	rs := core.NewRouteShader()
+	rs.AnalysisOnly = true
+	env.UpdateRouteShader(buyerID, rs)
+
+	state := transport.SessionHandlerState{}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+
+	state.Metrics = metrics.SessionUpdateMetrics
+	state.Database = env.GetDatabaseWrapper()
+	state.Packet.DatacenterID = crypto.HashID("unknown.datacenter.name")
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.Packet.BuyerID = buyerID
+	state.RouteMatrix = env.GetRouteMatrix()
+
+	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
+	state.PacketData = requestData
+
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
+
+	assert.False(t, transport.SessionPre(&state))
+
+	assert.True(t, state.UnknownDatacenter)
+	assert.Equal(t, float64(1), state.Metrics.DatacenterNotFound.Value())
+	assert.Equal(t, routing.UnknownDatacenter, state.Datacenter)
+}
+
 func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
 	t.Parallel()
 
@@ -1117,6 +1153,43 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
 
 	assert.True(t, state.DatacenterNotEnabled)
 	assert.Equal(t, float64(1), state.Metrics.DatacenterNotEnabled.Value())
+}
+
+func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled_AnalysisOnly(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+	datacenter := env.AddDatacenter("datacenter.name")
+
+	rs := core.NewRouteShader()
+	rs.AnalysisOnly = true
+	env.UpdateRouteShader(buyerID, rs)
+
+	state := transport.SessionHandlerState{}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+
+	state.Metrics = metrics.SessionUpdateMetrics
+	state.Database = env.GetDatabaseWrapper()
+	state.Packet.DatacenterID = datacenter.ID
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.Packet.BuyerID = buyerID
+	state.RouteMatrix = env.GetRouteMatrix()
+
+	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
+	state.PacketData = requestData
+
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
+
+	assert.False(t, transport.SessionPre(&state))
+
+	assert.False(t, state.DatacenterNotEnabled)
+	assert.Equal(t, float64(0), state.Metrics.DatacenterNotEnabled.Value())
+	assert.Equal(t, datacenter, state.Datacenter)
 }
 
 func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
@@ -1149,6 +1222,43 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
 	assert.True(t, transport.SessionPre(&state))
 
 	assert.Equal(t, float64(1), state.Metrics.NoRelaysInDatacenter.Value())
+}
+
+func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter_AnalysisOnly(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+	datacenter := env.AddDatacenter("datacenter.name")
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+
+	rs := core.NewRouteShader()
+	rs.AnalysisOnly = true
+	env.UpdateRouteShader(buyerID, rs)
+
+	state := transport.SessionHandlerState{}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+
+	state.Metrics = metrics.SessionUpdateMetrics
+	state.Database = env.GetDatabaseWrapper()
+	state.Packet.DatacenterID = datacenter.ID
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.Packet.BuyerID = buyerID
+	state.RouteMatrix = env.GetRouteMatrix()
+
+	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
+	state.PacketData = requestData
+
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
+
+	assert.False(t, transport.SessionPre(&state))
+
+	assert.Equal(t, float64(0), state.Metrics.NoRelaysInDatacenter.Value())
+	assert.Equal(t, datacenter, state.Datacenter)
 }
 
 func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
@@ -1186,6 +1296,7 @@ func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
 	assert.True(t, transport.SessionPre(&state))
 	assert.True(t, state.StaleRouteMatrix)
 	assert.Equal(t, float64(1), state.Metrics.StaleRouteMatrix.Value())
+	assert.Equal(t, datacenter, state.Datacenter)
 }
 
 func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
@@ -1217,6 +1328,47 @@ func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
 	defer state.IpLocator.CloseISP()
 
 	assert.False(t, transport.SessionPre(&state))
+	assert.Equal(t, datacenter, state.Datacenter)
+}
+
+func TestSessionUpdateHandlerFunc_Pre_Success_AnalysisOnly(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+	datacenter := env.AddDatacenter("datacenter.name")
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
+
+	rs := core.NewRouteShader()
+	rs.AnalysisOnly = true
+	env.UpdateRouteShader(buyerID, rs)
+
+	state := transport.SessionHandlerState{}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+
+	state.Metrics = metrics.SessionUpdateMetrics
+	state.Database = env.GetDatabaseWrapper()
+	state.Packet.DatacenterID = datacenter.ID
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.Packet.BuyerID = buyerID
+	state.StaleDuration = time.Second * 20
+	state.RouteMatrix = env.GetRouteMatrix()
+
+	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
+	state.PacketData = requestData
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
+
+	assert.False(t, transport.SessionPre(&state))
+	assert.False(t, state.UnknownDatacenter)
+	assert.False(t, state.DatacenterNotEnabled)
+	assert.Equal(t, float64(0), state.Metrics.DatacenterNotEnabled.Value())
+	assert.Equal(t, float64(0), state.Metrics.NoRelaysInDatacenter.Value())
+	assert.Equal(t, datacenter, state.Datacenter)
 }
 
 func TestSessionUpdateHandlerFunc_NewSession_Success(t *testing.T) {
@@ -1638,6 +1790,42 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_Unknown(t *testi
 
 	assert.True(t, transport.SessionHandleFallbackToDirect(&state))
 	assert.Equal(t, float64(1), state.Metrics.FallbackToDirectUnknownReason.Value())
+}
+
+func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_AnalysisOnly(t *testing.T) {
+	t.Parallel()
+
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+
+	state := transport.SessionHandlerState{
+		Metrics: metrics.SessionUpdateMetrics,
+	}
+
+	state.Datacenter = routing.Datacenter{
+		ID:        crypto.HashID("datacenter.name"),
+		Name:      "datacenter.name",
+		AliasName: "datacenter.name",
+	}
+
+	state.RouteMatrix = &routing.RouteMatrix{
+		RelayDatacenterIDs: []uint64{
+			12345,
+			123423,
+			12351321,
+		},
+	}
+
+	state.Buyer = routing.Buyer{
+		RouteShader: core.RouteShader{
+			AnalysisOnly: true,
+		},
+	}
+
+	assert.False(t, transport.SessionUpdateNearRelayStats(&state))
+	assert.Equal(t, float64(0), state.Metrics.NoRelaysInDatacenter.Value())
+	assert.Zero(t, len(state.Packet.NearRelayIDs))
 }
 
 func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_NoRelaysInDatacenter(t *testing.T) {

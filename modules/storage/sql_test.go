@@ -1611,6 +1611,7 @@ func TestRouteShaders(t *testing.T) {
 			ABTest:                    true,
 			AcceptableLatency:         int32(25),
 			AcceptablePacketLoss:      float32(1),
+			AnalysisOnly:              true,
 			BandwidthEnvelopeDownKbps: int32(1200),
 			BandwidthEnvelopeUpKbps:   int32(500),
 			DisableNetworkNext:        true,
@@ -1633,6 +1634,7 @@ func TestRouteShaders(t *testing.T) {
 		assert.Equal(t, true, outerRouteShader.ABTest)
 		assert.Equal(t, int32(25), outerRouteShader.AcceptableLatency)
 		assert.Equal(t, float32(1), outerRouteShader.AcceptablePacketLoss)
+		assert.Equal(t, true, outerRouteShader.AnalysisOnly)
 		assert.Equal(t, int32(1200), outerRouteShader.BandwidthEnvelopeDownKbps)
 		assert.Equal(t, int32(500), outerRouteShader.BandwidthEnvelopeUpKbps)
 		assert.Equal(t, true, outerRouteShader.DisableNetworkNext)
@@ -1670,6 +1672,13 @@ func TestRouteShaders(t *testing.T) {
 		checkRouteShader, err = db.RouteShader(ctx, outerBuyer.ID)
 		assert.NoError(t, err)
 		assert.Equal(t, float32(10), checkRouteShader.AcceptablePacketLoss)
+
+		// AnalysisOnly
+		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "AnalysisOnly", false)
+		assert.NoError(t, err)
+		checkRouteShader, err = db.RouteShader(ctx, outerBuyer.ID)
+		assert.NoError(t, err)
+		assert.Equal(t, false, checkRouteShader.AnalysisOnly)
 
 		// BandwidthEnvelopeDownKbps
 		err = db.UpdateRouteShader(ctx, outerBuyer.ID, "BandwidthEnvelopeDownKbps", int32(1000))
