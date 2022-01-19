@@ -822,6 +822,13 @@ func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, field 
 		}
 
 		buyer.RouteShader.AcceptablePacketLoss = acceptablePacketLoss
+	case "AnalysisOnly":
+		analysisOnly, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("AnalysisOnly: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.AnalysisOnly = analysisOnly
 	case "BandwidthEnvelopeDownKbps":
 		bandwidthEnvelopeDownKbps, ok := value.(int32)
 		if !ok {
