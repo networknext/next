@@ -39,6 +39,11 @@ export class AuthService {
       return
     }
 
+    if (this.flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS) && !this.gtagService) {
+      console.error('A gtag service is required when analytics is turned on')
+      return
+    }
+
     this.auth0Client = new WebAuth({
       domain: this.domain,
       clientID: this.clientID,

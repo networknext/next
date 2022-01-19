@@ -1,8 +1,11 @@
-import { shallowMount, createLocalVue } from '@vue/test-utils'
+import { shallowMount, createLocalVue, mount } from '@vue/test-utils'
 import Vuex from 'vuex'
 import AccountSettings from '@/components/AccountSettings.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
+import { AuthPlugin } from '@/plugins/auth'
+import { FeatureFlagService, FlagPlugin } from '@/plugins/flags'
+import { AlertType } from '@/components/types/AlertTypes'
 
 describe('AccountSettings.vue', () => {
   const localVue = createLocalVue()
@@ -78,19 +81,7 @@ describe('AccountSettings.vue', () => {
     wrapper.destroy()
   })
 
-  it('checks user details update - failure', () => {
-    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementationOnce(() => {
-      return Promise.reject(new Error('updateAccountDetails error'))
-    })
-
-    const store = new Vuex.Store(defaultStore)
-    const wrapper = shallowMount(AccountSettings, { localVue, store })
-    expect(wrapper.exists()).toBeTruthy()
-    updateAccountDetails.mockReset()
-    wrapper.destroy()
-  })
-
-  it('checks valid input values', () => {
+  it('checks valid input values - user account details', async () => {
     const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementationOnce(() => {
       return Promise.resolve({})
     })
@@ -100,10 +91,257 @@ describe('AccountSettings.vue', () => {
     })
 
     const store = new Vuex.Store(defaultStore)
+
+    localVue.use(AuthPlugin, {
+      domain: 'domain',
+      clientID: 'clientID',
+      store: store,
+      flagService: new FeatureFlagService({
+        flags: [],
+        useAPI: false
+      })
+    })
+
+    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementationOnce(() => {
+      return Promise.resolve()
+    })
+
+    const tooLongString = '!'.padStart(2049, '!')
+    expect(tooLongString.length).toBe(2049)
+
+    const wrapper = mount(AccountSettings, { localVue, store })
+    expect(wrapper.exists()).toBeTruthy()
+
+    const firstNameInput = wrapper.find('#firstNameInput')
+    expect(firstNameInput.exists()).toBeTruthy()
+
+    const lastNameInput = wrapper.find('#lastNameInput')
+    expect(lastNameInput.exists()).toBeTruthy()
+
+    const button = wrapper.find('#account-details-button')
+    expect(button.text()).toBe('Update User Details')
+
+    await button.trigger('submit')
+
+    let errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(2)
+    expect(errors.at(0).text()).toBe('Please enter your first name')
+    expect(errors.at(1).text()).toBe('Please enter your last name')
+    expect(updateAccountDetails).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await firstNameInput.setValue('FirstName')
+
+    await button.trigger('submit')
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(1)
+    expect(errors.at(0).text()).toBe('Please enter your last name')
+    expect(updateAccountDetails).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await firstNameInput.setValue('')
+    await lastNameInput.setValue('LastName')
+
+    await button.trigger('submit')
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(1)
+    expect(errors.at(0).text()).toBe('Please enter your first name')
+    expect(updateAccountDetails).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await firstNameInput.setValue('!!!!!!!!!!!!!!!!!!')
+
+    await button.trigger('submit')
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(1)
+    expect(errors.at(0).text()).toBe('A valid first name must include at least one letter')
+    expect(updateAccountDetails).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await firstNameInput.setValue(tooLongString)
+
+    await button.trigger('submit')
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(1)
+    expect(errors.at(0).text()).toBe('First name is to long, please enter a name that is less that 2048 characters')
+    expect(updateAccountDetails).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await firstNameInput.setValue('')
+    await lastNameInput.setValue('!!!!!!!!!!!!!!!!!!')
+
+    await button.trigger('submit')
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(2)
+    expect(errors.at(0).text()).toBe('Please enter your first name')
+    expect(errors.at(1).text()).toBe('A valid last name must include at least one letter')
+    expect(updateAccountDetails).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await lastNameInput.setValue(tooLongString)
+
+    await button.trigger('submit')
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(2)
+    expect(errors.at(0).text()).toBe('Please enter your first name')
+    expect(errors.at(1).text()).toBe('Last name is to long, please enter a name that is less that 2048 characters')
+    expect(updateAccountDetails).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await firstNameInput.setValue('FirstName')
+    await lastNameInput.setValue('LastName')
+
+    await button.trigger('submit')
+
+    await localVue.nextTick()
+    await localVue.nextTick()
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(0)
+    expect(updateAccountDetails).toBeCalledTimes(1)
+    expect(refreshToken).toBeCalledTimes(1)
+
+    const alert = wrapper.find('.alert')
+    expect(alert.exists()).toBeTruthy()
+    expect(alert.text()).toBe('Account details updated successfully')
+    expect(alert.classes(AlertType.SUCCESS)).toBeTruthy()
+
+    refreshToken.mockReset()
+    updateAccountDetails.mockReset()
+    setupCompanyAccount.mockReset()
+    wrapper.destroy()
+  })
+
+  it('checks valid input values - company details', async () => {
+    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementationOnce(() => {
+      return Promise.resolve({})
+    })
+
+    const setupCompanyAccount = jest.spyOn(localVue.prototype.$apiService, 'setupCompanyAccount').mockImplementationOnce(() => {
+      return Promise.resolve({})
+    })
+
+    const store = new Vuex.Store(defaultStore)
+
+    localVue.use(AuthPlugin, {
+      domain: 'domain',
+      clientID: 'clientID',
+      store: store,
+      flagService: new FeatureFlagService({
+        flags: [],
+        useAPI: false
+      })
+    })
+
+    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementationOnce(() => {
+      return Promise.resolve()
+    })
+
+    const tooLongString = '!'.padStart(2048, '!')
+    expect(tooLongString.length).toBe(2048)
+
+    const wrapper = mount(AccountSettings, { localVue, store })
+    expect(wrapper.exists()).toBeTruthy()
+
+    const companyNameInput = wrapper.find('#companyNameInput')
+    expect(companyNameInput.exists()).toBeTruthy()
+
+    const companyCodeInput = wrapper.find('#companyCodeInput')
+    expect(companyCodeInput.exists()).toBeTruthy()
+
+    const button = wrapper.find('#company-details-button')
+    expect(button.text()).toBe('Setup Company Account')
+
+    await button.trigger('submit')
+
+    let errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(2)
+    expect(errors.at(0).text()).toBe('If setting up a company account, please enter a company name and code, otherwise please enter a valid company code')
+    expect(errors.at(1).text()).toBe('Please choose a company code that contains character padded hyphens and no special characters')
+    expect(setupCompanyAccount).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await companyNameInput.setValue('Company Name')
+
+    await button.trigger('submit')
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(2)
+    expect(errors.at(0).text()).toBe('A company code is required for company creation / assignment')
+    expect(setupCompanyAccount).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await companyNameInput.setValue(tooLongString)
+
+    await button.trigger('submit')
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(3)
+    expect(errors.at(0).text()).toBe('Please choose a company name that is at most 256 characters')
+    expect(errors.at(1).text()).toBe('A company code is required for company creation / assignment')
+    expect(errors.at(2).text()).toBe('Please choose a company code that contains character padded hyphens and no special characters')
+    expect(setupCompanyAccount).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await companyCodeInput.setValue('Bad company code input')
+
+    await button.trigger('submit')
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(2)
+    expect(errors.at(0).text()).toBe('Please choose a company name that is at most 256 characters')
+    expect(errors.at(1).text()).toBe('Please choose a company code that contains character padded hyphens and no special characters')
+    expect(setupCompanyAccount).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await companyCodeInput.setValue('!'.padStart(33, '!'))
+
+    await button.trigger('submit')
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(3)
+    expect(errors.at(0).text()).toBe('Please choose a company name that is at most 256 characters')
+    expect(errors.at(1).text()).toBe('Please choose a company code that is at most 32 characters')
+    expect(errors.at(2).text()).toBe('Please choose a company code that contains character padded hyphens and no special characters')
+    expect(setupCompanyAccount).not.toBeCalled()
+    expect(refreshToken).not.toBeCalled()
+
+    await companyNameInput.setValue('Test Company')
+    await companyCodeInput.setValue('test')
+
+    await button.trigger('submit')
+
+    const alert = wrapper.find('.alert')
+    expect(alert.exists()).toBeTruthy()
+    expect(alert.text()).toBe('Please update your first and last name before setting up a company account')
+    expect(alert.classes(AlertType.ERROR)).toBeTruthy()
+
+    errors = wrapper.findAll('.text-danger')
+    expect(errors.length).toBe(0)
+    expect(setupCompanyAccount).toBeCalledTimes(0)
+    expect(refreshToken).toBeCalledTimes(0)
+
+    refreshToken.mockReset()
+    updateAccountDetails.mockReset()
+    setupCompanyAccount.mockReset()
+    wrapper.destroy()
+  })
+
+  it('checks user details update - failure', () => {
+    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementationOnce(() => {
+      return Promise.reject(new Error('updateAccountDetails error'))
+    })
+
+    const store = new Vuex.Store(defaultStore)
     const wrapper = shallowMount(AccountSettings, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
     updateAccountDetails.mockReset()
-    setupCompanyAccount.mockReset()
     wrapper.destroy()
   })
 
