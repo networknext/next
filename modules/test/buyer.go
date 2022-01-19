@@ -33,6 +33,15 @@ func (env *TestEnvironment) AddBuyer(companyCode string, live bool) (uint64, []b
 	return buyerID, publicKey, privateKey
 }
 
+func (env *TestEnvironment) UpdateRouteShader(buyerID uint64, routeShader core.RouteShader) {
+	buyer, exists := env.DatabaseWrapper.BuyerMap[buyerID]
+	assert.True(env.TestContext, exists)
+
+	buyer.RouteShader = routeShader
+
+	env.DatabaseWrapper.BuyerMap[buyerID] = buyer
+}
+
 func (env *TestEnvironment) AddDCMap(buyerID uint64, datacenterID uint64, datacenterName string) {
 	env.DatabaseWrapper.DatacenterMaps[buyerID][datacenterID] = routing.DatacenterMap{
 		BuyerID:      buyerID,

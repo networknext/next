@@ -132,6 +132,7 @@ type sqlRouteShader struct {
 	ABTest                    bool
 	AcceptableLatency         int64
 	AcceptablePacketLoss      float64
+	AnalysisOnly              bool
 	BandwidthEnvelopeDownKbps int64
 	BandwidthEnvelopeUpKbps   int64
 	DisableNetworkNext        bool
@@ -2738,7 +2739,7 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	querySQL.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
+	querySQL.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, analysis_only, bw_envelope_down_kbps, "))
 	querySQL.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
 	querySQL.Write([]byte("reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, "))
 	querySQL.Write([]byte("packet_loss_sustained from route_shaders where buyer_id = ( "))
@@ -2750,6 +2751,7 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 			&sqlRS.ABTest,
 			&sqlRS.AcceptableLatency,
 			&sqlRS.AcceptablePacketLoss,
+			&sqlRS.AnalysisOnly,
 			&sqlRS.BandwidthEnvelopeDownKbps,
 			&sqlRS.BandwidthEnvelopeUpKbps,
 			&sqlRS.DisableNetworkNext,
@@ -2785,6 +2787,7 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 	case nil:
 		routeShader := core.RouteShader{
 			DisableNetworkNext:        sqlRS.DisableNetworkNext,
+			AnalysisOnly:              sqlRS.AnalysisOnly,
 			SelectionPercent:          int(sqlRS.SelectionPercent),
 			ABTest:                    sqlRS.ABTest,
 			ProMode:                   sqlRS.ProMode,
@@ -3196,6 +3199,7 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		ABTest:                    rs.ABTest,
 		AcceptableLatency:         int64(rs.AcceptableLatency),
 		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		AnalysisOnly:              rs.AnalysisOnly,
 		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
 		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 		DisableNetworkNext:        rs.DisableNetworkNext,
@@ -3210,11 +3214,11 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 	}
 
 	sql.Write([]byte("insert into route_shaders ("))
-	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
+	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, analysis_only, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
 	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, packet_loss_sustained, buyer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, "))
-	sql.Write([]byte("(select id from buyers where sdk_generated_id = $15))"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, "))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $16))"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -3223,6 +3227,7 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		routeShader.ABTest,
 		routeShader.AcceptableLatency,
 		routeShader.AcceptablePacketLoss,
+		routeShader.AnalysisOnly,
 		routeShader.BandwidthEnvelopeDownKbps,
 		routeShader.BandwidthEnvelopeUpKbps,
 		routeShader.DisableNetworkNext,
@@ -3288,6 +3293,14 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		updateSQL.Write([]byte("update route_shaders set acceptable_packet_loss=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 		args = append(args, acceptablePacketLoss, int64(ephemeralBuyerID))
+	case "AnalysisOnly":
+		analysisOnly, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("AnalysisOnly: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update route_shaders set analysis_only=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, analysisOnly, int64(ephemeralBuyerID))
 	case "BandwidthEnvelopeDownKbps":
 		bandwidthEnvelopeDownKbps, ok := value.(int32)
 		if !ok {

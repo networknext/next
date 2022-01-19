@@ -1934,6 +1934,7 @@ func TestRouteShader(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, rs.DisableNetworkNext, reply.RouteShader.DisableNetworkNext)
+		assert.Equal(t, rs.AnalysisOnly, reply.RouteShader.AnalysisOnly)
 		assert.Equal(t, rs.SelectionPercent, int(reply.RouteShader.SelectionPercent))
 		assert.Equal(t, rs.ABTest, reply.RouteShader.ABTest)
 		assert.Equal(t, rs.ProMode, reply.RouteShader.ProMode)
@@ -1990,6 +1991,7 @@ func TestJSAddRouteShader(t *testing.T) {
 
 	jsRS := jsonrpc.JSRouteShader{
 		DisableNetworkNext:        true,
+		AnalysisOnly:              true,
 		SelectionPercent:          int64(rs.SelectionPercent),
 		ABTest:                    rs.ABTest,
 		ProMode:                   rs.ProMode,
@@ -2021,6 +2023,7 @@ func TestJSAddRouteShader(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, rs.DisableNetworkNext, !reply.RouteShader.DisableNetworkNext)
+		assert.Equal(t, rs.AnalysisOnly, !reply.RouteShader.AnalysisOnly)
 		assert.Equal(t, rs.SelectionPercent, int(reply.RouteShader.SelectionPercent))
 		assert.Equal(t, rs.ABTest, reply.RouteShader.ABTest)
 		assert.Equal(t, rs.ProMode, reply.RouteShader.ProMode)
@@ -2132,7 +2135,7 @@ func TestUpdateRouteShader(t *testing.T) {
 	int32Fields := []string{"AcceptableLatency", "LatencyThreshold", "BandwidthEnvelopeUpKbps",
 		"BandwidthEnvelopeDownKbps"}
 
-	boolFields := []string{"DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
+	boolFields := []string{"AnalysisOnly", "DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
 		"ReduceJitter", "ReducePacketLoss", "Multipath"}
 
 	float32Fields := []string{"AcceptablePacketLoss", "PacketLossSustained"}

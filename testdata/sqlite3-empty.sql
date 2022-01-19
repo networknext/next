@@ -63,6 +63,7 @@ create table route_shaders (
   ab_test boolean not null,
   acceptable_latency integer not null,
   acceptable_packet_loss numeric not null,
+  analysis_only boolean not null,
   bw_envelope_down_kbps integer not null,
   bw_envelope_up_kbps integer not null,
   disable_network_next boolean not null,
