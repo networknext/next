@@ -29,7 +29,7 @@ const (
 	LOOKER_AUTH_URI         = "%s/api/3.1/login?client_id=%s&client_secret=%s"
 	LOOKER_QUERY_RUNNER_URI = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
 	LOOKER_PROD_MODEL       = "network_next_prod"
-	LOOKER_SAVES_VIEW       = "biggest_saves_per_day_v0"
+	LOOKER_SAVES_VIEW       = "daily_big_saves"
 )
 
 type LookerWebhookAttachment struct {
@@ -112,11 +112,11 @@ func (l *LookerClient) FetchAuthToken() (string, error) {
 }
 
 type LookerSave struct {
-	SessionID int64   `json:"biggest_saves_per_day_v0.session_id"`
-	SaveScore float64 `json:"biggest_saves_per_day_v0.save_score"`
-	RTTScore  float64 `json:"biggest_saves_per_day_v0.rtt_score"`
-	PLScore   float64 `json:"biggest_saves_per_day_v0.pl_score"`
-	Duration  float64 `json:"biggest_saves_per_day_v0.duration"`
+	SessionID int64   `json:"daily_big_saves.session_id"`
+	SaveScore float64 `json:"daily_big_saves.save_score"`
+	RTTScore  float64 `json:"daily_big_saves.rtt_score"`
+	PLScore   float64 `json:"daily_big_saves.pl_score"`
+	Duration  float64 `json:"daily_big_saves.duration"`
 }
 
 func (l *LookerClient) RunSavesQuery(customerCode string) ([]LookerSave, error) {
@@ -140,7 +140,7 @@ func (l *LookerClient) RunSavesQuery(customerCode string) ([]LookerSave, error) 
 	rowLimit := LOOKER_SAVES_ROW_LIMIT
 
 	requiredFilters["buyer_info_v2.customer_code"] = customerCode
-	requiredFilters[LOOKER_SAVES_VIEW+".date_date"] = "last week"
+	requiredFilters[LOOKER_SAVES_VIEW+".date_date"] = "7 days"
 
 	query := v4.WriteQuery{
 		Model:   LOOKER_PROD_MODEL,
