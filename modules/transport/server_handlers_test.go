@@ -81,6 +81,129 @@ func TestGetRouteAddressesAndPublicKeys(t *testing.T) {
 	}
 }
 
+func TestGetRouteAddressesAndPublicKeys_InternalAddressClientRoutable_MissingInternalAddr(t *testing.T) {
+	t.Parallel()
+
+	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:34567")
+	assert.NoError(t, err)
+	clientPublicKey := make([]byte, crypto.KeySize)
+	core.RandomBytes(clientPublicKey)
+
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
+	serverPublicKey := make([]byte, crypto.KeySize)
+	core.RandomBytes(serverPublicKey)
+
+	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
+	assert.NoError(t, err)
+	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
+	assert.NoError(t, err)
+	relayAddr3, err := net.ResolveUDPAddr("udp", "127.0.0.1:10002")
+	assert.NoError(t, err)
+
+	relayPublicKey1 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey1)
+	relayPublicKey2 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey2)
+	relayPublicKey3 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey3)
+
+	seller := routing.Seller{ID: "seller"}
+	datacenter := routing.Datacenter{ID: crypto.HashID("local"), Name: "local"}
+
+	sellerMap := make(map[string]routing.Seller)
+	sellerMap[seller.ID] = seller
+
+	datacenterMap := make(map[uint64]routing.Datacenter)
+	datacenterMap[datacenter.ID] = datacenter
+
+	relayMap := make(map[uint64]routing.Relay)
+	relayMap[crypto.HashID(relayAddr1.String())] = routing.Relay{ID: crypto.HashID(relayAddr1.String()), Addr: *relayAddr1, PublicKey: relayPublicKey1, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+	relayMap[crypto.HashID(relayAddr2.String())] = routing.Relay{ID: crypto.HashID(relayAddr2.String()), Addr: *relayAddr2, PublicKey: relayPublicKey2, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+	relayMap[crypto.HashID(relayAddr3.String())] = routing.Relay{ID: crypto.HashID(relayAddr3.String()), Addr: *relayAddr3, PublicKey: relayPublicKey3, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+
+	database := routing.DatabaseBinWrapper{RelayMap: relayMap, SellerMap: sellerMap, DatacenterMap: datacenterMap}
+
+	allRelayIDs := []uint64{crypto.HashID(relayAddr1.String()), crypto.HashID(relayAddr2.String()), crypto.HashID(relayAddr3.String())}
+	routeRelays := []int32{0, 1, 2}
+
+	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, &database)
+
+	expectedRouteAddresses := []*net.UDPAddr{clientAddr, relayAddr1, relayAddr2, relayAddr3, serverAddr}
+	expectedRoutePublicKeys := [][]byte{clientPublicKey, relayPublicKey1, relayPublicKey2, relayPublicKey3, serverPublicKey}
+
+	for i := range routeAddresses {
+		assert.Equal(t, expectedRouteAddresses[i].String(), routeAddresses[i].String())
+	}
+
+	for i := range routePublicKeys {
+		assert.Equal(t, expectedRoutePublicKeys[i], routePublicKeys[i])
+	}
+}
+
+func TestGetRouteAddressesAndPublicKeys_InternalAddressClientRoutable_Success(t *testing.T) {
+	t.Parallel()
+
+	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:34567")
+	assert.NoError(t, err)
+	clientPublicKey := make([]byte, crypto.KeySize)
+	core.RandomBytes(clientPublicKey)
+
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
+	serverPublicKey := make([]byte, crypto.KeySize)
+	core.RandomBytes(serverPublicKey)
+
+	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
+	assert.NoError(t, err)
+	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
+	assert.NoError(t, err)
+	relayAddr3, err := net.ResolveUDPAddr("udp", "127.0.0.1:10002")
+	assert.NoError(t, err)
+
+	relayInternalAddr1, err := net.ResolveUDPAddr("udp", "128.0.0.1:10000")
+	assert.NoError(t, err)
+
+	relayPublicKey1 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey1)
+	relayPublicKey2 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey2)
+	relayPublicKey3 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey3)
+
+	seller := routing.Seller{ID: "seller"}
+	datacenter := routing.Datacenter{ID: crypto.HashID("local"), Name: "local"}
+
+	sellerMap := make(map[string]routing.Seller)
+	sellerMap[seller.ID] = seller
+
+	datacenterMap := make(map[uint64]routing.Datacenter)
+	datacenterMap[datacenter.ID] = datacenter
+
+	relayMap := make(map[uint64]routing.Relay)
+	relayMap[crypto.HashID(relayAddr1.String())] = routing.Relay{ID: crypto.HashID(relayAddr1.String()), Addr: *relayAddr1, InternalAddr: *relayInternalAddr1, PublicKey: relayPublicKey1, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+	relayMap[crypto.HashID(relayAddr2.String())] = routing.Relay{ID: crypto.HashID(relayAddr2.String()), Addr: *relayAddr2, PublicKey: relayPublicKey2, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+	relayMap[crypto.HashID(relayAddr3.String())] = routing.Relay{ID: crypto.HashID(relayAddr3.String()), Addr: *relayAddr3, PublicKey: relayPublicKey3, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+
+	database := routing.DatabaseBinWrapper{RelayMap: relayMap, SellerMap: sellerMap, DatacenterMap: datacenterMap}
+
+	allRelayIDs := []uint64{crypto.HashID(relayAddr1.String()), crypto.HashID(relayAddr2.String()), crypto.HashID(relayAddr3.String())}
+	routeRelays := []int32{0, 1, 2}
+
+	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, &database)
+
+	expectedRouteAddresses := []*net.UDPAddr{clientAddr, relayInternalAddr1, relayAddr2, relayAddr3, serverAddr}
+	expectedRoutePublicKeys := [][]byte{clientPublicKey, relayPublicKey1, relayPublicKey2, relayPublicKey3, serverPublicKey}
+
+	for i := range routeAddresses {
+		assert.Equal(t, expectedRouteAddresses[i].String(), routeAddresses[i].String())
+	}
+
+	for i := range routePublicKeys {
+		assert.Equal(t, expectedRoutePublicKeys[i], routePublicKeys[i])
+	}
+}
+
 func TestGetRouteAddressesAndPublicKeys_UseRelayPrivateAddress(t *testing.T) {
 	t.Parallel()
 
@@ -137,6 +260,138 @@ func TestGetRouteAddressesAndPublicKeys_UseRelayPrivateAddress(t *testing.T) {
 	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, &database)
 
 	expectedRouteAddresses := []*net.UDPAddr{clientAddr, relayAddr1, relayInternalAddr2, relayInternalAddr3, serverAddr}
+	expectedRoutePublicKeys := [][]byte{clientPublicKey, relayPublicKey1, relayPublicKey2, relayPublicKey3, serverPublicKey}
+
+	for i := range routeAddresses {
+		assert.Equal(t, expectedRouteAddresses[i].String(), routeAddresses[i].String())
+	}
+
+	for i := range routePublicKeys {
+		assert.Equal(t, expectedRoutePublicKeys[i], routePublicKeys[i])
+	}
+}
+
+func TestGetRouteAddressesAndPublicKeys_UseRelayPrivateAddress_InternalAddressClientRoutable_MissingInternalAddr(t *testing.T) {
+	t.Parallel()
+
+	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:34567")
+	assert.NoError(t, err)
+	clientPublicKey := make([]byte, crypto.KeySize)
+	core.RandomBytes(clientPublicKey)
+
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
+	serverPublicKey := make([]byte, crypto.KeySize)
+	core.RandomBytes(serverPublicKey)
+
+	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
+	assert.NoError(t, err)
+	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
+	assert.NoError(t, err)
+	relayAddr3, err := net.ResolveUDPAddr("udp", "127.0.0.1:10002")
+	assert.NoError(t, err)
+
+	relayInternalAddr2, err := net.ResolveUDPAddr("udp", "128.0.0.1:10001")
+	assert.NoError(t, err)
+	relayInternalAddr3, err := net.ResolveUDPAddr("udp", "128.0.0.1:10002")
+	assert.NoError(t, err)
+
+	relayPublicKey1 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey1)
+	relayPublicKey2 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey2)
+	relayPublicKey3 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey3)
+
+	seller := routing.Seller{ID: "seller"}
+	datacenter := routing.Datacenter{ID: crypto.HashID("local"), Name: "local"}
+
+	sellerMap := make(map[string]routing.Seller)
+	sellerMap[seller.ID] = seller
+
+	datacenterMap := make(map[uint64]routing.Datacenter)
+	datacenterMap[datacenter.ID] = datacenter
+
+	relayMap := make(map[uint64]routing.Relay)
+	relayMap[crypto.HashID(relayAddr1.String())] = routing.Relay{ID: crypto.HashID(relayAddr1.String()), Addr: *relayAddr1, PublicKey: relayPublicKey1, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+	relayMap[crypto.HashID(relayAddr2.String())] = routing.Relay{ID: crypto.HashID(relayAddr2.String()), Addr: *relayAddr2, InternalAddr: *relayInternalAddr2, PublicKey: relayPublicKey2, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+	relayMap[crypto.HashID(relayAddr3.String())] = routing.Relay{ID: crypto.HashID(relayAddr3.String()), Addr: *relayAddr3, InternalAddr: *relayInternalAddr3, PublicKey: relayPublicKey3, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+
+	database := routing.DatabaseBinWrapper{RelayMap: relayMap, SellerMap: sellerMap, DatacenterMap: datacenterMap}
+
+	allRelayIDs := []uint64{crypto.HashID(relayAddr1.String()), crypto.HashID(relayAddr2.String()), crypto.HashID(relayAddr3.String())}
+	routeRelays := []int32{0, 1, 2}
+
+	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, &database)
+
+	expectedRouteAddresses := []*net.UDPAddr{clientAddr, relayAddr1, relayInternalAddr2, relayInternalAddr3, serverAddr}
+	expectedRoutePublicKeys := [][]byte{clientPublicKey, relayPublicKey1, relayPublicKey2, relayPublicKey3, serverPublicKey}
+
+	for i := range routeAddresses {
+		assert.Equal(t, expectedRouteAddresses[i].String(), routeAddresses[i].String())
+	}
+
+	for i := range routePublicKeys {
+		assert.Equal(t, expectedRoutePublicKeys[i], routePublicKeys[i])
+	}
+}
+
+func TestGetRouteAddressesAndPublicKeys_UseRelayPrivateAddress_InternalAddressClientRoutable_Success(t *testing.T) {
+	t.Parallel()
+
+	clientAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:34567")
+	assert.NoError(t, err)
+	clientPublicKey := make([]byte, crypto.KeySize)
+	core.RandomBytes(clientPublicKey)
+
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
+	serverPublicKey := make([]byte, crypto.KeySize)
+	core.RandomBytes(serverPublicKey)
+
+	relayAddr1, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
+	assert.NoError(t, err)
+	relayAddr2, err := net.ResolveUDPAddr("udp", "127.0.0.1:10001")
+	assert.NoError(t, err)
+	relayAddr3, err := net.ResolveUDPAddr("udp", "127.0.0.1:10002")
+	assert.NoError(t, err)
+
+	relayInternalAddr1, err := net.ResolveUDPAddr("udp", "128.0.0.1:10000")
+	assert.NoError(t, err)
+	relayInternalAddr2, err := net.ResolveUDPAddr("udp", "128.0.0.1:10001")
+	assert.NoError(t, err)
+	relayInternalAddr3, err := net.ResolveUDPAddr("udp", "128.0.0.1:10002")
+	assert.NoError(t, err)
+
+	relayPublicKey1 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey1)
+	relayPublicKey2 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey2)
+	relayPublicKey3 := make([]byte, crypto.KeySize)
+	core.RandomBytes(relayPublicKey3)
+
+	seller := routing.Seller{ID: "seller"}
+	datacenter := routing.Datacenter{ID: crypto.HashID("local"), Name: "local"}
+
+	sellerMap := make(map[string]routing.Seller)
+	sellerMap[seller.ID] = seller
+
+	datacenterMap := make(map[uint64]routing.Datacenter)
+	datacenterMap[datacenter.ID] = datacenter
+
+	relayMap := make(map[uint64]routing.Relay)
+	relayMap[crypto.HashID(relayAddr1.String())] = routing.Relay{ID: crypto.HashID(relayAddr1.String()), Addr: *relayAddr1, InternalAddr: *relayInternalAddr1, PublicKey: relayPublicKey1, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+	relayMap[crypto.HashID(relayAddr2.String())] = routing.Relay{ID: crypto.HashID(relayAddr2.String()), Addr: *relayAddr2, InternalAddr: *relayInternalAddr2, PublicKey: relayPublicKey2, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+	relayMap[crypto.HashID(relayAddr3.String())] = routing.Relay{ID: crypto.HashID(relayAddr3.String()), Addr: *relayAddr3, InternalAddr: *relayInternalAddr3, PublicKey: relayPublicKey3, Seller: seller, Datacenter: datacenter, InternalAddressClientRoutable: true}
+
+	database := routing.DatabaseBinWrapper{RelayMap: relayMap, SellerMap: sellerMap, DatacenterMap: datacenterMap}
+
+	allRelayIDs := []uint64{crypto.HashID(relayAddr1.String()), crypto.HashID(relayAddr2.String()), crypto.HashID(relayAddr3.String())}
+	routeRelays := []int32{0, 1, 2}
+
+	routeAddresses, routePublicKeys := transport.GetRouteAddressesAndPublicKeys(clientAddr, clientPublicKey, serverAddr, serverPublicKey, 5, routeRelays, allRelayIDs, &database)
+
+	expectedRouteAddresses := []*net.UDPAddr{clientAddr, relayInternalAddr1, relayInternalAddr2, relayInternalAddr3, serverAddr}
 	expectedRoutePublicKeys := [][]byte{clientPublicKey, relayPublicKey1, relayPublicKey2, relayPublicKey3, serverPublicKey}
 
 	for i := range routeAddresses {
@@ -833,6 +1088,42 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
 	assert.Equal(t, float64(1), state.Metrics.DatacenterNotFound.Value())
 }
 
+func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound_AnalysisOnly(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	rs := core.NewRouteShader()
+	rs.AnalysisOnly = true
+	env.UpdateRouteShader(buyerID, rs)
+
+	state := transport.SessionHandlerState{}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+
+	state.Metrics = metrics.SessionUpdateMetrics
+	state.Database = env.GetDatabaseWrapper()
+	state.Packet.DatacenterID = crypto.HashID("unknown.datacenter.name")
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.Packet.BuyerID = buyerID
+	state.RouteMatrix = env.GetRouteMatrix()
+
+	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
+	state.PacketData = requestData
+
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
+
+	assert.False(t, transport.SessionPre(&state))
+
+	assert.True(t, state.UnknownDatacenter)
+	assert.Equal(t, float64(1), state.Metrics.DatacenterNotFound.Value())
+	assert.Equal(t, routing.UnknownDatacenter, state.Datacenter)
+}
+
 func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
 	t.Parallel()
 
@@ -862,6 +1153,43 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
 
 	assert.True(t, state.DatacenterNotEnabled)
 	assert.Equal(t, float64(1), state.Metrics.DatacenterNotEnabled.Value())
+}
+
+func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled_AnalysisOnly(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+	datacenter := env.AddDatacenter("datacenter.name")
+
+	rs := core.NewRouteShader()
+	rs.AnalysisOnly = true
+	env.UpdateRouteShader(buyerID, rs)
+
+	state := transport.SessionHandlerState{}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+
+	state.Metrics = metrics.SessionUpdateMetrics
+	state.Database = env.GetDatabaseWrapper()
+	state.Packet.DatacenterID = datacenter.ID
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.Packet.BuyerID = buyerID
+	state.RouteMatrix = env.GetRouteMatrix()
+
+	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
+	state.PacketData = requestData
+
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
+
+	assert.False(t, transport.SessionPre(&state))
+
+	assert.False(t, state.DatacenterNotEnabled)
+	assert.Equal(t, float64(0), state.Metrics.DatacenterNotEnabled.Value())
+	assert.Equal(t, datacenter, state.Datacenter)
 }
 
 func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
@@ -894,6 +1222,43 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
 	assert.True(t, transport.SessionPre(&state))
 
 	assert.Equal(t, float64(1), state.Metrics.NoRelaysInDatacenter.Value())
+}
+
+func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter_AnalysisOnly(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+	datacenter := env.AddDatacenter("datacenter.name")
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+
+	rs := core.NewRouteShader()
+	rs.AnalysisOnly = true
+	env.UpdateRouteShader(buyerID, rs)
+
+	state := transport.SessionHandlerState{}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+
+	state.Metrics = metrics.SessionUpdateMetrics
+	state.Database = env.GetDatabaseWrapper()
+	state.Packet.DatacenterID = datacenter.ID
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.Packet.BuyerID = buyerID
+	state.RouteMatrix = env.GetRouteMatrix()
+
+	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
+	state.PacketData = requestData
+
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
+
+	assert.False(t, transport.SessionPre(&state))
+
+	assert.Equal(t, float64(0), state.Metrics.NoRelaysInDatacenter.Value())
+	assert.Equal(t, datacenter, state.Datacenter)
 }
 
 func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
@@ -931,6 +1296,7 @@ func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
 	assert.True(t, transport.SessionPre(&state))
 	assert.True(t, state.StaleRouteMatrix)
 	assert.Equal(t, float64(1), state.Metrics.StaleRouteMatrix.Value())
+	assert.Equal(t, datacenter, state.Datacenter)
 }
 
 func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
@@ -962,6 +1328,47 @@ func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
 	defer state.IpLocator.CloseISP()
 
 	assert.False(t, transport.SessionPre(&state))
+	assert.Equal(t, datacenter, state.Datacenter)
+}
+
+func TestSessionUpdateHandlerFunc_Pre_Success_AnalysisOnly(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+	datacenter := env.AddDatacenter("datacenter.name")
+	env.AddDCMap(buyerID, datacenter.ID, datacenter.Name)
+	env.AddRelay("losangeles.1", "10.0.0.2", datacenter.ID)
+
+	rs := core.NewRouteShader()
+	rs.AnalysisOnly = true
+	env.UpdateRouteShader(buyerID, rs)
+
+	state := transport.SessionHandlerState{}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+
+	state.Metrics = metrics.SessionUpdateMetrics
+	state.Database = env.GetDatabaseWrapper()
+	state.Packet.DatacenterID = datacenter.ID
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.Packet.BuyerID = buyerID
+	state.StaleDuration = time.Second * 20
+	state.RouteMatrix = env.GetRouteMatrix()
+
+	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
+	state.PacketData = requestData
+	state.IpLocator = getSuccessLocator(t)
+	defer state.IpLocator.CloseCity()
+	defer state.IpLocator.CloseISP()
+
+	assert.False(t, transport.SessionPre(&state))
+	assert.False(t, state.UnknownDatacenter)
+	assert.False(t, state.DatacenterNotEnabled)
+	assert.Equal(t, float64(0), state.Metrics.DatacenterNotEnabled.Value())
+	assert.Equal(t, float64(0), state.Metrics.NoRelaysInDatacenter.Value())
+	assert.Equal(t, datacenter, state.Datacenter)
 }
 
 func TestSessionUpdateHandlerFunc_NewSession_Success(t *testing.T) {
@@ -1383,6 +1790,42 @@ func TestSessionUpdateHandlerFunc_SessionHandleFallbackToDirect_Unknown(t *testi
 
 	assert.True(t, transport.SessionHandleFallbackToDirect(&state))
 	assert.Equal(t, float64(1), state.Metrics.FallbackToDirectUnknownReason.Value())
+}
+
+func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_AnalysisOnly(t *testing.T) {
+	t.Parallel()
+
+	metricsHandler := metrics.LocalHandler{}
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &metricsHandler)
+	assert.NoError(t, err)
+
+	state := transport.SessionHandlerState{
+		Metrics: metrics.SessionUpdateMetrics,
+	}
+
+	state.Datacenter = routing.Datacenter{
+		ID:        crypto.HashID("datacenter.name"),
+		Name:      "datacenter.name",
+		AliasName: "datacenter.name",
+	}
+
+	state.RouteMatrix = &routing.RouteMatrix{
+		RelayDatacenterIDs: []uint64{
+			12345,
+			123423,
+			12351321,
+		},
+	}
+
+	state.Buyer = routing.Buyer{
+		RouteShader: core.RouteShader{
+			AnalysisOnly: true,
+		},
+	}
+
+	assert.False(t, transport.SessionUpdateNearRelayStats(&state))
+	assert.Equal(t, float64(0), state.Metrics.NoRelaysInDatacenter.Value())
+	assert.Zero(t, len(state.Packet.NearRelayIDs))
 }
 
 func TestSessionUpdateHandlerFunc_SessionUpdateNearRelayStats_NoRelaysInDatacenter(t *testing.T) {

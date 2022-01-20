@@ -3,6 +3,7 @@ package storage_test
 import (
 	"context"
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/networknext/backend/modules/core"
@@ -613,7 +614,7 @@ func TestInMemoryAddRelay(t *testing.T) {
 		assert.EqualError(t, err, "datacenter with reference 0 not found")
 	})
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("no internal ip when InternalAddressClientRoutable true", func(t *testing.T) {
 		inMemory := storage.InMemory{}
 
 		relay := routing.Relay{
@@ -627,9 +628,42 @@ func TestInMemoryAddRelay(t *testing.T) {
 				ID:   crypto.HashID("datacenter name"),
 				Name: "datadcenter name",
 			},
+			InternalAddressClientRoutable: true,
 		}
 
 		err := inMemory.AddSeller(ctx, relay.Seller)
+		assert.NoError(t, err)
+
+		err = inMemory.AddDatacenter(ctx, relay.Datacenter)
+		assert.NoError(t, err)
+
+		err = inMemory.AddRelay(ctx, relay)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "internalAddr with reference :0 not found")
+	})
+
+	t.Run("success", func(t *testing.T) {
+		inMemory := storage.InMemory{}
+
+		internalAddr, err := net.ResolveUDPAddr("udp", "128.0.0.1:10000")
+		assert.NoError(t, err)
+
+		relay := routing.Relay{
+			ID:           1,
+			Name:         "relay name",
+			InternalAddr: *internalAddr,
+			Seller: routing.Seller{
+				ID:   "seller ID",
+				Name: "seller name",
+			},
+			Datacenter: routing.Datacenter{
+				ID:   crypto.HashID("datacenter name"),
+				Name: "datadcenter name",
+			},
+			InternalAddressClientRoutable: true,
+		}
+
+		err = inMemory.AddSeller(ctx, relay.Seller)
 		assert.NoError(t, err)
 
 		err = inMemory.AddDatacenter(ctx, relay.Datacenter)
@@ -1321,7 +1355,7 @@ func TestInMemoryUpdateRouteShader(t *testing.T) {
 	int32Fields := []string{"AcceptableLatency", "LatencyThreshold", "BandwidthEnvelopeUpKbps",
 		"BandwidthEnvelopeDownKbps"}
 
-	boolFields := []string{"DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
+	boolFields := []string{"AnalysisOnly", "DisableNetworkNext", "ABTest", "ProMode", "ReduceLatency",
 		"ReduceJitter", "ReducePacketLoss", "Multipath"}
 
 	float32Fields := []string{"AcceptablePacketLoss", "PacketLossSustained"}
@@ -1535,15 +1569,22 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 
 	float64Fields := []string{"NICSpeedMbps", "IncludedBandwidthGB", "MaxBandwidthMbps", "ContractTerm", "SSHPort", "MaxSessions"}
 	stringFields := []string{"ManagementAddr", "SSHUser", "Version"}
+	boolFields := []string{"DestFirst", "InternalAddressClientRoutable"}
 	timeFields := []string{"StartDate", "EndDate"}
 	addressFields := []string{"Addr", "InternalAddr"}
 	nibblinFields := []string{"EgressPriceOverride", "MRC", "Overage"}
 
 	// special cases: PublicKey, State, BWRule, Type, BillingSupplier
 
+	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:10000")
+	assert.NoError(t, err)
+	internalAddr, err := net.ResolveUDPAddr("udp", "128.0.0.1:10000")
+	assert.NoError(t, err)
+
 	relay := routing.Relay{
 		ID:   0,
 		Name: "relay name",
+		Addr: *addr,
 		Seller: routing.Seller{
 			ID:         "seller ID",
 			Name:       "seller name",
@@ -1557,7 +1598,7 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 
 	inMemory := storage.InMemory{}
 
-	err := inMemory.AddSeller(ctx, relay.Seller)
+	err = inMemory.AddSeller(ctx, relay.Seller)
 	assert.NoError(t, err)
 
 	err = inMemory.AddDatacenter(ctx, relay.Datacenter)
@@ -1585,6 +1626,14 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
 			assert.Error(t, err)
 			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid string value", float64(-1)))
+		}
+	})
+
+	t.Run("invalid bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, float64(-1))
+			assert.Error(t, err)
+			assert.EqualError(t, err, fmt.Sprintf("%v is not a valid boolean value", float64(-1)))
 		}
 	})
 
@@ -1691,6 +1740,34 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 		assert.Contains(t, err.Error(), fmt.Sprintf("%s is not a valid seller ID", "unknown seller"))
 	})
 
+	t.Run("no internal ip for InternalAddressClientRoutable", func(t *testing.T) {
+
+		err := inMemory.UpdateRelay(ctx, 0, "InternalAddr", "")
+		assert.NoError(t, err)
+
+		err = inMemory.UpdateRelay(ctx, 0, "InternalAddressClientRoutable", true)
+		assert.Error(t, err)
+		assert.EqualError(t, err, "relay must have valid internal address before InternalAddressClientRoutable is true")
+
+		// Add the internal address for success test later
+		err = inMemory.UpdateRelay(ctx, 0, "InternalAddr", internalAddr.String())
+		assert.NoError(t, err)
+	})
+
+	t.Run("cannot remove internal ip while InternalAddressClientRoutable is true", func(t *testing.T) {
+
+		err = inMemory.UpdateRelay(ctx, 0, "InternalAddressClientRoutable", true)
+		assert.NoError(t, err)
+
+		err := inMemory.UpdateRelay(ctx, 0, "InternalAddr", "")
+		assert.Error(t, err)
+		assert.EqualError(t, err, "cannot remove internal address while InternalAddressClientRoutable is true")
+
+		// Reset to false for test later
+		err = inMemory.UpdateRelay(ctx, 0, "InternalAddressClientRoutable", false)
+		assert.NoError(t, err)
+	})
+
 	t.Run("success float64 fields", func(t *testing.T) {
 		for _, field := range float64Fields {
 			err := inMemory.UpdateRelay(ctx, 0, field, float64(1))
@@ -1701,6 +1778,13 @@ func TestInMemoryUpdateRelay(t *testing.T) {
 	t.Run("success string fields", func(t *testing.T) {
 		for _, field := range stringFields {
 			err := inMemory.UpdateRelay(ctx, 0, field, "a")
+			assert.NoError(t, err)
+		}
+	})
+
+	t.Run("success bool fields", func(t *testing.T) {
+		for _, field := range boolFields {
+			err := inMemory.UpdateRelay(ctx, 0, field, true)
 			assert.NoError(t, err)
 		}
 	})
