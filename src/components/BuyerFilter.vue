@@ -20,6 +20,7 @@ import { Filter } from './types/FilterTypes'
 @Component
 export default class BuyerFilter extends Vue {
   @Prop({ default: true }) readonly includeAll!: boolean
+  @Prop({ default: true }) readonly liveOnly!: boolean
 
   private filterOptions: Array<any>
 
@@ -39,7 +40,7 @@ export default class BuyerFilter extends Vue {
     this.$store.getters.allBuyers.forEach((buyer: any) => {
       if (
         (!this.$store.getters.isAdmin && this.$store.getters.userProfile.companyCode === buyer.company_code) ||
-        (this.$store.getters.isAdmin && buyer.is_live)
+        (this.$store.getters.isAdmin && (buyer.is_live || !this.liveOnly))
       ) {
         this.filterOptions.push({
           name: buyer.company_name,

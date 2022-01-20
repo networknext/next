@@ -70,7 +70,7 @@
                 $store.getters.currentPage == 'analytics' ||
                 $store.getters.currentPage === 'invoice' ||
                 $store.getters.currentPage == 'usage' ||
-                $store.getters.currentPage == 'saves'
+                $store.getters.currentPage == 'discovery'
             }"
             v-if="($store.getters.hasBilling || $store.getters.hasAnalytics) && $store.getters.isExplorer"
           >Explore</router-link>

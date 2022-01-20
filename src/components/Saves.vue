@@ -1,73 +1,81 @@
 <template>
   <div>
+    <div
+      class="spinner-border"
+      role="status"
+      id="saves-spinner"
+      v-show="savesDashURL === ''"
+    >
+      <span class="sr-only">Loading...</span>
+    </div>
     <div v-if="savesDashURL !== ''">
       <div class="row" v-if="savesDashURL !== ''">
         <LookerEmbed dashID="savesDash" :dashURL="savesDashURL" />
       </div>
       <hr class="mt-4 mb-4">
-    </div>
-    <h5 class="card-title looker-padding">
-      Recent Saves
-    </h5>
-    <p class="card-text looker-padding">
-      Saves that have happened in the last week
-    </p>
-    <div class="table-responsive table-no-top-line looker-padding">
-      <table class="table table-sm" :class="{'table-striped': saves.length > 0, 'table-hover': saves.length > 0}">
-        <thead>
-          <tr>
-            <th>
-              <span
-                data-toggle="tooltip"
-                data-placement="right"
-                title="Unique ID of the session">Session ID</span>
-            </th>
-            <th>
-              <span>Save Score</span>
-            </th>
-            <th>
-              <span>RTT Score</span>
-            </th>
-            <th>
-              <span>PL Score</span>
-            </th>
-            <th>
-              <span>Duration (Hours)</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody v-if="saves.length === 0">
-          <tr>
-            <td colspan="7" class="text-muted">
-                There are no saves at this time.
-            </td>
-          </tr>
-        </tbody>
-        <tbody>
-          <tr v-for="(save, index) in saves" :key="index">
-            <td>
-              <router-link
-                :to="`/session-tool/${save.id}`"
-                class="text-dark fixed-width"
-                :data-intercom="index"
-                :data-tour="index"
-              >{{ save.id }}</router-link>
-            </td>
-            <td>
-              {{ save.save_score }}
-            </td>
-            <td>
-              {{ save.rtt_score }}
-            </td>
-            <td>
-              {{ save.pl_score }}
-            </td>
-            <td>
-              {{ save.duration }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <h5 class="card-title looker-padding">
+        Recent Saves
+      </h5>
+      <p class="card-text looker-padding">
+        Saves that have happened in the last week
+      </p>
+      <div class="table-responsive table-no-top-line looker-padding">
+        <table class="table table-sm" :class="{'table-striped': saves.length > 0, 'table-hover': saves.length > 0}">
+          <thead>
+            <tr>
+              <th>
+                <span
+                  data-toggle="tooltip"
+                  data-placement="right"
+                  title="Unique ID of the session">Session ID</span>
+              </th>
+              <th>
+                <span>Save Score</span>
+              </th>
+              <th>
+                <span>RTT Score</span>
+              </th>
+              <th>
+                <span>PL Score</span>
+              </th>
+              <th>
+                <span>Duration (Hours)</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody v-if="saves.length === 0">
+            <tr>
+              <td colspan="7" class="text-muted">
+                  There are no saves at this time.
+              </td>
+            </tr>
+          </tbody>
+          <tbody>
+            <tr v-for="(save, index) in saves" :key="index">
+              <td>
+                <router-link
+                  :to="`/session-tool/${save.id}`"
+                  class="text-dark fixed-width"
+                  :data-intercom="index"
+                  :data-tour="index"
+                >{{ save.id }}</router-link>
+              </td>
+              <td>
+                {{ save.save_score }}
+              </td>
+              <td>
+                {{ save.rtt_score }}
+              </td>
+              <td>
+                {{ save.pl_score }}
+              </td>
+              <td>
+                {{ save.duration }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -95,6 +103,7 @@ import LookerEmbed from '@/components/LookerEmbed.vue'
 export default class Saves extends Vue {
   private saves: Array<any>
   private savesDashURL: string
+  private showSaves: boolean
 
   private unwatchFilter: any
 
@@ -102,6 +111,7 @@ export default class Saves extends Vue {
     super()
     this.saves = []
     this.savesDashURL = ''
+    this.showSaves = false
   }
 
   private mounted () {
@@ -142,6 +152,7 @@ export default class Saves extends Vue {
       .then((responses: any) => {
         this.savesDashURL = responses[0].url || ''
         this.saves = responses[1].saves || []
+        this.showSaves = true
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching saves for that date range')
