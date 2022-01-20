@@ -86,7 +86,8 @@
       "no-debugger": "off",
       "@typescript-eslint/no-var-requires": "off",
       "no-useless-escape": "off",
-      "no-control-regex": "off"
+      "no-control-regex": "off",
+      "@typescript-eslint/class-name-casing": "off"
     },
     "overrides": [
       {

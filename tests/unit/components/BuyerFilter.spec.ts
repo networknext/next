@@ -90,7 +90,6 @@ describe('BuyerFilter.vue', () => {
     wrapper.destroy()
   })
 
-
   it('checks filter list - !admin', async () => {
     const store = new Vuex.Store(defaultStore)
     const profile = newDefaultProfile()
@@ -99,16 +98,16 @@ describe('BuyerFilter.vue', () => {
     store.commit('UPDATE_ALL_BUYERS', [
       {
         company_name: 'Test Company',
-        company_code: 'test',
+        company_code: 'test'
       },
       {
         company_name: 'Test Company 2',
-        company_code: 'test2',
+        company_code: 'test2'
       },
       {
         company_name: 'Test Company 3',
-        company_code: 'test3',
-      },
+        company_code: 'test3'
+      }
     ])
 
     const wrapper = shallowMount(BuyerFilter, { localVue, store })
@@ -154,7 +153,7 @@ describe('BuyerFilter.vue', () => {
         company_name: 'Test Company 3',
         company_code: 'test3',
         is_live: true
-      },
+      }
     ])
 
     const wrapper = shallowMount(BuyerFilter, { localVue, store })
@@ -203,7 +202,7 @@ describe('BuyerFilter.vue', () => {
         company_name: 'Test Company 3',
         company_code: 'test3',
         is_live: true
-      },
+      }
     ])
 
     const wrapper = shallowMount(BuyerFilter, { localVue, store, propsData: { includeAll: false } })

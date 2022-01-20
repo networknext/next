@@ -1,7 +1,9 @@
 jest.setTimeout(15000)
 
 class DeckMock {
-  public setProps () {}
+  public setProps () {
+    console.log('Setting mock props')
+  }
 }
 
 class MapMock {}

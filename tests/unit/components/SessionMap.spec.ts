@@ -75,7 +75,7 @@ describe('SessionMap.vue', () => {
   it('mounts the map successfully', () => {
     const store = new Vuex.Store(defaultStore)
     const mapPointsSpy = fetchMapSessionsMock(localVue, true, [
-      [0,0, true, '00000000']
+      [0, 0, true, '00000000']
     ], '')
 
     const wrapper = shallowMount(SessionMap, { localVue, store })
@@ -90,10 +90,10 @@ describe('SessionMap.vue', () => {
   it('checks layers - anonymous', async () => {
     const store = new Vuex.Store(defaultStore)
     const mapPointsSpy = fetchMapSessionsMock(localVue, true, [
-      [0,0, true, '00000000'],
-      [0,0, true, '00000001'],
-      [0,0, false, '00000002'],
-      [0,0, false, '00000003']
+      [0, 0, true, '00000000'],
+      [0, 0, true, '00000001'],
+      [0, 0, false, '00000002'],
+      [0, 0, false, '00000003']
     ], '')
 
     const wrapper = shallowMount(SessionMap, { localVue, store })
@@ -115,10 +115,10 @@ describe('SessionMap.vue', () => {
     store.commit('UPDATE_IS_ANONYMOUS_PLUS', true)
 
     const mapPointsSpy = fetchMapSessionsMock(localVue, true, [
-      [0,0, true, '00000000'],
-      [0,0, true, '00000001'],
-      [0,0, false, '00000002'],
-      [0,0, false, '00000003']
+      [0, 0, true, '00000000'],
+      [0, 0, true, '00000001'],
+      [0, 0, false, '00000002'],
+      [0, 0, false, '00000003']
     ], '')
 
     const wrapper = shallowMount(SessionMap, { localVue, store })
@@ -141,10 +141,10 @@ describe('SessionMap.vue', () => {
     store.commit('UPDATE_IS_ANONYMOUS', false)
 
     const mapPointsSpy = fetchMapSessionsMock(localVue, true, [
-      [0,0, true, '00000000'],
-      [0,0, true, '00000001'],
-      [0,0, false, '00000002'],
-      [0,0, false, '00000003']
+      [0, 0, true, '00000000'],
+      [0, 0, true, '00000001'],
+      [0, 0, false, '00000002'],
+      [0, 0, false, '00000003']
     ], '')
 
     const wrapper = shallowMount(SessionMap, { localVue, store })
@@ -167,10 +167,10 @@ describe('SessionMap.vue', () => {
     store.commit('UPDATE_CURRENT_FILTER', { companyCode: 'test', dateRange: DateFilterType.CURRENT_MONTH })
 
     const mapPointsSpy = fetchMapSessionsMock(localVue, true, [
-      [0,0, true, '00000000'],
-      [0,0, true, '00000001'],
-      [0,0, false, '00000002'],
-      [0,0, false, '00000003']
+      [0, 0, true, '00000000'],
+      [0, 0, true, '00000001'],
+      [0, 0, false, '00000002'],
+      [0, 0, false, '00000003']
     ], 'test')
 
     const wrapper = shallowMount(SessionMap, { localVue, store })
