@@ -20,7 +20,7 @@
       </div>
       <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="$store.getters.currentPage === 'analytics' || $store.getters.currentPage === 'discovery'  || $store.getters.currentPage === 'invoice'|| $store.getters.currentPage === 'usage'" style="max-width: 400px;">
         <div class="mr-auto"></div>
-        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" />
+        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" :liveOnly="false"/>
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
