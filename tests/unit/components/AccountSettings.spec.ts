@@ -82,11 +82,11 @@ describe('AccountSettings.vue', () => {
   })
 
   it('checks valid input values - user account details', async () => {
-    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementationOnce(() => {
+    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementation(() => {
       return Promise.resolve({})
     })
 
-    const setupCompanyAccount = jest.spyOn(localVue.prototype.$apiService, 'setupCompanyAccount').mockImplementationOnce(() => {
+    const setupCompanyAccount = jest.spyOn(localVue.prototype.$apiService, 'setupCompanyAccount').mockImplementation(() => {
       return Promise.resolve({})
     })
 
@@ -102,7 +102,7 @@ describe('AccountSettings.vue', () => {
       })
     })
 
-    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementationOnce(() => {
+    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementation(() => {
       return Promise.resolve()
     })
 
@@ -219,11 +219,11 @@ describe('AccountSettings.vue', () => {
   })
 
   it('checks valid input values - company details', async () => {
-    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementationOnce(() => {
+    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementation(() => {
       return Promise.resolve({})
     })
 
-    const setupCompanyAccount = jest.spyOn(localVue.prototype.$apiService, 'setupCompanyAccount').mockImplementationOnce(() => {
+    const setupCompanyAccount = jest.spyOn(localVue.prototype.$apiService, 'setupCompanyAccount').mockImplementation(() => {
       return Promise.resolve({})
     })
 
@@ -239,7 +239,7 @@ describe('AccountSettings.vue', () => {
       })
     })
 
-    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementationOnce(() => {
+    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementation(() => {
       return Promise.resolve()
     })
 
@@ -333,51 +333,197 @@ describe('AccountSettings.vue', () => {
     wrapper.destroy()
   })
 
-  it('checks user details update - failure', () => {
-    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementationOnce(() => {
+  it('checks user details update - failure', async () => {
+    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementation(() => {
+      return Promise.reject(new Error('updateAccountDetails error'))
+    })
+
+    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementation(() => {
       return Promise.reject(new Error('updateAccountDetails error'))
     })
 
     const store = new Vuex.Store(defaultStore)
-    const wrapper = shallowMount(AccountSettings, { localVue, store })
+    const wrapper = mount(AccountSettings, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
+
+    const firstNameInput = wrapper.find('#firstNameInput')
+    expect(firstNameInput.exists()).toBeTruthy()
+
+    const lastNameInput = wrapper.find('#lastNameInput')
+    expect(lastNameInput.exists()).toBeTruthy()
+
+    const button = wrapper.find('#account-details-button')
+    expect(button.text()).toBe('Update User Details')
+
+    await firstNameInput.setValue('FirstName')
+    await lastNameInput.setValue('LastName')
+
+    await button.trigger('submit')
+
+    await localVue.nextTick()
+
+    expect(updateAccountDetails).toBeCalledTimes(1)
+    expect(refreshToken).not.toBeCalled()
+
+    await localVue.nextTick()
+
+    const alert = wrapper.find('.alert')
+    expect(alert.exists()).toBeTruthy()
+    expect(alert.text()).toBe('Failed to update account details')
+    expect(alert.classes(AlertType.ERROR)).toBeTruthy()
+
     updateAccountDetails.mockReset()
+    refreshToken.mockReset()
     wrapper.destroy()
   })
 
-  it('checks user details update - success', () => {
-    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementationOnce(() => {
-      return Promise.resolve({})
+  it('checks user details update - success', async () => {
+    const updateAccountDetails = jest.spyOn(localVue.prototype.$apiService, 'updateAccountDetails').mockImplementation(() => {
+      return Promise.resolve()
+    })
+
+    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementation(() => {
+      return Promise.resolve()
     })
 
     const store = new Vuex.Store(defaultStore)
-    const wrapper = shallowMount(AccountSettings, { localVue, store })
+    const wrapper = mount(AccountSettings, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
+
+    const firstNameInput = wrapper.find('#firstNameInput')
+    expect(firstNameInput.exists()).toBeTruthy()
+
+    const lastNameInput = wrapper.find('#lastNameInput')
+    expect(lastNameInput.exists()).toBeTruthy()
+
+    const button = wrapper.find('#account-details-button')
+    expect(button.text()).toBe('Update User Details')
+
+    await firstNameInput.setValue('FirstName')
+    await lastNameInput.setValue('LastName')
+
+    await button.trigger('submit')
+
+    await localVue.nextTick()
+
+    expect(updateAccountDetails).toBeCalledTimes(1)
+    expect(refreshToken).toBeCalledTimes(1)
+
+    await localVue.nextTick()
+
+    const alert = wrapper.find('.alert')
+    expect(alert.exists()).toBeTruthy()
+    expect(alert.text()).toBe('Account details updated successfully')
+    expect(alert.classes(AlertType.SUCCESS)).toBeTruthy()
+
     updateAccountDetails.mockReset()
+    refreshToken.mockReset()
     wrapper.destroy()
   })
 
-  it('checks company account creation - failure', () => {
-    const setupCompanyAccount = jest.spyOn(localVue.prototype.$apiService, 'setupCompanyAccount').mockImplementationOnce(() => {
-      return Promise.reject(new Error('setupCompanyAccount error'))
+  it('checks company account creation - failure', async () => {
+    const setupCompanyAccount = jest.spyOn(localVue.prototype.$apiService, 'setupCompanyAccount').mockImplementation(() => {
+      return Promise.reject(new Error('updateAccountDetails error'))
+    })
+
+    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementation(() => {
+      return Promise.reject(new Error('updateAccountDetails error'))
     })
 
     const store = new Vuex.Store(defaultStore)
-    const wrapper = shallowMount(AccountSettings, { localVue, store })
+
+    const profile = newDefaultProfile()
+
+    profile.firstName = 'FirstName'
+    profile.lastName = 'LastName'
+    store.commit('UPDATE_USER_PROFILE', profile)
+
+    const wrapper = mount(AccountSettings, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
+
+    const companyNameInput = wrapper.find('#companyNameInput')
+    expect(companyNameInput.exists()).toBeTruthy()
+
+    const companyCodeInput = wrapper.find('#companyCodeInput')
+    expect(companyCodeInput.exists()).toBeTruthy()
+
+    const button = wrapper.find('#company-details-button')
+    expect(button.text()).toBe('Setup Company Account')
+
+    await companyNameInput.setValue('Test Company')
+    await companyCodeInput.setValue('test')
+
+    await button.trigger('submit')
+
+    await localVue.nextTick()
+
+    expect(setupCompanyAccount).toBeCalledTimes(1)
+    expect(refreshToken).not.toBeCalled()
+
+    await localVue.nextTick()
+
+    const alert = wrapper.find('.alert')
+    expect(alert.exists()).toBeTruthy()
+    expect(alert.text()).toBe('Failed to update company details')
+    expect(alert.classes(AlertType.ERROR)).toBeTruthy()
+
+    store.commit('UPDATE_USER_PROFILE', newDefaultProfile())
+
     setupCompanyAccount.mockReset()
+    refreshToken.mockReset()
     wrapper.destroy()
   })
 
-  it('checks company account creation - success', () => {
-    const setupCompanyAccount = jest.spyOn(localVue.prototype.$apiService, 'setupCompanyAccount').mockImplementationOnce(() => {
-      return Promise.resolve({})
+  it('checks company account creation - success', async () => {
+    const setupCompanyAccount = jest.spyOn(localVue.prototype.$apiService, 'setupCompanyAccount').mockImplementation(() => {
+      return Promise.resolve()
+    })
+
+    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementation(() => {
+      return Promise.resolve()
     })
 
     const store = new Vuex.Store(defaultStore)
-    const wrapper = shallowMount(AccountSettings, { localVue, store })
+
+    const profile = newDefaultProfile()
+
+    profile.firstName = 'FirstName'
+    profile.lastName = 'LastName'
+    store.commit('UPDATE_USER_PROFILE', profile)
+
+    const wrapper = mount(AccountSettings, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
+
+    const companyNameInput = wrapper.find('#companyNameInput')
+    expect(companyNameInput.exists()).toBeTruthy()
+
+    const companyCodeInput = wrapper.find('#companyCodeInput')
+    expect(companyCodeInput.exists()).toBeTruthy()
+
+    const button = wrapper.find('#company-details-button')
+    expect(button.text()).toBe('Setup Company Account')
+
+    await companyNameInput.setValue('Test Company')
+    await companyCodeInput.setValue('test')
+
+    await button.trigger('submit')
+
+    await localVue.nextTick()
+
+    expect(setupCompanyAccount).toBeCalledTimes(1)
+    expect(refreshToken).toBeCalledTimes(1)
+
+    await localVue.nextTick()
+
+    const alert = wrapper.find('.alert')
+    expect(alert.exists()).toBeTruthy()
+    expect(alert.text()).toBe('Account settings updated successfully')
+    expect(alert.classes(AlertType.SUCCESS)).toBeTruthy()
+
+    store.commit('UPDATE_USER_PROFILE', newDefaultProfile())
+
     setupCompanyAccount.mockReset()
+    refreshToken.mockReset()
     wrapper.destroy()
   })
 })

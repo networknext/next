@@ -96,7 +96,7 @@
       <ul class="navbar-nav px-2" v-if="$store.getters.isOwner || $store.getters.isAdmin">
         <a style="cursor: pointer;" @click="openNotificationsModal()">
           <font-awesome-icon
-            id="status"
+            id="notification-bell"
             icon="bell"
             class="fa-w-16 fa-fw"
             style="color: white;"
@@ -107,7 +107,7 @@
         </a>
       </ul>
       <ul class="navbar-nav px-1" v-if="!$store.getters.isAnonymous">
-        <li class="nav-item text-nowrap" style="color: white;">
+        <li id="email-indicator" class="nav-item text-nowrap" style="color: white;">
           {{ $store.getters.userProfile.email || "" }}
         </li>
       </ul>
@@ -136,7 +136,7 @@
       </ul>
       <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
-          <a class="logout btn-sm btn-primary" href="#" @click="logout()">Logout</a>
+          <a id="logout-button" class="logout btn-sm btn-primary" href="#" @click="logout()">Logout</a>
         </li>
       </ul>
     </nav>

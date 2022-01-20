@@ -1,8 +1,6 @@
-import { createLocalVue, mount, shallowMount } from '@vue/test-utils'
+import { createLocalVue, shallowMount } from '@vue/test-utils'
 import UserSessions from '@/components/UserSessions.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
-import Vuex from 'vuex'
-import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { VueConstructor } from 'vue/types/umd'
 
 function fetchUserSessionsMock (vueInstance: VueConstructor<any>, success: boolean, sessions: Array<any>, nextPage: number, userID: string, page: number): jest.SpyInstance<any, unknown[]> {

@@ -105,7 +105,7 @@
               <canvas id="session-tool-deck-canvas"></canvas>
             </div>
           </div>
-          <div class="card-body">
+          <div id="meta-panel" class="card-body">
             <div class="card-text">
               <dl>
                 <dt>
@@ -132,7 +132,7 @@
                     <router-link :to="`/user-tool/${meta.user_hash}`" class="text-dark">{{ meta.user_hash }}</router-link>
                   </dd>
                 </div>
-                <div v-if="(!$store.getters.isAnonymous && meta.buyer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
+                <div v-if="(!$store.getters.isAnonymous && meta.customer_id === $store.getters.userProfile.buyerID) || $store.getters.isAdmin">
                   <dt>
                       IP Address
                   </dt>
@@ -268,8 +268,6 @@ import uPlot from 'uplot'
 
 import { Route, NavigationGuardNext } from 'vue-router'
 import { Component, Vue } from 'vue-property-decorator'
-
-import 'uplot/dist/uPlot.min.css'
 
 import Alert from '@/components/Alert.vue'
 import { AlertType } from './types/AlertTypes'

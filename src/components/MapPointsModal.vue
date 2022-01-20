@@ -59,7 +59,7 @@
                         class="text-dark fixed-width"
                       >{{ point.source[3] }}</router-link>
                     </td>
-                    <td v-if="!point.source[3]">
+                    <td v-if="!point.source[3] || point.source[3] === ''">
                       Unavailable
                     </td>
                     <td>{{ point.source[1] }}</td>
