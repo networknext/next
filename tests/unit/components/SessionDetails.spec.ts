@@ -445,7 +445,6 @@ describe('SessionDetails.vue', () => {
     wrapper.destroy()
   })
 
-  /*
   it('checks meta data fields - admin - live', async () => {
     const spy = fetchSessionDetailsMock(localVue, true, {
       nearby_relays: [
@@ -536,7 +535,7 @@ describe('SessionDetails.vue', () => {
     expect(metaPanel.exists()).toBeTruthy()
 
     const metaTitles = wrapper.findAll('dt')
-    expect(metaTitles.length).toBe(9)
+    expect(metaTitles.length).toBe(10)
 
     expect(metaTitles.at(0).text()).toBe('Datacenter')
     expect(metaTitles.at(1).text()).toBe('ISP')
@@ -549,7 +548,7 @@ describe('SessionDetails.vue', () => {
     expect(metaTitles.at(8).text()).toBe('Route')
 
     const metaData = wrapper.findAll('dd')
-    expect(metaData.length).toBe(9)
+    expect(metaData.length).toBe(8)
 
     expect(metaData.at(0).text()).toBe('local')
     expect(metaData.at(1).text()).toBe('local')
@@ -559,7 +558,8 @@ describe('SessionDetails.vue', () => {
     expect(metaData.at(5).text()).toBe('Test Company')
     expect(metaData.at(6).text()).toBe('4.0.16')
     expect(metaData.at(7).text()).toBe('Wired')
-    expect(metaData.at(8).text()).toBe('No Near Relays')
+
+    // TODO: Check near relay table and route information
 
     store.commit('UPDATE_ALL_BUYERS', [])
     store.commit('UPDATE_IS_ANONYMOUS', true)
@@ -568,5 +568,4 @@ describe('SessionDetails.vue', () => {
     spy.mockReset()
     wrapper.destroy()
   })
-  */
 })
