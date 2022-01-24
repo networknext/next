@@ -5,91 +5,71 @@
     <div class="row" v-if="showDetails">
       <div class="col-12 col-lg-8">
         <div class="card mb-2">
-          <div class="card-header">
+          <div id="latency-card" class="card-header">
             <strong>
               Latency
             </strong>
             <div class="float-right">
-              <span class="mr-2"
-                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-              ></span>
               <span style="color: rgb(0, 109, 44);">
                 — Network Next
               </span>
               <span style="color: rgb(49, 130, 189);">
                 — Direct
               </span>
-              <span></span>
             </div>
           </div>
           <div class="card-body" data-tour="latencyGraph">
             <div id="latency-chart-1"></div>
           </div>
         </div>
-        <div class="card mb-2">
+        <div id="jitter-card" class="card mb-2">
           <div class="card-header">
             <strong>
               Jitter
             </strong>
             <div class="float-right">
-              <span class="mr-2"
-                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-              ></span>
               <span style="color: rgb(0, 109, 44);">
                 — Network Next
               </span>
               <span style="color: rgb(49, 130, 189);">
                 — Direct
               </span>
-              <span></span>
             </div>
           </div>
           <div class="card-body">
             <div id="jitter-chart-1"></div>
           </div>
         </div>
-        <div class="card mb-2">
+        <div id="pl-card" class="card mb-2">
           <div class="card-header">
             <strong>
               Packet Loss
             </strong>
             <div class="float-right">
-              <span class="mr-2"
-                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-              ></span>
               <span style="color: rgb(0, 109, 44);">
                   — Network Next
               </span>
               <span style="color: rgb(49, 130, 189);">
                   — Direct
               </span>
-              <span></span>
             </div>
           </div>
           <div class="card-body">
             <div id="packet-loss-chart-1"></div>
           </div>
         </div>
-        <div class="card mb-2">
+        <div id="bw-card" class="card mb-2">
           <div class="card-header">
             <strong>
               Bandwidth
             </strong>
             <div class="float-right">
-              <span class="mr-2"
-                    style="border-right: 2px dotted rgb(51, 51, 51); display: none;"
-              ></span>
               <span style="color: orange;">
                 — Up
               </span>
               <span style="color: blue;">
                 — Down
               </span>
-              <span></span>
-            </div>
-            <div class="float-right">
-              <span id="traffic-up-legend"></span>
-              <span id="traffic-down-legend"></span>
             </div>
           </div>
           <div class="card-body">
@@ -169,7 +149,7 @@
                 <dt v-if="$store.getters.isAdmin" style="padding-top: 20px;">
                     Route
                 </dt>
-                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin">
+                <table id="route-table" class="table table-sm mt-1" v-if="$store.getters.isAdmin">
                   <thead>
                     <tr>
                       <th style="width: 50%;">
@@ -219,7 +199,7 @@
                 <dd v-if="$store.getters.isAdmin && meta.nearby_relays.length == 0 && !getBuyerIsLive(meta.customer_id)">
                     Customer is not live
                 </dd>
-                <table class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
+                <table id="nearby-relays-table" class="table table-sm mt-1" v-if="$store.getters.isAdmin && meta.nearby_relays.length > 0">
                   <thead>
                     <tr>
                       <th style="width: 50%;">

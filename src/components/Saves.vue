@@ -1,17 +1,17 @@
 <template>
   <div>
+    <div class="row" v-if="savesDashURL !== ''">
+      <LookerEmbed dashID="savesDash" :dashURL="savesDashURL" />
+    </div>
     <div
       class="spinner-border"
       role="status"
       id="saves-spinner"
-      v-show="savesDashURL === ''"
+      v-show="!showSaves"
     >
       <span class="sr-only">Loading...</span>
     </div>
-    <div v-if="savesDashURL !== ''">
-      <div class="row" v-if="savesDashURL !== ''">
-        <LookerEmbed dashID="savesDash" :dashURL="savesDashURL" />
-      </div>
+    <div v-if="showSaves">
       <hr class="mt-4 mb-4">
       <h5 class="card-title looker-padding">
         Recent Saves
@@ -152,11 +152,13 @@ export default class Saves extends Vue {
       .then((responses: any) => {
         this.savesDashURL = responses[0].url || ''
         this.saves = responses[1].saves || []
-        this.showSaves = true
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching saves for that date range')
         console.log(error)
+      })
+      .finally(() => {
+        this.showSaves = true
       })
   }
 }

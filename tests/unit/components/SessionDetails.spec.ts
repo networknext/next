@@ -481,7 +481,7 @@ describe('SessionDetails.vue', () => {
           client_stats: {
             jitter: 100,
             packet_loss: 100,
-            rtt: 100,
+            rtt: 255,
           }
         }
       ],
@@ -559,11 +559,137 @@ describe('SessionDetails.vue', () => {
     expect(metaData.at(6).text()).toBe('4.0.16')
     expect(metaData.at(7).text()).toBe('Wired')
 
-    // TODO: Check near relay table and route information
+    const routeTable = wrapper.find('#route-table')
+    expect(routeTable.exists()).toBeTruthy()
+
+    const routeHeaders = routeTable.findAll('tr th')
+    expect(routeHeaders.length).toBe(2)
+    expect(routeHeaders.at(0).text()).toBe('Name')
+    expect(routeHeaders.at(1).text()).toBe('Role')
+
+    const routeCells = routeTable.findAll('td')
+    expect(routeCells.length).toBe(8)
+    expect(routeCells.at(0).text()).toBe('127.0.0.1')
+    expect(routeCells.at(1).text()).toBe('User (Player)')
+    expect(routeCells.at(2).text()).toBe('local.1')
+    expect(routeCells.at(3).text()).toBe('Hop 1')
+    expect(routeCells.at(4).text()).toBe('local.2')
+    expect(routeCells.at(5).text()).toBe('Hop 2')
+    expect(routeCells.at(6).text()).toBe('127.0.0.1')
+    expect(routeCells.at(7).text()).toBe('Destination Server')
+
+    const nearbyRelaysTable = wrapper.find('#nearby-relays-table')
+    expect(nearbyRelaysTable.exists()).toBeTruthy()
+
+    const nearbyRelaysHeaders = nearbyRelaysTable.findAll('tr th')
+    expect(nearbyRelaysHeaders.length).toBe(4)
+    expect(nearbyRelaysHeaders.at(0).text()).toBe('Name')
+    expect(nearbyRelaysHeaders.at(1).text()).toBe('RTT')
+    expect(nearbyRelaysHeaders.at(2).text()).toBe('Jitter')
+    expect(nearbyRelaysHeaders.at(3).text()).toBe('Packet Loss')
+
+    const nearbyRelaysCells = nearbyRelaysTable.findAll('td')
+    expect(nearbyRelaysCells.length).toBe(16)
+    expect(nearbyRelaysCells.at(0).text()).toBe('local.1')
+    expect(nearbyRelaysCells.at(1).text()).toBe('100.00')
+    expect(nearbyRelaysCells.at(2).text()).toBe('100.00')
+    expect(nearbyRelaysCells.at(3).text()).toBe('100.00%')
+    expect(nearbyRelaysCells.at(4).text()).toBe('local.2')
+    expect(nearbyRelaysCells.at(5).text()).toBe('100.00')
+    expect(nearbyRelaysCells.at(6).text()).toBe('100.00')
+    expect(nearbyRelaysCells.at(7).text()).toBe('100.00%')
+    expect(nearbyRelaysCells.at(8).text()).toBe('local.3')
+    expect(nearbyRelaysCells.at(9).text()).toBe('100.00')
+    expect(nearbyRelaysCells.at(10).text()).toBe('100.00')
+    expect(nearbyRelaysCells.at(11).text()).toBe('100.00%')
+    expect(nearbyRelaysCells.at(12).text()).toBe('local.4')
+    expect(nearbyRelaysCells.at(13).text()).toBe('-')
+    expect(nearbyRelaysCells.at(14).text()).toBe('-')
+    expect(nearbyRelaysCells.at(15).text()).toBe('-')
 
     store.commit('UPDATE_ALL_BUYERS', [])
     store.commit('UPDATE_IS_ANONYMOUS', true)
     store.commit('UPDATE_IS_ADMIN', false)
+
+    spy.mockReset()
+    wrapper.destroy()
+  })
+
+  it('checks chart legends', async () => {
+    const spy = fetchSessionDetailsMock(localVue, true, {
+      nearby_relays: [],
+      datacenter_alias: 'local',
+      location: {
+        isp: 'local'
+      },
+      user_hash: '00000000',
+      client_addr: '127.0.0.1',
+      platform: 'Linux',
+      sdk: '4.0.16',
+      connection: 'Wired',
+      hops: [],
+      server_addr: '127.0.0.1',
+      customer_id: '00000000'
+    }, [], '00000000')
+
+    const store = new Vuex.Store(defaultStore)
+
+    $route.params.pathMatch = '00000000'
+
+    const wrapper = shallowMount(SessionDetails, { localVue, store, mocks, stubs })
+    expect(wrapper.exists()).toBeTruthy()
+
+    await localVue.nextTick()
+
+    expect(spy).toBeCalledTimes(1)
+
+    const latencyCard = wrapper.find('#latency-card')
+    expect(latencyCard.exists()).toBeTruthy()
+
+    const latencyCardTitle = latencyCard.find('strong')
+    expect(latencyCardTitle.exists()).toBeTruthy()
+    expect(latencyCardTitle.text()).toBe('Latency')
+
+    const latencyLegends = latencyCard.findAll('span')
+    expect(latencyLegends.length).toBe(2)
+    expect(latencyLegends.at(0).text()).toBe('— Network Next')
+    expect(latencyLegends.at(1).text()).toBe('— Direct')
+
+    const jitterCard = wrapper.find('#jitter-card')
+    expect(jitterCard.exists()).toBeTruthy()
+
+    const jitterCardTitle = jitterCard.find('strong')
+    expect(jitterCardTitle.exists()).toBeTruthy()
+    expect(jitterCardTitle.text()).toBe('Jitter')
+
+    const jitterLegends = jitterCard.findAll('span')
+    expect(jitterLegends.length).toBe(2)
+    expect(jitterLegends.at(0).text()).toBe('— Network Next')
+    expect(jitterLegends.at(1).text()).toBe('— Direct')
+
+    const plCard = wrapper.find('#pl-card')
+    expect(plCard.exists()).toBeTruthy()
+
+    const plCardTitle = plCard.find('strong')
+    expect(plCardTitle.exists()).toBeTruthy()
+    expect(plCardTitle.text()).toBe('Packet Loss')
+
+    const plLegends = plCard.findAll('span')
+    expect(plLegends.length).toBe(2)
+    expect(plLegends.at(0).text()).toBe('— Network Next')
+    expect(plLegends.at(1).text()).toBe('— Direct')
+
+    const bwCard = wrapper.find('#bw-card')
+    expect(bwCard.exists()).toBeTruthy()
+
+    const bwCardTitle = bwCard.find('strong')
+    expect(bwCardTitle.exists()).toBeTruthy()
+    expect(bwCardTitle.text()).toBe('Bandwidth')
+
+    const bwLegends = bwCard.findAll('span')
+    expect(bwLegends.length).toBe(2)
+    expect(bwLegends.at(0).text()).toBe('— Up')
+    expect(bwLegends.at(1).text()).toBe('— Down')
 
     spy.mockReset()
     wrapper.destroy()
