@@ -1375,9 +1375,22 @@ func TestSetupCompanyAccount(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("failure - no email", func(t *testing.T) {
+		reqContext := req.Context()
+		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
+			Claims: jwt.MapClaims{
+				"email_verified": true,
+			},
+		})
+		req = req.WithContext(reqContext)
+		var reply jsonrpc.SetupCompanyAccountReply
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test"}, &reply)
+		assert.Error(t, err)
+	})
+
 	t.Run("failure - malformed user", func(t *testing.T) {
 		var reply jsonrpc.SetupCompanyAccountReply
-		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test", CompanyName: "Test", Email: "test@test.com"}, &reply)
 		assert.Error(t, err)
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
@@ -1388,9 +1401,7 @@ func TestSetupCompanyAccount(t *testing.T) {
 		assert.Error(t, err)
 		reqContext = req.Context()
 		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
-			Claims: jwt.MapClaims{
-				"sub": "1234",
-			},
+			Claims: jwt.MapClaims{},
 		})
 		req = req.WithContext(reqContext)
 		err = svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test", CompanyName: "Test"}, &reply)
@@ -1402,12 +1413,11 @@ func TestSetupCompanyAccount(t *testing.T) {
 		reqContext := req.Context()
 		reqContext = context.WithValue(reqContext, middleware.Keys.UserKey, &jwt.Token{
 			Claims: jwt.MapClaims{
-				"sub":   "123",
-				"email": "test@test.com",
+				"sub": "123",
 			},
 		})
 		req = req.WithContext(reqContext)
-		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test"}, &reply)
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test", Email: "test@test.com"}, &reply)
 		assert.Error(t, err)
 	})
 
@@ -1434,8 +1444,11 @@ func TestSetupCompanyAccount(t *testing.T) {
 	}...)
 
 	t.Run("success - unassigned - new company", func(t *testing.T) {
+		customers := storer.Customers(req.Context())
+		assert.Equal(t, 0, len(customers))
+
 		var reply jsonrpc.SetupCompanyAccountReply
-		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "testing", CompanyName: "Testing"}, &reply)
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "testing", CompanyName: "Testing", Email: "test@test.com"}, &reply)
 		assert.NoError(t, err)
 
 		userRoles, err := userManager.Roles("123")
@@ -1444,10 +1457,10 @@ func TestSetupCompanyAccount(t *testing.T) {
 		assert.Equal(t, roleNames[1], userRoles.Roles[0].GetName())
 		assert.Equal(t, roleIDs[1], userRoles.Roles[0].GetID())
 		assert.Equal(t, roleDescriptions[1], userRoles.Roles[0].GetDescription())
-		customers := storer.Customers(req.Context())
-		assert.Equal(t, 2, len(customers))
-		assert.Equal(t, "testing", customers[1].Code)
-		assert.Equal(t, "Testing", customers[1].Name)
+		customers = storer.Customers(req.Context())
+		assert.Equal(t, 1, len(customers))
+		assert.Equal(t, "testing", customers[0].Code)
+		assert.Equal(t, "Testing", customers[0].Name)
 	})
 
 	storer.AddCustomer(context.Background(), routing.Customer{Code: "test-test", Name: "Test Test", AutomaticSignInDomains: "test2.com"})
@@ -1455,7 +1468,7 @@ func TestSetupCompanyAccount(t *testing.T) {
 
 	t.Run("failure - unassigned - old company - wrong domain", func(t *testing.T) {
 		var reply jsonrpc.SetupCompanyAccountReply
-		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test-test"}, &reply)
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test-test", Email: "test@test.com"}, &reply)
 		assert.Error(t, err)
 	})
 
@@ -1464,7 +1477,7 @@ func TestSetupCompanyAccount(t *testing.T) {
 		reqContext = context.WithValue(reqContext, middleware.Keys.CustomerKey, "test-test")
 		req = req.WithContext(reqContext)
 		var reply jsonrpc.SetupCompanyAccountReply
-		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test-test-test"}, &reply)
+		err := svc.SetupCompanyAccount(req, &jsonrpc.SetupCompanyAccountArgs{CompanyCode: "test-test-test", Email: "test@test.com"}, &reply)
 		assert.Error(t, err)
 	})
 }
