@@ -40,17 +40,13 @@ DONE
 
 	Now the serialize read is desynced with the SDK. Track it down and it will work.
 
-TODO
+	Fixed.
 
-	--------------
-
-	--------------
-
-	Ref backend needs to response to the session update packet, so the server keeps the session alive.
-
-	--------------
+	Ref backend needs to respond to the session update packet, so the server keeps the session alive.
 
 	Verify that we have stable upgraded direct sessions for long periods.
+
+TODO
 
 	--------------
 
@@ -65,22 +61,12 @@ TODO
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 	--------------
 
-	Get user flags in, serialized from SDK, but don't do anything with them yet.
+	Audit for Robin's fund.
 
 	--------------
+	
 
 
 

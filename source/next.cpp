@@ -12203,6 +12203,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     // run packet filters
     {
+        if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server basic packet filter dropped packet" );
+            return;
+        }
+
         uint8_t from_address_data[32];
         uint8_t to_address_data[32];
         uint16_t from_address_port;
@@ -12212,12 +12218,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_address_data( from, from_address_data, &from_address_bytes, &from_address_port );
         next_address_data( &server->server_address, to_address_data, &to_address_bytes, &to_address_port );
-
-        if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server basic packet filter dropped packet" );
-            return;
-        }
 
         if ( packet_id != NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET && 
              packet_id != NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET &&
