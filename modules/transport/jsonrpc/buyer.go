@@ -43,7 +43,7 @@ const (
 	TopSessionsSize          = 1000
 	MapPointByteCacheVersion = uint8(1)
 	MaxHistoricalSessions    = 100
-	MaxBigTableDays          = 10
+	MaxBigTableDays          = 90
 	EmbeddedUserGroupID      = 3
 	LOOKER_SESSION_TIMEOUT   = 86400
 	UsageDashURI             = "/embed/dashboards-next/11"
