@@ -112,7 +112,7 @@ export default class UserSessions extends Vue {
   private showSessions: boolean
   private searchID: string
   private currentPage: number
-  private MAX_PAGES = 10
+  private MAX_PAGES = 90
 
   constructor () {
     super()
