@@ -332,8 +332,30 @@ struct next_server_stats_t
 #define NEXT_SERVER_STATE_INITIALIZING              1
 #define NEXT_SERVER_STATE_INITIALIZED               2
 
+/*
+player caught ball
+player throws ball
+player gets hit
+player dies
+player passes 
+player damages another player
+player knocks out another player
+player respawned
+player dodged
+player assist 
+player rage quit
+player team round won (blowout/regular)
+player team round lost (blowout/regular)
+player team round draw
+player team match won
+player team match lost
+player team match draw
+*/
+
 #define NEXT_SERVER_EVENT_KILL						(1<<0)
 #define NEXT_SERVER_EVENT_DEATH						(1<<1)
+#define NEXT_SERVER_EVENT_
+#define 
 #define NEXT_SERVER_EVENT_ASSIST					(1<<2)
 #define NEXT_SERVER_EVENT_WIN						(1<<3)
 #define NEXT_SERVER_EVENT_LOSS						(1<<4)
@@ -371,13 +393,17 @@ NEXT_EXPORT_FUNC NEXT_BOOL next_server_stats( struct next_server_t * server, con
 
 NEXT_EXPORT_FUNC void next_server_track_match( struct next_server_t * server, const char * match_id );
 
-NEXT_EXPORT_FUNC void next_server_track_event( struct next_server_t * server, const struct next_address_t * address, uint8_t server_event );
+NEXT_EXPORT_FUNC void next_server_track_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_event_bitfield );
 
-NEXT_EXPORT_FUNC void next_server_track_skill( struct next_server_t * server, const struct next_address_t * address, float skill );
+NEXT_EXPORT_FUNC void next_server_track_skill( struct next_server_t * server, const struct next_address_t * address, float skill, float volatility );
+
+NEXT_EXPORT_FUNC void next_server_track_rank( struct next_server_t * server, const struct next_address_t * address, float rank );
+
+NEXT_EXPORT_FUNC void next_server_track_group_size( struct next_server_t * server, const struct next_address_t * address, int group_size );
+
+NEXT_EXPORT_FUNC void next_server_track_team( struct next_server_t * server, const struct next_address_t * address, uint64_t team );
 
 NEXT_EXPORT_FUNC void next_server_track_spend( struct next_server_t * server, const struct next_address_t * address, float spend );
-
-NEXT_EXPORT_FUNC void next_server_track_team( struct next_server_t * server, const struct next_address_t * address, uint8_t team );
 
 NEXT_EXPORT_FUNC void next_server_flush( struct next_server_t * server );
 
