@@ -708,10 +708,7 @@ type SetupCompanyAccountArgs struct {
 	Email       string `json:"email"`
 }
 
-type SetupCompanyAccountReply struct {
-	CompanyName string `json:"company_name"`
-	CompanyCode string `json:"company_code"`
-}
+type SetupCompanyAccountReply struct{}
 
 func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAccountArgs, reply *SetupCompanyAccountReply) error {
 	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
