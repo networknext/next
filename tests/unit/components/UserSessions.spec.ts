@@ -2,6 +2,7 @@ import { createLocalVue, shallowMount } from '@vue/test-utils'
 import UserSessions from '@/components/UserSessions.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { VueConstructor } from 'vue/types/umd'
+import { MAX_USER_SESSION_PAGES } from '@/components/types/Constants'
 
 function fetchUserSessionsMock (vueInstance: VueConstructor<any>, success: boolean, sessions: Array<any>, nextPage: number, userID: string, page: number): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchUserSessions').mockImplementation((args: any) => {
@@ -49,7 +50,7 @@ describe('UserSessions.vue no sessions', () => {
     $route.path = '/user-tool/00000000'
     $route.params.pathMatch = '00000000'
 
-    const sessionsSpy = fetchUserSessionsMock(localVue, true, [], 10, '00000000', 0)
+    const sessionsSpy = fetchUserSessionsMock(localVue, true, [], MAX_USER_SESSION_PAGES, '00000000', 0)
 
     const wrapper = shallowMount(UserSessions, {
       localVue, stubs, mocks
@@ -123,7 +124,7 @@ describe('UserSessions.vue no sessions', () => {
           server_addr: '127.0.0.1'
         }
       }
-    ], 10, '00000000', 0)
+    ], MAX_USER_SESSION_PAGES, '00000000', 0)
 
     const wrapper = shallowMount(UserSessions, {
       localVue, stubs, mocks
@@ -289,7 +290,7 @@ describe('UserSessions.vue no sessions', () => {
           server_addr: '127.0.0.2'
         }
       }
-    ], 10, '00000000', 1)
+    ], MAX_USER_SESSION_PAGES, '00000000', 1)
 
     await buttons.at(1).trigger('click')
 
@@ -299,7 +300,7 @@ describe('UserSessions.vue no sessions', () => {
 
     await localVue.nextTick()
 
-    expect(wrapper.vm.$data.currentPage).toBe(10)
+    expect(wrapper.vm.$data.currentPage).toBe(MAX_USER_SESSION_PAGES)
 
     buttons = wrapper.findAll('button')
 
