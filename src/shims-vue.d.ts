@@ -10,6 +10,7 @@ declare module '*.vue' {
     updateAutoSignupDomains (args: any): Promise<any>;
     setupCompanyAccount (args: any): Promise<any>;
     upgradeAccount (args: any): Promise<any>;
+    fetchPortalVersion (): Promise<any>;
     fetchTotalSessionCounts (args: any): Promise<any>;
     fetchMapSessions (args: any): Promise<any>;
     fetchSessionDetails (args: any): Promise<any>;
