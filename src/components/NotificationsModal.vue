@@ -192,7 +192,7 @@ import GistEmbed from '@/components/GistEmbed.vue'
  */
 
 /**
- * TODO: Clean up template
+ * TODO: Clean up template, separate base modal template into its own component to be used by map modal
  */
 
 @Component({
@@ -241,14 +241,14 @@ export default class NotificationsModal extends Vue {
       .then(() => {
         return this.$authService.refreshToken()
       })
-      .catch((error: Error) => {
-        console.log('Something went wrong setting up analytics trial')
-        console.log(error)
-      })
       .then(() => {
         this.$root.$emit('showAnalyticsTrialResponse')
         // TODO: Start a tour for analytics here?
         this.fetchNotifications()
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong setting up analytics trial')
+        console.log(error)
       })
   }
 }

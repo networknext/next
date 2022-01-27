@@ -1,5 +1,12 @@
 <template>
-  <div class="card-body" id="config-page">
+  <div
+    class="card-body"
+    id="config-page"
+    v-if="(
+      $store.getters.isOwner &&
+      $store.getters.userProfile.companyName !== ''
+    ) || $store.getters.isAdmin
+    ">
     <h5 class="card-title">Game Configuration</h5>
     <p class="card-text">Manage how your game connects to Network Next.</p>
     <Alert ref="responseAlert" />
@@ -19,7 +26,6 @@
           class="form-control"
           placeholder="Enter your base64-encoded public key"
           id="pubkey-input"
-          :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
           v-model="pubKey"
         ></textarea>
       </div>
@@ -27,7 +33,7 @@
         id="game-config-button"
         type="submit"
         class="btn btn-primary btn-sm"
-        v-if="$store.getters.isOwner || $store.getters.isAdmin"
+        :disabled="pubKey === ''"
       >Save game configuration</button>
       <p class="text-muted text-small mt-2"></p>
     </form>
@@ -38,8 +44,10 @@
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
-import { UserProfile } from '@/components/types/AuthTypes'
+import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { cloneDeep } from 'lodash'
+import { UPDATE_PUBLIC_KEY_SUCCESS } from './types/Constants'
+import { ErrorTypes } from './types/ErrorTypes'
 
 /**
  * This component displays all of the necessary information for the game configuration tab
@@ -70,7 +78,7 @@ export default class GameConfiguration extends Vue {
     super()
     this.companyName = ''
     this.pubKey = ''
-    this.userProfile = {} as UserProfile
+    this.userProfile = newDefaultProfile()
   }
 
   private mounted () {
@@ -89,26 +97,30 @@ export default class GameConfiguration extends Vue {
         new_public_key: this.pubKey
       })
       .then((response: any) => {
-        this.userProfile.pubKey = response.public_key
+        this.userProfile.pubKey = response.game_config.public_key
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.$refs.responseAlert.setMessage('Updated public key successfully')
+        this.$refs.responseAlert.setMessage(UPDATE_PUBLIC_KEY_SUCCESS)
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
           if (this.$refs.responseAlert) {
             this.$refs.responseAlert.resetAlert()
           }
         }, 5000)
+        this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
         this.$apiService.fetchAllBuyers()
           .then((response: any) => {
             const allBuyers = response.buyers
             this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
           })
-        this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
+          .catch((error: Error) => {
+            console.log('Failed to refresh buyer list')
+            console.log(error)
+          })
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
         console.log(error)
-        this.$refs.responseAlert.setMessage('Failed to update public key')
+        this.$refs.responseAlert.setMessage(ErrorTypes.UPDATE_PUBLIC_KEY_FAILURE)
         this.$refs.responseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
           if (this.$refs.responseAlert) {

@@ -27,7 +27,7 @@
             <a
               href="#"
               id="sdk-button"
-              v-on:click="downloadSDK()"
+              @click="downloadSDK()"
               class="btn btn-primary m-1 btn-width"
             >
               <font-awesome-icon icon="download"
@@ -38,7 +38,7 @@
             <a
               href="#"
               id="docs-button"
-              v-on:click="downloadUE4()"
+              @click="downloadUE4()"
               class="btn btn-primary m-1 btn-width"
             >
               <font-awesome-icon icon="download"
@@ -49,7 +49,7 @@
             <a
               href="#"
               id="docs-button"
-              v-on:click="downloadDocs()"
+              @click="downloadDocs()"
               class="btn btn-primary m-1 btn-width"
             >
               <font-awesome-icon icon="download"
@@ -68,6 +68,15 @@
 </template>
 
 <script lang="ts">
+import {
+  IMPORTANT_CLICKS_CATEGORY,
+  SDK_DOCUMENTATION_EVENT,
+  SDK_DOCUMENTATION_URL,
+  SDK_DOWNLOAD_EVENT,
+  SDK_DOWNLOAD_URL,
+  UE4_PLUGIN_DOWNLOAD_EVENT,
+  UE4_PLUGIN_DOWNLOAD_URL
+} from '@/components/types/Constants'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { Component, Vue } from 'vue-property-decorator'
 
@@ -130,32 +139,44 @@ export default class DownloadsWorkspace extends Vue {
 
   private downloadSDK () {
     if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-      this.$gtag.event('sdk-download', {
-        event_category: 'Important Clicks'
+      this.$gtag.event(SDK_DOWNLOAD_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
       })
     }
-    window.open('https://storage.googleapis.com/portal_sdk_download_storage/next-4.0.16.zip')
-    this.$apiService.sendSDKDownloadSlackNotification({ email: this.$store.getters.userProfile.email, customer_name: this.$store.getters.userProfile.companyName, customer_code: this.$store.getters.userProfile.companyCode })
+    window.open(SDK_DOWNLOAD_URL)
+    this.$apiService.sendSDKDownloadSlackNotification({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
   }
 
   private downloadDocs () {
     if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-      this.$gtag.event('SDK-docs-download', {
-        event_category: 'Important Clicks'
+      this.$gtag.event(SDK_DOCUMENTATION_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
       })
     }
-    window.open('https://network-next-sdk.readthedocs-hosted.com/en/latest/')
-    this.$apiService.sendDocsViewSlackNotification({ email: this.$store.getters.userProfile.email, customer_name: this.$store.getters.userProfile.companyName, customer_code: this.$store.getters.userProfile.companyCode })
+    window.open(SDK_DOCUMENTATION_URL)
+    this.$apiService.sendDocsViewSlackNotification({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
   }
 
   private downloadUE4 () {
     if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
-      this.$gtag.event('ue4-download', {
-        event_category: 'Important Clicks'
+      this.$gtag.event(UE4_PLUGIN_DOWNLOAD_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
       })
     }
-    window.open('https://storage.googleapis.com/network-next-ue4/ue4-plugin.zip')
-    this.$apiService.sendUE4DownloadNotifications({ email: this.$store.getters.userProfile.email, customer_name: this.$store.getters.userProfile.companyName, customer_code: this.$store.getters.userProfile.companyCode })
+    window.open(UE4_PLUGIN_DOWNLOAD_URL)
+    this.$apiService.sendUE4DownloadNotifications({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
   }
 }
 </script>

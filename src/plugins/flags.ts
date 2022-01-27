@@ -33,7 +33,7 @@ export class FeatureFlagService {
     })
   }
 
-  private isEnabled (name: FeatureEnum): boolean {
+  public isEnabled (name: FeatureEnum): boolean {
     let value = false
     this.flags.forEach((flag: Flag) => {
       if (flag.name === name) {

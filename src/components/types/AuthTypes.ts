@@ -19,3 +19,28 @@ export interface UserProfile {
   pubKey: string;
   newsletterConsent: boolean;
 }
+
+export function newDefaultProfile (): UserProfile {
+  const defaultProfile: UserProfile = {
+    auth0ID: '',
+    avatar: '',
+    buyerID: '',
+    companyCode: '',
+    companyName: '',
+    domains: [],
+    email: '',
+    firstName: '',
+    hasAnalytics: false,
+    hasBilling: false,
+    hasTrial: false,
+    idToken: '',
+    lastName: '',
+    newsletterConsent: false,
+    pubKey: '',
+    roles: [],
+    routeShader: null,
+    seller: false,
+    verified: false
+  }
+  return defaultProfile
+}

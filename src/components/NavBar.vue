@@ -70,7 +70,7 @@
                 $store.getters.currentPage == 'analytics' ||
                 $store.getters.currentPage === 'invoice' ||
                 $store.getters.currentPage == 'usage' ||
-                $store.getters.currentPage == 'saves'
+                $store.getters.currentPage == 'discovery'
             }"
             v-if="($store.getters.hasBilling || $store.getters.hasAnalytics) && $store.getters.isExplorer"
           >Explore</router-link>
@@ -96,7 +96,7 @@
       <ul class="navbar-nav px-2" v-if="$store.getters.isOwner || $store.getters.isAdmin">
         <a style="cursor: pointer;" @click="openNotificationsModal()">
           <font-awesome-icon
-            id="status"
+            id="notification-bell"
             icon="bell"
             class="fa-w-16 fa-fw"
             style="color: white;"
@@ -107,7 +107,7 @@
         </a>
       </ul>
       <ul class="navbar-nav px-1" v-if="!$store.getters.isAnonymous">
-        <li class="nav-item text-nowrap" style="color: white;">
+        <li id="email-indicator" class="nav-item text-nowrap" style="color: white;">
           {{ $store.getters.userProfile.email || "" }}
         </li>
       </ul>
@@ -136,7 +136,7 @@
       </ul>
       <ul class="navbar-nav px-3" v-if="!$store.getters.isAnonymous">
         <li class="nav-item text-nowrap">
-          <a class="logout btn-sm btn-primary" href="#" @click="logout()">Logout</a>
+          <a id="logout-button" class="logout btn-sm btn-primary" href="#" @click="logout()">Logout</a>
         </li>
       </ul>
     </nav>
@@ -247,7 +247,9 @@ export default class NavBar extends Vue {
   }
 
   private created () {
-    this.fetchPortalVersion()
+    if (process.env.VUE_APP_MODE === 'dev' || process.env.VUE_APP_MODE === 'local') {
+      this.fetchPortalVersion()
+    }
     this.FeatureEnum = FeatureEnum
   }
 
@@ -290,35 +292,16 @@ export default class NavBar extends Vue {
   }
 
   private fetchPortalVersion (): void {
-    let url = ''
-
-    if (process.env.VUE_APP_MODE === 'local') {
-      url = `${process.env.VUE_APP_API_URL}`
-    }
-
-    if (process.env.VUE_APP_MODE === 'dev' || process.env.VUE_APP_MODE === 'local') {
-      fetch(`${url}/version`, {
-        headers: {
-          Accept: 'application/json',
-          'Accept-Encoding': 'gzip',
-          'Content-Type': 'application/json'
-        },
-        method: 'POST'
-      }).then((response: any) => {
-        response.json().then((json: any) => {
-          if (json.error) {
-            throw new Error(json.error)
-          }
-          this.portalVersion = `Git Hash: ${json.sha}`
-          if (json.commit_message) {
-            this.portalVersion = `${this.portalVersion} - Commit: ${json.commit_message}`
-          }
-        })
+    this.$apiService.fetchPortalVersion()
+      .then((response: any) => {
+        this.portalVersion = `Git Hash: ${response.sha}`
+        if (response.commit_message) {
+          this.portalVersion = `${this.portalVersion} - Commit: ${response.commit_message}`
+        }
       }).catch((error: Error) => {
         console.log('Something went wrong fetching the software version')
         console.log(error)
       })
-    }
   }
 
   private openNotificationsModal () {
