@@ -705,6 +705,7 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 type SetupCompanyAccountArgs struct {
 	CompanyName string `json:"company_name"`
 	CompanyCode string `json:"company_code"`
+	Email       string `json:"email"`
 }
 
 type SetupCompanyAccountReply struct {
@@ -723,6 +724,13 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "CompanyCode"
 		core.Error("SetupCompanyAccount(): %v: missing CompanyCode", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("SetupCompanyAccount(): %v: missing Email", err.Error())
 		return &err
 	}
 
@@ -756,8 +764,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 	customer, err := s.Storage.Customer(ctx, args.CompanyCode)
 	if err == nil {
 		// exists, Check if the users domain matches the automatic signup domains
-		email := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
-		domain := strings.Split(email, "@")
+		domain := strings.Split(args.Email, "@")
 		if !strings.Contains(customer.AutomaticSignInDomains, domain[1]) {
 			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 			core.Error("SetupCompanyAccount(): %v: User's email domain is not listed in accepted domains", err.Error())
