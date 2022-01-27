@@ -11,3 +11,4 @@ export const IMPORTANT_CLICKS_CATEGORY = 'Important Clicks'
 export const UPDATE_PUBLIC_KEY_SUCCESS = 'Updated public key successfully'
 export const SESSION_TOOL_ALERT = 'Please enter a valid Session ID to view its statistics. It should be a hexadecimal number (with leading zeros), or a decimal number.'
 export const MAX_RETRIES = 4
+export const MAX_USER_SESSION_PAGES = 90
