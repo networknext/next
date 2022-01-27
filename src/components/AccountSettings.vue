@@ -218,6 +218,11 @@ export default class AccountSettings extends Vue {
   }
 
   private mounted () {
+    this.refreshUserData()
+    // this.checkConfirmPassword()
+  }
+
+  private refreshUserData () {
     const userProfile = cloneDeep(this.$store.getters.userProfile)
     this.firstName = userProfile.firstName || ''
     this.lastName = userProfile.lastName || ''
@@ -225,7 +230,6 @@ export default class AccountSettings extends Vue {
 
     this.companyName = userProfile.companyName || ''
     this.companyCode = userProfile.companyCode || ''
-    // this.checkConfirmPassword()
   }
 
   private checkFirstName () {
@@ -341,6 +345,7 @@ export default class AccountSettings extends Vue {
         return this.$authService.refreshToken()
       })
       .then(() => {
+        this.refreshUserData()
         this.$refs.accountResponseAlert.setMessage('Account details updated successfully')
         this.$refs.accountResponseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
@@ -392,6 +397,7 @@ export default class AccountSettings extends Vue {
         return this.$authService.refreshToken()
       })
       .then(() => {
+        this.refreshUserData()
         this.$refs.companyResponseAlert.setMessage('Account settings updated successfully')
         this.$refs.companyResponseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
