@@ -1535,7 +1535,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
 			CompanyCode: companyCode,
 			ID:          buyerID,
-			Live:        false,
+			Live:        true,
 			Analytics:   false,
 			Billing:     false,
 			Trial:       true,
@@ -1549,11 +1549,24 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		}
 
 		// Check if buyer is associated with the ID and everything worked
-		if buyer, err = s.Storage.Buyer(r.Context(), buyerID); err != nil {
+		buyer, err = s.Storage.Buyer(r.Context(), buyerID)
+		if err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() buyer creation failed: %v", err)
 			core.Error("%v", err)
 			return err
 		}
+
+		routeShader := core.NewRouteShader()
+		routeShader.AnalysisOnly = true
+
+		err := s.Storage.AddRouteShader(ctx, routeShader, buyer.ID)
+		if err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to assign route shader to buyer with ID: %s - %v", fmt.Sprintf("%016x", buyer.ID), err)
+			core.Error("%v", err)
+			return err
+		}
+
+		// TODO: generate database.bin, verify it, and push it to storage
 
 		// Setup reply
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
