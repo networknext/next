@@ -57,6 +57,17 @@
               />
               Documentation
             </a>
+            <a
+              href="#"
+              id="docs-button"
+              @click="downloadWhitePaper()"
+              class="btn btn-primary m-1 btn-width"
+            >
+              <font-awesome-icon icon="download"
+                                  class="fa-w-16 fa-fw"
+              />
+              TBD
+            </a>
           </div>
       </div>
       <h5 class="card-title">
@@ -75,7 +86,9 @@ import {
   SDK_DOWNLOAD_EVENT,
   SDK_DOWNLOAD_URL,
   UE4_PLUGIN_DOWNLOAD_EVENT,
-  UE4_PLUGIN_DOWNLOAD_URL
+  UE4_PLUGIN_DOWNLOAD_URL,
+  WHITE_PAPER_DOWNLOAD_EVENT,
+  WHITE_PAPER_DOWNLOAD_URL
 } from '@/components/types/Constants'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { Component, Vue } from 'vue-property-decorator'
@@ -173,6 +186,20 @@ export default class DownloadsWorkspace extends Vue {
     }
     window.open(UE4_PLUGIN_DOWNLOAD_URL)
     this.$apiService.sendUE4DownloadNotifications({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
+  }
+
+  private downloadWhitePaper () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(WHITE_PAPER_DOWNLOAD_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(WHITE_PAPER_DOWNLOAD_URL)
+    this.$apiService.sendWhitePaperDownloadNotifications({
       email: this.$store.getters.userProfile.email,
       customer_name: this.$store.getters.userProfile.companyName,
       customer_code: this.$store.getters.userProfile.companyCode

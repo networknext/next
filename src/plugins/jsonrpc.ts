@@ -208,6 +208,10 @@ export class JSONRPCService {
     return this.call('AuthService.CustomerDownloadedUE4PluginNotifications', args)
   }
 
+  public sendWhitePaperDownloadNotifications (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloadedWhitePaperNotifications', args)
+  }
+
   public startAnalyticsTrial (): Promise<any> {
     return this.call('BuyersService.StartAnalyticsTrial', {})
   }
