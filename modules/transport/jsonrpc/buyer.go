@@ -1497,9 +1497,6 @@ func (s *BuyersService) GenerateBinFileReference(r *http.Request, args *GameConf
 		return err
 	}
 
-	fmt.Println("refHash")
-	fmt.Println(refHash)
-
 	genBin, err := s.BinFileGenerator(r.Context(), "")
 	if err != nil {
 		return err
@@ -1510,13 +1507,12 @@ func (s *BuyersService) GenerateBinFileReference(r *http.Request, args *GameConf
 		return err
 	}
 
-	fmt.Println("genHash")
-	fmt.Println(genHash)
+	fmt.Printf("Valid: %t\n", genHash == refHash)
+
 	return nil
 }
 
 func (s *BuyersService) BinFileGenerator(ctx context.Context, userEmail string) (routing.DatabaseBinWrapper, error) {
-
 	var dbWrapper routing.DatabaseBinWrapper
 	var enabledRelays []routing.Relay
 	relayMap := make(map[uint64]routing.Relay)

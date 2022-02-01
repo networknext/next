@@ -212,7 +212,7 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBi
 	sqlQuery.Reset()
 
 	sqlQuery.Write([]byte("select display_name, hex_id, public_ip, public_ip_port "))
-	sqlQuery.Write([]byte("from relays "))
+	sqlQuery.Write([]byte("from relays where relay_state = 0"))
 
 	rows, err = QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {

@@ -64,7 +64,9 @@ func (wrapper DatabaseBinWrapper) IsEmpty() bool {
 }
 
 func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
-	dbReference := DatabaseBinWrapperReference{}
+	dbReference := DatabaseBinWrapperReference{
+		Version: DatabaseBinWrapperReferenceVersion,
+	}
 
 	dbReference.Buyers = make([]uint64, len(wrapper.BuyerMap))
 	dbReference.Sellers = make([]string, len(wrapper.SellerMap))
