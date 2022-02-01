@@ -10662,7 +10662,6 @@ bool next_autodetect_amazon( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-
     file = popen ( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/amazon.txt -TimeoutSec 10 > NUL 2>&1", "r" );
     if ( !file )
     {
@@ -12761,7 +12760,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         NEXT_PLATFORM_THREAD_RETURN();
     }
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // autodetect datacenter is currently windows and linux only (mac is just for testing...)
 
@@ -12814,7 +12813,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         }
     }
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS || NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#endif // NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     NEXT_PLATFORM_THREAD_RETURN();
 }
