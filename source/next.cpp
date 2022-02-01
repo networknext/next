@@ -13643,6 +13643,31 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     return NEXT_TRUE;
 }
 
+void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events )
+{
+	next_assert( server );
+	next_assert( address );
+	(void) server_events;
+	// todo
+}
+
+void next_server_match( struct next_server_t * server, const struct next_address_t * address, uint64_t match_id, const double * match_values, int num_match_values )
+{
+	next_assert( server );
+	next_assert( address );
+	(void) match_id;
+	(void) match_values;
+	(void) num_match_values;
+	// todo
+}
+
+void next_server_flush( struct next_server_t * server )
+{
+	next_assert( server );
+	// todo
+	next_sleep( 1.0f );
+}
+
 // ---------------------------------------------------------------
 
 int next_mutex_create( next_mutex_t * mutex )

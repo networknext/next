@@ -38,10 +38,10 @@
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.0.18"
+    #define NEXT_VERSION_FULL                              "4.0.19"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                                0
-    #define NEXT_VERSION_PATCH_INT                               18
+    #define NEXT_VERSION_PATCH_INT                               19
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -339,6 +339,8 @@ struct next_server_stats_t
 #define NEXT_SERVER_STATE_INITIALIZING              1
 #define NEXT_SERVER_STATE_INITIALIZED               2
 
+#define NEXT_MATCH_MAX_VALUES                      64
+
 struct next_server_t;
 
 NEXT_EXPORT_FUNC struct next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( struct next_server_t * server, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) );
@@ -366,6 +368,12 @@ NEXT_EXPORT_FUNC void next_server_send_packet( struct next_server_t * server, co
 NEXT_EXPORT_FUNC void next_server_send_packet_direct( struct next_server_t * server, const struct next_address_t * to_address, const uint8_t * packet_data, int packet_bytes );
 
 NEXT_EXPORT_FUNC NEXT_BOOL next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
+
+NEXT_EXPORT_FUNC void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
+
+NEXT_EXPORT_FUNC void next_server_match( struct next_server_t * server, const struct next_address_t * address, uint64_t match_id, const double * match_values, int num_match_values );
+
+NEXT_EXPORT_FUNC void next_server_flush( struct next_server_t * server );
 
 // -----------------------------------------
 
