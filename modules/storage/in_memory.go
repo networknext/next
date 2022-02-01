@@ -25,6 +25,11 @@ type InMemory struct {
 	LocalMode bool
 }
 
+func (m *InMemory) DatabaseBinFileReference(ctx context.Context) error {
+	fmt.Println("Need to implement DatabaseBinFileReference for in memory storer")
+	return nil
+}
+
 func (m *InMemory) Buyer(ctx context.Context, id uint64) (routing.Buyer, error) {
 	for _, buyer := range m.localBuyers {
 		if buyer.ID == id {

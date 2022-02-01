@@ -10,6 +10,8 @@ import (
 )
 
 type Storer interface {
+	DatabaseBinFileReference(ctx context.Context) error
+
 	Customer(ctx context.Context, code string) (routing.Customer, error)
 
 	CustomerByID(ctx context.Context, id int64) (routing.Customer, error)

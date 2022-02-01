@@ -1486,6 +1486,11 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	return nil
 }
 
+func (s *BuyersService) GenerateBinFileReference(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
+	s.Storage.DatabaseBinFileReference(r.Context())
+	return nil
+}
+
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
 	var buyerID uint64

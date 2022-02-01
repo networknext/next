@@ -249,6 +249,10 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, int64, erro
 	return false, num.Value, nil
 }
 
+func (fs *Firestore) DatabaseBinFileReference(ctx context.Context) error {
+	return fmt.Errorf("DatabaseBinFileReference not implemented in Firestore storer")
+}
+
 func (fs *Firestore) Customer(ctx context.Context, code string) (routing.Customer, error) {
 	fs.customerMutex.RLock()
 	defer fs.customerMutex.RUnlock()
