@@ -1486,6 +1486,83 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	return nil
 }
 
+func (s *BuyersService) GenerateBinFileReference(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
+	dbRef, err := s.Storage.DatabaseBinFileReference(r.Context())
+	if err != nil {
+		return err
+	}
+
+	refHash, err := dbRef.Hash()
+	if err != nil {
+		return err
+	}
+
+	genBin, err := s.BinFileGenerator(r.Context(), "")
+	if err != nil {
+		return err
+	}
+
+	genHash, err := genBin.Hash()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Valid: %t\n", genHash == refHash)
+
+	return nil
+}
+
+func (s *BuyersService) BinFileGenerator(ctx context.Context, userEmail string) (routing.DatabaseBinWrapper, error) {
+	var dbWrapper routing.DatabaseBinWrapper
+	var enabledRelays []routing.Relay
+	relayMap := make(map[uint64]routing.Relay)
+	buyerMap := make(map[uint64]routing.Buyer)
+	sellerMap := make(map[string]routing.Seller)
+	datacenterMap := make(map[uint64]routing.Datacenter)
+	datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
+
+	buyers := s.Storage.Buyers(ctx)
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+		dcMapsForBuyer := s.Storage.GetDatacenterMapsForBuyer(ctx, buyer.ID)
+		datacenterMaps[buyer.ID] = dcMapsForBuyer
+	}
+
+	for _, seller := range s.Storage.Sellers(ctx) {
+		sellerMap[seller.ShortName] = seller
+	}
+
+	for _, datacenter := range s.Storage.Datacenters(ctx) {
+		datacenterMap[datacenter.ID] = datacenter
+	}
+
+	for _, localRelay := range s.Storage.Relays(ctx) {
+		if localRelay.State == routing.RelayStateEnabled {
+			enabledRelays = append(enabledRelays, localRelay)
+			relayMap[localRelay.ID] = localRelay
+		}
+	}
+
+	dbWrapper.Relays = enabledRelays
+	dbWrapper.RelayMap = relayMap
+	dbWrapper.BuyerMap = buyerMap
+	dbWrapper.SellerMap = sellerMap
+	dbWrapper.DatacenterMap = datacenterMap
+	dbWrapper.DatacenterMaps = datacenterMaps
+
+	loc, err := time.LoadLocation("UTC")
+	if err != nil {
+		return routing.DatabaseBinWrapper{}, err
+	}
+	now := time.Now().In(loc)
+
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	dbWrapper.CreationTime = timeStamp
+	dbWrapper.Creator = userEmail
+
+	return dbWrapper, nil
+}
+
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
 	var buyerID uint64
@@ -1535,7 +1612,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
 			CompanyCode: companyCode,
 			ID:          buyerID,
-			Live:        false,
+			Live:        true,
 			Analytics:   false,
 			Billing:     false,
 			Trial:       true,
@@ -1549,11 +1626,24 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		}
 
 		// Check if buyer is associated with the ID and everything worked
-		if buyer, err = s.Storage.Buyer(r.Context(), buyerID); err != nil {
+		buyer, err = s.Storage.Buyer(r.Context(), buyerID)
+		if err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() buyer creation failed: %v", err)
 			core.Error("%v", err)
 			return err
 		}
+
+		routeShader := core.NewRouteShader()
+		routeShader.AnalysisOnly = true
+
+		err := s.Storage.AddRouteShader(ctx, routeShader, buyer.ID)
+		if err != nil {
+			err = fmt.Errorf("UpdateGameConfiguration() failed to assign route shader to buyer with ID: %s - %v", fmt.Sprintf("%016x", buyer.ID), err)
+			core.Error("%v", err)
+			return err
+		}
+
+		// TODO: generate database.bin, verify it, and push it to storage
 
 		// Setup reply
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
