@@ -25,9 +25,8 @@ type InMemory struct {
 	LocalMode bool
 }
 
-func (m *InMemory) DatabaseBinFileReference(ctx context.Context) error {
-	fmt.Println("Need to implement DatabaseBinFileReference for in memory storer")
-	return nil
+func (m *InMemory) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBinWrapperReference, error) {
+	return routing.DatabaseBinWrapperReference{}, fmt.Errorf("Need to implement DatabaseBinFileReference for in memory storer")
 }
 
 func (m *InMemory) Buyer(ctx context.Context, id uint64) (routing.Buyer, error) {

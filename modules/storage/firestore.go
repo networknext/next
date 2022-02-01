@@ -249,8 +249,8 @@ func (fs *Firestore) CheckSequenceNumber(ctx context.Context) (bool, int64, erro
 	return false, num.Value, nil
 }
 
-func (fs *Firestore) DatabaseBinFileReference(ctx context.Context) error {
-	return fmt.Errorf("DatabaseBinFileReference not implemented in Firestore storer")
+func (fs *Firestore) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBinWrapperReference, error) {
+	return routing.DatabaseBinWrapperReference{}, fmt.Errorf("Need to implement DatabaseBinFileReference for in memory storer")
 }
 
 func (fs *Firestore) Customer(ctx context.Context, code string) (routing.Customer, error) {

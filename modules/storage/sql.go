@@ -15,7 +15,6 @@ import (
 
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
-	"github.com/networknext/backend/modules/encoding"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/transport/looker"
 )
@@ -147,8 +146,10 @@ type sqlRouteShader struct {
 	PacketLossSustained       float64
 }
 
-func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
+func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBinWrapperReference, error) {
 	var sqlQuery bytes.Buffer
+
+	dbReference := routing.DatabaseBinWrapperReference{}
 
 	relays := make([]routing.RelayReference, 0)
 	relayMap := make(map[uint64]routing.RelayReference)
@@ -166,7 +167,7 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
 		core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error")
-		return 0, err
+		return dbReference, err
 	}
 
 	var buyerID int64
@@ -176,7 +177,7 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 		)
 		if err != nil {
 			core.Error("DatabaseBinFileReference(): error parsing returned row")
-			return 0, err
+			return dbReference, err
 		}
 
 		buyers = append(buyers, uint64(buyerID))
@@ -191,7 +192,7 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 	rows, err = QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
 		core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error")
-		return 0, err
+		return dbReference, err
 	}
 
 	var sellerShortName string
@@ -201,7 +202,7 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 		)
 		if err != nil {
 			core.Error("DatabaseBinFileReference(): error parsing returned row")
-			return 0, err
+			return dbReference, err
 		}
 
 		sellers = append(sellers, sellerShortName)
@@ -216,7 +217,7 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 	rows, err = QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
 		core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error")
-		return 0, err
+		return dbReference, err
 	}
 
 	var relayDisplayName string
@@ -232,13 +233,13 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 		)
 		if err != nil {
 			core.Error("DatabaseBinFileReference(): error parsing returned row")
-			return 0, err
+			return dbReference, err
 		}
 
 		relayID, err := strconv.ParseUint(relayHexID, 16, 64)
 		if err != nil {
 			core.Error("DatabaseBinFileReference() error parsing datacenter hex ID")
-			return 0, err
+			return dbReference, err
 		}
 
 		relayRef := routing.RelayReference{
@@ -271,7 +272,7 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 		rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery, int64(buyer))
 		if err != nil {
 			core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error: %v", err)
-			return 0, err
+			return dbReference, err
 		}
 
 		for rows.Next() {
@@ -279,20 +280,20 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 			err = rows.Scan(&hexID)
 			if err != nil {
 				core.Error("DatabaseBinFileReference(): error parsing returned row: %v", err)
-				return 0, err
+				return dbReference, err
 			}
 
 			dcID, err := strconv.ParseUint(hexID, 16, 64)
 			if err != nil {
 				core.Error("DatabaseBinFileReference() error parsing datacenter hex ID")
-				return 0, err
+				return dbReference, err
 			}
 
-			if _, ok := datacenterMaps[buyer]; !ok {
-				datacenterMaps[buyer] = make([]uint64, 0)
+			if _, ok := datacenterMaps[dcID]; !ok {
+				datacenterMaps[dcID] = make([]uint64, 0)
 			}
 
-			datacenterMaps[buyer] = append(datacenterMaps[buyer], dcID)
+			datacenterMaps[dcID] = append(datacenterMaps[dcID], buyer)
 		}
 
 		rows.Close()
@@ -305,7 +306,7 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 	rows, err = QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
 		core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error: %v", err)
-		return 0, err
+		return dbReference, err
 	}
 
 	var datacenterDisplayName string
@@ -315,7 +316,7 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 		)
 		if err != nil {
 			core.Error("DatabaseBinFileReference(): error parsing returned row")
-			return 0, err
+			return dbReference, err
 		}
 
 		datacenters = append(datacenters, datacenterDisplayName)
@@ -324,30 +325,15 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (uint64, error) {
 	rows.Close()
 	sqlQuery.Reset()
 
-	dbReference := routing.DatabaseBinWrapperReference{
-		Version:        routing.DatabaseBinWrapperReferenceVersion,
-		Buyers:         buyers,
-		Sellers:        sellers,
-		Datacenters:    datacenters,
-		DatacenterMaps: datacenterMaps,
-		RelayMap:       relayMap,
-		Relays:         relays,
-	}
+	dbReference.Version = routing.DatabaseBinWrapperReferenceVersion
+	dbReference.Buyers = buyers
+	dbReference.Sellers = sellers
+	dbReference.Datacenters = datacenters
+	dbReference.DatacenterMaps = datacenterMaps
+	dbReference.RelayMap = relayMap
+	dbReference.Relays = relays
 
-	buffer := make([]byte, routing.MaxDatabaseBinWrapperSize) // TODO: This is probably way to big
-	ws, err := encoding.CreateWriteStream(buffer)
-	if err != nil {
-		return 0, err
-	}
-
-	if err := dbReference.Serialize(ws); err != nil {
-		fmt.Println("Something went wrong serializing the db reference")
-		return 0, err
-	}
-
-	hash := crypto.HashID(string(buffer))
-
-	return hash, nil
+	return dbReference, err
 }
 
 // Customer retrieves a Customer record using the company code
