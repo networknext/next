@@ -10154,7 +10154,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context );
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
 bool next_autodetect_google( char * output )
 {
@@ -10162,13 +10162,25 @@ bool next_autodetect_google( char * output )
     char buffer[1024*10];
 
     // are we running in google cloud?
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "/bin/ls /usr/bin | grep google_ 2>/dev/null", "r");
+    file = popen( "/bin/ls /usr/bin | grep google_ 2>/dev/null", "r" );
     if ( file == NULL ) 
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run ls" );
         return false;
     }
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    file = _popen( "dir \"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\" | findstr gcloud", "r" );
+    if ( file == NULL ) 
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run dir" );
+        return false;
+    }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     bool in_gcp = false;
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
@@ -10177,7 +10189,16 @@ bool next_autodetect_google( char * output )
         in_gcp = true;
         break;
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // we are not running in google cloud :(
 
@@ -10191,12 +10212,27 @@ bool next_autodetect_google( char * output )
 
     char zone[256];
     zone[0] = '\0';
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    
     file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
     }
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    file = _popen( "powershell Invoke-RestMethod -Uri http://metadata.google.internal/computeMetadata/v1/instance/zone -Headers @{'Metadata-Flavor' = 'Google'} -TimeoutSec 10", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
+        return false;
+    }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS 
+
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         int length = strlen( buffer );
@@ -10249,7 +10285,16 @@ bool next_autodetect_google( char * output )
 
         break;
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // we couldn't work out which zone we are in :(
 
@@ -10261,13 +10306,28 @@ bool next_autodetect_google( char * output )
 
     // look up google zone -> network next datacenter via mapping in google cloud storage "google.txt" file
 
-    bool found = false;
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
     }
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    file = _popen( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/google.txt -TimeoutSec 10", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
+        return false;
+    }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS 
+
+    bool found = false;
+
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         const char * separators = ",\n\r";
@@ -10292,7 +10352,16 @@ bool next_autodetect_google( char * output )
             break;
         }
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     return found;
 }
@@ -10308,12 +10377,27 @@ bool next_autodetect_amazon( char * output )
 
     char azid[256];
     azid[0] = '\0';
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     file = popen( "curl \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 2 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
     }
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    file = _popen ( "powershell Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/placement/availability-zone-id -TimeoutSec 2", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
+        return false;
+    }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         if ( strstr( buffer, "-az" ) == NULL )
@@ -10335,7 +10419,16 @@ bool next_autodetect_amazon( char * output )
 
         break;
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // we are probably not in AWS :(
 
@@ -10347,13 +10440,28 @@ bool next_autodetect_amazon( char * output )
 
     // look up AZID -> network next datacenter via mapping in google cloud storage "amazon.txt" file
 
-    bool found = false;
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     file = popen( "curl https://storage.googleapis.com/network-next-sdk/amazon.txt --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
     }
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    file = _popen ( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/amazon.txt -TimeoutSec 10", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
+        return false;
+    }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+
+    bool found = false;
+
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         const char * separators = ",\n\r";
@@ -10378,12 +10486,23 @@ bool next_autodetect_amazon( char * output )
             break;
         }
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     return found;
 }
 
 // --------------------------------------------------------------------------------------------------------------
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
@@ -10618,9 +10737,13 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     return found;
 }
 
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
 bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output )
 {
-    // we need linux + curl to do any autodetect. bail if we don't have it
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    // we need curl to do any autodetect. bail if we don't have it
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: looking for curl" );
 
@@ -10634,6 +10757,23 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: curl exists" );
 
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    // we need access to powershell and Invoke-RestMethod to do any autodetect. bail if we don't have it
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: looking for powershell Invoke-RestMethod" );
+
+    int result = system( "powershell Invoke-RestMethod -? > NUL 2>&1" );
+
+    if ( result > 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: powershell Invoke-RestMethod not found" );
+        return false;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: powershell Invoke-RestMethod exists" );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+    
     // google cloud
 
     bool google_result = next_autodetect_google( output );
@@ -10652,16 +10792,20 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     // multiplay
 
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     bool multiplay_result = next_autodetect_multiplay( input_datacenter, public_address, output );
     if ( multiplay_result )
     {
         return true;
     }
 
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     return false;
 }
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
 void next_server_internal_resolve_hostname( next_server_internal_t * server )
 {
@@ -12349,9 +12493,9 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         NEXT_PLATFORM_THREAD_RETURN();
     }
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-    // autodetect datacenter is currently linux only (mac is just for testing...)
+    // autodetect datacenter is currently windows and linux only (mac is just for testing...)
 
     const char * autodetect_input = server->autodetect_input;
     
@@ -12402,7 +12546,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         }
     }
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#endif // NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     NEXT_PLATFORM_THREAD_RETURN();
 }
