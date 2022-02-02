@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"sort"
 
 	"github.com/networknext/backend/modules/encoding"
 )
@@ -70,58 +71,67 @@ func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
 
 	dbReference.Buyers = make([]uint64, len(wrapper.BuyerMap))
 	dbReference.Sellers = make([]string, len(wrapper.SellerMap))
-	dbReference.Relays = make([]RelayReference, len(wrapper.Relays))
-	dbReference.RelayMap = make(map[uint64]RelayReference)
 	dbReference.Datacenters = make([]string, len(wrapper.DatacenterMap))
 	dbReference.DatacenterMaps = make(map[uint64][]uint64, len(wrapper.DatacenterMaps))
-	//                                     ^ DC ID   ^ Buyer IDs
+	dbReference.Relays = make([]RelayReference, len(wrapper.Relays))
+	dbReference.RelayMap = make(map[uint64]RelayReference, len(wrapper.RelayMap))
 
-	// TODO: Not sure if this is the best route here -> might be better just to serialize the whole dc map rather than creating a new one
 	index := 0
 	for buyerID := range wrapper.BuyerMap {
 		dbReference.Buyers[index] = buyerID
 
-		for dcID, dcMaps := range wrapper.DatacenterMaps {
-			if _, ok := dcMaps[buyerID]; !ok {
-				continue
+		// TODO: Clean this up or just switch over to using the datacenter maps from the wrapper - don't really want to do the latter due to excess data
+		dcIndex := 0
+		for dcID := range wrapper.DatacenterMaps[buyerID] {
+			if _, ok := dbReference.DatacenterMaps[buyerID]; !ok {
+				dbReference.DatacenterMaps[buyerID] = make([]uint64, len(wrapper.DatacenterMaps[buyerID]))
 			}
-
-			if _, ok := dbReference.DatacenterMaps[dcID]; !ok {
-				dbReference.DatacenterMaps[dcID] = make([]uint64, 0)
-			}
-
-			dbReference.DatacenterMaps[dcID] = append(dbReference.DatacenterMaps[dcID], buyerID)
+			dbReference.DatacenterMaps[buyerID][dcIndex] = dcID
+			dcIndex++
 		}
 
+		sort.Slice(dbReference.DatacenterMaps[buyerID], func(i, j int) bool {
+			return dbReference.DatacenterMaps[buyerID][i] < dbReference.DatacenterMaps[buyerID][j]
+		})
 		index++
 	}
+	sort.Slice(dbReference.Buyers, func(i, j int) bool { return dbReference.Buyers[i] < dbReference.Buyers[j] })
 
 	index = 0
-	for shortName := range wrapper.SellerMap {
-		dbReference.Sellers[index] = shortName
+	for sellerName := range wrapper.SellerMap {
+		dbReference.Sellers[index] = sellerName
 		index++
 	}
+	sort.Slice(dbReference.Sellers, func(i, j int) bool { return dbReference.Sellers[i] < dbReference.Sellers[j] })
 
-	for index, relay := range wrapper.Relays {
+	index = 0
+	for _, datacenter := range wrapper.DatacenterMap {
+		dbReference.Datacenters[index] = datacenter.Name
+		index++
+	}
+	sort.Slice(dbReference.Datacenters, func(i, j int) bool { return dbReference.Datacenters[i] < dbReference.Datacenters[j] })
+
+	index = 0
+	for _, relay := range wrapper.Relays {
 		dbReference.Relays[index] = RelayReference{
 			PublicIP:    relay.Addr,
 			DisplayName: relay.Name,
 		}
+		index++
 	}
+	sort.Slice(dbReference.Relays, func(i, j int) bool { return dbReference.Relays[i].DisplayName < dbReference.Relays[j].DisplayName })
 
-	// TODO: This may be able to be combined with the above for loop
 	for relayID, relay := range wrapper.RelayMap {
 		dbReference.RelayMap[relayID] = RelayReference{
-			PublicIP:    relay.Addr,
 			DisplayName: relay.Name,
+			PublicIP:    relay.Addr,
 		}
 	}
 
-	index = 0
-	for _, datacenter := range wrapper.DatacenterMap {
-		dbReference.Datacenters[index] = datacenter.AliasName
-		index++
-	}
+	fmt.Println("")
+	fmt.Println("Bin ref")
+	fmt.Printf("%+v\n", dbReference)
+	fmt.Println("Bin ref")
 
 	buffer := make([]byte, MaxDatabaseBinWrapperSize) // TODO: This is probably way to big
 	ws, err := encoding.CreateWriteStream(buffer)
@@ -209,23 +219,43 @@ func (ref *DatabaseBinWrapperReference) Serialize(stream encoding.Stream) error 
 	numRelayKeys := uint32(len(ref.RelayMap))
 	stream.SerializeUint32(&numRelayKeys)
 
-	for relayID, relayRef := range ref.RelayMap {
+	relayKeys := make([]uint64, numRelayKeys)
+
+	index := 0
+	for relayID := range ref.RelayMap {
+		relayKeys[index] = relayID
+		index++
+	}
+
+	for _, relayID := range relayKeys {
+		ip := ref.RelayMap[relayID].PublicIP
+		name := ref.RelayMap[relayID].DisplayName
 		stream.SerializeUint64(&relayID)
-		stream.SerializeString(&relayRef.DisplayName, MaxRelayNameLength)
-		stream.SerializeAddress(&relayRef.PublicIP)
+		stream.SerializeString(&name, MaxRelayNameLength)
+		stream.SerializeAddress(&ip)
 	}
 
 	numDCMapKeys := uint32(len(ref.DatacenterMaps))
 	stream.SerializeUint32(&numDCMapKeys)
 
-	for buyerID, maps := range ref.DatacenterMaps {
+	dcMapKeys := make([]uint64, numDCMapKeys)
+
+	index = 0
+	for buyerID := range ref.DatacenterMaps {
+		dcMapKeys[index] = buyerID
+		index++
+	}
+
+	for _, buyerID := range dcMapKeys {
 		stream.SerializeUint64(&buyerID)
 
-		numMaps := uint32(len(maps))
-		stream.SerializeUint32(&numMaps)
+		dcList := ref.DatacenterMaps[buyerID]
 
-		for i := uint32(0); i < numMaps; i++ {
-			stream.SerializeUint64(&maps[i])
+		numDCs := uint32(len(dcList))
+		stream.SerializeUint32(&numDCs)
+
+		for _, dc := range dcList {
+			stream.SerializeUint64(&dc)
 		}
 	}
 

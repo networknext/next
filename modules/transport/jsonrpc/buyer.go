@@ -1492,6 +1492,11 @@ func (s *BuyersService) GenerateBinFile(r *http.Request, args *GameConfiguration
 		return err
 	}
 
+	fmt.Println("DB Ref")
+	fmt.Printf("%+v\n", dbRef)
+	fmt.Println("DB Ref")
+	fmt.Println("")
+
 	refHash, err := dbRef.Hash()
 	if err != nil {
 		return err
@@ -1506,6 +1511,11 @@ func (s *BuyersService) GenerateBinFile(r *http.Request, args *GameConfiguration
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("genHash")
+	fmt.Println(genHash)
+	fmt.Println("refHash")
+	fmt.Println(refHash)
 
 	fmt.Printf("Valid: %t\n", genHash == refHash)
 

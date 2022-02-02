@@ -325,13 +325,18 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBi
 	rows.Close()
 	sqlQuery.Reset()
 
+	sort.Slice(buyers, func(i, j int) bool { return buyers[i] < buyers[j] })
+	sort.Slice(sellers, func(i, j int) bool { return sellers[i] < sellers[j] })
+	sort.Slice(datacenters, func(i, j int) bool { return datacenters[i] < datacenters[j] })
+	sort.Slice(relays, func(i, j int) bool { return relays[i].DisplayName < relays[j].DisplayName })
+
 	dbReference.Version = routing.DatabaseBinWrapperReferenceVersion
 	dbReference.Buyers = buyers
 	dbReference.Sellers = sellers
 	dbReference.Datacenters = datacenters
-	dbReference.DatacenterMaps = datacenterMaps
-	dbReference.RelayMap = relayMap
 	dbReference.Relays = relays
+	dbReference.RelayMap = relayMap
+	dbReference.DatacenterMaps = datacenterMaps
 
 	return dbReference, err
 }
