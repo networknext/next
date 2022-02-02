@@ -221,7 +221,7 @@ export default class DownloadsWorkspace extends Vue {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
   .btn-width {
-    width: "160px";
+    min-width: 180px;
   }
   #sdk-button {
     border-color: #009FDF;
