@@ -33,10 +33,16 @@
                 <span>Save Score</span>
               </th>
               <th>
-                <span>RTT Score</span>
+                <span>Average Direct RTT Score</span>
               </th>
               <th>
-                <span>PL Score</span>
+                <span>Average Next RTT Score</span>
+              </th>
+              <th>
+                <span>Average Direct Packet Loss</span>
+              </th>
+              <th>
+                <span>Average Next Packet Loss</span>
               </th>
               <th>
                 <span>Duration (Hours)</span>
@@ -64,10 +70,16 @@
                 {{ save.save_score }}
               </td>
               <td>
-                {{ save.rtt_score }}
+                {{ save.average_direct_rtt }}
               </td>
               <td>
-                {{ save.pl_score }}
+                {{ save.average_next_rtt }}
+              </td>
+              <td>
+                {{ save.average_direct_pl }}
+              </td>
+              <td>
+                {{ save.average_next_pl }}
               </td>
               <td>
                 {{ save.duration }}
