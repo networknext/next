@@ -10420,7 +10420,7 @@ bool next_autodetect_google( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "dir \"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\" | findstr gcloud > NUL 2>&1", "r" );
+    file = _popen( "dir \"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\" | findstr gcloud", "r" );
     if ( file == NULL ) 
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run dir" );
@@ -10436,7 +10436,16 @@ bool next_autodetect_google( char * output )
         in_gcp = true;
         break;
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // we are not running in google cloud :(
 
@@ -10462,7 +10471,7 @@ bool next_autodetect_google( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "powershell Invoke-RestMethod -Uri http://metadata.google.internal/computeMetadata/v1/instance/zone -Headers @{'Metadata-Flavor' = 'Google'} -TimeoutSec 10 > NUL 2>&1", "r" );
+    file = _popen( "powershell Invoke-RestMethod -Uri http://metadata.google.internal/computeMetadata/v1/instance/zone -Headers @{'Metadata-Flavor' = 'Google'} -TimeoutSec 10", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
@@ -10523,7 +10532,16 @@ bool next_autodetect_google( char * output )
 
         break;
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // we couldn't work out which zone we are in :(
 
@@ -10546,7 +10564,7 @@ bool next_autodetect_google( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/google.txt -TimeoutSec 10 > NUL 2>&1", "r" );
+    file = _popen( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/google.txt -TimeoutSec 10", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
@@ -10581,7 +10599,16 @@ bool next_autodetect_google( char * output )
             break;
         }
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     return found;
 }
@@ -10609,7 +10636,7 @@ bool next_autodetect_amazon( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen ( "powershell Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/placement/availability-zone-id -TimeoutSec 2 > NUL 2>&1", "r" );
+    file = _popen ( "powershell Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/placement/availability-zone-id -TimeoutSec 2", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
@@ -10639,7 +10666,16 @@ bool next_autodetect_amazon( char * output )
 
         break;
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // we are probably not in AWS :(
 
@@ -10662,7 +10698,7 @@ bool next_autodetect_amazon( char * output )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen ( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/amazon.txt -TimeoutSec 10 > NUL 2>&1", "r" );
+    file = _popen ( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/amazon.txt -TimeoutSec 10", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
@@ -10697,12 +10733,23 @@ bool next_autodetect_amazon( char * output )
             break;
         }
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     return found;
 }
 
 // --------------------------------------------------------------------------------------------------------------
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
@@ -10886,31 +10933,16 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     
     // check against multiplay supplier mappings
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
+    bool found = false;
+    char multiplay_line[1024];
+    char multiplay_buffer[64*1024];
+    multiplay_buffer[0] = '\0';
     file = popen( "curl https://storage.googleapis.com/network-next-sdk/multiplay.txt --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
     }
-
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    file = popen( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/multiplay.txt -TimeoutSec 10 > NUL 2>&1", "r" );
-    if ( !file )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
-        return false;
-    }
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    bool found = false;
-    char multiplay_line[1024];
-    char multiplay_buffer[64*1024];
-    multiplay_buffer[0] = '\0';
-
     while ( fgets( multiplay_line, sizeof(multiplay_line), file ) != NULL ) 
     {
         strcat( multiplay_buffer, multiplay_line );
@@ -10951,6 +10983,8 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
 
     return found;
 }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
 bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output )
 {
@@ -11005,11 +11039,15 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     // multiplay
 
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     bool multiplay_result = next_autodetect_multiplay( input_datacenter, public_address, output );
     if ( multiplay_result )
     {
         return true;
     }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     return false;
 }
