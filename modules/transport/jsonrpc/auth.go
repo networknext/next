@@ -1211,10 +1211,10 @@ func (s *AuthService) CustomerDownloaded2022WhitePaperNotifications(r *http.Requ
 		return &err
 	}
 
-	message := fmt.Sprintf("%s downloaded the white paper", args.Email)
+	message := fmt.Sprintf("%s downloaded the 2022 white paper", args.Email)
 
 	if args.CustomerName != "" {
-		message = fmt.Sprintf("%s from %s downloaded the white paper", args.Email, args.CustomerName)
+		message = fmt.Sprintf("%s from %s downloaded the 2022 white paper", args.Email, args.CustomerName)
 	}
 
 	if args.CustomerCode != "" {
