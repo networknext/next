@@ -33,10 +33,10 @@
                 <span>Save Score</span>
               </th>
               <th>
-                <span>Average Direct RTT Score</span>
+                <span>Average Direct RTT</span>
               </th>
               <th>
-                <span>Average Next RTT Score</span>
+                <span>Average Next RTT</span>
               </th>
               <th>
                 <span>Average Direct Packet Loss</span>
