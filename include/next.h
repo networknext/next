@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2021 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -30,18 +30,16 @@
 #include <stdint.h>
 #include <stddef.h>
 
-// #define NEXT_EXPERIMENTAL 1
-
 #ifndef NEXT_PACKET_TAGGING
 #define NEXT_PACKET_TAGGING                                       1
 #endif // #if NEXT_PACKET_TAGGING
 
 #if !defined(NEXT_DEVELOPMENT)
 
-    #define NEXT_VERSION_FULL                              "4.0.19"
+    #define NEXT_VERSION_FULL                              "4.0.20"
     #define NEXT_VERSION_MAJOR_INT                                4
     #define NEXT_VERSION_MINOR_INT                                0
-    #define NEXT_VERSION_PATCH_INT                               19
+    #define NEXT_VERSION_PATCH_INT                               20
 
 #else // !defined(NEXT_DEVELOPMENT)
 
@@ -401,49 +399,6 @@ struct next_mutex_helper_t
 #define next_mutex_guard( _mutex ) next_mutex_helper_t __mutex_helper( _mutex )
 
 #endif // #ifdef __cplusplus
-
-// =======================================================================================
-
-#if NEXT_EXPERIMENTAL
-
-// -----------------------------------------
-
-NEXT_EXPORT_FUNC uint64_t next_customer_id();
-
-NEXT_EXPORT_FUNC const uint8_t * next_customer_private_key();
-
-NEXT_EXPORT_FUNC const uint8_t * next_customer_public_key();
-
-// -----------------------------------------
-
-#define NEXT_PING_DURATION 10.0
-#define NEXT_MAX_PING_TOKENS 256
-#define NEXT_MAX_PING_TOKEN_BYTES 256
-
-NEXT_EXPORT_FUNC void next_generate_ping_token( uint64_t customer_id, const uint8_t * customer_private_key, const struct next_address_t * client_address, const char * datacenter_name, const char * user_id, uint8_t * out_ping_token_data, int * out_ping_token_bytes );
-
-NEXT_EXPORT_FUNC NEXT_BOOL next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_public_key, const struct next_address_t * client_address, const uint8_t * ping_token_data, int ping_token_bytes );
-
-// -----------------------------------------
-
-struct next_ping_t;
-
-#define NEXT_PING_STATE_RESOLVING_HOSTNAME          0
-#define NEXT_PING_STATE_SENDING_PINGS               1
-#define NEXT_PING_STATE_FINISHED                    2
-#define NEXT_PING_STATE_ERROR                       3
-
-NEXT_EXPORT_FUNC struct next_ping_t * next_ping_create( void * context, const char * bind_address, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens );
-
-NEXT_EXPORT_FUNC void next_ping_destroy( struct next_ping_t * ping );
-
-NEXT_EXPORT_FUNC void next_ping_update( struct next_ping_t * ping );
-
-NEXT_EXPORT_FUNC int next_ping_state( struct next_ping_t * ping );
-
-// -----------------------------------------
-
-#endif // #if NEXT_EXPERIMENTAL
 
 // =======================================================================================
 

@@ -1,6 +1,6 @@
 /*
    Network Next Key Generator
-   Copyright © 2017 - 2021 Network Next, Inc. All rights reserved.
+   Copyright © 2017 - 2022 Network Next, Inc. All rights reserved.
 */
 
 package main

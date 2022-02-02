@@ -1,5 +1,5 @@
 /*
-    Network Next SDK. Copyright © 2017 - 2021 Network Next, Inc.
+    Network Next SDK. Copyright © 2017 - 2022 Network Next, Inc.
 
     Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following 
     conditions are met:
@@ -167,7 +167,6 @@
 #define NEXT_ROUTE_UPDATE_ACK_PACKET                                  115
 #define NEXT_RELAY_PING_PACKET                                        116
 #define NEXT_RELAY_PONG_PACKET                                        117
-#define NEXT_BEACON_PACKET                                            118
 
 #define NEXT_BACKEND_SERVER_UPDATE_PACKET                             220
 #define NEXT_BACKEND_SESSION_UPDATE_PACKET                            221
@@ -186,36 +185,12 @@
 #define NEXT_LOW_FREQUENCY_PING_RATE                                    1
 #define NEXT_HIGH_FREQUENCY_PING_RATE                                  10
 
-#define NEXT_BEACON_ENABLED                                             0
-
-#if NEXT_BEACON_ENABLED
-
-#define NEXT_BEACON_VERSION                                             0
-
-#if !NEXT_DEVELOPMENT
-#define NEXT_BEACON_ADDRESS                        "35.192.100.115:30000"
-#else // #if !NEXT_DEVELOPMENT
-#define NEXT_BEACON_ADDRESS                       "104.154.248.109:30000"
-#endif // #if !NEXT_DEVELOPMENT
-
-static next_address_t next_beacon_address;
-
-#endif // #if NEXT_BEACON_ADDRESS
-
 static uint8_t next_server_backend_public_key[] = 
 { 
      76,  97, 202, 140,  71, 135,  62, 212, 
     160, 181, 151, 195, 202, 224, 207, 113, 
       8,  45,  37,  60, 145,  14, 212, 111, 
      25,  34, 175, 186,  37, 150, 163,  64 
-};
-
-static uint8_t next_ping_backend_public_key[] = 
-{ 
-    0x6F, 0x5A, 0x36, 0x07, 0x6F, 0xD1, 0xF7, 0xEB, 
-    0x81, 0x91, 0x42, 0xE9, 0xF4, 0xA7, 0x3A, 0xFA, 
-    0x80, 0xCF, 0x99, 0xD4, 0xCD, 0x23, 0x18, 0x01, 
-    0x4A, 0xA8, 0x19, 0xA6, 0xC1, 0x2A, 0x06, 0x40 
 };
 
 static uint8_t next_router_public_key[] = 
@@ -3142,9 +3117,6 @@ struct NextClientStatsPacket
     bool multipath;
     bool reported;
     bool bandwidth_over_limit;
-#if NEXT_EXPERIMENTAL
-    bool has_near_relay_pings;
-#endif // #if NEXT_EXPERIMENTAL
     int platform_id;
     int connection_type;
     float next_kbps_up;
@@ -3180,9 +3152,6 @@ struct NextClientStatsPacket
         serialize_bool( stream, multipath );
         serialize_bool( stream, reported );
         serialize_bool( stream, bandwidth_over_limit );
-#if NEXT_EXPERIMENTAL
-        serialize_bool( stream, has_near_relay_pings );
-#endif // #if NEXT_EXPERIMENTAL
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
         serialize_float( stream, next_kbps_up );
@@ -3202,9 +3171,6 @@ struct NextClientStatsPacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
-#if NEXT_EXPERIMENTAL
-            if ( has_near_relay_pings )
-#endif // #if NEXT_EXPERIMENTAL
             {
                 serialize_int( stream, near_relay_rtt[i], 0, 255 );
                 serialize_int( stream, near_relay_jitter[i], 0, 255 );
@@ -3237,9 +3203,6 @@ struct NextRouteUpdatePacket
     float jitter_client_to_server;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
-#if NEXT_EXPERIMENTAL
-    bool dont_ping_near_relays;
-#endif // #if NEXT_EXPERIMENTAL
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
@@ -3294,22 +3257,16 @@ struct NextRouteUpdatePacket
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
 
-#if NEXT_EXPERIMENTAL
-        serialize_bool( stream, dont_ping_near_relays );
-        if ( !dont_ping_near_relays )
-#endif // #if NEXT_EXPERIMENTAL
+        serialize_bool( stream, exclude_near_relays );
+        if ( exclude_near_relays )
         {
-            serialize_bool( stream, exclude_near_relays );
-            if ( exclude_near_relays )
+            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
             {
-                for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-                {
-                    serialize_bool( stream, near_relay_excluded[i] );
-                }
+                serialize_bool( stream, near_relay_excluded[i] );
             }
-
-            serialize_bool( stream, high_frequency_pings );
         }
+
+        serialize_bool( stream, high_frequency_pings );
 
         return true;
     }
@@ -3375,60 +3332,6 @@ struct NextRelayPongPacket
     {
         serialize_uint64( stream, ping_sequence );
         serialize_uint64( stream, session_id );
-        return true;
-    }
-};
-
-struct NextBeaconPacket
-{
-    NextBeaconPacket()
-    {
-        memset( this, 0, sizeof(NextBeaconPacket) );
-    }
-
-    uint8_t version;
-    uint64_t customer_id;
-    uint64_t datacenter_id;
-    uint64_t user_hash;
-    uint64_t address_hash;
-    uint64_t session_id;
-    int platform_id;
-    int connection_type;
-    bool enabled;
-    bool upgraded;
-    bool next;
-    bool fallback_to_direct;
-
-    template <typename Stream> bool Serialize( Stream & stream )
-    {
-        serialize_bits( stream, version, 8 );
-
-        serialize_bool( stream, enabled );
-        serialize_bool( stream, upgraded );
-        serialize_bool( stream, next );
-        serialize_bool( stream, fallback_to_direct );
-        
-        bool has_datacenter_id = Stream::IsWriting && datacenter_id != 0;
-        serialize_bool( stream, has_datacenter_id );
-        
-        serialize_uint64( stream, customer_id );
-
-        if ( has_datacenter_id )
-        {
-            serialize_uint64( stream, datacenter_id );
-        }
-
-        if ( upgraded )
-        {
-            serialize_uint64( stream, user_hash );
-            serialize_uint64( stream, address_hash );
-            serialize_uint64( stream, session_id );
-        }
-
-        serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
-
-        serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
-
         return true;
     }
 };
@@ -3564,21 +3467,6 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
             }
         }
         break;
-
-#if NEXT_BEACON_ENABLED
-
-        case NEXT_BEACON_PACKET:
-        {
-            NextBeaconPacket * packet = (NextBeaconPacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to write beacon packet" );
-                return NEXT_ERROR;
-            }
-        }
-        break;
-
-#endif // #if NEXT_BEACON_ENABLED
 
         default:
             return NEXT_ERROR;
@@ -3796,14 +3684,6 @@ int next_read_packet( uint8_t * packet_data, int packet_bytes, void * packet_obj
         case NEXT_RELAY_PONG_PACKET:
         {
             NextRelayPongPacket * packet = (NextRelayPongPacket*) packet_object;
-            if ( !packet->Serialize( stream ) )
-                return NEXT_ERROR;
-        }
-        break;
-
-        case NEXT_BEACON_PACKET:
-        {
-            NextBeaconPacket * packet = (NextBeaconPacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -4046,24 +3926,6 @@ int next_init( void * context, next_config_t * config_in )
         }
     }
 
-    const char * ping_backend_public_key_env = next_platform_getenv( "NEXT_PING_BACKEND_PUBLIC_KEY" );
-    if ( ping_backend_public_key_env )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "ping backend public key override" );
-        
-        if ( next_base64_decode_data( ping_backend_public_key_env, next_ping_backend_public_key, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES ) == NEXT_CRYPTO_SIGN_PUBLICKEYBYTES )
-        {
-            next_printf( NEXT_LOG_LEVEL_INFO, "valid ping backend public key" );
-        }
-        else
-        {
-            if ( ping_backend_public_key_env[0] != '\0' )
-            {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "ping backend public key is invalid: \"%s\"", ping_backend_public_key_env );
-            }
-        }
-    }
-
     const char * router_public_key_env = next_platform_getenv( "NEXT_ROUTER_PUBLIC_KEY" );
     if ( router_public_key_env )
     {
@@ -4081,19 +3943,6 @@ int next_init( void * context, next_config_t * config_in )
             }
         }
     }
-
-#if NEXT_BEACON_ENABLED
-
-    next_address_parse( &next_beacon_address, NEXT_BEACON_ADDRESS );
-
-    const char * beacon_address_env = next_platform_getenv( "NEXT_BEACON_ADDRESS" );
-    if ( beacon_address_env )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "beacon address override: %s", beacon_address_env );
-        next_address_parse( &next_beacon_address, beacon_address_env );
-    }
-
-#endif // #if NEXT_BEACON_ENABLED
 
     next_global_config = config;
 
@@ -5994,15 +5843,9 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(11)
 
-#if NEXT_BEACON_ENABLED
-    uint64_t last_beacon_send_time;
-#endif // #if NEXT_BEACON_ENABLED
-
-    NEXT_DECLARE_SENTINEL(12)
-
     uint64_t counters[NEXT_CLIENT_COUNTER_MAX];
 
-    NEXT_DECLARE_SENTINEL(13)
+    NEXT_DECLARE_SENTINEL(12)
 };
 
 void next_client_internal_initialize_sentinels( next_client_internal_t * client )
@@ -6022,7 +5865,6 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     NEXT_INITIALIZE_SENTINEL( client, 10 )
     NEXT_INITIALIZE_SENTINEL( client, 11 )
     NEXT_INITIALIZE_SENTINEL( client, 12 )
-    NEXT_INITIALIZE_SENTINEL( client, 13 )
 
     next_relay_stats_initialize_sentinels( &client->near_relay_stats );
 
@@ -6206,10 +6048,6 @@ next_client_internal_t * next_client_internal_create( void * context, const char
 
     client->special_send_sequence = 1;
     client->internal_send_sequence = 1;
-
-#if NEXT_BEACON_ENABLED
-    client->last_beacon_send_time = next_time() + next_random_float() * 10.0f;
-#endif // #if NEXT_BEACON_ENABLED
 
     return client;
 }
@@ -6903,10 +6741,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 next_printf( NEXT_LOG_LEVEL_INFO, "client session debug: %s", packet.debug );
             }
 
-#if NEXT_EXPERIMENTAL
-            next_relay_manager_disable_pings( client->near_relay_manager, packet.dont_ping_near_relays );
-#endif // #if NEXT_EXPERIMENTAL
-
             if ( packet.near_relays_changed )
             {
                 next_relay_manager_update( client->near_relay_manager, packet.num_near_relays, packet.near_relay_ids, packet.near_relay_addresses, packet.high_frequency_pings );
@@ -7112,9 +6946,6 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 memset( client->upgrade_response_packet_data, 0, sizeof(client->upgrade_response_packet_data) );
                 client->upgrade_response_start_time = 0.0;
                 client->last_upgrade_response_send_time = 0.0;
-#if NEXT_BEACON_ENABLED
-                client->last_beacon_send_time = next_time() + next_random_float() * 10.0f;
-#endif // #if NEXT_BEACON_ENABLED
 
                 next_platform_mutex_acquire( &client->packets_sent_mutex );
                 client->packets_sent = 0;
@@ -7334,9 +7165,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         if ( !client->fallback_to_direct )
         {
-#if NEXT_EXPERIMENTAL
-            packet.has_near_relay_pings = client->near_relay_stats.has_pings;
-#endif // #if NEXT_EXPERIMENTAL
             packet.num_near_relays = client->near_relay_stats.num_relays;
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {
@@ -7626,49 +7454,6 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
     }
 }
 
-#if NEXT_BEACON_ENABLED
-
-void next_client_internal_update_beacon( next_client_internal_t * client )
-{
-    next_client_internal_verify_sentinels( client );
-
-    if ( client->server_address.type == NEXT_ADDRESS_NONE )
-        return;
-
-    const double current_time = next_time();
-
-    if ( client->last_beacon_send_time + 10.0 > current_time )
-        return;
-
-    client->last_beacon_send_time = current_time;
-
-    NextBeaconPacket packet;
-    packet.version = NEXT_BEACON_VERSION;
-    packet.customer_id = next_global_config.customer_id;
-    packet.datacenter_id = 0;
-    packet.user_hash = 0;
-    packet.address_hash = 0;
-    packet.session_id = client->session_id;
-    packet.platform_id = client->client_stats.platform_id;
-    packet.connection_type = client->client_stats.connection_type;
-    packet.enabled = !next_global_config.disable_network_next;
-    packet.upgraded = client->upgraded;
-    packet.next = client->client_stats.next;
-    packet.fallback_to_direct = client->client_stats.fallback_to_direct;
-
-    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-    int packet_bytes = 0;
-    if ( next_write_packet( NEXT_BEACON_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, NULL, NULL, NULL, NULL ) != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "client failed to write beacon packet" );
-        return;
-    }
-
-    next_platform_socket_send_packet( client->socket, &client->server_address, packet_data, packet_bytes );
-}
-
-#endif // #if NEXT_BEACON_ENABLED
-
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_internal_thread_function( void * context )
 {
     next_client_internal_t * client = (next_client_internal_t*) context;
@@ -7700,10 +7485,6 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_client_inter
             next_client_internal_update_route_manager( client );
 
             next_client_internal_update_upgrade_response( client );
-
-#if NEXT_BEACON_ENABLED
-            next_client_internal_update_beacon( client );
-#endif // #if NEXT_BEACON_ENABLED
 
             quit = next_client_internal_pump_commands( client );
 
@@ -9156,9 +8937,6 @@ struct NextBackendSessionUpdatePacket
     bool client_bandwidth_over_limit;
     bool server_bandwidth_over_limit;
     bool client_ping_timed_out;
-#if NEXT_EXPERIMENTAL
-    bool has_near_relay_pings;
-#endif // #if NEXT_EXPERIMENTAL
     int num_tags;
     uint64_t tags[NEXT_MAX_TAGS];
     float direct_min_rtt;
@@ -9243,21 +9021,16 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, client_bandwidth_over_limit );
         serialize_bool( stream, server_bandwidth_over_limit );
         serialize_bool( stream, client_ping_timed_out );
-#if NEXT_EXPERIMENTAL
-        serialize_bool( stream, has_near_relay_pings );
-#endif // #if NEXT_EXPERIMENTAL
 
         bool has_tags = Stream::IsWriting && slice_number == 0 && num_tags > 0;
         bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
         bool has_out_of_order_packets = Stream::IsWriting && ( packets_out_of_order_client_to_server + packets_out_of_order_server_to_client ) > 0;
 
         serialize_bool( stream, has_tags );
-#if !NEXT_EXPERIMENTAL
         bool has_flags = false;
         bool has_user_flags = false;
         serialize_bool( stream, has_flags );
         serialize_bool( stream, has_user_flags );
-#endif // #if !NEXT_EXPERIMENTAL
         serialize_bool( stream, has_lost_packets );
         serialize_bool( stream, has_out_of_order_packets );
 
@@ -9288,14 +9061,9 @@ struct NextBackendSessionUpdatePacket
         for ( int i = 0; i < num_near_relays; ++i )
         {
             serialize_uint64( stream, near_relay_ids[i] );
-#if NEXT_EXPERIMENTAL
-            if ( has_near_relay_pings )
-#endif // #if NEXT_EXPERIMENTAL
-            {
-                serialize_int( stream, near_relay_rtt[i], 0, 255 );
-                serialize_int( stream, near_relay_jitter[i], 0, 255 );
-                serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
-            }
+            serialize_int( stream, near_relay_rtt[i], 0, 255 );
+            serialize_int( stream, near_relay_jitter[i], 0, 255 );
+            serialize_int( stream, near_relay_packet_loss[i], 0, 100 );
         }
 
         if ( next )
@@ -9351,9 +9119,6 @@ struct next_session_entry_t
     bool stats_fallback_to_direct;
     bool stats_client_bandwidth_over_limit;
     bool stats_server_bandwidth_over_limit;
-#if NEXT_EXPERIMENTAL
-    bool stats_has_near_relay_pings;
-#endif // #if NEXT_EXPERIMENTAL
     int stats_platform_id;
     int stats_connection_type;
     float stats_next_kbps_up;
@@ -9418,9 +9183,6 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(8)
 
-#if NEXT_EXPERIMENTAL
-    bool update_dont_ping_near_relays;
-#endif // #if NEXT_EXPERIMENTAL
     bool update_near_relays_changed;
     int update_num_near_relays;
 
@@ -9954,9 +9716,6 @@ struct NextBackendSessionResponsePacket
     bool committed;
     bool has_debug;
     char debug[NEXT_MAX_SESSION_DEBUG];
-#if NEXT_EXPERIMENTAL
-    bool dont_ping_near_relays;
-#endif // #if NEXT_EXPERIMENTAL
     bool exclude_near_relays;
     bool near_relay_excluded[NEXT_MAX_NEAR_RELAYS];
     bool high_frequency_pings;
@@ -10015,22 +9774,16 @@ struct NextBackendSessionResponsePacket
             serialize_string( stream, debug, NEXT_MAX_SESSION_DEBUG );
         }
 
-#if NEXT_EXPERIMENTAL
-        serialize_bool( stream, dont_ping_near_relays );
-        if ( !dont_ping_near_relays )
-#endif // #if NEXT_EXPERIMENTAL
+        serialize_bool( stream, exclude_near_relays );
+        if ( exclude_near_relays )
         {
-            serialize_bool( stream, exclude_near_relays );
-            if ( exclude_near_relays )
+            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
             {
-                for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-                {
-                    serialize_bool( stream, near_relay_excluded[i] );
-                }
+                serialize_bool( stream, near_relay_excluded[i] );
             }
-
-            serialize_bool( stream, high_frequency_pings );
         }
+
+        serialize_bool( stream, high_frequency_pings );
 
         return true;
     }
@@ -11364,9 +11117,6 @@ void next_server_internal_update_route( next_server_internal_t * server )
         {
             NextRouteUpdatePacket packet;
             packet.sequence = entry->update_sequence;
-#if NEXT_EXPERIMENTAL
-            packet.dont_ping_near_relays = entry->update_dont_ping_near_relays;
-#endif // #if NEXT_EXPERIMENTAL
             packet.near_relays_changed = entry->update_near_relays_changed;
             if ( packet.near_relays_changed )
             {
@@ -11769,9 +11519,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 memcpy( entry->update_tokens, packet.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * size_t(packet.num_tokens) );
             }
 
-#if NEXT_EXPERIMENTAL
-            entry->update_dont_ping_near_relays = packet.dont_ping_near_relays;
-#endif // #if NEXT_EXPERIMENTAL
             entry->update_near_relays_changed = packet.near_relays_changed;
             if ( packet.near_relays_changed )
             {
@@ -12211,42 +11958,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
-#if NEXT_BEACON_ENABLED
-
-    // beacon packet
-
-    if ( packet_id == NEXT_BEACON_PACKET )
-    {
-        if ( next_beacon_address.type == NEXT_ADDRESS_NONE )
-            return;
-
-        uint64_t packet_sequence = 0;
-
-        NextBeaconPacket packet;
-        if ( next_read_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, NULL, NULL ) != packet_id )
-            return;
-
-        if ( packet.customer_id != next_global_config.customer_id )
-            return;
-
-        next_session_entry_t * session = next_session_manager_find_by_address( server->session_manager, from );
-        if ( session && packet.session_id != session->session_id )
-            return;
-
-        char address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_address_to_string( from, address_string );
-        packet.address_hash = next_hash_string( address_string );
-
-        if ( session )
-            packet.user_hash = session->user_hash;
-
-        packet.datacenter_id = server->datacenter_id;
-
-        next_server_internal_send_packet( server, &next_beacon_address, NEXT_BEACON_PACKET, &packet );
-    }
-
-#endif // #if NEXT_BEACON_ENABLED
-
     // ----------------------------------
     // ENCRYPTED CLIENT TO SERVER PACKETS
     // ----------------------------------
@@ -12344,29 +12055,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_next_rtt = packet.next_rtt;
             session->stats_next_jitter = packet.next_jitter;
             session->stats_next_packet_loss = packet.next_packet_loss;
-#if NEXT_EXPERIMENTAL
-            session->stats_has_near_relay_pings = packet.has_near_relay_pings;
-#endif // #if NEXT_EXPERIMENTAL            
             session->stats_num_near_relays = packet.num_near_relays;
             for ( int i = 0; i < packet.num_near_relays; ++i )
             {
                 session->stats_near_relay_ids[i] = packet.near_relay_ids[i];
-#if NEXT_EXPERIMENTAL
-                if ( packet.has_near_relay_pings )
-#endif // #if NEXT_EXPERIMENTAL
-                {
-                    session->stats_near_relay_rtt[i] = packet.near_relay_rtt[i];
-                    session->stats_near_relay_jitter[i] = packet.near_relay_jitter[i];
-                    session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
-                }
-#if NEXT_EXPERIMENTAL
-                else
-                {
-                    session->stats_near_relay_rtt[i] = 0;
-                    session->stats_near_relay_jitter[i] = 0;
-                    session->stats_near_relay_packet_loss[i] = 0;
-                }
-#endif // #if NEXT_EXPERIMENTAL
+                session->stats_near_relay_rtt[i] = packet.near_relay_rtt[i];
+                session->stats_near_relay_jitter[i] = packet.near_relay_jitter[i];
+                session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
             }
             session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
@@ -12927,9 +12622,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.direct_prime_rtt = session->stats_direct_prime_rtt;
             packet.direct_jitter = session->stats_direct_jitter;
             packet.direct_packet_loss = session->stats_direct_packet_loss;
-#if NEXT_EXPERIMENTAL
-            packet.has_near_relay_pings = session->stats_has_near_relay_pings;
-#endif // #if NEXT_EXPERIMENTAL
             packet.num_near_relays = session->stats_num_near_relays;
             for ( int j = 0; j < packet.num_near_relays; ++j )
             {
@@ -13698,738 +13390,6 @@ void next_mutex_destroy( next_mutex_t * mutex )
     next_platform_mutex_t * platform_mutex = (next_platform_mutex_t*) mutex;
     next_platform_mutex_destroy( platform_mutex );
 }
-
-// ---------------------------------------------------------------
-
-#if NEXT_EXPERIMENTAL
-
-uint64_t next_customer_id()
-{
-    return next_global_config.customer_id;
-}
-
-const uint8_t * next_customer_private_key()
-{
-    return next_global_config.customer_private_key;
-}
-
-const uint8_t * next_customer_public_key()
-{
-    return next_global_config.customer_public_key;
-}
-
-NEXT_EXPORT_FUNC void next_generate_ping_token( uint64_t customer_id, const uint8_t * customer_private_key, const next_address_t * client_address, const char * datacenter_name, const char * user_id, uint8_t * out_ping_token_data, int * out_ping_token_bytes )
-{
-    next_assert( customer_private_key );
-    next_assert( client_address );
-    next_assert( datacenter_name );
-    next_assert( user_id );
-    next_assert( out_ping_token_data );
-    next_assert( out_ping_token_bytes );
-
-    *out_ping_token_bytes = 0;
-
-    const uint8_t version = 0;
-
-    uint64_t timestamp = (uint64_t) time( NULL );
-
-    uint64_t datacenter_id = next_datacenter_id( datacenter_name );
-
-    uint64_t user_hash = ( user_id != NULL ) ? next_hash_string( user_id ) : 0;
-
-    next_assert( client_address->type == NEXT_ADDRESS_IPV4 );
-    
-    uint8_t * p = out_ping_token_data;
-
-    next_write_uint8( &p, version );
-    next_write_uint64( &p, timestamp );
-    next_write_uint64( &p, customer_id );    
-    next_write_uint64( &p, datacenter_id );
-    next_write_uint64( &p, user_hash );
-
-    *out_ping_token_bytes = int( p - out_ping_token_data );
-
-    next_crypto_sign_state_t state;
-    next_crypto_sign_init( &state );
-    next_crypto_sign_update( &state, client_address->data.ipv4, 4 );
-    next_crypto_sign_update( &state, out_ping_token_data, *out_ping_token_bytes );
-    next_crypto_sign_final_create( &state, out_ping_token_data + *out_ping_token_bytes, NULL, customer_private_key );
-    *out_ping_token_bytes += NEXT_CRYPTO_SIGN_BYTES;
-
-    next_assert( *out_ping_token_bytes < NEXT_MAX_PING_TOKEN_BYTES );
-}
-
-bool next_validate_ping_token( uint64_t customer_id, const uint8_t * customer_public_key, const next_address_t * client_address, const uint8_t * ping_token_data, int ping_token_bytes )
-{
-    next_assert( customer_public_key );
-    next_assert( client_address );
-    next_assert( ping_token_data );
-
-    if ( ping_token_bytes < 0 )
-        return false;
-
-    if ( ping_token_bytes > NEXT_MAX_PING_TOKEN_BYTES )
-        return false;
-
-    if ( ping_token_bytes < int( 1 + NEXT_CRYPTO_SIGN_BYTES ) )
-        return false;
-
-    const uint8_t * p = ping_token_data;
-
-    uint8_t version = next_read_uint8( &p );
-
-    if ( version != 0 )
-        return false;
-
-    const int size = 8 + 8 + 8 + 8;
-
-    if ( ping_token_bytes != int( 1 + size + NEXT_CRYPTO_SIGN_BYTES ) )
-        return false;
-
-    uint64_t token_timestamp = next_read_uint64( &p );
-    uint64_t token_customer_id = next_read_uint64( &p );
-
-    const uint64_t timestamp_range_finish = uint64_t( time( NULL ) );
-    const uint64_t timestamp_range_start = timestamp_range_finish - 10;
-
-    if ( token_timestamp < timestamp_range_start )
-        return false;
-
-    if ( token_timestamp > timestamp_range_finish )
-        return false;
-
-    if ( token_customer_id != customer_id )
-        return false;
-
-    next_crypto_sign_state_t state;
-    next_crypto_sign_init( &state );
-    next_crypto_sign_update( &state, client_address->data.ipv4, 4 );
-    next_crypto_sign_update( &state, ping_token_data, size_t(ping_token_bytes) - NEXT_CRYPTO_SIGN_BYTES );
-    if ( next_crypto_sign_final_verify( &state, ping_token_data + ping_token_bytes - NEXT_CRYPTO_SIGN_BYTES, customer_public_key ) != 0 )
-        return false;
-    
-    return true;
-}
-
-uint64_t next_ping_token_datacenter_id( const uint8_t * ping_token_data, int ping_token_bytes )
-{
-    next_assert( ping_token_data );
-
-    if ( ping_token_bytes < 0 )
-        return 0;
-
-    if ( ping_token_bytes > NEXT_MAX_PING_TOKEN_BYTES )
-        return 0;
-
-    if ( ping_token_bytes < int( 1 + NEXT_CRYPTO_SIGN_BYTES ) )
-        return 0;
-
-    const uint8_t * p = ping_token_data;
-
-    uint8_t version = next_read_uint8( &p );
-
-    if ( version != 0 )
-        return 0;
-
-    const int size = 8 + 8 + 8 + 8;
-
-    if ( ping_token_bytes < int( 1 + size + NEXT_CRYPTO_SIGN_BYTES ) )
-        return 0;
-
-    uint64_t token_timestamp = next_read_uint64( &p );
-    uint64_t token_customer_id = next_read_uint64( &p );
-    uint64_t token_datacenter_id = next_read_uint64( &p );
-
-    (void) token_timestamp;
-    (void) token_customer_id;    
-
-    return token_datacenter_id;
-}
-
-uint64_t next_ping_token_timestamp( const uint8_t * ping_token_data, int ping_token_bytes )
-{
-    next_assert( ping_token_data );
-
-    if ( ping_token_bytes < 0 )
-        return 0;
-
-    if ( ping_token_bytes > NEXT_MAX_PING_TOKEN_BYTES )
-        return 0;
-
-    if ( ping_token_bytes < int( 1 + NEXT_CRYPTO_SIGN_BYTES ) )
-        return 0;
-
-    const uint8_t * p = ping_token_data;
-
-    uint8_t version = next_read_uint8( &p );
-
-    if ( version != 0 )
-        return 0;
-
-    const int size = 8 + 8 + 8 + 8;
-
-    if ( ping_token_bytes < int( 1 + size + NEXT_CRYPTO_SIGN_BYTES ) )
-        return 0;
-
-    uint64_t token_timestamp = next_read_uint64( &p );
-    uint64_t token_customer_id = next_read_uint64( &p );
-    uint64_t token_datacenter_id = next_read_uint64( &p );
-
-    (void) token_timestamp;
-    (void) token_customer_id;    
-    (void) token_datacenter_id;    
-
-    return token_timestamp;
-}
-
-// ---------------------------------------------------------------
-
-#define NEXT_PING_SYSTEM_PING_REQUEST_PACKET        0
-#define NEXT_PING_SYSTEM_PING_RESPONSE_PACKET       1
-#define NEXT_PING_SYSTEM_RESULTS_REQUEST_PACKET     2
-#define NEXT_PING_SYSTEM_RESULTS_RESPONSE_PACKET    3
-
-struct next_ping_token_data_t
-{
-    uint8_t token_data[NEXT_MAX_PING_TOKEN_BYTES];
-    int token_bytes;
-    uint64_t datacenter_id;
-    uint64_t token_timestamp;
-    double next_ping_time;
-    bool has_response;
-    bool processed;
-    int num_relays;
-    uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
-    next_address_t relay_addresses[NEXT_MAX_NEAR_RELAYS];
-};
-
-struct next_ping_t
-{
-    NEXT_DECLARE_SENTINEL(0)
-
-    void * context;
-    int state;
-    double start_time;
-
-    NEXT_DECLARE_SENTINEL(1)
-
-    bool resolve_hostname_finished;
-    next_address_t resolve_hostname_result;
-    next_platform_mutex_t resolve_hostname_mutex;
-    next_platform_thread_t * resolve_hostname_thread;
-
-    NEXT_DECLARE_SENTINEL(2)
-
-    next_platform_mutex_t ping_mutex;
-    next_platform_thread_t * ping_thread;
-    next_platform_socket_t * socket;
-    next_address_t backend_address;
-    bool quit;
-
-    NEXT_DECLARE_SENTINEL(3)
-
-    int num_tokens;
-    next_ping_token_data_t token_data[NEXT_MAX_PING_TOKENS];
-
-    NEXT_DECLARE_SENTINEL(4)
-};
-
-void next_ping_initialize_sentinels( next_ping_t * ping )
-{
-    (void) ping;
-    next_assert( ping );
-    NEXT_INITIALIZE_SENTINEL( ping, 0 )
-    NEXT_INITIALIZE_SENTINEL( ping, 1 )
-    NEXT_INITIALIZE_SENTINEL( ping, 2 )
-    NEXT_INITIALIZE_SENTINEL( ping, 3 )
-    NEXT_INITIALIZE_SENTINEL( ping, 4 )
-}
-
-void next_ping_verify_sentinels( next_ping_t * ping )
-{
-    (void) ping;
-    next_assert( ping );
-    NEXT_VERIFY_SENTINEL( ping, 0 )
-    NEXT_VERIFY_SENTINEL( ping, 1 )
-    NEXT_VERIFY_SENTINEL( ping, 2 )
-    NEXT_VERIFY_SENTINEL( ping, 3 )
-    NEXT_VERIFY_SENTINEL( ping, 4 )
-}
-
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_resolve_hostname_thread_function( void * context );
-
-next_ping_t * next_ping_create( void * context, const char * bind_address_string, const uint8_t ** ping_token_data, const int * ping_token_bytes, int num_ping_tokens )
-{
-    next_assert( ping_token_data );
-    next_assert( ping_token_bytes );
-    next_assert( num_ping_tokens > 0 );
-    next_assert( num_ping_tokens <= NEXT_MAX_PING_TOKENS );
-
-    next_address_t bind_address;
-    if ( next_address_parse( &bind_address, bind_address_string ) != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "ping failed to parse bind address: %s", bind_address_string );
-        return NULL;
-    }
-
-    next_ping_t * ping = (next_ping_t*) next_malloc( context, sizeof(next_ping_t) );
-    if ( !ping ) 
-        return NULL;
-
-    memset( ping, 0, sizeof(next_ping_t) );
-
-    next_ping_initialize_sentinels( ping );
-
-    ping->start_time = next_time();
-    ping->state = NEXT_PING_STATE_RESOLVING_HOSTNAME;
-    ping->num_tokens = num_ping_tokens;
-    for ( int i = 0; i < num_ping_tokens; ++i )
-    {
-        memset( &ping->token_data[i], 0, sizeof(next_ping_token_data_t) );
-        next_assert( ping_token_bytes[i] > 0 );
-        next_assert( ping_token_bytes[i] < NEXT_MAX_PING_TOKEN_BYTES );
-        ping->token_data[i].token_bytes = ping_token_bytes[i];
-        memcpy( ping->token_data[i].token_data, ping_token_data[i], ping_token_bytes[i] );
-        ping->token_data[i].datacenter_id = next_ping_token_datacenter_id( ping_token_data[i], ping_token_bytes[i] );
-        ping->token_data[i].token_timestamp = next_ping_token_timestamp( ping_token_data[i], ping_token_bytes[i] );
-    }
-
-    next_printf( NEXT_LOG_LEVEL_INFO, "ping loaded %d tokens", num_ping_tokens );
-
-    ping->socket = next_platform_socket_create( ping->context, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.1f, next_global_config.socket_send_buffer_size, next_global_config.socket_receive_buffer_size, true );
-    if ( ping->socket == NULL )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create ping socket" );
-        next_ping_destroy( ping );
-        return NULL;
-    }
-
-    int result = next_platform_mutex_create( &ping->resolve_hostname_mutex );
-    
-    if ( result != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create resolve hostname mutex" );
-        next_ping_destroy( ping );
-        return NULL;
-    }
-
-    ping->resolve_hostname_thread = next_platform_thread_create( ping->context, next_ping_resolve_hostname_thread_function, ping );
-    if ( !ping->resolve_hostname_thread )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create resolve hostname thread" );
-        return NULL;
-    }
-
-    result = next_platform_mutex_create( &ping->ping_mutex );
-    
-    if ( result != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create ping mutex" );
-        next_ping_destroy( ping );
-        return NULL;
-    }
-
-    return ping;
-}
-
-void next_ping_destroy( next_ping_t * ping )
-{
-    next_assert( ping );
-
-    next_ping_verify_sentinels( ping );
-
-    next_platform_mutex_acquire( &ping->ping_mutex );
-    ping->quit = true;
-    next_platform_mutex_release( &ping->ping_mutex );
-
-    if ( ping->resolve_hostname_thread )
-    {
-        next_platform_thread_destroy( ping->resolve_hostname_thread );
-    }
-
-    if ( ping->ping_thread )
-    {
-        next_platform_thread_join( ping->ping_thread );
-
-        next_platform_thread_destroy( ping->ping_thread );
-    }
-
-    if ( ping->socket )
-    {
-        next_platform_socket_destroy( ping->socket );
-    }
-
-    next_platform_mutex_destroy( &ping->ping_mutex );
-    next_platform_mutex_destroy( &ping->resolve_hostname_mutex );
-
-    clear_and_free( ping->context, ping, sizeof(next_ping_t) );
-}
-
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_resolve_hostname_thread_function( void * context )
-{
-    next_assert( context );
-
-    next_ping_t * ping = (next_ping_t*) context;
-
-    const char * hostname = next_global_config.ping_backend_hostname;
-    const char * port = NEXT_PING_BACKEND_PORT;
-    const char * override_port = next_platform_getenv( "NEXT_PING_BACKEND_PORT" );
-    if ( override_port )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "override port: '%s'", override_port );
-        port = override_port;
-    }
-
-    next_printf( NEXT_LOG_LEVEL_INFO, "ping resolving backend hostname '%s'", hostname );
-
-    next_address_t address;
-
-    bool success = false;
-
-    for ( int i = 0; i < 10; ++i )
-    {
-        if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
-        {
-            next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
-            success = true;
-            break;
-        }
-        else
-        {
-            next_printf( NEXT_LOG_LEVEL_WARN, "ping failed to resolve hostname (%d)", i );
-        }
-    }
-
-    if ( success )
-    {
-        next_platform_mutex_guard( &ping->resolve_hostname_mutex );
-        ping->resolve_hostname_finished = true;
-        ping->resolve_hostname_result = address;
-    }
-    else 
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "ping failed to resolve backend hostname: %s", hostname );
-        next_platform_mutex_guard( &ping->resolve_hostname_mutex );
-        ping->resolve_hostname_finished = true;
-        memset( &ping->resolve_hostname_result, 0, sizeof(next_address_t) );
-        NEXT_PLATFORM_THREAD_RETURN();
-    }
-
-    NEXT_PLATFORM_THREAD_RETURN();
-}
-
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_thread_function( void * context );
-
-void next_ping_update_resolve_hostname( next_ping_t * ping )
-{
-    if ( ping->state != NEXT_PING_STATE_RESOLVING_HOSTNAME )
-        return;
-
-    bool finished = false;
-    next_address_t hostname_result;
-    memset( &hostname_result, 0, sizeof(next_address_t) );
-    {
-        next_platform_mutex_guard( &ping->resolve_hostname_mutex );
-        finished = ping->resolve_hostname_finished;
-        hostname_result = ping->resolve_hostname_result;
-    }
-
-    if ( !finished )
-        return;
-
-    next_platform_thread_join( ping->resolve_hostname_thread );
-
-    next_platform_thread_destroy( ping->resolve_hostname_thread );
-
-    ping->resolve_hostname_thread = NULL;
-
-    if ( hostname_result.type == NEXT_ADDRESS_NONE )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "ping could not resolve hostname" );
-        ping->state = NEXT_PING_STATE_ERROR;
-    }
-
-    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-
-    next_printf( NEXT_LOG_LEVEL_INFO, "ping hostname resolved to %s", next_address_to_string( &hostname_result, address_buffer ) );
-
-    ping->backend_address = hostname_result;
-
-    ping->state = NEXT_PING_STATE_SENDING_PINGS;
-
-    const double current_time = next_time();
-    next_platform_mutex_acquire( &ping->ping_mutex );
-    for ( int i = 0; i < ping->num_tokens; ++i )
-    {
-        double offset = double(i+1) / double(ping->num_tokens);
-        ping->token_data[i].next_ping_time = current_time + offset;
-    }
-    next_platform_mutex_release( &ping->ping_mutex );
-
-    int result = next_platform_mutex_create( &ping->ping_mutex );
-    
-    if ( result != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create ping mutex" );
-        ping->state = NEXT_PING_STATE_ERROR;
-        return;
-    }
-
-    ping->ping_thread = next_platform_thread_create( ping->context, next_ping_thread_function, ping );
-    if ( !ping->ping_thread )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "ping could not create ping thread" );
-        ping->state = NEXT_PING_STATE_ERROR;
-        return;
-    }
-}
-
-static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_ping_thread_function( void * context )
-{
-    next_printf( NEXT_LOG_LEVEL_INFO, "ping thread started" );
-
-    next_assert( context );
-
-    next_ping_t * ping = (next_ping_t*) context;
-
-    while ( true )
-    {
-        uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
-
-        next_assert( ( size_t(packet_data) % 4 ) == 0 );
-
-        next_address_t from;
-        
-        int packet_bytes = next_platform_socket_receive_packet( ping->socket, &from, packet_data, NEXT_MAX_PACKET_BYTES );
-
-        // quick if asked to
-
-        next_platform_mutex_acquire( &ping->ping_mutex );
-        bool quit = ping->quit;
-        next_platform_mutex_release( &ping->ping_mutex );
-
-        if ( quit )
-            break;
-
-        // stop processing packets once the ping duration has elapsed
-
-        if ( next_time() >= ping->start_time + NEXT_PING_DURATION )
-            break;
-
-        // process the packet
-
-        next_assert( packet_bytes >= 0 );
-
-        if ( packet_bytes <= 1 )
-            continue;
-
-        int packet_type = packet_data[0];
-
-        switch ( packet_type )
-        {
-            case NEXT_PING_SYSTEM_PING_RESPONSE_PACKET:
-            {
-                next_crypto_sign_state_t state;
-                next_crypto_sign_init( &state );
-                next_crypto_sign_update( &state, packet_data, size_t(packet_bytes) - NEXT_CRYPTO_SIGN_BYTES );
-                if ( next_crypto_sign_final_verify( &state, packet_data + packet_bytes - NEXT_CRYPTO_SIGN_BYTES, next_ping_backend_public_key ) != 0 )
-                {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet did not pass signature check" );
-                    continue;
-                }
-
-                const uint8_t * p = packet_data + 1;
-
-                uint8_t packet_version = next_read_uint8( &p );
-
-                if ( packet_version != 0 )
-                {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet had unknown version %d\n", packet_version );
-                    continue;
-                }
-
-                uint64_t packet_response_timestamp = next_read_uint64( &p );
-                uint64_t packet_token_timestamp = next_read_uint64( &p );
-                uint64_t packet_datacenter_id = next_read_uint64( &p );
-                uint32_t packet_num_relays = next_read_uint32( &p );
-
-                if ( packet_num_relays == 0 )
-                {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet has no relays" );
-                    continue;
-                }
-
-                if ( packet_num_relays > NEXT_MAX_NEAR_RELAYS )
-                {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet has too many relays" );
-                    continue;
-                }
-
-                // look up ping token index by datacenter id
-
-                bool already_received = false;
-                int datacenter_index = -1;
-                next_platform_mutex_acquire( &ping->ping_mutex );
-                for ( int i = 0; i < ping->num_tokens; ++i )
-                {
-                    if ( ping->token_data[i].datacenter_id == packet_datacenter_id )
-                    {
-                        if ( ping->token_data[i].has_response )
-                        {
-                            already_received = true;
-                        }
-                        else
-                        {
-                            datacenter_index = i;
-                        }
-                        break;
-                    }
-                }
-                next_platform_mutex_release( &ping->ping_mutex );
-
-                if ( already_received )
-                {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet already received for datacenter %d [%" PRIx64 "]", datacenter_index, packet_datacenter_id );
-                    continue;
-                }
-
-                if ( datacenter_index == -1 )
-                {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet had unknown datacenter %" PRIx64, packet_datacenter_id );
-                    continue;
-                }
-
-                if ( packet_token_timestamp != ping->token_data[datacenter_index].token_timestamp )
-                {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet token timestamp mismatch" );
-                    continue;
-                }
-
-                if ( packet_response_timestamp < ping->token_data[datacenter_index].token_timestamp || packet_response_timestamp > ping->token_data[datacenter_index].token_timestamp + NEXT_PING_DURATION )
-                {
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "ping response packet has bad response timestamp" );
-                    continue;
-                }
-
-                // read in near relay data from the packet
-
-                uint64_t packet_relay_ids[NEXT_MAX_NEAR_RELAYS];
-                next_address_t packet_relay_addresses[NEXT_MAX_NEAR_RELAYS];
-                for ( int i = 0; i < int(packet_num_relays); ++i )
-                {
-                    packet_relay_ids[i] = next_read_uint64( &p );
-                    next_read_address_variable( &p, &packet_relay_addresses[i] );
-                }
-
-                // validation has passed
-
-                next_printf( NEXT_LOG_LEVEL_INFO, "ping received ping response for datacenter %d [%" PRIx64 "]", datacenter_index, packet_datacenter_id );
-
-                // stash the ping response data and mark the ping response as processed
-
-                next_platform_mutex_acquire( &ping->ping_mutex );
-                ping->token_data[datacenter_index].has_response = true;
-                ping->token_data[datacenter_index].num_relays = packet_num_relays;
-                for ( int i = 0; i < int(packet_num_relays); ++i )
-                {
-                    ping->token_data[datacenter_index].relay_ids[i] = packet_relay_ids[i];
-                    ping->token_data[datacenter_index].relay_addresses[i] = packet_relay_addresses[i];
-                }
-                next_platform_mutex_release( &ping->ping_mutex );
-            }
-            break;
-        }
-    }
-
-    next_printf( NEXT_LOG_LEVEL_INFO, "ping thread finished" );
-
-    NEXT_PLATFORM_THREAD_RETURN();
-}
-
-void next_ping_update_send_ping_requests( next_ping_t * ping )
-{
-    if ( ping->state != NEXT_PING_STATE_SENDING_PINGS )
-        return;
-
-    const double current_time = next_time();
-
-    for ( int i = 0; i < ping->num_tokens; ++i )
-    {
-        next_platform_mutex_acquire( &ping->ping_mutex );
-        bool has_response = ping->token_data[i].has_response;
-        double next_ping_time = ping->token_data[i].next_ping_time;
-        next_platform_mutex_release( &ping->ping_mutex );
-
-        if ( !has_response && next_ping_time <= current_time )
-        {
-            // todo: this should become debug
-            next_printf( NEXT_LOG_LEVEL_INFO, "ping sent ping request for datacenter %d [%" PRIx64 "]", i, ping->token_data[i].datacenter_id );
-
-            uint8_t packet_data[1+NEXT_MAX_PING_TOKEN_BYTES];
-
-            packet_data[0] = NEXT_PING_SYSTEM_PING_REQUEST_PACKET;
-            memcpy( packet_data + 1, ping->token_data[i].token_data, ping->token_data[i].token_bytes );
-
-            next_platform_socket_send_packet( ping->socket, &ping->backend_address, packet_data, 1 + ping->token_data[i].token_bytes );
-
-            next_platform_mutex_acquire( &ping->ping_mutex );
-            ping->token_data[i].next_ping_time += 1.0;
-            next_platform_mutex_release( &ping->ping_mutex );
-        }
-    }
-}
-
-void next_ping_update_process_ping_responses( next_ping_t * ping )
-{
-    next_platform_mutex_acquire( &ping->ping_mutex );
-    for ( int i = 0; i < ping->num_tokens; ++i )
-    {
-        if ( ping->token_data[i].has_response && !ping->token_data[i].processed )
-        {
-            printf( "processing ping response\n" );
-
-            // todo
-            char buffer[1024];
-            for ( int j = 0; j < int(ping->num_tokens); ++j )
-            {
-                printf( "%d: relay id = %" PRIx64 "\n", j, ping->token_data[i].relay_ids[j] );
-                printf( "%d: relay address = %s\n", j, next_address_to_string( &ping->token_data[i].relay_addresses[j], buffer ) );
-            }
-
-            ping->token_data[i].processed = true;
-        }
-    }
-    next_platform_mutex_release( &ping->ping_mutex );
-}
-
-void next_ping_update( next_ping_t * ping )
-{
-    next_assert( ping );
-
-    next_ping_verify_sentinels( ping );
-
-    if ( ping->state == NEXT_PING_STATE_ERROR )
-        return;
-
-    if ( ping->start_time < next_time() - NEXT_PING_DURATION && ping->state != NEXT_PING_STATE_FINISHED && ping->state != NEXT_PING_STATE_ERROR )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "ping finished" );
-        ping->state = NEXT_PING_STATE_FINISHED;
-    }
-
-    next_ping_update_resolve_hostname( ping );
-
-    next_ping_update_send_ping_requests( ping );
-
-    next_ping_update_process_ping_responses( ping );
-}
-
-int next_ping_state( next_ping_t * ping )
-{
-    return ping->state;
-}
-
-#endif // #if NEXT_EXPERIMENTAL
 
 // ---------------------------------------------------------------
 
@@ -15912,9 +14872,6 @@ static void test_packets()
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
         in.next_packet_loss = 0.01f;
-#if NEXT_EXPERIMENTAL
-        in.has_near_relay_pings = true;
-#endif // #if NEXT_EXPERIMENTAL
         in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
         for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
         {
@@ -15957,60 +14914,6 @@ static void test_packets()
         next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
     }
-
-#if NEXT_EXPERIMENTAL
-
-    // client stats packet (without near relay pings)
-    {
-        static NextClientStatsPacket in, out;
-        in.reported = true;
-        in.fallback_to_direct = true;
-        in.platform_id = NEXT_PLATFORM_WINDOWS;
-        in.connection_type = NEXT_CONNECTION_TYPE_CELLULAR;
-        in.direct_rtt = 50.0f;
-        in.direct_jitter = 10.0f;
-        in.direct_packet_loss = 0.1f;
-        in.next = true;
-        in.committed = true;
-        in.next_rtt = 50.0f;
-        in.next_jitter = 5.0f;
-        in.next_packet_loss = 0.01f;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-        {
-            in.near_relay_ids[i] = uint64_t(10000000) + i;
-        }
-        in.packets_lost_server_to_client = 1000;
-        uint64_t in_sequence = 1000;
-        uint64_t out_sequence = 0;
-        int packet_bytes = 0;
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-        next_check( next_write_packet( NEXT_CLIENT_STATS_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
-        next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_CLIENT_STATS_PACKET );
-        next_check( in_sequence == out_sequence + 1 );
-        next_check( in.reported == out.reported );
-        next_check( in.fallback_to_direct == out.fallback_to_direct );
-        next_check( in.platform_id == out.platform_id );
-        next_check( in.connection_type == out.connection_type );
-        next_check( in.direct_rtt == out.direct_rtt );
-        next_check( in.direct_jitter == out.direct_jitter );
-        next_check( in.direct_packet_loss == out.direct_packet_loss );
-        next_check( in.next == out.next );
-        next_check( in.committed == out.committed );
-        next_check( in.next_rtt == out.next_rtt );
-        next_check( in.next_jitter == out.next_jitter );
-        next_check( in.next_packet_loss == out.next_packet_loss );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-        {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-        }
-        next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
-        next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
-    }
-
-#endif // #if NEXT_EXPERIMENTAL
 
     // route update packet (direct)
     {
@@ -16167,114 +15070,6 @@ static void test_packets()
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
-
-#if NEXT_EXPERIMENTAL
-
-    // route update packet (direct, don't ping near relays)
-    {
-        static NextRouteUpdatePacket in, out;
-
-        in.sequence = 100000;
-        in.dont_ping_near_relays = true;
-        in.update_type = NEXT_UPDATE_TYPE_DIRECT;
-        in.packets_sent_server_to_client = 11000;
-        in.packets_lost_client_to_server = 10000;
-        in.packets_out_of_order_client_to_server = 9000;
-        in.jitter_client_to_server = 0.1f;
-        in.has_debug = true;
-        strcpy( in.debug, "debug time" );
-
-        uint64_t in_sequence = 1000;
-        uint64_t out_sequence = 0;
-        int packet_bytes = 0;
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
-        next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
-
-        next_check( in_sequence == out_sequence + 1 );
-        next_check( in.sequence == out.sequence );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
-        next_check( in.update_type == out.update_type );
-        next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
-        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
-        next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
-        next_check( in.jitter_client_to_server == out.jitter_client_to_server );
-        next_check( in.has_debug == out.has_debug );
-        next_check( strcmp( in.debug, out.debug ) == 0 );
-    }
-
-    // route update packet (route, don't ping near relays)
-    {
-        static NextRouteUpdatePacket in, out;
-        in.sequence = 100000;
-        in.dont_ping_near_relays = true;
-        in.update_type = NEXT_UPDATE_TYPE_ROUTE;
-        in.multipath = true;
-        in.committed = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS );
-        in.packets_sent_server_to_client = 11000;
-        in.packets_lost_client_to_server = 10000;
-        in.packets_out_of_order_client_to_server = 9000;
-        in.jitter_client_to_server = 0.25f;
-
-        uint64_t in_sequence = 1000;
-        uint64_t out_sequence = 0;
-        int packet_bytes = 0;
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
-        next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
-
-        next_check( in_sequence == out_sequence + 1 );
-        next_check( in.sequence == out.sequence );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
-        next_check( in.update_type == out.update_type );
-        next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
-        next_check( in.packets_sent_server_to_client == out.packets_sent_server_to_client );
-        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
-        next_check( in.packets_out_of_order_client_to_server == out.packets_out_of_order_client_to_server );
-        next_check( in.jitter_client_to_server == out.jitter_client_to_server );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
-    }
-
-    // route update packet (continue, dont ping near relays)
-    {
-        static NextRouteUpdatePacket in, out;
-        in.sequence = 100000;
-        in.dont_ping_near_relays = true;
-        in.update_type = NEXT_UPDATE_TYPE_CONTINUE;
-        in.multipath = true;
-        in.committed = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS );
-        in.packets_lost_client_to_server = 10000;
-
-        uint64_t in_sequence = 1000;
-        uint64_t out_sequence = 0;
-        int packet_bytes = 0;
-        static next_replay_protection_t replay_protection;
-        next_replay_protection_reset( &replay_protection );
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key ) == NEXT_OK );
-        next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
-
-        next_check( in_sequence == out_sequence + 1 );
-        next_check( in.sequence == out.sequence );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
-        next_check( in.update_type == out.update_type );
-        next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
-        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
-        next_check( in.high_frequency_pings == out.high_frequency_pings );
-    }
-
-#endif // #if NEXT_EXPERIMENTAL
 
     // route update ack packet
     {
@@ -16756,9 +15551,6 @@ static void test_backend_packets()
         in.direct_packet_loss = 0.1f;
         in.next = true;
         in.committed = true;
-#if NEXT_EXPERIMENTAL
-        in.has_near_relay_pings = true;
-#endif // #if NEXT_EXPERIMENTAL
         in.next_rtt = 5.0f;
         in.next_jitter = 1.5f;
         in.next_packet_loss = 0.0f;
@@ -17149,91 +15941,6 @@ static void test_backend_packets()
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
     }
-
-#if NEXT_EXPERIMENTAL
-
-    // session response packet (route, don't ping near relays)
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        static NextBackendSessionResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.near_relays_changed = false;
-        in.dont_ping_near_relays = true;
-        in.response_type = NEXT_UPDATE_TYPE_ROUTE;
-        in.multipath = true;
-        in.committed = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES );
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
-        {
-            in.session_data[i] = uint8_t(i);
-        }
-        in.exclude_near_relays = true;
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
-        {
-            in.near_relay_excluded[i] = ( i % 2 ) == 0;
-        }
-        in.high_frequency_pings = true;
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
-        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.near_relays_changed == out.near_relays_changed );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
-        next_check( in.response_type == out.response_type );
-        next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 );
-    }
-
-    // session response packet (continue, near relays not changed, don't ping near relays)
-    {
-        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-        next_crypto_sign_keypair( public_key, private_key );
-
-        static NextBackendSessionResponsePacket in, out;
-        in.slice_number = 10000;
-        in.session_id = 1234342431431LL;
-        in.near_relays_changed = false;
-        in.dont_ping_near_relays = true;
-        in.response_type = NEXT_UPDATE_TYPE_CONTINUE;
-        in.multipath = true;
-        in.committed = true;
-        in.num_tokens = NEXT_MAX_TOKENS;
-        next_random_bytes( in.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES );
-        in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
-        for ( int i = 0; i < NEXT_MAX_SESSION_DATA_BYTES; ++i )
-        {
-            in.session_data[i] = uint8_t(i);
-        }
-        in.high_frequency_pings = true;
-
-        int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_SESSION_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
-        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_SESSION_RESPONSE_PACKET );
-
-        next_check( in.slice_number == out.slice_number );
-        next_check( in.session_id == out.session_id );
-        next_check( in.multipath == out.multipath );
-        next_check( in.committed == out.committed );
-        next_check( in.near_relays_changed == out.near_relays_changed );
-        next_check( in.dont_ping_near_relays == out.dont_ping_near_relays );
-        next_check( in.response_type == out.response_type );
-        next_check( in.num_tokens == out.num_tokens );
-        next_check( memcmp( in.tokens, out.tokens, NEXT_MAX_TOKENS * NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 );
-    }
-
-#endif // #if NEXT_EXPERIMENTAL
 }
 
 static void test_relay_manager()
@@ -17949,81 +16656,6 @@ void test_anonymize_address_ipv6()
 
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 
-#if NEXT_BEACON_ENABLED
-
-void test_beacon()
-{
-    uint8_t buffer[NEXT_MAX_PACKET_BYTES];
-
-    static NextBeaconPacket in, out;
-    in.version = NEXT_BEACON_VERSION;
-    in.customer_id = 0x12345678910ULL;
-    in.datacenter_id = 0x12317147141ULL;
-    in.user_hash = 0x5551111222255ULL;
-    in.address_hash = 0x116645234124ULL;
-    in.session_id = 0x123412432141ULL;
-    in.platform_id = NEXT_PLATFORM_LINUX;
-    in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
-    in.enabled = true;
-    in.upgraded = true;
-    in.next = true;
-    in.fallback_to_direct = true;
-
-    int packet_bytes = 0;
-    next_check( next_write_packet( NEXT_BEACON_PACKET, &in, buffer, &packet_bytes, next_signed_packets, NULL, NULL, NULL, NULL ) == NEXT_OK );
-
-    next_check( next_read_packet( buffer, packet_bytes, &out, next_signed_packets, NULL, NULL, NULL, NULL, NULL ) == NEXT_BEACON_PACKET );
-
-    next_check( in.version == out.version );
-    next_check( in.customer_id == out.customer_id );
-    next_check( in.datacenter_id == out.datacenter_id );
-    next_check( in.user_hash == out.user_hash );
-    next_check( in.address_hash == out.address_hash );
-    next_check( in.session_id == out.session_id );
-    next_check( in.platform_id == out.platform_id );
-    next_check( in.connection_type == out.connection_type );
-    next_check( in.enabled == out.enabled );
-    next_check( in.upgraded == out.upgraded );
-    next_check( in.next == out.next );
-    next_check( in.fallback_to_direct == out.fallback_to_direct );
-}
-
-#endif // #if NEXT_BEACON_ENABLED
-
-#if NEXT_EXPERIMENTAL
-
-void test_ping_token()
-{
-    int ping_token_bytes = 0;
-    uint8_t ping_token_data[NEXT_MAX_PING_TOKEN_BYTES];
-
-    uint64_t customer_id = 0x123456;
-    unsigned char customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
-    unsigned char customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
-    next_crypto_sign_keypair( customer_public_key, customer_private_key );
-
-    const char * datacenter_name = "local";
-
-    const char * user_id = "12345";
-
-    next_address_t client_address;
-    next_address_parse( &client_address, "127.0.0.1:50000" );
-
-    next_generate_ping_token( customer_id, customer_private_key, &client_address, datacenter_name, user_id, ping_token_data, &ping_token_bytes );
-
-    bool result = next_validate_ping_token( customer_id, customer_public_key, &client_address, ping_token_data, ping_token_bytes );
-
-    next_check( result );
-
-    uint64_t token_datacenter_id = next_ping_token_datacenter_id( ping_token_data, ping_token_bytes );
-
-    uint64_t expected_datacenter_id = next_datacenter_id( datacenter_name );
-
-    next_check( token_datacenter_id == expected_datacenter_id );
-}
-
-#endif // #if NEXT_EXPERIMENTAL
-
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
@@ -18086,12 +16718,6 @@ void next_test()
 #if defined(NEXT_PLATFORM_HAS_IPV6)
     RUN_TEST( test_anonymize_address_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
-#if NEXT_BEACON_ENABLED
-    RUN_TEST( test_beacon );
-#endif // #if NEXT_BEACON_ENABLED
-#if NEXT_EXPERIMENTAL
-    RUN_TEST( test_ping_token );
-#endif // #if NEXT_EXPERIMENTAL
 }
 
 #ifdef _MSC_VER
