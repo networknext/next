@@ -80,7 +80,7 @@ const NEXT_FLAGS_COUNT = 12
 const NEXT_RELAY_INIT_REQUEST_MAGIC = uint32(0x9083708f)
 const NEXT_RELAY_INIT_REQUEST_VERSION = 0
 const NEXT_RELAY_INIT_RESPONSE_VERSION = 0
-const NEXT_RELAY_UPDATE_REQUEST_VERSION = 0
+const NEXT_RELAY_UPDATE_REQUEST_VERSION = 5
 const NEXT_RELAY_UPDATE_RESPONSE_VERSION = 0
 const NEXT_MAX_RELAY_ADDRESS_LENGTH = 256
 const NEXT_RELAY_TOKEN_BYTES = 32
@@ -227,7 +227,9 @@ type NextBackendSessionUpdatePacket struct {
 	Tags                            [NEXT_MAX_TAGS]uint64
 	Flags                           uint32
 	UserFlags                       uint64
-	DirectRTT                       float32
+	DirectMinRTT                    float32
+	DirectMaxRTT                    float32
+	DirectPrimeRTT                  float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
 	NextRTT                         float32
@@ -324,7 +326,9 @@ func (packet *NextBackendSessionUpdatePacket) Serialize(stream Stream) error {
 		stream.SerializeUint64(&packet.UserFlags)
 	}
 
-	stream.SerializeFloat32(&packet.DirectRTT)
+	stream.SerializeFloat32(&packet.DirectMinRTT)
+	stream.SerializeFloat32(&packet.DirectMaxRTT)
+	stream.SerializeFloat32(&packet.DirectPrimeRTT)
 	stream.SerializeFloat32(&packet.DirectJitter)
 	stream.SerializeFloat32(&packet.DirectPacketLoss)
 
