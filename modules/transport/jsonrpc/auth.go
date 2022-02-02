@@ -1197,7 +1197,7 @@ func (s *AuthService) CustomerDownloadedUE4PluginNotifications(r *http.Request, 
 	return nil
 }
 
-func (s *AuthService) CustomerDownloadedWhitePaperNotifications(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+func (s *AuthService) CustomerDownloaded2022WhitePaperNotifications(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
 	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("CustomerDownloadedWhitePaperNotifications(): %v", err.Error())
