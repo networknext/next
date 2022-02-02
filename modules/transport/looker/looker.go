@@ -112,11 +112,13 @@ func (l *LookerClient) FetchAuthToken() (string, error) {
 }
 
 type LookerSave struct {
-	SessionID int64   `json:"daily_big_saves.session_id"`
-	SaveScore float64 `json:"daily_big_saves.save_score"`
-	RTTScore  float64 `json:"daily_big_saves.rtt_score"`
-	PLScore   float64 `json:"daily_big_saves.pl_score"`
-	Duration  float64 `json:"daily_big_saves.duration"`
+	SessionID               int64   `json:"daily_big_saves.session_id"`
+	SaveScore               float64 `json:"daily_big_saves.save_score"`
+	AverageDirectRTT        float64 `json:"daily_big_saves.avg_directrtt"`
+	AverageNextRTT          float64 `json:"daily_big_saves.avg_nextrtt"`
+	AverageDirectPacketLoss float64 `json:"daily_big_saves.avg_directpacketloss"`
+	AverageNextPacketLoss   float64 `json:"daily_big_saves.avg_nextpacketloss"`
+	Duration                float64 `json:"daily_big_saves.duration"`
 }
 
 func (l *LookerClient) RunSavesQuery(customerCode string) ([]LookerSave, error) {
@@ -131,8 +133,10 @@ func (l *LookerClient) RunSavesQuery(customerCode string) ([]LookerSave, error) 
 		LOOKER_SAVES_VIEW + ".date_date",
 		LOOKER_SAVES_VIEW + ".session_id",
 		LOOKER_SAVES_VIEW + ".save_score",
-		LOOKER_SAVES_VIEW + ".rtt_score",
-		LOOKER_SAVES_VIEW + ".pl_score",
+		LOOKER_SAVES_VIEW + ".avg_directrtt",
+		LOOKER_SAVES_VIEW + ".avg_nextrtt",
+		LOOKER_SAVES_VIEW + ".avg_directpacketloss",
+		LOOKER_SAVES_VIEW + ".avg_nextpacketloss",
 		LOOKER_SAVES_VIEW + ".duration",
 	}
 	sorts := []string{LOOKER_SAVES_VIEW + ".save_score desc 0"}
