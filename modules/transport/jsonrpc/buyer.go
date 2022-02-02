@@ -3010,11 +3010,13 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 }
 
 type SavedSession struct {
-	SessionID string `json:"id"`
-	SaveScore string `json:"save_score"`
-	RTTScore  string `json:"rtt_score"`
-	PLScore   string `json:"pl_score"`
-	Duration  string `json:"duration"`
+	SessionID        string `json:"id"`
+	SaveScore        string `json:"save_score"`
+	AverageDirectRTT string `json:"average_direct_rtt"`
+	AverageDirectPL  string `json:"average_direct_pl"`
+	AverageNextRTT   string `json:"average_next_rtt"`
+	AverageNextPL    string `json:"average_next_pl"`
+	Duration         string `json:"duration"`
 }
 
 type FetchCurrentSavesArgs struct {
@@ -3071,11 +3073,13 @@ func (s *BuyersService) FetchCurrentSaves(r *http.Request, args *FetchCurrentSav
 
 	for _, save := range saves {
 		reply.Saves = append(reply.Saves, SavedSession{
-			SessionID: fmt.Sprintf("%016x", uint64(save.SessionID)),
-			SaveScore: fmt.Sprintf("%.2f", save.SaveScore),
-			RTTScore:  fmt.Sprintf("%.2f", save.RTTScore),
-			PLScore:   fmt.Sprintf("%.2f", save.PLScore),
-			Duration:  fmt.Sprintf("%.2f", save.Duration),
+			SessionID:        fmt.Sprintf("%016x", uint64(save.SessionID)),
+			SaveScore:        fmt.Sprintf("%.2f", save.SaveScore),
+			AverageDirectRTT: fmt.Sprintf("%.2f", save.AverageDirectRTT),
+			AverageDirectPL:  fmt.Sprintf("%.2f", save.AverageDirectPacketLoss),
+			AverageNextRTT:   fmt.Sprintf("%.2f", save.AverageNextRTT),
+			AverageNextPL:    fmt.Sprintf("%.2f", save.AverageNextPacketLoss),
+			Duration:         fmt.Sprintf("%.2f", save.Duration),
 		})
 	}
 
