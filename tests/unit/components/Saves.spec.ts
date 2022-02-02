@@ -276,12 +276,14 @@ describe('Saves.vue', () => {
     expect(savesTable.exists()).toBeTruthy()
 
     const headers = savesTable.findAll('th span')
-    expect(headers.length).toBe(5)
+    expect(headers.length).toBe(7)
     expect(headers.at(0).text()).toBe('Session ID')
     expect(headers.at(1).text()).toBe('Save Score')
-    expect(headers.at(2).text()).toBe('RTT Score')
-    expect(headers.at(3).text()).toBe('PL Score')
-    expect(headers.at(4).text()).toBe('Duration (Hours)')
+    expect(headers.at(2).text()).toBe('Average Direct RTT')
+    expect(headers.at(3).text()).toBe('Average Next RTT')
+    expect(headers.at(4).text()).toBe('Average Direct Packet Loss')
+    expect(headers.at(5).text()).toBe('Average Next Packet Loss')
+    expect(headers.at(6).text()).toBe('Duration (Hours)')
 
     const dataRow = savesTable.findAll('tr td')
     expect(dataRow.length).toBe(1)
@@ -300,15 +302,19 @@ describe('Saves.vue', () => {
       {
         id: '00000000',
         save_score: 1000,
-        rtt_score: 1000,
-        pl_score: 1000,
+        average_direct_rtt: 1000,
+        average_next_rtt: 1000,
+        average_direct_pl: 1000,
+        average_next_pl: 1000,
         duration: 1
       },
       {
         id: '00000001',
         save_score: 100,
-        rtt_score: 100,
-        pl_score: 100,
+        average_direct_rtt: 100,
+        average_next_rtt: 100,
+        average_direct_pl: 100,
+        average_next_pl: 100,
         duration: 10
       }
     ], '')
@@ -327,26 +333,32 @@ describe('Saves.vue', () => {
     expect(savesTable.exists()).toBeTruthy()
 
     const headers = savesTable.findAll('th span')
-    expect(headers.length).toBe(5)
+    expect(headers.length).toBe(7)
     expect(headers.at(0).text()).toBe('Session ID')
     expect(headers.at(1).text()).toBe('Save Score')
-    expect(headers.at(2).text()).toBe('RTT Score')
-    expect(headers.at(3).text()).toBe('PL Score')
-    expect(headers.at(4).text()).toBe('Duration (Hours)')
+    expect(headers.at(2).text()).toBe('Average Direct RTT')
+    expect(headers.at(3).text()).toBe('Average Next RTT')
+    expect(headers.at(4).text()).toBe('Average Direct Packet Loss')
+    expect(headers.at(5).text()).toBe('Average Next Packet Loss')
+    expect(headers.at(6).text()).toBe('Duration (Hours)')
 
     const dataRowCols = savesTable.findAll('tr td')
-    expect(dataRowCols.length).toBe(10)
+    expect(dataRowCols.length).toBe(14)
 
     expect(dataRowCols.at(0).text()).toBe('00000000')
     expect(dataRowCols.at(1).text()).toBe('1000')
     expect(dataRowCols.at(2).text()).toBe('1000')
     expect(dataRowCols.at(3).text()).toBe('1000')
-    expect(dataRowCols.at(4).text()).toBe('1')
-    expect(dataRowCols.at(5).text()).toBe('00000001')
-    expect(dataRowCols.at(6).text()).toBe('100')
-    expect(dataRowCols.at(7).text()).toBe('100')
+    expect(dataRowCols.at(4).text()).toBe('1000')
+    expect(dataRowCols.at(5).text()).toBe('1000')
+    expect(dataRowCols.at(6).text()).toBe('1')
+    expect(dataRowCols.at(7).text()).toBe('00000001')
     expect(dataRowCols.at(8).text()).toBe('100')
-    expect(dataRowCols.at(9).text()).toBe('10')
+    expect(dataRowCols.at(9).text()).toBe('100')
+    expect(dataRowCols.at(10).text()).toBe('100')
+    expect(dataRowCols.at(11).text()).toBe('100')
+    expect(dataRowCols.at(12).text()).toBe('100')
+    expect(dataRowCols.at(13).text()).toBe('10')
 
     wrapper.destroy()
 
@@ -373,12 +385,14 @@ describe('Saves.vue', () => {
     expect(savesTable.exists()).toBeTruthy()
 
     const headers = savesTable.findAll('th span')
-    expect(headers.length).toBe(5)
+    expect(headers.length).toBe(7)
     expect(headers.at(0).text()).toBe('Session ID')
     expect(headers.at(1).text()).toBe('Save Score')
-    expect(headers.at(2).text()).toBe('RTT Score')
-    expect(headers.at(3).text()).toBe('PL Score')
-    expect(headers.at(4).text()).toBe('Duration (Hours)')
+    expect(headers.at(2).text()).toBe('Average Direct RTT')
+    expect(headers.at(3).text()).toBe('Average Next RTT')
+    expect(headers.at(4).text()).toBe('Average Direct Packet Loss')
+    expect(headers.at(5).text()).toBe('Average Next Packet Loss')
+    expect(headers.at(6).text()).toBe('Duration (Hours)')
 
     const dataRow = savesTable.findAll('tr td')
     expect(dataRow.length).toBe(1)
