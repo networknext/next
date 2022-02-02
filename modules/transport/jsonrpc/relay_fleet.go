@@ -618,7 +618,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 		return err
 	}
 
-	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
+	requestName, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 
@@ -628,7 +628,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 
 	var buffer bytes.Buffer
 
-	dbWrapper, err := rfs.BinFileGenerator(r.Context(), requestEmail)
+	dbWrapper, err := rfs.BinFileGenerator(r.Context(), requestName)
 	if err != nil {
 		err := fmt.Errorf("AdminBinFileHandler() error generating database.bin file: %v", err)
 		core.Error("%v", err)
@@ -684,7 +684,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	}
 
 	metaData := routing.DatabaseBinFileMetaData{
-		DatabaseBinFileAuthor:       requestEmail,
+		DatabaseBinFileAuthor:       requestName,
 		DatabaseBinFileCreationTime: time.Now(),
 	}
 

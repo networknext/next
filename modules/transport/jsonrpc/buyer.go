@@ -1486,7 +1486,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	return nil
 }
 
-func (s *BuyersService) GenerateBinFileReference(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
+func (s *BuyersService) GenerateBinFile(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	dbRef, err := s.Storage.DatabaseBinFileReference(r.Context())
 	if err != nil {
 		return err
@@ -1497,7 +1497,7 @@ func (s *BuyersService) GenerateBinFileReference(r *http.Request, args *GameConf
 		return err
 	}
 
-	genBin, err := s.BinFileGenerator(r.Context(), "")
+	genBin, err := s.BinFileGenerator(r.Context(), "new buyer sign up")
 	if err != nil {
 		return err
 	}
@@ -1508,6 +1508,12 @@ func (s *BuyersService) GenerateBinFileReference(r *http.Request, args *GameConf
 	}
 
 	fmt.Printf("Valid: %t\n", genHash == refHash)
+
+	if genHash != refHash {
+		return fmt.Errorf("Hashes do not match, bin file won't be committed")
+	}
+
+	// TODO: commit new bin file
 
 	return nil
 }
