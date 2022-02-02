@@ -57,22 +57,32 @@
               />
               Documentation
             </a>
+          </div>
+        </div>
+        <h5 class="card-title">
+            Network Next SDK
+        </h5>
+      </div>
+      <hr />
+      <div class="card-body">
+        <div class="btn-group-vertical btn-group-sm float-right">
+          <div style="display: inherit;flex-direction: column;" data-intercom="sdkDocumentation" data-tour="sdkDocumentation">
             <a
               href="#"
               id="docs-button"
-              @click="downloadWhitePaper()"
+              @click="download2022WhitePaper()"
               class="btn btn-primary m-1 btn-width"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
               />
-              TBD
+              Download
             </a>
           </div>
-      </div>
-      <h5 class="card-title">
-          Network Next SDK
-      </h5>
+        </div>
+        <h5 class="card-title">
+            State of the Real-time Internet 2022 Report
+        </h5>
       </div>
     </div>
   </div>
@@ -192,14 +202,14 @@ export default class DownloadsWorkspace extends Vue {
     })
   }
 
-  private downloadWhitePaper () {
+  private download2022WhitePaper () {
     if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
       this.$gtag.event(WHITE_PAPER_DOWNLOAD_EVENT, {
         event_category: IMPORTANT_CLICKS_CATEGORY
       })
     }
     window.open(WHITE_PAPER_DOWNLOAD_URL)
-    this.$apiService.sendWhitePaperDownloadNotifications({
+    this.$apiService.send2022WhitePaperDownloadNotifications({
       email: this.$store.getters.userProfile.email,
       customer_name: this.$store.getters.userProfile.companyName,
       customer_code: this.$store.getters.userProfile.companyCode
