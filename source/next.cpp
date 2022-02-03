@@ -10801,6 +10801,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
     }
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     (void) input_datacenter;
     (void) public_address;
 
