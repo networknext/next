@@ -263,13 +263,13 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBi
 	sqlQuery.Reset()
 
 	// TODO: merge this for loop into the buyer ID query
-	for _, buyer := range buyers {
+	for _, buyerID := range buyers {
 		sqlQuery.Write([]byte("select datacenters.hex_id from datacenter_maps "))
 		sqlQuery.Write([]byte("inner join datacenters on datacenter_maps.datacenter_id "))
 		sqlQuery.Write([]byte("= datacenters.id where datacenter_maps.buyer_id = "))
 		sqlQuery.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
 
-		rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery, int64(buyer))
+		rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery, int64(buyerID))
 		if err != nil {
 			core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error: %v", err)
 			return dbReference, err
@@ -289,12 +289,16 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBi
 				return dbReference, err
 			}
 
-			if _, ok := datacenterMaps[dcID]; !ok {
-				datacenterMaps[dcID] = make([]uint64, 0)
+			if _, ok := datacenterMaps[buyerID]; !ok {
+				datacenterMaps[buyerID] = make([]uint64, 0)
 			}
 
-			datacenterMaps[dcID] = append(datacenterMaps[dcID], buyer)
+			datacenterMaps[buyerID] = append(datacenterMaps[buyerID], dcID)
 		}
+
+		sort.Slice(datacenterMaps[buyerID], func(i, j int) bool {
+			return datacenterMaps[buyerID][i] < datacenterMaps[buyerID][j]
+		})
 
 		rows.Close()
 		sqlQuery.Reset()

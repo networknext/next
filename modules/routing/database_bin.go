@@ -3,6 +3,7 @@ package routing
 import (
 	"encoding/binary"
 	"fmt"
+	"hash/fnv"
 	"net"
 	"sort"
 
@@ -10,7 +11,8 @@ import (
 )
 
 const (
-	MaxDatabaseBinWrapperSize = 100000000
+	MaxDatabaseBinWrapperSize          = 100000000
+	DatabaseBinWrapperReferenceVersion = 1
 )
 
 // DatabaseBinWrapper contains all the data from the database for
@@ -25,6 +27,21 @@ type DatabaseBinWrapper struct {
 	DatacenterMap  map[uint64]Datacenter
 	DatacenterMaps map[uint64]map[uint64]DatacenterMap
 	//                 ^ Buyer.ID   ^ DatacenterMap map index
+}
+
+type DatabaseBinWrapperReference struct {
+	Version        uint32
+	Relays         []RelayReference
+	RelayMap       map[uint64]RelayReference
+	Buyers         []uint64
+	Sellers        []string
+	Datacenters    []string
+	DatacenterMaps map[uint64][]uint64
+}
+
+type RelayReference struct {
+	PublicIP    net.UDPAddr
+	DisplayName string
 }
 
 func CreateEmptyDatabaseBinWrapper() *DatabaseBinWrapper {
@@ -64,7 +81,7 @@ func (wrapper DatabaseBinWrapper) IsEmpty() bool {
 	return true
 }
 
-func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
+func (wrapper DatabaseBinWrapper) WrapperToReference() DatabaseBinWrapperReference {
 	dbReference := DatabaseBinWrapperReference{
 		Version: DatabaseBinWrapperReferenceVersion,
 	}
@@ -95,21 +112,18 @@ func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
 		})
 		index++
 	}
-	sort.Slice(dbReference.Buyers, func(i, j int) bool { return dbReference.Buyers[i] < dbReference.Buyers[j] })
 
 	index = 0
 	for sellerName := range wrapper.SellerMap {
 		dbReference.Sellers[index] = sellerName
 		index++
 	}
-	sort.Slice(dbReference.Sellers, func(i, j int) bool { return dbReference.Sellers[i] < dbReference.Sellers[j] })
 
 	index = 0
 	for _, datacenter := range wrapper.DatacenterMap {
 		dbReference.Datacenters[index] = datacenter.Name
 		index++
 	}
-	sort.Slice(dbReference.Datacenters, func(i, j int) bool { return dbReference.Datacenters[i] < dbReference.Datacenters[j] })
 
 	index = 0
 	for _, relay := range wrapper.Relays {
@@ -119,7 +133,6 @@ func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
 		}
 		index++
 	}
-	sort.Slice(dbReference.Relays, func(i, j int) bool { return dbReference.Relays[i].DisplayName < dbReference.Relays[j].DisplayName })
 
 	for relayID, relay := range wrapper.RelayMap {
 		dbReference.RelayMap[relayID] = RelayReference{
@@ -128,10 +141,16 @@ func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
 		}
 	}
 
-	fmt.Println("")
-	fmt.Println("Bin ref")
-	fmt.Printf("%+v\n", dbReference)
-	fmt.Println("Bin ref")
+	sort.Slice(dbReference.Buyers, func(i, j int) bool { return dbReference.Buyers[i] < dbReference.Buyers[j] })
+	sort.Slice(dbReference.Sellers, func(i, j int) bool { return dbReference.Sellers[i] < dbReference.Sellers[j] })
+	sort.Slice(dbReference.Datacenters, func(i, j int) bool { return dbReference.Datacenters[i] < dbReference.Datacenters[j] })
+	sort.Slice(dbReference.Relays, func(i, j int) bool { return dbReference.Relays[i].DisplayName < dbReference.Relays[j].DisplayName })
+
+	return dbReference
+}
+
+func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
+	dbReference := wrapper.WrapperToReference()
 
 	buffer := make([]byte, MaxDatabaseBinWrapperSize) // TODO: This is probably way to big
 	ws, err := encoding.CreateWriteStream(buffer)
@@ -140,32 +159,21 @@ func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
 	}
 
 	if err := dbReference.Serialize(ws); err != nil {
-		fmt.Println("Something went wrong serializing the db reference")
+		err := fmt.Errorf("DatabaseBinWrapper.Hash(): Something went wrong serializing the database reference: %v", err)
+		return 0, err
+	}
+
+	ws.Flush()
+
+	hasher := fnv.New64a()
+	_, err = hasher.Write(buffer)
+	if err != nil {
+		err := fmt.Errorf("DatabaseBinWrapper.Hash(): Something went wrong hashing the serialized database reference: %v", err)
 		return 0, err
 	}
 
 	// TODO: Not sure if this is really "hashing" or not - other methods (sha1 and fnv) returned different values each time (expected based off cpu clock etc?)
 	return binary.LittleEndian.Uint64(buffer), nil
-}
-
-const (
-	DatabaseBinWrapperReferenceVersion = 1
-)
-
-// TODO: add more fields to !Relays
-type DatabaseBinWrapperReference struct {
-	Version        uint32
-	Relays         []RelayReference
-	RelayMap       map[uint64]RelayReference
-	Buyers         []uint64
-	Sellers        []string
-	Datacenters    []string
-	DatacenterMaps map[uint64][]uint64
-}
-
-type RelayReference struct {
-	PublicIP    net.UDPAddr
-	DisplayName string
 }
 
 func (ref *DatabaseBinWrapperReference) Hash() (uint64, error) {
@@ -176,7 +184,16 @@ func (ref *DatabaseBinWrapperReference) Hash() (uint64, error) {
 	}
 
 	if err := ref.Serialize(ws); err != nil {
-		fmt.Println("Something went wrong serializing the db reference")
+		err := fmt.Errorf("DatabaseBinWrapperReference.Hash(): Something went wrong serializing the database reference: %v", err)
+		return 0, err
+	}
+
+	ws.Flush()
+
+	hasher := fnv.New64a()
+	_, err = hasher.Write(buffer)
+	if err != nil {
+		err := fmt.Errorf("DatabaseBinWrapperReference.Hash(): Something went wrong hashing the serialized database reference: %v", err)
 		return 0, err
 	}
 
@@ -199,7 +216,28 @@ func (ref *DatabaseBinWrapperReference) Serialize(stream encoding.Stream) error 
 	stream.SerializeUint32(&numBuyers)
 
 	for i := uint32(0); i < numBuyers; i++ {
-		stream.SerializeUint64(&ref.Buyers[i])
+		buyerID := ref.Buyers[i]
+		stream.SerializeUint64(&buyerID)
+	}
+
+	numDCMapKeys := uint32(len(ref.DatacenterMaps))
+	stream.SerializeUint32(&numDCMapKeys)
+
+	dcMapKeys := make([]uint64, numDCMapKeys)
+
+	index := 0
+	for buyerID := range ref.DatacenterMaps {
+		dcMapKeys[index] = buyerID
+		index++
+	}
+
+	for i := uint32(0); i < numDCMapKeys; i++ {
+		buyerID := dcMapKeys[i]
+		stream.SerializeUint64(&buyerID)
+
+		for _, dcID := range ref.DatacenterMaps[buyerID] {
+			stream.SerializeUint64(&dcID)
+		}
 	}
 
 	numSellers := uint32(len(ref.Sellers))
@@ -221,7 +259,7 @@ func (ref *DatabaseBinWrapperReference) Serialize(stream encoding.Stream) error 
 
 	relayKeys := make([]uint64, numRelayKeys)
 
-	index := 0
+	index = 0
 	for relayID := range ref.RelayMap {
 		relayKeys[index] = relayID
 		index++
@@ -233,30 +271,6 @@ func (ref *DatabaseBinWrapperReference) Serialize(stream encoding.Stream) error 
 		stream.SerializeUint64(&relayID)
 		stream.SerializeString(&name, MaxRelayNameLength)
 		stream.SerializeAddress(&ip)
-	}
-
-	numDCMapKeys := uint32(len(ref.DatacenterMaps))
-	stream.SerializeUint32(&numDCMapKeys)
-
-	dcMapKeys := make([]uint64, numDCMapKeys)
-
-	index = 0
-	for buyerID := range ref.DatacenterMaps {
-		dcMapKeys[index] = buyerID
-		index++
-	}
-
-	for _, buyerID := range dcMapKeys {
-		stream.SerializeUint64(&buyerID)
-
-		dcList := ref.DatacenterMaps[buyerID]
-
-		numDCs := uint32(len(dcList))
-		stream.SerializeUint32(&numDCs)
-
-		for _, dc := range dcList {
-			stream.SerializeUint64(&dc)
-		}
 	}
 
 	return stream.Error()

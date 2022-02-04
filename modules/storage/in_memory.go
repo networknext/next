@@ -412,8 +412,7 @@ func (m *InMemory) GetDatacenterMapsForBuyer(ctx context.Context, id uint64) map
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
-			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
-			dcs[id] = dc
+			dcs[dc.DatacenterID] = dc
 		}
 	}
 

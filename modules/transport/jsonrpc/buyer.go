@@ -1,9 +1,11 @@
 package jsonrpc
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
@@ -1486,99 +1489,6 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	return nil
 }
 
-func (s *BuyersService) GenerateBinFile(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
-	dbRef, err := s.Storage.DatabaseBinFileReference(r.Context())
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("DB Ref")
-	fmt.Printf("%+v\n", dbRef)
-	fmt.Println("DB Ref")
-	fmt.Println("")
-
-	refHash, err := dbRef.Hash()
-	if err != nil {
-		return err
-	}
-
-	genBin, err := s.BinFileGenerator(r.Context(), "new buyer sign up")
-	if err != nil {
-		return err
-	}
-
-	genHash, err := genBin.Hash()
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("genHash")
-	fmt.Println(genHash)
-	fmt.Println("refHash")
-	fmt.Println(refHash)
-
-	fmt.Printf("Valid: %t\n", genHash == refHash)
-
-	if genHash != refHash {
-		return fmt.Errorf("Hashes do not match, bin file won't be committed")
-	}
-
-	// TODO: commit new bin file
-
-	return nil
-}
-
-func (s *BuyersService) BinFileGenerator(ctx context.Context, userEmail string) (routing.DatabaseBinWrapper, error) {
-	var dbWrapper routing.DatabaseBinWrapper
-	var enabledRelays []routing.Relay
-	relayMap := make(map[uint64]routing.Relay)
-	buyerMap := make(map[uint64]routing.Buyer)
-	sellerMap := make(map[string]routing.Seller)
-	datacenterMap := make(map[uint64]routing.Datacenter)
-	datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
-
-	buyers := s.Storage.Buyers(ctx)
-	for _, buyer := range buyers {
-		buyerMap[buyer.ID] = buyer
-		dcMapsForBuyer := s.Storage.GetDatacenterMapsForBuyer(ctx, buyer.ID)
-		datacenterMaps[buyer.ID] = dcMapsForBuyer
-	}
-
-	for _, seller := range s.Storage.Sellers(ctx) {
-		sellerMap[seller.ShortName] = seller
-	}
-
-	for _, datacenter := range s.Storage.Datacenters(ctx) {
-		datacenterMap[datacenter.ID] = datacenter
-	}
-
-	for _, localRelay := range s.Storage.Relays(ctx) {
-		if localRelay.State == routing.RelayStateEnabled {
-			enabledRelays = append(enabledRelays, localRelay)
-			relayMap[localRelay.ID] = localRelay
-		}
-	}
-
-	dbWrapper.Relays = enabledRelays
-	dbWrapper.RelayMap = relayMap
-	dbWrapper.BuyerMap = buyerMap
-	dbWrapper.SellerMap = sellerMap
-	dbWrapper.DatacenterMap = datacenterMap
-	dbWrapper.DatacenterMaps = datacenterMaps
-
-	loc, err := time.LoadLocation("UTC")
-	if err != nil {
-		return routing.DatabaseBinWrapper{}, err
-	}
-	now := time.Now().In(loc)
-
-	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
-	dbWrapper.CreationTime = timeStamp
-	dbWrapper.Creator = userEmail
-
-	return dbWrapper, nil
-}
-
 func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfigurationArgs, reply *GameConfigurationReply) error {
 	var err error
 	var buyerID uint64
@@ -1592,13 +1502,13 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := r.Context()
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
 		core.Error("%v", err)
 		return err
 	}
-	if companyCode == "" {
+	if customerCode == "" {
 		err = fmt.Errorf("UpdateGameConfiguration(): failed to parse company code")
 		core.Error("%v", err)
 		return err
@@ -1610,7 +1520,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
 
 	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
 	if err != nil {
@@ -1626,7 +1536,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
-			CompanyCode: companyCode,
+			CompanyCode: customerCode,
 			ID:          buyerID,
 			Live:        true,
 			Analytics:   false,
@@ -1659,10 +1569,14 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			return err
 		}
 
-		// TODO: generate database.bin, verify it, and push it to storage
-
 		// Setup reply
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+
+		if err := s.RefreshBinFile(ctx, customerCode); err != nil {
+			// TODO: If the bin publishing fails send a slack notification ?
+			err = fmt.Errorf("UpdateGameConfiguration(): Failed to upload the new database.bin")
+			core.Error("%v", err)
+		}
 
 		return nil
 	}
@@ -1711,7 +1625,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	err = s.Storage.AddBuyer(ctx, routing.Buyer{
-		CompanyCode: companyCode,
+		CompanyCode: customerCode,
 		ID:          buyerID,
 		Live:        live,
 		Debug:       debug,
@@ -3287,4 +3201,180 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 
 	reply.URL = notifications.BuildLookerURL(urlOptions)
 	return nil
+}
+
+func (s *BuyersService) TestRefreshBinFile(r *http.Request, args *FetchSavesDashboardArgs, reply *FetchSavesDashboardReply) error {
+	s.VerifyDatabaseBinFile(r.Context(), "testing")
+	return nil
+}
+
+func (s *BuyersService) VerifyDatabaseBinFile(ctx context.Context, customerCode string) error {
+	author := fmt.Sprintf("new buyer sign up: %s", customerCode)
+	dbRef, err := s.Storage.DatabaseBinFileReference(ctx)
+	if err != nil {
+		return err
+	}
+
+	refHash, err := dbRef.Hash()
+	if err != nil {
+		return err
+	}
+
+	genBin, err := s.BinFileGenerator(ctx, author)
+	if err != nil {
+		return err
+	}
+
+	genHash, err := genBin.Hash()
+	if err != nil {
+		return err
+	}
+
+	if genHash != refHash {
+		return fmt.Errorf("Hashes do not match, bin file won't be committed")
+	}
+
+	fmt.Println("Hashes Match!")
+
+	return nil
+}
+
+func (s *BuyersService) RefreshBinFile(ctx context.Context, customerCode string) error {
+	author := fmt.Sprintf("new buyer sign up: %s", customerCode)
+	dbRef, err := s.Storage.DatabaseBinFileReference(ctx)
+	if err != nil {
+		core.Error("%v", err)
+		return err
+	}
+
+	refHash, err := dbRef.Hash()
+	if err != nil {
+		core.Error("%v", err)
+		return err
+	}
+
+	genBin, err := s.BinFileGenerator(ctx, author)
+	if err != nil {
+		core.Error("%v", err)
+		return err
+	}
+
+	genHash, err := genBin.Hash()
+	if err != nil {
+		core.Error("%v", err)
+		return err
+	}
+
+	if genHash != refHash {
+		err := fmt.Errorf("Hashes do not match, bin file won't be committed")
+		core.Error("%v", err)
+		return err
+	}
+
+	var buffer bytes.Buffer
+
+	encoder := gob.NewEncoder(&buffer)
+	encoder.Encode(genBin)
+
+	tempFile, err := ioutil.TempFile("", "database.bin")
+	if err != nil {
+		err := fmt.Errorf("RefreshBinFile() error writing database.bin to temporary file: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+	defer os.Remove(tempFile.Name())
+
+	_, err = tempFile.Write(buffer.Bytes())
+	if err != nil {
+		err := fmt.Errorf("RefreshBinFile() error writing database.bin to filesystem: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	bucketName := "gs://"
+	switch s.Env {
+	case "dev":
+		bucketName += DevDatabaseBinGCPBucketName
+	case "staging":
+		bucketName += StagingDatabaseBinGCPBucketName
+	case "prod":
+		bucketName += ProdDatabaseBinGCPBucketName
+	case "local":
+		bucketName += LocalDatabaseBinGCPBucketName
+	}
+
+	// enforce target file name, copy in /tmp has random numbers appended
+	bucketName += "/database.bin"
+
+	// gsutil cp /tmp/database.bin84756774 gs://${bucketName}
+	gsutilCpCommand := exec.Command("gsutil", "cp", tempFile.Name(), bucketName)
+
+	err = gsutilCpCommand.Run()
+	if err != nil {
+		err := fmt.Errorf("RefreshBinFile() error copying database.bin to %s: %v", bucketName, err)
+		core.Error("%v", err)
+		return err
+	}
+
+	metaData := routing.DatabaseBinFileMetaData{
+		DatabaseBinFileAuthor:       author,
+		DatabaseBinFileCreationTime: time.Now(),
+	}
+
+	err = s.Storage.UpdateDatabaseBinFileMetaData(ctx, metaData)
+	if err != nil {
+		err := fmt.Errorf("RefreshBinFile() error writing bin file metadata to db: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	return nil
+}
+
+// TODO: Figure out a way to save this function somewhere else - it is used in the relay_fleet_service as well - relay_fleet_service should really be merged with the ops service which may help
+func (s *BuyersService) BinFileGenerator(ctx context.Context, author string) (routing.DatabaseBinWrapper, error) {
+	var dbWrapper routing.DatabaseBinWrapper
+	var enabledRelays []routing.Relay
+	relayMap := make(map[uint64]routing.Relay)
+	buyerMap := make(map[uint64]routing.Buyer)
+	sellerMap := make(map[string]routing.Seller)
+	datacenterMap := make(map[uint64]routing.Datacenter)
+	datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
+
+	buyers := s.Storage.Buyers(ctx)
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+		dcMapsForBuyer := s.Storage.GetDatacenterMapsForBuyer(ctx, buyer.ID)
+		datacenterMaps[buyer.ID] = dcMapsForBuyer
+	}
+
+	for _, seller := range s.Storage.Sellers(ctx) {
+		sellerMap[seller.ShortName] = seller
+	}
+
+	for _, datacenter := range s.Storage.Datacenters(ctx) {
+		datacenterMap[datacenter.ID] = datacenter
+	}
+
+	for _, localRelay := range s.Storage.Relays(ctx) {
+		if localRelay.State == routing.RelayStateEnabled {
+			enabledRelays = append(enabledRelays, localRelay)
+			relayMap[localRelay.ID] = localRelay
+		}
+	}
+
+	dbWrapper.Relays = enabledRelays
+	dbWrapper.RelayMap = relayMap
+	dbWrapper.BuyerMap = buyerMap
+	dbWrapper.SellerMap = sellerMap
+	dbWrapper.DatacenterMap = datacenterMap
+	dbWrapper.DatacenterMaps = datacenterMaps
+
+	now := time.Now().UTC()
+
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	dbWrapper.CreationTime = timeStamp
+	dbWrapper.Creator = author
+
+	return dbWrapper, nil
 }
