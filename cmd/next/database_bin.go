@@ -669,5 +669,4 @@ func commitDatabaseBin(env Environment) {
 	} else {
 		fmt.Printf("\nOk - not pushing database.bin to %s\n", bucketName)
 	}
-
 }

@@ -4130,7 +4130,7 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 		sql,
 		metaData.DatabaseBinFileCreationTime,
 		metaData.DatabaseBinFileAuthor,
-		"",
+		metaData.SHA,
 	)
 
 	if err != nil {

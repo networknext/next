@@ -3319,6 +3319,7 @@ func (s *BuyersService) RefreshBinFile(ctx context.Context, customerCode string)
 	metaData := routing.DatabaseBinFileMetaData{
 		DatabaseBinFileAuthor:       author,
 		DatabaseBinFileCreationTime: time.Now(),
+		SHA:                         fmt.Sprintf("%016x", genHash),
 	}
 
 	err = s.Storage.UpdateDatabaseBinFileMetaData(ctx, metaData)

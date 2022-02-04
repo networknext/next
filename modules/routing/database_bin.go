@@ -172,7 +172,6 @@ func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
 		return 0, err
 	}
 
-	// TODO: Not sure if this is really "hashing" or not - other methods (sha1 and fnv) returned different values each time (expected based off cpu clock etc?)
 	return binary.LittleEndian.Uint64(buffer), nil
 }
 
@@ -197,7 +196,6 @@ func (ref *DatabaseBinWrapperReference) Hash() (uint64, error) {
 		return 0, err
 	}
 
-	// TODO: Not sure if this is really "hashing" or not - other methods (sha1 and fnv) returned different values each time (expected based off cpu clock etc?)
 	return binary.LittleEndian.Uint64(buffer), nil
 }
 
