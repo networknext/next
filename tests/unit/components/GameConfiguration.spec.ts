@@ -227,6 +227,41 @@ describe('GameConfiguration.vue', () => {
     // Submit new public key
     await gameConfigButton.trigger('submit')
 
+    const modal = wrapper.find('.modal-container')
+    expect(modal.exists()).toBeTruthy()
+
+    const modalTitle = modal.find('.card-header')
+    expect(modalTitle.exists()).toBeTruthy()
+    expect(modalTitle.text()).toBe('Terms of Service Agreement')
+
+    const modalBody = modal.find('.card-body')
+    expect(modalBody.exists()).toBeTruthy()
+
+    // TODO: check TOS text here
+
+    let modalButtons = modal.findAll('.btn')
+    expect(modalButtons.length).toBe(2)
+
+    expect(modalButtons.at(0).text()).toBe('Deny')
+    expect(modalButtons.at(1).text()).toBe('Accept')
+
+    expect(modalButtons.at(0).classes('btn-secondary')).toBeTruthy()
+    expect(modalButtons.at(1).classes('btn-success')).toBeTruthy()
+
+    await modalButtons.at(0).trigger('click')
+
+    // Check to make sure the spy functions were NOT hit
+    expect(updateGameConfigurationSpy).toBeCalledTimes(0)
+    expect(spyPubKeyEntered).toBeCalledTimes(0)
+    expect(fetchAllBuyersSpy).toBeCalledTimes(0)
+
+    await gameConfigButton.trigger('submit')
+
+    modalButtons = modal.findAll('.btn')
+    expect(modalButtons.length).toBe(2)
+
+    await modalButtons.at(1).trigger('click')
+
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
     expect(spyPubKeyEntered).toBeCalledTimes(1)
@@ -281,6 +316,7 @@ describe('GameConfiguration.vue', () => {
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
     newProfile.roles = ['Owner']
+    newProfile.buyerID = '00000000'
 
     store.commit('UPDATE_USER_PROFILE', newProfile)
 
@@ -361,6 +397,7 @@ describe('GameConfiguration.vue', () => {
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
     newProfile.roles = ['Owner']
+    newProfile.buyerID = '00000000'
 
     store.commit('UPDATE_USER_PROFILE', newProfile)
 
