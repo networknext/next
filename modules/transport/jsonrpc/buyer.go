@@ -3265,6 +3265,8 @@ func (s *BuyersService) RefreshBinFile(ctx context.Context, customerCode string)
 		return err
 	}
 
+	genBin.SHA = fmt.Sprintf("%016x", genHash)
+
 	if genHash != refHash {
 		err := fmt.Errorf("Hashes do not match, bin file won't be committed")
 		core.Error("%v", err)

@@ -658,6 +658,8 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 		return err
 	}
 
+	genBin.SHA = fmt.Sprintf("%016x", genHash)
+
 	var buffer bytes.Buffer
 
 	encoder := gob.NewEncoder(&buffer)
@@ -774,12 +776,15 @@ func (rfs *RelayFleetService) NextBinFileHandler(
 		return err
 	}
 
+	genBin.SHA = fmt.Sprintf("%016x", genHash)
+
 	reply.DBWrapper = genBin
-	reply.SHA = fmt.Sprintf("%016x", genHash)
 	return nil
 }
 
-type NextBinFileCommitTimeStampArgs struct{}
+type NextBinFileCommitTimeStampArgs struct {
+	SHA string
+}
 
 type NextBinFileCommitTimeStampReply struct{}
 
@@ -792,6 +797,7 @@ func (rfs *RelayFleetService) NextBinFileCommitTimeStamp(
 	metaData := routing.DatabaseBinFileMetaData{
 		DatabaseBinFileAuthor:       "next cli",
 		DatabaseBinFileCreationTime: time.Now(),
+		SHA:                         args.SHA,
 	}
 
 	err := rfs.Storage.UpdateDatabaseBinFileMetaData(r.Context(), metaData)
