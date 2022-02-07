@@ -7,10 +7,11 @@
       $store.getters.userProfile.companyName !== ''
     ) || $store.getters.isAdmin
     ">
+    <TermsOfServiceModal v-if="showTOS"/>
     <h5 class="card-title">Game Configuration</h5>
     <p class="card-text">Manage how your game connects to Network Next.</p>
     <Alert ref="responseAlert" />
-    <form v-on:submit.prevent="updatePubKey()">
+    <form v-on:submit.prevent="checkTOS()">
       <div class="form-group" id="pubKey">
         <label>Company Name</label>
         <input
@@ -48,6 +49,7 @@ import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { cloneDeep } from 'lodash'
 import { UPDATE_PUBLIC_KEY_SUCCESS } from './types/Constants'
 import { ErrorTypes } from './types/ErrorTypes'
+import TermsOfServiceModal from '@/components/TermsOfServiceModal.vue'
 
 /**
  * This component displays all of the necessary information for the game configuration tab
@@ -61,7 +63,8 @@ import { ErrorTypes } from './types/ErrorTypes'
 
 @Component({
   components: {
-    Alert
+    Alert,
+    TermsOfServiceModal
   }
 })
 export default class GameConfiguration extends Vue {
@@ -72,12 +75,14 @@ export default class GameConfiguration extends Vue {
 
   private companyName: string
   private pubKey: string
+  private showTOS: boolean
   private userProfile: UserProfile
 
   constructor () {
     super()
     this.companyName = ''
     this.pubKey = ''
+    this.showTOS = false
     this.userProfile = newDefaultProfile()
   }
 
@@ -89,6 +94,41 @@ export default class GameConfiguration extends Vue {
     if (this.pubKey === '') {
       this.pubKey = this.userProfile.pubKey || ''
     }
+
+    // TODO: Make a modal events bus rather than using the root application bus
+    this.$root.$on('showTOSModal', this.showTOSModalCallback)
+    this.$root.$on('hideTOSModal', this.hideTOSModalCallback)
+  }
+
+  private beforeDestroy () {
+    this.$root.$off('showTOSModal')
+    this.$root.$off('hideTOSModal')
+  }
+
+  private showTOSModalCallback () {
+    if (!this.showTOS) {
+      this.showTOS = true
+    }
+  }
+
+  private hideTOSModalCallback (accepted: boolean) {
+    if (this.showTOS) {
+      this.showTOS = false
+    }
+
+    if (accepted) {
+      this.updatePubKey()
+    }
+  }
+
+  private checkTOS () {
+    if (this.$store.getters.userProfile.buyerID === '') {
+      // Launch TOS modal
+      this.showTOS = true
+      return
+    }
+
+    this.updatePubKey()
   }
 
   private updatePubKey () {
@@ -97,7 +137,8 @@ export default class GameConfiguration extends Vue {
         new_public_key: this.pubKey
       })
       .then((response: any) => {
-        this.userProfile.pubKey = response.game_config.public_key
+        this.userProfile.pubKey = response.game_config.public_key || this.pubKey
+        this.userProfile.buyerID = response.buyer_id || ''
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
         this.$refs.responseAlert.setMessage(UPDATE_PUBLIC_KEY_SUCCESS)
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
