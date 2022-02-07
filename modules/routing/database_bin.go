@@ -12,6 +12,7 @@ import (
 
 const (
 	MaxDatabaseBinWrapperSize          = 100000000
+	MaxDatabaseBinReferenceSize        = 25000000
 	DatabaseBinWrapperReferenceVersion = 1
 )
 
@@ -94,11 +95,10 @@ func (wrapper DatabaseBinWrapper) WrapperToReference() DatabaseBinWrapperReferen
 	dbReference.Relays = make([]RelayReference, len(wrapper.Relays))
 	dbReference.RelayMap = make(map[uint64]RelayReference, len(wrapper.RelayMap))
 
-	index := 0
+	buyerIndex := 0
 	for buyerID := range wrapper.BuyerMap {
-		dbReference.Buyers[index] = buyerID
+		dbReference.Buyers[buyerIndex] = buyerID
 
-		// TODO: Clean this up or just switch over to using the datacenter maps from the wrapper - don't really want to do the latter due to excess data
 		dcIndex := 0
 		for dcID := range wrapper.DatacenterMaps[buyerID] {
 			if _, ok := dbReference.DatacenterMaps[buyerID]; !ok {
@@ -111,28 +111,28 @@ func (wrapper DatabaseBinWrapper) WrapperToReference() DatabaseBinWrapperReferen
 		sort.Slice(dbReference.DatacenterMaps[buyerID], func(i, j int) bool {
 			return dbReference.DatacenterMaps[buyerID][i] < dbReference.DatacenterMaps[buyerID][j]
 		})
-		index++
+		buyerIndex++
 	}
 
-	index = 0
+	sellerIndex := 0
 	for sellerName := range wrapper.SellerMap {
-		dbReference.Sellers[index] = sellerName
-		index++
+		dbReference.Sellers[sellerIndex] = sellerName
+		sellerIndex++
 	}
 
-	index = 0
+	datacenterIndex := 0
 	for _, datacenter := range wrapper.DatacenterMap {
-		dbReference.Datacenters[index] = datacenter.Name
-		index++
+		dbReference.Datacenters[datacenterIndex] = datacenter.Name
+		datacenterIndex++
 	}
 
-	index = 0
+	relayIndex := 0
 	for _, relay := range wrapper.Relays {
-		dbReference.Relays[index] = RelayReference{
+		dbReference.Relays[relayIndex] = RelayReference{
 			PublicIP:    relay.Addr,
 			DisplayName: relay.Name,
 		}
-		index++
+		relayIndex++
 	}
 
 	for relayID, relay := range wrapper.RelayMap {
@@ -153,7 +153,7 @@ func (wrapper DatabaseBinWrapper) WrapperToReference() DatabaseBinWrapperReferen
 func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
 	dbReference := wrapper.WrapperToReference()
 
-	buffer := make([]byte, MaxDatabaseBinWrapperSize) // TODO: This is probably way to big
+	buffer := make([]byte, MaxDatabaseBinReferenceSize)
 	ws, err := encoding.CreateWriteStream(buffer)
 	if err != nil {
 		return 0, err
@@ -177,7 +177,7 @@ func (wrapper DatabaseBinWrapper) Hash() (uint64, error) {
 }
 
 func (ref *DatabaseBinWrapperReference) Hash() (uint64, error) {
-	buffer := make([]byte, MaxDatabaseBinWrapperSize) // TODO: This is probably way to big
+	buffer := make([]byte, MaxDatabaseBinReferenceSize)
 	ws, err := encoding.CreateWriteStream(buffer)
 	if err != nil {
 		return 0, err
@@ -243,14 +243,14 @@ func (ref *DatabaseBinWrapperReference) Serialize(stream encoding.Stream) error 
 	stream.SerializeUint32(&numSellers)
 
 	for i := uint32(0); i < numSellers; i++ {
-		stream.SerializeString(&ref.Sellers[i], 32) // TODO: Make const
+		stream.SerializeString(&ref.Sellers[i], MaxSellerShortNameLength)
 	}
 
 	numDatacenters := uint32(len(ref.Datacenters))
 	stream.SerializeUint32(&numDatacenters)
 
 	for i := uint32(0); i < numDatacenters; i++ {
-		stream.SerializeString(&ref.Datacenters[i], MaxRelayNameLength) // TODO: Make into its own const
+		stream.SerializeString(&ref.Datacenters[i], MaxDatacenterNameLength)
 	}
 
 	numRelayKeys := uint32(len(ref.RelayMap))

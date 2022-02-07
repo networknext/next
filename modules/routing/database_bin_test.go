@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO: these may be better placed in the storage tests
 func SetupReferenceWrapper(t *testing.T, numBuyers int, numSellers int, numRelays int, numDatacenters int) routing.DatabaseBinWrapper {
 	wrapper := routing.CreateEmptyDatabaseBinWrapper()
 

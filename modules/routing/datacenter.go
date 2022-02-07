@@ -4,6 +4,10 @@ import (
 	"fmt"
 )
 
+const (
+	MaxDatacenterNameLength = 63
+)
+
 var UnknownDatacenter = Datacenter{
 	ID:   0,
 	Name: "unknown",

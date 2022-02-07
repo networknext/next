@@ -1573,7 +1573,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
 
 		if err := s.RefreshBinFile(ctx, customerCode); err != nil {
-			// TODO: If the bin publishing fails send a slack notification ?
 			err = fmt.Errorf("UpdateGameConfiguration(): Failed to upload the new database.bin")
 			core.Error("%v", err)
 		}
@@ -3271,6 +3270,11 @@ func (s *BuyersService) RefreshBinFile(ctx context.Context, customerCode string)
 		err := fmt.Errorf("Hashes do not match, bin file won't be committed")
 		core.Error("%v", err)
 		return err
+	}
+
+	// If this is a local test, don't upload anything
+	if s.Env == "local" {
+		return nil
 	}
 
 	var buffer bytes.Buffer
