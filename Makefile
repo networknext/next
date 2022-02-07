@@ -1591,7 +1591,7 @@ rebuild-all: clean build-all ## rebuilds everything
 
 .PHONY: update-sdk4
 update-sdk4:
-	git submodule update --remote --merge sdk
+	git submodule update --remote --merge sdk4
 
 .PHONY: update-sdk5
 update-sdk5:
