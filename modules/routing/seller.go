@@ -2,6 +2,10 @@ package routing
 
 import "fmt"
 
+const (
+	MaxSellerShortNameLength = 32
+)
+
 // Seller
 // TODO: ID, CompanyCode and ShortName all serve the same purpose here, though ID
 //       is assigned as shown in syncSellers(). Clean this up.

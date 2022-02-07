@@ -21,19 +21,20 @@ create table bw_billing_rules (
 
 create table database_bin_meta (
   bin_file_creation_time date not null,
-  bin_file_author varchar not null
+  bin_file_author varchar not null,
+  sha varchar not null
 );
 
 create table customers (
   id integer primary key autoincrement,
   automatic_signin_domain varchar null,
   customer_name varchar not null,
-  customer_code varchar unique not null unique
+  customer_code varchar unique not null
 );
 
 create table buyers (
   id integer primary key autoincrement,
-  sdk_generated_id integer not null,
+  sdk_generated_id integer unique not null,
   is_live_customer boolean not null default false,
   debug boolean not null default false,
   analytics boolean not null default false,
@@ -46,6 +47,7 @@ create table buyers (
   customer_id integer not null,
   looker_seats integer not null default 0,
   constraint fk_customer_id foreign key (customer_id) references customers(id)
+  constraint buyer_short_name unique(short_name)
 );
 
 create table sellers (
