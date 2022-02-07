@@ -47,6 +47,7 @@ create table buyers (
   customer_id integer not null,
   looker_seats integer not null default 0,
   constraint fk_customer_id foreign key (customer_id) references customers(id)
+  constraint buyer_short_name unique(short_name)
 );
 
 create table sellers (

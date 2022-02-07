@@ -1454,6 +1454,7 @@ type GameConfigurationArgs struct {
 
 type GameConfigurationReply struct {
 	GameConfiguration gameConfiguration `json:"game_config"`
+	BuyerID           string            `json:"buyer_id"`
 }
 
 type gameConfiguration struct {
@@ -1487,6 +1488,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+	reply.BuyerID = fmt.Sprintf("%016x", buyer.ID)
 	return nil
 }
 
@@ -1582,15 +1584,16 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 				core.Error("%v", err)
 				return err
 			}
+
+			if err := s.RefreshBinFile(ctx, customerCode); err != nil {
+				err = fmt.Errorf("UpdateGameConfiguration(): Failed to upload the new database.bin")
+				core.Error("%v", err)
+			}
 		}
 
 		// Setup reply
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-
-		if err := s.RefreshBinFile(ctx, customerCode); err != nil {
-			err = fmt.Errorf("UpdateGameConfiguration(): Failed to upload the new database.bin")
-			core.Error("%v", err)
-		}
+		reply.BuyerID = fmt.Sprintf("%016x", buyer.ID)
 
 		return nil
 	}
@@ -1703,6 +1706,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	// Set reply
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+	reply.BuyerID = fmt.Sprintf("%016x", buyer.ID)
 
 	return nil
 }
