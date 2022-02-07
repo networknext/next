@@ -1471,9 +1471,12 @@ func TestUpdateGameConfiguration(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, "local-local", newBuyer.CompanyCode)
-		assert.False(t, newBuyer.Live)
+		assert.True(t, newBuyer.Live)
+		assert.True(t, newBuyer.RouteShader.AnalysisOnly)
 		assert.Equal(t, "12939405032490452521", fmt.Sprintf("%d", newBuyer.ID))
 		assert.Equal(t, "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==", reply.GameConfiguration.PublicKey)
+
+		// TODO: Figure out how to test bin generation and verification
 	})
 
 	reqContext = req.Context()
@@ -2524,4 +2527,7 @@ func TestUpdateBuyer(t *testing.T) {
 		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "PublicKey", Value: "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g=="}, &reply)
 		assert.NoError(t, err)
 	})
+}
+
+func TestDatabaseBinGeneration(t *testing.T) {
 }
