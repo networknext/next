@@ -43,14 +43,15 @@ import (
 )
 
 const (
-	TopSessionsSize          = 1000
-	MapPointByteCacheVersion = uint8(1)
-	MaxHistoricalSessions    = 100
-	MaxBigTableDays          = 90
-	EmbeddedUserGroupID      = 3
-	LOOKER_SESSION_TIMEOUT   = 86400
-	UsageDashURI             = "/embed/dashboards-next/11"
-	SavesDashURI             = "/embed/dashboards-next/20"
+	TopSessionsSize           = 1000
+	MapPointByteCacheVersion  = uint8(1)
+	MaxHistoricalSessions     = 100
+	MaxBigTableDays           = 90
+	EmbeddedUserGroupID       = 3
+	LOOKER_SESSION_TIMEOUT    = 86400
+	UsageDashURI              = "/embed/dashboards-next/11"
+	SavesDashURI              = "/embed/dashboards-next/20"
+	MaxLiveAnalysisOnlyBuyers = 100
 )
 
 // Saving these for later
@@ -1534,11 +1535,23 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	// Buyer not found
 	if buyer.ID == 0 {
 
+		// check if we can add new buyer to analysis only
+		allBuyers := s.Storage.Buyers(ctx)
+
+		numLiveAnalysisOnlyBuyers := 0
+		for _, buyer := range allBuyers {
+			if buyer.Live && buyer.RouteShader.AnalysisOnly {
+				numLiveAnalysisOnlyBuyers = numLiveAnalysisOnlyBuyers + 1
+			}
+		}
+
+		allowLiveAnalysisOnly := numLiveAnalysisOnlyBuyers < MaxLiveAnalysisOnlyBuyers
+
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
 			CompanyCode: customerCode,
 			ID:          buyerID,
-			Live:        true,
+			Live:        allowLiveAnalysisOnly,
 			Analytics:   false,
 			Billing:     false,
 			Trial:       true,
@@ -1559,14 +1572,16 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			return err
 		}
 
-		routeShader := core.NewRouteShader()
-		routeShader.AnalysisOnly = true
+		if allowLiveAnalysisOnly {
+			routeShader := core.NewRouteShader()
+			routeShader.AnalysisOnly = true
 
-		err := s.Storage.AddRouteShader(ctx, routeShader, buyer.ID)
-		if err != nil {
-			err = fmt.Errorf("UpdateGameConfiguration() failed to assign route shader to buyer with ID: %s - %v", fmt.Sprintf("%016x", buyer.ID), err)
-			core.Error("%v", err)
-			return err
+			err := s.Storage.AddRouteShader(ctx, routeShader, buyer.ID)
+			if err != nil {
+				err = fmt.Errorf("UpdateGameConfiguration() failed to assign route shader to buyer with ID: %s - %v", fmt.Sprintf("%016x", buyer.ID), err)
+				core.Error("%v", err)
+				return err
+			}
 		}
 
 		// Setup reply
