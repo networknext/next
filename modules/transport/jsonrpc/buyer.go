@@ -1585,7 +1585,12 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 				return err
 			}
 
-			if err := s.RefreshBinFile(ctx, customerCode); err != nil {
+			// If this is a local test, don't refresh the bin file
+			if s.Env == "local" {
+				return nil
+			}
+
+			if err := s.UpdateBinFile(ctx, buyer); err != nil {
 				err = fmt.Errorf("UpdateGameConfiguration(): Failed to upload the new database.bin")
 				core.Error("%v", err)
 			}
@@ -3221,101 +3226,143 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	return nil
 }
 
-func (s *BuyersService) TestRefreshBinFile(r *http.Request, args *FetchSavesDashboardArgs, reply *FetchSavesDashboardReply) error {
-	s.VerifyDatabaseBinFile(r.Context(), "testing")
-	return nil
-}
+// ===============================================================================================================
+// Database.bin related functions
 
-func (s *BuyersService) VerifyDatabaseBinFile(ctx context.Context, customerCode string) error {
-	author := fmt.Sprintf("new buyer sign up: %s", customerCode)
+func (s *BuyersService) UpdateBinFile(ctx context.Context, newBuyer routing.Buyer) error {
+	author := fmt.Sprintf("new buyer sign up: %s", newBuyer.CompanyCode)
 	dbRef, err := s.Storage.DatabaseBinFileReference(ctx)
 	if err != nil {
+		core.Error("UpdateBinFile(): %v", err)
 		return err
 	}
 
 	refHash, err := dbRef.Hash()
 	if err != nil {
+		core.Error("UpdateBinFile(): %v", err)
 		return err
 	}
 
-	genBin, err := s.BinFileGenerator(ctx, author)
+	remoteFileName := s.GetGCPBucketName(s.Env) + "/database.bin"
+
+	currentBin, err := s.FetchCurrentDatabaseBinWrapper(remoteFileName)
 	if err != nil {
-		return err
+		core.Error("UpdateBinFile(): %v", err)
 	}
 
-	genHash, err := genBin.Hash()
+	currentBin.BuyerMap[newBuyer.ID] = newBuyer
+
+	genHash, err := currentBin.Hash()
 	if err != nil {
+		core.Error("UpdateBinFile(): %v", err)
 		return err
 	}
-
-	if genHash != refHash {
-		return fmt.Errorf("Hashes do not match, bin file won't be committed")
-	}
-
-	fmt.Println("Hashes Match!")
-
-	return nil
-}
-
-func (s *BuyersService) RefreshBinFile(ctx context.Context, customerCode string) error {
-	author := fmt.Sprintf("new buyer sign up: %s", customerCode)
-	dbRef, err := s.Storage.DatabaseBinFileReference(ctx)
-	if err != nil {
-		core.Error("%v", err)
-		return err
-	}
-
-	refHash, err := dbRef.Hash()
-	if err != nil {
-		core.Error("%v", err)
-		return err
-	}
-
-	genBin, err := s.BinFileGenerator(ctx, author)
-	if err != nil {
-		core.Error("%v", err)
-		return err
-	}
-
-	genHash, err := genBin.Hash()
-	if err != nil {
-		core.Error("%v", err)
-		return err
-	}
-
-	genBin.SHA = fmt.Sprintf("%016x", genHash)
 
 	if genHash != refHash {
 		err := fmt.Errorf("Hashes do not match, bin file won't be committed")
-		core.Error("%v", err)
+		core.Error("UpdateBinFile(): %v", err)
 		return err
 	}
 
-	// If this is a local test, don't upload anything
-	if s.Env == "local" {
-		return nil
+	currentBin.SHA = fmt.Sprintf("%016x", genHash)
+	currentBin.Creator = author
+
+	now := time.Now().UTC()
+
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	currentBin.CreationTime = timeStamp
+
+	if err := s.UploadNewDatabaseBinWrapper(ctx, remoteFileName, currentBin); err != nil {
+		core.Error("UpdateBinFile(): %v", err)
+		return err
 	}
 
-	var buffer bytes.Buffer
+	return nil
+}
 
-	encoder := gob.NewEncoder(&buffer)
-	encoder.Encode(genBin)
+func (s *BuyersService) FetchCurrentDatabaseBinWrapper(remoteFileName string) (*routing.DatabaseBinWrapper, error) {
+	var downloadedBinWrapper routing.DatabaseBinWrapper
 
-	tempFile, err := ioutil.TempFile("", "database.bin")
+	downloadFileName := "database-ref.bin"
+
+	gsutilCpCommandDownload := exec.Command("gsutil", "cp", remoteFileName, downloadFileName)
+	if err := gsutilCpCommandDownload.Run(); err != nil {
+		err := fmt.Errorf("FetchCurrentDatabaseBinWrapper(): error reading database.bin to %s: %v", remoteFileName, err)
+		core.Error("%v", err)
+		return &downloadedBinWrapper, err
+	}
+
+	if _, err := os.Stat(downloadFileName); err != nil {
+		err := fmt.Errorf("FetchCurrentDatabaseBinWrapper(): error opening database.bin %v", err)
+		core.Error("%v", err)
+		return &downloadedBinWrapper, err
+	}
+
+	downloadFileReader, err := os.Open(downloadFileName)
 	if err != nil {
-		err := fmt.Errorf("RefreshBinFile() error writing database.bin to temporary file: %v", err)
+		err := fmt.Errorf("FetchCurrentDatabaseBinWrapper(): error reading database.bin: %v", err)
 		core.Error("%v", err)
-		return err
+		return &downloadedBinWrapper, err
 	}
-	defer os.Remove(tempFile.Name())
+	defer downloadFileReader.Close()
+	defer os.Remove(downloadFileName)
 
-	_, err = tempFile.Write(buffer.Bytes())
+	downloadEncoder := gob.NewDecoder(downloadFileReader)
+	if err := downloadEncoder.Decode(&downloadedBinWrapper); err != nil {
+		core.Error("FetchCurrentDatabaseBinWrapper(): error decoding reference database.bin: %v", err)
+		return &downloadedBinWrapper, err
+	}
+
+	return &downloadedBinWrapper, nil
+}
+
+func (s *BuyersService) UploadNewDatabaseBinWrapper(ctx context.Context, remoteFileName string, newBinWrapper *routing.DatabaseBinWrapper) error {
+	var uploadBuffer bytes.Buffer
+
+	uploadEncoder := gob.NewEncoder(&uploadBuffer)
+	uploadEncoder.Encode(newBinWrapper)
+
+	tempFileUpload, err := ioutil.TempFile("", "database.bin")
 	if err != nil {
-		err := fmt.Errorf("RefreshBinFile() error writing database.bin to filesystem: %v", err)
+		err := fmt.Errorf("UploadNewDatabaseBinWrapper(): error writing database.bin to temporary file: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+	defer os.Remove(tempFileUpload.Name())
+
+	_, err = tempFileUpload.Write(uploadBuffer.Bytes())
+	if err != nil {
+		err := fmt.Errorf("UploadNewDatabaseBinWrapper(): error writing database.bin to filesystem: %v", err)
 		core.Error("%v", err)
 		return err
 	}
 
+	gsutilCpCommandUpload := exec.Command("gsutil", "cp", tempFileUpload.Name(), remoteFileName)
+
+	err = gsutilCpCommandUpload.Run()
+	if err != nil {
+		err := fmt.Errorf("UploadNewDatabaseBinWrapper(): error copying database.bin to %s: %v", remoteFileName, err)
+		core.Error("%v", err)
+		return err
+	}
+
+	metaData := routing.DatabaseBinFileMetaData{
+		DatabaseBinFileAuthor:       newBinWrapper.Creator,
+		DatabaseBinFileCreationTime: time.Now(),
+		SHA:                         newBinWrapper.SHA,
+	}
+
+	err = s.Storage.UpdateDatabaseBinFileMetaData(ctx, metaData)
+	if err != nil {
+		err := fmt.Errorf("UploadNewDatabaseBinWrapper(): error writing bin file metadata to db: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *BuyersService) GetGCPBucketName(envName string) string {
 	bucketName := "gs://"
 	switch s.Env {
 	case "dev":
@@ -3328,37 +3375,103 @@ func (s *BuyersService) RefreshBinFile(ctx context.Context, customerCode string)
 		bucketName += LocalDatabaseBinGCPBucketName
 	}
 
-	// enforce target file name, copy in /tmp has random numbers appended
-	bucketName += "/database.bin"
+	return bucketName
+}
 
-	// gsutil cp /tmp/database.bin84756774 gs://${bucketName}
-	gsutilCpCommand := exec.Command("gsutil", "cp", tempFile.Name(), bucketName)
+// LocalUpdateBinFile is for local use only to test upload/download functionality of the current database.bin file with GCP
+type LocalUpdateBinFileArgs struct{}
 
-	err = gsutilCpCommand.Run()
-	if err != nil {
-		err := fmt.Errorf("RefreshBinFile() error copying database.bin to %s: %v", bucketName, err)
+type LocalUpdateBinFileReply struct{}
+
+func (s *BuyersService) LocalUpdateBinFile(r *http.Request, args *LocalUpdateBinFileArgs, reply *LocalUpdateBinFileReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) || s.Env != "local" {
+		err := fmt.Errorf("LocalUpdateBinFile(): %v", ErrInsufficientPrivileges)
 		core.Error("%v", err)
 		return err
 	}
 
-	metaData := routing.DatabaseBinFileMetaData{
-		DatabaseBinFileAuthor:       author,
-		DatabaseBinFileCreationTime: time.Now(),
-		SHA:                         fmt.Sprintf("%016x", genHash),
-	}
+	ctx := r.Context()
+	remoteFileName := s.GetGCPBucketName(s.Env) + "/database.bin"
 
-	err = s.Storage.UpdateDatabaseBinFileMetaData(ctx, metaData)
+	// Get current storage based database.bin
+	currentBin, err := s.BinFileGenerator(ctx)
 	if err != nil {
-		err := fmt.Errorf("RefreshBinFile() error writing bin file metadata to db: %v", err)
+		err = fmt.Errorf("LocalUpdateBinFile(): could not generate reference database.bin")
 		core.Error("%v", err)
 		return err
+	}
+
+	currentReference := currentBin.WrapperToReference()
+
+	currentHash, err := currentReference.Hash()
+	if err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): could not hash reference database.bin")
+		core.Error("%v", err)
+		return err
+	}
+
+	currentBin.SHA = fmt.Sprintf("%016x", currentHash)
+
+	// Upload for use as baseline
+	if err := s.UploadNewDatabaseBinWrapper(ctx, remoteFileName, currentBin); err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): could not upload reference database.bin")
+		core.Error("%v", err)
+		return err
+	}
+
+	// Setup new fake buyer to add
+	byteKey, err := base64.StdEncoding.DecodeString("/g1saKcm/HEmX5vgpgsxLc3p1dnbvk0lauejmsDN0RWXAHgOuqKkYw==")
+	if err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): could not decode new test buyer public key string")
+		core.Error("%v", err)
+		return err
+	}
+
+	buyerID := binary.LittleEndian.Uint64(byteKey[0:8])
+
+	// Create new buyer
+	if err := s.Storage.AddBuyer(ctx, routing.Buyer{
+		CompanyCode: "next",
+		ID:          buyerID,
+		Live:        true,
+		Analytics:   false,
+		Billing:     false,
+		Trial:       true,
+		PublicKey:   byteKey[8:],
+	}); err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile() failed to add buyer")
+		core.Error("%v", err)
+		return err
+	}
+
+	// Check if buyer is associated with the ID and everything worked
+	newBuyer, err := s.Storage.Buyer(r.Context(), buyerID)
+	if err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile() buyer creation failed: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	routeShader := core.NewRouteShader()
+	routeShader.AnalysisOnly = true
+
+	if err := s.Storage.AddRouteShader(ctx, routeShader, newBuyer.ID); err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile() failed to assign route shader to buyer with ID: %s - %v", fmt.Sprintf("%016x", newBuyer.ID), err)
+		core.Error("%v", err)
+		return err
+	}
+
+	if err := s.UpdateBinFile(ctx, newBuyer); err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): Failed to upload the new database.bin")
+		core.Error("%v", err)
 	}
 
 	return nil
 }
 
-// TODO: Figure out a way to save this function somewhere else - it is used in the relay_fleet_service as well - relay_fleet_service should really be merged with the ops service which may help
-func (s *BuyersService) BinFileGenerator(ctx context.Context, author string) (routing.DatabaseBinWrapper, error) {
+// TODO: Find a place to put this - potentially in sql.go itself but should be consolidated
+// IMPORTANT: This is for test use only in this context
+func (s *BuyersService) BinFileGenerator(ctx context.Context) (*routing.DatabaseBinWrapper, error) {
 	var dbWrapper routing.DatabaseBinWrapper
 	var enabledRelays []routing.Relay
 	relayMap := make(map[uint64]routing.Relay)
@@ -3400,7 +3513,7 @@ func (s *BuyersService) BinFileGenerator(ctx context.Context, author string) (ro
 
 	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
 	dbWrapper.CreationTime = timeStamp
-	dbWrapper.Creator = author
+	dbWrapper.Creator = "Local Tester"
 
-	return dbWrapper, nil
+	return &dbWrapper, nil
 }
