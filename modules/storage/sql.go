@@ -162,11 +162,11 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBi
 	defer cancel()
 
 	sqlQuery.Write([]byte("select sdk_generated_id "))
-	sqlQuery.Write([]byte("from buyers"))
+	sqlQuery.Write([]byte("from buyers order by sdk_generated_id asc"))
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
-		core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error")
+		core.Error("DatabaseBinFileReference(): Buyer QueryMultipleRowsRetry returned an error: %v", err)
 		return dbReference, err
 	}
 
@@ -187,11 +187,11 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBi
 	sqlQuery.Reset()
 
 	sqlQuery.Write([]byte("select short_name "))
-	sqlQuery.Write([]byte("from sellers"))
+	sqlQuery.Write([]byte("from sellers order by short_name asc"))
 
 	rows, err = QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
-		core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error")
+		core.Error("DatabaseBinFileReference(): Seller QueryMultipleRowsRetry returned an error: %v", err)
 		return dbReference, err
 	}
 
@@ -212,11 +212,11 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBi
 	sqlQuery.Reset()
 
 	sqlQuery.Write([]byte("select display_name, hex_id, public_ip, public_ip_port "))
-	sqlQuery.Write([]byte("from relays where relay_state = 0"))
+	sqlQuery.Write([]byte("from relays where relay_state = 0 order by display_name asc"))
 
 	rows, err = QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
-		core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error")
+		core.Error("DatabaseBinFileReference(): Relay QueryMultipleRowsRetry returned an error: %v", err)
 		return dbReference, err
 	}
 
@@ -271,7 +271,7 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBi
 
 		rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery, int64(buyerID))
 		if err != nil {
-			core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error: %v", err)
+			core.Error("DatabaseBinFileReference(): DatacenterMaps QueryMultipleRowsRetry returned an error: %v", err)
 			return dbReference, err
 		}
 
@@ -305,11 +305,11 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBi
 	}
 
 	sqlQuery.Write([]byte("select display_name "))
-	sqlQuery.Write([]byte("from datacenters "))
+	sqlQuery.Write([]byte("from datacenters order by display_name asc"))
 
 	rows, err = QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
-		core.Error("DatabaseBinFileReference(): QueryMultipleRowsRetry returned an error: %v", err)
+		core.Error("DatabaseBinFileReference(): Datacenters QueryMultipleRowsRetry returned an error: %v", err)
 		return dbReference, err
 	}
 
@@ -328,11 +328,6 @@ func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBi
 
 	rows.Close()
 	sqlQuery.Reset()
-
-	sort.Slice(buyers, func(i, j int) bool { return buyers[i] < buyers[j] })
-	sort.Slice(sellers, func(i, j int) bool { return sellers[i] < sellers[j] })
-	sort.Slice(datacenters, func(i, j int) bool { return datacenters[i] < datacenters[j] })
-	sort.Slice(relays, func(i, j int) bool { return relays[i].DisplayName < relays[j].DisplayName })
 
 	dbReference.Version = routing.DatabaseBinWrapperReferenceVersion
 	dbReference.Buyers = buyers

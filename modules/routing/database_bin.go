@@ -13,7 +13,7 @@ import (
 const (
 	MaxDatabaseBinWrapperSize          = 100000000
 	MaxDatabaseBinReferenceSize        = 25000000
-	DatabaseBinWrapperReferenceVersion = 1
+	DatabaseBinWrapperReferenceVersion = 0
 )
 
 // DatabaseBinWrapper contains all the data from the database for
@@ -114,17 +114,29 @@ func (wrapper DatabaseBinWrapper) WrapperToReference() DatabaseBinWrapperReferen
 		buyerIndex++
 	}
 
+	sort.Slice(dbReference.Buyers, func(i, j int) bool {
+		return dbReference.Buyers[i] < dbReference.Buyers[j]
+	})
+
 	sellerIndex := 0
 	for sellerName := range wrapper.SellerMap {
 		dbReference.Sellers[sellerIndex] = sellerName
 		sellerIndex++
 	}
 
+	sort.Slice(dbReference.Sellers, func(i, j int) bool {
+		return dbReference.Sellers[i] < dbReference.Sellers[j]
+	})
+
 	datacenterIndex := 0
 	for _, datacenter := range wrapper.DatacenterMap {
 		dbReference.Datacenters[datacenterIndex] = datacenter.Name
 		datacenterIndex++
 	}
+
+	sort.Slice(dbReference.Datacenters, func(i, j int) bool {
+		return dbReference.Datacenters[i] < dbReference.Datacenters[j]
+	})
 
 	relayIndex := 0
 	for _, relay := range wrapper.Relays {
@@ -135,17 +147,16 @@ func (wrapper DatabaseBinWrapper) WrapperToReference() DatabaseBinWrapperReferen
 		relayIndex++
 	}
 
+	sort.Slice(dbReference.Relays, func(i, j int) bool {
+		return dbReference.Relays[i].DisplayName < dbReference.Relays[j].DisplayName
+	})
+
 	for relayID, relay := range wrapper.RelayMap {
 		dbReference.RelayMap[relayID] = RelayReference{
 			DisplayName: relay.Name,
 			PublicIP:    relay.Addr,
 		}
 	}
-
-	sort.Slice(dbReference.Buyers, func(i, j int) bool { return dbReference.Buyers[i] < dbReference.Buyers[j] })
-	sort.Slice(dbReference.Sellers, func(i, j int) bool { return dbReference.Sellers[i] < dbReference.Sellers[j] })
-	sort.Slice(dbReference.Datacenters, func(i, j int) bool { return dbReference.Datacenters[i] < dbReference.Datacenters[j] })
-	sort.Slice(dbReference.Relays, func(i, j int) bool { return dbReference.Relays[i].DisplayName < dbReference.Relays[j].DisplayName })
 
 	return dbReference
 }
@@ -206,6 +217,10 @@ func (ref *DatabaseBinWrapperReference) Serialize(stream encoding.Stream) error 
 	numRelays := uint32(len(ref.Relays))
 	stream.SerializeUint32(&numRelays)
 
+	if stream.IsReading() {
+		ref.Relays = make([]RelayReference, numRelays)
+	}
+
 	for i := uint32(0); i < numRelays; i++ {
 		stream.SerializeString(&ref.Relays[i].DisplayName, MaxRelayNameLength)
 		stream.SerializeAddress(&ref.Relays[i].PublicIP)
@@ -214,13 +229,20 @@ func (ref *DatabaseBinWrapperReference) Serialize(stream encoding.Stream) error 
 	numBuyers := uint32(len(ref.Buyers))
 	stream.SerializeUint32(&numBuyers)
 
+	if stream.IsReading() {
+		ref.Buyers = make([]uint64, numBuyers)
+	}
+
 	for i := uint32(0); i < numBuyers; i++ {
-		buyerID := ref.Buyers[i]
-		stream.SerializeUint64(&buyerID)
+		stream.SerializeUint64(&ref.Buyers[i])
 	}
 
 	numDCMapKeys := uint32(len(ref.DatacenterMaps))
 	stream.SerializeUint32(&numDCMapKeys)
+
+	if stream.IsReading() {
+		ref.DatacenterMaps = make(map[uint64][]uint64)
+	}
 
 	dcMapKeys := make([]uint64, numDCMapKeys)
 
@@ -234,13 +256,28 @@ func (ref *DatabaseBinWrapperReference) Serialize(stream encoding.Stream) error 
 		buyerID := dcMapKeys[i]
 		stream.SerializeUint64(&buyerID)
 
-		for _, dcID := range ref.DatacenterMaps[buyerID] {
-			stream.SerializeUint64(&dcID)
+		numBuyerDCs := uint32(len(ref.DatacenterMaps[buyerID]))
+		stream.SerializeUint32(&numBuyerDCs)
+
+		if stream.IsReading() {
+			ref.DatacenterMaps[buyerID] = make([]uint64, numBuyerDCs)
+		}
+
+		for i := uint32(0); i < numBuyerDCs; i++ {
+			stream.SerializeUint64(&ref.DatacenterMaps[buyerID][i])
+
+			if stream.IsReading() {
+				ref.DatacenterMaps[buyerID][i] = ref.DatacenterMaps[buyerID][i]
+			}
 		}
 	}
 
 	numSellers := uint32(len(ref.Sellers))
 	stream.SerializeUint32(&numSellers)
+
+	if stream.IsReading() {
+		ref.Sellers = make([]string, numSellers)
+	}
 
 	for i := uint32(0); i < numSellers; i++ {
 		stream.SerializeString(&ref.Sellers[i], MaxSellerShortNameLength)
@@ -249,12 +286,20 @@ func (ref *DatabaseBinWrapperReference) Serialize(stream encoding.Stream) error 
 	numDatacenters := uint32(len(ref.Datacenters))
 	stream.SerializeUint32(&numDatacenters)
 
+	if stream.IsReading() {
+		ref.Datacenters = make([]string, numDatacenters)
+	}
+
 	for i := uint32(0); i < numDatacenters; i++ {
 		stream.SerializeString(&ref.Datacenters[i], MaxDatacenterNameLength)
 	}
 
 	numRelayKeys := uint32(len(ref.RelayMap))
 	stream.SerializeUint32(&numRelayKeys)
+
+	if stream.IsReading() {
+		ref.RelayMap = make(map[uint64]RelayReference)
+	}
 
 	relayKeys := make([]uint64, numRelayKeys)
 
@@ -267,9 +312,17 @@ func (ref *DatabaseBinWrapperReference) Serialize(stream encoding.Stream) error 
 	for _, relayID := range relayKeys {
 		ip := ref.RelayMap[relayID].PublicIP
 		name := ref.RelayMap[relayID].DisplayName
+
 		stream.SerializeUint64(&relayID)
 		stream.SerializeString(&name, MaxRelayNameLength)
 		stream.SerializeAddress(&ip)
+
+		if stream.IsReading() {
+			ref.RelayMap[relayID] = RelayReference{
+				DisplayName: name,
+				PublicIP:    ip,
+			}
+		}
 	}
 
 	return stream.Error()

@@ -239,29 +239,76 @@ func TestReferenceSerialization(t *testing.T) {
 	numRelays := 3
 	numDatacenters := 3
 
-	expectedWrapper := SetupStorageWrapper(t, numBuyers, numSellers, numRelays, numDatacenters)
-	dbReferenceExpected := expectedWrapper.WrapperToReference()
-	expectedBuffer := make([]byte, routing.MaxDatabaseBinWrapperSize)
-	expectedWriteStream, err := encoding.CreateWriteStream(expectedBuffer)
-	assert.NoError(t, err)
+	t.Run("serialize v0 - storage", func(t *testing.T) {
+		expectedWrapper := SetupStorageWrapper(t, numBuyers, numSellers, numRelays, numDatacenters)
+		expectedReference := expectedWrapper.WrapperToReference()
 
-	err = dbReferenceExpected.Serialize(expectedWriteStream)
-	assert.NoError(t, err)
+		buffer := make([]byte, 10000)
 
-	expectedWriteStream.Flush()
+		ws, err := encoding.CreateWriteStream(buffer)
+		assert.NoError(t, err)
+		err = expectedReference.Serialize(ws)
+		assert.NoError(t, err)
 
-	actualWrapper := SetupReferenceWrapper(t, numBuyers, numSellers, numRelays, numDatacenters)
-	dbReferenceActual := actualWrapper.WrapperToReference()
-	actualBuffer := make([]byte, routing.MaxDatabaseBinWrapperSize)
-	actualWriteStream, err := encoding.CreateWriteStream(actualBuffer)
-	assert.NoError(t, err)
+		ws.Flush()
+		data := ws.GetData()[:ws.GetBytesProcessed()]
 
-	err = dbReferenceActual.Serialize(actualWriteStream)
-	assert.NoError(t, err)
+		var actualReference routing.DatabaseBinWrapperReference
+		rs := encoding.CreateReadStream(data)
+		err = actualReference.Serialize(rs)
+		assert.NoError(t, err)
 
-	actualWriteStream.Flush()
+		assert.Equal(t, expectedReference, actualReference)
+	})
 
-	assert.Equal(t, binary.LittleEndian.Uint64(expectedBuffer), binary.LittleEndian.Uint64(actualBuffer))
+	t.Run("serialize v0 - reference", func(t *testing.T) {
+		expectedWrapper := SetupReferenceWrapper(t, numBuyers, numSellers, numRelays, numDatacenters)
+		expectedReference := expectedWrapper.WrapperToReference()
+
+		buffer := make([]byte, 10000)
+
+		ws, err := encoding.CreateWriteStream(buffer)
+		assert.NoError(t, err)
+		err = expectedReference.Serialize(ws)
+		assert.NoError(t, err)
+
+		ws.Flush()
+		data := ws.GetData()[:ws.GetBytesProcessed()]
+
+		var actualReference routing.DatabaseBinWrapperReference
+		rs := encoding.CreateReadStream(data)
+		err = actualReference.Serialize(rs)
+		assert.NoError(t, err)
+
+		assert.Equal(t, expectedReference, actualReference)
+	})
+
+	t.Run("serialize v0 - ref == storage", func(t *testing.T) {
+		expectedWrapper := SetupStorageWrapper(t, numBuyers, numSellers, numRelays, numDatacenters)
+		dbReferenceExpected := expectedWrapper.WrapperToReference()
+		expectedBuffer := make([]byte, routing.MaxDatabaseBinWrapperSize)
+		expectedWriteStream, err := encoding.CreateWriteStream(expectedBuffer)
+		assert.NoError(t, err)
+
+		err = dbReferenceExpected.Serialize(expectedWriteStream)
+		assert.NoError(t, err)
+
+		expectedWriteStream.Flush()
+
+		actualWrapper := SetupReferenceWrapper(t, numBuyers, numSellers, numRelays, numDatacenters)
+		dbReferenceActual := actualWrapper.WrapperToReference()
+		actualBuffer := make([]byte, routing.MaxDatabaseBinWrapperSize)
+		actualWriteStream, err := encoding.CreateWriteStream(actualBuffer)
+		assert.NoError(t, err)
+
+		err = dbReferenceActual.Serialize(actualWriteStream)
+		assert.NoError(t, err)
+
+		actualWriteStream.Flush()
+
+		assert.Equal(t, expectedWriteStream.GetBytesProcessed(), actualWriteStream.GetBytesProcessed())
+		assert.Equal(t, binary.LittleEndian.Uint64(expectedBuffer), binary.LittleEndian.Uint64(actualBuffer))
+	})
 }
 
 func TestReferenceHashing(t *testing.T) {
