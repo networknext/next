@@ -163,16 +163,3 @@ project "complex_server"
 		links { "pthread" }
 	filter "system:macosx"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
-
-project "ping"
-	kind "ConsoleApp"
-	links { "next", "sodium" }
-	files { "examples/ping.cpp" }
-	includedirs { "include" }
-	filter "system:windows"
-		disablewarnings { "4324" }
-	filter "system:not windows"
-		links { "pthread" }
-	filter "system:macosx"
-		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
-
