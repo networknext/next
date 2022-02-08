@@ -72,6 +72,33 @@ func getLocalDatabaseBin() {
 	dbWrapper.DatacenterMap = datacenterMap
 	dbWrapper.DatacenterMaps = datacenterMaps
 
+	now := time.Now().UTC()
+
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	dbWrapper.CreationTime = timeStamp
+	dbWrapper.Creator = "local tester"
+
+	dbReference := dbWrapper.WrapperToReference()
+
+	dbHash, err := dbReference.Hash()
+	if err != nil {
+		err := fmt.Errorf("getLocalDatabaseBin() failed to hash database wrapper: %v", err)
+		core.Error("%v", err)
+		return
+	}
+
+	metaData := routing.DatabaseBinFileMetaData{
+		DatabaseBinFileAuthor:       "next cli",
+		DatabaseBinFileCreationTime: time.Now().UTC(),
+		SHA:                         fmt.Sprintf("%016x", dbHash),
+	}
+
+	if err := db.UpdateDatabaseBinFileMetaData(ctx, metaData); err != nil {
+		err := fmt.Errorf("getLocalDatabaseBin() error writing bin file metadata to db: %v", err)
+		core.Error("%v", err)
+		return
+	}
+
 	var buffer bytes.Buffer
 
 	encoder := gob.NewEncoder(&buffer)
@@ -79,7 +106,7 @@ func getLocalDatabaseBin() {
 
 	err = ioutil.WriteFile("./database.bin", buffer.Bytes(), 0644)
 	if err != nil {
-		fmt.Printf("Failed to write database file")
+		fmt.Printf("getLocalDatabaseBin() failed to write database file")
 	}
 }
 

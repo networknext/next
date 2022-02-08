@@ -711,7 +711,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 
 	metaData := routing.DatabaseBinFileMetaData{
 		DatabaseBinFileAuthor:       requestName,
-		DatabaseBinFileCreationTime: time.Now(),
+		DatabaseBinFileCreationTime: time.Now().UTC(),
 		SHA:                         fmt.Sprintf("%016x", genHash),
 	}
 
@@ -796,7 +796,7 @@ func (rfs *RelayFleetService) NextBinFileCommitTimeStamp(
 
 	metaData := routing.DatabaseBinFileMetaData{
 		DatabaseBinFileAuthor:       "next cli",
-		DatabaseBinFileCreationTime: time.Now(),
+		DatabaseBinFileCreationTime: time.Now().UTC(),
 		SHA:                         args.SHA,
 	}
 
@@ -852,7 +852,7 @@ func (rfs *RelayFleetService) BinFileGenerator(ctx context.Context, userEmail st
 
 	now := time.Now().UTC()
 
-	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
 	dbWrapper.CreationTime = timeStamp
 	dbWrapper.Creator = userEmail
 

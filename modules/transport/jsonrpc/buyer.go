@@ -1536,6 +1536,21 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	// Buyer not found
 	if buyer.ID == 0 {
+		currentTime := time.Now().UTC()
+
+		// Check to see if it has been long enough to commit another bin file
+		currentBinMeta, err := s.Storage.GetDatabaseBinFileMetaData(ctx)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			core.Error("UpdateBinFile(): %v", err)
+			return &err
+		}
+
+		if currentTime.Sub(currentBinMeta.DatabaseBinFileCreationTime) < time.Minute {
+			err := JSONRPCErrorCodes[int(ERROR_DATABASE_BIN_COOLDOWN)]
+			core.Error("UpdateBinFile(): %v", err.Error())
+			return &err
+		}
 
 		// check if we can add new buyer to analysis only
 		allBuyers := s.Storage.Buyers(ctx)
@@ -1595,8 +1610,8 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			}
 
 			if err := s.UpdateBinFile(ctx, buyer); err != nil {
-				err = fmt.Errorf("UpdateGameConfiguration(): Failed to upload the new database.bin")
 				core.Error("%v", err)
+				return err
 			}
 		}
 
@@ -3248,6 +3263,7 @@ func (s *BuyersService) UpdateBinFile(ctx context.Context, newBuyer routing.Buye
 	currentBin, err := s.FetchCurrentDatabaseBinWrapper(remoteFileName)
 	if err != nil {
 		core.Error("UpdateBinFile(): %v", err)
+		return err
 	}
 
 	currentBin.BuyerMap[newBuyer.ID] = newBuyer
@@ -3269,7 +3285,7 @@ func (s *BuyersService) UpdateBinFile(ctx context.Context, newBuyer routing.Buye
 
 	now := time.Now().UTC()
 
-	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
 	currentBin.CreationTime = timeStamp
 
 	if err := s.UploadNewDatabaseBinWrapper(ctx, remoteFileName, currentBin); err != nil {
@@ -3419,6 +3435,21 @@ func (s *BuyersService) LocalUpdateBinFile(r *http.Request, args *LocalUpdateBin
 		return err
 	}
 
+	// Check to see if it has been long enough to commit another bin file
+	currentTime := time.Now().UTC()
+	binTime, err := time.Parse("January 2, 2006 15:04 UTC", currentBin.CreationTime)
+	if err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): failed to parse current database.bin creation time")
+		core.Error("%v", err)
+		return err
+	}
+
+	if currentTime.Sub(binTime) < time.Minute {
+		err := JSONRPCErrorCodes[int(ERROR_DATABASE_BIN_COOLDOWN)]
+		core.Error("UpdateBinFile(): %v", err.Error())
+		return &err
+	}
+
 	// Setup new fake buyer to add
 	byteKey, err := base64.StdEncoding.DecodeString("/g1saKcm/HEmX5vgpgsxLc3p1dnbvk0lauejmsDN0RWXAHgOuqKkYw==")
 	if err != nil {
@@ -3511,7 +3542,7 @@ func (s *BuyersService) BinFileGenerator(ctx context.Context) (*routing.Database
 
 	now := time.Now().UTC()
 
-	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
 	dbWrapper.CreationTime = timeStamp
 	dbWrapper.Creator = "Local Tester"
 
