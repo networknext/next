@@ -1574,6 +1574,10 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 			return err
 		}
 
+		// Setup reply
+		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+		reply.BuyerID = fmt.Sprintf("%016x", buyer.ID)
+
 		if allowLiveAnalysisOnly {
 			routeShader := core.NewRouteShader()
 			routeShader.AnalysisOnly = true
@@ -1595,10 +1599,6 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 				core.Error("%v", err)
 			}
 		}
-
-		// Setup reply
-		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
-		reply.BuyerID = fmt.Sprintf("%016x", buyer.ID)
 
 		return nil
 	}
