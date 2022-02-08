@@ -17,6 +17,7 @@ import (
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
+	"github.com/networknext/backend/modules/storage"
 	"github.com/networknext/backend/modules/transport/looker"
 	"github.com/stretchr/testify/assert"
 )
@@ -2319,4 +2320,136 @@ func TestAnalyticsDashboards(t *testing.T) {
 		err = db.UpdateAnalyticsDashboardCategoryByID(ctx, updatedCategory.ID, "Premium", nil)
 		assert.Error(t, err)
 	})
+}
+
+func SetupDatabaseWrapper(t *testing.T, storer storage.Storer, numBuyers int, numSellers int, numRelays int, numDatacenters int) routing.DatabaseBinWrapper {
+	ctx := context.Background()
+
+	for i := 0; i < numBuyers; i++ {
+		err := storer.AddBuyer(ctx, routing.Buyer{
+			ID: uint64(i + 1),
+		})
+		assert.NoError(t, err)
+	}
+
+	for i := 0; i < numSellers; i++ {
+		sellerName := fmt.Sprintf("seller%d", i+1)
+		err := storer.AddSeller(ctx, routing.Seller{
+			ID:        sellerName,
+			Name:      sellerName,
+			ShortName: sellerName,
+		})
+		assert.NoError(t, err)
+	}
+
+	for i := 0; i < numDatacenters; i++ {
+		dcName := fmt.Sprintf("datacenter%d", i+1)
+		err := storer.AddDatacenter(ctx, routing.Datacenter{
+			ID:   crypto.HashID(dcName),
+			Name: dcName,
+		})
+		assert.NoError(t, err)
+	}
+
+	for i := 0; i < numRelays; i++ {
+		relayAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("127.0.0.%d:10000", i+1))
+		assert.NoError(t, err)
+
+		sellerName := fmt.Sprintf("seller%d", i+1)
+		dcName := fmt.Sprintf("datacenter%d", i+1)
+
+		err = storer.AddRelay(ctx, routing.Relay{
+			ID:   uint64(i + 1),
+			Name: fmt.Sprintf("relay%d", i+1),
+			Addr: *relayAddr,
+			Seller: routing.Seller{
+				ID:        sellerName,
+				Name:      sellerName,
+				ShortName: sellerName,
+			},
+			Datacenter: routing.Datacenter{
+				ID:   crypto.HashID(dcName),
+				Name: dcName,
+			},
+		})
+		assert.NoError(t, err)
+	}
+
+	for i := 0; i < numDatacenters; i++ {
+		dcName := fmt.Sprintf("datacenter%d", i+1)
+		err := storer.AddDatacenterMap(ctx, routing.DatacenterMap{
+			BuyerID:      uint64(i + 1),
+			DatacenterID: crypto.HashID(dcName),
+		})
+		assert.NoError(t, err)
+	}
+
+	wrapper := routing.CreateEmptyDatabaseBinWrapper()
+
+	wrapper.BuyerMap = make(map[uint64]routing.Buyer)
+	wrapper.DatacenterMaps = make(map[uint64]map[uint64]routing.DatacenterMap)
+
+	allBuyers := storer.Buyers(ctx)
+	assert.Equal(t, numBuyers, len(allBuyers))
+
+	for _, buyer := range allBuyers {
+		wrapper.BuyerMap[buyer.ID] = buyer
+		wrapper.DatacenterMaps[buyer.ID] = storer.GetDatacenterMapsForBuyer(ctx, buyer.ID)
+	}
+
+	wrapper.SellerMap = make(map[string]routing.Seller)
+
+	allSellers := storer.Sellers(ctx)
+	assert.Equal(t, numSellers, len(allSellers))
+
+	for _, seller := range allSellers {
+		wrapper.SellerMap[seller.ShortName] = seller
+	}
+
+	wrapper.RelayMap = make(map[uint64]routing.Relay)
+	wrapper.Relays = make([]routing.Relay, numRelays)
+
+	allRelays := storer.Relays(ctx)
+	assert.Equal(t, numRelays, len(allRelays))
+
+	for i, relay := range allRelays {
+		wrapper.RelayMap[relay.ID] = relay
+		wrapper.Relays[i] = relay
+	}
+
+	wrapper.DatacenterMap = make(map[uint64]routing.Datacenter)
+
+	allDatacenters := storer.Datacenters(ctx)
+	assert.Equal(t, numDatacenters, len(allDatacenters))
+
+	for _, datacenter := range allDatacenters {
+		wrapper.DatacenterMap[datacenter.ID] = datacenter
+	}
+
+	assert.False(t, wrapper.IsEmpty())
+
+	return *wrapper
+}
+
+func DatabaseBinFileReference(t *testing.T) {
+	SetupEnv()
+
+	ctx := context.Background()
+	logger := log.NewNopLogger()
+
+	env, err := backend.GetEnv()
+	assert.NoError(t, err)
+	db, err := backend.GetStorer(ctx, logger, "local", env)
+	assert.NoError(t, err)
+
+	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
+	assert.NoError(t, err)
+
+	expectedDBWrapper := SetupDatabaseWrapper(t, db, 3, 3, 3, 3)
+	expectedReference := expectedDBWrapper.WrapperToReference()
+
+	actualReference, err := db.DatabaseBinFileReference(ctx)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expectedReference, actualReference)
 }

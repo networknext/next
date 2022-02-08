@@ -72,6 +72,33 @@ func getLocalDatabaseBin() {
 	dbWrapper.DatacenterMap = datacenterMap
 	dbWrapper.DatacenterMaps = datacenterMaps
 
+	now := time.Now().UTC()
+
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	dbWrapper.CreationTime = timeStamp
+	dbWrapper.Creator = "local tester"
+
+	dbReference := dbWrapper.WrapperToReference()
+
+	dbHash, err := dbReference.Hash()
+	if err != nil {
+		err := fmt.Errorf("getLocalDatabaseBin() failed to hash database wrapper: %v", err)
+		core.Error("%v", err)
+		return
+	}
+
+	metaData := routing.DatabaseBinFileMetaData{
+		DatabaseBinFileAuthor:       "next cli",
+		DatabaseBinFileCreationTime: time.Now().UTC(),
+		SHA:                         fmt.Sprintf("%016x", dbHash),
+	}
+
+	if err := db.UpdateDatabaseBinFileMetaData(ctx, metaData); err != nil {
+		err := fmt.Errorf("getLocalDatabaseBin() error writing bin file metadata to db: %v", err)
+		core.Error("%v", err)
+		return
+	}
+
 	var buffer bytes.Buffer
 
 	encoder := gob.NewEncoder(&buffer)
@@ -79,7 +106,7 @@ func getLocalDatabaseBin() {
 
 	err = ioutil.WriteFile("./database.bin", buffer.Bytes(), 0644)
 	if err != nil {
-		fmt.Printf("Failed to write database file")
+		fmt.Printf("getLocalDatabaseBin() failed to write database file")
 	}
 }
 
@@ -420,7 +447,8 @@ func checkMetaData() {
 	}
 
 	fmt.Printf("Creator     : %s\n", incomingDB.Creator)
-	fmt.Printf("CreationTime: %s\n\n", incomingDB.CreationTime)
+	fmt.Printf("CreationTime: %s\n", incomingDB.CreationTime)
+	fmt.Printf("SHA: %s\n\n", incomingDB.SHA)
 }
 
 func checkRelaysInBinFile() {
@@ -605,6 +633,22 @@ func checkDCMapsInBinFile() {
 }
 
 func commitDatabaseBin(env Environment) {
+	f2, err := os.Open("database.bin")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	var incomingDB routing.DatabaseBinWrapper
+
+	decoder := gob.NewDecoder(f2)
+	err = decoder.Decode(&incomingDB)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	f2.Close()
 
 	// dev    : development_artifacts
 	// prod   : prod_artifacts
@@ -657,7 +701,9 @@ func commitDatabaseBin(env Environment) {
 			handleRunTimeError(fmt.Sprintf("Error copying database.bin to %s: %v\n", bucketName, err), 1)
 		}
 
-		var timeStampArgs = localjsonrpc.NextBinFileCommitTimeStampArgs{}
+		var timeStampArgs = localjsonrpc.NextBinFileCommitTimeStampArgs{
+			SHA: incomingDB.SHA,
+		}
 		var timeStampReply = localjsonrpc.NextBinFileCommitTimeStampReply{}
 
 		if err := makeRPCCall(env, &timeStampReply, "RelayFleetService.NextBinFileCommitTimeStamp", timeStampArgs); err != nil {
@@ -665,9 +711,8 @@ func commitDatabaseBin(env Environment) {
 			return
 		}
 
-		fmt.Printf("\ndatabase.bin copied to %s.\n", bucketName)
+		fmt.Printf("\ndatabase.bin copied to %s. SHA: %s\n", bucketName, incomingDB.SHA)
 	} else {
 		fmt.Printf("\nOk - not pushing database.bin to %s\n", bucketName)
 	}
-
 }
