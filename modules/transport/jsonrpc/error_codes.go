@@ -25,6 +25,7 @@ const (
 	ERROR_UNKNOWN_NOTIFICATION_TYPE   json2.ErrorCode = 11
 	ERROR_HUBSPOT_FAILURE             json2.ErrorCode = 12
 	ERROR_RELAY_NEEDS_RESURRECTION    json2.ErrorCode = 13
+	ERROR_DATABASE_BIN_COOLDOWN       json2.ErrorCode = 14
 )
 
 var JSONRPCErrorCodes []json2.Error = []json2.Error{
@@ -124,6 +125,13 @@ var JSONRPCErrorCodes []json2.Error = []json2.Error{
 		Code:    ERROR_RELAY_NEEDS_RESURRECTION,
 		Data: &JSONRPCErrorData{
 			Name: "ERROR_RELAY_NEEDS_RESURRECTION",
+		},
+	},
+	{
+		Message: "Database is busy, please try again in a minute",
+		Code:    ERROR_DATABASE_BIN_COOLDOWN,
+		Data: &JSONRPCErrorData{
+			Name: "ERROR_DATABASE_BIN_COOLDOWN",
 		},
 	},
 }

@@ -15,14 +15,19 @@ import (
 )
 
 type InMemory struct {
-	localCustomers      []routing.Customer
-	localBuyers         []routing.Buyer
-	localSellers        []routing.Seller
-	localRelays         []routing.Relay
-	localDatacenters    []routing.Datacenter
-	localDatacenterMaps []routing.DatacenterMap
+	localCustomers           []routing.Customer
+	localBuyers              []routing.Buyer
+	localSellers             []routing.Seller
+	localRelays              []routing.Relay
+	localDatacenters         []routing.Datacenter
+	localDatacenterMaps      []routing.DatacenterMap
+	localDatabaseBinMetaData routing.DatabaseBinFileMetaData
 
 	LocalMode bool
+}
+
+func (m *InMemory) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBinWrapperReference, error) {
+	return routing.DatabaseBinWrapperReference{}, fmt.Errorf("Need to implement DatabaseBinFileReference for in memory storer")
 }
 
 func (m *InMemory) Buyer(ctx context.Context, id uint64) (routing.Buyer, error) {
@@ -408,8 +413,7 @@ func (m *InMemory) GetDatacenterMapsForBuyer(ctx context.Context, id uint64) map
 	var dcs = make(map[uint64]routing.DatacenterMap)
 	for _, dc := range m.localDatacenterMaps {
 		if dc.BuyerID == id {
-			id := crypto.HashID(fmt.Sprintf("%x", dc.BuyerID) + fmt.Sprintf("%x", dc.DatacenterID))
-			dcs[id] = dc
+			dcs[dc.DatacenterID] = dc
 		}
 	}
 
@@ -1512,11 +1516,12 @@ func (m *InMemory) UpdateDatacenter(ctx context.Context, datacenterID uint64, fi
 }
 
 func (m *InMemory) GetDatabaseBinFileMetaData(ctx context.Context) (routing.DatabaseBinFileMetaData, error) {
-	return routing.DatabaseBinFileMetaData{}, fmt.Errorf("GetDatabaseBinFileMetaData not implemented in InMemory storer")
+	return m.localDatabaseBinMetaData, nil
 }
 
 func (m *InMemory) UpdateDatabaseBinFileMetaData(ctx context.Context, fileMeta routing.DatabaseBinFileMetaData) error {
-	return fmt.Errorf("UpdateDatabaseBinFileMetaData not implemented in InMemory storer")
+	m.localDatabaseBinMetaData = fileMeta
+	return nil
 }
 
 // GetAnalyticsDashboardCategories returns all Looker dashboard categories
