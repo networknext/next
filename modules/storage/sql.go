@@ -4079,12 +4079,12 @@ func (db *SQL) GetDatabaseBinFileMetaData(ctx context.Context) (routing.Database
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	querySQL.Write([]byte("select bin_file_creation_time, bin_file_author "))
+	querySQL.Write([]byte("select bin_file_creation_time, bin_file_author, sha "))
 	querySQL.Write([]byte("from database_bin_meta order by bin_file_creation_time desc limit 1"))
 
 	for retryCount < MAX_RETRIES {
 		row = db.Client.QueryRowContext(ctx, querySQL.String())
-		err = row.Scan(&dashboardData.DatabaseBinFileCreationTime, &dashboardData.DatabaseBinFileAuthor)
+		err = row.Scan(&dashboardData.DatabaseBinFileCreationTime, &dashboardData.DatabaseBinFileAuthor, &dashboardData.SHA)
 		switch err {
 		case context.Canceled:
 			retryCount = retryCount + 1
@@ -4113,6 +4113,12 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
+
+	fmt.Println("==============================")
+	fmt.Println("Updating meta data")
+	fmt.Println(metaData.DatabaseBinFileAuthor)
+	fmt.Println(metaData.SHA)
+	fmt.Println("==============================")
 
 	// Add the metadata record to the database_bin_meta table
 	sql.Write([]byte("insert into database_bin_meta ("))

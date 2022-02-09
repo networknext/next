@@ -1463,9 +1463,32 @@ func TestUpdateGameConfiguration(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("success - new buyer", func(t *testing.T) {
+	t.Run("cooldown failure - new buyer", func(t *testing.T) {
+		err := storer.UpdateDatabaseBinFileMetaData(reqContext, routing.DatabaseBinFileMetaData{
+			DatabaseBinFileAuthor:       "tester",
+			DatabaseBinFileCreationTime: time.Now().UTC(),
+			SHA:                         fmt.Sprintf("%016x", uint64(0000000000)),
+		})
+		assert.NoError(t, err)
+
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
+		err = svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success - new buyer", func(t *testing.T) {
+		pastTime, err := time.ParseDuration("-1.5h")
+		assert.NoError(t, err)
+
+		err = storer.UpdateDatabaseBinFileMetaData(reqContext, routing.DatabaseBinFileMetaData{
+			DatabaseBinFileAuthor:       "tester",
+			DatabaseBinFileCreationTime: time.Now().UTC().Add(pastTime),
+			SHA:                         fmt.Sprintf("%016x", uint64(0000000000)),
+		})
+		assert.NoError(t, err)
+
+		var reply jsonrpc.GameConfigurationReply
+		err = svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
 		assert.NoError(t, err)
 
 		newBuyer, err := storer.BuyerWithCompanyCode(reqContext, "local-local")

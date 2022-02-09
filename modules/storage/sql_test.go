@@ -1828,12 +1828,13 @@ func TestDatabaseBinMetaData(t *testing.T) {
 
 	t.Run("AddDatabaseBinMetaData", func(t *testing.T) {
 
-		testTime := time.Now()
+		testTime := time.Now().UTC()
 		ctx := context.Background()
 
 		metaData := routing.DatabaseBinFileMetaData{
 			DatabaseBinFileAuthor:       "Arthur Dent",
 			DatabaseBinFileCreationTime: testTime,
+			SHA:                         fmt.Sprintf("Some SHA"),
 		}
 
 		err = db.UpdateDatabaseBinFileMetaData(ctx, metaData)
@@ -1843,9 +1844,10 @@ func TestDatabaseBinMetaData(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "Arthur Dent", checkMetaData.DatabaseBinFileAuthor)
 		assert.Equal(t, testTime.Format("01/02/06"), checkMetaData.DatabaseBinFileCreationTime.Format("01/02/06"))
+		assert.Equal(t, "Some SHA", checkMetaData.SHA)
 
 		// should only return the most recent record
-		testTime2 := time.Now()
+		testTime2 := time.Now().UTC()
 		metaData2 := routing.DatabaseBinFileMetaData{
 			DatabaseBinFileAuthor:       "Brian Cohen",
 			DatabaseBinFileCreationTime: testTime2,
