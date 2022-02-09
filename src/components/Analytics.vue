@@ -20,6 +20,8 @@
           <LookerEmbed :dashURL="url" dashID="analyticsDash" />
         </div>
       </div>
+    </div>
+  </div>
 </template>
 
 <script lang="ts">
@@ -96,8 +98,8 @@ export default class Analytics extends Vue {
       .then((response: any) => {
         this.dashboards = response.dashboards || []
         this.tabs = Object.keys(this.dashboards)
-        this.tabs.sort((a: string, b: string) => {
-          return (a === 'General' || b === 'General') ? 1 : 0
+        this.tabs.sort((a: string) => {
+          return a === 'General' ? 0 : 1
         })
         this.selectedTabIndex = 0
         this.urls = this.dashboards[this.tabs[0]]

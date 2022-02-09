@@ -223,10 +223,6 @@ export class JSONRPCService {
   public processNewSignup (args: any): Promise<any> {
     return this.call('AuthService.ProcessNewSignup', args)
   }
-
-  public fetchDiscoveryDashboards (args: any): Promise<any> {
-    return this.call('BuyersService.FetchDiscoveryDashboards', args)
-  }
 }
 
 export const JSONRPCPlugin = {

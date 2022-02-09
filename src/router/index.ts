@@ -44,11 +44,6 @@ const routes: Array<RouteConfig> = [
         component: Analytics
       },
       {
-        path: 'discovery',
-        name: 'discovery',
-        component: Discovery
-      },
-      {
         path: 'usage',
         name: 'usage',
         component: Usage,
