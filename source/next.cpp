@@ -8939,7 +8939,6 @@ struct NextBackendSessionUpdatePacket
     bool client_ping_timed_out;
     int num_tags;
     uint64_t tags[NEXT_MAX_TAGS];
-    int num_user_flags;
     uint64_t user_flags;
     float direct_min_rtt;
     float direct_max_rtt;
@@ -9025,7 +9024,7 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, client_ping_timed_out );
 
         bool has_tags = Stream::IsWriting && slice_number == 0 && num_tags > 0;
-        bool has_user_flags = Stream::IsWriting && num_user_flags > 0;
+        bool has_user_flags = Stream::IsWriting && user_flags > 0;
         bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
         bool has_out_of_order_packets = Stream::IsWriting && ( packets_out_of_order_client_to_server + packets_out_of_order_server_to_client ) > 0;
 
@@ -9117,7 +9116,6 @@ struct next_session_entry_t
     uint64_t tags[NEXT_MAX_TAGS];
     int num_tags;
     uint64_t user_flags;
-    int num_user_flags;
 
     uint8_t client_open_session_sequence;
 
@@ -10029,7 +10027,6 @@ struct next_server_command_event_user_flag_t : public next_server_command_t
 {
     next_address_t address;
     uint64_t user_flags;
-    int num_user_flags;
 };
 
 // ---------------------------------------------------------------
@@ -11727,7 +11724,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
             entry->high_frequency_pings = packet.high_frequency_pings;
 
-            entry->num_user_flags = 0;
             entry->user_flags = 0;
 
             return;
@@ -12410,11 +12406,11 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not find any session to tag for address %s", next_address_to_string( address, buffer ) );    
 }
 
-void next_server_internal_event_user_flag( next_server_internal_t * server, const next_address_t * address, uint64_t user_flags, int num_user_flags )
+void next_server_internal_event_user_flag( next_server_internal_t * server, const next_address_t * address, uint64_t user_flags )
 {
     next_assert( server );
     next_assert( address );
-    next_assert( num_user_flags > 0 );
+    next_assert( user_flags > 0 );
 
     next_server_internal_verify_sentinels( server );
 
@@ -12430,7 +12426,6 @@ void next_server_internal_event_user_flag( next_server_internal_t * server, cons
     }
 
     entry->user_flags |= user_flags;
-    entry->num_user_flags += num_user_flags;
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds event user flag %" PRIx64 " as %" PRIx64 " (internal) for session at address %s", user_flags, entry->user_flags, next_address_to_string( address, buffer ) );
 }
@@ -12477,7 +12472,7 @@ bool next_server_internal_pump_commands( next_server_internal_t * server, bool q
             case NEXT_SERVER_COMMAND_EVENT_USER_FLAG:
             {
                 next_server_command_event_user_flag_t * event = (next_server_command_event_user_flag_t*) command;
-                next_server_internal_event_user_flag( server, &event->address, event->user_flags, event->num_user_flags );
+                next_server_internal_event_user_flag( server, &event->address, event->user_flags );
             }
             break;
 
@@ -12794,7 +12789,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             {
                 packet.tags[j] = session->tags[j];
             }
-            packet.num_user_flags = session->num_user_flags;
             packet.user_flags = session->user_flags;
             packet.reported = session->stats_reported;
             packet.fallback_to_direct = session->stats_fallback_to_direct;
@@ -13555,7 +13549,6 @@ void next_server_event( struct next_server_t * server, const struct next_address
     command->type = NEXT_SERVER_COMMAND_EVENT_USER_FLAG;
     command->address = *address;
     command->user_flags = server_events;
-    command->num_user_flags = 1;
 
     {    
         next_platform_mutex_guard( &server->internal->command_mutex );
