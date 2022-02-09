@@ -40,7 +40,7 @@
                 Resend email
               </button>
             </form>
-            <div style="padding: 1rem 0 1rem 0; text-align: center;"><router-link to="map"><strong>Back to Portal</strong></router-link></div>
+            <div style="padding: 1rem 0 1rem 0; text-align: center;"><router-link to="/map"><strong>Back to Portal</strong></router-link></div>
           </div>
         </div>
       </div>
@@ -70,7 +70,7 @@ export default class ResetPasswordModal extends Vue {
     this.validEmail = false
   }
 
-  // This function is only necessary as a helper for the WIX sign up system
+  // Leaving this here to make sending forgotten password links easier in the future
   private mounted () {
     const email = this.$route.query.email || '' // The hell is a <string | (string | null)[]>!?
     if (typeof email === 'string') { // TODO: see if there is a way around this. Typescript doesn't like the (string | null)[] secondary type definition...
@@ -87,7 +87,6 @@ export default class ResetPasswordModal extends Vue {
   }
 
   private resetPassword (): void {
-    console.log('Sending password reset email...')
     // TODO: Find a better way of doing this
     this.checkEmail(true)
     if (!this.validEmail) {
@@ -98,8 +97,7 @@ export default class ResetPasswordModal extends Vue {
         this.stepOne = false
       })
       .catch((err: Error) => {
-        // TODO: Show error screen
-        this.emailError = 'The email that was entered is not valid. Please sign up if you haven\'t already'
+        this.emailError = 'Could not send password reset email. Please verify that the email is linked to a valid account and try again'
         console.log(err)
       })
   }

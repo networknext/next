@@ -15,23 +15,19 @@
         Settings
       </h1>
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
-        <Alert ref="verifyAlert">
-          <a href="#" @click="$refs.verifyAlert.resendVerificationEmail()">
-            Resend email
-          </a>
-        </Alert>
+        <Alert ref="errorAlert" />
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
       <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
-          <li class="nav-item" v-if="!$store.getters.isAnonymous">
+          <li class="nav-item">
             <router-link to="/settings/account" class="nav-link" :class="{ active: $store.getters.currentPage === 'account-settings'}">Account Settings</router-link>
           </li>
           <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/game-config" class="nav-link" :class="{ active: $store.getters.currentPage === 'config'}">Game Settings</router-link>
           </li>
-          <li class="nav-item" v-if="$flagService.isEnabled(FeatureEnum.FEATURE_ROUTE_SHADER) && ($store.getters.isAdmin || $store.getters.isOwner)">
+          <li class="nav-item" v-if="$flagService.isEnabled(FeatureEnum.FEATURE_ROUTE_SHADER) && $store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
             <router-link to="/settings/route-shader" class="nav-link" :class="{ active: $store.getters.currentPage === 'shader'}">Route Shader</router-link>
           </li>
           <li class="nav-item" v-if="$store.getters.registeredToCompany && ($store.getters.isAdmin || $store.getters.isOwner)">
@@ -47,7 +43,7 @@
 <script lang="ts">
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
-import { EMAIL_CONFIRMATION_MESSAGE, RELOAD_MESSAGE } from '@/components/types/Constants'
+import { ErrorTypes } from '@/components/types/ErrorTypes'
 import { Component, Vue } from 'vue-property-decorator'
 import { FeatureEnum } from '../components/types/FeatureTypes'
 
@@ -66,9 +62,10 @@ import { FeatureEnum } from '../components/types/FeatureTypes'
 })
 export default class SettingsWorkspace extends Vue {
   private FeatureEnum: any
+
   // Register the alert component to access its set methods
   $refs!: {
-    verifyAlert: Alert;
+    errorAlert: Alert;
   }
 
   private created () {
@@ -76,11 +73,6 @@ export default class SettingsWorkspace extends Vue {
   }
 
   private mounted () {
-    if (this.$store.getters.isAnonymousPlus) {
-      this.$refs.verifyAlert.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
-      this.$refs.verifyAlert.setAlertType(AlertType.INFO)
-    }
-
     // If the network is down, show an error
     if (this.$store.getters.killLoops) {
       this.showErrorAlert()
@@ -88,9 +80,9 @@ export default class SettingsWorkspace extends Vue {
   }
 
   private showErrorAlert () {
-    this.$refs.verifyAlert.toggleSlots(false)
-    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
-    this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
+    this.$refs.errorAlert.toggleSlots(false)
+    this.$refs.errorAlert.setMessage(ErrorTypes.SYSTEM_FAILURE)
+    this.$refs.errorAlert.setAlertType(AlertType.ERROR)
   }
 }
 </script>

@@ -51,7 +51,18 @@ const routes: Array<RouteConfig> = [
       {
         path: 'usage',
         name: 'usage',
-        component: Usage
+        component: Usage,
+        children: [
+          {
+            path: '*',
+            name: 'invoice'
+          }
+        ]
+      },
+      {
+        path: 'discovery',
+        name: 'discovery',
+        component: Discovery
       },
       {
         path: 'supply',
@@ -173,27 +184,23 @@ const ViewerRoutes = [
   'account-settings'
 ]
 
+const ExplorerRoutes = [
+  'explore',
+  'usage',
+  'invoice',
+  'analytics'
+]
+
 const OwnerRoutes = [
-  'map',
-  'sessions',
-  'session-details',
-  'session-tool',
-  'user-sessions',
-  'user-tool',
-  'downloads',
-  'settings',
-  'account-settings',
   'config',
   'users'
 ]
 
 // Add or remove these to open up beta features
 const BetaRoutes = [
-  'explore',
-  'usage',
-  'supply',
-  'analytics',
-  'discovery'
+  'discovery',
+  'saves',
+  'supply'
 ]
 
 function updateCurrentPage (name: string) {
@@ -203,91 +210,115 @@ function updateCurrentPage (name: string) {
   }
 }
 
+function checkMapModal (toName: string, fromName: string) {
+  // Close modal if open on map page
+  if (toName === 'session-details' && fromName === 'map') {
+    router.app.$root.$emit('hideMapPointsModal')
+  }
+}
+
+router.onError(() => {
+  updateCurrentPage('map')
+  router.push('/map')
+})
+
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  if (to.name === '404') {
-    updateCurrentPage('/map')
-    next('/map')
+  const toName = to.name || ''
+  const fromName = from.name || ''
+
+  if (toName === '404') {
+    next(new Error('Route does not exist'))
     return
   }
   // Email is verified - catch this event, refresh the user's token and go to the map
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
     // TODO: refreshToken returns a promise that should be used to optimize page loads. Look into how this effects routing
     Vue.prototype.$authService.refreshToken()
-    updateCurrentPage('/map')
+    updateCurrentPage('map')
     next('/map')
+    return
+  }
+
+  if (store.getters.isAnonymous && AnonymousRoutes.indexOf(toName) === -1) {
+    // Prompt user to login and try the route again afterwards
+    updateCurrentPage('/login')
+    next('/login?redirectURI=' + to.fullPath)
     return
   }
 
   // Anonymous filters
-  if (store.getters.isAnonymous && AnonymousRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('/map')
-    next('/map')
+  if (store.getters.isAnonymous && AnonymousRoutes.indexOf(toName) !== -1) {
+    checkMapModal(toName, fromName)
+
+    updateCurrentPage(toName)
+    next()
     return
   }
 
   // AnonymousPlus filters
-  if (store.getters.isAnonymousPlus && AnonymousPlusRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('/map')
-    next('/map')
+  if (store.getters.isAnonymousPlus && AnonymousPlusRoutes.indexOf(toName) !== -1) {
+    checkMapModal(toName, fromName)
+
+    updateCurrentPage(toName)
+    next()
     return
   }
 
-  if (!store.getters.isAnonymous && !store.getters.isAnonymousPlus && !store.getters.isOwner && !store.getters.isAdmin && ViewerRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('/map')
-    next('/map')
+  // Viewer filters (User that is setup and verified but doesn't have a company and/or any roles)
+  if (!(store.getters.isAnonymous || store.getters.isAnonymousPlus) && ViewerRoutes.indexOf(toName) !== -1) {
+    checkMapModal(toName, fromName)
+
+    if (toName === 'settings') {
+      updateCurrentPage('account-settings')
+      next('/settings/account')
+      return
+    }
+
+    updateCurrentPage(toName)
+    next()
+    return
+  }
+
+  // Explorer Filters
+  if (store.getters.isExplorer && ExplorerRoutes.indexOf(toName) !== -1) {
+    if (toName === 'explore') {
+      if (store.getters.hasBilling) {
+        updateCurrentPage('usage')
+        next('/explore/usage')
+        return
+      }
+
+      if (store.getters.hasAnalytics) {
+        updateCurrentPage('analytics')
+        next('/explore/analytics')
+        return
+      }
+    } else {
+      updateCurrentPage(toName)
+      next()
+      return
+    }
+
+    next(new Error('Insufficient privileges'))
     return
   }
 
   // Owner Filters
-  if (store.getters.Owner && OwnerRoutes.indexOf(to.name || '') === -1) {
-    updateCurrentPage('/map')
-    next('/map')
+  if (store.getters.isOwner && OwnerRoutes.indexOf(toName) !== -1) {
+    updateCurrentPage(toName)
+    next()
     return
   }
 
   // If user isn't an admin and they are trying to access beta content block them
-  if (!store.getters.isAdmin && BetaRoutes.indexOf(to.name || '') !== -1) {
-    updateCurrentPage('/map')
-    next('/map')
+  if (store.getters.isAdmin && BetaRoutes.indexOf(toName) !== -1) {
+    updateCurrentPage(toName)
+    next()
     return
   }
 
-  // Beta / Premium features given to the user at a buyer level
-  if (!store.getters.isSeller && (to.name === 'supply')) {
-    updateCurrentPage('/map')
-    next('/map')
-    return
-  }
-  if (!store.getters.isAdmin && !store.getters.hasAnalytics && (to.name === 'analytics')) {
-    updateCurrentPage('/map')
-    next('/map')
-    return
-  }
-  if (!store.getters.isAdmin && !store.getters.hasBilling && (to.name === 'usage')) {
-    updateCurrentPage('/map')
-    next('/map')
-    return
-  }
-
-  if (to.name === 'explore') {
-    updateCurrentPage('usage')
-    next('/explore/usage')
-    return
-  }
-  if (to.name === 'settings') {
-    updateCurrentPage('account-settings')
-    next('/settings/account')
-    return
-  }
-
-  // Close modal if open on map page
-  if (to.name === 'session-details' && from.name === 'map') {
-    router.app.$root.$emit('hideMapPointsModal')
-  }
-
-  updateCurrentPage(to.name || '')
-  next()
+  next(new Error('Insufficient privileges'))
 })
 
 export default router

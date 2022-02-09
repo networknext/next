@@ -42,10 +42,19 @@
                   <br/>
                 </small>
               </div>
-              <div style="padding: 1rem 0 1rem 0;"><router-link to="password-reset"><strong>Forgot Password?</strong></router-link></div>
+              <div style="padding: 1rem 0 1rem 0;">
+                <router-link to="/password-reset">
+                  <strong>Forgot Password?</strong>
+                </router-link>
+              </div>
               <button type="submit" class="btn btn-primary btn-block">Log in</button>
             </form>
-            <div style="padding: 1rem 0 1rem 0;">Don't have an account? <router-link to="get-access"><strong>Get Access</strong></router-link></div>
+            <div style="padding: 1rem 0 1rem 0;">
+              Don't have an account?
+              <router-link to="/get-access">
+                <strong>Get Access</strong>
+              </router-link>
+            </div>
           </div>
         </div>
       </div>
@@ -66,6 +75,7 @@ export default class LoginModal extends Vue {
   private emailError: string
   private password: string
   private passwordError: string
+  private redirectURL: string
 
   constructor () {
     super()
@@ -73,9 +83,19 @@ export default class LoginModal extends Vue {
     this.emailError = ''
     this.password = ''
     this.passwordError = ''
+    this.redirectURL = ''
+  }
+
+  private mounted () {
+    const redirectURI = this.$route.query.redirectURI || ''
+    if (redirectURI !== '') {
+      this.redirectURL = window.location.origin + '?redirectURI=' + redirectURI
+    }
   }
 
   private login (): void {
+    this.emailError = ''
+    this.passwordError = ''
     if (this.email === '') {
       this.emailError = 'An email address is required'
       return
@@ -84,13 +104,15 @@ export default class LoginModal extends Vue {
       this.passwordError = 'A password is required'
       return
     }
-    this.$authService.login(this.email, this.password).catch((err: Error) => {
-      this.password = ''
-      this.passwordError = err.message
-      setTimeout(() => {
-        this.passwordError = ''
-      }, 3000)
-    })
+    this.$authService
+      .login(this.email, this.password, this.redirectURL)
+      .catch((err: Error) => {
+        this.password = ''
+        this.passwordError = err.message
+        setTimeout(() => {
+          this.passwordError = ''
+        }, 3000)
+      })
   }
 }
 </script>

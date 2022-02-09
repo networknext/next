@@ -27,7 +27,7 @@ done
 # ssh into all the VMs under the specified MIG
 
 VMs=$(gcloud compute --project network-next-v3-${env} instance-groups managed list-instances ${mig} --zone us-central1-a --format "value(instance)")
-COMMAND="cd /portal && sudo gsutil cp ${bucket}/portal-dist.${env}.tar.gz artifact.tar.gz && tar -xvf artifact.tar.gz"
+COMMAND="cd /portal && sudo gsutil cp ${bucket}/portal-dist.${env}.tar.gz artifact.tar.gz && sudo tar -xvf artifact.tar.gz"
 
 while IFS= read -r vm; do
   printf "Deploying Frontend code to ${vm}... \n"

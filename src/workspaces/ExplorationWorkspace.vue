@@ -18,21 +18,21 @@
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
       </div>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="$store.getters.currentPage === 'usage' || $store.getters.currentPage === 'analytics' || $store.getters.currentPage === 'discovery'" style="max-width: 400px;">
+      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="$store.getters.currentPage === 'analytics' || $store.getters.currentPage === 'discovery'  || $store.getters.currentPage === 'invoice'|| $store.getters.currentPage === 'usage'" style="max-width: 400px;">
         <div class="mr-auto"></div>
-        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" />
+        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" :liveOnly="false"/>
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
       <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs">
-          <li class="nav-item" v-if="$store.getters.hasBilling && $store.getters.isAdmin">
-            <router-link to="/explore/usage" class="nav-link" :class="{ active: $store.getters.currentPage === 'usage'}">Usage</router-link>
+          <li class="nav-item" v-if="$store.getters.hasBilling">
+            <router-link to="/explore/usage" class="nav-link" :class="{ active: $store.getters.currentPage === 'usage' || $store.getters.currentPage === 'invoice'}">Usage</router-link>
           </li>
-          <li class="nav-item" v-if="$store.getters.hasAnalytics && $store.getters.isAdmin">
+          <li class="nav-item" v-if="$store.getters.hasAnalytics">
             <router-link to="/explore/analytics" class="nav-link" :class="{ active: $store.getters.currentPage === 'analytics'}">Analytics</router-link>
           </li>
-          <li class="nav-item" v-if="($store.getters.hasAnalytics && !$store.getters.isAdmin) || ($store.getters.isAdmin && filterBuyerHasAnalytics)">
+          <li class="nav-item" v-if="$store.getters.isAdmin">
             <router-link to="/explore/discovery" class="nav-link" :class="{ active: $store.getters.currentPage === 'discovery'}">Discovery</router-link>
           </li>
           <li class="nav-item" v-if="false && $store.getters.isSeller">
@@ -51,7 +51,8 @@ import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import BuyerFilter from '@/components/BuyerFilter.vue'
 import DateFilter from '@/components/DateFilter.vue'
-import { ANALYTICS_TRIAL_SIGNUP_RESPONSE, RELOAD_MESSAGE } from '@/components/types/Constants'
+import { ANALYTICS_TRIAL_SIGNUP_RESPONSE } from '@/components/types/Constants'
+import { ErrorTypes } from '@/components/types/ErrorTypes'
 
 /**
  * This component holds the workspace elements related to the downloads page in the Portal
@@ -103,7 +104,7 @@ export default class ExplorationWorkspace extends Vue {
 
   private showErrorAlert () {
     this.$refs.verifyAlert.toggleSlots(false)
-    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.verifyAlert.setMessage(ErrorTypes.SYSTEM_FAILURE)
     this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
   }
 

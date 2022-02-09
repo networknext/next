@@ -10,16 +10,20 @@ declare module '*.vue' {
     updateAutoSignupDomains (args: any): Promise<any>;
     setupCompanyAccount (args: any): Promise<any>;
     upgradeAccount (args: any): Promise<any>;
+    fetchPortalVersion (): Promise<any>;
     fetchTotalSessionCounts (args: any): Promise<any>;
     fetchMapSessions (args: any): Promise<any>;
     fetchSessionDetails (args: any): Promise<any>;
     fetchTopSessions (args: any): Promise<any>;
     fetchAllBuyers (): Promise<any>;
     fetchUsageSummary(args: any): Promise<any>;
-    fetchAnalyticsDashboards(args: any): Promise<any>;
+    fetchAnalyticsSummary(args: any): Promise<any>;
+    fetchDiscoveryDashboards (args: any): Promise<any>;
+    fetchSavesDashboard (args: any): Promise<any>;
     fetchUserSessions (args: any): Promise<any>;
     fetchAllRoles (): Promise<any>;
     fetchAllAccounts (): Promise<any>;
+    fetchCurrentSaves (args: any): Promise<any>;
     updateAccountDetails (args: any): Promise<any>;
     updateUserRoles (args: any): Promise<any>;
     deleteUserAccount (args: any): Promise<any>;
@@ -48,7 +52,7 @@ declare module '*.vue' {
   }
 
   export interface VueAuthService {
-    login (username: string, password: string): Promise<any>;
+    login (username: string, password: string, redirectURI: string): Promise<any>;
     logout (): void;
     getAccess(email: string, password: string): Promise<Error | undefined>;
     refreshToken (): Promise<any>;

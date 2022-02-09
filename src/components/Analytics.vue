@@ -16,33 +16,37 @@
           </ul>
         </div>
         <div class="row" v-for="(url, urlIndex) in urls" :key="urlIndex">
-          <iframe
-            class="col"
-            id="analyticsDashboard"
-            style="min-height: 1000px;"
-            :src="url"
-            v-if="url !== ''"
-            frameborder="0"
-          >
-          </iframe>
+          <Alert ref="failureAlert"/>
+          <LookerEmbed :dashURL="url" dashID="analyticsDash" />
         </div>
       </div>
-    </div>
-  </div>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 
-@Component
+import Alert from '@/components/Alert.vue'
+import LookerEmbed from '@/components/LookerEmbed.vue'
+import { AlertType } from './types/AlertTypes'
+
+@Component({
+  components: {
+    Alert,
+    LookerEmbed
+  }
+})
 export default class Analytics extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    failureAlert: Alert;
+  }
+
+  private unwatchFilter: any
   private dashboards: any
   private domain: string
   private selectedTabIndex: number
   private tabs: Array<string>
   private urls: Array<string>
-
-  private unwatchFilter: any
 
   constructor () {
     super()
@@ -64,13 +68,12 @@ export default class Analytics extends Vue {
     )
 
     this.fetchAnalyticsDashboards()
-
-    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
-    this.unwatchFilter()
-    window.removeEventListener('message', this.resizeIframes)
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter()
+    }
   }
 
   private resizeIframes (event: any) {
@@ -123,6 +126,12 @@ export default class Analytics extends Vue {
       .catch((error: Error) => {
         console.log('There was an issue refreshing the analytics dashboards')
         console.log(error)
+      })
+      .catch((error: Error) => {
+        console.log('Something went wrong fetching analytics dashboards')
+        console.log(error)
+        this.$refs.failureAlert.setMessage('Failed to fetch analytics dashboards. Please refresh the page')
+        this.$refs.failureAlert.setAlertType(AlertType.ERROR)
       })
   }
 }

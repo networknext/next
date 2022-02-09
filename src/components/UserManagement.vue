@@ -8,7 +8,7 @@
         Save time by allowing users with verified email addresses automatic access to your Network Next account.
       </p>
       <Alert ref="autoDomainsAlert"/>
-      <form v-on:submit.prevent="saveAutoSignUp()">
+      <form id="auto-signup-form" @submit.prevent="saveAutoSignUp()">
         <div class="form-group">
           <label for="auto-signup-domains">
             Automatic Sign up Domains
@@ -24,7 +24,7 @@
         <p class="text-muted text-small mt-2"></p>
       </form>
       <hr class="mt-4 mb-4">
-  </div>
+    </div>
     <h5 class="card-title">
       Add new users
     </h5>
@@ -37,7 +37,7 @@
       </div>
     </div>
     <Alert ref="newUsersAlert"/>
-    <form @submit.prevent="addNewUsers()">
+    <form id="new-user-form" @submit.prevent="addNewUsers()">
       <div class="form-group">
         <label for="customerId">
           Add users by email address
@@ -52,7 +52,15 @@
         <label for="customerId">
           Permission Level
         </label>
-        <multiselect placeholder="" track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple></multiselect>
+        <multiselect id="role-drop-down" placeholder="" track-by="name" label="name" v-model="newUserRoles" :options="allRoles" multiple>
+          <template slot="option" slot-scope="props">
+            <div class="option__desc row" style="margin-right: 0px;">
+              <div class="option__title col" style="max-width: 10%;">{{ props.option.name }}</div>
+              <div class="col text-wrap" style="max-width: 70%;">{{ props.option.description }}</div>
+              <div class="col" style="max-width: 10%;"></div>
+            </div>
+          </template>
+        </multiselect>
         <small class="form-text text-muted">
           The permission level to grant the added user accounts.
         </small>
@@ -63,11 +71,11 @@
       <p class="text-muted text-small mt-2"></p>
     </form>
     <hr class="mt-4 mb-4">
-    <h5 class="card-title">
+    <h5 id="user-table-title" class="card-title">
       Manage existing users
     </h5>
-    <p class="card-text">
-      Manage the list of users that currently have access to your Network Next account.
+    <p id="user-table-details" class="card-text">
+      Manage the list of users that currently have access to your Network Next company account.
     </p>
     <Alert ref="editUserAlert"/>
     <table class="table table-sm mt-4">
@@ -97,7 +105,15 @@
             {{ account.email }}
           </td>
           <td>
-            <multiselect placeholder="" track-by="name" label="name" v-model="account.roles" :options="allRoles" multiple :disabled="!account.edit"></multiselect>
+            <multiselect placeholder="" track-by="name" label="name" v-model="account.roles" :options="allRoles" multiple :disabled="!account.edit">
+              <template slot="option" slot-scope="props">
+                <div class="option__desc row" style="margin-right: 0px;">
+                  <div class="option__title col" style="max-width: 10%;">{{ props.option.name }}</div>
+                  <div class="col text-wrap" style="max-width: 70%;">{{ props.option.description }}</div>
+                  <div class="col" style="max-width: 10%;"></div>
+                </div>
+              </template>
+            </multiselect>
           </td>
           <td class="td-btn" v-show="!account.edit && !account.delete">
             <button
@@ -113,6 +129,7 @@
               />
             </button>&nbsp;
             <button
+              id="delete-user-button"
               class="btn btn-xs btn-danger"
               data-toggle="tooltip"
               data-placement="bottom"
@@ -126,6 +143,7 @@
           </td>
           <td class="td-btn" v-show="account.edit || account.delete">
             <button
+              id="save-user-button"
               class="btn btn-xs btn-success"
               data-toggle="tooltip"
               data-placement="bottom"
@@ -137,6 +155,7 @@
               />
             </button>&nbsp;
             <button
+              id="cancel-user-button"
               class="btn btn-xs btn-secondary"
               data-toggle="tooltip"
               data-placement="bottom"
@@ -241,10 +260,10 @@ export default class UserManagement extends Vue {
 
     this.$apiService
       .updateAutoSignupDomains({ domains: domains })
-      .then((response: any) => {
+      .then(() => {
         this.userProfile.domains = domains
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.$refs.autoDomainsAlert.setMessage('Successfully update signup domains')
+        this.$refs.autoDomainsAlert.setMessage('Successfully updated signup domains')
         this.$refs.autoDomainsAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
           if (this.$refs.autoDomainsAlert) {
@@ -255,7 +274,7 @@ export default class UserManagement extends Vue {
       .catch((error: Error) => {
         console.log('Something went wrong adding auto signup domains')
         console.log(error)
-        this.$refs.autoDomainsAlert.setMessage('Failed to edit user account')
+        this.$refs.autoDomainsAlert.setMessage('Failed to update signup domains')
         this.$refs.autoDomainsAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
           if (this.$refs.autoDomainsAlert) {
@@ -272,6 +291,13 @@ export default class UserManagement extends Vue {
         .updateUserRoles({ user_id: `auth0|${account.user_id}`, roles: roles })
         .then((response: any) => {
           account.roles = response.roles
+          if (account.email === this.$store.getters.userProfile.email) {
+            this.$authService.refreshToken().then(() => {
+              if (!this.$store.getters.isOwner) {
+                this.$router.push('/map')
+              }
+            })
+          }
           this.$refs.editUserAlert.setMessage('User account edited successfully')
           this.$refs.editUserAlert.setAlertType(AlertType.SUCCESS)
           setTimeout(() => {
@@ -293,13 +319,14 @@ export default class UserManagement extends Vue {
         })
         .finally(() => {
           this.setAccountState(false, false, account, index)
+          this.refreshRoleList()
         })
       return
     }
     if (account.delete) {
       this.$apiService
         .deleteUserAccount({ user_id: `auth0|${account.user_id}` })
-        .then((response: any) => {
+        .then(() => {
           this.companyUsers.splice(index, 1)
           this.$refs.editUserAlert.setMessage('User account deleted successfully')
           this.$refs.editUserAlert.setAlertType(AlertType.SUCCESS)
@@ -319,6 +346,9 @@ export default class UserManagement extends Vue {
               this.$refs.newUsersAlert.resetAlert()
             }
           }, 5000)
+        })
+        .finally(() => {
+          this.refreshRoleList()
         })
     }
   }
@@ -375,8 +405,18 @@ export default class UserManagement extends Vue {
           }
         }, 5000)
       })
+      .finally(() => {
+        this.refreshRoleList()
+      })
     this.newUserRoles = []
     this.newUserEmails = ''
+  }
+
+  private refreshRoleList () {
+    this.$apiService.fetchAllRoles()
+      .then((response: any) => {
+        this.allRoles = response.roles
+      })
   }
 }
 

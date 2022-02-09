@@ -1,15 +1,8 @@
 <template>
   <div class="card-body" id="usageDash-page">
-    <div class="row">
-      <iframe
-        class="col"
-        id="usageDash"
-        style="min-height: 1000px;"
-        :src="usageDashDashURL"
-        v-if="usageDashDashURL !== ''"
-        frameborder="0"
-      >
-      </iframe>
+    <Alert ref="failureAlert"/>
+    <div class="row" v-if="usageDashURL !== ''">
+      <LookerEmbed dashID="usageDash" :dashURL="usageDashURL"/>
     </div>
     <div class="row">
       <div class="card" style="margin-bottom: 50px; width: 100%; margin: 0 1rem 2rem;">
@@ -130,60 +123,85 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { DateTime } from 'luxon'
 
-@Component
+import Alert from '@/components/Alert.vue'
+import LookerEmbed from '@/components/LookerEmbed.vue'
+import { AlertType } from './types/AlertTypes'
+
+@Component({
+  components: {
+    Alert,
+    LookerEmbed
+  }
+})
 export default class Usage extends Vue {
-  private usageDashDashURL: string
+  // Register the alert component to access its set methods
+  $refs!: {
+    failureAlert: Alert;
+  }
+
+  private dateString: string
+  private usageDashURL: string
 
   private unwatchFilter: any
 
   constructor () {
     super()
-    this.usageDashDashURL = ''
+    this.dateString = ''
+    this.usageDashURL = ''
   }
 
   private mounted () {
-    // This is only necessary for admins - when the filter changes, grab the new billing URL
-    this.unwatchFilter = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.currentFilter
-      },
-      () => {
-        this.fetchUsageSummary()
+    const now = DateTime.now()
+    const currentDateString = `${now.year}-${now.month}`
+
+    // Check URL date and set to default if empty
+    this.dateString = this.$route.params.pathMatch || ''
+
+    if (this.dateString !== currentDateString) {
+      const passedInDate = this.dateString.split('-')
+      // check for invalid date
+      if (parseInt(passedInDate[0]) > now.year || (parseInt(passedInDate[0]) === now.year && parseInt(passedInDate[1]) > now.month)) {
+        this.dateString = ''
       }
-    )
+    }
+
+    // This is only necessary for admins - when the filter changes, grab the new billing URL
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter = this.$store.watch(
+        (state: any, getters: any) => {
+          return getters.currentFilter
+        },
+        () => {
+          this.fetchUsageSummary()
+        }
+      )
+    }
 
     this.fetchUsageSummary()
-
-    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
-    this.unwatchFilter()
-    window.removeEventListener('message', this.resizeIframes)
-  }
-
-  private resizeIframes (event: any) {
-    const iframe = document.getElementById('usageDash') as HTMLIFrameElement
-    if (iframe && event.source === iframe.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
-      const eventData = JSON.parse(event.data)
-      if (eventData.type === 'page:properties:changed') {
-        iframe.height = eventData.height + 50
-      }
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter()
     }
   }
 
   private fetchUsageSummary () {
     this.$apiService.fetchUsageSummary({
       company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
-      origin: window.location.origin
+      origin: window.location.origin,
+      date_string: this.dateString
     })
       .then((response: any) => {
-        this.usageDashDashURL = response.url || ''
+        this.usageDashURL = response.url || ''
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the billing summary dashboard')
         console.log(error)
+        this.$refs.failureAlert.setMessage('Failed to fetch usage dashboard. Please refresh the page')
+        this.$refs.failureAlert.setAlertType(AlertType.ERROR)
       })
   }
 }

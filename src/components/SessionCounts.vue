@@ -20,9 +20,9 @@
         </a>
       </Alert>
     </div>
-    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" v-if="!$store.getters.isAnonymousPlus" style="max-width: 300px;">
+    <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 300px;">
       <div class="mr-auto"></div>
-      <BuyerFilter />
+      <BuyerFilter id="buyer-filter" />
     </div>
   </div>
 </template>
@@ -32,25 +32,28 @@ import { Component, Vue } from 'vue-property-decorator'
 import { AlertType } from './types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import BuyerFilter from '@/components/BuyerFilter.vue'
-import { EMAIL_CONFIRMATION_MESSAGE, RELOAD_MESSAGE } from '@/components/types/Constants'
+import { EMAIL_CONFIRMATION_MESSAGE, MAX_RETRIES } from '@/components/types/Constants'
+import { ErrorTypes } from './types/ErrorTypes'
 
 /**
- * This component displays the total session counts and has all of the associated logic and api calls
+ * Functions:
+ *  Display current sessions counts based on current filter
+ *  Display system error statuses
+ *  Display map look up failure warning
+ *  Display account verification alert
  */
 
 /**
- * TODO: Add filter bar back in here, potentially in its own component if it is worth while?
- * TODO: Figure out how to turn this into a class with functions that help control the count and refresh loop
- *  This would help with the filter bar...
- *  Similar idea with the alert component
+ * TODO:
+ *  Move interface to another file with other types
+ *  Setup TotalSessionCounts to take this interface to facilitate "unmarshalling"
+ *  Clean up logic - primarily different emitters for different alerts
  */
 
 interface TotalSessionsReply {
   direct: number;
   onNN: number;
 }
-
-const MAX_RETRIES = 4
 
 @Component({
   components: {
@@ -147,9 +150,7 @@ export default class SessionCounts extends Vue {
           setTimeout(() => {
             this.restartLoop()
           }, 3000 * this.retryCount)
-        }
-
-        if (this.retryCount >= MAX_RETRIES) {
+        } else {
           this.$store.dispatch('toggleKillLoops', true)
         }
       })
@@ -167,7 +168,7 @@ export default class SessionCounts extends Vue {
     }
 
     this.$refs.sessionCountAlert.toggleSlots(false)
-    this.$refs.sessionCountAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.sessionCountAlert.setMessage(ErrorTypes.SYSTEM_FAILURE)
     this.$refs.sessionCountAlert.setAlertType(AlertType.ERROR)
   }
 
@@ -189,9 +190,12 @@ export default class SessionCounts extends Vue {
     if (!this.alertToggle) {
       this.alertToggle = true
       this.$refs.sessionCountAlert.toggleSlots(false)
-      this.$refs.sessionCountAlert.setMessage('Map point lookup was unsuccessful. Please zoom in closer and try again')
+      this.$refs.sessionCountAlert.setMessage(ErrorTypes.FAILED_MAP_POINT_LOOKUP)
       this.$refs.sessionCountAlert.setAlertType(AlertType.WARNING)
       setTimeout(() => {
+        if (!this.$refs.sessionCountAlert) {
+          return
+        }
         if (this.$store.getters.isAnonymousPlus) {
           this.$refs.sessionCountAlert.setMessage(`${EMAIL_CONFIRMATION_MESSAGE} ${this.$store.getters.userProfile.email}`)
           this.$refs.sessionCountAlert.setAlertType(AlertType.INFO)

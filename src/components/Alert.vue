@@ -40,6 +40,8 @@ export default class Alert extends Vue {
     this.showSlots = true
   }
 
+  // Public Helper methods
+  // These are to be tested by the parent spec.ts files
   public setMessage (message: string) {
     this.message = message
   }

@@ -1,13 +1,12 @@
 <template>
   <div id="app">
-    <nav-bar></nav-bar>
-    <workspace></workspace>
+    <NavBar />
+    <Workspace />
   </div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue'
-
+import { Component, Vue } from 'vue-property-decorator'
 import {
   faArrowLeft,
   faBell,
@@ -27,6 +26,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+
 import NavBar from '@/components/NavBar.vue'
 import Workspace from '@/workspaces/Workspace.vue'
 
@@ -62,12 +62,19 @@ const ICONS = [
 library.add(...ICONS)
 
 Vue.component('font-awesome-icon', FontAwesomeIcon)
-Vue.component('nav-bar', NavBar)
-Vue.component('workspace', Workspace)
-export default Vue.extend({})
+
+@Component({
+  components: {
+    FontAwesomeIcon,
+    NavBar,
+    Workspace
+  }
+})
+export default class App extends Vue {}
 
 </script>
 
+<!-- TODO: Clean up these styles. These are the only global styles in the application and were brought over from Portal V3 -->
 <style lang="scss">
   @import url('https://fonts.googleapis.com/css?family=Montserrat:400,700');
   html, body {

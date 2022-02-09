@@ -99,6 +99,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { NavigationGuardNext, Route } from 'vue-router'
+import { MAX_USER_SESSION_PAGES } from './types/Constants'
 
 /**
  * This component displays all of the information related to the user
@@ -112,7 +113,7 @@ export default class UserSessions extends Vue {
   private showSessions: boolean
   private searchID: string
   private currentPage: number
-  private MAX_PAGES = 10
+  private MAX_PAGES = MAX_USER_SESSION_PAGES
 
   constructor () {
     super()

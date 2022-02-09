@@ -1,4 +1,4 @@
-import { UserProfile } from '@/components/types/AuthTypes'
+import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { EMAIL_VERIFICATION_URL } from '@/components/types/Constants'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { DateFilterType, Filter } from '@/components/types/FilterTypes'
@@ -14,30 +14,6 @@ import Vue from 'vue'
  * TODO: Namespace these
  */
 
-function newDefaultProfile (): UserProfile {
-  const defaultProfile: UserProfile = {
-    auth0ID: '',
-    avatar: '',
-    companyCode: '',
-    companyName: '',
-    buyerID: '',
-    seller: false,
-    domains: [],
-    firstName: '',
-    lastName: '',
-    email: '',
-    idToken: '',
-    verified: false,
-    routeShader: null,
-    pubKey: '',
-    newsletterConsent: false,
-    roles: [],
-    hasAnalytics: false,
-    hasBilling: false,
-    hasTrial: false
-  }
-  return defaultProfile
-}
 const state = {
   userProfile: newDefaultProfile(),
   allBuyers: []
@@ -46,8 +22,8 @@ const state = {
 const getters = {
   idToken: (state: any) => state.userProfile.idToken,
   isAdmin: (state: any) => state.userProfile.roles.indexOf('Admin') !== -1,
-  isOwner: (state: any) => state.userProfile.roles.indexOf('Owner') !== -1,
-  isViewer: (state: any) => state.userProfile.roles.indexOf('Viewer') !== -1,
+  isOwner: (state: any, getters: any) => state.userProfile.roles.indexOf('Owner') !== -1 || getters.isAdmin,
+  isExplorer: (state: any, getters: any) => state.userProfile.roles.indexOf('Explorer') !== -1 || getters.isAdmin,
   isAnonymous: (state: any, getters: any) => getters.idToken === '',
   isAnonymousPlus: (state: any, getters: any) => !getters.isAnonymous ? !state.userProfile.verified : false,
   isBuyer: (state: any) => (state.userProfile.pubKey !== ''),
