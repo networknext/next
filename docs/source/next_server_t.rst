@@ -359,3 +359,26 @@ Packets sent via this function do not apply to your network next bandwidth envel
 	uint8_t packet_data[32];
 	memset( packet_data, 0, sizeof(packet_data) );
 	next_server_send_packet_direct( server, client_address, packet_data, sizeof(packet_data) );
+
+next_server_event
+-----------------
+
+Attaches an event flag to a session for monitoring and analysis purposes.
+
+.. code-block:: c++
+
+	void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to tag.
+
+	- **server_events** -- The flag to be attached to the session.
+
+**Example:**
+
+.. code-block:: c++
+
+	next_server_event( server, client_address, 1 );
