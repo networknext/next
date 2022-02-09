@@ -70,7 +70,7 @@ describe('GameConfiguration.vue', () => {
 
     // Check card information
     expect(wrapper.find('.card-title').text()).toBe('Game Configuration')
-    expect(wrapper.find('.card-text').text()).toBe('Manage how your game connects to Network Next.')
+    expect(wrapper.find('.card-text').text()).toBe('Manage how your game connects to Network Next. Note: This can be updated at most once a minute.')
 
     // Make sure the alert is hidden
     expect(wrapper.find('.alert').exists()).toBeFalsy()
@@ -126,7 +126,7 @@ describe('GameConfiguration.vue', () => {
 
     // Check card information
     expect(wrapper.find('.card-title').text()).toBe('Game Configuration')
-    expect(wrapper.find('.card-text').text()).toBe('Manage how your game connects to Network Next.')
+    expect(wrapper.find('.card-text').text()).toBe('Manage how your game connects to Network Next. Note: This can be updated at most once a minute.')
 
     // Make sure the alert is hidden
     expect(wrapper.find('.alert').exists()).toBeFalsy()
@@ -444,6 +444,90 @@ describe('GameConfiguration.vue', () => {
     expect(alert.exists()).toBeTruthy()
     expect(alert.classes(AlertType.ERROR)).toBeTruthy()
     expect(alert.text()).toBe(ErrorTypes.UPDATE_PUBLIC_KEY_FAILURE)
+
+    // Check buyers list to make sure the new buyer was added correctly
+    expect(store.getters.allBuyers.length).toBe(0)
+
+    updateGameConfigurationSpy.mockReset()
+    fetchAllBuyersSpy.mockReset()
+    spyPubKeyEntered.mockReset()
+
+    store.commit('UPDATE_USER_PROFILE', defaultProfile)
+    store.commit('UPDATE_ALL_BUYERS', [])
+
+    wrapper.destroy()
+  })
+
+  it('checks cooldown', async () => {
+    const updateGameConfigurationSpy = jest.spyOn(localVue.prototype.$apiService, 'updateGameConfiguration').mockImplementationOnce(() => {
+      return Promise.reject({ code: 14, message: 'Database is busy. Please try again in a minute.' })
+    })
+
+    const fetchAllBuyersSpy = jest.spyOn(localVue.prototype.$apiService, 'fetchAllBuyers').mockImplementationOnce(() => {
+      return Promise.resolve({
+        buyers: []
+      })
+    })
+
+    const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
+      return Promise.resolve()
+    })
+
+    const newProfile = newDefaultProfile()
+    newProfile.companyName = 'Test Company'
+    newProfile.companyCode = 'test'
+    newProfile.roles = ['Owner']
+    newProfile.buyerID = '00000000'
+
+    store.commit('UPDATE_USER_PROFILE', newProfile)
+
+    const wrapper = mount(GameConfiguration, { localVue, store })
+    expect(wrapper.exists()).toBeTruthy()
+    expect(wrapper.find('div').exists()).toBeTruthy()
+
+    // Allow the mounted function to update the UI
+    await localVue.nextTick()
+
+    // Input public key
+    const pubKeyTextArea = wrapper.find('#pubkey-input')
+    const newPubKey = btoa('some random public key')
+
+    await pubKeyTextArea.setValue(newPubKey)
+
+    // Check public key input - should not be empty here
+    const pubKeyTextAreaElement = pubKeyTextArea.element as HTMLTextAreaElement
+
+    expect(pubKeyTextAreaElement.value).toBe(newPubKey)
+
+    // Check save button - should not be disabled
+    let gameConfigButton = wrapper.find('#game-config-button')
+
+    expect(gameConfigButton.text()).toBe('Save game configuration')
+    expect(gameConfigButton.attributes().disabled).toBeUndefined()
+
+    // Check buyers list to make sure it is empty
+    expect(store.getters.allBuyers.length).toBe(0)
+
+    // Submit new public key
+    await gameConfigButton.trigger('submit')
+
+    // Check to make sure the spy functions were hit
+    expect(updateGameConfigurationSpy).toBeCalledTimes(1)
+    expect(spyPubKeyEntered).toBeCalledTimes(0)
+    expect(fetchAllBuyersSpy).toBeCalledTimes(0)
+
+    // Wait for UI to react
+    await localVue.nextTick()
+
+    // Check for alert
+    const alert = wrapper.find('.alert')
+    expect(alert.exists()).toBeTruthy()
+    expect(alert.classes(AlertType.ERROR)).toBeTruthy()
+    expect(alert.text()).toBe('Database is busy. Please try again in a minute.')
+
+    gameConfigButton = wrapper.find('#game-config-button')
+    expect(gameConfigButton.exists())
+    expect(gameConfigButton.text()).toContain('Please wait: ')
 
     // Check buyers list to make sure the new buyer was added correctly
     expect(store.getters.allBuyers.length).toBe(0)
