@@ -78,21 +78,9 @@ export default class Analytics extends Vue {
     }
   }
 
-  private resizeIframes (event: any) {
-    const iframes = document.querySelectorAll('#analyticsDashboard')
-    iframes.forEach((frame: any) => {
-      if (event.source === frame.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
-        const eventData = JSON.parse(event.data)
-        if (eventData.type === 'page:properties:changed') {
-          frame.height = eventData.height + 50
-        }
-      }
-    })
-  }
-
   private fetchAnalyticsDashboards () {
     this.$apiService.fetchAnalyticsDashboards({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
       origin: window.location.origin
     })
       .then((response: any) => {

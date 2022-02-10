@@ -64,7 +64,7 @@ export default class Disccovery extends Vue {
 
   private fetchDiscoveryDashboards () {
     this.$apiService.fetchDiscoveryDashboards({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
+      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
       origin: window.location.origin
     })
       .then((response: any) => {
