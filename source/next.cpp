@@ -10036,6 +10036,7 @@ struct next_server_command_event_user_flag_t : public next_server_command_t
 #define NEXT_SERVER_NOTIFY_SESSION_UPGRADED                     2
 #define NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT                    3
 #define NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME           4
+#define NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED                  5
 
 struct next_server_notify_t
 {
@@ -10074,6 +10075,11 @@ struct next_server_notify_session_timed_out_t : public next_server_notify_t
 };
 
 struct next_server_notify_failed_to_resolve_hostname_t : public next_server_notify_t
+{
+    // ...
+};
+
+struct next_server_notify_autodetect_finished_t : public next_server_notify_t
 {
     // ...
 };
@@ -12596,7 +12602,7 @@ static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_inter
         }
     }
 
-#endif // NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     NEXT_PLATFORM_THREAD_RETURN();
 }
@@ -12637,6 +12643,12 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         server->datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
         server->datacenter_id = next_datacenter_id( server->datacenter_name );
         next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+        next_server_notify_autodetect_finished_t * notify = (next_server_notify_autodetect_finished_t*) next_malloc( server->context, sizeof( next_server_notify_autodetect_finished_t ) );
+        notify->type = NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED;
+        {
+            next_platform_mutex_guard( &server->notify_mutex );
+            next_queue_push( server->notify_queue, notify );
+        }
     }
 
     if ( result.type == NEXT_ADDRESS_NONE )
@@ -12956,6 +12968,7 @@ struct next_server_t
     next_proxy_session_manager_t * session_manager;
     next_address_t address;
     uint16_t bound_port;
+    bool autodetect_finished;
 
     NEXT_DECLARE_SENTINEL(1)
 };
@@ -13174,6 +13187,12 @@ void next_server_update( next_server_t * server )
             case NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME:
             {
                 server->failed_to_resolve_hostname = true;
+            }
+            break;
+
+            case NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED:
+            {
+                server->autodetect_finished = true;
             }
             break;
 
@@ -13528,6 +13547,17 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     memcpy( stats->tags, entry->tags, sizeof(stats->tags) );
 
     return NEXT_TRUE;
+}
+
+NEXT_BOOL next_server_autodetect_finished( next_server_t * server ) {
+    next_server_verify_sentinels( server );
+
+    if ( server->autodetect_finished ) 
+    {
+        return NEXT_TRUE;
+    }
+
+    return NEXT_FALSE;
 }
 
 void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events )
