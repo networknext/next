@@ -253,7 +253,7 @@ func (l *LookerClient) FetchCurrentLookerDashboards() ([]LookerDashboard, error)
 	return dashboardList, nil
 }
 
-func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, userID string, customerCode string, origin string) (string, error) {
+func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customerCode string, origin string) (string, error) {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return "", err
@@ -269,7 +269,7 @@ func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, userID s
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", userID),
+		ExternalUserId:  fmt.Sprintf("\"Embed User\""),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
@@ -358,23 +358,21 @@ func BuildLookerURL(urlOptions LookerURLOptions) string {
 	return finalUrl
 }
 
-func (l *LookerClient) GenerateUsageDashboardURL(userID string, customerCode string, origin string) (string, error) {
+func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, origin string, dateString string) (string, error) {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return "", err
 	}
 
-	embedURL := ""
-	if origin != "" {
-		embedURL = fmt.Sprintf("%s?embed_domain=%s", USAGE_DASH_URL, origin)
-	} else {
-		embedURL = USAGE_DASH_URL
+	dashURL := fmt.Sprintf("%s?embed_domain=%s", USAGE_DASH_URL, origin)
+	if dateString != "" {
+		dashURL = fmt.Sprintf("%s&Billing+Period=%s", dashURL, dateString)
 	}
 
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", userID),
+		ExternalUserId:  fmt.Sprintf("\"Embed User\""),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
@@ -382,7 +380,7 @@ func (l *LookerClient) GenerateUsageDashboardURL(userID string, customerCode str
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(embedURL),
+		EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
 		ForceLogout:     true,
 		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
