@@ -2658,7 +2658,6 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 
 type FetchAnalyticsDashboardsArgs struct {
 	CustomerCode string `json:"customer_code"`
-	Origin       string `json:"origin"`
 }
 
 type FetchAnalyticsDashboardsReply struct {
@@ -2673,14 +2672,6 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.ExplorerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
-		return &err
-	}
-
-	// Request origin is required for refresh functionality
-	if args.Origin == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		core.Error("FetchAnalyticsDashboards(): %v: Origin is required", err.Error())
 		return &err
 	}
 
@@ -2736,7 +2727,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 				dashCustomerCode = "esl"
 			}
 
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, args.Origin)
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, r.Header.Get("Origin"))
 			if err != nil {
 				continue
 			}
@@ -2766,13 +2757,6 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 		return &err
 	}
 
-	if args.Origin == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		core.Error("FetchUsageDashboard(): %v: Origin is required", err.Error())
-		return &err
-	}
-
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
 	customerCode := ""
@@ -2793,7 +2777,7 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 		}
 	}
 
-	usageDashURL, err := s.LookerClient.GenerateUsageDashboardURL(customerCode, args.Origin, args.DateString)
+	usageDashURL, err := s.LookerClient.GenerateUsageDashboardURL(customerCode, r.Header.Get("Origin"), args.DateString)
 	if err != nil {
 		// TODO: make a looker error code
 		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
@@ -2807,7 +2791,6 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 
 type FetchDiscoveryDashboardsArgs struct {
 	CustomerCode string `json:"customer_code"`
-	Origin       string `json:"origin"`
 }
 
 type FetchDiscoveryDashboardsReply struct {
@@ -2822,14 +2805,6 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.ExplorerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-		return &err
-	}
-
-	// Request origin is required for auto refresh functionality
-	if args.Origin == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		core.Error("FetchDiscoveryDashboards(): %v: Origin is required", err.Error())
 		return &err
 	}
 
@@ -2879,7 +2854,7 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 				dashCustomerCode = "esl"
 			}
 
-			lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, args.Origin)
+			lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, r.Header.Get("Origin"))
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -3023,7 +2998,6 @@ func (s *BuyersService) FetchCurrentSaves(r *http.Request, args *FetchCurrentSav
 
 type FetchSavesDashboardArgs struct {
 	CustomerCode string `json:"customer_code"`
-	Origin       string `json:"origin"`
 }
 
 type FetchSavesDashboardReply struct {
@@ -3035,13 +3009,6 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.OwnerRole, middleware.ExplorerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-		return &err
-	}
-
-	if args.Origin == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		core.Error("FetchDiscoveryDashboards(): %v: Origin is required", err.Error())
 		return &err
 	}
 
@@ -3110,7 +3077,7 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(fmt.Sprintf("%s?embed_domain=%s", SavesDashURI, args.Origin)),
+		EmbedURL:        "/login/embed/" + url.QueryEscape(fmt.Sprintf("%s?embed_domain=%s", SavesDashURI, r.Header.Get("Origin"))),
 		ForceLogout:     true,
 		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
