@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
 	"github.com/networknext/backend/modules/routing"
@@ -2278,21 +2277,6 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 
 	ctx := r.Context()
 
-	user := r.Context().Value(middleware.Keys.UserKey)
-	if user == nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchAdminDashboards(): %v", err.Error())
-		return &err
-	}
-
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	requestID, ok := claims["sub"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchAdminDashboards(): %v: Failed to parse user ID", err.Error())
-		return &err
-	}
-
 	customerCode := args.CompanyCode
 
 	dashboards, err := s.Storage.GetAnalyticsDashboards(ctx)
@@ -2308,7 +2292,7 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 			if !ok {
 				reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
 			}
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, customerCode, args.Origin)
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), customerCode, args.Origin)
 			if err != nil {
 				continue
 			}
