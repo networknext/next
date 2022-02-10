@@ -480,6 +480,10 @@ func mainReturnWithCode() int {
 	go func() {
 		defer wg.Done()
 
+		if err := opsService.RefreshLookerDashboardCache(); err != nil {
+			core.Error("could not refresh looker dasbhoard cache: %v", err)
+		}
+
 		ticker := time.NewTicker(time.Minute)
 		for {
 			select {
