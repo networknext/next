@@ -64,6 +64,7 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		UseDebug:                        false,
 		Debug:                           backend.GenerateRandomStringSequence(billing.BillingEntryMaxDebugLength - 1),
 		RouteDiversity:                  int32(rand.Intn(32)),
+		UserFlags:                       rand.Uint64(),
 		DatacenterID:                    rand.Uint64(),
 		BuyerID:                         rand.Uint64(),
 		UserHash:                        rand.Uint64(),
