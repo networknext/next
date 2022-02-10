@@ -10,12 +10,14 @@ import "time"
 type DatabaseBinFileMetaData struct {
 	DatabaseBinFileAuthor       string
 	DatabaseBinFileCreationTime time.Time
+	SHA                         string
 }
 
 func (dmfmd *DatabaseBinFileMetaData) String() string {
 	data := "\nrouting.DatabaseBinFileMetaData:\n"
 	data += "  DatabaseBinFileAuthor      : " + dmfmd.DatabaseBinFileAuthor + "\n"
 	data += "  DatabaseBinFileCreationTime: " + dmfmd.DatabaseBinFileCreationTime.String() + "\n"
+	data += "  DatabaseBinFileSHA: " + dmfmd.SHA + "\n"
 
 	return data
 }

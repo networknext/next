@@ -1,9 +1,11 @@
 package jsonrpc
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
@@ -40,14 +43,15 @@ import (
 )
 
 const (
-	TopSessionsSize          = 1000
-	MapPointByteCacheVersion = uint8(1)
-	MaxHistoricalSessions    = 100
-	MaxBigTableDays          = 90
-	EmbeddedUserGroupID      = 3
-	LOOKER_SESSION_TIMEOUT   = 86400
-	UsageDashURI             = "/embed/dashboards-next/11"
-	SavesDashURI             = "/embed/dashboards-next/20"
+	TopSessionsSize           = 1000
+	MapPointByteCacheVersion  = uint8(1)
+	MaxHistoricalSessions     = 100
+	MaxBigTableDays           = 90
+	EmbeddedUserGroupID       = 3
+	LOOKER_SESSION_TIMEOUT    = 86400
+	UsageDashURI              = "/embed/dashboards-next/11"
+	SavesDashURI              = "/embed/dashboards-next/20"
+	MaxLiveAnalysisOnlyBuyers = 100
 )
 
 // Saving these for later
@@ -1450,6 +1454,7 @@ type GameConfigurationArgs struct {
 
 type GameConfigurationReply struct {
 	GameConfiguration gameConfiguration `json:"game_config"`
+	BuyerID           string            `json:"buyer_id"`
 }
 
 type gameConfiguration struct {
@@ -1483,6 +1488,7 @@ func (s *BuyersService) GameConfiguration(r *http.Request, args *GameConfigurati
 	}
 
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+	reply.BuyerID = fmt.Sprintf("%016x", buyer.ID)
 	return nil
 }
 
@@ -1499,13 +1505,13 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	ctx := r.Context()
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := fmt.Errorf("UpdateGameConfiguration(): user is not assigned to a company")
 		core.Error("%v", err)
 		return err
 	}
-	if companyCode == "" {
+	if customerCode == "" {
 		err = fmt.Errorf("UpdateGameConfiguration(): failed to parse company code")
 		core.Error("%v", err)
 		return err
@@ -1517,7 +1523,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		return err
 	}
 
-	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+	buyer, err = s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
 
 	byteKey, err := base64.StdEncoding.DecodeString(args.NewPublicKey)
 	if err != nil {
@@ -1530,12 +1536,39 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	// Buyer not found
 	if buyer.ID == 0 {
+		currentTime := time.Now().UTC()
+
+		// Check to see if it has been long enough to commit another bin file
+		currentBinMeta, err := s.Storage.GetDatabaseBinFileMetaData(ctx)
+		if err != nil {
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			core.Error("UpdateBinFile(): %v", err)
+			return &err
+		}
+
+		if currentTime.Sub(currentBinMeta.DatabaseBinFileCreationTime) < time.Minute {
+			err := JSONRPCErrorCodes[int(ERROR_DATABASE_BIN_COOLDOWN)]
+			core.Error("UpdateBinFile(): %v", err.Error())
+			return &err
+		}
+
+		// check if we can add new buyer to analysis only
+		allBuyers := s.Storage.Buyers(ctx)
+
+		numLiveAnalysisOnlyBuyers := 0
+		for _, buyer := range allBuyers {
+			if buyer.Live && buyer.RouteShader.AnalysisOnly {
+				numLiveAnalysisOnlyBuyers = numLiveAnalysisOnlyBuyers + 1
+			}
+		}
+
+		allowLiveAnalysisOnly := numLiveAnalysisOnlyBuyers < MaxLiveAnalysisOnlyBuyers
 
 		// Create new buyer
 		err = s.Storage.AddBuyer(ctx, routing.Buyer{
-			CompanyCode: companyCode,
+			CompanyCode: customerCode,
 			ID:          buyerID,
-			Live:        false,
+			Live:        allowLiveAnalysisOnly,
 			Analytics:   false,
 			Billing:     false,
 			Trial:       true,
@@ -1549,7 +1582,8 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 		}
 
 		// Check if buyer is associated with the ID and everything worked
-		if buyer, err = s.Storage.Buyer(r.Context(), buyerID); err != nil {
+		buyer, err = s.Storage.Buyer(r.Context(), buyerID)
+		if err != nil {
 			err = fmt.Errorf("UpdateGameConfiguration() buyer creation failed: %v", err)
 			core.Error("%v", err)
 			return err
@@ -1557,6 +1591,29 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 		// Setup reply
 		reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+		reply.BuyerID = fmt.Sprintf("%016x", buyer.ID)
+
+		if allowLiveAnalysisOnly {
+			routeShader := core.NewRouteShader()
+			routeShader.AnalysisOnly = true
+
+			err := s.Storage.AddRouteShader(ctx, routeShader, buyer.ID)
+			if err != nil {
+				err = fmt.Errorf("UpdateGameConfiguration() failed to assign route shader to buyer with ID: %s - %v", fmt.Sprintf("%016x", buyer.ID), err)
+				core.Error("%v", err)
+				return err
+			}
+
+			// If this is a local test, don't refresh the bin file
+			if s.Env == "local" {
+				return nil
+			}
+
+			if err := s.UpdateBinFile(ctx, buyer); err != nil {
+				core.Error("%v", err)
+				return err
+			}
+		}
 
 		return nil
 	}
@@ -1605,7 +1662,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 	}
 
 	err = s.Storage.AddBuyer(ctx, routing.Buyer{
-		CompanyCode: companyCode,
+		CompanyCode: customerCode,
 		ID:          buyerID,
 		Live:        live,
 		Debug:       debug,
@@ -1669,6 +1726,7 @@ func (s *BuyersService) UpdateGameConfiguration(r *http.Request, args *GameConfi
 
 	// Set reply
 	reply.GameConfiguration.PublicKey = buyer.EncodedPublicKey()
+	reply.BuyerID = fmt.Sprintf("%016x", buyer.ID)
 
 	return nil
 }
@@ -3185,4 +3243,312 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 
 	reply.URL = notifications.BuildLookerURL(urlOptions)
 	return nil
+}
+
+// ===============================================================================================================
+// Database.bin related functions
+
+func (s *BuyersService) UpdateBinFile(ctx context.Context, newBuyer routing.Buyer) error {
+	author := fmt.Sprintf("new buyer sign up: %s", newBuyer.CompanyCode)
+	dbRef, err := s.Storage.DatabaseBinFileReference(ctx)
+	if err != nil {
+		core.Error("UpdateBinFile(): %v", err)
+		return err
+	}
+
+	refHash, err := dbRef.Hash()
+	if err != nil {
+		core.Error("UpdateBinFile(): %v", err)
+		return err
+	}
+
+	remoteFileName := s.GetGCPBucketName(s.Env) + "/database.bin"
+
+	currentBin, err := s.FetchCurrentDatabaseBinWrapper(remoteFileName)
+	if err != nil {
+		core.Error("UpdateBinFile(): %v", err)
+		return err
+	}
+
+	currentBin.BuyerMap[newBuyer.ID] = newBuyer
+
+	genHash, err := currentBin.Hash()
+	if err != nil {
+		core.Error("UpdateBinFile(): %v", err)
+		return err
+	}
+
+	if genHash != refHash {
+		err := fmt.Errorf("Hashes do not match, bin file won't be committed")
+		core.Error("UpdateBinFile(): %v", err)
+		return err
+	}
+
+	currentBin.SHA = fmt.Sprintf("%016x", genHash)
+	currentBin.Creator = author
+
+	now := time.Now().UTC()
+
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	currentBin.CreationTime = timeStamp
+
+	if err := s.UploadNewDatabaseBinWrapper(ctx, remoteFileName, currentBin); err != nil {
+		core.Error("UpdateBinFile(): %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *BuyersService) FetchCurrentDatabaseBinWrapper(remoteFileName string) (*routing.DatabaseBinWrapper, error) {
+	var downloadedBinWrapper routing.DatabaseBinWrapper
+
+	downloadFileName := "database-ref.bin"
+
+	gsutilCpCommandDownload := exec.Command("gsutil", "cp", remoteFileName, downloadFileName)
+	if err := gsutilCpCommandDownload.Run(); err != nil {
+		err := fmt.Errorf("FetchCurrentDatabaseBinWrapper(): error reading database.bin to %s: %v", remoteFileName, err)
+		core.Error("%v", err)
+		return &downloadedBinWrapper, err
+	}
+
+	if _, err := os.Stat(downloadFileName); err != nil {
+		err := fmt.Errorf("FetchCurrentDatabaseBinWrapper(): error opening database.bin %v", err)
+		core.Error("%v", err)
+		return &downloadedBinWrapper, err
+	}
+
+	downloadFileReader, err := os.Open(downloadFileName)
+	if err != nil {
+		err := fmt.Errorf("FetchCurrentDatabaseBinWrapper(): error reading database.bin: %v", err)
+		core.Error("%v", err)
+		return &downloadedBinWrapper, err
+	}
+	defer downloadFileReader.Close()
+	defer os.Remove(downloadFileName)
+
+	downloadEncoder := gob.NewDecoder(downloadFileReader)
+	if err := downloadEncoder.Decode(&downloadedBinWrapper); err != nil {
+		core.Error("FetchCurrentDatabaseBinWrapper(): error decoding reference database.bin: %v", err)
+		return &downloadedBinWrapper, err
+	}
+
+	return &downloadedBinWrapper, nil
+}
+
+func (s *BuyersService) UploadNewDatabaseBinWrapper(ctx context.Context, remoteFileName string, newBinWrapper *routing.DatabaseBinWrapper) error {
+	var uploadBuffer bytes.Buffer
+
+	uploadEncoder := gob.NewEncoder(&uploadBuffer)
+	uploadEncoder.Encode(newBinWrapper)
+
+	tempFileUpload, err := ioutil.TempFile("", "database.bin")
+	if err != nil {
+		err := fmt.Errorf("UploadNewDatabaseBinWrapper(): error writing database.bin to temporary file: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+	defer os.Remove(tempFileUpload.Name())
+
+	_, err = tempFileUpload.Write(uploadBuffer.Bytes())
+	if err != nil {
+		err := fmt.Errorf("UploadNewDatabaseBinWrapper(): error writing database.bin to filesystem: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	gsutilCpCommandUpload := exec.Command("gsutil", "cp", tempFileUpload.Name(), remoteFileName)
+
+	err = gsutilCpCommandUpload.Run()
+	if err != nil {
+		err := fmt.Errorf("UploadNewDatabaseBinWrapper(): error copying database.bin to %s: %v", remoteFileName, err)
+		core.Error("%v", err)
+		return err
+	}
+
+	metaData := routing.DatabaseBinFileMetaData{
+		DatabaseBinFileAuthor:       newBinWrapper.Creator,
+		DatabaseBinFileCreationTime: time.Now(),
+		SHA:                         newBinWrapper.SHA,
+	}
+
+	err = s.Storage.UpdateDatabaseBinFileMetaData(ctx, metaData)
+	if err != nil {
+		err := fmt.Errorf("UploadNewDatabaseBinWrapper(): error writing bin file metadata to db: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *BuyersService) GetGCPBucketName(envName string) string {
+	bucketName := "gs://"
+	switch s.Env {
+	case "dev":
+		bucketName += DevDatabaseBinGCPBucketName
+	case "staging":
+		bucketName += StagingDatabaseBinGCPBucketName
+	case "prod":
+		bucketName += ProdDatabaseBinGCPBucketName
+	case "local":
+		bucketName += LocalDatabaseBinGCPBucketName
+	}
+
+	return bucketName
+}
+
+// LocalUpdateBinFile is for local use only to test upload/download functionality of the current database.bin file with GCP
+type LocalUpdateBinFileArgs struct{}
+
+type LocalUpdateBinFileReply struct{}
+
+func (s *BuyersService) LocalUpdateBinFile(r *http.Request, args *LocalUpdateBinFileArgs, reply *LocalUpdateBinFileReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole) || s.Env != "local" {
+		err := fmt.Errorf("LocalUpdateBinFile(): %v", ErrInsufficientPrivileges)
+		core.Error("%v", err)
+		return err
+	}
+
+	ctx := r.Context()
+	remoteFileName := s.GetGCPBucketName(s.Env) + "/database.bin"
+
+	// Get current storage based database.bin
+	currentBin, err := s.BinFileGenerator(ctx)
+	if err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): could not generate reference database.bin")
+		core.Error("%v", err)
+		return err
+	}
+
+	currentReference := currentBin.WrapperToReference()
+
+	currentHash, err := currentReference.Hash()
+	if err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): could not hash reference database.bin")
+		core.Error("%v", err)
+		return err
+	}
+
+	currentBin.SHA = fmt.Sprintf("%016x", currentHash)
+
+	// Upload for use as baseline
+	if err := s.UploadNewDatabaseBinWrapper(ctx, remoteFileName, currentBin); err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): could not upload reference database.bin")
+		core.Error("%v", err)
+		return err
+	}
+
+	// Check to see if it has been long enough to commit another bin file
+	currentTime := time.Now().UTC()
+	binTime, err := time.Parse("January 2, 2006 15:04 UTC", currentBin.CreationTime)
+	if err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): failed to parse current database.bin creation time")
+		core.Error("%v", err)
+		return err
+	}
+
+	if currentTime.Sub(binTime) < time.Minute {
+		err := JSONRPCErrorCodes[int(ERROR_DATABASE_BIN_COOLDOWN)]
+		core.Error("UpdateBinFile(): %v", err.Error())
+		return &err
+	}
+
+	// Setup new fake buyer to add
+	byteKey, err := base64.StdEncoding.DecodeString("/g1saKcm/HEmX5vgpgsxLc3p1dnbvk0lauejmsDN0RWXAHgOuqKkYw==")
+	if err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): could not decode new test buyer public key string")
+		core.Error("%v", err)
+		return err
+	}
+
+	buyerID := binary.LittleEndian.Uint64(byteKey[0:8])
+
+	// Create new buyer
+	if err := s.Storage.AddBuyer(ctx, routing.Buyer{
+		CompanyCode: "next",
+		ID:          buyerID,
+		Live:        true,
+		Analytics:   false,
+		Billing:     false,
+		Trial:       true,
+		PublicKey:   byteKey[8:],
+	}); err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile() failed to add buyer")
+		core.Error("%v", err)
+		return err
+	}
+
+	// Check if buyer is associated with the ID and everything worked
+	newBuyer, err := s.Storage.Buyer(r.Context(), buyerID)
+	if err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile() buyer creation failed: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	routeShader := core.NewRouteShader()
+	routeShader.AnalysisOnly = true
+
+	if err := s.Storage.AddRouteShader(ctx, routeShader, newBuyer.ID); err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile() failed to assign route shader to buyer with ID: %s - %v", fmt.Sprintf("%016x", newBuyer.ID), err)
+		core.Error("%v", err)
+		return err
+	}
+
+	if err := s.UpdateBinFile(ctx, newBuyer); err != nil {
+		err = fmt.Errorf("LocalUpdateBinFile(): Failed to upload the new database.bin")
+		core.Error("%v", err)
+	}
+
+	return nil
+}
+
+// TODO: Find a place to put this - potentially in sql.go itself but should be consolidated
+// IMPORTANT: This is for test use only in this context
+func (s *BuyersService) BinFileGenerator(ctx context.Context) (*routing.DatabaseBinWrapper, error) {
+	var dbWrapper routing.DatabaseBinWrapper
+	var enabledRelays []routing.Relay
+	relayMap := make(map[uint64]routing.Relay)
+	buyerMap := make(map[uint64]routing.Buyer)
+	sellerMap := make(map[string]routing.Seller)
+	datacenterMap := make(map[uint64]routing.Datacenter)
+	datacenterMaps := make(map[uint64]map[uint64]routing.DatacenterMap)
+
+	buyers := s.Storage.Buyers(ctx)
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+		dcMapsForBuyer := s.Storage.GetDatacenterMapsForBuyer(ctx, buyer.ID)
+		datacenterMaps[buyer.ID] = dcMapsForBuyer
+	}
+
+	for _, seller := range s.Storage.Sellers(ctx) {
+		sellerMap[seller.ShortName] = seller
+	}
+
+	for _, datacenter := range s.Storage.Datacenters(ctx) {
+		datacenterMap[datacenter.ID] = datacenter
+	}
+
+	for _, localRelay := range s.Storage.Relays(ctx) {
+		if localRelay.State == routing.RelayStateEnabled {
+			enabledRelays = append(enabledRelays, localRelay)
+			relayMap[localRelay.ID] = localRelay
+		}
+	}
+
+	dbWrapper.Relays = enabledRelays
+	dbWrapper.RelayMap = relayMap
+	dbWrapper.BuyerMap = buyerMap
+	dbWrapper.SellerMap = sellerMap
+	dbWrapper.DatacenterMap = datacenterMap
+	dbWrapper.DatacenterMaps = datacenterMaps
+
+	now := time.Now().UTC()
+
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	dbWrapper.CreationTime = timeStamp
+	dbWrapper.Creator = "Local Tester"
+
+	return &dbWrapper, nil
 }

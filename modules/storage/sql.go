@@ -146,6 +146,200 @@ type sqlRouteShader struct {
 	PacketLossSustained       float64
 }
 
+func (db *SQL) DatabaseBinFileReference(ctx context.Context) (routing.DatabaseBinWrapperReference, error) {
+	var sqlQuery bytes.Buffer
+
+	dbReference := routing.DatabaseBinWrapperReference{}
+
+	relays := make([]routing.RelayReference, 0)
+	relayMap := make(map[uint64]routing.RelayReference)
+	buyers := make([]uint64, 0)
+	sellers := make([]string, 0)
+	datacenters := make([]string, 0)
+	datacenterMaps := make(map[uint64][]uint64)
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	sqlQuery.Write([]byte("select sdk_generated_id "))
+	sqlQuery.Write([]byte("from buyers order by sdk_generated_id asc"))
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
+	if err != nil {
+		core.Error("DatabaseBinFileReference(): Buyer QueryMultipleRowsRetry returned an error: %v", err)
+		return dbReference, err
+	}
+
+	var buyerID int64
+	for rows.Next() {
+		err = rows.Scan(
+			&buyerID,
+		)
+		if err != nil {
+			core.Error("DatabaseBinFileReference(): error parsing returned row")
+			return dbReference, err
+		}
+
+		buyers = append(buyers, uint64(buyerID))
+	}
+
+	rows.Close()
+	sqlQuery.Reset()
+
+	sqlQuery.Write([]byte("select short_name "))
+	sqlQuery.Write([]byte("from sellers order by short_name asc"))
+
+	rows, err = QueryMultipleRowsRetry(ctx, db, sqlQuery)
+	if err != nil {
+		core.Error("DatabaseBinFileReference(): Seller QueryMultipleRowsRetry returned an error: %v", err)
+		return dbReference, err
+	}
+
+	var sellerShortName string
+	for rows.Next() {
+		err = rows.Scan(
+			&sellerShortName,
+		)
+		if err != nil {
+			core.Error("DatabaseBinFileReference(): error parsing returned row")
+			return dbReference, err
+		}
+
+		sellers = append(sellers, sellerShortName)
+	}
+
+	rows.Close()
+	sqlQuery.Reset()
+
+	sqlQuery.Write([]byte("select display_name, hex_id, public_ip, public_ip_port "))
+	sqlQuery.Write([]byte("from relays where relay_state = 0 order by display_name asc"))
+
+	rows, err = QueryMultipleRowsRetry(ctx, db, sqlQuery)
+	if err != nil {
+		core.Error("DatabaseBinFileReference(): Relay QueryMultipleRowsRetry returned an error: %v", err)
+		return dbReference, err
+	}
+
+	var relayDisplayName string
+	var relayHexID string
+	var relayPublicIP sql.NullString
+	var relayPort sql.NullInt64
+	for rows.Next() {
+		err = rows.Scan(
+			&relayDisplayName,
+			&relayHexID,
+			&relayPublicIP,
+			&relayPort,
+		)
+		if err != nil {
+			core.Error("DatabaseBinFileReference(): error parsing returned row")
+			return dbReference, err
+		}
+
+		relayID, err := strconv.ParseUint(relayHexID, 16, 64)
+		if err != nil {
+			core.Error("DatabaseBinFileReference() error parsing datacenter hex ID")
+			return dbReference, err
+		}
+
+		relayRef := routing.RelayReference{
+			DisplayName: relayDisplayName,
+		}
+
+		if relayPublicIP.Valid {
+			fullPublicAddress := relayPublicIP.String + ":" + fmt.Sprintf("%d", relayPort.Int64)
+			publicAddr, err := net.ResolveUDPAddr("udp", fullPublicAddress)
+			if err != nil {
+				core.Error("Relay() net.ResolveUDPAddr returned an error parsing public address: %v", err)
+			}
+			relayRef.PublicIP = *publicAddr
+		}
+
+		relays = append(relays, relayRef)
+		relayMap[relayID] = relayRef
+	}
+
+	rows.Close()
+	sqlQuery.Reset()
+
+	// TODO: merge this for loop into the buyer ID query
+	for _, buyerID := range buyers {
+		sqlQuery.Write([]byte("select datacenters.hex_id from datacenter_maps "))
+		sqlQuery.Write([]byte("inner join datacenters on datacenter_maps.datacenter_id "))
+		sqlQuery.Write([]byte("= datacenters.id where datacenter_maps.buyer_id = "))
+		sqlQuery.Write([]byte("(select id from buyers where sdk_generated_id = $1)"))
+
+		rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery, int64(buyerID))
+		if err != nil {
+			core.Error("DatabaseBinFileReference(): DatacenterMaps QueryMultipleRowsRetry returned an error: %v", err)
+			return dbReference, err
+		}
+
+		for rows.Next() {
+			var hexID string
+			err = rows.Scan(&hexID)
+			if err != nil {
+				core.Error("DatabaseBinFileReference(): error parsing returned row: %v", err)
+				return dbReference, err
+			}
+
+			dcID, err := strconv.ParseUint(hexID, 16, 64)
+			if err != nil {
+				core.Error("DatabaseBinFileReference() error parsing datacenter hex ID")
+				return dbReference, err
+			}
+
+			if _, ok := datacenterMaps[buyerID]; !ok {
+				datacenterMaps[buyerID] = make([]uint64, 0)
+			}
+
+			datacenterMaps[buyerID] = append(datacenterMaps[buyerID], dcID)
+		}
+
+		sort.Slice(datacenterMaps[buyerID], func(i, j int) bool {
+			return datacenterMaps[buyerID][i] < datacenterMaps[buyerID][j]
+		})
+
+		rows.Close()
+		sqlQuery.Reset()
+	}
+
+	sqlQuery.Write([]byte("select display_name "))
+	sqlQuery.Write([]byte("from datacenters order by display_name asc"))
+
+	rows, err = QueryMultipleRowsRetry(ctx, db, sqlQuery)
+	if err != nil {
+		core.Error("DatabaseBinFileReference(): Datacenters QueryMultipleRowsRetry returned an error: %v", err)
+		return dbReference, err
+	}
+
+	var datacenterDisplayName string
+	for rows.Next() {
+		err = rows.Scan(
+			&datacenterDisplayName,
+		)
+		if err != nil {
+			core.Error("DatabaseBinFileReference(): error parsing returned row")
+			return dbReference, err
+		}
+
+		datacenters = append(datacenters, datacenterDisplayName)
+	}
+
+	rows.Close()
+	sqlQuery.Reset()
+
+	dbReference.Version = routing.DatabaseBinWrapperReferenceVersion
+	dbReference.Buyers = buyers
+	dbReference.Sellers = sellers
+	dbReference.Datacenters = datacenters
+	dbReference.Relays = relays
+	dbReference.RelayMap = relayMap
+	dbReference.DatacenterMaps = datacenterMaps
+
+	return dbReference, err
+}
+
 // Customer retrieves a Customer record using the company code
 func (db *SQL) Customer(ctx context.Context, customerCode string) (routing.Customer, error) {
 	var querySQL bytes.Buffer
@@ -546,7 +740,7 @@ func (db *SQL) BuyerWithCompanyCode(ctx context.Context, companyCode string) (ro
 
 	switch err {
 	case context.Canceled:
-		core.Error("Buyer() connection with the database timed out!")
+		core.Error("BuyerWithCompanyCode() connection with the database timed out!")
 		return routing.Buyer{}, err
 	case sql.ErrNoRows:
 		return routing.Buyer{}, &DoesNotExistError{resourceType: "buyer short_name", resourceRef: companyCode}
@@ -3885,12 +4079,12 @@ func (db *SQL) GetDatabaseBinFileMetaData(ctx context.Context) (routing.Database
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	querySQL.Write([]byte("select bin_file_creation_time, bin_file_author "))
+	querySQL.Write([]byte("select bin_file_creation_time, bin_file_author, sha "))
 	querySQL.Write([]byte("from database_bin_meta order by bin_file_creation_time desc limit 1"))
 
 	for retryCount < MAX_RETRIES {
 		row = db.Client.QueryRowContext(ctx, querySQL.String())
-		err = row.Scan(&dashboardData.DatabaseBinFileCreationTime, &dashboardData.DatabaseBinFileAuthor)
+		err = row.Scan(&dashboardData.DatabaseBinFileCreationTime, &dashboardData.DatabaseBinFileAuthor, &dashboardData.SHA)
 		switch err {
 		case context.Canceled:
 			retryCount = retryCount + 1
@@ -3922,8 +4116,8 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 
 	// Add the metadata record to the database_bin_meta table
 	sql.Write([]byte("insert into database_bin_meta ("))
-	sql.Write([]byte("bin_file_creation_time, bin_file_author "))
-	sql.Write([]byte(") values ($1, $2)"))
+	sql.Write([]byte("bin_file_creation_time, bin_file_author, sha"))
+	sql.Write([]byte(") values ($1, $2, $3)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -3931,6 +4125,7 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 		sql,
 		metaData.DatabaseBinFileCreationTime,
 		metaData.DatabaseBinFileAuthor,
+		metaData.SHA,
 	)
 
 	if err != nil {

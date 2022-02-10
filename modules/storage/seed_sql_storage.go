@@ -598,7 +598,7 @@ func SeedSQLStorage(
 		}
 
 		// set creation time to 1.5 hours ago to avoid cooldown ticker in UI
-		now := time.Now()
+		now := time.Now().UTC()
 		duration, _ := time.ParseDuration("-1.5h")
 		then := now.Add(duration)
 

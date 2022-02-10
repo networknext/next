@@ -1421,6 +1421,7 @@ func TestUpdateGameConfiguration(t *testing.T) {
 	assert.NoError(t, err)
 
 	svc := jsonrpc.BuyersService{
+		Env:                    "local",
 		RedisPoolTopSessions:   redisPool,
 		RedisPoolSessionMeta:   redisPool,
 		RedisPoolSessionSlices: redisPool,
@@ -1462,16 +1463,40 @@ func TestUpdateGameConfiguration(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("success - new buyer", func(t *testing.T) {
+	t.Run("cooldown failure - new buyer", func(t *testing.T) {
+		err := storer.UpdateDatabaseBinFileMetaData(reqContext, routing.DatabaseBinFileMetaData{
+			DatabaseBinFileAuthor:       "tester",
+			DatabaseBinFileCreationTime: time.Now().UTC(),
+			SHA:                         fmt.Sprintf("%016x", uint64(0000000000)),
+		})
+		assert.NoError(t, err)
+
 		var reply jsonrpc.GameConfigurationReply
-		err := svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
+		err = svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
+		assert.Error(t, err)
+	})
+
+	t.Run("success - new buyer", func(t *testing.T) {
+		pastTime, err := time.ParseDuration("-1.5h")
+		assert.NoError(t, err)
+
+		err = storer.UpdateDatabaseBinFileMetaData(reqContext, routing.DatabaseBinFileMetaData{
+			DatabaseBinFileAuthor:       "tester",
+			DatabaseBinFileCreationTime: time.Now().UTC().Add(pastTime),
+			SHA:                         fmt.Sprintf("%016x", uint64(0000000000)),
+		})
+		assert.NoError(t, err)
+
+		var reply jsonrpc.GameConfigurationReply
+		err = svc.UpdateGameConfiguration(req, &jsonrpc.GameConfigurationArgs{NewPublicKey: "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A=="}, &reply)
 		assert.NoError(t, err)
 
 		newBuyer, err := storer.BuyerWithCompanyCode(reqContext, "local-local")
 		assert.NoError(t, err)
 
 		assert.Equal(t, "local-local", newBuyer.CompanyCode)
-		assert.False(t, newBuyer.Live)
+		assert.True(t, newBuyer.Live)
+		assert.True(t, newBuyer.RouteShader.AnalysisOnly)
 		assert.Equal(t, "12939405032490452521", fmt.Sprintf("%d", newBuyer.ID))
 		assert.Equal(t, "KcZ+NlIAkrMfc9ir79ZMGJxLnPEDuHkf6Yi0akyyWWcR3JaMY+yp2A==", reply.GameConfiguration.PublicKey)
 	})
@@ -2524,4 +2549,7 @@ func TestUpdateBuyer(t *testing.T) {
 		err := svc.UpdateBuyer(req, &jsonrpc.UpdateBuyerArgs{BuyerID: 1, Field: "PublicKey", Value: "YFWQjOJfHfOqsCMM/1pd+c5haMhsrE2Gm05bVUQhCnG7YlPUrI/d1g=="}, &reply)
 		assert.NoError(t, err)
 	})
+}
+
+func TestDatabaseBinGeneration(t *testing.T) {
 }

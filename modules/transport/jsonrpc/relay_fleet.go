@@ -610,6 +610,8 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	reply *AdminBinFileHandlerReply,
 ) error {
 
+	ctx := r.Context()
+
 	requestUser := r.Context().Value(middleware.Keys.UserKey)
 	if requestUser == nil {
 		errCode := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
@@ -618,7 +620,7 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 		return err
 	}
 
-	requestEmail, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
+	requestName, ok := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["name"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 
@@ -626,18 +628,42 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 		return &err
 	}
 
-	var buffer bytes.Buffer
-
-	dbWrapper, err := rfs.BinFileGenerator(r.Context(), requestEmail)
+	dbRef, err := rfs.Storage.DatabaseBinFileReference(ctx)
 	if err != nil {
-		err := fmt.Errorf("AdminBinFileHandler() error generating database.bin file: %v", err)
 		core.Error("%v", err)
-		reply.Message = err.Error()
 		return err
 	}
 
+	refHash, err := dbRef.Hash()
+	if err != nil {
+		core.Error("%v", err)
+		return err
+	}
+
+	genBin, err := rfs.BinFileGenerator(ctx, requestName)
+	if err != nil {
+		core.Error("%v", err)
+		return err
+	}
+
+	genHash, err := genBin.Hash()
+	if err != nil {
+		core.Error("%v", err)
+		return err
+	}
+
+	if genHash != refHash {
+		err := fmt.Errorf("Hashes do not match, bin file won't be committed")
+		core.Error("%v", err)
+		return err
+	}
+
+	genBin.SHA = fmt.Sprintf("%016x", genHash)
+
+	var buffer bytes.Buffer
+
 	encoder := gob.NewEncoder(&buffer)
-	encoder.Encode(dbWrapper)
+	encoder.Encode(genBin)
 
 	tempFile, err := ioutil.TempFile("", "database.bin")
 	if err != nil {
@@ -684,8 +710,9 @@ func (rfs *RelayFleetService) AdminBinFileHandler(
 	}
 
 	metaData := routing.DatabaseBinFileMetaData{
-		DatabaseBinFileAuthor:       requestEmail,
-		DatabaseBinFileCreationTime: time.Now(),
+		DatabaseBinFileAuthor:       requestName,
+		DatabaseBinFileCreationTime: time.Now().UTC(),
+		SHA:                         fmt.Sprintf("%016x", genHash),
 	}
 
 	err = rfs.Storage.UpdateDatabaseBinFileMetaData(r.Context(), metaData)
@@ -702,6 +729,7 @@ type NextBinFileHandlerArgs struct{}
 
 type NextBinFileHandlerReply struct {
 	DBWrapper routing.DatabaseBinWrapper `json:"dbWrapper"`
+	SHA       string
 }
 
 // NextBinFileHandler generates and returns a DatabaseBinWrapper struct
@@ -712,18 +740,51 @@ func (rfs *RelayFleetService) NextBinFileHandler(
 	reply *NextBinFileHandlerReply,
 ) error {
 
-	dbWrapper, err := rfs.BinFileGenerator(r.Context(), "next")
+	ctx := r.Context()
+
+	dbRef, err := rfs.Storage.DatabaseBinFileReference(ctx)
 	if err != nil {
-		err := fmt.Errorf("BinFileHandler() error generating database.bin file: %v", err)
+		err := fmt.Errorf("BinFileHandler() error generating database reference: %v", err)
 		core.Error("%v", err)
 		return err
 	}
 
-	reply.DBWrapper = dbWrapper
+	refHash, err := dbRef.Hash()
+	if err != nil {
+		err := fmt.Errorf("BinFileHandler() error hashing reference: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	genBin, err := rfs.BinFileGenerator(ctx, "next")
+	if err != nil {
+		err := fmt.Errorf("BinFileHandler() error generating database.bin: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	genHash, err := genBin.Hash()
+	if err != nil {
+		err := fmt.Errorf("BinFileHandler() error hashing database.bin: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+
+	if genHash != refHash {
+		err := fmt.Errorf("BinFileHandler(): Hashes do not match, bin file won't be committed")
+		core.Error("%v", err)
+		return err
+	}
+
+	genBin.SHA = fmt.Sprintf("%016x", genHash)
+
+	reply.DBWrapper = genBin
 	return nil
 }
 
-type NextBinFileCommitTimeStampArgs struct{}
+type NextBinFileCommitTimeStampArgs struct {
+	SHA string
+}
 
 type NextBinFileCommitTimeStampReply struct{}
 
@@ -735,7 +796,8 @@ func (rfs *RelayFleetService) NextBinFileCommitTimeStamp(
 
 	metaData := routing.DatabaseBinFileMetaData{
 		DatabaseBinFileAuthor:       "next cli",
-		DatabaseBinFileCreationTime: time.Now(),
+		DatabaseBinFileCreationTime: time.Now().UTC(),
+		SHA:                         args.SHA,
 	}
 
 	err := rfs.Storage.UpdateDatabaseBinFileMetaData(r.Context(), metaData)
@@ -788,13 +850,9 @@ func (rfs *RelayFleetService) BinFileGenerator(ctx context.Context, userEmail st
 	dbWrapper.DatacenterMap = datacenterMap
 	dbWrapper.DatacenterMaps = datacenterMaps
 
-	loc, err := time.LoadLocation("UTC")
-	if err != nil {
-		return routing.DatabaseBinWrapper{}, err
-	}
-	now := time.Now().In(loc)
+	now := time.Now().UTC()
 
-	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC\n", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
+	timeStamp := fmt.Sprintf("%s %d, %d %02d:%02d UTC", now.Month(), now.Day(), now.Year(), now.Hour(), now.Minute())
 	dbWrapper.CreationTime = timeStamp
 	dbWrapper.Creator = userEmail
 
