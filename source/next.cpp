@@ -12410,7 +12410,6 @@ void next_server_internal_event_user_flag( next_server_internal_t * server, cons
 {
     next_assert( server );
     next_assert( address );
-    next_assert( user_flags > 0 );
 
     next_server_internal_verify_sentinels( server );
 
