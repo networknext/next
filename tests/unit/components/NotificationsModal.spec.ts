@@ -103,7 +103,7 @@ describe('NotificationsModal.vue', () => {
   it('checks release notes layout - single', async () => {
     const spy = fetchNotificationsMock(localVue, true, [
       {
-        title: 'Test Notification',
+        title: 'Test Notification'
       }
     ], [], [], [])
 
@@ -125,7 +125,7 @@ describe('NotificationsModal.vue', () => {
   it('checks release notes layout - single', async () => {
     const spy = fetchNotificationsMock(localVue, true, [
       {
-        title: 'Test Notification',
+        title: 'Test Notification'
       }
     ], [], [], [])
 
@@ -159,10 +159,10 @@ describe('NotificationsModal.vue', () => {
         title: 'Test Notification'
       },
       {
-        title: 'Test Notification 2',
+        title: 'Test Notification 2'
       },
       {
-        title: 'Test Notification 3',
+        title: 'Test Notification 3'
       }
     ], [], [], [])
 

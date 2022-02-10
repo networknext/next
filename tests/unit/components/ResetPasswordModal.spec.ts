@@ -145,21 +145,21 @@ describe('ResetPasswordModal.vue', () => {
 
     expect(wrapper.vm.$data.stepOne).toBeTruthy()
 
-    let header = wrapper.find('.header')
+    const header = wrapper.find('.header')
     expect(header.exists()).toBeTruthy()
     expect(header.text()).toBe('Forgot Your Password?')
 
-    let helperText = wrapper.find('p')
+    const helperText = wrapper.find('p')
     expect(helperText.exists()).toBeTruthy()
     expect(helperText.text()).toBe('Enter your email address and we will send you instructions to reset your password.')
 
-    let emailInput = wrapper.find('#email-input')
+    const emailInput = wrapper.find('#email-input')
     expect(emailInput.exists()).toBeTruthy()
 
-    let continueButtons = wrapper.findAll('button')
+    const continueButtons = wrapper.findAll('button')
     expect(continueButtons.length).toBe(1)
 
-    let backToPortalLink = wrapper.find('router-link')
+    const backToPortalLink = wrapper.find('router-link')
     expect(backToPortalLink.exists()).toBeTruthy()
     expect(backToPortalLink.text()).toBe('Back to Portal')
 
@@ -188,21 +188,21 @@ describe('ResetPasswordModal.vue', () => {
 
     expect(wrapper.vm.$data.stepOne).toBeTruthy()
 
-    let header = wrapper.find('.header')
+    const header = wrapper.find('.header')
     expect(header.exists()).toBeTruthy()
     expect(header.text()).toBe('Forgot Your Password?')
 
-    let helperText = wrapper.find('p')
+    const helperText = wrapper.find('p')
     expect(helperText.exists()).toBeTruthy()
     expect(helperText.text()).toBe('Enter your email address and we will send you instructions to reset your password.')
 
-    let emailInput = wrapper.find('#email-input')
+    const emailInput = wrapper.find('#email-input')
     expect(emailInput.exists()).toBeTruthy()
 
-    let continueButtons = wrapper.findAll('button')
+    const continueButtons = wrapper.findAll('button')
     expect(continueButtons.length).toBe(1)
 
-    let backToPortalLink = wrapper.find('router-link')
+    const backToPortalLink = wrapper.find('router-link')
     expect(backToPortalLink.exists()).toBeTruthy()
     expect(backToPortalLink.text()).toBe('Back to Portal')
 
