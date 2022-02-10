@@ -4114,12 +4114,6 @@ func (db *SQL) UpdateDatabaseBinFileMetaData(ctx context.Context, metaData routi
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	fmt.Println("==============================")
-	fmt.Println("Updating meta data")
-	fmt.Println(metaData.DatabaseBinFileAuthor)
-	fmt.Println(metaData.SHA)
-	fmt.Println("==============================")
-
 	// Add the metadata record to the database_bin_meta table
 	sql.Write([]byte("insert into database_bin_meta ("))
 	sql.Write([]byte("bin_file_creation_time, bin_file_author, sha"))
