@@ -359,3 +359,232 @@ Packets sent via this function do not apply to your network next bandwidth envel
 	uint8_t packet_data[32];
 	memset( packet_data, 0, sizeof(packet_data) );
 	next_server_send_packet_direct( server, client_address, packet_data, sizeof(packet_data) );
+
+next_server_stats
+-----------------
+
+Gets statistics for a specific client address.
+
+.. code-block:: c++
+
+	NEXT_BOOL next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **next_address_t** -- The address of the client to get statistics for.
+
+	- **next_server_stats_t** -- The pointer to the server stats struct to fill.
+
+**Return value:**
+
+	True if a session exists for the given IP address, false otherwise.
+
+**Example**
+
+The server stats struct is defined as follows:
+
+.. code-block:: c++
+
+	struct next_server_stats_t
+	{
+	    struct next_address_t address;
+	    uint64_t session_id;
+	    uint64_t user_hash;
+	    int platform_id;
+	    int connection_type;
+	    NEXT_BOOL next;
+	    NEXT_BOOL committed;
+	    NEXT_BOOL multipath;
+	    NEXT_BOOL reported;
+	    NEXT_BOOL fallback_to_direct;
+	    float direct_min_rtt;
+	    float direct_max_rtt;
+	    float direct_prime_rtt;
+	    float direct_jitter;
+	    float direct_packet_loss;
+	    float next_rtt;
+	    float next_jitter;
+	    float next_packet_loss;
+	    float next_kbps_up;
+	    float next_kbps_down;
+	    uint64_t packets_sent_client_to_server;
+	    uint64_t packets_sent_server_to_client;
+	    uint64_t packets_lost_client_to_server;
+	    uint64_t packets_lost_server_to_client;
+	    uint64_t packets_out_of_order_client_to_server;
+	    uint64_t packets_out_of_order_server_to_client;
+	    float jitter_client_to_server;
+	    float jitter_server_to_client;
+	    int num_tags;
+	    uint64_t tags[NEXT_MAX_TAGS];
+	};
+
+Here is how to query it, and print out various interesting values:
+
+.. code-block:: c++
+
+	next_server_stats_t stats;
+	if ( !next_server_stats( server, client_address, &stats ) )
+	{
+	    printf( "server does not contain a session for provided address" );
+	    return;
+	}
+	
+	char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+	printf( "address = %s\n", next_address_to_string( client_address, address_buffer ) );
+
+	const char * platform = "unknown";
+
+	switch ( stats.platform_id )
+	{
+	    case NEXT_PLATFORM_WINDOWS:
+	        platform = "windows";
+	        break;
+
+	    case NEXT_PLATFORM_MAC:
+	        platform = "mac";
+	        break;
+
+	    case NEXT_PLATFORM_LINUX:
+	        platform = "linux";
+	        break;
+
+	    case NEXT_PLATFORM_SWITCH:
+	        platform = "nintendo switch";
+	        break;
+
+	    case NEXT_PLATFORM_PS4:
+	        platform = "ps4";
+	        break;
+
+	    case NEXT_PLATFORM_PS5:
+	        platform = "ps5";
+	        break;
+
+	    case NEXT_PLATFORM_IOS:
+	        platform = "ios";
+	        break;
+
+	    case NEXT_PLATFORM_XBOX_ONE:
+	        platform = "xbox one";
+	        break;
+
+	    case NEXT_PLATFORM_XBOX_SERIES_X:
+	        platform = "xbox series x";
+	        break;
+
+	    default:
+	        break;
+	}
+
+	printf( "session_id = %" PRIx64 "\n", stats.session_id );
+
+	printf( "platform_id = %s (%d)\n", platform, (int) stats.platform_id );
+
+	const char * connection = "unknown";
+	
+	switch ( stats.connection_type )
+	{
+	    case NEXT_CONNECTION_TYPE_WIRED:
+	        connection = "wired";
+	        break;
+
+	    case NEXT_CONNECTION_TYPE_WIFI:
+	        connection = "wifi";
+	        break;
+
+	    case NEXT_CONNECTION_TYPE_CELLULAR:
+	        connection = "cellular";
+	        break;
+
+	    default:
+	        break;
+	}
+
+	printf( "connection_type = %s (%d)\n", connection, stats.connection_type );
+
+	if ( !stats.fallback_to_direct )
+	{
+	    printf( "committed = %s\n", stats.committed ? "true" : "false" );
+	    printf( "multipath = %s\n", stats.multipath ? "true" : "false" );
+	    printf( "reported = %s\n", stats.reported ? "true" : "false" );
+	}
+
+	printf( "fallback_to_direct = %s\n", stats.fallback_to_direct ? "true" : "false" );
+
+	printf( "direct_min_rtt = %.2fms\n", stats.direct_min_rtt );
+	printf( "direct_max_rtt = %.2fms\n", stats.direct_max_rtt );
+	printf( "direct_prime_rtt = %.2fms\n", stats.direct_prime_rtt );
+	printf( "direct_jitter = %.2fms\n", stats.direct_jitter );
+	printf( "direct_packet_loss = %.1f%%\n", stats.direct_packet_loss );
+
+	if ( stats.next )
+	{
+	    printf( "next_rtt = %.2fms\n", stats.next_rtt );
+	    printf( "next_jitter = %.2fms\n", stats.next_jitter );
+	    printf( "next_packet_loss = %.1f%%\n", stats.next_packet_loss );
+	    printf( "next_bandwidth_up = %.1fkbps\n", stats.next_kbps_up );
+	    printf( "next_bandwidth_down = %.1fkbps\n", stats.next_kbps_down );
+	}
+
+	if ( !stats.fallback_to_direct )
+	{
+	    printf( "packets_sent_client_to_server = %" PRId64 "\n", stats.packets_sent_client_to_server );
+	    printf( "packets_sent_server_to_client = %" PRId64 "\n", stats.packets_sent_server_to_client );
+	    printf( "packets_lost_client_to_server = %" PRId64 "\n", stats.packets_lost_client_to_server );
+	    printf( "packets_lost_server_to_client = %" PRId64 "\n", stats.packets_lost_server_to_client );
+	    printf( "packets_out_of_order_client_to_server = %" PRId64 "\n", stats.packets_out_of_order_client_to_server );
+	    printf( "packets_out_of_order_server_to_client = %" PRId64 "\n", stats.packets_out_of_order_server_to_client );
+	    printf( "jitter_client_to_server = %f\n", stats.jitter_client_to_server );
+	    printf( "jitter_server_to_client = %f\n", stats.jitter_server_to_client );
+	}
+
+	if ( stats.num_tags > 0 )
+	{
+	    printf( "tags = [" );
+	    for ( int i = 0; i < stats.num_tags; ++i )
+	    {
+	        if ( i != stats.num_tags - 1 )
+	        {
+	            printf( "%" PRIx64 ",", stats.tags[i] );
+	        }
+	        else
+	        {
+	            printf( "%" PRIx64, stats.tags[i] );
+	        }
+	    }
+	    printf( "]\n" );
+	}
+	else
+	{
+	    printf( "tags = [] (0/%d)\n", NEXT_MAX_TAGS );
+	}
+
+next_server_autodetect_finished
+-------------------------------
+
+Determines if the server has finished autodetecting the datacenter name after calling *next_server_create*.
+
+.. code-block:: c++
+
+	NEXT_BOOL next_server_autodetect_finished( next_server_t * server );
+
+This function allows you to check if the server has finished determining its datacenter name when the server is hosted in Google Cloud or AWS, or managed by Multiplay.
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Return value:**
+
+	True if the server has finished autodetection, false otherwise.
+
+**Example:**
+
+.. code-block:: c++
+
+	const bool autodetect_finished = next_server_autodetect_finished( server );
+
+	printf( "server autodetect finished = %s\n", autodetect_finished ? "true" : "false" );
