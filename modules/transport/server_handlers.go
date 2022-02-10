@@ -1689,6 +1689,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		UseDebug:                        state.Buyer.Debug,
 		Debug:                           debugString,
 		RouteDiversity:                  int32(state.RouteDiversity),
+		UserFlags:                       state.Packet.UserFlags,
 		DatacenterID:                    state.Packet.DatacenterID,
 		BuyerID:                         state.Packet.BuyerID,
 		UserHash:                        state.Packet.UserHash,

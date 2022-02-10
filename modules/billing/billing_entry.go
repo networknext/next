@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	BillingEntryVersion2 = uint32(7)
+	BillingEntryVersion2 = uint32(8)
 
 	MaxBillingEntry2Bytes = 4096
 
@@ -47,6 +47,7 @@ type BillingEntry2 struct {
 	UseDebug            bool
 	Debug               string
 	RouteDiversity      int32
+	UserFlags           uint64
 
 	// first slice and summary slice only
 
@@ -215,6 +216,15 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	stream.SerializeString(&entry.Debug, BillingEntryMaxDebugLength)
 
 	stream.SerializeInteger(&entry.RouteDiversity, 0, 32)
+
+	/*
+		Version 8
+
+		Includes UserFlags from SDK 4.20.0 driven by next_server_event().
+	*/
+	if entry.Version >= uint32(8) {
+		stream.SerializeUint64(&entry.UserFlags)
+	}
 
 	/*
 		2. First slice and summary slice only
@@ -975,6 +985,10 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 	if entry.RouteDiversity > 0 {
 		e["routeDiversity"] = int(entry.RouteDiversity)
+	}
+
+	if entry.UserFlags > 0 {
+		e["userFlags"] = int(entry.UserFlags)
 	}
 
 	/*
