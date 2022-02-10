@@ -9024,7 +9024,7 @@ struct NextBackendSessionUpdatePacket
         serialize_bool( stream, client_ping_timed_out );
 
         bool has_tags = Stream::IsWriting && slice_number == 0 && num_tags > 0;
-        bool has_user_flags = Stream::IsWriting && user_flags > 0;
+        bool has_user_flags = Stream::IsWriting && user_flags != 0;
         bool has_lost_packets = Stream::IsWriting && ( packets_lost_client_to_server + packets_lost_server_to_client ) > 0;
         bool has_out_of_order_packets = Stream::IsWriting && ( packets_out_of_order_client_to_server + packets_out_of_order_server_to_client ) > 0;
 
