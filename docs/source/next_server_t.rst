@@ -369,6 +369,8 @@ Attaches an event flag to a session for monitoring and analysis purposes.
 
 	void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
 
+You can set up to 64 event flags every 10 seconds.
+
 **Parameters:**
 
 	- **server** -- The server instance.
