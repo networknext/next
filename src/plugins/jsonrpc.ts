@@ -116,8 +116,8 @@ export class JSONRPCService {
     return this.call('BuyersService.Buyers', {})
   }
 
-  public fetchAnalyticsSummary (args: any): Promise<any> {
-    return this.call('BuyersService.FetchAnalyticsSummaryDashboards', args)
+  public fetchAnalyticsDashboards (args: any): Promise<any> {
+    return this.call('BuyersService.FetchAnalyticsDashboards', args)
   }
 
   public fetchDiscoveryDashboards (args: any): Promise<any> {
@@ -125,7 +125,7 @@ export class JSONRPCService {
   }
 
   public fetchUsageSummary (args: any): Promise<any> {
-    return this.call('BuyersService.FetchUsageSummaryDashboard', args)
+    return this.call('BuyersService.FetchUsageDashboard', args)
   }
 
   public fetchUserSessions (args: any): Promise<any> {

@@ -5,13 +5,16 @@ import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { VueConstructor } from 'vue/types/umd'
 import { Filter } from '@/components/types/FilterTypes'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
-import { AlertType } from '@/components/types/AlertTypes'
 
-function fetchAnalyticsSummaryMock (vueInstance: VueConstructor<any>, success: boolean, urls: Array<string>, customerCode: string): jest.SpyInstance<any, unknown[]> {
-  return jest.spyOn(vueInstance.prototype.$apiService, 'fetchAnalyticsSummary').mockImplementation((args: any) => {
-    expect(args.company_code).toBe(customerCode)
-    expect(args.origin).toBe('127.0.0.1')
-    return success ? Promise.resolve({ urls: urls }) : Promise.reject(new Error('fetchAnalyticsSummaryMock Mock Error'))
+export interface AnalyticsDashboards {
+  [tab: string]: Array<string>;
+}
+
+function fetchAnalyticsDashboardsMock (vueInstance: VueConstructor<any>, success: boolean, dashboards: AnalyticsDashboards, customerCode: string): jest.SpyInstance<any, unknown[]> {
+  return jest.spyOn(vueInstance.prototype.$apiService, 'fetchAnalyticsDashboards').mockImplementation((args: any) => {
+    expect(args.customer_code).toBe(customerCode)
+
+    return success ? Promise.resolve({ dashboards: dashboards }) : Promise.reject(new Error('fetchAnalyticsDashboardsMock Mock Error'))
   })
 }
 
@@ -47,26 +50,10 @@ describe('Analytics.vue', () => {
     }
   }
 
-  // Setup spy functions
-  let windowSpy: jest.SpyInstance
-
-  beforeEach(() => {
-    windowSpy = jest.spyOn(window, 'window', 'get')
-    windowSpy.mockImplementation(() => ({
-      location: {
-        origin: '127.0.0.1'
-      }
-    }))
-  })
-
-  afterEach(() => {
-    windowSpy.mockRestore()
-  })
-
   // Run bare minimum mount test
   it('mounts the component successfully', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, [], '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {}, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -75,14 +62,20 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
+    await localVue.nextTick()
+
     wrapper.destroy()
 
     analyticDashSpy.mockReset()
   })
 
-  it('mounts a single analytics dashboard', async () => {
+  it('mounts a single dashboard category and one dashboard', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.1'], '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
+      'General': [
+        '127.0.0.1'
+      ]
+    }, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -91,23 +84,31 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
-    const lookEmbeds = wrapper.findAll('lookerembed-stub')
+    const tabs = wrapper.findAll('li')
+    expect(tabs.length).toBe(1)
+    expect(tabs.at(0).text()).toBe('General')
 
-    expect(lookEmbeds.length).toBe(1)
+    const selectedTab = wrapper.findAll('.blue-accent')
+    expect(selectedTab.length).toBe(1)
+    expect(selectedTab.at(0).text()).toBe('General')
 
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
-    expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
+    const dashboards = wrapper.findAll('lookerembed-stub')
+    expect(dashboards.length).toBe(1)
+    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
 
     wrapper.destroy()
 
     analyticDashSpy.mockReset()
   })
 
-  it('mounts multiple analytics dashboards', async () => {
+  it('mounts a single dashboard category and multiple dashboards', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, [
-      'https://127.0.0.1', 'https://127.0.0.2'
-    ], '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
+      'General': [
+        '127.0.0.1',
+        '127.0.0.2'
+      ]
+    }, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -116,24 +117,34 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
-    const lookEmbeds = wrapper.findAll('lookerembed-stub')
+    const tabs = wrapper.findAll('li')
+    expect(tabs.length).toBe(1)
+    expect(tabs.at(0).text()).toBe('General')
 
-    expect(lookEmbeds.length).toBe(2)
+    const selectedTab = wrapper.findAll('.blue-accent')
+    expect(selectedTab.length).toBe(1)
+    expect(selectedTab.at(0).text()).toBe('General')
 
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
-    expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
-
-    expect(lookEmbeds.at(1).attributes('dashid')).toBe('analyticsDash')
-    expect(lookEmbeds.at(1).attributes('dashurl')).toBe('https://127.0.0.2')
+    const dashboards = wrapper.findAll('lookerembed-stub')
+    expect(dashboards.length).toBe(2)
+    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
+    expect(dashboards.at(1).attributes('dashurl')).toBe('127.0.0.2')
 
     wrapper.destroy()
 
     analyticDashSpy.mockReset()
   })
 
-  it('checks filter change update - !admin', async () => {
+  it('mounts a multiple dashboard categories and one dashboard', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.1'], '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
+      'General': [
+        '127.0.0.1'
+      ],
+      'Platform': [
+        '127.0.0.2'
+      ]
+    }, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -142,41 +153,34 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
-    let lookEmbeds = wrapper.findAll('lookerembed-stub')
+    const tabs = wrapper.findAll('li')
+    expect(tabs.length).toBe(2)
+    expect(tabs.at(0).text()).toBe('General')
+    expect(tabs.at(1).text()).toBe('Platform')
 
-    expect(lookEmbeds.length).toBe(1)
+    const selectedTab = wrapper.findAll('.blue-accent')
+    expect(selectedTab.length).toBe(1)
+    expect(selectedTab.at(0).text()).toBe('General')
 
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
-    expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
-
-    const newFilter = { companyCode: 'test' }
-    store.commit('UPDATE_CURRENT_FILTER', newFilter)
-
-    await localVue.nextTick()
-
-    expect(analyticDashSpy).toBeCalledTimes(1)
-
-    await localVue.nextTick()
-
-    lookEmbeds = wrapper.findAll('lookerembed-stub')
-
-    expect(lookEmbeds.length).toBe(1)
-
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
-    expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
-
-    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '' })
+    const dashboards = wrapper.findAll('lookerembed-stub')
+    expect(dashboards.length).toBe(1)
+    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
 
     wrapper.destroy()
 
     analyticDashSpy.mockReset()
   })
 
-  it('checks filter change update - admin', async () => {
-    let analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.1'], '')
-
+  it('mounts a multiple dashboard categories and one dashboard - General not first', async () => {
     const store = new Vuex.Store(defaultStore)
-    store.commit('UPDATE_IS_ADMIN', true)
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
+      'Platform': [
+        '127.0.0.1'
+      ],
+      'General': [
+        '127.0.0.2'
+      ]
+    }, '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -185,58 +189,109 @@ describe('Analytics.vue', () => {
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
-    let lookEmbeds = wrapper.findAll('lookerembed-stub')
+    const tabs = wrapper.findAll('li')
+    expect(tabs.length).toBe(2)
+    expect(tabs.at(0).text()).toBe('General')
+    expect(tabs.at(1).text()).toBe('Platform')
 
-    expect(lookEmbeds.length).toBe(1)
+    const selectedTab = wrapper.findAll('.blue-accent')
+    expect(selectedTab.length).toBe(1)
+    expect(selectedTab.at(0).text()).toBe('General')
 
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
-    expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
-
-    analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.2'], 'test')
-
-    const newFilter = { companyCode: 'test' }
-    store.commit('UPDATE_CURRENT_FILTER', newFilter)
-
-    await localVue.nextTick()
-
-    expect(analyticDashSpy).toBeCalledTimes(2)
-
-    await localVue.nextTick()
-
-    lookEmbeds = wrapper.findAll('lookerembed-stub')
-
-    expect(lookEmbeds.length).toBe(1)
-
-    expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
-    expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.2')
+    const dashboards = wrapper.findAll('lookerembed-stub')
+    expect(dashboards.length).toBe(1)
+    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.2')
 
     wrapper.destroy()
 
-    store.commit('UPDATE_IS_ADMIN', false)
-    store.commit('UPDATE_CURRENT_FILTER', { company_code: '' })
     analyticDashSpy.mockReset()
   })
 
-  it('checks failure alert', async () => {
+  it('check tab switching', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, false, [], '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
+      'General': [
+        '127.0.0.1'
+      ],
+      'Platform': [
+        '127.0.0.2'
+      ]
+    }, '')
 
-    const wrapper = mount(Analytics, { localVue, store })
+    const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
 
     await localVue.nextTick()
 
     expect(analyticDashSpy).toBeCalledTimes(1)
 
+    const tabs = wrapper.findAll('li')
+    expect(tabs.length).toBe(2)
+    expect(tabs.at(0).text()).toBe('General')
+    expect(tabs.at(1).text()).toBe('Platform')
+
+    let selectedTab = wrapper.findAll('.blue-accent')
+    expect(selectedTab.length).toBe(1)
+    expect(selectedTab.at(0).text()).toBe('General')
+
+    let dashboards = wrapper.findAll('lookerembed-stub')
+    expect(dashboards.length).toBe(1)
+    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
+
+    await tabs.at(1).trigger('click')
+
     await localVue.nextTick()
 
-    const alert = wrapper.find('.alert')
-    expect(alert.exists()).toBeTruthy()
-    expect(alert.classes(AlertType.ERROR)).toBeTruthy()
-    expect(alert.text()).toBe('Failed to fetch analytics dashboards. Please refresh the page')
+    selectedTab = wrapper.findAll('.blue-accent')
+    expect(selectedTab.length).toBe(1)
+    expect(selectedTab.at(0).text()).toBe('Platform')
 
-    analyticDashSpy.mockReset()
+    dashboards = wrapper.findAll('lookerembed-stub')
+    expect(dashboards.length).toBe(1)
+    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.2')
 
     wrapper.destroy()
+
+    analyticDashSpy.mockReset()
+  })
+
+
+  it('mounts a multiple dashboard categories and multiple dashboards', async () => {
+    const store = new Vuex.Store(defaultStore)
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
+      'General': [
+        '127.0.0.1',
+        '127.0.0.2'
+      ],
+      'Platform': [
+        '127.0.0.3',
+        '127.0.0.4'
+      ]
+    }, '')
+
+    const wrapper = shallowMount(Analytics, { localVue, store })
+    expect(wrapper.exists()).toBeTruthy()
+
+    await localVue.nextTick()
+
+    expect(analyticDashSpy).toBeCalledTimes(1)
+
+    const tabs = wrapper.findAll('li')
+    expect(tabs.length).toBe(2)
+    expect(tabs.at(0).text()).toBe('General')
+    expect(tabs.at(1).text()).toBe('Platform')
+
+    const selectedTab = wrapper.findAll('.blue-accent')
+    expect(selectedTab.length).toBe(1)
+    expect(selectedTab.at(0).text()).toBe('General')
+
+    const dashboards = wrapper.findAll('lookerembed-stub')
+    expect(dashboards.length).toBe(2)
+    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
+    expect(dashboards.at(1).attributes('dashurl')).toBe('127.0.0.2')
+
+    wrapper.destroy()
+
+    analyticDashSpy.mockReset()
   })
 })

@@ -235,21 +235,4 @@ describe('BuyerFilter.vue', () => {
 
     wrapper.destroy()
   })
-
-  it('checks hidden filter', async () => {
-    const store = new Vuex.Store(defaultStore)
-    store.commit('UPDATE_IS_BUYER', false)
-
-    const wrapper = shallowMount(BuyerFilter, { localVue, store })
-    expect(wrapper.exists()).toBeTruthy()
-
-    await localVue.nextTick()
-
-    const filter = wrapper.find('#buyer-filter')
-    expect(filter.exists()).toBeFalsy()
-
-    store.commit('UPDATE_IS_BUYER', true)
-
-    wrapper.destroy()
-  })
 })

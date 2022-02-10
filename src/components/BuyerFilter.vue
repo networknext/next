@@ -1,5 +1,5 @@
 <template>
-  <div id="buyer-filter" class="px-2" v-if="$store.getters.isBuyer || $store.getters.isAdmin">
+  <div id="buyer-filter" class="px-2">
     <select class="form-control" @change="updateFilter($event.target.value)">
       <option v-for="option in filterOptions" :key="option.value" :value="option.value" :selected="$store.getters.currentFilter.companyCode === option.value">
         {{ option.name }}
