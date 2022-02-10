@@ -42,7 +42,6 @@ declare module '*.vue' {
     sendUE4DownloadNotifications (args: any): Promise<any>;
     startAnalyticsTrial (): Promise<any>;
     processNewSignup (args: any): Promise<any>;
-    fetchDiscoveryDashboards (args: any): Promise<any>;
   }
 
   export class VueJSONRPCServicePlugin {

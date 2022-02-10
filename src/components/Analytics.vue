@@ -84,16 +84,34 @@ export default class Analytics extends Vue {
     })
       .then((response: any) => {
         this.dashboards = response.dashboards || []
+        if (this.dashboards.length === 0) {
+          return
+        }
         this.tabs = Object.keys(this.dashboards)
-        this.tabs.sort((a: string) => {
-          return a === 'General' ? 0 : 1
+        this.tabs.sort((a: any, b: any) => {
+          if (a === 'General') {
+            return -1
+          }
+
+          if (b === 'General') {
+            return 1
+          }
+
+          if (a === b) {
+            return 0
+          }
+
+          return a < b ? -1 : 1
         })
+
         this.selectedTabIndex = 0
         this.urls = this.dashboards[this.tabs[0]]
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the analytics dashboard categories')
         console.log(error)
+        this.$refs.failureAlert.setMessage('Failed to fetch analytics dashboards. Please refresh the page')
+        this.$refs.failureAlert.setAlertType(AlertType.ERROR)
       })
   }
 
@@ -102,15 +120,14 @@ export default class Analytics extends Vue {
       return
     }
     this.selectedTabIndex = index
-    this.urls = this.dashboards[this.tabs[index]]
 
     // TODO: This is a bit wasteful because we are making multiple URLs when we only need the one specific to the selected tab. Make a refresh endpoint that will just reload the tab
     this.$apiService.fetchAnalyticsDashboards({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
-      origin: window.location.origin
+      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
         this.dashboards = response.dashboards || []
+        this.urls = this.dashboards[this.tabs[index]]
       })
       .catch((error: Error) => {
         console.log('There was an issue refreshing the analytics dashboards')
