@@ -2856,7 +2856,7 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 
 			lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, r.Header.Get("Origin"))
 			if err != nil {
-				fmt.Println(err)
+				core.Error("FetchDiscoveryDashboards(): Failed to generate Looker URL %v", err.Error())
 				continue
 			}
 			reply.URLs = append(reply.URLs, lookerURL)
