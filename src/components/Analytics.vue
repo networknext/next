@@ -80,8 +80,7 @@ export default class Analytics extends Vue {
 
   private fetchAnalyticsDashboards () {
     this.$apiService.fetchAnalyticsDashboards({
-      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
-      origin: window.location.origin
+      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
         this.dashboards = response.dashboards || []

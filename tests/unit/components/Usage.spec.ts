@@ -9,9 +9,8 @@ import { AlertType } from '@/components/types/AlertTypes'
 
 function fetchUsageSummaryMock (vueInstance: VueConstructor<any>, success: boolean, url: string, customerCode: string, dateString: string): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchUsageSummary').mockImplementation((args: any) => {
-    expect(args.company_code).toBe(customerCode)
+    expect(args.customer_code).toBe(customerCode)
     expect(args.date_string).toBe(dateString)
-    expect(args.origin).toBe('127.0.0.1')
     return success ? Promise.resolve({ url: url }) : Promise.reject(new Error('fetchUsageSummaryMock Mock Error'))
   })
 }
@@ -47,22 +46,6 @@ describe('Usage.vue', () => {
       }
     }
   }
-
-  // Setup spy functions
-  let windowSpy: jest.SpyInstance
-
-  beforeEach(() => {
-    windowSpy = jest.spyOn(window, 'window', 'get')
-    windowSpy.mockImplementation(() => ({
-      location: {
-        origin: '127.0.0.1'
-      }
-    }))
-  })
-
-  afterEach(() => {
-    windowSpy.mockRestore()
-  })
 
   const $route = {
     path: '/explore/usage',

@@ -5,13 +5,11 @@ import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { VueConstructor } from 'vue/types/umd'
 import { Filter } from '@/components/types/FilterTypes'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
-import { AlertType } from '@/components/types/AlertTypes'
 
-function fetchAnalyticsSummaryMock (vueInstance: VueConstructor<any>, success: boolean, urls: Array<string>, customerCode: string): jest.SpyInstance<any, unknown[]> {
-  return jest.spyOn(vueInstance.prototype.$apiService, 'fetchAnalyticsSummary').mockImplementation((args: any) => {
-    expect(args.company_code).toBe(customerCode)
-    expect(args.origin).toBe('127.0.0.1')
-    return success ? Promise.resolve({ urls: urls }) : Promise.reject(new Error('fetchAnalyticsSummaryMock Mock Error'))
+function fetchAnalyticsDashboardsMock (vueInstance: VueConstructor<any>, success: boolean, urls: Array<string>, customerCode: string): jest.SpyInstance<any, unknown[]> {
+  return jest.spyOn(vueInstance.prototype.$apiService, 'fetchAnalyticsDashboards').mockImplementation((args: any) => {
+    expect(args.customer_code).toBe(customerCode)
+    return success ? Promise.resolve({ urls: urls }) : Promise.reject(new Error('fetchAnalyticsDashboardsMock Mock Error'))
   })
 }
 
@@ -47,26 +45,10 @@ describe('Analytics.vue', () => {
     }
   }
 
-  // Setup spy functions
-  let windowSpy: jest.SpyInstance
-
-  beforeEach(() => {
-    windowSpy = jest.spyOn(window, 'window', 'get')
-    windowSpy.mockImplementation(() => ({
-      location: {
-        origin: '127.0.0.1'
-      }
-    }))
-  })
-
-  afterEach(() => {
-    windowSpy.mockRestore()
-  })
-
   // Run bare minimum mount test
   it('mounts the component successfully', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, [], '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, [], '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -80,9 +62,16 @@ describe('Analytics.vue', () => {
     analyticDashSpy.mockReset()
   })
 
+  it('mounts a single dashboard category and one dashboard', async () => {})
+  it('mounts a single dashboard category and multiple dashboards', async () => {})
+  it('mounts a multiple dashboard category and one dashboard', async () => {})
+  it('mounts a multiple dashboard category and multiple dashboards', async () => {})
+
+  /*
+
   it('mounts a single analytics dashboard', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.1'], '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, ['https://127.0.0.1'], '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -105,7 +94,7 @@ describe('Analytics.vue', () => {
 
   it('mounts multiple analytics dashboards', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, [
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, [
       'https://127.0.0.1', 'https://127.0.0.2'
     ], '')
 
@@ -133,7 +122,7 @@ describe('Analytics.vue', () => {
 
   it('checks filter change update - !admin', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.1'], '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, ['https://127.0.0.1'], '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -173,7 +162,7 @@ describe('Analytics.vue', () => {
   })
 
   it('checks filter change update - admin', async () => {
-    let analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.1'], '')
+    let analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, ['https://127.0.0.1'], '')
 
     const store = new Vuex.Store(defaultStore)
     store.commit('UPDATE_IS_ADMIN', true)
@@ -192,7 +181,7 @@ describe('Analytics.vue', () => {
     expect(lookEmbeds.at(0).attributes('dashid')).toBe('analyticsDash')
     expect(lookEmbeds.at(0).attributes('dashurl')).toBe('https://127.0.0.1')
 
-    analyticDashSpy = fetchAnalyticsSummaryMock(localVue, true, ['https://127.0.0.2'], 'test')
+    analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, ['https://127.0.0.2'], 'test')
 
     const newFilter = { companyCode: 'test' }
     store.commit('UPDATE_CURRENT_FILTER', newFilter)
@@ -219,7 +208,7 @@ describe('Analytics.vue', () => {
 
   it('checks failure alert', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsSummaryMock(localVue, false, [], '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, false, [], '')
 
     const wrapper = mount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -239,4 +228,5 @@ describe('Analytics.vue', () => {
 
     wrapper.destroy()
   })
+  */
 })

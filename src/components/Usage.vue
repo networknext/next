@@ -191,7 +191,6 @@ export default class Usage extends Vue {
   private fetchUsageSummary () {
     this.$apiService.fetchUsageSummary({
       customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
-      origin: window.location.origin,
       date_string: this.dateString
     })
       .then((response: any) => {

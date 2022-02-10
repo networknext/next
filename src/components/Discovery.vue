@@ -64,12 +64,10 @@ export default class Disccovery extends Vue {
 
   private fetchDiscoveryDashboards () {
     this.$apiService.fetchDiscoveryDashboards({
-      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
-      origin: window.location.origin
+      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
         this.urls = response.urls || []
-        console.log(response)
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the discover dashboards')
