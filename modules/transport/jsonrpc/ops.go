@@ -2285,7 +2285,14 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 			if !ok {
 				reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
 			}
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), customerCode, r.Header.Get("Origin"))
+
+			dashCustomerCode := customerCode
+
+			if s.Env == "local" {
+				dashCustomerCode = "esl"
+			}
+
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, r.Header.Get("Origin"))
 			if err != nil {
 				continue
 			}
