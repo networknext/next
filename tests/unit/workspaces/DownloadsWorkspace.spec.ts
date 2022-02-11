@@ -106,10 +106,11 @@ describe('DownloadsWorkspace.vue', () => {
 
     const buttons = wrapper.findAll('.btn')
 
-    expect(buttons.length).toBe(3)
+    expect(buttons.length).toBe(4)
     expect(buttons.at(0).text()).toBe('SDK v4.0.16')
     expect(buttons.at(1).text()).toBe('UE4 Plugin')
     expect(buttons.at(2).text()).toBe('Documentation')
+    expect(buttons.at(3).text()).toBe('Download')
   })
 
   // Check logic for button clicks
@@ -117,7 +118,7 @@ describe('DownloadsWorkspace.vue', () => {
     const wrapper = shallowMount(DownloadsWorkspace, { localVue, store })
     const buttons = wrapper.findAll('.btn')
 
-    expect(buttons.length).toBe(3)
+    expect(buttons.length).toBe(4)
 
     expectedURL = SDK_DOWNLOAD_URL
 
