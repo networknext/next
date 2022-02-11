@@ -2245,8 +2245,9 @@ func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnal
 }
 
 type AdminDashboard struct {
-	URL  string `json:"url"`
-	Live bool   `json:"live"`
+	URL       string `json:"url"`
+	Live      bool   `json:"live"`
+	Discovery bool   `json:"discovery"`
 }
 
 type FetchAdminDashboardsArgs struct {
@@ -2284,14 +2285,22 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 			if !ok {
 				reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
 			}
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), customerCode, r.Header.Get("Origin"))
+
+			dashCustomerCode := customerCode
+
+			if s.Env == "local" {
+				dashCustomerCode = "esl"
+			}
+
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, r.Header.Get("Origin"))
 			if err != nil {
 				continue
 			}
 
 			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], AdminDashboard{
-				URL:  url,
-				Live: !dashboard.Category.Admin,
+				URL:       url,
+				Live:      !dashboard.Category.Admin,
+				Discovery: dashboard.Discovery,
 			})
 		}
 	}
