@@ -70,6 +70,20 @@ import { ErrorTypes } from '@/components/types/ErrorTypes'
   }
 })
 export default class ExplorationWorkspace extends Vue {
+  get filterBuyerHasAnalytics () {
+    const buyers: Array<any> = this.$store.getters.allBuyers || []
+    const filterCode: string = this.$store.getters.currentFilter.companyCode
+    let foundBuyer = null
+    for (let i = 0; i < buyers.length; i++) {
+      if (buyers[i].company_code === filterCode) {
+        foundBuyer = buyers[i]
+        break
+      }
+    }
+
+    return foundBuyer ? foundBuyer.analytics : false
+  }
+
   // Register the alert component to access its set methods
   $refs!: {
     verifyAlert: Alert;

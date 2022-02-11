@@ -454,7 +454,7 @@ describe('SessionDetails.vue', () => {
           client_stats: {
             jitter: 100,
             packet_loss: 100,
-            rtt: 100,
+            rtt: 100
           }
         },
         {
@@ -463,7 +463,7 @@ describe('SessionDetails.vue', () => {
           client_stats: {
             jitter: 100,
             packet_loss: 100,
-            rtt: 100,
+            rtt: 100
           }
         },
         {
@@ -472,7 +472,7 @@ describe('SessionDetails.vue', () => {
           client_stats: {
             jitter: 100,
             packet_loss: 100,
-            rtt: 100,
+            rtt: 100
           }
         },
         {
@@ -481,7 +481,7 @@ describe('SessionDetails.vue', () => {
           client_stats: {
             jitter: 100,
             packet_loss: 100,
-            rtt: 255,
+            rtt: 255
           }
         }
       ],

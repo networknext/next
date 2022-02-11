@@ -5,12 +5,10 @@ import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { Filter } from '@/components/types/FilterTypes'
 import { VueConstructor } from 'vue/types/umd'
-import { AlertType } from '@/components/types/AlertTypes'
 
 function fetchDiscoveryDashboardsMock (vueInstance: VueConstructor<any>, success: boolean, urls: Array<string>, customerCode: string): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchDiscoveryDashboards').mockImplementation((args: any) => {
-    expect(args.company_code).toBe(customerCode)
-    expect(args.origin).toBe('127.0.0.1')
+    expect(args.customer_code).toBe(customerCode)
     return success ? Promise.resolve({ urls: urls }) : Promise.reject(new Error('fetchDiscoveryDashboardsMock Mock Error'))
   })
 }
@@ -46,22 +44,6 @@ describe('Discovery.vue', () => {
       }
     }
   }
-
-  // Setup spy functions
-  let windowSpy: jest.SpyInstance
-
-  beforeEach(() => {
-    windowSpy = jest.spyOn(window, 'window', 'get')
-    windowSpy.mockImplementation(() => ({
-      location: {
-        origin: '127.0.0.1'
-      }
-    }))
-  })
-
-  afterEach(() => {
-    windowSpy.mockRestore()
-  })
 
   // Run bare minimum mount test
   it('mounts the component successfully', async () => {
