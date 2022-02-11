@@ -2251,7 +2251,6 @@ type AdminDashboard struct {
 
 type FetchAdminDashboardsArgs struct {
 	CompanyCode string `json:"company_code"`
-	Origin      string `json:"origin"`
 }
 
 type FetchAdminDashboardsReply struct {
@@ -2265,13 +2264,6 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchAdminDashboards(): %v", err.Error())
-		return &err
-	}
-
-	if args.Origin == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		core.Error("FetchAdminDashboards(): %v: Origin is required", err.Error())
 		return &err
 	}
 
@@ -2292,7 +2284,7 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 			if !ok {
 				reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
 			}
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), customerCode, args.Origin)
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), customerCode, r.Header.Get("Origin"))
 			if err != nil {
 				continue
 			}
