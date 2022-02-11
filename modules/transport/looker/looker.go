@@ -396,7 +396,7 @@ func (l *LookerClient) GenerateAnalyticsCategories(userID string, customerCode s
 	return nil
 }
 
-func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {
+func (l *LookerClient) GenerateLookerTrialURL() string {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return ""
@@ -405,7 +405,7 @@ func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {
 	options := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", "Embed User"),
 		FirstName:       "",
 		LastName:        "",
 		GroupsIds:       make([]int, 0),
