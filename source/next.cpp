@@ -9113,7 +9113,6 @@ struct NextBackendMatchDataRequestPacket
     uint64_t customer_id;
     next_address_t server_address;
     uint64_t datacenter_id;
-    uint64_t request_id;
     uint64_t session_id;
     uint32_t retry_number;
     uint64_t match_id;
@@ -9128,7 +9127,6 @@ struct NextBackendMatchDataRequestPacket
         customer_id = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
         datacenter_id = 0;
-        request_id = 0;
         session_id = 0;
         retry_number = 0;
         match_id = 0;
@@ -9144,7 +9142,6 @@ struct NextBackendMatchDataRequestPacket
         serialize_uint64( stream, customer_id );
         serialize_address( stream, server_address );
         serialize_uint64( stream, datacenter_id );
-        serialize_uint64( stream, request_id );
         serialize_uint64( stream, session_id );
         serialize_uint32( stream, retry_number );
         serialize_uint64( stream, match_id );
@@ -9168,7 +9165,6 @@ struct NextBackendMatchDataRequestPacket
 
 struct NextBackendMatchDataResponsePacket
 {
-    uint64_t request_id;
     uint64_t session_id;
     uint32_t response;
 
@@ -9179,7 +9175,6 @@ struct NextBackendMatchDataResponsePacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
-        serialize_uint64( stream, request_id );
         serialize_uint64( stream, session_id );
         serialize_bits( stream, response, 8 );
         return true;
