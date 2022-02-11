@@ -232,7 +232,7 @@ describe('GameConfiguration.vue', () => {
 
     const modalTitle = modal.find('.card-header')
     expect(modalTitle.exists()).toBeTruthy()
-    expect(modalTitle.text()).toBe('Terms of Service Agreement')
+    expect(modalTitle.text()).toBe('Monitoring Service Evaluation Terms')
 
     const modalBody = modal.find('.card-body')
     expect(modalBody.exists()).toBeTruthy()
