@@ -2722,8 +2722,8 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 			dashCustomerCode := customerCode
 
-			// Hacky work around for local and dev
-			if isAdmin && (s.Env == "local" || s.Env == "dev") {
+			// Hacky work around for local
+			if isAdmin && (s.Env == "local") {
 				dashCustomerCode = "esl"
 			}
 
@@ -2771,8 +2771,8 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 	} else {
 		customerCode = args.CustomerCode
 
-		// Hacky work around for local and dev
-		if s.Env == "local" || s.Env == "dev" {
+		// Hacky work around for local
+		if s.Env == "local" {
 			customerCode = "esl"
 		}
 	}
@@ -2849,8 +2849,8 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 		if dashboard.CustomerCode == customerCode {
 			dashCustomerCode := customerCode
 
-			// Hacky work around for local and dev
-			if isAdmin && (s.Env == "local" || s.Env == "dev") {
+			// Hacky work around for local
+			if isAdmin && (s.Env == "local") {
 				dashCustomerCode = "esl"
 			}
 
@@ -2971,7 +2971,7 @@ func (s *BuyersService) FetchCurrentSaves(r *http.Request, args *FetchCurrentSav
 		// Admin's will be able to see any company's discovery dashboards
 		customerCode = args.CustomerCode
 
-		if s.Env == "local" || s.Env == "dev" {
+		if s.Env == "local" {
 			customerCode = "esl"
 		}
 	}
@@ -3022,10 +3022,10 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	// Admin's will be able to search any company's billing info
 	if isAdmin {
 		customerCode = args.CustomerCode
-	}
 
-	if middleware.VerifyAllRoles(r, middleware.AdminRole) && (s.Env == "local" || s.Env == "dev") {
-		customerCode = "esl"
+		if s.Env == "local" {
+			customerCode = "esl"
+		}
 	} else {
 		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
 		if err != nil {
@@ -3034,26 +3034,11 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 			return &err
 		}
 
-		if !buyer.Analytics && !isAdmin {
+		if !buyer.Analytics {
 			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
 			return &err
 		}
-	}
-
-	user := r.Context().Value(middleware.Keys.UserKey)
-	if user == nil {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-		return &err
-	}
-
-	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
-	requestID, ok := claims["sub"].(string)
-	if !ok {
-		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchDiscoveryDashboards(): %v: Failed to parse user ID", err.Error())
-		return &err
 	}
 
 	nonce, err := GenerateRandomString(16)
@@ -3069,7 +3054,7 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	urlOptions := notifications.LookerURLOptions{
 		Host:            notifications.LOOKER_HOST,
 		Secret:          s.LookerClient.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", "Embed User"),
 		GroupsIds:       []int{EmbeddedUserGroupID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
