@@ -94,6 +94,8 @@
 #define NEXT_SESSION_UPDATE_RESEND_TIME                               1.0
 #define NEXT_SESSION_UPDATE_TIMEOUT                                     5
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
+#define NEXT_MATCH_DATA_RESEND_TIME                                   10.0
+#define NEXT_MATCH_DATA_REQUEST_TIMEOUT                                 5
 
 #define NEXT_CLIENT_COUNTER_OPEN_SESSION                                0
 #define NEXT_CLIENT_COUNTER_CLOSE_SESSION                               1
@@ -126,6 +128,11 @@
 #define NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED                4
 #define NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE                   5
 #define NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED                6
+
+#define NEXT_MATCH_DATA_RESPONSE_OK                                     0
+#define NEXT_MATCH_DATA_RESPONSE_UNKNOWN_CUSTOMER                       1
+#define NEXT_MATCH_DATA_RESPONSE_SIGNATURE_CHECK_FAILED                 2
+#define NEXT_MATCH_DATA_RESPONSE_CUSTOMER_NOT_ACTIVE                    3
 
 #define NEXT_FLAGS_BAD_ROUTE_TOKEN                                 (1<<0)
 #define NEXT_FLAGS_NO_ROUTE_TO_CONTINUE                            (1<<1)
@@ -173,6 +180,8 @@
 #define NEXT_BACKEND_SESSION_RESPONSE_PACKET                          222
 #define NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET                       223
 #define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET                      224
+#define NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET                        225
+#define NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET                       226
 
 #define NEXT_DIRECT_PACKET                                            255
 
@@ -9090,6 +9099,89 @@ struct NextBackendSessionUpdatePacket
         serialize_float( stream, jitter_client_to_server );
         serialize_float( stream, jitter_server_to_client );
 
+        return true;
+    }
+};
+
+// ---------------------------------------------------------------
+
+struct NextBackendMatchDataRequestPacket
+{
+    int version_major;
+    int version_minor;
+    int version_patch;
+    uint64_t customer_id;
+    next_address_t server_address;
+    uint64_t datacenter_id;
+    uint64_t request_id;
+    uint64_t session_id;
+    uint32_t retry_number;
+    uint64_t match_id;
+    int num_match_values;
+    double match_values[NEXT_MAX_MATCH_VALUES];
+
+    NextBackendMatchDataRequestPacket()
+    {
+        version_major = NEXT_VERSION_MAJOR_INT;
+        version_minor = NEXT_VERSION_MINOR_INT;
+        version_patch = NEXT_VERSION_PATCH_INT;
+        customer_id = 0;
+        memset( &server_address, 0, sizeof(next_address_t) );
+        datacenter_id = 0;
+        request_id = 0;
+        session_id = 0;
+        retry_number = 0;
+        match_id = 0;
+        num_match_values = 0;
+        memset( match_values, 0, sizeof(match_values) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_bits( stream, version_major, 8 );
+        serialize_bits( stream, version_minor, 8 );
+        serialize_bits( stream, version_patch, 8 );
+        serialize_uint64( stream, customer_id );
+        serialize_address( stream, server_address );
+        serialize_uint64( stream, datacenter_id );
+        serialize_uint64( stream, request_id );
+        serialize_uint64( stream, session_id );
+        serialize_uint32( stream, retry_number );
+        serialize_uint64( stream, match_id );
+
+        bool has_match_values = Stream::IsWriting && num_match_values > 0;
+
+        if ( has_match_values )
+        {
+            serialize_int( stream, num_match_values, 0, NEXT_MAX_MATCH_VALUES );
+            for ( int i = 0; i < num_match_values; ++i )
+            {
+                serialize_double( stream, match_values );
+            }
+        }
+
+        return true;
+    }
+};
+
+// ---------------------------------------------------------------
+
+struct NextBackendMatchDataResponsePacket
+{
+    uint64_t request_id;
+    uint64_t session_id;
+    uint32_t response;
+
+    NextBackendMatchDataResponsePacket()
+    {
+        memset( this, 0, sizeof(NextBackendMatchDataResponsePacket) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint64( stream, request_id );
+        serialize_uint64( stream, session_id );
+        serialize_bits( stream, response, 8 );
         return true;
     }
 };
