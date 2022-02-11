@@ -9386,6 +9386,17 @@ struct next_session_entry_t
     bool high_frequency_pings;
 
     NEXT_DECLARE_SENTINEL(28)
+
+    uint64_t match_id;
+    double match_values[NEXT_MAX_MATCH_VALUES];
+    int num_match_values;
+
+    double next_match_data_time;
+    double next_match_data_resend_time;
+    bool waiting_for_match_data_response;
+    bool match_data_response_received;
+
+    NEXT_DECLARE_SENTINEL(29)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -9421,6 +9432,7 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 26 )
     NEXT_INITIALIZE_SENTINEL( entry, 27 )
     NEXT_INITIALIZE_SENTINEL( entry, 28 )
+    NEXT_INITIALIZE_SENTINEL( entry, 29 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -9456,6 +9468,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 26 )
     NEXT_VERIFY_SENTINEL( entry, 27 )
     NEXT_VERIFY_SENTINEL( entry, 28 )
+    NEXT_VERIFY_SENTINEL( entry, 29 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -10076,6 +10089,7 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 #define NEXT_SERVER_COMMAND_UPGRADE_SESSION             0
 #define NEXT_SERVER_COMMAND_TAG_SESSION                 1
 #define NEXT_SERVER_COMMAND_DESTROY                     2
+#define NEXT_SERVER_COMMAND_MATCH_DATA                  3
 
 struct next_server_command_t
 {
@@ -10099,6 +10113,14 @@ struct next_server_command_tag_session_t : public next_server_command_t
 struct next_server_command_destroy_t : public next_server_command_t
 {
     // ...
+};
+
+struct next_server_command_match_data_t : public next_server_command_t
+{
+    next_address_t address;
+    uint64_t match_id;
+    double match_values[NEXT_MAX_MATCH_VALUES];
+    int num_match_values;
 };
 
 // ---------------------------------------------------------------
@@ -12482,6 +12504,38 @@ void next_server_internal_tag_session( next_server_internal_t * server, const ne
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server could not find any session to tag for address %s", next_address_to_string( address, buffer ) );    
 }
 
+void next_server_internal_match_data( next_server_internal_t * server, const next_address_t * address, uint64_t match_id, const double * match_values, int num_match_values )
+{
+    next_assert( server );
+    next_assert( address );
+
+    next_server_internal_verify_sentinels( server );
+
+    if ( next_global_config.disable_network_next )
+        return;
+
+    next_session_entry_t * entry = next_session_manager_find_by_address( server->session_manager, address );    
+    if ( !entry )
+    {
+        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "could not find session at address %s. server not sending match data", next_address_to_string( address, buffer ) );
+        return;
+    }
+
+    if ( entry->waiting_for_match_data_response || entry->match_data_response_received )
+    {
+        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server already sent match data for session at address %s", next_address_to_string( address, buffer ) );
+        return;
+    }
+
+    entry->match_id = match_id;
+    entry->match_values = match_values;
+    entry->num_match_values = num_match_values;
+    char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds match data for session at address %s", next_address_to_string( address, buffer ) );
+}
+
 bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
 {
     while ( true )
@@ -12518,6 +12572,13 @@ bool next_server_internal_pump_commands( next_server_internal_t * server, bool q
             case NEXT_SERVER_COMMAND_DESTROY:
             {
                 quit = true;
+            }
+            break;
+
+            case NEXT_SERVER_COMMAND_MATCH_DATA:
+            {
+                next_server_command_match_data_t * match_data = (next_server_command_match_data_t*) command;
+                next_server_internal_match_data( server, &match_data->address, match_data->match_id, match_data->match_values, match_data->num_match_values );
             }
             break;
 
@@ -13609,12 +13670,37 @@ void next_server_event( struct next_server_t * server, const struct next_address
 
 void next_server_match( struct next_server_t * server, const struct next_address_t * address, uint64_t match_id, const double * match_values, int num_match_values )
 {
-	next_assert( server );
+	next_server_verify_sentinels( server );
+
+    next_assert( server );
 	next_assert( address );
-	(void) match_id;
-	(void) match_values;
-	(void) num_match_values;
-	// todo
+	next_assert( server->internal );
+    next_assert( num_match_values >= 0 );
+    next_assert( num_match_values <= NEXT_MAX_MATCH_VALUES );
+
+    // send match data command to internal server
+
+    next_server_command_match_data_t * command = (next_server_command_match_data_t*) next_malloc( server->context, sizeof( next_server_command_match_data_t ) );
+    if ( !command )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server match data failed. could not create match data command" );
+        return;
+    }
+
+    command->type = NEXT_SERVER_COMMAND_MATCH_DATA;
+    command->address = *address;
+    command->match_id = match_id;
+    memset( command->match_values, 0, sizeof(command->match_values) );
+    for ( int i = 0; i < num_match_values; ++i )
+    {
+        command->match_values[i] = match_values[i];
+    }
+    command->num_match_values = num_match_values;
+
+    {    
+        next_platform_mutex_guard( &server->internal->command_mutex );
+        next_queue_push( server->internal->command_queue, command );
+    }
 }
 
 void next_server_flush( struct next_server_t * server )
