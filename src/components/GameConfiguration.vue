@@ -150,27 +150,9 @@ export default class GameConfiguration extends Vue {
           }
         }, 5000)
         this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
-        this.$apiService.fetchAllBuyers()
-          .then((response: any) => {
-            const allBuyers = response.buyers
-            this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
-          })
-          .catch((error: Error) => {
-            console.log('Failed to refresh buyer list')
-            console.log(error)
-          })
+        return this.$authService.refreshToken()
       })
       .catch((error: any) => {
-        if (error.code === 14) {
-          this.$refs.responseAlert.setMessage(error.message)
-          this.$refs.responseAlert.setAlertType(AlertType.ERROR)
-          setTimeout(() => {
-            if (this.$refs.responseAlert) {
-              this.$refs.responseAlert.resetAlert()
-            }
-          }, 5000)
-          return
-        }
         console.log('Something went wrong updating the public key')
         console.log(error)
         this.$refs.responseAlert.setMessage(ErrorTypes.UPDATE_PUBLIC_KEY_FAILURE)
