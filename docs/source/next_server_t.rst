@@ -588,3 +588,28 @@ This function allows you to check if the server has finished determining its dat
 	const bool autodetect_finished = next_server_autodetect_finished( server );
 
 	printf( "server autodetect finished = %s\n", autodetect_finished ? "true" : "false" );
+
+next_server_event
+-----------------
+
+Attaches an event flag to a session for monitoring and analysis purposes.
+
+.. code-block:: c++
+
+	void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
+
+You can set up to 64 event flags every 10 seconds.
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to tag.
+
+	- **server_events** -- The flag to be attached to the session.
+
+**Example:**
+
+.. code-block:: c++
+
+	next_server_event( server, client_address, 1 );
