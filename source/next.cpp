@@ -11825,7 +11825,67 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             entry->high_frequency_pings = packet.high_frequency_pings;
 
             return;
-        }   
+        }
+
+        // match data response
+
+        if ( packet_id == NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET)
+        {
+            if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session response packet from backend. server is not initialized" );
+                return;
+            }
+
+            NextBackendMatchDataResponsePacket packet;
+
+            if ( next_read_backend_packet( packet_data, packet_bytes, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored match data response packet from backend. packet failed to read" );
+                return;
+            }
+
+            next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
+            if ( !entry )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored match data response packet from backend. could not find session %" PRIx64, packet.session_id );
+                return;
+            }
+
+            if ( !entry->waiting_for_match_data_response )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored match data response packet from backend. not waiting for match data response" );
+                return;
+            }
+
+            entry->match_data_response_received = true;
+            entry->waiting_for_match_data_response = false;
+
+            if ( packet.response != NEXT_MATCH_DATA_RESPONSE_OK )
+            {
+                switch ( packet.response )
+                {
+                    case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_CUSTOMER: 
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". unknown customer", packet.session_id );
+                        return;
+
+                    case NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". signature check failed", packet.session_id );
+                        return;
+
+                    case NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". customer not active", packet.session_id );
+                        return;
+
+                    default:
+                        next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". response type %d", packet.session_id, packet.response );
+                        return;
+                }
+            }
+
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server successfully recorded match data with backend for session %" PRIx64, packet.session_id );
+            return;
+        }
     }
 
     // upgrade response packet
