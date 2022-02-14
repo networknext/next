@@ -6,6 +6,8 @@ import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { AlertType } from '@/components/types/AlertTypes'
 import { UPDATE_PUBLIC_KEY_SUCCESS } from '@/components/types/Constants'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
+import { AuthPlugin } from '@/plugins/auth'
+import { FeatureFlagService } from '@/plugins/flags'
 
 describe('GameConfiguration.vue', () => {
   const localVue = createLocalVue()
@@ -174,18 +176,6 @@ describe('GameConfiguration.vue', () => {
       })
     })
 
-    const fetchAllBuyersSpy = jest.spyOn(localVue.prototype.$apiService, 'fetchAllBuyers').mockImplementationOnce(() => {
-      return Promise.resolve({
-        buyers: [
-          {
-            is_live: false,
-            id: '123456789',
-            company_code: 'test'
-          }
-        ]
-      })
-    })
-
     const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
       return Promise.resolve()
     })
@@ -194,6 +184,20 @@ describe('GameConfiguration.vue', () => {
     newProfile.companyName = 'Test Company'
     newProfile.companyCode = 'test'
     newProfile.roles = ['Owner']
+
+    localVue.use(AuthPlugin, {
+      domain: 'domain',
+      clientID: 'clientID',
+      store: store,
+      flagService: new FeatureFlagService({
+        flags: [],
+        useAPI: false
+      })
+    })
+
+    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementation(() => {
+      return Promise.resolve()
+    })
 
     store.commit('UPDATE_USER_PROFILE', newProfile)
 
@@ -237,8 +241,6 @@ describe('GameConfiguration.vue', () => {
     const modalBody = modal.find('.card-body')
     expect(modalBody.exists()).toBeTruthy()
 
-    // TODO: check TOS text here
-
     let modalButtons = modal.findAll('.btn')
     expect(modalButtons.length).toBe(2)
 
@@ -253,7 +255,6 @@ describe('GameConfiguration.vue', () => {
     // Check to make sure the spy functions were NOT hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(0)
     expect(spyPubKeyEntered).toBeCalledTimes(0)
-    expect(fetchAllBuyersSpy).toBeCalledTimes(0)
 
     await gameConfigButton.trigger('submit')
 
@@ -265,7 +266,7 @@ describe('GameConfiguration.vue', () => {
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
     expect(spyPubKeyEntered).toBeCalledTimes(1)
-    expect(fetchAllBuyersSpy).toBeCalledTimes(1)
+    expect(refreshToken).toBeCalledTimes(1)
 
     // Wait for UI to react
     await localVue.nextTick()
@@ -276,16 +277,9 @@ describe('GameConfiguration.vue', () => {
     expect(alert.classes(AlertType.SUCCESS)).toBeTruthy()
     expect(alert.text()).toBe(UPDATE_PUBLIC_KEY_SUCCESS)
 
-    // Wait for all buyers call to finish
-    await localVue.nextTick()
-
-    // Check buyers list to make sure the new buyer was added correctly
-    expect(store.getters.allBuyers.length).toBe(1)
-    expect(store.getters.allBuyers[0].company_code).toBe('test')
-
     updateGameConfigurationSpy.mockReset()
-    fetchAllBuyersSpy.mockReset()
     spyPubKeyEntered.mockReset()
+    refreshToken.mockReset()
 
     store.commit('UPDATE_USER_PROFILE', defaultProfile)
     store.commit('UPDATE_ALL_BUYERS', [])
@@ -304,11 +298,21 @@ describe('GameConfiguration.vue', () => {
       })
     })
 
-    const fetchAllBuyersSpy = jest.spyOn(localVue.prototype.$apiService, 'fetchAllBuyers').mockImplementationOnce(() => {
-      return Promise.reject(new Error('Failed to fetch all buyers'))
+    const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
+      return Promise.resolve()
     })
 
-    const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
+    localVue.use(AuthPlugin, {
+      domain: 'domain',
+      clientID: 'clientID',
+      store: store,
+      flagService: new FeatureFlagService({
+        flags: [],
+        useAPI: false
+      })
+    })
+
+    const refreshToken = jest.spyOn(localVue.prototype.$authService, 'refreshToken').mockImplementation(() => {
       return Promise.resolve()
     })
 
@@ -354,7 +358,7 @@ describe('GameConfiguration.vue', () => {
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
     expect(spyPubKeyEntered).toBeCalledTimes(1)
-    expect(fetchAllBuyersSpy).toBeCalledTimes(1)
+    expect(refreshToken).toBeCalledTimes(1)
 
     // Wait for UI to react
     await localVue.nextTick()
@@ -365,12 +369,9 @@ describe('GameConfiguration.vue', () => {
     expect(alert.classes(AlertType.SUCCESS)).toBeTruthy()
     expect(alert.text()).toBe(UPDATE_PUBLIC_KEY_SUCCESS)
 
-    // Check buyers list to make sure it is still empty
-    expect(store.getters.allBuyers.length).toBe(0)
-
     updateGameConfigurationSpy.mockReset()
-    fetchAllBuyersSpy.mockReset()
     spyPubKeyEntered.mockReset()
+    refreshToken.mockReset()
 
     store.commit('UPDATE_USER_PROFILE', defaultProfile)
     store.commit('UPDATE_ALL_BUYERS', [])
@@ -381,12 +382,6 @@ describe('GameConfiguration.vue', () => {
   it('checks failed pubkey update', async () => {
     const updateGameConfigurationSpy = jest.spyOn(localVue.prototype.$apiService, 'updateGameConfiguration').mockImplementationOnce(() => {
       return Promise.reject(new Error('Failed to update public key'))
-    })
-
-    const fetchAllBuyersSpy = jest.spyOn(localVue.prototype.$apiService, 'fetchAllBuyers').mockImplementationOnce(() => {
-      return Promise.resolve({
-        buyers: []
-      })
     })
 
     const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
@@ -434,7 +429,6 @@ describe('GameConfiguration.vue', () => {
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
     expect(spyPubKeyEntered).toBeCalledTimes(0)
-    expect(fetchAllBuyersSpy).toBeCalledTimes(0)
 
     // Wait for UI to react
     await localVue.nextTick()
@@ -449,7 +443,6 @@ describe('GameConfiguration.vue', () => {
     expect(store.getters.allBuyers.length).toBe(0)
 
     updateGameConfigurationSpy.mockReset()
-    fetchAllBuyersSpy.mockReset()
     spyPubKeyEntered.mockReset()
 
     store.commit('UPDATE_USER_PROFILE', defaultProfile)
@@ -462,12 +455,6 @@ describe('GameConfiguration.vue', () => {
   it('checks cooldown', async () => {
     const updateGameConfigurationSpy = jest.spyOn(localVue.prototype.$apiService, 'updateGameConfiguration').mockImplementationOnce(() => {
       return Promise.reject({ code: 14, message: 'Database is busy. Please try again in a minute.' })
-    })
-
-    const fetchAllBuyersSpy = jest.spyOn(localVue.prototype.$apiService, 'fetchAllBuyers').mockImplementationOnce(() => {
-      return Promise.resolve({
-        buyers: []
-      })
     })
 
     const spyPubKeyEntered = jest.spyOn(localVue.prototype.$apiService, 'sendPublicKeyEnteredSlackNotification').mockImplementation(() => {
@@ -515,7 +502,6 @@ describe('GameConfiguration.vue', () => {
     // Check to make sure the spy functions were hit
     expect(updateGameConfigurationSpy).toBeCalledTimes(1)
     expect(spyPubKeyEntered).toBeCalledTimes(0)
-    expect(fetchAllBuyersSpy).toBeCalledTimes(0)
 
     // Wait for UI to react
     await localVue.nextTick()
@@ -534,7 +520,6 @@ describe('GameConfiguration.vue', () => {
     expect(store.getters.allBuyers.length).toBe(0)
 
     updateGameConfigurationSpy.mockReset()
-    fetchAllBuyersSpy.mockReset()
     spyPubKeyEntered.mockReset()
 
     store.commit('UPDATE_USER_PROFILE', defaultProfile)
