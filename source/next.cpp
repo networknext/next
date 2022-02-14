@@ -95,7 +95,6 @@
 #define NEXT_SESSION_UPDATE_TIMEOUT                                     5
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
 #define NEXT_MATCH_DATA_RESEND_TIME                                   10.0
-#define NEXT_MATCH_DATA_REQUEST_TIMEOUT                                 5
 
 #define NEXT_CLIENT_COUNTER_OPEN_SESSION                                0
 #define NEXT_CLIENT_COUNTER_CLOSE_SESSION                               1
@@ -9391,7 +9390,8 @@ struct next_session_entry_t
     double match_values[NEXT_MAX_MATCH_VALUES];
     int num_match_values;
 
-    double next_match_data_time;
+    NextBackendMatchDataRequestPacket match_data_request_packet;
+
     double next_match_data_resend_time;
     bool waiting_for_match_data_response;
     bool match_data_response_received;
@@ -13012,6 +13012,72 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_platform_mutex_release( &server->session_mutex );
         }
     }
+
+    // match data
+
+    for ( int i = 0; i <= max_entry_index; ++i )
+    {
+        if ( server->session_manager->session_ids[i] == 0 )
+            continue;
+
+        next_session_entry_t * session = &server->session_manager->entries[i];
+
+        if ( session->match_id == 0 || session->match_data_response_received )
+            continue;
+
+        if ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response)
+        {
+            NextBackendMatchDataRequestPacket packet;
+            packet.customer_id = server->customer_id;
+            packet.datacenter_id = server->datacenter_id;
+            packet.server_address = server->server_address;
+            packet.session_id = server->session_id;
+            packet.match_id = server->match_id;
+            packet.num_match_values = server->num_match_values;
+            for ( int j = 0; j < session->num_match_values; ++j )
+            {
+                packet.match_values[j] = session->match_values[j];
+            }
+
+            session->match_data_request_packet = packet;
+
+            int packet_bytes = 0;
+            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data packet for backend" );
+                return;
+            }
+
+            next_assert( check_packet_hash( packet_data, packet_bytes ) );
+
+            next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
+            
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent match data packet to backend for session %" PRIx64, session->session_id );
+
+            session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_RESEND_TIME;
+            session->waiting_for_match_data_response = true;
+        }
+
+        if ( session->waiting_for_match_data_response && session->next_match_data_resend_time <= current_time )
+        {
+            session->match_data_request_packet.retry_number++;
+
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent match data packet to backend for session %" PRIx64 " (%d)", session->session_id, session->match_data_request_packet.retry_number );
+
+            int packet_bytes = 0;
+            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data packet for backend" );
+                return;
+            }
+
+            next_assert( check_packet_hash( packet_data, packet_bytes ) );
+
+            next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
+
+            session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_RESEND_TIME;
+        }
+    }
 }
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_thread_function( void * context )
@@ -13675,6 +13741,7 @@ void next_server_match( struct next_server_t * server, const struct next_address
     next_assert( server );
 	next_assert( address );
 	next_assert( server->internal );
+    next_assert( match_id > 0 );
     next_assert( num_match_values >= 0 );
     next_assert( num_match_values <= NEXT_MAX_MATCH_VALUES );
 
