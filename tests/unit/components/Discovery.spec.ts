@@ -1,5 +1,5 @@
 import Vuex from 'vuex'
-import { createLocalVue, mount, shallowMount } from '@vue/test-utils'
+import { createLocalVue, shallowMount } from '@vue/test-utils'
 import Discovery from '@/components/Discovery.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'

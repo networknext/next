@@ -1,4 +1,4 @@
-import { shallowMount, createLocalVue, mount } from '@vue/test-utils'
+import { shallowMount, createLocalVue } from '@vue/test-utils'
 import Vuex from 'vuex'
 import NavBar from '@/components/NavBar.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'

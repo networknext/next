@@ -13,7 +13,7 @@
             "
     >
       <h1 class="h2">
-        Exploration
+        Explore
       </h1>
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
