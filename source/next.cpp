@@ -3962,6 +3962,8 @@ int next_init( void * context, next_config_t * config_in )
     next_signed_packets[NEXT_BACKEND_SERVER_UPDATE_PACKET] = 1;
     next_signed_packets[NEXT_BACKEND_SESSION_UPDATE_PACKET] = 1;
     next_signed_packets[NEXT_BACKEND_SESSION_RESPONSE_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET] = 1;
 
     next_encrypted_packets[NEXT_DIRECT_PING_PACKET] = 1;
     next_encrypted_packets[NEXT_DIRECT_PONG_PACKET] = 1;
@@ -9147,12 +9149,14 @@ struct NextBackendMatchDataRequestPacket
 
         bool has_match_values = Stream::IsWriting && num_match_values > 0;
 
+        serialize_bool( stream, has_match_values );
+
         if ( has_match_values )
         {
             serialize_int( stream, num_match_values, 0, NEXT_MAX_MATCH_VALUES );
             for ( int i = 0; i < num_match_values; ++i )
             {
-                serialize_double( stream, match_values );
+                serialize_double( stream, match_values[i] );
             }
         }
 
@@ -9948,6 +9952,22 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
         }
         break;
 
+        case NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET:
+        {
+            NextBackendMatchDataRequestPacket * packet = (NextBackendMatchDataRequestPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET:
+        {
+            NextBackendMatchDataResponsePacket * packet = (NextBackendMatchDataResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
         default:
             return NEXT_ERROR;
     }
@@ -10072,6 +10092,22 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
         case NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET:
         {
             NextBackendServerInitResponsePacket * packet = (NextBackendServerInitResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET:
+        {
+            NextBackendMatchDataRequestPacket * packet = (NextBackendMatchDataRequestPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET:
+        {
+            NextBackendMatchDataResponsePacket * packet = (NextBackendMatchDataResponsePacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -12591,7 +12627,7 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
 
     entry->match_id = match_id;
     entry->num_match_values = num_match_values;
-    for (int i = 0; i < num_match_values; ++i )
+    for ( int i = 0; i < num_match_values; ++i )
     {
         entry->match_values[i] = match_values[i];
     }
@@ -16227,7 +16263,7 @@ static void test_backend_packets()
             next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
-}
+    }
 
     // session response packet (continue, near relays changed)
     {
@@ -16421,6 +16457,60 @@ static void test_backend_packets()
             next_check( in.near_relay_excluded[i] == out.near_relay_excluded[i] );
         }
         next_check( in.high_frequency_pings == out.high_frequency_pings );
+    }
+
+    // match data
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendMatchDataRequestPacket in, out;
+        in.customer_id = 1231234127431LL;
+        next_address_parse( &in.server_address, "127.0.0.1:12345" );
+        in.datacenter_id = next_datacenter_id( "local" );
+        in.session_id = 1234342431431LL;
+        in.match_id = 1234342431431LL;
+        in.num_match_values = NEXT_MAX_MATCH_VALUES;
+        for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
+        {
+            in.match_values[i] = i + 10.0f;
+        }
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET );
+
+        next_check( in.version_major == out.version_major );
+        next_check( in.version_minor == out.version_minor );
+        next_check( in.version_patch == out.version_patch );
+        next_check( in.customer_id == out.customer_id );
+        next_check( next_address_equal( &in.server_address, &out.server_address ) );
+        next_check( in.datacenter_id == out.datacenter_id );
+        next_check( in.match_id == out.match_id );
+        next_check( in.num_match_values == out.num_match_values );
+        for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
+        {
+            next_check( in.match_values[i] = out.match_values[i] );
+        }
+    }
+
+    // match data response
+    {
+        unsigned char public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
+        unsigned char private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
+        next_crypto_sign_keypair( public_key, private_key );
+
+        static NextBackendMatchDataResponsePacket in, out;
+        in.session_id = 1234342431431LL;
+        in.response = NEXT_MATCH_DATA_RESPONSE_OK;
+
+        int packet_bytes = 0;
+        next_check( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET, &in, buffer, &packet_bytes, next_signed_packets, private_key ) == NEXT_OK );
+        next_check( next_read_backend_packet( buffer, packet_bytes, &out, next_signed_packets, public_key ) == NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET );
+
+        next_check( in.session_id == out.session_id );
+        next_check( in.response == out.response );
     }
 }
 
