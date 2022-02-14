@@ -12590,8 +12590,12 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
     }
 
     entry->match_id = match_id;
-    entry->match_values = match_values;
     entry->num_match_values = num_match_values;
+    for (int i = 0; i < num_match_values; ++i )
+    {
+        entry->match_values[i] = match_values[i];
+    }
+    
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds match data for session at address %s", next_address_to_string( address, buffer ) );
 }
@@ -13091,9 +13095,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
             packet.server_address = server->server_address;
-            packet.session_id = server->session_id;
-            packet.match_id = server->match_id;
-            packet.num_match_values = server->num_match_values;
+            packet.session_id = session->session_id;
+            packet.match_id = session->match_id;
+            packet.num_match_values = session->num_match_values;
             for ( int j = 0; j < session->num_match_values; ++j )
             {
                 packet.match_values[j] = session->match_values[j];
@@ -13125,7 +13129,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server resent match data packet to backend for session %" PRIx64 " (%d)", session->session_id, session->match_data_request_packet.retry_number );
 
             int packet_bytes = 0;
-            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
+            if ( next_write_backend_packet( NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET, &session->match_data_request_packet, packet_data, &packet_bytes, next_signed_packets, server->customer_private_key ) != NEXT_OK )
             {
                 next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write match data packet for backend" );
                 return;
