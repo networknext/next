@@ -1,4 +1,4 @@
-import { shallowMount, createLocalVue, mount } from '@vue/test-utils'
+import { shallowMount, createLocalVue } from '@vue/test-utils'
 import Vuex from 'vuex'
 import Analytics from '@/components/Analytics.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
@@ -72,7 +72,7 @@ describe('Analytics.vue', () => {
   it('mounts a single dashboard category and one dashboard', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      'General': [
+      General: [
         '127.0.0.1'
       ]
     }, '')
@@ -104,7 +104,7 @@ describe('Analytics.vue', () => {
   it('mounts a single dashboard category and multiple dashboards', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      'General': [
+      General: [
         '127.0.0.1',
         '127.0.0.2'
       ]
@@ -138,10 +138,10 @@ describe('Analytics.vue', () => {
   it('mounts a multiple dashboard categories and one dashboard', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      'General': [
+      General: [
         '127.0.0.1'
       ],
-      'Platform': [
+      Platform: [
         '127.0.0.2'
       ]
     }, '')
@@ -174,10 +174,10 @@ describe('Analytics.vue', () => {
   it('mounts a multiple dashboard categories and one dashboard - General not first', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      'Platform': [
+      Platform: [
         '127.0.0.1'
       ],
-      'General': [
+      General: [
         '127.0.0.2'
       ]
     }, '')
@@ -210,10 +210,10 @@ describe('Analytics.vue', () => {
   it('check tab switching', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      'General': [
+      General: [
         '127.0.0.1'
       ],
-      'Platform': [
+      Platform: [
         '127.0.0.2'
       ]
     }, '')
@@ -255,15 +255,14 @@ describe('Analytics.vue', () => {
     analyticDashSpy.mockReset()
   })
 
-
   it('mounts a multiple dashboard categories and multiple dashboards', async () => {
     const store = new Vuex.Store(defaultStore)
     const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {
-      'General': [
+      General: [
         '127.0.0.1',
         '127.0.0.2'
       ],
-      'Platform': [
+      Platform: [
         '127.0.0.3',
         '127.0.0.4'
       ]

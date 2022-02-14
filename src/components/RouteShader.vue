@@ -136,7 +136,7 @@ export default class RouteShader extends Vue {
   public updateRouteShader () {
     this.$apiService
       .updateRouteShader(this.routeShader)
-      .then((response: any) => {
+      .then(() => {
         this.userProfile.routeShader = this.routeShader
         this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
         this.$refs.responseAlert.setMessage('Updated route shader successfully')

@@ -2,7 +2,6 @@ import { shallowMount, createLocalVue } from '@vue/test-utils'
 import SessionDetails from '@/components/SessionDetails.vue'
 import Vuex from 'vuex'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
-import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { VueConstructor } from 'vue/types/umd'
 

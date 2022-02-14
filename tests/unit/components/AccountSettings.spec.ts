@@ -4,7 +4,7 @@ import AccountSettings from '@/components/AccountSettings.vue'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { AuthPlugin } from '@/plugins/auth'
-import { FeatureFlagService, FlagPlugin } from '@/plugins/flags'
+import { FeatureFlagService } from '@/plugins/flags'
 import { AlertType } from '@/components/types/AlertTypes'
 
 describe('AccountSettings.vue', () => {

@@ -188,9 +188,7 @@ export default class CustomScreenGridLayer extends CustomGridAggregationLayer {
 
   getHashKeyForIndex (index) {
     const { numRow, numCol, gridOffset } = this.state
-    const boundingBox = getBoundingBox(this.getAttributes(), this.getNumInstances())
     const gridSize = [numCol, numRow]
-    const gridOrigin = [boundingBox.xMin, boundingBox.yMin]
     const cellSize = [gridOffset.xOffset, gridOffset.yOffset]
 
     const yIndex = Math.floor(index / gridSize[0])

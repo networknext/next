@@ -89,7 +89,7 @@ const actions = {
         userProfile.email = userInformation.email || ''
         userProfile.avatar = userInformation.avatar || ''
 
-        userProfile.buyerID = userInformation.id || userInformation.buyer_id || '' // TODO: remove the ".id" case after deploy
+        userProfile.buyerID = userInformation.buyer_id || ''
         userProfile.seller = userInformation.seller || false
         userProfile.firstName = userInformation.first_name || ''
         userProfile.lastName = userInformation.last_name || ''
