@@ -138,10 +138,7 @@ export default class GameConfiguration extends Vue {
       .updateGameConfiguration({
         new_public_key: this.pubKey
       })
-      .then((response: any) => {
-        this.userProfile.pubKey = response.game_config.public_key || this.pubKey
-        this.userProfile.buyerID = response.buyer_id || ''
-        this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
+      .then(() => {
         this.$refs.responseAlert.setMessage(UPDATE_PUBLIC_KEY_SUCCESS)
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
@@ -152,7 +149,7 @@ export default class GameConfiguration extends Vue {
         this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
         return this.$authService.refreshToken()
       })
-      .catch((error: any) => {
+      .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
         console.log(error)
         this.$refs.responseAlert.setMessage(ErrorTypes.UPDATE_PUBLIC_KEY_FAILURE)
