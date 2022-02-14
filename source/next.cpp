@@ -11865,15 +11865,15 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             {
                 switch ( packet.response )
                 {
-                    case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_CUSTOMER: 
+                    case NEXT_MATCH_DATA_RESPONSE_UNKNOWN_CUSTOMER: 
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". unknown customer", packet.session_id );
                         return;
 
-                    case NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED:
+                    case NEXT_MATCH_DATA_RESPONSE_SIGNATURE_CHECK_FAILED:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". signature check failed", packet.session_id );
                         return;
 
-                    case NEXT_SERVER_INIT_RESPONSE_CUSTOMER_NOT_ACTIVE:
+                    case NEXT_MATCH_DATA_RESPONSE_CUSTOMER_NOT_ACTIVE:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to record match data with backend for session %" PRIx64 ". customer not active", packet.session_id );
                         return;
 
