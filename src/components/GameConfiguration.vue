@@ -149,7 +149,7 @@ export default class GameConfiguration extends Vue {
         this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
         return this.$authService.refreshToken()
       })
-      .catch((error: any) => {
+      .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
         console.log(error)
         this.$refs.responseAlert.setMessage(ErrorTypes.UPDATE_PUBLIC_KEY_FAILURE)
