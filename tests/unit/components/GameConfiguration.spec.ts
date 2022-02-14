@@ -70,7 +70,7 @@ describe('GameConfiguration.vue', () => {
 
     // Check card information
     expect(wrapper.find('.card-title').text()).toBe('Game Configuration')
-    expect(wrapper.find('.card-text').text()).toBe('Manage how your game connects to Network Next. Note: This can be updated at most once a minute.')
+    expect(wrapper.find('.card-text').text()).toBe('Manage how your game connects to Network Next.')
 
     // Make sure the alert is hidden
     expect(wrapper.find('.alert').exists()).toBeFalsy()
@@ -126,7 +126,7 @@ describe('GameConfiguration.vue', () => {
 
     // Check card information
     expect(wrapper.find('.card-title').text()).toBe('Game Configuration')
-    expect(wrapper.find('.card-text').text()).toBe('Manage how your game connects to Network Next. Note: This can be updated at most once a minute.')
+    expect(wrapper.find('.card-text').text()).toBe('Manage how your game connects to Network Next.')
 
     // Make sure the alert is hidden
     expect(wrapper.find('.alert').exists()).toBeFalsy()
@@ -458,6 +458,7 @@ describe('GameConfiguration.vue', () => {
     wrapper.destroy()
   })
 
+  /* TODO: Return this when auto bin generation is added
   it('checks cooldown', async () => {
     const updateGameConfigurationSpy = jest.spyOn(localVue.prototype.$apiService, 'updateGameConfiguration').mockImplementationOnce(() => {
       return Promise.reject({ code: 14, message: 'Database is busy. Please try again in a minute.' })
@@ -541,4 +542,5 @@ describe('GameConfiguration.vue', () => {
 
     wrapper.destroy()
   })
+  */
 })

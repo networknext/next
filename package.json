@@ -87,7 +87,8 @@
       "@typescript-eslint/no-var-requires": "off",
       "no-useless-escape": "off",
       "no-control-regex": "off",
-      "@typescript-eslint/class-name-casing": "off"
+      "@typescript-eslint/class-name-casing": "off",
+      "@typescript-eslint/no-explicit-any": "off"
     },
     "overrides": [
       {

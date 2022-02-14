@@ -541,7 +541,7 @@ export default class SessionDetails extends Vue {
 
     let directOnly = true
 
-    this.slices.map((slice: any, index: number) => {
+    this.slices.map((slice: any) => {
       const timestamp = new Date(slice.timestamp).getTime() / 1000
       const onNN = slice.on_network_next
 

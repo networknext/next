@@ -5,7 +5,7 @@ import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { VueConstructor } from 'vue/types/umd'
 import { AlertType } from '@/components/types/AlertTypes'
-import { faCheck, faDownload, faPen, faTimes, faTrash } from '@fortawesome/free-solid-svg-icons'
+import { faCheck, faPen, faTimes, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
@@ -40,7 +40,7 @@ function updateAutoSignupDomainsMock (vueInstance: VueConstructor<any>, success:
 }
 
 function addNewUserAccounts (vueInstance: VueConstructor<any>, success: boolean, emails: Array<string>, roles: Array<any>, newAccounts: Array<any>): jest.SpyInstance<any, unknown[]> {
-  return jest.spyOn(vueInstance.prototype.$apiService, 'addNewUserAccounts').mockImplementation((args: any) => {
+  return jest.spyOn(vueInstance.prototype.$apiService, 'addNewUserAccounts').mockImplementation(() => {
     return success ? Promise.resolve(
       {
         accounts: newAccounts

@@ -81,7 +81,7 @@ export default class CustomGridAggregationLayer extends window.deck._Aggregation
 
   // Methods that can be overriden by subclasses for customizations
 
-  updateAggregationState (opts) {
+  updateAggregationState () {
     // Sublayers should implement this method.
     window.deck.log.assert(false)
   }

@@ -10,8 +10,7 @@
     <TermsOfServiceModal v-if="showTOS"/>
     <h5 class="card-title">Game Configuration</h5>
     <p class="card-text">
-      Manage how your game connects to Network Next.<br/>
-      <small>Note: This can be updated at most once a minute.</small>
+      Manage how your game connects to Network Next.
     </p>
     <Alert ref="responseAlert" />
     <form v-on:submit.prevent="checkTOS()">
@@ -37,8 +36,8 @@
         id="game-config-button"
         type="submit"
         class="btn btn-primary btn-sm"
-        :disabled="pubKey === '' || timeRemaining > 0"
-      >{{ timeRemaining > 0 ? `Please wait: ${timeRemaining} s` : 'Save game configuration' }}</button>
+        :disabled="pubKey === ''"
+      >Save game configuration</button>
       <p class="text-muted text-small mt-2"></p>
     </form>
   </div>
@@ -80,8 +79,6 @@ export default class GameConfiguration extends Vue {
   private pubKey: string
   private showTOS: boolean
   private userProfile: UserProfile
-  private cooldownInterval: any
-  private timeRemaining: number
 
   constructor () {
     super()
@@ -89,7 +86,6 @@ export default class GameConfiguration extends Vue {
     this.pubKey = ''
     this.showTOS = false
     this.userProfile = newDefaultProfile()
-    this.timeRemaining = 0
   }
 
   private mounted () {
@@ -109,10 +105,6 @@ export default class GameConfiguration extends Vue {
   private beforeDestroy () {
     this.$root.$off('showTOSModal')
     this.$root.$off('hideTOSModal')
-
-    if (this.cooldownInterval) {
-      clearInterval(this.cooldownInterval)
-    }
   }
 
   private showTOSModalCallback () {
@@ -167,8 +159,6 @@ export default class GameConfiguration extends Vue {
             console.log('Failed to refresh buyer list')
             console.log(error)
           })
-
-        this.StartCooldownTimer()
       })
       .catch((error: any) => {
         if (error.code === 14) {
@@ -179,7 +169,6 @@ export default class GameConfiguration extends Vue {
               this.$refs.responseAlert.resetAlert()
             }
           }, 5000)
-          this.StartCooldownTimer()
           return
         }
         console.log('Something went wrong updating the public key')
@@ -192,17 +181,6 @@ export default class GameConfiguration extends Vue {
           }
         }, 5000)
       })
-  }
-
-  private StartCooldownTimer () {
-    this.timeRemaining = 60
-    this.cooldownInterval = setInterval(() => {
-      this.timeRemaining = this.timeRemaining - 1
-      if (this.timeRemaining <= 0) {
-        this.timeRemaining = 0
-        clearInterval(this.cooldownInterval)
-      }
-    }, 1000)
   }
 }
 </script>
