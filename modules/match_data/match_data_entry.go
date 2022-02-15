@@ -71,7 +71,7 @@ func WriteMatchDataEntry(entry *MatchDataEntry) ([]byte, error) {
 	return buffer[:ws.GetBytesProcessed()], nil
 }
 
-func ReadBillingEntry2(entry *MatchDataEntry, data []byte) error {
+func ReadMatchDataEntry(entry *MatchDataEntry, data []byte) error {
 	if err := entry.Serialize(encoding.CreateReadStream(data)); err != nil {
 		return err
 	}
@@ -124,11 +124,12 @@ func (entry *MatchDataEntry) Validate() bool {
 // Checks all floating point numbers in the MatchDataEntry for NaN and +-Inf and forces them to 0
 func (entry *MatchDataEntry) CheckNaNOrInf() (bool, []string) {
 	var nanOrInfExists bool
-	nanOrInfFields := []string{"MatchValues"}
+	var nanOrInfFields []string
 
 	for i := 0; i < int(entry.NumMatchValues); i++ {
 		if math.IsNaN(entry.MatchValues[i]) || math.IsInf(entry.MatchValues[i], 0) {
 			nanOrInfExists = true
+			nanOrInfFields = []string{"MatchValues"}
 			entry.MatchValues[i] = float64(0)
 		}
 	}
@@ -140,8 +141,8 @@ func (entry *MatchDataEntry) CheckNaNOrInf() (bool, []string) {
 // or max values as defined in MatchDataEntry.Serialize()
 func (entry *MatchDataEntry) ClampEntry() {
 
-	if len(entry.ServerAddress) > MatchDataMaxAddressLength {
-		core.Debug("MatchDataEntry Server IP Address length (%d) > MatchDataMaxAddressLength (%d). Clamping to MatchDataMaxAddressLength", len(entry.ServerAddress), MatchDataMaxAddressLength)
+	if len(entry.ServerAddress) >= MatchDataMaxAddressLength {
+		core.Debug("MatchDataEntry Server IP Address length (%d) >= MatchDataMaxAddressLength (%d). Clamping to MatchDataMaxAddressLength - 1 (%d)", len(entry.ServerAddress), MatchDataMaxAddressLength, MatchDataMaxAddressLength-1)
 		entry.ServerAddress = entry.ServerAddress[:MatchDataMaxAddressLength-1]
 	}
 
