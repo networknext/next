@@ -9120,6 +9120,7 @@ struct NextBackendMatchDataRequestPacket
     uint64_t customer_id;
     next_address_t server_address;
     uint64_t datacenter_id;
+    uint64_t user_hash;
     uint64_t session_id;
     uint32_t retry_number;
     uint64_t match_id;
@@ -9134,6 +9135,7 @@ struct NextBackendMatchDataRequestPacket
         customer_id = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
         datacenter_id = 0;
+        user_hash = 0;
         session_id = 0;
         retry_number = 0;
         match_id = 0;
@@ -9149,6 +9151,7 @@ struct NextBackendMatchDataRequestPacket
         serialize_uint64( stream, customer_id );
         serialize_address( stream, server_address );
         serialize_uint64( stream, datacenter_id );
+        serialize_uint64( stream, user_hash );
         serialize_uint64( stream, session_id );
         serialize_uint32( stream, retry_number );
         serialize_uint64( stream, match_id );
@@ -13179,6 +13182,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.customer_id = server->customer_id;
             packet.datacenter_id = server->datacenter_id;
             packet.server_address = server->server_address;
+            packet.user_hash = session->user_hash;
             packet.session_id = session->session_id;
             packet.match_id = session->match_id;
             packet.num_match_values = session->num_match_values;
@@ -16534,6 +16538,7 @@ static void test_backend_packets()
         in.customer_id = 1231234127431LL;
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         in.datacenter_id = next_datacenter_id( "local" );
+        in.user_hash = 11111111;
         in.session_id = 1234342431431LL;
         in.match_id = 1234342431431LL;
         in.num_match_values = NEXT_MAX_MATCH_VALUES;
@@ -16552,6 +16557,8 @@ static void test_backend_packets()
         next_check( in.customer_id == out.customer_id );
         next_check( next_address_equal( &in.server_address, &out.server_address ) );
         next_check( in.datacenter_id == out.datacenter_id );
+        next_check( in.user_hash == out.user_hash );
+        next_check( in.session_id == out.session_id );
         next_check( in.match_id == out.match_id );
         next_check( in.num_match_values == out.num_match_values );
         for ( int i = 0; i < NEXT_MAX_MATCH_VALUES; ++i )
