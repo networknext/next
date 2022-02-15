@@ -1037,7 +1037,8 @@ uint64_t next_datacenter_id( const char * name )
 uint64_t next_protocol_version()
 {
 #if !NEXT_DEVELOPMENT
-    return next_hash_string( NEXT_VERSION_FULL );
+	#define VERSION_STRING(major,minor) #major #minor
+    return next_hash_string( VERSION_STRING(NEXT_VERSION_MAJOR_INT, NEXT_VERSION_MINOR_INT) );
 #else // #if !NEXT_DEVELOPMENT
     return 0;
 #endif // #if !NEXT_DEVELOPMENT
