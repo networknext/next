@@ -645,6 +645,6 @@ This function can be called only once per session. The *match_id* must be greate
 
 .. code-block:: c++
 
-	uint64_t match_id = 1;
+	uint64_t match_id = next_hash_string( "this is a unique match id" );
 	const double match_values[] = {10.0f, 20.0f, 30.0f};
 	next_server_match( server, address, match_id, match_values, sizeof(match_values) );
