@@ -4,6 +4,4 @@
 
 ## enet + Network Next
 
-ENet using Network Next to send and receive packets.
-
-If your game uses enet, swap it out for this version if you'd like to try Network Next.
+Modified version of enet using Network Next to send and receive packets.
