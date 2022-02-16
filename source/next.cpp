@@ -12662,10 +12662,10 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
         return;
     }
 
-    if ( entry->waiting_for_match_data_response || entry->match_data_response_received )
+    if ( entry->has_match_data || entry->waiting_for_match_data_response || entry->match_data_response_received )
     {
         char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_printf( NEXT_LOG_LEVEL_WARN, "server already sent match data for session at address %s", next_address_to_string( address, buffer ) );
+        next_printf( NEXT_LOG_LEVEL_WARN, "server already sent match data for session %" PRIx64 " at address %s", entry->session_id, next_address_to_string( address, buffer ) );
         return;
     }
 
@@ -12678,7 +12678,7 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
     entry->has_match_data = true;
 
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds match data for session at address %s", next_address_to_string( address, buffer ) );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds match data for session %" PRIx64 " at address %s", entry->session_id, next_address_to_string( address, buffer ) );
 }
 
 bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
