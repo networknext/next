@@ -80,8 +80,14 @@ int main( int argc, char ** argv )
             switch ( event.type )
             {
                 case ENET_EVENT_TYPE_CONNECT:
+                {
                     next_printf( NEXT_LOG_LEVEL_INFO, "client connected from %x:%u", event.peer->address.host, event.peer->address.port );
-                    break;
+                    const char * user_id = "put your own unique user id in this string and we will hash it to create an anonymous user hash";
+                    next_address_t client_address;
+       	            enet_address_to_next( &event.peer->address, &client_address );
+					next_server_upgrade_session( server->next_server, &client_address, user_id );
+				}
+                break;
 
                 case ENET_EVENT_TYPE_DISCONNECT:
                     next_printf( NEXT_LOG_LEVEL_INFO, "client disconnected from %x:%u", event.peer->address.host, event.peer->address.port );

@@ -157,9 +157,9 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "creating network next client" );
 
-        host->client = next_client_create( host, config->bind_address, enet_network_next_client_packet_received, NULL );
+        host->next_client = next_client_create( host, config->bind_address, enet_network_next_client_packet_received, NULL );
 
-        if ( host->client == NULL )
+        if ( host->next_client == NULL )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "could not create network next client" );
             enet_free( host->peers );
@@ -168,15 +168,15 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
         }
 
         host->address.host = 0x100007f;
-        host->address.port = next_client_port( host->client );
+        host->address.port = next_client_port( host->next_client );
     }
     else
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "creating network next server" );
 
-        host->server = next_server_create( host, config->server_address, config->bind_address, config->server_datacenter, enet_network_next_server_packet_received, NULL );
+        host->next_server = next_server_create( host, config->server_address, config->bind_address, config->server_datacenter, enet_network_next_server_packet_received, NULL );
 
-        if ( !host->server )
+        if ( !host->next_server )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "could not create network next server" );
             enet_free( host->peers );
@@ -184,7 +184,7 @@ enet_host_create (const ENetAddress * address, size_t peerCount, size_t channelL
             return NULL;
         }
 
-        struct next_address_t server_address = next_server_address( host->server );
+        struct next_address_t server_address = next_server_address( host->next_server );
         host->address = enet_address_from_next( &server_address );
     }
 
@@ -301,18 +301,18 @@ enet_host_destroy (ENetHost * host)
 
     enet_list_clear( &host->receivePacketQueue );
 
-    if ( host->client )
+    if ( host->next_client )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "destroying network next client" );
-        next_client_destroy( host->client );
-        host->client = NULL;
+        next_client_destroy( host->next_client );
+        host->next_client = NULL;
     }
 
-    if ( host->server )
+    if ( host->next_server )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "destroying network next server" );
-        next_server_destroy( host->server );
-        host->server = NULL;
+        next_server_destroy( host->next_server );
+        host->next_server = NULL;
     }
 
 #else // #if ENET_NETWORK_NEXT
@@ -435,14 +435,14 @@ enet_host_connect (ENetHost * host, const ENetAddress * address, size_t channelC
 
 #if ENET_NETWORK_NEXT
 
-    if ( host->client )
+    if ( host->next_client )
     {
         // puking noises... =p
         struct next_address_t server_address;
         enet_address_to_next( address, &server_address );
         char server_address_string[NEXT_MAX_ADDRESS_STRING_LENGTH];
         next_address_to_string( &server_address, server_address_string );
-        next_client_open_session( host->client, server_address_string );
+        next_client_open_session( host->next_client, server_address_string );
     }
 
 #endif // #if ENET_NETWORK_NEXT

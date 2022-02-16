@@ -1729,20 +1729,20 @@ enet_protocol_send_outgoing_commands (ENetHost * host, ENetEvent * event, int ch
             next_assert( packet_bytes <= NEXT_MTU );    // this should not fire, but if it does, it's because the enet wire packet size is above NET_MTU (1300 bytes)
         }
 
-        if ( host->server )
+        if ( host->next_server )
         {
             struct next_address_t address;
             enet_address_to_next( &currentPeer->address, &address );
             ENetAddress enet_address = enet_address_from_next( &address );
             (void) enet_address;
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent %d byte packet to %x:%d\n", packet_bytes, enet_address.host, enet_address.port );
-            next_server_send_packet( host->server, &address, packet_data, packet_bytes );
+            next_server_send_packet( host->next_server, &address, packet_data, packet_bytes );
             sentLength = packet_bytes;
         }
-        else if ( host->client )
+        else if ( host->next_client )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent %d byte packet to server\n", packet_bytes );
-            next_client_send_packet( host->client, packet_data, packet_bytes );
+            next_client_send_packet( host->next_client, packet_data, packet_bytes );
             sentLength = packet_bytes;
         }
 
@@ -1853,14 +1853,14 @@ enet_host_service (ENetHost * host, ENetEvent * event, enet_uint32 timeout)
 
 #if ENET_NETWORK_NEXT
 
-        if ( host->client )
+        if ( host->next_client )
         {
-            next_client_update( host->client );
+            next_client_update( host->next_client );
         }
 
-        if ( host->server )
+        if ( host->next_server )
         {
-            next_server_update( host->server );
+            next_server_update( host->next_server );
         }
 
 #endif // #if ENET_NETWORK_NEXT

@@ -423,8 +423,8 @@ typedef struct _ENetHost
 
 #if ENET_NETWORK_NEXT
 
-   struct next_client_t * client;
-   struct next_server_t * server;
+   struct next_client_t * next_client;
+   struct next_server_t * next_server;
 
    ENetList receivePacketQueue;                      // queue of ENetInternalPacket
 
