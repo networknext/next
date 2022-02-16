@@ -3730,10 +3730,12 @@ struct next_config_internal_t
 {
     char server_backend_hostname[256];
     char ping_backend_hostname[256];
-    uint64_t customer_id;
+    uint64_t client_customer_id;
+    uint64_t server_customer_id;
     uint8_t customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
     uint8_t customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
     bool valid_customer_private_key;
+    bool valid_customer_public_key;
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
@@ -3799,9 +3801,10 @@ int next_init( void * context, next_config_t * config_in )
         if ( next_base64_decode_data( customer_public_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
             const uint8_t * p = decode_buffer;
-            config.customer_id = next_read_uint64( &p );
+            config.client_customer_id = next_read_uint64( &p );
             memcpy( config.customer_public_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
             next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key: \"%s\"", customer_public_key );
+            config.valid_customer_public_key = true;
         }
         else
         {
@@ -3826,7 +3829,7 @@ int next_init( void * context, next_config_t * config_in )
         if ( customer_private_key && next_base64_decode_data( customer_private_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
             const uint8_t * p = decode_buffer;
-            config.customer_id = next_read_uint64( &p );
+            config.server_customer_id = next_read_uint64( &p );
             memcpy( config.customer_private_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
             config.valid_customer_private_key = true;
             next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer private key" );
@@ -3838,6 +3841,15 @@ int next_init( void * context, next_config_t * config_in )
                 next_printf( NEXT_LOG_LEVEL_ERROR, "customer private key is invalid: \"%s\"", customer_private_key );
             }
         }
+    }
+
+    if ( config.valid_customer_private_key && config.valid_customer_public_key && config.client_customer_id != config.server_customer_id )
+    {
+    	next_printf( NEXT_LOG_LEVEL_ERROR, "mismatch between client and server customer id. please check the private and public keys are part of the same keypair!" );
+    	config.valid_customer_public_key = false;
+    	config.valid_customer_private_key = false;
+    	memset( config.customer_public_key, 0, sizeof(config.customer_public_key) );
+    	memset( config.customer_private_key, 0, sizeof(config.customer_private_key) );
     }
 
     strncpy( config.server_backend_hostname, config_in ? config_in->server_backend_hostname : NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config.server_backend_hostname) );
@@ -5924,7 +5936,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "client buyer id is %" PRIx64, next_global_config.customer_id );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client buyer id is %" PRIx64, next_global_config.client_customer_id );
 
     next_address_t bind_address;
     if ( next_address_parse( &bind_address, bind_address_string ) != NEXT_OK )
@@ -10860,7 +10872,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_assert( bind_address_string );
     next_assert( datacenter_string );
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.customer_id );
+    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.server_customer_id );
 
     const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
@@ -10906,7 +10918,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_server_internal_verify_sentinels( server );
 
     server->context = context;
-    server->customer_id = next_global_config.customer_id;
+    server->customer_id = next_global_config.server_customer_id;
     memcpy( server->customer_private_key, next_global_config.customer_private_key, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
     server->valid_customer_private_key = next_global_config.valid_customer_private_key;
 
