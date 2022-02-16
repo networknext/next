@@ -213,6 +213,8 @@ NEXT_EXPORT_FUNC void next_allocator( void * (*malloc_function)( void * context,
 
 NEXT_EXPORT_FUNC const char * next_user_id_string( uint64_t user_id, char * buffer );
 
+NEXT_EXPORT_FUNC uint64_t next_hash_string( const char * string );
+
 // -----------------------------------------
 
 struct next_address_t
