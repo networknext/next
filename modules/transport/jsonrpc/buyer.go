@@ -2677,6 +2677,21 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		core.Error("FetchUsageDashboard(): %v", err.Error())
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		core.Error("FetchUsageDashboard(): %v: Failed to parse user ID", err.Error())
+		return &err
+	}
+
 	customerCode := ""
 	if !isAdmin {
 		ok := false
@@ -2727,7 +2742,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 				dashCustomerCode = "esl"
 			}
 
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, r.Header.Get("Origin"))
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
 			if err != nil {
 				continue
 			}
@@ -2759,6 +2774,21 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		core.Error("FetchUsageDashboard(): %v", err.Error())
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		core.Error("FetchUsageDashboard(): %v: Failed to parse user ID", err.Error())
+		return &err
+	}
+
 	customerCode := ""
 	if !isAdmin {
 		ok := false
@@ -2777,7 +2807,7 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 		}
 	}
 
-	usageDashURL, err := s.LookerClient.GenerateUsageDashboardURL(customerCode, r.Header.Get("Origin"), args.DateString)
+	usageDashURL, err := s.LookerClient.GenerateUsageDashboardURL(customerCode, requestID, r.Header.Get("Origin"), args.DateString)
 	if err != nil {
 		// TODO: make a looker error code
 		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
@@ -2809,6 +2839,21 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 	}
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
+
+	user := r.Context().Value(middleware.Keys.UserKey)
+	if user == nil {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		core.Error("FetchUsageDashboard(): %v", err.Error())
+		return &err
+	}
+
+	claims := user.(*jwt.Token).Claims.(jwt.MapClaims)
+	requestID, ok := claims["sub"].(string)
+	if !ok {
+		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
+		core.Error("FetchUsageDashboard(): %v: Failed to parse user ID", err.Error())
+		return &err
+	}
 
 	customerCode := ""
 	if !isAdmin {
@@ -2854,7 +2899,7 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 				dashCustomerCode = "esl"
 			}
 
-			lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, r.Header.Get("Origin"))
+			lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
 			if err != nil {
 				core.Error("FetchDiscoveryDashboards(): Failed to generate Looker URL %v", err.Error())
 				continue
