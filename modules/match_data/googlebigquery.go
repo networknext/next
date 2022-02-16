@@ -20,9 +20,7 @@ const (
 type GoogleBigQueryClient struct {
 	Metrics              *metrics.MatchDataMetrics
 	TableInserter        *bigquery.Inserter
-	SummaryTableInserter *bigquery.Inserter
 	BatchSize            int
-	SummaryBatchSize     int
 	BatchSizePercent     float64
 
 	buffer      []*MatchDataEntry
