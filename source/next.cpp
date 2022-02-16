@@ -94,7 +94,7 @@
 #define NEXT_SESSION_UPDATE_RESEND_TIME                               1.0
 #define NEXT_SESSION_UPDATE_TIMEOUT                                     5
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
-#define NEXT_MATCH_DATA_RESEND_TIME                                   10.0
+#define NEXT_MATCH_DATA_RESEND_TIME                                  10.0
 
 #define NEXT_CLIENT_COUNTER_OPEN_SESSION                                0
 #define NEXT_CLIENT_COUNTER_CLOSE_SESSION                               1
