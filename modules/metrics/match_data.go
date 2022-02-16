@@ -30,33 +30,33 @@ type MatchDataStatus struct {
 }
 
 type MatchDataServiceMetrics struct {
-	ServiceMetrics    *ServiceMetrics
-	MatchDataMetrics  *MatchDataMetrics
+	ServiceMetrics   *ServiceMetrics
+	MatchDataMetrics *MatchDataMetrics
 }
 
 var EmptyMatchDataServiceMetrics MatchDataServiceMetrics = MatchDataServiceMetrics{
-	ServiceMetrics:    &EmptyServiceMetrics,
-	MatchDataMetrics:  &EmptyMatchDataMetrics,
+	ServiceMetrics:   &EmptyServiceMetrics,
+	MatchDataMetrics: &EmptyMatchDataMetrics,
 }
 
 type MatchDataMetrics struct {
-	EntriesReceived         Counter
-	EntriesSubmitted        Counter
-	EntriesQueued           Gauge
-	EntriesFlushed          Counter
-	MatchDataEntryPubsubSize  Gauge
-	MatchDataEntrySize        Gauge
+	EntriesReceived          Counter
+	EntriesSubmitted         Counter
+	EntriesQueued            Gauge
+	EntriesFlushed           Counter
+	MatchDataEntryPubsubSize Gauge
+	MatchDataEntrySize       Gauge
 
 	ErrorMetrics *MatchDataErrorMetrics
 }
 
 var EmptyMatchDataMetrics MatchDataMetrics = MatchDataMetrics{
-	EntriesReceived:         &EmptyCounter{},
-	EntriesSubmitted:        &EmptyCounter{},
-	EntriesQueued:           &EmptyGauge{},
-	EntriesFlushed:          &EmptyCounter{},
-	MatchDataEntryPubsubSize:  &EmptyGauge{},
-	MatchDataEntrySize:        &EmptyGauge{},
+	EntriesReceived:          &EmptyCounter{},
+	EntriesSubmitted:         &EmptyCounter{},
+	EntriesQueued:            &EmptyGauge{},
+	EntriesFlushed:           &EmptyCounter{},
+	MatchDataEntryPubsubSize: &EmptyGauge{},
+	MatchDataEntrySize:       &EmptyGauge{},
 
 	ErrorMetrics: &EmptyMatchDataErrorMetrics,
 }
@@ -168,6 +168,8 @@ func NewMatchDataMetrics(ctx context.Context, metricsHandler Handler, serviceNam
 	if err != nil {
 		return nil, err
 	}
+
+	matchDataMetrics.ErrorMetrics = &MatchDataErrorMetrics{}
 
 	matchDataMetrics.ErrorMetrics.MatchDataPublishFailure, err = metricsHandler.NewCounter(ctx, &Descriptor{
 		DisplayName: handlerName + " Publish Failure",

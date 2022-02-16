@@ -13,6 +13,7 @@ import (
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
+	md "github.com/networknext/backend/modules/match_data"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -68,6 +69,23 @@ func writeServerInitResponse(w io.Writer, packet *ServerInitRequestPacket, respo
 		return err
 	}
 	packetHeader := append([]byte{PacketTypeServerInitResponse}, make([]byte, crypto.PacketHashSize)...)
+	responseData := append(packetHeader, responsePacketData...)
+	if _, err := w.Write(responseData); err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeMatchDataResponse(w io.Writer, packet *MatchDataRequestPacket, response uint32) error {
+	responsePacket := MatchDataResponsePacket{
+		SessionID: packet.SessionID,
+		Response:  response,
+	}
+	responsePacketData, err := MarshalPacket(&responsePacket)
+	if err != nil {
+		return err
+	}
+	packetHeader := append([]byte{PacketTypeMatchDataResponse}, make([]byte, crypto.PacketHashSize)...)
 	responseData := append(packetHeader, responsePacketData...)
 	if _, err := w.Write(responseData); err != nil {
 		return err
@@ -2063,6 +2081,89 @@ func SessionUpdateHandlerFunc(
 		SessionMakeRouteDecision(&state)
 
 		core.Debug("session updated successfully")
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+func MatchDataHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, PostSessionHandler *PostSessionHandler, metrics *metrics.MatchDataHandlerMetrics) UDPHandlerFunc {
+
+	return func(w io.Writer, incoming *UDPPacket) {
+
+		core.Debug("-----------------------------------------")
+		core.Debug("match data packet from %s", incoming.From.String())
+
+		metrics.HandlerMetrics.Invocations.Add(1)
+
+		timeStart := time.Now()
+		defer func() {
+			milliseconds := float64(time.Since(timeStart).Milliseconds())
+			metrics.HandlerMetrics.Duration.Set(milliseconds)
+			if milliseconds > 100 {
+				metrics.HandlerMetrics.LongDuration.Add(1)
+			}
+			core.Debug("match data duration: %fms\n-----------------------------------------", milliseconds)
+		}()
+
+		var packet MatchDataRequestPacket
+		if err := UnmarshalPacket(&packet, incoming.Data); err != nil {
+			core.Debug("could not read match data packet:\n\n%v\n", err)
+			metrics.ReadPacketFailure.Add(1)
+			return
+		}
+
+		core.Debug("server buyer id is %x", packet.BuyerID)
+
+		database := getDatabase()
+
+		responseType := InitResponseOK
+
+		defer func() {
+			if err := writeMatchDataResponse(w, &packet, uint32(responseType)); err != nil {
+				core.Debug("failed to write match data response: %s", err)
+				metrics.WriteResponseFailure.Add(1)
+			}
+		}()
+
+		buyer, exists := database.BuyerMap[packet.BuyerID]
+		if !exists {
+			core.Debug("unknown buyer")
+			metrics.BuyerNotFound.Add(1)
+			responseType = MatchDataResponseUnknownBuyer
+			return
+		}
+
+		if !buyer.Live {
+			core.Debug("buyer not active")
+			metrics.BuyerNotActive.Add(1)
+			responseType = MatchDataResponseBuyerNotActive
+			return
+		}
+
+		if !crypto.VerifyPacket(buyer.PublicKey, incoming.Data) {
+			core.Debug("signature check failed")
+			metrics.SignatureCheckFailed.Add(1)
+			responseType = MatchDataResponseSignatureCheckFailed
+			return
+		}
+
+		// Record the match data in the post session handler
+
+		matchData := &md.MatchDataEntry{
+			Version:        uint32(md.MatchDataEntryVersion),
+			Timestamp:      uint32(time.Now().Unix()),
+			BuyerID:        packet.BuyerID,
+			ServerAddress:  packet.ServerAddress.String(),
+			DatacenterID:   packet.DatacenterID,
+			UserHash:       packet.UserHash,
+			SessionID:      packet.SessionID,
+			MatchID:        packet.MatchID,
+			NumMatchValues: packet.NumMatchValues,
+			MatchValues:    packet.MatchValues,
+		}
+		PostSessionHandler.SendMatchData(matchData)
+
+		core.Debug("recorded match data for session %016x successfully", packet.SessionID)
 	}
 }
 
