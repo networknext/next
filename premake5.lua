@@ -1,7 +1,7 @@
 solution "enet"
 	configurations { "Debug", "Release" }
 	defines { "ENET_NETWORK_NEXT=1" }
-	platforms { "x64" }
+	platforms { "portable", "x64" }
 
 project "next"
 	kind "StaticLib"
