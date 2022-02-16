@@ -5,10 +5,10 @@ import (
 	"fmt"
 )
 
-type ErrMatchDataBufferFull struct{}
+type ErrEntriesBufferFull struct{}
 
-func (e *ErrMatchDataBufferFull) Error() string {
-	return fmt.Sprintf("match data buffer full")
+func (e *ErrEntriesBufferFull) Error() string {
+	return fmt.Sprintf("match data entries buffer full")
 }
 
 // Matcher is an interface that handles sending match data entries to remote services
