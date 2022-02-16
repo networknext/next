@@ -11733,7 +11733,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             if ( entry->server_events != 0 )
             {	
             	char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            	next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed events %" PRIx64 " to backend for session %" PRIx64 " at address %s", entry->server_events, entry->session_id, next_address_to_string( from, address_buffer ));
+            	next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed events %x to backend for session %" PRIx64 " at address %s", entry->server_events, entry->session_id, next_address_to_string( from, address_buffer ));
             	entry->server_events = 0;
             }
 
