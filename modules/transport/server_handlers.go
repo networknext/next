@@ -2163,7 +2163,7 @@ func MatchDataHandlerFunc(getDatabase func() *routing.DatabaseBinWrapper, PostSe
 		}
 		PostSessionHandler.SendMatchData(matchData)
 
-		core.Debug("recorded match data for session %016x successfully", packet.SessionID)
+		core.Debug("received match data for session %016x for buyer %016x", packet.SessionID, packet.BuyerID)
 	}
 }
 
