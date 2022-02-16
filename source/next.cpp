@@ -9115,7 +9115,8 @@ struct next_session_entry_t
     uint64_t user_hash;
     uint64_t tags[NEXT_MAX_TAGS];
     int num_tags;
-    uint64_t server_events;
+    uint64_t previous_server_events;
+    uint64_t current_server_events;
 
     uint8_t client_open_session_sequence;
 
@@ -11730,12 +11731,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
             entry->high_frequency_pings = packet.high_frequency_pings;
 
-            if ( entry->server_events != 0 )
+            next_platform_mutex_acquire( &server->session_mutex );
+            if ( entry->previous_server_events != 0 )
             {	
             	char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            	next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed events %x to backend for session %" PRIx64 " at address %s", entry->server_events, entry->session_id, next_address_to_string( from, address_buffer ));
-            	entry->server_events = 0;
+            	next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed events %x to backend for session %" PRIx64 " at address %s", entry->previous_server_events, entry->session_id, next_address_to_string( from, address_buffer ));
+            	entry->previous_server_events = 0;
             }
+            next_platform_mutex_release( &server->session_mutex );
 
             return;
         }   
@@ -12435,7 +12438,10 @@ void next_server_internal_server_events( next_server_internal_t * server, const 
         return;
     }
 
-    entry->server_events |= server_events;
+    next_platform_mutex_acquire( &server->session_mutex );
+    entry->current_server_events |= server_events;
+    next_platform_mutex_release( &server->session_mutex );
+
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server set event %x for session %" PRIx64 " at address %s", server_events, entry->session_id, next_address_to_string( address, buffer ) );
 }
@@ -12805,7 +12811,11 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             {
                 packet.tags[j] = session->tags[j];
             }
-            packet.server_events = session->server_events;
+            next_platform_mutex_acquire( &server->session_mutex );
+            session->previous_server_events = session->current_server_events;
+            session->current_server_events = 0;
+            next_platform_mutex_release( &server->session_mutex );
+            packet.server_events = session->previous_server_events;
             packet.reported = session->stats_reported;
             packet.fallback_to_direct = session->stats_fallback_to_direct;
             packet.client_bandwidth_over_limit = session->stats_client_bandwidth_over_limit;
