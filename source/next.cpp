@@ -9407,6 +9407,7 @@ struct next_session_entry_t
 
     NextBackendMatchDataRequestPacket match_data_request_packet;
 
+    bool has_match_data;
     double next_match_data_resend_time;
     bool waiting_for_match_data_response;
     bool match_data_response_received;
@@ -12674,7 +12675,8 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
     {
         entry->match_values[i] = match_values[i];
     }
-    
+    entry->has_match_data = true;
+
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds match data for session at address %s", next_address_to_string( address, buffer ) );
 }
@@ -13173,7 +13175,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_session_entry_t * session = &server->session_manager->entries[i];
 
-        if ( session->match_id == 0 || session->match_data_response_received )
+        if ( !session->has_match_data || session->match_data_response_received )
             continue;
 
         if ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response)
@@ -13910,7 +13912,6 @@ void next_server_match( struct next_server_t * server, const struct next_address
     next_assert( server );
     next_assert( address );
     next_assert( server->internal );
-    next_assert( match_id > 0 );
     next_assert( num_match_values >= 0 );
     next_assert( num_match_values <= NEXT_MAX_MATCH_VALUES );
 
