@@ -496,13 +496,13 @@ func mainReturnWithCode() int {
 				return 1
 			}
 
-			countThreshold, err := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_COUNT", 100)
+			countThreshold, err := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_COUNT", 10)
 			if err != nil {
 				core.Error("invalid MATCH_DATA_BATCHED_MESSAGE_COUNT: %v", err)
 				return 1
 			}
 
-			byteThreshold, err := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES", 1024)
+			byteThreshold, err := envvar.GetInt("MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES", 100)
 			if err != nil {
 				core.Error("invalid MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES: %v", err)
 				return 1
