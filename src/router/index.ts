@@ -242,10 +242,10 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
     return
   }
 
+  checkMapModal(toName, fromName)
+
   // Anonymous filters
   if (store.getters.isAnonymous && AnonymousRoutes.indexOf(toName) !== -1) {
-    checkMapModal(toName, fromName)
-
     updateCurrentPage(toName)
     next()
     return
@@ -253,8 +253,6 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
 
   // AnonymousPlus filters
   if (store.getters.isAnonymousPlus && AnonymousPlusRoutes.indexOf(toName) !== -1) {
-    checkMapModal(toName, fromName)
-
     updateCurrentPage(toName)
     next()
     return
@@ -262,8 +260,6 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
 
   // Viewer filters (User that is setup and verified but doesn't have a company and/or any roles)
   if (!(store.getters.isAnonymous || store.getters.isAnonymousPlus) && ViewerRoutes.indexOf(toName) !== -1) {
-    checkMapModal(toName, fromName)
-
     if (toName === 'settings') {
       updateCurrentPage('account-settings')
       next('/settings/account')
@@ -276,23 +272,26 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
 
   // Explorer Filters
-  if (store.getters.isExplorer && ExplorerRoutes.indexOf(toName) !== -1) {
-    if (toName === 'explore') {
-      if (store.getters.hasBilling) {
-        updateCurrentPage('usage')
-        next('/explore/usage')
-        return
-      }
+  if (store.getters.isExplorer && (store.getters.hasAnalytics || store.getters.hasBilling) && ExplorerRoutes.indexOf(toName) !== -1) {
+    const currentPage = store.getters.hasBilling ? 'usage' : 'analytics'
 
-      if (store.getters.hasAnalytics) {
-        updateCurrentPage('analytics')
-        next('/explore/analytics')
+    switch (toName) {
+      case 'analytics':
+      case 'usage':
+      case 'invoice':
+        if (
+          (toName === 'analytics' && store.getters.hasAnalytics) ||
+          ((toName === 'usage' || toName === 'invoice') && store.getters.hasBilling)
+        ) {
+          updateCurrentPage(toName)
+          next()
+          return
+        }
+        break
+      case 'explore':
+        updateCurrentPage(currentPage)
+        next(`/explore/${currentPage}`)
         return
-      }
-    } else {
-      updateCurrentPage(toName)
-      next()
-      return
     }
 
     next(new Error('Insufficient privileges'))
