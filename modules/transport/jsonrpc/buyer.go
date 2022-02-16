@@ -2541,10 +2541,12 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 		return &err
 	}
 
+	ctx := r.Context()
+
 	// Grab release notes notifications from cache
 	reply.ReleaseNotesNotifications = s.ReleaseNotesNotificationsCache
 
-	user := r.Context().Value(middleware.Keys.UserKey)
+	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("FetchNotifications(): %v", err.Error())
@@ -2559,14 +2561,14 @@ func (s *BuyersService) FetchNotifications(r *http.Request, args *FetchNotificat
 		return &err
 	}
 
-	customerCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	customerCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		core.Error("FetchNotifications(): %v", err.Error())
 		return &err
 	}
 
-	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
 	if err != nil {
 		err = fmt.Errorf("FetchNotifications() failed getting buyer with code: %v", err)
 		core.Error("%v", err)
@@ -2597,7 +2599,9 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 		return &err
 	}
 
-	user := r.Context().Value(middleware.Keys.UserKey)
+	ctx := r.Context()
+
+	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("StartAnalyticsTrial(): %v", err.Error())
@@ -2612,21 +2616,21 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 		return &err
 	}
 
-	companyCode, ok := r.Context().Value(middleware.Keys.CustomerKey).(string)
+	companyCode, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_USER_IS_NOT_ASSIGNED)]
 		core.Error("StartAnalyticsTrial(): %v", err.Error())
 		return &err
 	}
 
-	buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), companyCode)
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, companyCode)
 	if err != nil {
 		err = fmt.Errorf("StartAnalyticsTrial() failed getting buyer with code: %v", err)
 		core.Error("%v", err)
 		return err
 	}
 
-	company, err := s.Storage.Customer(r.Context(), companyCode)
+	company, err := s.Storage.Customer(ctx, companyCode)
 	if err != nil {
 		err = fmt.Errorf("StartAnalyticsTrial() failed getting customer with code: %v", err)
 		core.Error("%v", err)
@@ -2635,12 +2639,12 @@ func (s *BuyersService) StartAnalyticsTrial(r *http.Request, args *StartAnalytic
 
 	// Buyer has a trial still and isn't currently signed up for analytics, remove trial and flip analytics
 	if buyer.Trial && !buyer.Analytics {
-		if err := s.Storage.UpdateBuyer(r.Context(), buyer.ID, "Trial", false); err != nil {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Trial", false); err != nil {
 			err = fmt.Errorf("StartAnalyticsTrial() failed to flip Trial bit: %v", err)
 			core.Error("%v", err)
 			return err
 		}
-		if err := s.Storage.UpdateBuyer(r.Context(), buyer.ID, "Analytics", true); err != nil {
+		if err := s.Storage.UpdateBuyer(ctx, buyer.ID, "Analytics", true); err != nil {
 			err = fmt.Errorf("StartAnalyticsTrial() failed to flip Analytics bit: %v", err)
 			core.Error("%v", err)
 			return err
@@ -2677,7 +2681,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
-	user := r.Context().Value(middleware.Keys.UserKey)
+	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("FetchUsageDashboard(): %v", err.Error())
@@ -2772,9 +2776,11 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 		return &err
 	}
 
+	ctx := r.Context()
+
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
-	user := r.Context().Value(middleware.Keys.UserKey)
+	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("FetchUsageDashboard(): %v", err.Error())
@@ -2792,7 +2798,7 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 	customerCode := ""
 	if !isAdmin {
 		ok := false
-		customerCode, ok = r.Context().Value(middleware.Keys.CustomerKey).(string)
+		customerCode, ok = ctx.Value(middleware.Keys.CustomerKey).(string)
 		if !ok || customerCode == "" {
 			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 			core.Error("FetchUsageDashboard(): %v", err.Error())
@@ -2840,7 +2846,7 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
 
-	user := r.Context().Value(middleware.Keys.UserKey)
+	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
 		core.Error("FetchUsageDashboard(): %v", err.Error())
@@ -2858,7 +2864,7 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 	customerCode := ""
 	if !isAdmin {
 		ok := false
-		customerCode, ok = r.Context().Value(middleware.Keys.CustomerKey).(string)
+		customerCode, ok = ctx.Value(middleware.Keys.CustomerKey).(string)
 		if !ok || customerCode == "" {
 			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
