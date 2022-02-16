@@ -94,7 +94,7 @@ func mainReturnWithCode() int {
 	if gcpOK {
 		// Google BigQuery
 		matchDataDataset := envvar.Get("GOOGLE_BIGQUERY_DATASET_MATCH_DATA", "")
-		if billingDataset == "" {
+		if matchDataDataset == "" {
 			core.Error("GOOGLE_BIGQUERY_DATASET_MATCH_DATA not set")
 			return 1
 		}
@@ -121,8 +121,8 @@ func mainReturnWithCode() int {
 		}
 
 		b := md.GoogleBigQueryClient{
-			Metrics:          &matchDataServiceMetrics.MatchDataMetrics,
-			TableInserter:    bqClient.Dataset(billingDataset).Table(matchDataTableName).Inserter(),
+			Metrics:          matchDataServiceMetrics.MatchDataMetrics,
+			TableInserter:    bqClient.Dataset(matchDataDataset).Table(matchDataTableName).Inserter(),
 			BatchSize:        batchSize,
 			BatchSizePercent: batchSizePercent,
 		}
@@ -143,7 +143,7 @@ func mainReturnWithCode() int {
 
 		// Use the local matcher
 		matcher = &md.LocalMatcher{
-			Metrics: &matchDataServiceMetrics.MatchDataMetrics,
+			Metrics: matchDataServiceMetrics.MatchDataMetrics,
 		}
 
 		core.Debug("detected pubsub emulator")
@@ -182,7 +182,7 @@ func mainReturnWithCode() int {
 			pubsubCtx, cancelFunc := context.WithDeadline(ctx, time.Now().Add(5*time.Second))
 			defer cancelFunc()
 
-			pubsubForwarder, err := md.NewPubSubForwarder(pubsubCtx, matcher, entryVeto, maxRetries, retryTime, &matchDataServiceMetrics.MatchDataMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
+			pubsubForwarder, err := md.NewPubSubForwarder(pubsubCtx, matcher, entryVeto, maxRetries, retryTime, matchDataServiceMetrics.MatchDataMetrics, gcpProjectID, topicName, subscriptionName, numRecvGoroutines)
 			if err != nil {
 				core.Error("could not create pubsub forwarder: %v", err)
 				return 1
