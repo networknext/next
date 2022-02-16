@@ -15799,6 +15799,7 @@ static void test_backend_packets()
         in.num_tags = 2;
         in.tags[0] = 0x1231314141;
         in.tags[1] = 0x3344556677;
+        in.server_events = next_random_uint64();
         in.reported = true;
         in.connection_type = NEXT_CONNECTION_TYPE_WIRED;
         in.direct_min_rtt = 10.1f;
@@ -15848,6 +15849,7 @@ static void test_backend_packets()
         {
             next_check( in.tags[i] == out.tags[i] );
         }
+        next_check( in.server_events == out.server_events );
         next_check( in.reported == out.reported );
         next_check( in.connection_type == out.connection_type );
         next_check( in.direct_min_rtt == out.direct_min_rtt );
