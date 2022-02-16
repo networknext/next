@@ -12664,7 +12664,7 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
     if ( entry->waiting_for_match_data_response || entry->match_data_response_received )
     {
         char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server already sent match data for session at address %s", next_address_to_string( address, buffer ) );
+        next_printf( NEXT_LOG_LEVEL_WARN, "server already sent match data for session at address %s", next_address_to_string( address, buffer ) );
         return;
     }
 
