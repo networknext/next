@@ -16,20 +16,23 @@ import (
 
 	"github.com/looker-open-source/sdk-codegen/go/rtl"
 	v4 "github.com/looker-open-source/sdk-codegen/go/sdk/v4"
+	"github.com/networknext/backend/modules/transport"
 )
 
 const (
-	LOOKER_SESSION_TIMEOUT  = 86400
-	EMBEDDED_USER_GROUP_ID  = 3
-	USAGE_DASH_URL          = "/embed/dashboards-next/11"
-	BASE_URL                = "https://networknextexternal.cloud.looker.com"
-	API_VERSION             = "4.0"
-	API_TIMEOUT             = 300
-	LOOKER_SAVES_ROW_LIMIT  = "10"
-	LOOKER_AUTH_URI         = "%s/api/3.1/login?client_id=%s&client_secret=%s"
-	LOOKER_QUERY_RUNNER_URI = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
-	LOOKER_PROD_MODEL       = "network_next_prod"
-	LOOKER_SAVES_VIEW       = "daily_big_saves"
+	LOOKER_SESSION_TIMEOUT      = 86400
+	EMBEDDED_USER_GROUP_ID      = 3
+	USAGE_DASH_URL              = "/embed/dashboards-next/11"
+	BASE_URL                    = "https://networknextexternal.cloud.looker.com"
+	API_VERSION                 = "4.0"
+	API_TIMEOUT                 = 300
+	LOOKER_SAVES_ROW_LIMIT      = "10"
+	LOOKER_AUTH_URI             = "%s/api/3.1/login?client_id=%s&client_secret=%s"
+	LOOKER_QUERY_RUNNER_URI     = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
+	LOOKER_PROD_MODEL           = "network_next_prod"
+	LOOKER_SAVES_VIEW           = "daily_big_saves"
+	LOOKER_BILLING2_VIEW        = "billing2"
+	LOOKER_SESSION_SUMMARY_VIEW = "billing2_session_summary"
 )
 
 type LookerWebhookAttachment struct {
@@ -109,6 +112,199 @@ func (l *LookerClient) FetchAuthToken() (string, error) {
 	}
 
 	return authResponse.AccessToken, nil
+}
+
+type LookerSessionMeta struct {
+	ID              int64   `json:"REPLACE_ME.session_id"`
+	UserHash        int64   `json:"REPLACE_ME.user_hash"`
+	DatacenterName  string  `json:"REPLACE_ME.datacenter_name"`
+	DatacenterAlias string  `json:"REPLACE_ME.datacenter_alias"`
+	OnNetworkNext   bool    `json:"REPLACE_ME.on_network_next"`
+	NextRTT         float64 `json:"REPLACE_ME.next_rtt"`
+	DirectRTT       float64 `json:"REPLACE_ME.direct_rtt"`
+	DeltaRTT        float64 `json:"REPLACE_ME.delta_rtt"`
+	// Location        routing.Location      `json:"REPLACE_ME.location"`
+	ClientAddr string `json:"REPLACE_ME.client_addr"`
+	ServerAddr string `json:"REPLACE_ME.server_addr"`
+	// Hops            []RelayHop            `json:"REPLACE_ME.hops"`
+	SDK        string `json:"REPLACE_ME.sdk"`
+	Connection uint8  `json:"REPLACE_ME.connection"`
+	// NearbyRelays    []NearRelayPortalData `json:"REPLACE_ME.nearby_relays"`
+	Platform int8  `json:"REPLACE_ME.platform"`
+	BuyerID  int64 `json:"REPLACE_ME.customer_id"`
+}
+
+func (meta LookerSessionMeta) ConvertToSessionMeta() transport.SessionMeta {
+	returnMeta := transport.SessionMeta{}
+
+	returnMeta.ID = uint64(meta.ID)
+	returnMeta.UserHash = uint64(meta.UserHash)
+
+	returnMeta.DatacenterName = meta.DatacenterName
+	returnMeta.DatacenterAlias = meta.DatacenterAlias
+	returnMeta.OnNetworkNext = meta.OnNetworkNext
+	returnMeta.NextRTT = meta.NextRTT
+	returnMeta.DirectRTT = meta.DirectRTT
+	returnMeta.DeltaRTT = meta.DeltaRTT
+	returnMeta.ClientAddr = meta.ClientAddr
+	returnMeta.ServerAddr = meta.ServerAddr
+	returnMeta.SDK = meta.SDK
+	returnMeta.Connection = meta.Connection
+	returnMeta.Platform = uint8(meta.Platform)
+	returnMeta.BuyerID = uint64(meta.BuyerID)
+
+	return returnMeta
+}
+
+type LookerSessionSlice struct {
+	Timestamp time.Time `json:"REPLACE_ME.date_date"`
+	//Next                routing.Stats    `json:"next"`
+	//Direct              routing.Stats    `json:"direct"`
+	//Predicted           routing.Stats    `json:"predicted"`
+	//ClientToServerStats routing.Stats    `json:"client_to_server_stats"`
+	//ServerToClientStats routing.Stats    `json:"server_to_client_stats"`
+	RouteDiversity int32 `json:"route_diversity"`
+	//Envelope            routing.Envelope `json:"envelope"`
+	OnNetworkNext     bool `json:"on_network_next"`
+	IsMultiPath       bool `json:"is_multipath"`
+	IsTryBeforeYouBuy bool `json:"is_try_before_you_buy"`
+}
+
+func (slice LookerSessionSlice) ConvertToSessionSlice() transport.SessionSlice {
+	sessionSlice := transport.SessionSlice{}
+
+	sessionSlice.Timestamp = slice.Timestamp
+	sessionSlice.RouteDiversity = uint32(slice.RouteDiversity)
+	sessionSlice.OnNetworkNext = slice.OnNetworkNext
+	sessionSlice.IsMultiPath = slice.IsMultiPath
+	sessionSlice.IsTryBeforeYouBuy = slice.IsTryBeforeYouBuy
+
+	return sessionSlice
+}
+
+type LookerSession struct{}
+
+func (l *LookerClient) RunSessionLookupQuery(sessionID string) (LookerSession, error) {
+	session := LookerSession{}
+
+	intSessionID, err := strconv.ParseInt(sessionID, 10, 64)
+	if err != nil {
+		return session, err
+	}
+
+	hexSessionID := fmt.Sprintf("%016x", intSessionID)
+
+	token, err := l.FetchAuthToken()
+	if err != nil {
+		return session, err
+	}
+
+	requiredFields := []string{}
+	sorts := []string{}
+	requiredFilters := make(map[string]interface{})
+
+	requiredFilters["billing2.session_id"] = hexSessionID
+	requiredFilters[LOOKER_SAVES_VIEW+".date_date"] = "7 days"
+
+	query := v4.WriteQuery{
+		Model:   LOOKER_PROD_MODEL,
+		View:    LOOKER_SAVES_VIEW + "",
+		Fields:  &requiredFields,
+		Filters: &requiredFilters,
+		Sorts:   &sorts,
+	}
+
+	lookerBody, _ := json.Marshal(query)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
+	if err != nil {
+		return session, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	client := &http.Client{Timeout: time.Minute}
+	resp, err := client.Do(req)
+	if err != nil {
+		return session, err
+	}
+
+	defer resp.Body.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return session, err
+	}
+
+	if err = json.Unmarshal(buf.Bytes(), &session); err != nil {
+		return session, err
+	}
+
+	return session, nil
+}
+
+type LookerUserSession struct {
+	Meta      transport.SessionMeta `json:"meta"`
+	Timestamp time.Time             `json:"time_stamp"`
+}
+
+func (l *LookerClient) RunUserSessionsLookupQuery(userID string) ([]LookerUserSession, error) {
+	sessions := make([]LookerUserSession, 0)
+
+	intUserID, err := strconv.ParseInt(userID, 10, 64)
+	if err != nil {
+		return sessions, err
+	}
+
+	hexUserID := fmt.Sprintf("%016x", intUserID)
+
+	token, err := l.FetchAuthToken()
+	if err != nil {
+		return sessions, err
+	}
+
+	requiredFields := []string{}
+	sorts := []string{}
+	requiredFilters := make(map[string]interface{})
+
+	requiredFilters["billing2.user_id"] = hexUserID
+	requiredFilters[LOOKER_SAVES_VIEW+".date_date"] = "7 days"
+
+	query := v4.WriteQuery{
+		Model:   LOOKER_PROD_MODEL,
+		View:    LOOKER_SAVES_VIEW + "",
+		Fields:  &requiredFields,
+		Filters: &requiredFilters,
+		Sorts:   &sorts,
+	}
+
+	lookerBody, _ := json.Marshal(query)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
+	if err != nil {
+		return sessions, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	client := &http.Client{Timeout: time.Minute}
+	resp, err := client.Do(req)
+	if err != nil {
+		return sessions, err
+	}
+
+	defer resp.Body.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return sessions, err
+	}
+
+	if err = json.Unmarshal(buf.Bytes(), &sessions); err != nil {
+		return sessions, err
+	}
+
+	return sessions, nil
 }
 
 type LookerSave struct {

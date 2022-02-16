@@ -846,6 +846,8 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 	}
 
+	fmt.Printf("%+v", reply.Meta)
+
 	sort.Slice(reply.Meta.NearbyRelays, func(i, j int) bool {
 		return reply.Meta.NearbyRelays[i].ClientStats.RTT < reply.Meta.NearbyRelays[j].ClientStats.RTT
 	})
