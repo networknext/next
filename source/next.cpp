@@ -12814,8 +12814,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             next_platform_mutex_acquire( &server->session_mutex );
             session->previous_server_events = session->current_server_events;
             session->current_server_events = 0;
-            next_platform_mutex_release( &server->session_mutex );
             packet.server_events = session->previous_server_events;
+            next_platform_mutex_release( &server->session_mutex );
             packet.reported = session->stats_reported;
             packet.fallback_to_direct = session->stats_fallback_to_direct;
             packet.client_bandwidth_over_limit = session->stats_client_bandwidth_over_limit;
