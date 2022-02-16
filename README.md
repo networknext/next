@@ -2,7 +2,7 @@
 
 <br>
 
-## Network Next x enet
+## enet + Network Next
 
 ENet using Network Next to send and receive packets.
 
