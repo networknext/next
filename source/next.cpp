@@ -11730,7 +11730,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             memcpy( entry->near_relay_excluded, packet.near_relay_excluded, sizeof(entry->near_relay_excluded) );
             entry->high_frequency_pings = packet.high_frequency_pings;
 
-            entry->user_flags = 0;
+            if ( entry->user_flags != 0 )
+            {	
+            	char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            	next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed events %" PRIx64 " to backend for session %" PRIx64 " at address %s", entry->user_flags, entry->session_id, next_address_to_string( from, address_buffer ));
+            	entry->user_flags = 0;
+            }
 
             return;
         }   
@@ -12432,7 +12437,7 @@ void next_server_internal_event_user_flag( next_server_internal_t * server, cons
 
     entry->user_flags |= user_flags;
     char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds event user flag %" PRIx64 " as %" PRIx64 " (internal) for session at address %s", user_flags, entry->user_flags, next_address_to_string( address, buffer ) );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server set event %" PRIx64 " for session %" PRIx64 " at address %s", user_flags, entry->session_id, next_address_to_string( address, buffer ) );
 }
 
 bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
