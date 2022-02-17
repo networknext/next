@@ -25,10 +25,9 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <div style="display: inherit;flex-direction: column;" data-intercom="sdkDocumentation" data-tour="sdkDocumentation">
             <a
-              href="#"
               id="sdk-button"
               @click="downloadSDK()"
-              class="btn btn-primary m-1 btn-width"
+              class="btn btn-primary m-1 btn-width white-link"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
@@ -36,10 +35,9 @@
               SDK v4.0.16
             </a>
             <a
-              href="#"
               id="docs-button"
               @click="downloadUE4()"
-              class="btn btn-primary m-1 btn-width"
+              class="btn btn-primary m-1 btn-width white-link"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
@@ -47,10 +45,9 @@
               UE4 Plugin
             </a>
             <a
-              href="#"
               id="docs-button"
               @click="downloadDocs()"
-              class="btn btn-primary m-1 btn-width"
+              class="btn btn-primary m-1 btn-width white-link"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
@@ -58,10 +55,31 @@
               Documentation
             </a>
           </div>
+        </div>
+        <h5 class="card-title">
+            Network Next SDK
+        </h5>
       </div>
-      <h5 class="card-title">
-          Network Next SDK
-      </h5>
+      <hr />
+      <div class="card-body">
+        <div class="btn-group-vertical btn-group-sm float-right">
+          <div style="display: inherit;flex-direction: column;" data-intercom="dataReports" data-tour="dataReports">
+            <a
+              id="docs-button"
+              @click="download2022WhitePaper()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <font-awesome-icon icon="download"
+                                  class="fa-w-16 fa-fw"
+              />
+              Download
+            </a>
+          </div>
+        </div>
+        <h5>
+            State of the Internet for Real-Time Games 2022 Report <br />
+        </h5>
+        <div style="font-size: 90%;">Analysis of over 10 million player sessions identifies critical need for session analytics and selective augmented Internet services</div>
       </div>
     </div>
   </div>
@@ -75,7 +93,9 @@ import {
   SDK_DOWNLOAD_EVENT,
   SDK_DOWNLOAD_URL,
   UE4_PLUGIN_DOWNLOAD_EVENT,
-  UE4_PLUGIN_DOWNLOAD_URL
+  UE4_PLUGIN_DOWNLOAD_URL,
+  WHITE_PAPER_DOWNLOAD_EVENT,
+  WHITE_PAPER_DOWNLOAD_URL
 } from '@/components/types/Constants'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { Component, Vue } from 'vue-property-decorator'
@@ -104,6 +124,16 @@ export default class DownloadsWorkspace extends Vue {
           title: 'SDK & Documentation'
         },
         content: 'Get our open source SDK and view our latest Documentation here.<br><br>Integration instructions are in the Getting Started section of the Documentation.<br><br>Please contact us in chat (lower right) if you have any questions.',
+        params: {
+          placement: 'left'
+        }
+      },
+      {
+        target: '[data-tour="dataReports"]',
+        header: {
+          title: 'Reports'
+        },
+        content: 'Get access to Network Next curated reports that detail GDRP and CCPA compliant data analyses.',
         params: {
           placement: 'left'
         }
@@ -178,13 +208,27 @@ export default class DownloadsWorkspace extends Vue {
       customer_code: this.$store.getters.userProfile.companyCode
     })
   }
+
+  private download2022WhitePaper () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(WHITE_PAPER_DOWNLOAD_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(WHITE_PAPER_DOWNLOAD_URL)
+    this.$apiService.send2022WhitePaperDownloadNotifications({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
+  }
 }
 </script>
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
   .btn-width {
-    width: "160px";
+    min-width: 180px;
   }
   #sdk-button {
     border-color: #009FDF;
@@ -201,5 +245,8 @@ export default class DownloadsWorkspace extends Vue {
   #docs-button:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
+  }
+  .white-link {
+    color: white;
   }
 </style>
