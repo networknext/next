@@ -2818,3 +2818,184 @@ func TestCalculateRouteRelaysPrice_EgressPriceOverride(t *testing.T) {
 
 	assert.Equal(t, expectedRouteRelaysPrice, routeRelaysPrice)
 }
+
+func TestMatchDataHandlerFunc_BuyerNotFound(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	env.AddBuyer("local", false)
+
+	unknownPublicKey, unknownPrivateKey, err := crypto.GenerateCustomerKeyPair()
+	assert.NoError(t, err)
+
+	unknownPrivateKey = unknownPrivateKey[8:]
+
+	unknownBuyerID := binary.LittleEndian.Uint64(unknownPublicKey[:8])
+
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
+
+	matchDataConfig := test.MatchDataPacketConfig{
+		Version:       transport.SDKVersionLatest,
+		BuyerID:       unknownBuyerID,
+		ServerAddress: *serverAddr,
+		DatacenterID:  rand.Uint64(),
+		UserHash:      rand.Uint64(),
+		SessionID:     crypto.GenerateSessionID(),
+		MatchID:       rand.Uint64(),
+		PrivateKey:    unknownPrivateKey,
+	}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestData := env.GenerateMatchDataRequestPacket(matchDataConfig)
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+
+	handler := transport.MatchDataHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.MatchDataHandlerMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.MatchDataResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.MatchDataResponseUnknownBuyer), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.BuyerNotFound.Value())
+}
+
+func TestMatchDataHandlerFunc_BuyerNotLive(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", false)
+
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
+
+	matchDataConfig := test.MatchDataPacketConfig{
+		Version:       transport.SDKVersionLatest,
+		BuyerID:       buyerID,
+		ServerAddress: *serverAddr,
+		DatacenterID:  rand.Uint64(),
+		UserHash:      rand.Uint64(),
+		SessionID:     crypto.GenerateSessionID(),
+		MatchID:       rand.Uint64(),
+		PrivateKey:    privateKey,
+	}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestData := env.GenerateMatchDataRequestPacket(matchDataConfig)
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+
+	handler := transport.MatchDataHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.MatchDataHandlerMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.MatchDataResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.MatchDataResponseBuyerNotActive), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.BuyerNotActive.Value())
+}
+
+func TestMatchDataHandlerFunc_SigCheckFail(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
+
+	matchDataConfig := test.MatchDataPacketConfig{
+		Version:       transport.SDKVersionLatest,
+		BuyerID:       buyerID,
+		ServerAddress: *serverAddr,
+		DatacenterID:  rand.Uint64(),
+		UserHash:      rand.Uint64(),
+		SessionID:     crypto.GenerateSessionID(),
+		MatchID:       rand.Uint64(),
+		PrivateKey:    privateKey[2:],
+	}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestData := env.GenerateMatchDataRequestPacket(matchDataConfig)
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+
+	handler := transport.MatchDataHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.MatchDataHandlerMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.MatchDataResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.MatchDataResponseSignatureCheckFailed), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.SignatureCheckFailed.Value())
+}
+
+func TestMatchDataHandlerFunc_Success(t *testing.T) {
+	t.Parallel()
+
+	env := test.NewTestEnvironment(t)
+	buyerID, _, privateKey := env.AddBuyer("local", true)
+
+	serverAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:32202")
+	assert.NoError(t, err)
+
+	var matchValues [transport.MaxMatchValues]float64
+	for i := 0; i < transport.MaxMatchValues; i++ {
+		matchValues[i] = rand.ExpFloat64()
+	}
+
+	matchDataConfig := test.MatchDataPacketConfig{
+		Version:        transport.SDKVersionLatest,
+		BuyerID:        buyerID,
+		ServerAddress:  *serverAddr,
+		DatacenterID:   rand.Uint64(),
+		UserHash:       rand.Uint64(),
+		SessionID:      crypto.GenerateSessionID(),
+		MatchID:        rand.Uint64(),
+		NumMatchValues: transport.MaxMatchValues,
+		MatchValues:    matchValues,
+		PrivateKey:     privateKey,
+	}
+
+	metrics, err := metrics.NewServerBackendMetrics(context.Background(), &env.MetricsHandler)
+	assert.NoError(t, err)
+	responseBuffer := bytes.NewBuffer(nil)
+
+	requestData := env.GenerateMatchDataRequestPacket(matchDataConfig)
+
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
+
+	handler := transport.MatchDataHandlerFunc(env.GetDatabaseWrapper, postSessionHandler, metrics.MatchDataHandlerMetrics)
+	handler(responseBuffer, &transport.UDPPacket{
+		Data: requestData,
+	})
+
+	var responsePacket transport.MatchDataResponsePacket
+	err = transport.UnmarshalPacket(&responsePacket, responseBuffer.Bytes()[1+crypto.PacketHashSize:])
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(transport.MatchDataResponseOK), responsePacket.Response)
+	assert.Equal(t, float64(1), metrics.MatchDataHandlerMetrics.HandlerMetrics.Invocations.Value())
+	assert.Zero(t, metrics.MatchDataHandlerMetrics.BuyerNotFound.Value())
+	assert.Zero(t, metrics.MatchDataHandlerMetrics.BuyerNotActive.Value())
+	assert.Zero(t, metrics.MatchDataHandlerMetrics.SignatureCheckFailed.Value())
+}
