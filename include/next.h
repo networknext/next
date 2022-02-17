@@ -91,12 +91,12 @@
 #define NEXT_PLATFORM_XBOX_ONE                                    7
 #define NEXT_PLATFORM_XBOX_SERIES_X                               8
 #define NEXT_PLATFORM_PS5                                         9
-#define NEXT_PLATFORM_GDK                                         10
-#define NEXT_PLATFORM_MAX                                         10
+#define NEXT_PLATFORM_GDK                                        10
+#define NEXT_PLATFORM_MAX                                        10
 
 #define NEXT_MAX_TAGS                                             8
 
-#define NEXT_MAX_MATCH_VALUES                                     64
+#define NEXT_MAX_MATCH_VALUES                                    64
 
 #if defined(_WIN32)
 #define NOMINMAX
@@ -340,8 +340,6 @@ struct next_server_stats_t
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
 #define NEXT_SERVER_STATE_INITIALIZING              1
 #define NEXT_SERVER_STATE_INITIALIZED               2
-
-#define NEXT_MATCH_MAX_VALUES                      64
 
 struct next_server_t;
 
