@@ -13917,7 +13917,7 @@ void next_server_event( struct next_server_t * server, const struct next_address
     }
 }
 
-void next_server_match( struct next_server_t * server, const struct next_address_t * address, uint64_t match_id, const double * match_values, int num_match_values )
+void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values )
 {
     next_server_verify_sentinels( server );
 
@@ -13938,7 +13938,7 @@ void next_server_match( struct next_server_t * server, const struct next_address
 
     command->type = NEXT_SERVER_COMMAND_MATCH_DATA;
     command->address = *address;
-    command->match_id = match_id;
+    command->match_id = next_hash_string( match_id );
     memset( command->match_values, 0, sizeof(command->match_values) );
     for ( int i = 0; i < num_match_values; ++i )
     {

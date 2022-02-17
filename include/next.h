@@ -213,8 +213,6 @@ NEXT_EXPORT_FUNC void next_allocator( void * (*malloc_function)( void * context,
 
 NEXT_EXPORT_FUNC const char * next_user_id_string( uint64_t user_id, char * buffer );
 
-NEXT_EXPORT_FUNC uint64_t next_hash_string( const char * string );
-
 // -----------------------------------------
 
 struct next_address_t
@@ -373,7 +371,7 @@ NEXT_EXPORT_FUNC NEXT_BOOL next_server_autodetect_finished( next_server_t * serv
 
 NEXT_EXPORT_FUNC void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
 
-NEXT_EXPORT_FUNC void next_server_match( struct next_server_t * server, const struct next_address_t * address, uint64_t match_id, const double * match_values, int num_match_values );
+NEXT_EXPORT_FUNC void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );
 
 NEXT_EXPORT_FUNC void next_server_flush( struct next_server_t * server );
 
