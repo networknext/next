@@ -3126,3 +3126,34 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 	reply.URL = notifications.BuildLookerURL(urlOptions)
 	return nil
 }
+
+type TestLookerUserSessionLookupArgs struct {
+	UserID string `json:"user_id"`
+}
+type TestLookerUserSessionLookupReply struct {
+	Sessions []UserSession `json:"sessions"`
+}
+
+func (s *BuyersService) TestLookerUserSessionLookup(r *http.Request, args *TestLookerUserSessionLookupArgs, reply *TestLookerUserSessionLookupReply) error {
+	reply.Sessions = make([]UserSession, 0)
+
+	if args.UserID == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "UserID"
+		core.Error("TestLookerUserSessionLookup(): %v: UserID is required", err.Error())
+		return &err
+	}
+
+	lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(args.UserID)
+	if err != nil {
+		core.Error("TestLookerUserSessionLookup(): %v: Failed to generate nonce", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+		return &err
+	}
+
+	for _, session := range lookerUserSessions {
+		fmt.Printf("%+v\n", session)
+	}
+
+	return nil
+}

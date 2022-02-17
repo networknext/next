@@ -16,7 +16,6 @@ import (
 
 	"github.com/looker-open-source/sdk-codegen/go/rtl"
 	v4 "github.com/looker-open-source/sdk-codegen/go/sdk/v4"
-	"github.com/networknext/backend/modules/transport"
 )
 
 const (
@@ -114,19 +113,29 @@ func (l *LookerClient) FetchAuthToken() (string, error) {
 	return authResponse.AccessToken, nil
 }
 
+type LookerRelayHop struct {
+	ID   int64 `json:"REPLACE_ME.id"`
+	Name int64 `json:"REPLACE_ME.name"`
+}
+
+type LookerLocation struct {
+	Latitude  float32 `json:"REPLACE_ME.latitude"`
+	Longitude float32 `json:"REPLACE_ME.longitude"`
+}
+
 type LookerSessionMeta struct {
-	ID              int64   `json:"REPLACE_ME.session_id"`
-	UserHash        int64   `json:"REPLACE_ME.user_hash"`
-	DatacenterName  string  `json:"REPLACE_ME.datacenter_name"`
-	DatacenterAlias string  `json:"REPLACE_ME.datacenter_alias"`
-	OnNetworkNext   bool    `json:"REPLACE_ME.on_network_next"`
-	NextRTT         float64 `json:"REPLACE_ME.next_rtt"`
-	DirectRTT       float64 `json:"REPLACE_ME.direct_rtt"`
-	DeltaRTT        float64 `json:"REPLACE_ME.delta_rtt"`
-	// Location        routing.Location      `json:"REPLACE_ME.location"`
-	ClientAddr string `json:"REPLACE_ME.client_addr"`
-	ServerAddr string `json:"REPLACE_ME.server_addr"`
-	// Hops            []RelayHop            `json:"REPLACE_ME.hops"`
+	ID              int64          `json:"REPLACE_ME.session_id"`
+	UserHash        int64          `json:"REPLACE_ME.user_hash"`
+	DatacenterName  string         `json:"REPLACE_ME.datacenter_name"`
+	DatacenterAlias string         `json:"REPLACE_ME.datacenter_alias"`
+	OnNetworkNext   bool           `json:"REPLACE_ME.on_network_next"`
+	NextRTT         float64        `json:"REPLACE_ME.next_rtt"`
+	DirectRTT       float64        `json:"REPLACE_ME.direct_rtt"`
+	DeltaRTT        float64        `json:"REPLACE_ME.delta_rtt"`
+	Location        LookerLocation `json:"location"`
+	ClientAddr      string         `json:"REPLACE_ME.client_addr"`
+	ServerAddr      string         `json:"REPLACE_ME.server_addr"`
+	// Hops            []LookerRelayHop `json:"hops"`
 	SDK        string `json:"REPLACE_ME.sdk"`
 	Connection uint8  `json:"REPLACE_ME.connection"`
 	// NearbyRelays    []NearRelayPortalData `json:"REPLACE_ME.nearby_relays"`
@@ -134,52 +143,28 @@ type LookerSessionMeta struct {
 	BuyerID  int64 `json:"REPLACE_ME.customer_id"`
 }
 
-func (meta LookerSessionMeta) ConvertToSessionMeta() transport.SessionMeta {
-	returnMeta := transport.SessionMeta{}
-
-	returnMeta.ID = uint64(meta.ID)
-	returnMeta.UserHash = uint64(meta.UserHash)
-
-	returnMeta.DatacenterName = meta.DatacenterName
-	returnMeta.DatacenterAlias = meta.DatacenterAlias
-	returnMeta.OnNetworkNext = meta.OnNetworkNext
-	returnMeta.NextRTT = meta.NextRTT
-	returnMeta.DirectRTT = meta.DirectRTT
-	returnMeta.DeltaRTT = meta.DeltaRTT
-	returnMeta.ClientAddr = meta.ClientAddr
-	returnMeta.ServerAddr = meta.ServerAddr
-	returnMeta.SDK = meta.SDK
-	returnMeta.Connection = meta.Connection
-	returnMeta.Platform = uint8(meta.Platform)
-	returnMeta.BuyerID = uint64(meta.BuyerID)
-
-	return returnMeta
+type LookerSessionStats struct {
+	RTT        float64 `json:"REPLACE_ME.rtt"`
+	Jitter     float64 `json:"REPLACE_ME.jitter"`
+	PacketLoss float64 `json:"REPLACE_ME.packet_loss"`
 }
 
+type LookerSessionEnvelope struct {
+	Up   int64 `json:"REPLACE_ME.up"`
+	Down int64 `json:"REPLACE_ME.down"`
+}
 type LookerSessionSlice struct {
-	Timestamp time.Time `json:"REPLACE_ME.date_date"`
-	//Next                routing.Stats    `json:"next"`
-	//Direct              routing.Stats    `json:"direct"`
-	//Predicted           routing.Stats    `json:"predicted"`
-	//ClientToServerStats routing.Stats    `json:"client_to_server_stats"`
-	//ServerToClientStats routing.Stats    `json:"server_to_client_stats"`
-	RouteDiversity int32 `json:"route_diversity"`
-	//Envelope            routing.Envelope `json:"envelope"`
-	OnNetworkNext     bool `json:"on_network_next"`
-	IsMultiPath       bool `json:"is_multipath"`
-	IsTryBeforeYouBuy bool `json:"is_try_before_you_buy"`
-}
-
-func (slice LookerSessionSlice) ConvertToSessionSlice() transport.SessionSlice {
-	sessionSlice := transport.SessionSlice{}
-
-	sessionSlice.Timestamp = slice.Timestamp
-	sessionSlice.RouteDiversity = uint32(slice.RouteDiversity)
-	sessionSlice.OnNetworkNext = slice.OnNetworkNext
-	sessionSlice.IsMultiPath = slice.IsMultiPath
-	sessionSlice.IsTryBeforeYouBuy = slice.IsTryBeforeYouBuy
-
-	return sessionSlice
+	Timestamp           time.Time             `json:"REPLACE_ME.date_date"`
+	Next                LookerSessionStats    `json:"next"`
+	Direct              LookerSessionStats    `json:"direct"`
+	Predicted           LookerSessionStats    `json:"predicted"`
+	ClientToServerStats LookerSessionStats    `json:"client_to_server_stats"`
+	ServerToClientStats LookerSessionStats    `json:"server_to_client_stats"`
+	RouteDiversity      int32                 `json:"REPLACE_ME.route_diversity"`
+	Envelope            LookerSessionEnvelope `json:"envelope"`
+	OnNetworkNext       bool                  `json:"REPLACE_ME.on_network_next"`
+	IsMultiPath         bool                  `json:"REPLACE_ME.is_multipath"`
+	IsTryBeforeYouBuy   bool                  `json:"REPLACE_ME.is_try_before_you_buy"`
 }
 
 type LookerSession struct{}
@@ -244,31 +229,31 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string) (LookerSession, e
 }
 
 type LookerUserSession struct {
-	Meta      transport.SessionMeta `json:"meta"`
-	Timestamp time.Time             `json:"time_stamp"`
+	Meta      LookerSessionMeta `json:"meta"`
+	Timestamp time.Time         `json:"time_stamp"`
 }
 
 func (l *LookerClient) RunUserSessionsLookupQuery(userID string) ([]LookerUserSession, error) {
-	sessions := make([]LookerUserSession, 0)
+	querySessions := make([]LookerUserSession, 0)
 
 	intUserID, err := strconv.ParseInt(userID, 10, 64)
 	if err != nil {
-		return sessions, err
+		return querySessions, err
 	}
 
 	hexUserID := fmt.Sprintf("%016x", intUserID)
 
 	token, err := l.FetchAuthToken()
 	if err != nil {
-		return sessions, err
+		return querySessions, err
 	}
 
 	requiredFields := []string{}
 	sorts := []string{}
 	requiredFilters := make(map[string]interface{})
 
-	requiredFilters["billing2.user_id"] = hexUserID
-	requiredFilters[LOOKER_SAVES_VIEW+".date_date"] = "7 days"
+	requiredFilters["billing2_session_summary.user_hash"] = hexUserID
+	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".timestamp_date"] = "7 days"
 
 	query := v4.WriteQuery{
 		Model:   LOOKER_PROD_MODEL,
@@ -281,7 +266,7 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string) ([]LookerUserSe
 	lookerBody, _ := json.Marshal(query)
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
 	if err != nil {
-		return sessions, err
+		return querySessions, err
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -289,7 +274,7 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string) ([]LookerUserSe
 	client := &http.Client{Timeout: time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
-		return sessions, err
+		return querySessions, err
 	}
 
 	defer resp.Body.Close()
@@ -297,14 +282,14 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string) ([]LookerUserSe
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
-		return sessions, err
+		return querySessions, err
 	}
 
-	if err = json.Unmarshal(buf.Bytes(), &sessions); err != nil {
-		return sessions, err
+	if err = json.Unmarshal(buf.Bytes(), &querySessions); err != nil {
+		return querySessions, err
 	}
 
-	return sessions, nil
+	return querySessions, nil
 }
 
 type LookerSave struct {
@@ -344,7 +329,7 @@ func (l *LookerClient) RunSavesQuery(customerCode string) ([]LookerSave, error) 
 
 	query := v4.WriteQuery{
 		Model:   LOOKER_PROD_MODEL,
-		View:    LOOKER_SAVES_VIEW + "",
+		View:    LOOKER_SAVES_VIEW,
 		Fields:  &requiredFields,
 		Filters: &requiredFilters,
 		Limit:   &rowLimit,
@@ -585,11 +570,6 @@ func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, requestID 
 	urlOptions.UserAttributes["customer_code"] = customerCode
 
 	return BuildLookerURL(urlOptions), nil
-}
-
-func (l *LookerClient) GenerateAnalyticsCategories(userID string, customerCode string, showPremium bool) error {
-	// TODO: Implement with storer
-	return nil
 }
 
 func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {
