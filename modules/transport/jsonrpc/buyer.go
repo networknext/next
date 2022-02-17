@@ -846,8 +846,6 @@ func (s *BuyersService) SessionDetails(r *http.Request, args *SessionDetailsArgs
 		}
 	}
 
-	fmt.Printf("%+v", reply.Meta)
-
 	sort.Slice(reply.Meta.NearbyRelays, func(i, j int) bool {
 		return reply.Meta.NearbyRelays[i].ClientStats.RTT < reply.Meta.NearbyRelays[j].ClientStats.RTT
 	})
@@ -3128,7 +3126,8 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 }
 
 type TestLookerUserSessionLookupArgs struct {
-	UserID string `json:"user_id"`
+	UserID    string `json:"user_id"`
+	Timeframe string `json:"time_frame"`
 }
 type TestLookerUserSessionLookupReply struct {
 	Sessions []UserSession `json:"sessions"`
@@ -3144,15 +3143,50 @@ func (s *BuyersService) TestLookerUserSessionLookup(r *http.Request, args *TestL
 		return &err
 	}
 
-	lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(args.UserID)
+	lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(args.UserID, args.Timeframe)
 	if err != nil {
-		core.Error("TestLookerUserSessionLookup(): %v: Failed to generate nonce", err.Error())
+		core.Error("TestLookerUserSessionLookup(): %v:", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
 		return &err
 	}
 
 	for _, session := range lookerUserSessions {
-		fmt.Printf("%+v\n", session)
+		timeStamp, err := time.Parse("2006-01-02 15:04:05", session.Timestamp)
+		if err != nil {
+			core.Error("TestLookerUserSessionLookup(): Failed to parse timestamp in UTC: %v:", err.Error())
+			continue
+		}
+
+		connection, err := strconv.ParseUint(session.Connection, 10, 8)
+		if err != nil {
+			core.Error("TestLookerUserSessionLookup(): Failed to parse connection type: %v:", err.Error())
+			continue
+		}
+
+		platform, err := strconv.ParseUint(session.Platform, 10, 8)
+		if err != nil {
+			core.Error("TestLookerUserSessionLookup(): Failed to parse platform type: %v:", err.Error())
+			continue
+		}
+
+		reply.Sessions = append(reply.Sessions, UserSession{
+			Timestamp: timeStamp,
+			Meta: transport.SessionMeta{
+				ID:       uint64(session.SessionID),
+				UserHash: uint64(session.UserHash),
+				// BuyerID:    uint64(session.BuyerID),
+				Connection: uint8(connection),
+				Location: routing.Location{
+					ISP: session.ISP,
+					// Latitude:  float32(session.Latitude),
+					// Longitude: float32(session.Longitude),
+				},
+				Platform:        uint8(platform),
+				DatacenterName:  session.DatacenterName,
+				DatacenterAlias: session.DatacenterAlias,
+				// ServerAddr: session.ServerAddress,
+			},
+		})
 	}
 
 	return nil

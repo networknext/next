@@ -32,6 +32,7 @@ const (
 	LOOKER_SAVES_VIEW           = "daily_big_saves"
 	LOOKER_BILLING2_VIEW        = "billing2"
 	LOOKER_SESSION_SUMMARY_VIEW = "billing2_session_summary"
+	LOOKER_DATACENTER_INFO_VIEW = "datacenter_info_v3"
 )
 
 type LookerWebhookAttachment struct {
@@ -113,87 +114,98 @@ func (l *LookerClient) FetchAuthToken() (string, error) {
 	return authResponse.AccessToken, nil
 }
 
-type LookerRelayHop struct {
-	ID   int64 `json:"REPLACE_ME.id"`
-	Name int64 `json:"REPLACE_ME.name"`
-}
-
-type LookerLocation struct {
-	Latitude  float32 `json:"REPLACE_ME.latitude"`
-	Longitude float32 `json:"REPLACE_ME.longitude"`
-}
-
 type LookerSessionMeta struct {
-	ID              int64          `json:"REPLACE_ME.session_id"`
-	UserHash        int64          `json:"REPLACE_ME.user_hash"`
-	DatacenterName  string         `json:"REPLACE_ME.datacenter_name"`
-	DatacenterAlias string         `json:"REPLACE_ME.datacenter_alias"`
-	OnNetworkNext   bool           `json:"REPLACE_ME.on_network_next"`
-	NextRTT         float64        `json:"REPLACE_ME.next_rtt"`
-	DirectRTT       float64        `json:"REPLACE_ME.direct_rtt"`
-	DeltaRTT        float64        `json:"REPLACE_ME.delta_rtt"`
-	Location        LookerLocation `json:"location"`
-	ClientAddr      string         `json:"REPLACE_ME.client_addr"`
-	ServerAddr      string         `json:"REPLACE_ME.server_addr"`
-	// Hops            []LookerRelayHop `json:"hops"`
-	SDK        string `json:"REPLACE_ME.sdk"`
-	Connection uint8  `json:"REPLACE_ME.connection"`
-	// NearbyRelays    []NearRelayPortalData `json:"REPLACE_ME.nearby_relays"`
-	Platform int8  `json:"REPLACE_ME.platform"`
-	BuyerID  int64 `json:"REPLACE_ME.customer_id"`
+	Timestamp       string  `json:"billing2_session_summary.start_timestamp_time"`
+	SessionID       int64   `json:"billing2_session_summary.session_id"`
+	UserHash        int64   `json:"billing2_session_summary.user_hash"`
+	Platform        string  `json:"billing2_session_summary.platform_type_label"`
+	Connection      string  `json:"billing2_session_summary.connection_type_label"`
+	ISP             string  `json:"billing2_session_summary.isp"`
+	Longitude       float64 `json:"billing2_session_summary.longitude,omitempty"`
+	Latitude        float64 `json:"billing2_session_summary.latitude,omitempty"`
+	BuyerID         int64   `json:"billing2_session_summary.buyer_id,omitempty"`
+	SDK             int64   `json:"billing2_session_summary.sdk_version,omitempty"`
+	CustomerAddress float64 `json:"billing2_session_summary.customer_address,omitempty"`
+	// ServerAddress   float64 `json:"billing2_session_summary.server_address"`
+	DatacenterName  string `json:"datacenter_info_v3.datacenter_name"`
+	DatacenterAlias string `json:"datacenter_info_v3.alias"`
 }
 
-type LookerSessionStats struct {
-	RTT        float64 `json:"REPLACE_ME.rtt"`
-	Jitter     float64 `json:"REPLACE_ME.jitter"`
-	PacketLoss float64 `json:"REPLACE_ME.packet_loss"`
-}
-
-type LookerSessionEnvelope struct {
-	Up   int64 `json:"REPLACE_ME.up"`
-	Down int64 `json:"REPLACE_ME.down"`
-}
 type LookerSessionSlice struct {
-	Timestamp           time.Time             `json:"REPLACE_ME.date_date"`
-	Next                LookerSessionStats    `json:"next"`
-	Direct              LookerSessionStats    `json:"direct"`
-	Predicted           LookerSessionStats    `json:"predicted"`
-	ClientToServerStats LookerSessionStats    `json:"client_to_server_stats"`
-	ServerToClientStats LookerSessionStats    `json:"server_to_client_stats"`
-	RouteDiversity      int32                 `json:"REPLACE_ME.route_diversity"`
-	Envelope            LookerSessionEnvelope `json:"envelope"`
-	OnNetworkNext       bool                  `json:"REPLACE_ME.on_network_next"`
-	IsMultiPath         bool                  `json:"REPLACE_ME.is_multipath"`
-	IsTryBeforeYouBuy   bool                  `json:"REPLACE_ME.is_try_before_you_buy"`
+	Timestamp                 string  `json:"REPLACE_ME.timestamp"`
+	NextRTT                   float64 `json:"REPLACE_ME.next_rtt"`
+	NextJitter                float64 `json:"REPLACE_ME.next_jitter"`
+	NextPacketLoss            float64 `json:"REPLACE_ME.next_pl"`
+	DirectRTT                 float64 `json:"REPLACE_ME.direct_rtt"`
+	DirectJitter              float64 `json:"REPLACE_ME.direct_jitter"`
+	DirectPacketLoss          float64 `json:"REPLACE_ME.direct_pl"`
+	PredictedRTT              float64 `json:"REPLACE_ME.predicted_rtt"`
+	PredictedJitter           float64 `json:"REPLACE_ME.predicted_jitter"`
+	PredictedPacketLoss       float64 `json:"REPLACE_ME.predicted_pl"`
+	ClientToServerRTT         float64 `json:"REPLACE_ME.client_to_server_rtt"`
+	ClientToServerJitter      float64 `json:"REPLACE_ME.client_to_server_jitter"`
+	ClientToServerPacketLoss  float64 `json:"REPLACE_ME.client_to_server_pl"`
+	ServerToClientsRTT        float64 `json:"REPLACE_ME.server_to_client_rtt"`
+	ServerToClientsJitter     float64 `json:"REPLACE_ME.server_to_client_jitter"`
+	ServerToClientsPacketLoss float64 `json:"REPLACE_ME.server_to_client_pl"`
+	RouteDiversity            uint32  `json:"REPLACE_ME.route_diversity"`
+	EnvelopeUp                int64   `json:"REPLACE_ME.envelope_up"`
+	EnvelopeDown              int64   `json:"REPLACE_ME.envelope_down"`
+	OnNetworkNext             bool    `json:"REPLACE_ME.on_network_next"`
+	IsMultiPath               bool    `json:"REPLACE_ME.is_multipath"`
+	IsTryBeforeYouBuy         bool    `json:"REPLACE_ME.is_try_before_you_buy"`
 }
 
-type LookerSession struct{}
+type LookerSession struct {
+	Meta   LookerSessionMeta
+	Slices []LookerSessionSlice
+}
 
-func (l *LookerClient) RunSessionLookupQuery(sessionID string) (LookerSession, error) {
-	session := LookerSession{}
+func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string) (LookerSession, error) {
+	querySessionMeta := LookerSessionMeta{}
+	querySessionSlices := make([]LookerSessionSlice, 0)
 
-	intSessionID, err := strconv.ParseInt(sessionID, 10, 64)
+	uintID64, err := strconv.ParseUint(sessionID, 16, 64)
 	if err != nil {
-		return session, err
+		return LookerSession{}, err
 	}
 
-	hexSessionID := fmt.Sprintf("%016x", intSessionID)
+	queryTimeFrame := timeFrame
+
+	if queryTimeFrame == "" {
+		queryTimeFrame = "7 days"
+	}
 
 	token, err := l.FetchAuthToken()
 	if err != nil {
-		return session, err
+		return LookerSession{}, err
 	}
 
-	requiredFields := []string{}
+	requiredFields := []string{
+		LOOKER_SESSION_SUMMARY_VIEW + ".start_timestamp_time",
+		LOOKER_SESSION_SUMMARY_VIEW + ".session_id",
+		LOOKER_SESSION_SUMMARY_VIEW + ".buyer_id",
+		LOOKER_SESSION_SUMMARY_VIEW + ".user_hash",
+		LOOKER_SESSION_SUMMARY_VIEW + ".platform_type_label",
+		LOOKER_SESSION_SUMMARY_VIEW + ".connection_type_label",
+		LOOKER_SESSION_SUMMARY_VIEW + ".isp",
+		LOOKER_SESSION_SUMMARY_VIEW + ".latitude",
+		LOOKER_SESSION_SUMMARY_VIEW + ".longitude",
+		LOOKER_SESSION_SUMMARY_VIEW + ".sdk_version",
+		LOOKER_DATACENTER_INFO_VIEW + ".datacenter_name",
+		LOOKER_DATACENTER_INFO_VIEW + ".customer_address",
+		// LOOKER_DATACENTER_INFO_VIEW + ".server_address",
+		LOOKER_DATACENTER_INFO_VIEW + ".alias",
+	}
 	sorts := []string{}
 	requiredFilters := make(map[string]interface{})
 
-	requiredFilters["billing2.session_id"] = hexSessionID
-	requiredFilters[LOOKER_SAVES_VIEW+".date_date"] = "7 days"
+	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".session_id"] = fmt.Sprintf("%d", int64(uintID64))
+	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".start_timestamp_date"] = queryTimeFrame
 
 	query := v4.WriteQuery{
 		Model:   LOOKER_PROD_MODEL,
-		View:    LOOKER_SAVES_VIEW + "",
+		View:    LOOKER_SESSION_SUMMARY_VIEW,
 		Fields:  &requiredFields,
 		Filters: &requiredFilters,
 		Sorts:   &sorts,
@@ -202,7 +214,7 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string) (LookerSession, e
 	lookerBody, _ := json.Marshal(query)
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
 	if err != nil {
-		return session, err
+		return LookerSession{}, err
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
@@ -210,7 +222,7 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string) (LookerSession, e
 	client := &http.Client{Timeout: time.Minute}
 	resp, err := client.Do(req)
 	if err != nil {
-		return session, err
+		return LookerSession{}, err
 	}
 
 	defer resp.Body.Close()
@@ -218,46 +230,62 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string) (LookerSession, e
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
-		return session, err
+		return LookerSession{}, err
 	}
 
-	if err = json.Unmarshal(buf.Bytes(), &session); err != nil {
-		return session, err
+	if err = json.Unmarshal(buf.Bytes(), &querySessionMeta); err != nil {
+		return LookerSession{}, err
 	}
 
-	return session, nil
+	// TODO: Add slice call here if needed
+
+	return LookerSession{
+		Meta:   querySessionMeta,
+		Slices: querySessionSlices,
+	}, nil
 }
 
-type LookerUserSession struct {
-	Meta      LookerSessionMeta `json:"meta"`
-	Timestamp time.Time         `json:"time_stamp"`
-}
+func (l *LookerClient) RunUserSessionsLookupQuery(userID string, timeFrame string) ([]LookerSessionMeta, error) { // Timeframes 7, 10, 30, 60, 90
+	querySessions := make([]LookerSessionMeta, 0)
 
-func (l *LookerClient) RunUserSessionsLookupQuery(userID string) ([]LookerUserSession, error) {
-	querySessions := make([]LookerUserSession, 0)
-
-	intUserID, err := strconv.ParseInt(userID, 10, 64)
+	uintID64, err := strconv.ParseUint(userID, 16, 64)
 	if err != nil {
 		return querySessions, err
 	}
 
-	hexUserID := fmt.Sprintf("%016x", intUserID)
+	// TODO: If nothing comes back from looker for this ID, try hashing it and try again - similar to bigtable implementation
+
+	queryTimeFrame := timeFrame
+
+	if queryTimeFrame == "" {
+		queryTimeFrame = "7 days"
+	}
 
 	token, err := l.FetchAuthToken()
 	if err != nil {
 		return querySessions, err
 	}
 
-	requiredFields := []string{}
+	requiredFields := []string{
+		LOOKER_SESSION_SUMMARY_VIEW + ".start_timestamp_time",
+		LOOKER_SESSION_SUMMARY_VIEW + ".session_id",
+		LOOKER_SESSION_SUMMARY_VIEW + ".user_hash",
+		LOOKER_SESSION_SUMMARY_VIEW + ".platform_type_label",
+		LOOKER_SESSION_SUMMARY_VIEW + ".connection_type_label",
+		LOOKER_SESSION_SUMMARY_VIEW + ".isp",
+		LOOKER_DATACENTER_INFO_VIEW + ".datacenter_name",
+		// LOOKER_DATACENTER_INFO_VIEW + ".server_address",
+		LOOKER_DATACENTER_INFO_VIEW + ".alias",
+	}
 	sorts := []string{}
 	requiredFilters := make(map[string]interface{})
 
-	requiredFilters["billing2_session_summary.user_hash"] = hexUserID
-	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".timestamp_date"] = "7 days"
+	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".user_hash"] = fmt.Sprintf("%d", int64(uintID64))
+	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".start_timestamp_date"] = queryTimeFrame
 
 	query := v4.WriteQuery{
 		Model:   LOOKER_PROD_MODEL,
-		View:    LOOKER_SAVES_VIEW + "",
+		View:    LOOKER_SESSION_SUMMARY_VIEW,
 		Fields:  &requiredFields,
 		Filters: &requiredFilters,
 		Sorts:   &sorts,
