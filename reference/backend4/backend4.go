@@ -34,6 +34,8 @@ import (
 
 const NEXT_MAX_TAGS = 8
 
+const NEXT_MAX_MATCH_VALUES = 64
+
 const NEXT_MAX_ROUTE_RELAYS = 5
 
 const NEXT_MAX_SESSION_DATA_BYTES = 511
@@ -49,6 +51,8 @@ const NEXT_BACKEND_SESSION_UPDATE_PACKET = 221
 const NEXT_BACKEND_SESSION_RESPONSE_PACKET = 222
 const NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET = 223
 const NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET = 224
+const NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET = 225
+const NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET = 226
 
 const NEXT_MAX_PACKET_BYTES = 4096
 const NEXT_MTU = 1300
@@ -91,6 +95,11 @@ const NEXT_SERVER_INIT_RESPONSE_UNKNOWN_CUSTOMER = 1
 const NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER = 2
 const NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD = 3
 const NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED = 4
+
+const NEXT_MATCH_DATA_RESPONSE_OK = 0
+const NEXT_MATCH_DATA_RESPONSE_UNKNOWN_CUSTOMER = 1
+const NEXT_MATCH_DATA_RESPONSE_SIGNATURE_CHECK_FAILED = 2
+const NEXT_MATCH_DATA_RESPONSE_CUSTOMER_NOT_ACTIVE = 3
 
 const NEXT_PACKET_HASH_BYTES = 8
 
@@ -514,6 +523,62 @@ func (packet *SessionData) Serialize(stream Stream) error {
 		}
 	}
 
+	return stream.Error()
+}
+
+// ------------------------------------------------------------------------------------------
+
+type NextBackendMatchDataRequestPacket struct {
+	VersionMajor   uint32
+	VersionMinor   uint32
+	VersionPatch   uint32
+	CustomerId     uint64
+	ServerAddress  net.UDPAddr
+	DatacenterId   uint64
+	UserHash       uint64
+	SessionId      uint64
+	RetryNumber    uint32
+	MatchId        uint64
+	NumMatchValues int32
+	MatchValues    [NEXT_MAX_MATCH_VALUES]float64
+}
+
+func (packet *NextBackendMatchDataRequestPacket) Serialize(stream Stream) error {
+	stream.SerializeBits(&packet.VersionMajor, 8)
+	stream.SerializeBits(&packet.VersionMinor, 8)
+	stream.SerializeBits(&packet.VersionPatch, 8)
+	stream.SerializeUint64(&packet.CustomerId)
+	stream.SerializeAddress(&packet.ServerAddress)
+	stream.SerializeUint64(&packet.DatacenterId)
+	stream.SerializeUint64(&packet.UserHash)
+	stream.SerializeUint64(&packet.SessionId)
+	stream.SerializeUint32(&packet.RetryNumber)
+	stream.SerializeUint64(&packet.MatchId)
+
+	hasMatchValues := stream.IsWriting() && packet.NumMatchValues > 0
+
+	stream.SerializeBool(&hasMatchValues)
+
+	if hasMatchValues {
+		stream.SerializeInteger(&packet.NumMatchValues, 0, NEXT_MAX_MATCH_VALUES)
+		for i := 0; i < int(packet.NumMatchValues); i++ {
+			stream.SerializeFloat64(&packet.MatchValues[i])
+		}
+	}
+
+	return stream.Error()
+}
+
+// ------------------------------------------------------------------------------------------
+
+type NextBackendMatchDataResponsePacket struct {
+	SessionId uint64
+	Response  uint32
+}
+
+func (packet *NextBackendMatchDataResponsePacket) Serialize(stream Stream) error {
+	stream.SerializeUint64(&packet.SessionId)
+	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
 }
 
@@ -2672,6 +2737,46 @@ func main() {
 			writeStream.SerializeUint64(&hash)
 			if err := sessionResponse.Serialize(writeStream, sessionUpdate.VersionMajor, sessionUpdate.VersionMinor, sessionUpdate.VersionPatch); err != nil {
 				fmt.Printf("error: failed to write session response packet: %v\n", err)
+				continue
+			}
+			writeStream.Flush()
+
+			responsePacketData := writeStream.GetData()[0:writeStream.GetBytesProcessed()]
+
+			responsePacketData = SignNetworkNextPacket(responsePacketData, backendPrivateKey[:])
+
+			HashNetworkNextPacket(responsePacketData)
+
+			_, err = connection.WriteToUDP(responsePacketData, from)
+			if err != nil {
+				fmt.Printf("error: failed to send udp response: %v\n", err)
+				continue
+			}
+		} else if packetType == NEXT_BACKEND_MATCH_DATA_REQUEST_PACKET {
+			readStream := CreateReadStream(packetData[1:])
+
+			matchDataRequest := &NextBackendMatchDataRequestPacket{}
+			if err := matchDataRequest.Serialize(readStream); err != nil {
+				fmt.Printf("error: failed to read match data request packet: %v\n", err)
+				continue
+			}
+
+			matchDataResponse := &NextBackendMatchDataResponsePacket{}
+			matchDataResponse.SessionId = matchDataRequest.SessionId
+			matchDataResponse.Response = NEXT_MATCH_DATA_RESPONSE_OK
+
+			writeStream, err := CreateWriteStream(NEXT_MAX_PACKET_BYTES)
+			if err != nil {
+				fmt.Printf("error: failed to write match data response packet: %v\n", err)
+				continue
+			}
+
+			responsePacketType := uint32(NEXT_BACKEND_MATCH_DATA_RESPONSE_PACKET)
+			writeStream.SerializeBits(&responsePacketType, 8)
+			hash := uint64(0)
+			writeStream.SerializeUint64(&hash)
+			if err := matchDataResponse.Serialize(writeStream); err != nil {
+				fmt.Printf("error: failed to write match data response packet: %v\n", err)
 				continue
 			}
 			writeStream.Flush()
