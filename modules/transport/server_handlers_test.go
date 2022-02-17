@@ -13,6 +13,7 @@ import (
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/core"
 	"github.com/networknext/backend/modules/crypto"
+	md "github.com/networknext/backend/modules/match_data"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/routing"
 	"github.com/networknext/backend/modules/storage"
@@ -692,7 +693,7 @@ func TestServerUpdateHandlerFunc_BuyerNotFound(t *testing.T) {
 
 	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, unknownBuyerID, datacenterID, datacenterName, 10, "10.0.0.1", unknownPrivateKey)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	serverTracker := storage.NewServerTracker()
 
@@ -719,7 +720,7 @@ func TestServerUpdateHandlerFunc_BuyerNotLive(t *testing.T) {
 
 	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, 10, "10.0.0.1", privateKey)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	serverTracker := storage.NewServerTracker()
 
@@ -746,7 +747,7 @@ func TestServerUpdateHandlerFunc_SigCheckFail(t *testing.T) {
 
 	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, 10, "10.0.0.1", privateKey[2:])
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	serverTracker := storage.NewServerTracker()
 
@@ -773,7 +774,7 @@ func TestServerUpdateHandlerFunc_SDKToOld(t *testing.T) {
 
 	requestData := env.GenerateServerUpdatePacket(transport.SDKVersion{3, 0, 0}, buyerID, datacenterID, datacenterName, 10, "10.0.0.1", privateKey)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	serverTracker := storage.NewServerTracker()
 
@@ -800,7 +801,7 @@ func TestServerUpdateHandlerFunc_DatacenterNotFound(t *testing.T) {
 
 	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, 10, "10.0.0.1", privateKey)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	serverTracker := storage.NewServerTracker()
 
@@ -825,7 +826,7 @@ func TestServerUpdateHandlerFunc_Success(t *testing.T) {
 
 	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, buyerID, datacenter.ID, datacenter.Name, 10, "10.0.0.1", privateKey)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	serverTracker := storage.NewServerTracker()
 
@@ -852,7 +853,7 @@ func TestServerUpdateHandlerFunc_ServerTracker_DatacenterNotFound(t *testing.T) 
 
 	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, buyerID, datacenterID, datacenterName, 10, "10.0.0.1", privateKey)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	serverTracker := storage.NewServerTracker()
 
@@ -885,7 +886,7 @@ func TestServerUpdateHandlerFunc_ServerTracker_DatacenterFound(t *testing.T) {
 
 	requestData := env.GenerateServerUpdatePacket(transport.SDKVersionLatest, buyerID, datacenter.ID, datacenter.Name, 10, "10.0.0.1", privateKey)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	serverTracker := storage.NewServerTracker()
 
@@ -948,7 +949,7 @@ func TestSessionUpdateHandlerFunc_Pre_BuyerNotFound(t *testing.T) {
 
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = unknownBuyerID
 
 	assert.True(t, transport.SessionPre(&state))
@@ -970,7 +971,7 @@ func TestSessionUpdateHandlerFunc_Pre_BuyerNotLive(t *testing.T) {
 
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 
 	assert.True(t, transport.SessionPre(&state))
@@ -992,7 +993,7 @@ func TestSessionUpdateHandlerFunc_Pre_SigCheckFail(t *testing.T) {
 
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey[2:])
@@ -1017,7 +1018,7 @@ func TestSessionUpdateHandlerFunc_Pre_ClientTimedOut(t *testing.T) {
 
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 	state.Packet.ClientPingTimedOut = true
 
@@ -1043,7 +1044,7 @@ func TestSessionUpdateHandlerFunc_Pre_LocationVeto(t *testing.T) {
 
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 	state.Packet.ClientPingTimedOut = false
 
@@ -1072,7 +1073,7 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound(t *testing.T) {
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
 	state.Packet.DatacenterID = crypto.HashID("unknown.datacenter.name")
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
@@ -1106,7 +1107,7 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotFound_AnalysisOnly(t *testing
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
 	state.Packet.DatacenterID = crypto.HashID("unknown.datacenter.name")
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 	state.RouteMatrix = env.GetRouteMatrix()
 
@@ -1139,7 +1140,7 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled(t *testing.T) {
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
 	state.Packet.DatacenterID = datacenter.ID
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 
 	requestData := env.GenerateEmptySessionUpdatePacket(privateKey)
@@ -1174,7 +1175,7 @@ func TestSessionUpdateHandlerFunc_Pre_DatacenterNotEnabled_AnalysisOnly(t *testi
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
 	state.Packet.DatacenterID = datacenter.ID
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 	state.RouteMatrix = env.GetRouteMatrix()
 
@@ -1208,7 +1209,7 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter(t *testing.T) {
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
 	state.Packet.DatacenterID = datacenter.ID
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 	state.RouteMatrix = env.GetRouteMatrix()
 
@@ -1244,7 +1245,7 @@ func TestSessionUpdateHandlerFunc_Pre_NoRelaysInDatacenter_AnalysisOnly(t *testi
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
 	state.Packet.DatacenterID = datacenter.ID
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 	state.RouteMatrix = env.GetRouteMatrix()
 
@@ -1278,7 +1279,7 @@ func TestSessionUpdateHandlerFunc_Pre_StaleRouteMatrix(t *testing.T) {
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
 	state.Packet.DatacenterID = datacenter.ID
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 	state.StaleDuration = time.Second * 20
 	state.RouteMatrix = env.GetRouteMatrix()
@@ -1316,7 +1317,7 @@ func TestSessionUpdateHandlerFunc_Pre_Success(t *testing.T) {
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
 	state.Packet.DatacenterID = datacenter.ID
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 	state.StaleDuration = time.Second * 20
 	state.RouteMatrix = env.GetRouteMatrix()
@@ -1352,7 +1353,7 @@ func TestSessionUpdateHandlerFunc_Pre_Success_AnalysisOnly(t *testing.T) {
 	state.Metrics = metrics.SessionUpdateMetrics
 	state.Database = env.GetDatabaseWrapper()
 	state.Packet.DatacenterID = datacenter.ID
-	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	state.PostSessionHandler = transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 	state.Packet.BuyerID = buyerID
 	state.StaleDuration = time.Second * 20
 	state.RouteMatrix = env.GetRouteMatrix()
@@ -2337,7 +2338,7 @@ func TestSessionUpdateHandlerFunc_BuyerNotFound_NoResponse(t *testing.T) {
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	sessionUpdateConfig := test.SessionUpdatePacketConfig{
 		Version:      transport.SDKVersionLatest,
@@ -2386,7 +2387,7 @@ func TestSessionUpdateHandlerFunc_SigCheckFailed_NoResponse(t *testing.T) {
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	sessionUpdateConfig := test.SessionUpdatePacketConfig{
 		Version:      transport.SDKVersionLatest,
@@ -2437,7 +2438,7 @@ func TestSessionUpdateHandlerFunc_DirectResponse(t *testing.T) {
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	sessionUpdateConfig := test.SessionUpdatePacketConfig{
 		Version:      transport.SDKVersionLatest,
@@ -2514,7 +2515,7 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_NextResponse(t *testi
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	sessionDataConfig := test.SessionDataConfig{
 		Version:     transport.SessionDataVersion,
@@ -2614,7 +2615,7 @@ func TestSessionUpdateHandlerFunc_SessionMakeRouteDecision_ContinueResponse(t *t
 	localMultiPathVetoHandler, err := storage.NewLocalMultipathVetoHandler("", env.GetDatabaseWrapper)
 	assert.NoError(t, err)
 
-	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, metrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(4, 0, nil, 10, nil, 0, false, &billing.NoOpBiller{}, true, &md.NoOpMatcher{}, metrics.PostSessionMetrics)
 
 	sessionDataConfig := test.SessionDataConfig{
 		Version:        transport.SessionDataVersion,
