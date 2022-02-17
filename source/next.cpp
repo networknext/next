@@ -444,10 +444,11 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
-bool next_platform_getenv_bool(const char *name)
+bool next_platform_getenv_bool(const char * name )
 {
-    const char *v = next_platform_getenv(name);
-    if (v != NULL && v[0]) {
+    const char * v = next_platform_getenv( name );
+    if ( v != NULL && v[0] ) 
+    {
         return v[0] == '1' || v[0] == 't' || v[0] == 'T';
     }
     return false;
