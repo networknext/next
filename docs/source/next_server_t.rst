@@ -616,8 +616,8 @@ You can define up to 64 event flags for your game, one for each bit in the *serv
 	{
 		GAME_EVENT_RESPAWNED = (1<<0),
 		GAME_EVENT_CATCH = (1<<1),
-		GAME_EVENT_THROW = (1<<2)
-		GAME_EVENT_KNOCKED_OUT = (1<<3)
+		GAME_EVENT_THROW = (1<<2),
+		GAME_EVENT_KNOCKED_OUT = (1<<3),
 		GAME_EVENT_WON_MATCH = (1<<4),
 		GAME_EVENT_LOST_MATCH = (1<<5),
 		// ...
