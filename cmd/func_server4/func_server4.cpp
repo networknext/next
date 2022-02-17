@@ -41,6 +41,7 @@ bool no_upgrade = false;
 int upgrade_count = 0;
 int num_upgrades = 0;
 bool tags_multi = false;
+bool match_data = false;
 
 extern bool next_packet_loss;
 
@@ -101,6 +102,15 @@ void server_packet_received( next_server_t * server, void * context, const next_
                 client_map.erase( itor );
             }
             client_map.insert( std::make_pair( address_string, client_id ) );
+        }
+
+        if ( next_server_session_upgraded( server, from ) )
+        {
+            if ( match_data )
+            {
+                const double match_values[] = {10.10f, 20.20f, 30.30f};
+                next_server_match( server, from, "test match id", match_values, sizeof(match_values) );
+            }
         }
     }
 }
@@ -168,6 +178,12 @@ int main()
     if ( server_tags_multi_env )
     {
         tags_multi = true;
+    }
+
+    const char * match_data_env = getenv( "SERVER_MATCH_DATA" );
+    if ( match_data_env )
+    {
+        match_data = true;
     }
 
     bool restarted = false;

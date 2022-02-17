@@ -52,6 +52,8 @@ const BACKEND_MODE_TAGS = 13
 const BACKEND_MODE_DIRECT_STATS = 14
 const BACKEND_MODE_NEXT_STATS = 15
 const BACKEND_MODE_NEAR_RELAY_STATS = 16
+const BACKEND_MODE_MATCH_ID = 17
+const BACKEND_MODE_MATCH_VALUES = 18
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -416,6 +418,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		}
 	}
 
+	// TODO: rework this for server events
 	if backend.mode == BACKEND_MODE_USER_FLAGS {
 		if sessionUpdate.SliceNumber >= 2 && sessionUpdate.UserFlags != 0x123 {
 			panic("user flags not set on session update")
@@ -557,6 +560,44 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 }
 
+func MatchDataHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
+	var matchDataRequest transport.MatchDataRequestPacket
+	if err := transport.UnmarshalPacket(&matchDataRequest, incoming.Data); err != nil {
+		fmt.Printf("error: failed to read match data request packet: %v\n", err)
+		return
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_ID {
+		fmt.Printf("match id %x\n", matchDataRequest.MatchID)
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_VALUES {
+		if matchDataRequest.NumMatchValues > 0 {
+			for i := 0; i < int(matchDataRequest.NumMatchValues); i++ {
+				fmt.Printf("match value %.2f\n", matchDataRequest.MatchValues[i])
+			}
+		}
+	}
+
+	matchDataResponse := &transport.MatchDataResponsePacket{
+		SessionID: matchDataRequest.SessionID,
+		Response:  transport.MatchDataResponseOK,
+	}
+
+	matchDataResponseData, err := transport.MarshalPacket(matchDataResponse)
+	if err != nil {
+		fmt.Printf("error: failed to marshal match data response: %v\n", err)
+		return
+	}
+
+	packetHeader := append([]byte{transport.PacketTypeMatchDataResponse}, make([]byte, crypto.PacketHashSize)...)
+	responseData := append(packetHeader, matchDataResponseData...)
+	if _, err := w.Write(responseData); err != nil {
+		fmt.Printf("error: failed to write match data response: %v\n", err)
+		return
+	}
+}
+
 func main() {
 
 	rand.Seed(time.Now().UnixNano())
@@ -631,6 +672,14 @@ func main() {
 		backend.mode = BACKEND_MODE_NEXT_STATS
 	}
 
+	if os.Getenv("BACKEND_MODE") == "MATCH_ID" {
+		backend.mode = BACKEND_MODE_MATCH_ID
+	}
+
+	if os.Getenv("BACKEND_MODE") == "MATCH_VALUES" {
+		backend.mode = BACKEND_MODE_MATCH_VALUES
+	}
+
 	go OptimizeThread()
 
 	go TimeoutThread()
@@ -700,6 +749,8 @@ func main() {
 				ServerUpdateHandlerFunc(&buffer, &packet)
 			case transport.PacketTypeSessionUpdate:
 				SessionUpdateHandlerFunc(&buffer, &packet)
+			case transport.PacketTypeMatchDataRequest:
+				MatchDataHandlerFunc(&buffer, &packet)
 			default:
 				fmt.Printf("unknown packet type %d\n", packet.Data[0])
 			}
