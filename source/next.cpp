@@ -1045,7 +1045,7 @@ uint64_t next_datacenter_id( const char * name )
 uint64_t next_protocol_version()
 {
 #if !NEXT_DEVELOPMENT
-	#define VERSION_STRING(major,minor) #major #minor
+    #define VERSION_STRING(major,minor) #major #minor
     return next_hash_string( VERSION_STRING(NEXT_VERSION_MAJOR_INT, NEXT_VERSION_MINOR_INT) );
 #else // #if !NEXT_DEVELOPMENT
     return 0;
@@ -3853,11 +3853,11 @@ int next_init( void * context, next_config_t * config_in )
 
     if ( config.valid_customer_private_key && config.valid_customer_public_key && config.client_customer_id != config.server_customer_id )
     {
-    	next_printf( NEXT_LOG_LEVEL_ERROR, "mismatch between client and server customer id. please check the private and public keys are part of the same keypair!" );
-    	config.valid_customer_public_key = false;
-    	config.valid_customer_private_key = false;
-    	memset( config.customer_public_key, 0, sizeof(config.customer_public_key) );
-    	memset( config.customer_private_key, 0, sizeof(config.customer_private_key) );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "mismatch between client and server customer id. please check the private and public keys are part of the same keypair!" );
+        config.valid_customer_public_key = false;
+        config.valid_customer_private_key = false;
+        memset( config.customer_public_key, 0, sizeof(config.customer_public_key) );
+        memset( config.customer_private_key, 0, sizeof(config.customer_private_key) );
     }
 
     strncpy( config.server_backend_hostname, config_in ? config_in->server_backend_hostname : NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config.server_backend_hostname) );
