@@ -66,7 +66,7 @@
       <hr />
       <div class="card-body">
         <div class="btn-group-vertical btn-group-sm float-right">
-          <div style="display: inherit;flex-direction: column;" data-intercom="sdkDocumentation" data-tour="sdkDocumentation">
+          <div style="display: inherit;flex-direction: column;" data-intercom="dataReports" data-tour="dataReports">
             <a
               href="#"
               id="docs-button"
@@ -127,6 +127,16 @@ export default class DownloadsWorkspace extends Vue {
           title: 'SDK & Documentation'
         },
         content: 'Get our open source SDK and view our latest Documentation here.<br><br>Integration instructions are in the Getting Started section of the Documentation.<br><br>Please contact us in chat (lower right) if you have any questions.',
+        params: {
+          placement: 'left'
+        }
+      },
+      {
+        target: '[data-tour="dataReports"]',
+        header: {
+          title: 'Reports'
+        },
+        content: 'Get access to curated reports that display GDRP and CCPA compliant data analyses.',
         params: {
           placement: 'left'
         }
