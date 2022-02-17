@@ -79,7 +79,7 @@
         <h5>
             State of the Internet for Real-Time Games 2022 Report <br />
         </h5>
-        <div style="font-size: 90%;">Analysis of over 10 million player sessions identifies cirtical neeed for session analytics and selective augemented Internet services</div>
+        <div style="font-size: 90%;">Analysis of over 10 million player sessions identifies critical need for session analytics and selective augmented Internet services</div>
       </div>
     </div>
   </div>
