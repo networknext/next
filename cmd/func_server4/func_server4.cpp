@@ -27,8 +27,10 @@
 #include <signal.h>
 #include <string>
 #include <map>
+#include <unordered_set>
 
 std::map<std::string,uint8_t*> client_map;
+std::unordered_set<std::string> match_data_set;
 
 static volatile int quit = 0;
 
@@ -76,6 +78,24 @@ void server_packet_received( next_server_t * server, void * context, const next_
         next_address_to_string( from, address );
         std::string address_string( address );
 
+        next_server_stats_t stats;
+        bool session_exists = next_server_stats( server, from, &stats );
+
+        if ( next_server_session_upgraded( server, from ) && session_exists )
+        {
+            // char address[256];
+            // next_address_to_string( from, address );
+            // std::string address_string( address );
+
+            if ( match_data && match_data_set.find( address_string ) == match_data_set.end() )
+            {
+                const double match_values[] = {10.10f, 20.20f, 30.30f};
+                next_server_match( server, from, "test match id", match_values, sizeof(match_values) );
+
+                match_data_set.insert( address_string );
+            }
+        }
+
         std::map<std::string,uint8_t*>::iterator itor = client_map.find( address_string );
 
         if ( itor == client_map.end() || memcmp( packet_data, itor->second, 32 ) != 0 )
@@ -102,15 +122,6 @@ void server_packet_received( next_server_t * server, void * context, const next_
                 client_map.erase( itor );
             }
             client_map.insert( std::make_pair( address_string, client_id ) );
-        }
-
-        if ( next_server_session_upgraded( server, from ) )
-        {
-            if ( match_data )
-            {
-                const double match_values[] = {10.10f, 20.20f, 30.30f};
-                next_server_match( server, from, "test match id", match_values, sizeof(match_values) );
-            }
         }
     }
 }
