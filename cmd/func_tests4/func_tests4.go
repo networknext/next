@@ -2601,7 +2601,7 @@ func test_match_id() {
 }
 
 /*
-	Make sure the backend sees the match id applied to the session from the server.
+	Make sure the backend sees the match values applied to the session from the server.
 */
 
 func test_match_values() {

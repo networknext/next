@@ -83,10 +83,6 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
         if ( next_server_session_upgraded( server, from ) && session_exists )
         {
-            // char address[256];
-            // next_address_to_string( from, address );
-            // std::string address_string( address );
-
             if ( match_data && match_data_set.find( address_string ) == match_data_set.end() )
             {
                 const double match_values[] = {10.10f, 20.20f, 30.30f};
