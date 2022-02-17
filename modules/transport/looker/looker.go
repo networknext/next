@@ -253,7 +253,7 @@ func (l *LookerClient) FetchCurrentLookerDashboards() ([]LookerDashboard, error)
 	return dashboardList, nil
 }
 
-func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customerCode string, origin string) (string, error) {
+func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customerCode string, requestID, origin string) (string, error) {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return "", err
@@ -269,7 +269,7 @@ func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customer
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"Embed User\""),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
@@ -358,7 +358,7 @@ func BuildLookerURL(urlOptions LookerURLOptions) string {
 	return finalUrl
 }
 
-func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, origin string, dateString string) (string, error) {
+func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, requestID string, origin string, dateString string) (string, error) {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return "", err
@@ -372,7 +372,7 @@ func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, origin str
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"Embed User\""),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
@@ -396,7 +396,7 @@ func (l *LookerClient) GenerateAnalyticsCategories(userID string, customerCode s
 	return nil
 }
 
-func (l *LookerClient) GenerateLookerTrialURL() string {
+func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return ""
@@ -405,7 +405,7 @@ func (l *LookerClient) GenerateLookerTrialURL() string {
 	options := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", "Embed User"),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		FirstName:       "",
 		LastName:        "",
 		GroupsIds:       make([]int, 0),
