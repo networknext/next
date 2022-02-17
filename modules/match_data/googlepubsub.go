@@ -13,12 +13,12 @@ import (
 	"github.com/networknext/backend/modules/metrics"
 )
 
-// GooglePubSubMatcher is an implementation of a matcher handler that sends billing data to Google Pub/Sub through multiple clients
+// GooglePubSubMatcher is an implementation of a matcher handler that sends match data to Google Pub/Sub through multiple clients
 type GooglePubSubMatcher struct {
 	clients []*GooglePubSubClient
 }
 
-// GooglePubSubClient represents a single client that publishes billing data
+// GooglePubSubClient represents a single client that publishes match data
 type GooglePubSubClient struct {
 	PubsubClient         *pubsub.Client
 	Topic                *pubsub.Topic
@@ -87,7 +87,7 @@ func NewGooglePubSubMatcher(ctx context.Context, matchDataMetrics *metrics.Match
 
 func (matcher *GooglePubSubMatcher) Match(ctx context.Context, entry *MatchDataEntry) error {
 	if matcher.clients == nil {
-		return fmt.Errorf("billing: clients not initialized")
+		return fmt.Errorf("match_data: clients not initialized")
 	}
 
 	index := entry.SessionID % uint64(len(matcher.clients))
