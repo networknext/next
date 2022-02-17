@@ -25,10 +25,9 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <div style="display: inherit;flex-direction: column;" data-intercom="sdkDocumentation" data-tour="sdkDocumentation">
             <a
-              href="#"
               id="sdk-button"
               @click="downloadSDK()"
-              class="btn btn-primary m-1 btn-width"
+              class="btn btn-primary m-1 btn-width white-link"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
@@ -36,10 +35,9 @@
               SDK v4.0.16
             </a>
             <a
-              href="#"
               id="docs-button"
               @click="downloadUE4()"
-              class="btn btn-primary m-1 btn-width"
+              class="btn btn-primary m-1 btn-width white-link"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
@@ -47,10 +45,9 @@
               UE4 Plugin
             </a>
             <a
-              href="#"
               id="docs-button"
               @click="downloadDocs()"
-              class="btn btn-primary m-1 btn-width"
+              class="btn btn-primary m-1 btn-width white-link"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
@@ -68,10 +65,9 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <div style="display: inherit;flex-direction: column;" data-intercom="dataReports" data-tour="dataReports">
             <a
-              href="#"
               id="docs-button"
               @click="download2022WhitePaper()"
-              class="btn btn-primary m-1 btn-width"
+              class="btn btn-primary m-1 btn-width white-link"
             >
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
@@ -80,9 +76,10 @@
             </a>
           </div>
         </div>
-        <h5 class="card-title">
-            State of the Real-time Internet 2022 Report
+        <h5>
+            State of the Internet for Real-Time Games 2022 Report <br />
         </h5>
+        <div style="font-size: 90%;">Analysis of over 10 million player sessions identifies cirtical neeed for session analytics and selective augemented Internet services</div>
       </div>
     </div>
   </div>
@@ -136,7 +133,7 @@ export default class DownloadsWorkspace extends Vue {
         header: {
           title: 'Reports'
         },
-        content: 'Get access to curated reports that display GDRP and CCPA compliant data analyses.',
+        content: 'Get access to Network Next curated reports that detail GDRP and CCPA compliant data analyses.',
         params: {
           placement: 'left'
         }
@@ -248,5 +245,8 @@ export default class DownloadsWorkspace extends Vue {
   #docs-button:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
+  }
+  .white-link {
+    color: white;
   }
 </style>
