@@ -627,7 +627,7 @@ This allows you to link a period of playtime on a server with the session ids fo
 
 The match data gets sent to our backend, and we can analyze a group of sessions under the same *match_id*.
 
-This function can be called only once per session. The *match_id* must be greater than zero, and you can add up to 64 *match_values*.
+This function can be called only once per session. You can add up to 64 *match_values*.
 
 **Parameters:**
 	
