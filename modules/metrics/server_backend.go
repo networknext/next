@@ -80,26 +80,44 @@ type ServerBackendStatus struct {
 	SessionUpdateWriteResponseFailure                       int `json:"session_update_writeresponse_failure"`
 	SessionUpdateStaleRouteMatrix                           int `json:"session_update_stale_route_matrix"`
 
+	// Match Data Handler Metrics
+	MatchDataHandlerInvocations          int `json:"match_data_handler_invocations"`
+	MatchDataHandlerReadPacketFailure    int `json:"match_data_handler_read_packet_failure"`
+	MatchDataHandlerBuyerNotFound        int `json:"match_data_handler_buyer_not_found"`
+	MatchDataHandlerBuyerNotActive       int `json:"match_data_handler_buyer_not_active"`
+	MatchDataHandlerSignatureCheckFailed int `json:"match_data_handler_signature_check_failed"`
+	MatchDataHandlerWriteResponseFailure int `json:"match_data_handler_write_response_failure"`
+
 	// Post Session Metrics
-	PostSessionBillingEntries2Sent     int `json:"post_session_billing_entries_2_sent"`
-	PostSessionBillingEntries2Finished int `json:"post_session_billing_entires_2_finished"`
-	PostSessionBilling2BufferFull      int `json:"post_session_billing_2_buffer_full"`
-	PostSessionPortalEntriesSent       int `json:"post_session_portal_entries_sent"`
-	PostSessionPortalEntriesFinished   int `json:"post_session_portal_entries_finished"`
-	PostSessionPortalBufferFull        int `json:"post_session_portal_buffer_full"`
-	PostSessionVanityMetricsSent       int `json:"post_session_vanity_metrics_sent"`
-	PostSessionVanityMetricsFinished   int `json:"post_session_vanity_metrics_finished"`
-	PostSessionVanityBufferFull        int `json:"post_session_vanity_buffer_full"`
-	PostSessionBilling2Failure         int `json:"post_session_billing_2_failure"`
-	PostSessionPortalFailure           int `json:"post_session_portal_failure"`
-	PostSessionVanityMarshalFailure    int `json:"post_session_vanity_marshal_failure"`
-	PostSessionVanityTransmitFailure   int `json:"post_session_vanity_transmit_failure"`
+	PostSessionBillingEntries2Sent        int `json:"post_session_billing_entries_2_sent"`
+	PostSessionBillingEntries2Finished    int `json:"post_session_billing_entires_2_finished"`
+	PostSessionBilling2BufferFull         int `json:"post_session_billing_2_buffer_full"`
+	PostSessionPortalEntriesSent          int `json:"post_session_portal_entries_sent"`
+	PostSessionPortalEntriesFinished      int `json:"post_session_portal_entries_finished"`
+	PostSessionPortalBufferFull           int `json:"post_session_portal_buffer_full"`
+	PostSessionVanityMetricsSent          int `json:"post_session_vanity_metrics_sent"`
+	PostSessionVanityMetricsFinished      int `json:"post_session_vanity_metrics_finished"`
+	PostSessionVanityBufferFull           int `json:"post_session_vanity_buffer_full"`
+	PostSessionMatchDataEntriesSent       int `json:"post_session_match_data_entries_sent"`
+	PostSessionMatchDataEntriesFinished   int `json:"post_session_match_data_entries_finished"`
+	PostSessionMatchDataEntriesBufferFull int `json:"post_session_match_data_entries_buffer_full"`
+	PostSessionBilling2Failure            int `json:"post_session_billing_2_failure"`
+	PostSessionPortalFailure              int `json:"post_session_portal_failure"`
+	PostSessionVanityMarshalFailure       int `json:"post_session_vanity_marshal_failure"`
+	PostSessionVanityTransmitFailure      int `json:"post_session_vanity_transmit_failure"`
+	PostSessionMatchDataEntriesFailure    int `json:"post_session_match_data_entries_failure"`
 
 	// Billing Metrics
 	BillingEntries2Submitted int `json:"billing_entries_2_submitted"`
 	BillingEntries2Queued    int `json:"billing_entries_2_queued"`
 	BillingEntries2Flushed   int `json:"billing_entries_2_flushed"`
 	Billing2PublishFailure   int `json:"billing_2_publish_failure"`
+
+	// Match Data Metrics
+	MatchDataEntriesSubmitted      int `json:"match_data_entries_submitted"`
+	MatchDataEntriesQueued         int `json:"match_data_entries_queued"`
+	MatchDataEntriesFlushed        int `json:"match_data_entries_flushed"`
+	MatchDataEntriesPublishFailure int `json:"match_data_entries_publish_failure"`
 
 	// Route Matrix Metrics
 	RouteMatrixNumRoutes int `json:"route_matrix_num_routes"`
@@ -267,17 +285,40 @@ var EmptySessionUpdateMetrics = SessionUpdateMetrics{
 	DirectSessionResponsePacketSize:            &EmptyGauge{},
 }
 
+// MatchDataHandlerMetrics defines the set of metrics for the match data handler in the server backend.
+type MatchDataHandlerMetrics struct {
+	HandlerMetrics *PacketHandlerMetrics
+
+	ReadPacketFailure    Counter
+	BuyerNotFound        Counter
+	BuyerNotActive       Counter
+	SignatureCheckFailed Counter
+	WriteResponseFailure Counter
+}
+
+// EmptyMatchDataHandlerMetrics is used for testing when we want to pass in metrics but don't care about their value.
+var EmptyMatchDataHandlerMetrics = MatchDataHandlerMetrics{
+	HandlerMetrics:       &EmptyPacketHandlerMetrics,
+	ReadPacketFailure:    &EmptyCounter{},
+	BuyerNotFound:        &EmptyCounter{},
+	BuyerNotActive:       &EmptyCounter{},
+	SignatureCheckFailed: &EmptyCounter{},
+	WriteResponseFailure: &EmptyCounter{},
+}
+
 // ServerBackendMetrics defines the set of metrics for the server backend.
 type ServerBackendMetrics struct {
 	ServiceMetrics *ServiceMetrics
 
-	ServerInitMetrics    *ServerInitMetrics
-	ServerUpdateMetrics  *ServerUpdateMetrics
-	SessionUpdateMetrics *SessionUpdateMetrics
+	ServerInitMetrics       *ServerInitMetrics
+	ServerUpdateMetrics     *ServerUpdateMetrics
+	SessionUpdateMetrics    *SessionUpdateMetrics
+	MatchDataHandlerMetrics *MatchDataHandlerMetrics
 
 	PostSessionMetrics *PostSessionMetrics
 
-	BillingMetrics *BillingMetrics
+	BillingMetrics   *BillingMetrics
+	MatchDataMetrics *MatchDataMetrics
 
 	RouteMatrixUpdateDuration     Gauge
 	RouteMatrixUpdateLongDuration Counter
@@ -295,6 +336,7 @@ var EmptyServerBackendMetrics = ServerBackendMetrics{
 	SessionUpdateMetrics:          &EmptySessionUpdateMetrics,
 	PostSessionMetrics:            &EmptyPostSessionMetrics,
 	BillingMetrics:                &EmptyBillingMetrics,
+	MatchDataMetrics:              &EmptyMatchDataMetrics,
 	RouteMatrixUpdateDuration:     &EmptyGauge{},
 	RouteMatrixUpdateLongDuration: &EmptyCounter{},
 	RouteMatrixNumRoutes:          &EmptyGauge{},
@@ -345,6 +387,11 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 	}
 
 	m.SessionUpdateMetrics, err = newSessionUpdateMetrics(ctx, handler, serviceName, "session_update", "Session Update", "session update request")
+	if err != nil {
+		return nil, err
+	}
+
+	m.MatchDataHandlerMetrics, err = newMatchDataHandlerMetrics(ctx, handler, serviceName, "match_data", "Match Data", "match data entry")
 	if err != nil {
 		return nil, err
 	}
@@ -440,6 +487,20 @@ func NewServerBackendMetrics(ctx context.Context, handler Handler) (*ServerBacke
 	if err != nil {
 		return nil, err
 	}
+
+	m.MatchDataMetrics, err = NewMatchDataMetrics(ctx, handler, serviceName, "match_data", "Server Backend Match Data", "match data entry")
+	if err != nil {
+		return nil, err
+	}
+	m.MatchDataMetrics.EntriesReceived = &EmptyCounter{}
+	m.MatchDataMetrics.ErrorMetrics.MatchDataReadFailure = &EmptyCounter{}
+	m.MatchDataMetrics.ErrorMetrics.MatchDataBatchedReadFailure = &EmptyCounter{}
+	m.MatchDataMetrics.ErrorMetrics.MatchDataWriteFailure = &EmptyCounter{}
+	m.MatchDataMetrics.ErrorMetrics.MatchDataInvalidEntries = &EmptyCounter{}
+	m.MatchDataMetrics.ErrorMetrics.MatchDataEntriesWithNaN = &EmptyCounter{}
+	m.MatchDataMetrics.ErrorMetrics.MatchDataRetryLimitReached = &EmptyCounter{}
+
+	// used: entries submitted, queued, flushed, publish failure, entry size, pubsub entry size
 
 	m.RouteMatrixUpdateDuration, err = handler.NewGauge(ctx, &Descriptor{
 		DisplayName: "Route Matrix Update Duration",
@@ -1254,6 +1315,73 @@ func newSessionUpdateMetrics(ctx context.Context, handler Handler, serviceName s
 		ID:          handlerID + ".next_session_response_packet_size",
 		Unit:        "bytes",
 		Description: "The size of the incoming next session response packet.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+func newMatchDataHandlerMetrics(ctx context.Context, handler Handler, serviceName string, handlerID string, handlerName string, packetDescription string) (*MatchDataHandlerMetrics, error) {
+	var err error
+	m := &MatchDataHandlerMetrics{}
+
+	m.HandlerMetrics, err = NewPacketHandlerMetrics(ctx, handler, serviceName, handlerID, handlerName, packetDescription)
+	if err != nil {
+		return nil, err
+	}
+
+	m.ReadPacketFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Read Packet Failure",
+		ServiceName: serviceName,
+		ID:          handlerID + ".read_packet_failure",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " failed to read.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BuyerNotFound, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Buyer Not Found",
+		ServiceName: serviceName,
+		ID:          handlerID + ".buyer_not_found",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained an unknown customer ID.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.BuyerNotActive, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Buyer Not Active",
+		ServiceName: serviceName,
+		ID:          handlerID + ".buyer_not_active",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " contained an inactive customer account.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.SignatureCheckFailed, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Signature Check Failed",
+		ServiceName: serviceName,
+		ID:          handlerID + ".signature_check_failed",
+		Unit:        "errors",
+		Description: "The number of times a " + packetDescription + " failed the signature check to verify the customer's identity.",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	m.WriteResponseFailure, err = handler.NewCounter(ctx, &Descriptor{
+		DisplayName: handlerName + " Write Response Failure",
+		ServiceName: serviceName,
+		ID:          handlerID + ".write_response_failure",
+		Unit:        "errors",
+		Description: "The number of times we failed to write a response to a " + packetDescription + ".",
 	})
 	if err != nil {
 		return nil, err

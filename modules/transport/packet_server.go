@@ -28,6 +28,8 @@ const (
 	PacketTypeSessionResponse    = 222
 	PacketTypeServerInitRequest  = 223
 	PacketTypeServerInitResponse = 224
+	PacketTypeMatchDataRequest   = 225
+	PacketTypeMatchDataResponse  = 226
 
 	InitResponseOK                   = 0
 	InitResponseUnknownBuyer         = 1
@@ -36,6 +38,11 @@ const (
 	InitResponseSignatureCheckFailed = 4
 	InitResponseBuyerNotActive       = 5
 	InitResponseDataCenterNotEnabled = 6
+
+	MatchDataResponseOK                   = 0
+	MatchDataResponseUnknownBuyer         = 1
+	MatchDataResponseSignatureCheckFailed = 2
+	MatchDataResponseBuyerNotActive       = 3
 
 	// IMPORTANT: Update Serialize(), Validate(), and ClampEntry() in modules/billing/billing_entry.go when a new connection type is added
 	ConnectionTypeUnknown  = 0
@@ -77,6 +84,8 @@ const (
 	FallbackFlagsCount_401                  = 12
 
 	MaxTags = 8
+
+	MaxMatchValues = 64
 
 	NextMaxSessionDebug = 1024
 )
@@ -304,8 +313,8 @@ type SessionUpdatePacket struct {
 	Flags                           uint32
 	UserFlags                       uint64
 	DirectMinRTT                    float32
-    DirectMaxRTT                    float32
-    DirectPrimeRTT                  float32
+	DirectMaxRTT                    float32
+	DirectPrimeRTT                  float32
 	DirectJitter                    float32
 	DirectPacketLoss                float32
 	NextRTT                         float32
@@ -813,5 +822,59 @@ func (sessionData *SessionData) Serialize(stream encoding.Stream) error {
 	// MAY ONLY BE ADDED *AFTER* YOUR NEW FIELDS.
 	// FAILING TO FOLLOW THESE INSRUCTIONS WILL BREAK PRODUCTION!!!!
 
+	return stream.Error()
+}
+
+type MatchDataRequestPacket struct {
+	Version        SDKVersion
+	BuyerID        uint64
+	ServerAddress  net.UDPAddr
+	DatacenterID   uint64
+	UserHash       uint64
+	SessionID      uint64
+	RetryNumber    uint32
+	MatchID        uint64
+	NumMatchValues int32
+	MatchValues    [MaxMatchValues]float64
+}
+
+func (packet *MatchDataRequestPacket) Serialize(stream encoding.Stream) error {
+	versionMajor := uint32(packet.Version.Major)
+	versionMinor := uint32(packet.Version.Minor)
+	versionPatch := uint32(packet.Version.Patch)
+	stream.SerializeBits(&versionMajor, 8)
+	stream.SerializeBits(&versionMinor, 8)
+	stream.SerializeBits(&versionPatch, 8)
+	packet.Version = SDKVersion{int32(versionMajor), int32(versionMinor), int32(versionPatch)}
+	stream.SerializeUint64(&packet.BuyerID)
+	stream.SerializeAddress(&packet.ServerAddress)
+	stream.SerializeUint64(&packet.DatacenterID)
+	stream.SerializeUint64(&packet.UserHash)
+	stream.SerializeUint64(&packet.SessionID)
+	stream.SerializeUint32(&packet.RetryNumber)
+	stream.SerializeUint64(&packet.MatchID)
+
+	hasMatchValues := stream.IsWriting() && packet.NumMatchValues > 0
+
+	stream.SerializeBool(&hasMatchValues)
+
+	if hasMatchValues {
+		stream.SerializeInteger(&packet.NumMatchValues, 0, MaxMatchValues)
+		for i := 0; i < int(packet.NumMatchValues); i++ {
+			stream.SerializeFloat64(&packet.MatchValues[i])
+		}
+	}
+
+	return stream.Error()
+}
+
+type MatchDataResponsePacket struct {
+	SessionID uint64
+	Response  uint32
+}
+
+func (packet *MatchDataResponsePacket) Serialize(stream encoding.Stream) error {
+	stream.SerializeUint64(&packet.SessionID)
+	stream.SerializeBits(&packet.Response, 8)
 	return stream.Error()
 }
