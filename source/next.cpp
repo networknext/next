@@ -9426,6 +9426,11 @@ struct next_session_entry_t
     bool match_data_response_received;
 
     NEXT_DECLARE_SENTINEL(29)
+
+    bool flush;
+    bool flush_finished;
+
+    NEXT_DECLARE_SENTINEL(30)
 };
 
 void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -9462,6 +9467,7 @@ void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
     NEXT_INITIALIZE_SENTINEL( entry, 27 )
     NEXT_INITIALIZE_SENTINEL( entry, 28 )
     NEXT_INITIALIZE_SENTINEL( entry, 29 )
+    NEXT_INITIALIZE_SENTINEL( entry, 30 )
 }
 
 void next_session_entry_verify_sentinels( next_session_entry_t * entry )
@@ -9498,6 +9504,7 @@ void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 27 )
     NEXT_VERIFY_SENTINEL( entry, 28 )
     NEXT_VERIFY_SENTINEL( entry, 29 )
+    NEXT_VERIFY_SENTINEL( entry, 30 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
@@ -10152,6 +10159,7 @@ int next_read_backend_packet( uint8_t * packet_data, int packet_bytes, void * pa
 #define NEXT_SERVER_COMMAND_DESTROY                     2
 #define NEXT_SERVER_COMMAND_SERVER_EVENT                3
 #define NEXT_SERVER_COMMAND_MATCH_DATA                  4
+#define NEXT_SERVER_COMMAND_FLUSH                       5
 
 struct next_server_command_t
 {
@@ -10189,6 +10197,11 @@ struct next_server_command_match_data_t : public next_server_command_t
     uint64_t match_id;
     double match_values[NEXT_MAX_MATCH_VALUES];
     int num_match_values;
+};
+
+struct next_server_command_flush_t : public next_server_command_t
+{
+    // ...
 };
 
 // ---------------------------------------------------------------
@@ -11899,6 +11912,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 entry->previous_server_events = 0;
             }
 
+            if ( entry->flush )
+            {
+                entry->flush_finished = true;
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed session update for session %" PRIx64 " to backend", entry->session_id );
+            }
+
             return;
         }
 
@@ -12699,6 +12718,38 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds match data for session %" PRIx64 " at address %s", entry->session_id, next_address_to_string( address, buffer ) );
 }
 
+void next_server_internal_flush( next_server_internal_t * server )
+{
+    next_assert( server );
+    next_assert( server->session_manager );
+
+    next_server_internal_verify_sentinels( server );
+
+    if ( next_global_config.disable_network_next )
+        return;
+
+    const int max_entry_index = server->session_manager->max_entry_index;
+
+    int num_sessions = 0;
+
+    for ( int i = 0; i <= max_entry_index; ++i )
+    {
+        if ( server->session_manager->session_ids[i] == 0 )
+            continue;
+
+        next_session_entry_t * session = &server->session_manager->entries[i];
+
+        if ( session->client_ping_timed_out )
+            continue;
+
+        session->client_ping_timed_out = true;
+        session->flush = true;
+        num_sessions++;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server requested flush for %d sessions", num_sessions );
+}
+
 bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
 {
     while ( true )
@@ -12749,6 +12800,12 @@ bool next_server_internal_pump_commands( next_server_internal_t * server, bool q
             {
                 next_server_command_match_data_t * match_data = (next_server_command_match_data_t*) command;
                 next_server_internal_match_data( server, &match_data->address, match_data->match_id, match_data->match_values, match_data->num_match_values );
+            }
+            break;
+
+            case NEXT_SERVER_COMMAND_FLUSH:
+            {
+                next_server_internal_flush( server );
             }
             break;
 
@@ -13054,7 +13111,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_session_entry_t * session = &server->session_manager->entries[i];
 
-        if ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time )
+        if ( ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time ) || ( session->flush && !session->flush_finished && !session->waiting_for_update_response ) )
         {
             NextBackendSessionUpdatePacket packet;
 
@@ -13198,7 +13255,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( !session->has_match_data || session->match_data_response_received )
             continue;
 
-        if ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response)
+        if ( ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response) || ( session->flush && !session->waiting_for_match_data_response ) )
         {
             NextBackendMatchDataRequestPacket packet;
             packet.customer_id = server->customer_id;
@@ -13963,8 +14020,24 @@ void next_server_match( struct next_server_t * server, const struct next_address
 void next_server_flush( struct next_server_t * server )
 {
     next_assert( server );
-    // todo
-    next_sleep( 1.0f );
+
+    // send flush command to internal server
+
+    next_server_command_flush_t * command = (next_server_command_flush_t*) next_malloc( server->context, sizeof( next_server_command_flush_t ) );
+    if ( !command )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server flush failed. could not create server flush command" );
+        return;
+    }
+
+    command->type = NEXT_SERVER_COMMAND_FLUSH;
+
+    {    
+        next_platform_mutex_guard( &server->internal->command_mutex );
+        next_queue_push( server->internal->command_queue, command );
+    }
+
+    next_sleep( 10.0f );
 }
 
 // ---------------------------------------------------------------
