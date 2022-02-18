@@ -613,3 +613,38 @@ You can set up to 64 event flags every 10 seconds.
 .. code-block:: c++
 
 	next_server_event( server, client_address, 1 );
+
+next_server_match
+-----------------
+
+Assign a match id and various match-related values to a session.
+
+.. code-block:: c++
+
+	void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );
+
+This allows you to link a period of playtime on a server with the session ids for players who were there.
+
+The match data gets sent to our backend, and we can analyze a group of sessions under the same *match_id*.
+
+This function can be called only once per session. You can add up to 64 *match_values*.
+
+**Parameters:**
+	
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to assign match data.
+
+	- **match_id** -- The match id assigned to the session. Pass in any unique per-match identifier you have.
+
+	- **match_values** -- The array of match values for the session.
+
+	- **num_match_values** -- The number of match values.
+
+**Example:**
+
+.. code-block:: c++
+
+	const char * match_id = "this is a unique match id";
+	const double match_values[] = {10.0f, 20.0f, 30.0f};
+	next_server_match( server, address, match_id, match_values, sizeof(match_values) );

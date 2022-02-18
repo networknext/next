@@ -91,10 +91,12 @@
 #define NEXT_PLATFORM_XBOX_ONE                                    7
 #define NEXT_PLATFORM_XBOX_SERIES_X                               8
 #define NEXT_PLATFORM_PS5                                         9
-#define NEXT_PLATFORM_GDK                                         10
-#define NEXT_PLATFORM_MAX                                         10
+#define NEXT_PLATFORM_GDK                                        10
+#define NEXT_PLATFORM_MAX                                        10
 
 #define NEXT_MAX_TAGS                                             8
+
+#define NEXT_MAX_MATCH_VALUES                                    64
 
 #if defined(_WIN32)
 #define NOMINMAX
@@ -337,8 +339,6 @@ struct next_server_stats_t
 #define NEXT_SERVER_STATE_INITIALIZING              1
 #define NEXT_SERVER_STATE_INITIALIZED               2
 
-#define NEXT_MATCH_MAX_VALUES                      64
-
 struct next_server_t;
 
 NEXT_EXPORT_FUNC struct next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( struct next_server_t * server, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) );
@@ -371,7 +371,7 @@ NEXT_EXPORT_FUNC NEXT_BOOL next_server_autodetect_finished( next_server_t * serv
 
 NEXT_EXPORT_FUNC void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
 
-NEXT_EXPORT_FUNC void next_server_match( struct next_server_t * server, const struct next_address_t * address, uint64_t match_id, const double * match_values, int num_match_values );
+NEXT_EXPORT_FUNC void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );
 
 NEXT_EXPORT_FUNC void next_server_flush( struct next_server_t * server );
 
