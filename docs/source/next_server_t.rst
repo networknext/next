@@ -588,3 +588,39 @@ This function allows you to check if the server has finished determining its dat
 	const bool autodetect_finished = next_server_autodetect_finished( server );
 
 	printf( "server autodetect finished = %s\n", autodetect_finished ? "true" : "false" );
+
+next_server_event
+-----------------
+
+Triggers an event flag to a session for monitoring and analysis purposes.
+
+.. code-block:: c++
+
+	void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
+
+You can define up to 64 event flags for your game, one for each bit in the *server_events* bitfield.
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client that triggered the event.
+
+	- **server_events** -- Bitfield of events that just triggered for the session.
+
+**Example:**
+
+.. code-block:: c++
+
+	enum GameEvents
+	{
+		GAME_EVENT_RESPAWNED = (1<<0),
+		GAME_EVENT_CATCH = (1<<1),
+		GAME_EVENT_THROW = (1<<2),
+		GAME_EVENT_KNOCKED_OUT = (1<<3),
+		GAME_EVENT_WON_MATCH = (1<<4),
+		GAME_EVENT_LOST_MATCH = (1<<5),
+		// ...
+	};
+
+	next_server_event( server, client_address, GAME_EVENT_KNOCKED_OUT | GAME_EVENT_LOST_MATCH );
