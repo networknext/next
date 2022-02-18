@@ -12747,7 +12747,7 @@ void next_server_internal_flush( next_server_internal_t * server )
         num_sessions++;
     }
 
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "server requested flush for %d sessions", num_sessions );
+    next_printf( NEXT_LOG_LEVEL_INFO, "server requested flush for %d sessions", num_sessions );
 }
 
 bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
