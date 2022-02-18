@@ -13691,6 +13691,7 @@ void next_server_update( next_server_t * server )
             case NEXT_SERVER_NOTIFY_FLUSH_FINISHED:
             {
                 server->flush_finished = true;
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server completed flush" );
             }
 
             default: break;
