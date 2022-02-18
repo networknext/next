@@ -12801,6 +12801,16 @@ void next_server_internal_flush( next_server_internal_t * server )
         }
     }
 
+    if ( server->num_session_updates_to_flush == 0 && server->num_match_data_to_flush == 0 )
+    {
+        next_server_notify_flush_finished_t * notify = (next_server_notify_flush_finished_t*) next_malloc( server->context, sizeof( next_server_notify_flush_finished_t ) );
+        notify->type = NEXT_SERVER_NOTIFY_FLUSH_FINISHED;
+        {
+            next_platform_mutex_guard( &server->notify_mutex );
+            next_queue_push( server->notify_queue, notify );
+        }
+    }
+
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server requested flush for %d session updates and %d match data", server->num_session_updates_to_flush, server->num_match_data_to_flush );
 }
 
