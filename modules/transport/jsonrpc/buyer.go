@@ -3157,35 +3157,122 @@ func (s *BuyersService) TestLookerUserSessionLookup(r *http.Request, args *TestL
 			continue
 		}
 
-		connection, err := strconv.ParseUint(session.Connection, 10, 8)
-		if err != nil {
-			core.Error("TestLookerUserSessionLookup(): Failed to parse connection type: %v:", err.Error())
-			continue
-		}
-
-		platform, err := strconv.ParseUint(session.Platform, 10, 8)
-		if err != nil {
-			core.Error("TestLookerUserSessionLookup(): Failed to parse platform type: %v:", err.Error())
-			continue
-		}
-
 		reply.Sessions = append(reply.Sessions, UserSession{
 			Timestamp: timeStamp,
 			Meta: transport.SessionMeta{
 				ID:       uint64(session.SessionID),
 				UserHash: uint64(session.UserHash),
 				// BuyerID:    uint64(session.BuyerID),
-				Connection: uint8(connection),
+				Connection: uint8(session.Connection),
 				Location: routing.Location{
 					ISP: session.ISP,
 					// Latitude:  float32(session.Latitude),
 					// Longitude: float32(session.Longitude),
 				},
-				Platform:        uint8(platform),
+				Platform:        uint8(session.Platform),
 				DatacenterName:  session.DatacenterName,
 				DatacenterAlias: session.DatacenterAlias,
 				// ServerAddr: session.ServerAddress,
 			},
+		})
+	}
+
+	return nil
+}
+
+type TestLookerSessionLookupArgs struct {
+	SessionID string `json:"session_id"`
+	Timeframe string `json:"time_frame"`
+}
+type TestLookerSessionLookupReply struct {
+	Meta   transport.SessionMeta    `json:"meta"`
+	Slices []transport.SessionSlice `json:"slices"`
+}
+
+func (s *BuyersService) TestLookerSessionLookup(r *http.Request, args *TestLookerSessionLookupArgs, reply *TestLookerSessionLookupReply) error {
+	reply.Meta = transport.SessionMeta{}
+	reply.Slices = make([]transport.SessionSlice, 0)
+
+	if args.SessionID == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "SessionID"
+		core.Error("TestLookerUserSessionLookup(): %v: SessionID is required", err.Error())
+		return &err
+	}
+
+	lookerSession, err := s.LookerClient.RunSessionLookupQuery(args.SessionID, args.Timeframe)
+	if err != nil {
+		core.Error("TestLookerUserSessionLookup(): %v:", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+		return &err
+	}
+
+	nearbyRelays := make([]transport.NearRelayPortalData, len(lookerSession.NearRelayIDs))
+
+	for i, relay := range lookerSession.NearRelayIDs {
+		nearbyRelays[i].ID = uint64(relay.ID)
+		/*
+			nearbyRelays[i].Name = relay.Name
+			nearbyRelays[i].ClientStats = routing.Stats{
+				RTT:        relay.RTT,
+				Jitter:     relay.Jitter,
+				PacketLoss: relay.L,
+			}
+		*/
+	}
+
+	fmt.Println(nearbyRelays)
+
+	reply.Meta = transport.SessionMeta{
+		ID:         uint64(lookerSession.Meta.SessionID),
+		UserHash:   uint64(lookerSession.Meta.UserHash),
+		BuyerID:    uint64(lookerSession.Meta.BuyerID),
+		Connection: uint8(lookerSession.Meta.Connection),
+		Location: routing.Location{
+			ISP:       lookerSession.Meta.ISP,
+			Latitude:  float32(lookerSession.Meta.Latitude),
+			Longitude: float32(lookerSession.Meta.Longitude),
+		},
+		Platform:        uint8(lookerSession.Meta.Platform),
+		DatacenterName:  lookerSession.Meta.DatacenterName,
+		DatacenterAlias: lookerSession.Meta.DatacenterAlias,
+		SDK:             lookerSession.Meta.SDK,
+		ClientAddr:      lookerSession.Meta.ClientAddress,
+		NearbyRelays:    nearbyRelays,
+		// ServerAddr: session.ServerAddress,
+	}
+
+	for _, slice := range lookerSession.Slices {
+		timeStamp, err := time.Parse("2006-01-02 15:04:05", slice.Timestamp)
+		if err != nil {
+			core.Error("TestLookerUserSessionLookup(): Failed to parse timestamp in UTC: %v:", err.Error())
+			continue
+		}
+
+		reply.Slices = append(reply.Slices, transport.SessionSlice{
+			Timestamp: timeStamp,
+			Next: routing.Stats{
+				RTT:        slice.NextRTT,
+				Jitter:     slice.NextJitter,
+				PacketLoss: slice.NextPacketLoss,
+			},
+			Direct: routing.Stats{
+				RTT:        slice.DirectRTT,
+				Jitter:     slice.DirectJitter,
+				PacketLoss: slice.DirectPacketLoss,
+			},
+			Predicted: routing.Stats{
+				RTT: slice.PredictedRTT,
+				// Jitter: slice.PredictedJitter,
+				// PacketLoss: slice.PredictedPacketLoss,
+			},
+			Envelope: routing.Envelope{
+				Up: slice.EnvelopeUp,
+			},
+			RouteDiversity: uint32(slice.RouteDiversity),
+			OnNetworkNext:  strings.ToLower(slice.OnNetworkNext) == "yes", // Looker forces these to be strings - yes or no
+			IsMultiPath:    strings.ToLower(slice.IsMultiPath) == "yes",   // Looker forces these to be strings - yes or no
+			// IsTryBeforeYouBuy:   slice.IsTryBeforeYouBuy == "yes",   // Looker forces these to be strings - yes or no
 		})
 	}
 
