@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	BillingEntryVersion2 = uint32(8)
+	BillingEntryVersion2 = uint32(9)
 
 	MaxBillingEntry2Bytes = 4096
 
@@ -59,6 +59,7 @@ type BillingEntry2 struct {
 	Latitude          float32
 	Longitude         float32
 	ClientAddress     string
+	ServerAddress     string
 	ISP               string
 	ConnectionType    int32
 	PlatformType      int32
@@ -163,6 +164,7 @@ type BillingEntry2Summary struct {
 	EnvelopeBytesDownSum            uint64
 	DurationOnNext                  uint32
 	ClientAddress                   string
+	ServerAddress                   string
 }
 
 func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
@@ -452,6 +454,17 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	if entry.Version >= uint32(6) {
 		if entry.Summary {
 			stream.SerializeUint32(&entry.StartTimestamp)
+		}
+	}
+
+	/*
+		Version 9
+
+		Includes server IP address in first and summary slice
+	*/
+	if entry.Version >= uint32(9) {
+		if entry.SliceNumber == 0 || entry.Summary {
+			stream.SerializeString(&entry.ServerAddress, BillingEntryMaxAddressLength)
 		}
 	}
 	return stream.Error()
@@ -831,6 +844,11 @@ func (entry *BillingEntry2) ClampEntry() {
 			core.Debug("BillingEntry2 NumTags (%d) > BillingEntryMaxTags (%d). Clamping to BillingEntryMaxTags (%d).", entry.NumTags, BillingEntryMaxTags, BillingEntryMaxTags)
 			entry.NumTags = BillingEntryMaxTags
 		}
+
+		if len(entry.ServerAddress) >= BillingEntryMaxAddressLength {
+			core.Debug("BillingEntry2 Server IP Address length (%d) >= BillingEntryMaxAddressLength (%d). Clamping to BillingEntryMaxAddressLength - 1 (%d)", len(entry.ServerAddress), BillingEntryMaxAddressLength, BillingEntryMaxAddressLength-1)
+			entry.ServerAddress = entry.ServerAddress[:BillingEntryMaxAddressLength-1]
+		}
 	}
 
 	// summary slice only
@@ -1007,6 +1025,7 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 		e["latitude"] = entry.Latitude
 		e["longitude"] = entry.Longitude
 		e["clientAddress"] = entry.ClientAddress
+		e["serverAddress"] = entry.ServerAddress
 		e["isp"] = entry.ISP
 		e["connectionType"] = int(entry.ConnectionType)
 		e["platformType"] = int(entry.PlatformType)
@@ -1230,6 +1249,7 @@ func (entry *BillingEntry2) GetSummaryStruct() *BillingEntry2Summary {
 		EnvelopeBytesDownSum:            entry.EnvelopeBytesDownSum,
 		DurationOnNext:                  entry.DurationOnNext,
 		ClientAddress:                   entry.ClientAddress,
+		ServerAddress:                   entry.ServerAddress,
 	}
 }
 
@@ -1261,6 +1281,7 @@ func (entry *BillingEntry2Summary) Save() (map[string]bigquery.Value, string, er
 		e["latitude"] = entry.Latitude
 		e["longitude"] = entry.Longitude
 		e["clientAddress"] = entry.ClientAddress
+		e["serverAddress"] = entry.ServerAddress
 		e["isp"] = entry.ISP
 		e["connectionType"] = int(entry.ConnectionType)
 		e["platformType"] = int(entry.PlatformType)
