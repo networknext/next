@@ -573,11 +573,15 @@ func MatchDataHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		return
 	}
 
-	if backend.mode == BACKEND_MODE_MATCH_ID {
+	if backend.mode == BACKEND_MODE_FORCE_RETRY && matchDataRequest.RetryNumber < 4 {
+		return
+	}
+
+	if backend.mode == BACKEND_MODE_MATCH_ID || backend.mode == BACKEND_MODE_FORCE_RETRY {
 		fmt.Printf("match id %x\n", matchDataRequest.MatchID)
 	}
 
-	if backend.mode == BACKEND_MODE_MATCH_VALUES {
+	if backend.mode == BACKEND_MODE_MATCH_VALUES || backend.mode == BACKEND_MODE_FORCE_RETRY {
 		if matchDataRequest.NumMatchValues > 0 {
 			for i := 0; i < int(matchDataRequest.NumMatchValues); i++ {
 				fmt.Printf("match value %.2f\n", matchDataRequest.MatchValues[i])
