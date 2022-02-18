@@ -592,27 +592,38 @@ This function allows you to check if the server has finished determining its dat
 next_server_event
 -----------------
 
-Attaches an event flag to a session for monitoring and analysis purposes.
+Triggers an event flag to a session for monitoring and analysis purposes.
 
 .. code-block:: c++
 
 	void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
 
-You can set up to 64 event flags every 10 seconds.
+You can define up to 64 event flags for your game, one for each bit in the *server_events* bitfield.
 
 **Parameters:**
 
 	- **server** -- The server instance.
 
-	- **address** -- The address of the client to tag.
+	- **address** -- The address of the client that triggered the event.
 
-	- **server_events** -- The flag to be attached to the session.
+	- **server_events** -- Bitfield of events that just triggered for the session.
 
 **Example:**
 
 .. code-block:: c++
 
-	next_server_event( server, client_address, 1 );
+	enum GameEvents
+	{
+		GAME_EVENT_RESPAWNED = (1<<0),
+		GAME_EVENT_CATCH = (1<<1),
+		GAME_EVENT_THROW = (1<<2),
+		GAME_EVENT_KNOCKED_OUT = (1<<3),
+		GAME_EVENT_WON_MATCH = (1<<4),
+		GAME_EVENT_LOST_MATCH = (1<<5),
+		// ...
+	};
+
+	next_server_event( server, client_address, GAME_EVENT_KNOCKED_OUT | GAME_EVENT_LOST_MATCH );
 
 next_server_match
 -----------------
