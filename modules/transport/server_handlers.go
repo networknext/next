@@ -1753,6 +1753,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		DatacenterNotEnabled:            state.DatacenterNotEnabled,
 		BuyerNotLive:                    state.BuyerNotLive,
 		StaleRouteMatrix:                state.StaleRouteMatrix,
+		TryBeforeYouBuy:                 !state.Input.RouteState.Committed,
 	}
 
 	// Clamp any values to ensure the entry is serialized properly

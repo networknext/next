@@ -128,6 +128,7 @@ func getTestBillingEntry2() *billing.BillingEntry2 {
 		DatacenterNotEnabled:            false,
 		BuyerNotLive:                    false,
 		StaleRouteMatrix:                false,
+		TryBeforeYouBuy:                 false,
 	}
 }
 

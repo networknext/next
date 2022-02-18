@@ -48,6 +48,7 @@ type BillingEntry2 struct {
 	Debug               string
 	RouteDiversity      int32
 	UserFlags           uint64
+	TryBeforeYouBuy     bool
 
 	// first slice and summary slice only
 
@@ -226,6 +227,15 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	*/
 	if entry.Version >= uint32(8) {
 		stream.SerializeUint64(&entry.UserFlags)
+	}
+
+	/*
+		Version 9
+
+		Includes TryBeforeYouBuy for all slices
+	*/
+	if entry.Version >= uint32(9) {
+		stream.SerializeBool(&entry.TryBeforeYouBuy)
 	}
 
 	/*
@@ -1009,6 +1019,10 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 		e["userFlags"] = int(entry.UserFlags)
 	}
 
+	if entry.TryBeforeYouBuy {
+		e["tryBeforeYouBuy"] = entry.TryBeforeYouBuy
+	}
+
 	/*
 		2. First slice and summary slice only
 
@@ -1084,7 +1098,9 @@ func (entry *BillingEntry2) Save() (map[string]bigquery.Value, string, error) {
 
 		}
 
-		e["everOnNext"] = entry.EverOnNext
+		if entry.EverOnNext {
+			e["everOnNext"] = true
+		}
 
 		e["sessionDuration"] = int(entry.SessionDuration)
 
