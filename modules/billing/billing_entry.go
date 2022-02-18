@@ -232,7 +232,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	/*
 		Version 9
 
-		Includes TryBeforeYouBuy for all slices
+		Includes server IP address in first and summary slices as well as TryBeforeYouBuy for all slices
 	*/
 	if entry.Version >= uint32(9) {
 		stream.SerializeBool(&entry.TryBeforeYouBuy)
@@ -470,7 +470,7 @@ func (entry *BillingEntry2) Serialize(stream encoding.Stream) error {
 	/*
 		Version 9
 
-		Includes server IP address in first and summary slice
+		Includes server IP address in first and summary slices as well as TryBeforeYouBuy for all slices
 	*/
 	if entry.Version >= uint32(9) {
 		if entry.SliceNumber == 0 || entry.Summary {
