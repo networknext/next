@@ -1698,6 +1698,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		Latitude:                        float32(state.Input.Location.Latitude),
 		Longitude:                       float32(state.Input.Location.Longitude),
 		ClientAddress:                   state.Packet.ClientAddress.String(),
+		ServerAddress:                   state.Packet.ServerAddress.String(),
 		ISP:                             state.Input.Location.ISP,
 		ConnectionType:                  int32(state.Packet.ConnectionType),
 		PlatformType:                    int32(state.Packet.PlatformType),
