@@ -1353,7 +1353,9 @@ func (entry *BillingEntry2Summary) Save() (map[string]bigquery.Value, string, er
 
 		}
 
-		e["everOnNext"] = entry.EverOnNext
+		if entry.EverOnNext {
+			e["everOnNext"] = entry.EverOnNext
+		}
 
 		e["sessionDuration"] = int(entry.SessionDuration)
 
