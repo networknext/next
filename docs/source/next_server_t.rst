@@ -669,9 +669,12 @@ Force times out all ongoing sessions.
 
 	void next_server_flush( struct next_server_t * server );
 
-This function blocks for 10 seconds to ensure the server sends all session data to the backend.
+This function blocks for up to 10 seconds to ensure the server sends all session data to the backend.
 
-Call this function before calling *next_server_destroy*
+All other server calls except *next_server_update* and *next_server_destroy* will be ignored.
+
+Call this function once before calling *next_server_destroy*.
+
 
 **Parameters:**
 
@@ -682,4 +685,3 @@ Call this function before calling *next_server_destroy*
 .. code-block:: c++
 
 	next_server_flush( server );
-	next_server_destroy( server );

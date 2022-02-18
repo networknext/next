@@ -97,6 +97,7 @@
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
 #define NEXT_MATCH_DATA_RESEND_TIME                                  10.0
 #define NEXT_MATCH_DATA_FLUSH_RESEND_TIME                             1.0
+#define NEXT_SERVER_FLUSH_TIMEOUT                                    10.0
 
 #define NEXT_CLIENT_COUNTER_OPEN_SESSION                                0
 #define NEXT_CLIENT_COUNTER_CLOSE_SESSION                               1
@@ -10214,6 +10215,7 @@ struct next_server_command_flush_t : public next_server_command_t
 #define NEXT_SERVER_NOTIFY_SESSION_TIMED_OUT                    3
 #define NEXT_SERVER_NOTIFY_FAILED_TO_RESOLVE_HOSTNAME           4
 #define NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED                  5
+#define NEXT_SERVER_NOTIFY_FLUSH_FINISHED                       6
 
 struct next_server_notify_t
 {
@@ -10257,6 +10259,11 @@ struct next_server_notify_failed_to_resolve_hostname_t : public next_server_noti
 };
 
 struct next_server_notify_autodetect_finished_t : public next_server_notify_t
+{
+    // ...
+};
+
+struct next_server_notify_flush_finished_t : public next_server_notify_t
 {
     // ...
 };
@@ -10320,6 +10327,14 @@ struct next_server_internal_t
     uint8_t server_route_private_key[NEXT_CRYPTO_BOX_SECRETKEYBYTES];
 
     NEXT_DECLARE_SENTINEL(5)
+
+    bool flush;
+    uint64_t num_session_updates_to_flush;
+    uint64_t num_match_data_to_flush;
+    uint64_t num_flushed_session_updates;
+    uint64_t num_flushed_match_data;
+
+    NEXT_DECLARE_SENTINEL(6)
 };
 
 void next_server_internal_initialize_sentinels( next_server_internal_t * server )
@@ -10332,6 +10347,7 @@ void next_server_internal_initialize_sentinels( next_server_internal_t * server 
     NEXT_INITIALIZE_SENTINEL( server, 3 )
     NEXT_INITIALIZE_SENTINEL( server, 4 )
     NEXT_INITIALIZE_SENTINEL( server, 5 )
+    NEXT_INITIALIZE_SENTINEL( server, 6 )
 }
 
 void next_server_internal_verify_sentinels( next_server_internal_t * server )
@@ -10344,6 +10360,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
     NEXT_VERIFY_SENTINEL( server, 3 )
     NEXT_VERIFY_SENTINEL( server, 4 )
     NEXT_VERIFY_SENTINEL( server, 5 )
+    NEXT_VERIFY_SENTINEL( server, 6 )
     if ( server->session_manager )
         next_session_manager_verify_sentinels( server->session_manager );
     if ( server->pending_session_manager )
@@ -11917,7 +11934,18 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             if ( entry->flush )
             {
                 entry->flush_finished = true;
+                server->num_flushed_session_updates++;
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed session update for session %" PRIx64 " to backend", entry->session_id );
+
+                if ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush )
+                {
+                    next_server_notify_flush_finished_t * notify = (next_server_notify_flush_finished_t*) next_malloc( server->context, sizeof( next_server_notify_flush_finished_t ) );
+                    notify->type = NEXT_SERVER_NOTIFY_FLUSH_FINISHED;
+                    {
+                        next_platform_mutex_guard( &server->notify_mutex );
+                        next_queue_push( server->notify_queue, notify );
+                    }
+                }
             }
 
             return;
@@ -11980,6 +12008,22 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             }
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server successfully recorded match data with backend for session %" PRIx64, packet.session_id );
+
+            if ( entry->flush )
+            {
+                server->num_match_data_to_flush++;
+
+                if ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush )
+                {
+                    next_server_notify_flush_finished_t * notify = (next_server_notify_flush_finished_t*) next_malloc( server->context, sizeof( next_server_notify_flush_finished_t ) );
+                    notify->type = NEXT_SERVER_NOTIFY_FLUSH_FINISHED;
+                    {
+                        next_platform_mutex_guard( &server->notify_mutex );
+                        next_queue_push( server->notify_queue, notify );
+                    }
+                }
+            }
+
             return;
         }
     }
@@ -12730,9 +12774,15 @@ void next_server_internal_flush( next_server_internal_t * server )
     if ( next_global_config.disable_network_next )
         return;
 
-    const int max_entry_index = server->session_manager->max_entry_index;
+    if ( server->flush )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        return;
+    }
 
-    int num_sessions = 0;
+    server->flush = true;
+
+    const int max_entry_index = server->session_manager->max_entry_index;
 
     for ( int i = 0; i <= max_entry_index; ++i )
     {
@@ -12741,15 +12791,17 @@ void next_server_internal_flush( next_server_internal_t * server )
 
         next_session_entry_t * session = &server->session_manager->entries[i];
 
-        if ( session->client_ping_timed_out )
-            continue;
-
         session->client_ping_timed_out = true;
         session->flush = true;
-        num_sessions++;
+        server->num_session_updates_to_flush++;
+
+        if ( session->has_match_data && !session->match_data_response_received )
+        {
+            server->num_match_data_to_flush++;
+        }
     }
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server requested flush for %d sessions", num_sessions );
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "server requested flush for %d session updates and %d match data", server->num_session_updates_to_flush, server->num_match_data_to_flush );
 }
 
 bool next_server_internal_pump_commands( next_server_internal_t * server, bool quit )
@@ -13397,6 +13449,8 @@ struct next_server_t
     next_address_t address;
     uint16_t bound_port;
     bool autodetect_finished;
+    bool flushing;
+    bool flush_finished;
 
     NEXT_DECLARE_SENTINEL(1)
 };
@@ -13624,6 +13678,11 @@ void next_server_update( next_server_t * server )
             }
             break;
 
+            case NEXT_SERVER_NOTIFY_FLUSH_FINISHED:
+            {
+                server->flush_finished = true;
+            }
+
             default: break;
         }
 
@@ -13646,6 +13705,12 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
     next_server_verify_sentinels( server );
 
     next_assert( server->internal );
+
+    if ( server->flushing )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        return 0;
+    }
     
     // send upgrade session command to internal server
 
@@ -13711,6 +13776,12 @@ void next_server_tag_session_multiple( next_server_t * server, const next_addres
     next_assert( num_tags >= 0 );
     next_assert( num_tags <= NEXT_MAX_TAGS );
 
+    if ( server->flushing )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        return;
+    }
+
     // send tag session command to internal server
 
     next_server_command_tag_session_t * command = (next_server_command_tag_session_t*) next_malloc( server->context, sizeof( next_server_command_tag_session_t ) );
@@ -13749,6 +13820,12 @@ NEXT_BOOL next_server_session_upgraded( next_server_t * server, const next_addre
 
     next_assert( server->internal );
     
+    if ( server->flushing )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        return NEXT_FALSE;
+    }
+
     next_proxy_session_entry_t * pending_entry = next_proxy_session_manager_find( server->pending_session_manager, address );
     if ( pending_entry != NULL )
         return NEXT_TRUE;
@@ -13772,6 +13849,12 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
     if ( next_global_config.disable_network_next )
     {
         next_server_send_packet_direct( server, to_address, packet_data, packet_bytes );
+        return;
+    }
+
+    if ( server->flushing )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
         return;
     }
 
@@ -13913,6 +13996,12 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
     next_assert( packet_bytes >= 0 );
     next_assert( packet_bytes <= NEXT_MTU );
 
+    if ( server->flushing )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        return;
+    }
+
     if ( packet_bytes <= 0 )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server can't send packet because packet size is <= 0 bytes" );
@@ -13936,6 +14025,12 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     next_assert( server );
     next_assert( address );
     next_assert( stats );
+
+    if ( server->flushing )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        return NEXT_FALSE;
+    }
 
     next_platform_mutex_guard( &server->internal->session_mutex );
 
@@ -13993,6 +14088,12 @@ void next_server_event( struct next_server_t * server, const struct next_address
     next_assert( server );
     next_assert( address );
     next_assert( server->internal );
+
+    if ( server->flushing )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        return;
+    }
     
     // send event user flag command to internal server
 
@@ -14023,6 +14124,12 @@ void next_server_match( struct next_server_t * server, const struct next_address
     next_assert( num_match_values >= 0 );
     next_assert( num_match_values <= NEXT_MAX_MATCH_VALUES );
 
+    if ( server->flushing )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        return;
+    }
+
     // send match data command to internal server
 
     next_server_command_match_data_t * command = (next_server_command_match_data_t*) next_malloc( server->context, sizeof( next_server_command_match_data_t ) );
@@ -14052,6 +14159,12 @@ void next_server_flush( struct next_server_t * server )
 {
     next_assert( server );
 
+    if ( server->flushing )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        return;
+    }
+
     // send flush command to internal server
 
     next_server_command_flush_t * command = (next_server_command_flush_t*) next_malloc( server->context, sizeof( next_server_command_flush_t ) );
@@ -14068,7 +14181,14 @@ void next_server_flush( struct next_server_t * server )
         next_queue_push( server->internal->command_queue, command );
     }
 
-    next_sleep( 10.0f );
+    server->flushing = true;
+
+    double current_time = next_time();
+
+    while ( !server->flush_finished && current_time >= next_time() - NEXT_SERVER_FLUSH_TIMEOUT )
+    {
+        next_sleep( 0.1 );
+    }
 }
 
 // ---------------------------------------------------------------
