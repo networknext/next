@@ -92,9 +92,11 @@
 #define NEXT_ROUTE_REQUEST_TIMEOUT                                      5
 #define NEXT_CONTINUE_REQUEST_TIMEOUT                                   5
 #define NEXT_SESSION_UPDATE_RESEND_TIME                               1.0
+#define NEXT_SESSION_UPDATE_FLUSH_RESEND_TIME                         1.0
 #define NEXT_SESSION_UPDATE_TIMEOUT                                     5
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
 #define NEXT_MATCH_DATA_RESEND_TIME                                  10.0
+#define NEXT_MATCH_DATA_FLUSH_RESEND_TIME                             1.0
 
 #define NEXT_CLIENT_COUNTER_OPEN_SESSION                                0
 #define NEXT_CLIENT_COUNTER_CLOSE_SESSION                               1
@@ -13204,7 +13206,14 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->stats_client_bandwidth_over_limit = false;
             session->stats_server_bandwidth_over_limit = false;
 
-            session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_RESEND_TIME;
+            if ( session->flush )
+            {
+                session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_FLUSH_RESEND_TIME;
+            }
+            else
+            {
+                session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_RESEND_TIME;
+            }
 
             session->waiting_for_update_response = true;
         }
@@ -13226,7 +13235,14 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-            session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
+            if ( session->flush && !session->flush_finished )
+            {
+                session->next_session_resend_time += NEXT_SESSION_UPDATE_FLUSH_RESEND_TIME;
+            }
+            else
+            {
+                session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
+            }
         }
 
         if ( session->waiting_for_update_response && session->next_session_update_time - NEXT_SECONDS_BETWEEN_SESSION_UPDATES + NEXT_SESSION_UPDATE_TIMEOUT <= current_time )
@@ -13285,7 +13301,15 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent match data packet to backend for session %" PRIx64, session->session_id );
 
-            session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_RESEND_TIME;
+            if ( session->flush )
+            {
+                session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_FLUSH_RESEND_TIME;
+            }
+            else
+            {
+                session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_RESEND_TIME;
+            }
+
             session->waiting_for_match_data_response = true;
         }
 
@@ -13306,7 +13330,14 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-            session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_RESEND_TIME;
+            if ( session->flush && !session->flush_finished )
+            {
+                session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_FLUSH_RESEND_TIME;
+            }
+            else
+            {
+                session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_RESEND_TIME;
+            }
         }
     }
 }
