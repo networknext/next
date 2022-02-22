@@ -80,7 +80,7 @@ export default class App extends Vue {}
   html, body {
     height: 100%;
     overflow: hidden;
-    font-family: "Montserrat",  !important;
+    font-family: "Montserrat" !important;
     font-weight: 400;
     font-style: normal;
   }
