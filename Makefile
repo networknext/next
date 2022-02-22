@@ -638,13 +638,13 @@ build-portal:
 
 .PHONY: build-beacon
 build-beacon:
-	@printf "Building beacon..."
+	@printf "Building beacon... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon ./cmd/beacon/beacon.go
 	@printf "done\n"
 
 .PHONY: build-beacon-inserter
 build-beacon-inserter:
-	@printf "Building beacon inserter..."
+	@printf "Building beacon inserter... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/beacon_inserter ./cmd/beacon_inserter/beacon_inserter.go
 	@printf "done\n"
 
@@ -674,19 +674,19 @@ build-api: dist
 
 .PHONY: build-vanity
 build-vanity: dist
-	@printf "Building vanity metrics ..."
+	@printf "Building vanity metrics... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/vanity ./cmd/vanity/vanity.go
 	@printf "done\n"
 
 .PHONY: build-fake-server
 build-fake-server: dist
-	@printf "Building fake server..."
+	@printf "Building fake server... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/fake_server ./cmd/fake_server/fake_server.go
 	@printf "done\n"
 
 .PHONY: build-pingdom
 build-pingdom: dist
-	@printf "Building pingdom..."
+	@printf "Building pingdom... "
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/pingdom ./cmd/pingdom/pingdom.go
 	@printf "done\n"
 
