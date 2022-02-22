@@ -81,6 +81,8 @@ export default class App extends Vue {}
     height: 100%;
     overflow: hidden;
     font-family: "Montserrat" !important;
+    font-weight: 400;
+    font-style: normal;
   }
   #app {
     position: absolute;
