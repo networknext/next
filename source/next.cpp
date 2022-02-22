@@ -12776,7 +12776,7 @@ void next_server_internal_flush( next_server_internal_t * server )
 
     if ( server->flush )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server flush. server is flushed" );
         return;
     }
 
@@ -13719,7 +13719,7 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server upgrade session. server is flushed" );
         return 0;
     }
     
@@ -13789,7 +13789,7 @@ void next_server_tag_session_multiple( next_server_t * server, const next_addres
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server tag session. server is flushed" );
         return;
     }
 
@@ -13833,7 +13833,7 @@ NEXT_BOOL next_server_session_upgraded( next_server_t * server, const next_addre
     
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server session upgraded. server is flushed" );
         return NEXT_FALSE;
     }
 
@@ -13865,7 +13865,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server send packet. server is flushed" );
         return;
     }
 
@@ -14009,7 +14009,7 @@ void next_server_send_packet_direct( next_server_t * server, const next_address_
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server send packet direct. server is flushed" );
         return;
     }
 
@@ -14039,7 +14039,7 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server stats. server is flushed" );
         return NEXT_FALSE;
     }
 
@@ -14102,7 +14102,7 @@ void next_server_event( struct next_server_t * server, const struct next_address
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server event. server is flushed" );
         return;
     }
     
@@ -14137,7 +14137,7 @@ void next_server_match( struct next_server_t * server, const struct next_address
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server match. server is flushed" );
         return;
     }
 
@@ -14172,7 +14172,7 @@ void next_server_flush( struct next_server_t * server )
 
     if ( server->flushing )
     {
-        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring. server is flushed" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "ignoring server flush. server is flushed" );
         return;
     }
 
