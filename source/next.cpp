@@ -14198,6 +14198,7 @@ void next_server_flush( struct next_server_t * server )
 
     while ( !server->flush_finished && current_time >= next_time() - NEXT_SERVER_FLUSH_TIMEOUT )
     {
+        next_server_update( server );
         next_sleep( 0.1 );
     }
 }
