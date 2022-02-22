@@ -1,10 +1,10 @@
 <template>
   <div class="card-body">
     <h5 class="card-title">
-      Analytic Dashboards
+      Analytic Dashboards (Beta)
     </h5>
     <p class="card-text">
-      Currated dashboards that provide a look into your data
+      Currated dashboards that provide a look into your data. This feature is in beta and will be receiving continuous updates.
     </p>
     <div class="card" v-if="tabs.length > 0">
       <div class="card-body">
