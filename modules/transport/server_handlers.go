@@ -1689,6 +1689,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		UseDebug:                        state.Buyer.Debug,
 		Debug:                           debugString,
 		RouteDiversity:                  int32(state.RouteDiversity),
+		UserFlags:                       state.Packet.UserFlags,
 		DatacenterID:                    state.Packet.DatacenterID,
 		BuyerID:                         state.Packet.BuyerID,
 		UserHash:                        state.Packet.UserHash,
@@ -1697,6 +1698,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		Latitude:                        float32(state.Input.Location.Latitude),
 		Longitude:                       float32(state.Input.Location.Longitude),
 		ClientAddress:                   state.Packet.ClientAddress.String(),
+		ServerAddress:                   state.Packet.ServerAddress.String(),
 		ISP:                             state.Input.Location.ISP,
 		ConnectionType:                  int32(state.Packet.ConnectionType),
 		PlatformType:                    int32(state.Packet.PlatformType),
@@ -1751,6 +1753,7 @@ func BuildBillingEntry2(state *SessionHandlerState, sliceDuration uint64, nextEn
 		DatacenterNotEnabled:            state.DatacenterNotEnabled,
 		BuyerNotLive:                    state.BuyerNotLive,
 		StaleRouteMatrix:                state.StaleRouteMatrix,
+		TryBeforeYouBuy:                 !state.Input.RouteState.Committed,
 	}
 
 	// Clamp any values to ensure the entry is serialized properly
