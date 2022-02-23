@@ -9430,8 +9430,9 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(29)
 
-    bool flush;
+    bool session_update_flush;
     bool session_update_flush_finished;
+    bool match_data_flush;
     bool match_data_flush_finished;
 
     NEXT_DECLARE_SENTINEL(30)
@@ -11932,12 +11933,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 entry->previous_server_events = 0;
             }
 
-            if ( entry->flush && !entry->session_update_packet.client_ping_timed_out )
+            if ( entry->session_update_flush && !entry->session_update_packet.client_ping_timed_out )
             {
                 // the session update was sent before client ping timed out flag was set to true, need to resend the packet
                 return;
             }
-            else if ( entry->flush )
+            else if ( entry->session_update_flush )
             {
                 entry->session_update_flush_finished = true;
                 server->num_flushed_session_updates++;
@@ -12013,7 +12014,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 }
             }
 
-            if ( entry->flush )
+            if ( entry->match_data_flush )
             {
                 entry->match_data_flush_finished = true;
                 server->num_flushed_match_data++;
@@ -12774,6 +12775,50 @@ void next_server_internal_match_data( next_server_internal_t * server, const nex
     next_printf( NEXT_LOG_LEVEL_DEBUG, "server adds match data for session %" PRIx64 " at address %s", entry->session_id, next_address_to_string( address, buffer ) );
 }
 
+void next_server_internal_flush_session_update( next_server_internal_t * server )
+{
+    next_assert( server );
+    next_assert( server->session_manager );
+
+    const int max_entry_index = server->session_manager->max_entry_index;
+
+    for ( int i = 0; i <= max_entry_index; ++i )
+    {
+        if ( server->session_manager->session_ids[i] == 0 )
+            continue;
+
+        next_session_entry_t * session = &server->session_manager->entries[i];
+
+        session->client_ping_timed_out = true;
+        session->session_update_packet.client_ping_timed_out = true;
+
+        session->session_update_flush = true;
+        server->num_session_updates_to_flush++;
+    }
+}
+
+void next_server_internal_flush_match_data( next_server_internal_t * server )
+{
+    next_assert( server );
+    next_assert( server->session_manager );
+
+    const int max_entry_index = server->session_manager->max_entry_index;
+
+    for ( int i = 0; i <= max_entry_index; ++i )
+    {
+        if ( server->session_manager->session_ids[i] == 0 )
+            continue;
+
+        next_session_entry_t * session = &server->session_manager->entries[i];
+
+        if ( ( !session->has_match_data ) || ( session->has_match_data && session->match_data_response_received ) )
+            continue;
+
+        session->match_data_flush = true;
+        server->num_match_data_to_flush++;
+    }
+}
+
 void next_server_internal_flush( next_server_internal_t * server )
 {
     next_assert( server );
@@ -12792,25 +12837,8 @@ void next_server_internal_flush( next_server_internal_t * server )
 
     server->flush = true;
 
-    const int max_entry_index = server->session_manager->max_entry_index;
-
-    for ( int i = 0; i <= max_entry_index; ++i )
-    {
-        if ( server->session_manager->session_ids[i] == 0 )
-            continue;
-
-        next_session_entry_t * session = &server->session_manager->entries[i];
-
-        session->client_ping_timed_out = true;
-        session->session_update_packet.client_ping_timed_out = true;
-        session->flush = true;
-        server->num_session_updates_to_flush++;
-
-        if ( session->has_match_data && !session->match_data_response_received )
-        {
-            server->num_match_data_to_flush++;
-        }
-    }
+    next_server_internal_flush_session_update( server );
+    next_server_internal_flush_match_data( server );
 
     if ( server->num_session_updates_to_flush == 0 && server->num_match_data_to_flush == 0 )
     {
@@ -13186,7 +13214,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_session_entry_t * session = &server->session_manager->entries[i];
 
-        if ( ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time ) || ( session->flush && !session->session_update_flush_finished && !session->waiting_for_update_response ) )
+        if ( ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time ) || ( session->session_update_flush && !session->session_update_flush_finished && !session->waiting_for_update_response ) )
         {
             NextBackendSessionUpdatePacket packet;
 
@@ -13279,7 +13307,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             session->stats_client_bandwidth_over_limit = false;
             session->stats_server_bandwidth_over_limit = false;
 
-            if ( session->flush )
+            if ( session->session_update_flush )
             {
                 session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_FLUSH_RESEND_TIME;
             }
@@ -13308,7 +13336,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-            if ( session->flush && !session->session_update_flush_finished )
+            if ( session->session_update_flush && !session->session_update_flush_finished )
             {
                 session->next_session_resend_time += NEXT_SESSION_UPDATE_FLUSH_RESEND_TIME;
             }
@@ -13344,7 +13372,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         if ( !session->has_match_data || session->match_data_response_received )
             continue;
 
-        if ( ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response) || ( session->flush && !session->waiting_for_match_data_response ) )
+        if ( ( session->next_match_data_resend_time == 0.0 && !session->waiting_for_match_data_response) || ( session->match_data_flush && !session->waiting_for_match_data_response ) )
         {
             NextBackendMatchDataRequestPacket packet;
             packet.customer_id = server->customer_id;
@@ -13374,7 +13402,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent match data packet to backend for session %" PRIx64, session->session_id );
 
-            if ( session->flush )
+            if ( session->match_data_flush )
             {
                 session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_FLUSH_RESEND_TIME;
             }
@@ -13403,7 +13431,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-            if ( session->flush && !session->match_data_flush_finished )
+            if ( session->match_data_flush && !session->match_data_flush_finished )
             {
                 session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_FLUSH_RESEND_TIME;
             }
