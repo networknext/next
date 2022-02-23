@@ -13306,15 +13306,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             session->stats_client_bandwidth_over_limit = false;
             session->stats_server_bandwidth_over_limit = false;
-
-            if ( session->session_update_flush )
-            {
-                session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_FLUSH_RESEND_TIME;
-            }
-            else
-            {
-                session->next_session_resend_time = current_time + NEXT_SESSION_UPDATE_RESEND_TIME;
-            }
+            
+            session->next_session_resend_time = ( session->session_update_flush ) ? current_time + NEXT_SESSION_UPDATE_FLUSH_RESEND_TIME : current_time + NEXT_SESSION_UPDATE_RESEND_TIME;
 
             session->waiting_for_update_response = true;
         }
@@ -13336,14 +13329,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-            if ( session->session_update_flush && !session->session_update_flush_finished )
-            {
-                session->next_session_resend_time += NEXT_SESSION_UPDATE_FLUSH_RESEND_TIME;
-            }
-            else
-            {
-                session->next_session_resend_time += NEXT_SESSION_UPDATE_RESEND_TIME;
-            }
+            session->next_session_resend_time += ( session->session_update_flush && !session->session_update_flush_finished ) ? NEXT_SESSION_UPDATE_FLUSH_RESEND_TIME : NEXT_SESSION_UPDATE_RESEND_TIME;
         }
 
         if ( session->waiting_for_update_response && session->next_session_update_time - NEXT_SECONDS_BETWEEN_SESSION_UPDATES + NEXT_SESSION_UPDATE_TIMEOUT <= current_time )
@@ -13402,14 +13388,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent match data packet to backend for session %" PRIx64, session->session_id );
 
-            if ( session->match_data_flush )
-            {
-                session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_FLUSH_RESEND_TIME;
-            }
-            else
-            {
-                session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_RESEND_TIME;
-            }
+            session->next_match_data_resend_time = ( session->match_data_flush ) ? current_time + NEXT_MATCH_DATA_FLUSH_RESEND_TIME : current_time + NEXT_MATCH_DATA_RESEND_TIME;
 
             session->waiting_for_match_data_response = true;
         }
@@ -13431,14 +13410,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-            if ( session->match_data_flush && !session->match_data_flush_finished )
-            {
-                session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_FLUSH_RESEND_TIME;
-            }
-            else
-            {
-                session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_RESEND_TIME;
-            }
+            session->next_match_data_resend_time += ( session->match_data_flush && !session->match_data_flush_finished ) ? NEXT_MATCH_DATA_FLUSH_RESEND_TIME : NEXT_MATCH_DATA_RESEND_TIME;
         }
     }
 }
