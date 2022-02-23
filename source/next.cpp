@@ -12026,7 +12026,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             }
             else
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server successfully recorded match data with backend for session %" PRIx64, packet.session_id );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server successfully recorded match data for session %" PRIx64 " with backend", packet.session_id );
             }
 
             return;
