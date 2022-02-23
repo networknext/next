@@ -3207,21 +3207,28 @@ func (s *BuyersService) TestLookerSessionLookup(r *http.Request, args *TestLooke
 		return &err
 	}
 
-	nearbyRelays := make([]transport.NearRelayPortalData, len(lookerSession.NearRelayIDs))
+	nearbyRelays := make([]transport.NearRelayPortalData, len(lookerSession.NearRelays))
 
-	for i, relay := range lookerSession.NearRelayIDs {
-		nearbyRelays[i].ID = uint64(relay.ID)
-		/*
-			nearbyRelays[i].Name = relay.Name
-			nearbyRelays[i].ClientStats = routing.Stats{
-				RTT:        relay.RTT,
-				Jitter:     relay.Jitter,
-				PacketLoss: relay.L,
-			}
-		*/
+	for i, relay := range lookerSession.NearRelays {
+		relayID := uint64(relay.ID)
+		nearbyRelays[i].ID = relayID
+		nearbyRelays[i].ClientStats.RTT = relay.RTT
+		nearbyRelays[i].ClientStats.Jitter = relay.Jitter
+		nearbyRelays[i].ClientStats.PacketLoss = relay.PL
+
+		if s.Env == "local" || s.Env == "dev" {
+			nearbyRelays[i].Name = "Unknown"
+			continue
+		}
+
+		relay, err := s.Storage.Relay(r.Context(), relayID)
+		if err != nil {
+			nearbyRelays[i].Name = "Unknown"
+			continue
+		}
+
+		nearbyRelays[i].Name = relay.Name
 	}
-
-	fmt.Println(nearbyRelays)
 
 	reply.Meta = transport.SessionMeta{
 		ID:         uint64(lookerSession.Meta.SessionID),
@@ -3239,7 +3246,7 @@ func (s *BuyersService) TestLookerSessionLookup(r *http.Request, args *TestLooke
 		SDK:             lookerSession.Meta.SDK,
 		ClientAddr:      lookerSession.Meta.ClientAddress,
 		NearbyRelays:    nearbyRelays,
-		// ServerAddr: session.ServerAddress,
+		ServerAddr:      lookerSession.Meta.ServerAddress,
 	}
 
 	for _, slice := range lookerSession.Slices {
@@ -3269,10 +3276,10 @@ func (s *BuyersService) TestLookerSessionLookup(r *http.Request, args *TestLooke
 			Envelope: routing.Envelope{
 				Up: slice.EnvelopeUp,
 			},
-			RouteDiversity: uint32(slice.RouteDiversity),
-			OnNetworkNext:  strings.ToLower(slice.OnNetworkNext) == "yes", // Looker forces these to be strings - yes or no
-			IsMultiPath:    strings.ToLower(slice.IsMultiPath) == "yes",   // Looker forces these to be strings - yes or no
-			// IsTryBeforeYouBuy:   slice.IsTryBeforeYouBuy == "yes",   // Looker forces these to be strings - yes or no
+			RouteDiversity:    uint32(slice.RouteDiversity),
+			OnNetworkNext:     strings.ToLower(slice.OnNetworkNext) == "yes", // Looker forces these to be strings - yes or no
+			IsMultiPath:       strings.ToLower(slice.IsMultiPath) == "yes",   // Looker forces these to be strings - yes or no
+			IsTryBeforeYouBuy: slice.IsTryBeforeYouBuy == "yes",              // Looker forces these to be strings - yes or no
 		})
 	}
 

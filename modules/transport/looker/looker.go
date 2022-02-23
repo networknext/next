@@ -115,50 +115,55 @@ func (l *LookerClient) FetchAuthToken() (string, error) {
 }
 
 type LookerSessionMeta struct {
-	Timestamp     string      `json:"billing2_session_summary.start_timestamp_time"`
-	SessionID     int64       `json:"billing2_session_summary.session_id"`
-	UserHash      int64       `json:"billing2_session_summary.user_hash"`
-	Platform      int8        `json:"billing2_session_summary.platform_type"`
-	Connection    int8        `json:"billing2_session_summary.connection_type"`
-	ISP           string      `json:"billing2_session_summary.isp"`
-	Longitude     float64     `json:"billing2_session_summary.longitude,omitempty"`
-	Latitude      float64     `json:"billing2_session_summary.latitude,omitempty"`
-	BuyerID       int64       `json:"billing2_session_summary.buyer_id,omitempty"`
-	SDK           string      `json:"billing2_session_summary.sdk_version,omitempty"`
-	ClientAddress string      `json:"billing2_session_summary.client_address,omitempty"`
-	NearRelayIDs  json.Number `json:"billing2_session_summary__near_relay_ids.billing2_session_summary__near_relay_ids,omitempty"`
-	// ServerAddress   string `json:"billing2_session_summary.server_address"`
-	DatacenterName  string `json:"datacenter_info_v3.datacenter_name"`
-	DatacenterAlias string `json:"datacenter_info_v3.alias"`
+	Timestamp             string      `json:"billing2_session_summary.start_timestamp_time"`
+	SessionID             int64       `json:"billing2_session_summary.session_id"`
+	UserHash              int64       `json:"billing2_session_summary.user_hash"`
+	Platform              int8        `json:"billing2_session_summary.platform_type"`
+	Connection            int8        `json:"billing2_session_summary.connection_type"`
+	ISP                   string      `json:"billing2_session_summary.isp"`
+	Longitude             float64     `json:"billing2_session_summary.longitude,omitempty"`
+	Latitude              float64     `json:"billing2_session_summary.latitude,omitempty"`
+	BuyerID               int64       `json:"billing2_session_summary.buyer_id,omitempty"`
+	SDK                   string      `json:"billing2_session_summary.sdk_version,omitempty"`
+	ClientAddress         string      `json:"billing2_session_summary.client_address,omitempty"`
+	NearRelayIDs          json.Number `json:"billing2_session_summary__near_relay_ids.billing2_session_summary__near_relay_ids,omitempty"`
+	NearRelayRTTs         json.Number `json:"billing2_session_summary__near_relay_rtts.billing2_session_summary__near_relay_rtts,omitempty"`
+	NearRelayJitters      json.Number `json:"billing2_session_summary__near_relay_jitters.billing2_session_summary__near_relay_jitters,omitempty"`
+	NearRelayPacketLosses json.Number `json:"billing2_session_summary__near_relay_packet_losses.billing2_session_summary__near_relay_packet_losses,omitempty"`
+	ServerAddress         string      `json:"billing2_session_summary.server_address"`
+	DatacenterName        string      `json:"datacenter_info_v3.datacenter_name"`
+	DatacenterAlias       string      `json:"datacenter_info_v3.alias"`
 }
 
 type LookerSessionSlice struct {
-	Timestamp        string  `json:"billing2.timestamp_time"`
-	NextRTT          float64 `json:"billing2.next_rtt"`
-	NextJitter       float64 `json:"billing2.next_jitter"`
-	NextPacketLoss   float64 `json:"billing2.next_packet_loss"`
-	DirectRTT        float64 `json:"billing2.direct_rtt"`
-	DirectJitter     float64 `json:"billing2.direct_jitter"`
-	DirectPacketLoss float64 `json:"billing2.direct_packet_loss"`
-	PredictedRTT     float64 `json:"billing2.predicted_next_rtt"`
-	RouteDiversity   int32   `json:"billing2.route_diversity"`
-	EnvelopeUp       int64   `json:"billing2.next_bytes_up"`
-	EnvelopeDown     int64   `json:"billing2.next_bytes_down"`
-	OnNetworkNext    string  `json:"billing2.next"`
-	IsMultiPath      string  `json:"billing2.multipath"`
-	// IsTryBeforeYouBuy bool    `json:"billing2.is_try_before_you_buy"`
+	Timestamp         string  `json:"billing2.timestamp_time"`
+	NextRTT           float64 `json:"billing2.next_rtt"`
+	NextJitter        float64 `json:"billing2.next_jitter"`
+	NextPacketLoss    float64 `json:"billing2.next_packet_loss"`
+	DirectRTT         float64 `json:"billing2.direct_rtt"`
+	DirectJitter      float64 `json:"billing2.direct_jitter"`
+	DirectPacketLoss  float64 `json:"billing2.direct_packet_loss"`
+	PredictedRTT      float64 `json:"billing2.predicted_next_rtt"`
+	RouteDiversity    int32   `json:"billing2.route_diversity"`
+	EnvelopeUp        int64   `json:"billing2.next_bytes_up"`
+	EnvelopeDown      int64   `json:"billing2.next_bytes_down"`
+	OnNetworkNext     string  `json:"billing2.next"`
+	IsMultiPath       string  `json:"billing2.multipath"`
+	IsTryBeforeYouBuy string  `json:"billing2.is_try_before_you_buy"`
 }
 
 type LookerNearRelay struct {
-	ID   int64
-	Name string
-	// Stats
+	ID     int64
+	Name   string
+	RTT    float64
+	Jitter float64
+	PL     float64
 }
 
 type LookerSession struct {
-	Meta         LookerSessionMeta
-	NearRelayIDs []LookerNearRelay
-	Slices       []LookerSessionSlice
+	Meta       LookerSessionMeta
+	NearRelays []LookerNearRelay
+	Slices     []LookerSessionSlice
 }
 
 func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string) (LookerSession, error) {
@@ -198,7 +203,10 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 		LOOKER_SESSION_SUMMARY_VIEW + ".sdk_version",
 		LOOKER_SESSION_SUMMARY_VIEW + ".client_address",
 		"billing2_session_summary__near_relay_ids.billing2_session_summary__near_relay_ids",
-		// LOOKER_SESSION_SUMMARY_VIEW + ".server_address",
+		"billing2_session_summary__near_relay_rtts.billing2_session_summary__near_relay_rtts",
+		"billing2_session_summary__near_relay_jitters.billing2_session_summary__near_relay_jitters",
+		"billing2_session_summary__near_relay_packet_losses.billing2_session_summary__near_relay_packet_losses",
+		LOOKER_SESSION_SUMMARY_VIEW + ".server_address",
 		LOOKER_DATACENTER_INFO_VIEW + ".datacenter_name",
 		LOOKER_DATACENTER_INFO_VIEW + ".alias",
 	}
@@ -244,72 +252,100 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 
 	// Fetch Slice data for session
 
-	/* 	requiredFields = []string{
-	   		LOOKER_BILLING2_VIEW + ".timestamp_time",
-	   		LOOKER_BILLING2_VIEW + ".next_rtt",
-	   		LOOKER_BILLING2_VIEW + ".next_jitter",
-	   		LOOKER_BILLING2_VIEW + ".next_packet_loss",
-	   		LOOKER_BILLING2_VIEW + ".predicted_next_rtt",
-	   		LOOKER_BILLING2_VIEW + ".direct_rtt",
-	   		LOOKER_BILLING2_VIEW + ".direct_jitter",
-	   		LOOKER_BILLING2_VIEW + ".direct_packet_loss",
-	   		LOOKER_BILLING2_VIEW + ".next_bytes_up",
-	   		LOOKER_BILLING2_VIEW + ".next_bytes_down",
-	   		LOOKER_BILLING2_VIEW + ".route_diversity",
-	   		LOOKER_BILLING2_VIEW + ".next",
-	   		LOOKER_BILLING2_VIEW + ".multipath",
-	   	}
-	   	sorts = []string{}
-	   	requiredFilters = make(map[string]interface{})
-
-	   	requiredFilters[LOOKER_BILLING2_VIEW+".session_id"] = fmt.Sprintf("%d", int64(uintID64))
-	   	requiredFilters[LOOKER_BILLING2_VIEW+".timestamp_date"] = queryTimeFrame
-
-	   	query = v4.WriteQuery{
-	   		Model:   LOOKER_PROD_MODEL,
-	   		View:    LOOKER_BILLING2_VIEW,
-	   		Fields:  &requiredFields,
-	   		Filters: &requiredFilters,
-	   		Sorts:   &sorts,
-	   	}
-
-	   	lookerBody, _ = json.Marshal(query)
-	   	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
-	   	if err != nil {
-	   		return LookerSession{}, err
-	   	}
-	   	req.Header.Add("Content-Type", "application/json")
-	   	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-
-	   	resp, err = client.Do(req)
-	   	if err != nil {
-	   		return LookerSession{}, err
-	   	}
-	   	defer resp.Body.Close()
-
-	   	buf = new(bytes.Buffer)
-	   	_, err = buf.ReadFrom(resp.Body)
-	   	if err != nil {
-	   		return LookerSession{}, err
-	   	}
-
-	   	if err = json.Unmarshal(buf.Bytes(), &querySessionSlices); err != nil {
-	   		return LookerSession{}, err
-	   	} */
-
-	for _, meta := range querySessionMeta {
-		nearRelayID, err := meta.NearRelayIDs.Int64()
-		if err != nil {
-			continue
-		}
-		nearRelays = append(nearRelays, LookerNearRelay{
-			ID: nearRelayID,
-		})
+	requiredFields = []string{
+		LOOKER_BILLING2_VIEW + ".timestamp_time",
+		LOOKER_BILLING2_VIEW + ".next_rtt",
+		LOOKER_BILLING2_VIEW + ".next_jitter",
+		LOOKER_BILLING2_VIEW + ".next_packet_loss",
+		LOOKER_BILLING2_VIEW + ".predicted_next_rtt",
+		LOOKER_BILLING2_VIEW + ".direct_rtt",
+		LOOKER_BILLING2_VIEW + ".direct_jitter",
+		LOOKER_BILLING2_VIEW + ".direct_packet_loss",
+		LOOKER_BILLING2_VIEW + ".next_bytes_up",
+		LOOKER_BILLING2_VIEW + ".next_bytes_down",
+		LOOKER_BILLING2_VIEW + ".route_diversity",
+		LOOKER_BILLING2_VIEW + ".next",
+		LOOKER_BILLING2_VIEW + ".multipath",
+		LOOKER_BILLING2_VIEW + ".try_before_you_buy",
 	}
+	sorts = []string{}
+	requiredFilters = make(map[string]interface{})
+
+	requiredFilters[LOOKER_BILLING2_VIEW+".session_id"] = fmt.Sprintf("%d", int64(uintID64))
+	requiredFilters[LOOKER_BILLING2_VIEW+".timestamp_date"] = queryTimeFrame
+
+	query = v4.WriteQuery{
+		Model:   LOOKER_PROD_MODEL,
+		View:    LOOKER_BILLING2_VIEW,
+		Fields:  &requiredFields,
+		Filters: &requiredFilters,
+		Sorts:   &sorts,
+	}
+
+	lookerBody, _ = json.Marshal(query)
+	req, err = http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
+	if err != nil {
+		return LookerSession{}, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	resp, err = client.Do(req)
+	if err != nil {
+		return LookerSession{}, err
+	}
+	defer resp.Body.Close()
+
+	buf = new(bytes.Buffer)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return LookerSession{}, err
+	}
+
+	if err = json.Unmarshal(buf.Bytes(), &querySessionSlices); err != nil {
+		return LookerSession{}, err
+	}
+
+	fmt.Println(len(querySessionMeta))
+
+	fmt.Printf("\n%+v\n\n", querySessionMeta[0])
+	fmt.Printf("%+v\n\n", querySessionMeta[1])
+
+	/*
+		for _, meta := range querySessionMeta {
+			nearRelayID, err := meta.NearRelayIDs.Int64()
+			if err != nil {
+				continue
+			}
+
+			nearRelayRTT, err := meta.NearRelayRTTs.Float64()
+			if err != nil {
+				continue
+			}
+
+			nearRelayJitter, err := meta.NearRelayJitters.Float64()
+			if err != nil {
+				continue
+			}
+
+			nearRelayPacketLoss, err := meta.NearRelayPacketLosses.Float64()
+			if err != nil {
+				continue
+			}
+
+			nearRelays = append(nearRelays, LookerNearRelay{
+				ID:     nearRelayID,
+				RTT:    nearRelayRTT,
+				Jitter: nearRelayJitter,
+				PL:     nearRelayPacketLoss,
+			})
+		}
+	*/
+
 	return LookerSession{
-		Meta:         querySessionMeta[0],
-		NearRelayIDs: nearRelays,
-		Slices:       querySessionSlices,
+		Meta:       querySessionMeta[0],
+		NearRelays: nearRelays,
+		Slices:     querySessionSlices,
 	}, nil
 }
 
