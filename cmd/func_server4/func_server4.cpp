@@ -45,6 +45,7 @@ int num_upgrades = 0;
 bool tags_multi = false;
 bool server_events = false;
 bool match_data = false;
+bool flush = false;
 
 extern bool next_packet_loss;
 
@@ -92,7 +93,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
                 next_server_event( server, from, event1 | event2 | event3 );
             }
 
-            if ( match_data && match_data_set.find( address_string ) == match_data_set.end() )
+            if ( match_data && !flush && match_data_set.find( address_string ) == match_data_set.end() )
             {
                 const double match_values[] = {10.10f, 20.20f, 30.30f};
                 next_server_match( server, from, "test match id", match_values, sizeof(match_values) );
@@ -208,6 +209,12 @@ int main()
         match_data = true;
     }
 
+    const char * flush_env = getenv( "SERVER_FLUSH" );
+    if ( flush_env )
+    {
+        flush = true;
+    }
+
     bool restarted = false;
 
     while ( !quit )
@@ -226,6 +233,25 @@ int main()
         }
 
         next_sleep( 1.0 / 60.0 );
+    }
+
+    if ( flush )
+    {
+        if ( match_data )
+        {
+            const double match_values[] = {10.10f, 20.20f, 30.30f};
+
+            for ( std::map<std::string,uint8_t*>::iterator itor = client_map.begin(); itor != client_map.end(); ++itor )
+            {
+                next_address_t client_address;
+                if ( next_address_parse( &client_address, itor->first.c_str() ) != NEXT_OK )
+                    continue;
+
+                next_server_match( server, &client_address, "test match id", match_values, sizeof(match_values) );
+            }
+        }
+
+        next_server_flush ( server );
     }
     
     next_server_destroy( server );
