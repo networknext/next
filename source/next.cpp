@@ -12008,12 +12008,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 }
             }
 
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server successfully recorded match data with backend for session %" PRIx64, packet.session_id );
-
             if ( entry->flush )
             {
                 entry->match_data_flush_finished = true;
                 server->num_flushed_match_data++;
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed match data for session %" PRIx64 " to backend", entry->session_id );
 
                 if ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush )
                 {
@@ -12024,6 +12023,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                         next_queue_push( server->notify_queue, notify );
                     }
                 }
+            }
+            else
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server successfully recorded match data with backend for session %" PRIx64, packet.session_id );
             }
 
             return;
