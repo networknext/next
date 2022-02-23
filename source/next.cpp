@@ -12797,6 +12797,7 @@ void next_server_internal_flush( next_server_internal_t * server )
         next_session_entry_t * session = &server->session_manager->entries[i];
 
         session->client_ping_timed_out = true;
+        session->session_update_packet.client_ping_timed_out = true;
         session->flush = true;
         server->num_session_updates_to_flush++;
 
