@@ -225,6 +225,18 @@ ifndef BILLING_ENTRY_VETO
 export BILLING_ENTRY_VETO = true
 endif
 
+ifndef MATCH_DATA_BATCHED_MESSAGE_COUNT
+export MATCH_DATA_BATCHED_MESSAGE_COUNT = 1
+endif
+
+ifndef MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES
+export MATCH_DATA_BATCHED_MESSAGE_MIN_BYTES = 100
+endif
+
+ifndef MATCH_DATA_ENTRY_VETO
+export MATCH_DATA_ENTRY_VETO = true
+endif
+
 ifndef POST_SESSION_THREAD_COUNT
 export POST_SESSION_THREAD_COUNT = 100
 endif
@@ -425,6 +437,10 @@ dev-billing: build-billing ## runs a local billing service
 .PHONY: dev-analytics-pusher
 dev-analytics-pusher: build-analytics-pusher ## runs a local analytics pusher service
 	@PORT=41002 ./dist/analytics_pusher
+
+.PHONY: dev-match-data
+dev-match-data: build-match-data ## runs a local match data service
+	@PORT=41003 ./dist/match_data
 
 .PHONY: dev-analytics
 dev-analytics: build-analytics ## runs a local analytics service
@@ -666,6 +682,12 @@ build-analytics-pusher:
 	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/analytics_pusher ./cmd/analytics_pusher/analytics_pusher.go
 	@printf "done\n"
 
+.PHONY: build-match-data
+build-match-data:
+	@printf "Building match data... "
+	@$(GO) build -ldflags "-s -w -X main.buildtime=$(TIMESTAMP) -X main.sha=$(SHA) -X main.release=$(RELEASE)) -X main.commitMessage=$(echo "$COMMITMESSAGE")" -o ${DIST_DIR}/match_data ./cmd/match_data/match_data.go
+	@printf "done\n"
+
 .PHONY: build-api
 build-api: dist
 	@printf "Building api... "
@@ -784,6 +806,10 @@ build-analytics-pusher-artifacts-dev: build-analytics-pusher
 build-analytics-artifacts-dev: build-analytics
 	./deploy/build-artifacts.sh -e dev -s analytics
 
+.PHONY: build-match-data-artifacts-dev
+build-match-data-artifacts-dev: build-match-data
+	./deploy/build-artifacts.sh -e dev -s match_data
+
 .PHONY: build-api-artifacts-dev
 build-api-artifacts-dev: build-api
 	./deploy/build-artifacts.sh -e dev -s api
@@ -835,6 +861,10 @@ build-analytics-pusher-artifacts-staging: build-analytics-pusher
 .PHONY: build-analytics-artifacts-staging
 build-analytics-artifacts-staging: build-analytics
 	./deploy/build-artifacts.sh -e staging -s analytics
+
+.PHONY: build-match-data-artifacts-staging
+build-match-data-artifacts-staging: build-match-data
+	./deploy/build-artifacts.sh -e staging -s match_data
 
 .PHONY: build-api-artifacts-staging
 build-api-artifacts-staging: build-api
@@ -888,6 +918,10 @@ build-analytics-pusher-artifacts-prod: build-analytics-pusher
 build-analytics-artifacts-prod: build-analytics
 	./deploy/build-artifacts.sh -e prod -s analytics
 
+.PHONY: build-match-data-artifacts-prod
+build-match-data-artifacts-prod: build-match-data
+	./deploy/build-artifacts.sh -e prod -s match_data
+
 .PHONY: build-api-artifacts-prod
 build-api-artifacts-prod: build-api
 	./deploy/build-artifacts.sh -e prod -s api
@@ -935,6 +969,10 @@ publish-analytics-pusher-artifacts-dev:
 .PHONY: publish-analytics-artifacts-dev
 publish-analytics-artifacts-dev:
 	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s analytics
+
+.PHONY: publish-match-data-artifacts-dev
+publish-match-data-artifacts-dev:
+	./deploy/publish.sh -e dev -b $(ARTIFACT_BUCKET) -s match_data
 
 .PHONY: publish-api-artifacts-dev
 publish-api-artifacts-dev:
@@ -987,6 +1025,10 @@ publish-analytics-pusher-artifacts-staging:
 .PHONY: publish-analytics-artifacts-staging
 publish-analytics-artifacts-staging:
 	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s analytics
+
+.PHONY: publish-match-data-artifacts-staging
+publish-match-data-artifacts-staging:
+	./deploy/publish.sh -e staging -b $(ARTIFACT_BUCKET_STAGING) -s match_data
 
 .PHONY: publish-api-artifacts-staging
 publish-api-artifacts-staging:
@@ -1067,6 +1109,10 @@ publish-analytics-pusher-artifacts-prod:
 .PHONY: publish-analytics-artifacts-prod
 publish-analytics-artifacts-prod:
 	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s analytics
+
+.PHONY: publish-match-data-artifacts-prod
+publish-match-data-artifacts-prod:
+	./deploy/publish.sh -e prod -b $(ARTIFACT_BUCKET_PROD) -s match_data
 
 .PHONY: publish-relay-artifacts-prod
 publish-relay-artifacts-prod:
@@ -1584,7 +1630,7 @@ format:
 	@printf "\n"
 
 .PHONY: build-all
-build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
+build-all: build-sdk4 build-sdk5 build-portal-cruncher build-analytics-pusher build-analytics build-match-data build-api build-vanity build-billing build-beacon build-beacon-inserter build-relay-gateway build-relay-backend build-relay-frontend build-relay-forwarder build-relay-pusher build-server-backend4 build-client4 build-client5 build-server4 build-server5 build-pingdom build-functional4 build-functional5 build-next ## builds everything
 
 .PHONY: rebuild-all
 rebuild-all: clean build-all ## rebuilds everything
