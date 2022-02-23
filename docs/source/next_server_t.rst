@@ -686,3 +686,4 @@ Call this function once before calling *next_server_destroy*.
 .. code-block:: c++
 
 	next_server_flush( server );
+	next_server_destroy( server );
