@@ -1,6 +1,7 @@
 package test
 
 import (
+	"net"
 	"time"
 
 	"github.com/networknext/backend/modules/core"
@@ -59,6 +60,7 @@ func (env *TestEnvironment) GenerateServerUpdatePacket(sdkVersion transport.SDKV
 
 	return requestData
 }
+
 func (env *TestEnvironment) GenerateEmptySessionUpdatePacket(privateKey []byte) []byte {
 	routePublicKey, _, err := core.GenerateRelayKeyPair()
 	assert.NoError(env.TestContext, err)
@@ -108,7 +110,7 @@ type SessionUpdatePacketConfig struct {
 	NearRelayJitter          int32
 	NearRelayPL              int32
 	NumTags                  int32
-	Tags                     [8]uint64
+	Tags                     [transport.MaxTags]uint64
 	Flags                    uint32
 	UserFlags                uint64
 	SessionData              [transport.MaxSessionDataSize]byte
@@ -169,7 +171,7 @@ func (env *TestEnvironment) GenerateSessionUpdatePacket(config SessionUpdatePack
 		NextRTT:                  config.NextRTT,
 		NextJitter:               config.NextJitter,
 		NextPacketLoss:           config.NextPacketLoss,
-		DirectMinRTT:             config.DirectRTT,			// todo: upgrade tests support min/max/prime direct RTT
+		DirectMinRTT:             config.DirectRTT, // todo: upgrade tests support min/max/prime direct RTT
 		DirectMaxRTT:             config.DirectRTT,
 		DirectPrimeRTT:           config.DirectRTT,
 		DirectJitter:             config.DirectJitter,
@@ -222,4 +224,49 @@ func (env *TestEnvironment) GenerateSessionDataPacket(config SessionDataConfig) 
 	copy(requestSessionDataBytesFixed[:], requestSessionDataBytes)
 
 	return requestSessionDataBytesFixed, len(requestSessionDataBytes)
+}
+
+type MatchDataPacketConfig struct {
+	Version        transport.SDKVersion
+	BuyerID        uint64
+	ServerAddress  net.UDPAddr
+	DatacenterID   uint64
+	UserHash       uint64
+	SessionID      uint64
+	RetryNumber    uint32
+	MatchID        uint64
+	NumMatchValues int32
+	MatchValues    [transport.MaxMatchValues]float64
+	PrivateKey     []byte
+}
+
+func (env *TestEnvironment) GenerateMatchDataRequestPacket(config MatchDataPacketConfig) []byte {
+	requestPacket := transport.MatchDataRequestPacket{
+		Version:        config.Version,
+		BuyerID:        config.BuyerID,
+		ServerAddress:  config.ServerAddress,
+		DatacenterID:   config.DatacenterID,
+		UserHash:       config.UserHash,
+		SessionID:      config.SessionID,
+		RetryNumber:    config.RetryNumber,
+		MatchID:        config.MatchID,
+		NumMatchValues: config.NumMatchValues,
+		MatchValues:    config.MatchValues,
+	}
+
+	requestData, err := transport.MarshalPacket(&requestPacket)
+	assert.NoError(env.TestContext, err)
+
+	// If a private key is passed in, sign the packet
+	if len(config.PrivateKey) > 0 {
+		// We need to add the packet header (packet type + 8 hash bytes) in order to get the correct signature
+		requestDataHeader := append([]byte{transport.PacketTypeMatchDataRequest}, make([]byte, crypto.PacketHashSize)...)
+		requestData = append(requestDataHeader, requestData...)
+		requestData = crypto.SignPacket(config.PrivateKey, requestData)
+
+		// Once we have the signature, we need to take off the header before passing to the handler
+		requestData = requestData[1+crypto.PacketHashSize:]
+	}
+
+	return requestData
 }
