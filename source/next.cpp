@@ -12011,7 +12011,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             if ( entry->flush )
             {
-                server->num_match_data_to_flush++;
+                server->num_flushed_match_data++;
 
                 if ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush )
                 {
