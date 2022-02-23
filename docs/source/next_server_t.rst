@@ -658,7 +658,8 @@ This function can be called only once per session. You can add up to 64 *match_v
 
 	const char * match_id = "this is a unique match id";
 	const double match_values[] = {10.0f, 20.0f, 30.0f};
-	next_server_match( server, address, match_id, match_values, sizeof(match_values) );
+	int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
+	next_server_match( server, address, match_id, match_values, num_match_values );
 
 next_server_flush
 -----------------
