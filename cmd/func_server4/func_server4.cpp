@@ -96,8 +96,9 @@ void server_packet_received( next_server_t * server, void * context, const next_
             if ( match_data && !flush && match_data_set.find( address_string ) == match_data_set.end() )
             {
                 const double match_values[] = {10.10f, 20.20f, 30.30f};
-                next_server_match( server, from, "test match id", match_values, sizeof(match_values) );
-
+                int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
+                next_server_match( server, from, "test match id", match_values, num_match_values );
+                
                 match_data_set.insert( address_string );
             }
         }
@@ -240,6 +241,7 @@ int main()
         if ( match_data )
         {
             const double match_values[] = {10.10f, 20.20f, 30.30f};
+            int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
 
             for ( std::map<std::string,uint8_t*>::iterator itor = client_map.begin(); itor != client_map.end(); ++itor )
             {
@@ -247,7 +249,7 @@ int main()
                 if ( next_address_parse( &client_address, itor->first.c_str() ) != NEXT_OK )
                     continue;
 
-                next_server_match( server, &client_address, "test match id", match_values, sizeof(match_values) );
+                next_server_match( server, &client_address, "test match id", match_values, num_match_values );
             }
         }
 
