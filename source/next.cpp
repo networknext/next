@@ -9431,7 +9431,8 @@ struct next_session_entry_t
     NEXT_DECLARE_SENTINEL(29)
 
     bool flush;
-    bool flush_finished;
+    bool session_update_flush_finished;
+    bool match_data_flush_finished;
 
     NEXT_DECLARE_SENTINEL(30)
 };
@@ -11933,7 +11934,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             if ( entry->flush )
             {
-                entry->flush_finished = true;
+                entry->session_update_flush_finished = true;
                 server->num_flushed_session_updates++;
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed session update for session %" PRIx64 " to backend", entry->session_id );
 
@@ -12011,6 +12012,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             if ( entry->flush )
             {
+                entry->match_data_flush_finished = true;
                 server->num_flushed_match_data++;
 
                 if ( server->num_flushed_session_updates == server->num_session_updates_to_flush && server->num_flushed_match_data == server->num_match_data_to_flush )
@@ -13175,7 +13177,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         next_session_entry_t * session = &server->session_manager->entries[i];
 
-        if ( ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time ) || ( session->flush && !session->flush_finished && !session->waiting_for_update_response ) )
+        if ( ( session->next_session_update_time >= 0.0 && session->next_session_update_time <= current_time ) || ( session->flush && !session->session_update_flush_finished && !session->waiting_for_update_response ) )
         {
             NextBackendSessionUpdatePacket packet;
 
@@ -13297,7 +13299,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-            if ( session->flush && !session->flush_finished )
+            if ( session->flush && !session->session_update_flush_finished )
             {
                 session->next_session_resend_time += NEXT_SESSION_UPDATE_FLUSH_RESEND_TIME;
             }
@@ -13392,7 +13394,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             next_platform_socket_send_packet( server->socket, &server->backend_address, packet_data, packet_bytes );
 
-            if ( session->flush && !session->flush_finished )
+            if ( session->flush && !session->match_data_flush_finished )
             {
                 session->next_match_data_resend_time = current_time + NEXT_MATCH_DATA_FLUSH_RESEND_TIME;
             }
