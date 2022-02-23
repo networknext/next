@@ -11,7 +11,6 @@ if [[ ! -z "$FIRESTORE_EMULATOR_HOST" ]]; then
 
     # Trap kill the process group so all firestore emulator processes are closed properly
     trap "kill -- -$firestoreSessionID" EXIT
-    sleep 3
 fi
 
 if [[ ! -z "$PUBSUB_EMULATOR_HOST" ]]; then
@@ -25,7 +24,6 @@ if [[ ! -z "$PUBSUB_EMULATOR_HOST" ]]; then
     else
         trap "kill -- -$firestoreSessionID -$pubsubSessionID" EXIT
     fi
-    sleep 3
 fi
 
 if [[ ! -z "$BIGTABLE_EMULATOR_HOST" ]]; then
@@ -46,8 +44,9 @@ if [[ ! -z "$BIGTABLE_EMULATOR_HOST" ]]; then
     else
         trap "kill -- -$pubsubSessionID -$bigtableSessionID" EXIT
     fi
-    sleep 3
 fi
+
+sleep 3
 
 printf "\nRunning unit tests:\n\n"
 go test ./... -coverprofile ./cover.out -timeout 30s

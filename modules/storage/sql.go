@@ -33,8 +33,8 @@ type SQL struct {
 }
 
 const (
-	SQL_TIMEOUT = 5 * time.Second
-	MAX_RETRIES = 4
+	SQL_TIMEOUT = 10 * time.Second
+	MAX_RETRIES = 8
 )
 
 func QueryMultipleRowsRetry(ctx context.Context, db *SQL, queryString bytes.Buffer, queryArgs ...interface{}) (*sql.Rows, error) {
@@ -132,6 +132,7 @@ type sqlRouteShader struct {
 	ABTest                    bool
 	AcceptableLatency         int64
 	AcceptablePacketLoss      float64
+	AnalysisOnly              bool
 	BandwidthEnvelopeDownKbps int64
 	BandwidthEnvelopeUpKbps   int64
 	DisableNetworkNext        bool
@@ -1152,8 +1153,9 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 	sqlQuery.Write([]byte("relays.ssh_port, relays.ssh_user, relays.start_date, relays.internal_ip, "))
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
-	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
-	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays where hex_id = $1"))
+	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes, "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.dest_first, "))
+	sqlQuery.Write([]byte("relays.internal_address_client_routable from relays where hex_id = $1"))
 
 	for retryCount < MAX_RETRIES {
 		row = db.Client.QueryRowContext(ctx, sqlQuery.String(), hexID)
@@ -1186,6 +1188,8 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 			&relay.Notes,
 			&relay.BillingSupplier,
 			&relay.Version,
+			&relay.DestFirst,
+			&relay.InternalAddressClientRoutable,
 		)
 		switch err {
 		case context.Canceled:
@@ -1234,27 +1238,29 @@ func (db *SQL) Relay(ctx context.Context, id uint64) (routing.Relay, error) {
 		}
 
 		r := routing.Relay{
-			ID:                  internalID,
-			Name:                relay.Name,
-			PublicKey:           relay.PublicKey,
-			Datacenter:          datacenter,
-			NICSpeedMbps:        int32(relay.NICSpeedMbps),
-			IncludedBandwidthGB: int32(relay.IncludedBandwithGB),
-			MaxBandwidthMbps:    int32(relay.MaxBandwidthMbps),
-			State:               relayState,
-			ManagementAddr:      relay.ManagementIP,
-			SSHUser:             relay.SSHUser,
-			SSHPort:             relay.SSHPort,
-			MaxSessions:         uint32(relay.MaxSessions),
-			EgressPriceOverride: routing.Nibblin(relay.EgressPriceOverride),
-			MRC:                 routing.Nibblin(relay.MRC),
-			Overage:             routing.Nibblin(relay.Overage),
-			BWRule:              bwRule,
-			ContractTerm:        int32(relay.ContractTerm),
-			Type:                machineType,
-			Seller:              seller,
-			DatabaseID:          relay.DatabaseID,
-			Version:             relay.Version,
+			ID:                            internalID,
+			Name:                          relay.Name,
+			PublicKey:                     relay.PublicKey,
+			Datacenter:                    datacenter,
+			NICSpeedMbps:                  int32(relay.NICSpeedMbps),
+			IncludedBandwidthGB:           int32(relay.IncludedBandwithGB),
+			MaxBandwidthMbps:              int32(relay.MaxBandwidthMbps),
+			State:                         relayState,
+			ManagementAddr:                relay.ManagementIP,
+			SSHUser:                       relay.SSHUser,
+			SSHPort:                       relay.SSHPort,
+			MaxSessions:                   uint32(relay.MaxSessions),
+			EgressPriceOverride:           routing.Nibblin(relay.EgressPriceOverride),
+			MRC:                           routing.Nibblin(relay.MRC),
+			Overage:                       routing.Nibblin(relay.Overage),
+			BWRule:                        bwRule,
+			ContractTerm:                  int32(relay.ContractTerm),
+			Type:                          machineType,
+			Seller:                        seller,
+			DatabaseID:                    relay.DatabaseID,
+			Version:                       relay.Version,
+			DestFirst:                     relay.DestFirst,
+			InternalAddressClientRoutable: relay.InternalAddressClientRoutable,
 		}
 
 		// nullable values follow
@@ -1331,7 +1337,8 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 	sqlQuery.Write([]byte("relays.internal_ip_port, relays.bw_billing_rule, relays.datacenter, "))
 	sqlQuery.Write([]byte("relays.machine_type, relays.relay_state, "))
 	sqlQuery.Write([]byte("relays.internal_ip, relays.internal_ip_port, relays.notes , "))
-	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version from relays "))
+	sqlQuery.Write([]byte("relays.billing_supplier, relays.relay_version, relays.dest_first, "))
+	sqlQuery.Write([]byte("relays.internal_address_client_routable from relays "))
 
 	rows, err := QueryMultipleRowsRetry(ctx, db, sqlQuery)
 	if err != nil {
@@ -1371,6 +1378,8 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 			&relay.Notes,
 			&relay.BillingSupplier,
 			&relay.Version,
+			&relay.DestFirst,
+			&relay.InternalAddressClientRoutable,
 		)
 		if err != nil {
 			core.Error("Relays(): error parsing returned row: %v", err)
@@ -1408,27 +1417,29 @@ func (db *SQL) Relays(ctx context.Context) []routing.Relay {
 		}
 
 		r := routing.Relay{
-			ID:                  internalID,
-			Name:                relay.Name,
-			PublicKey:           relay.PublicKey,
-			Datacenter:          datacenter,
-			NICSpeedMbps:        int32(relay.NICSpeedMbps),
-			IncludedBandwidthGB: int32(relay.IncludedBandwithGB),
-			MaxBandwidthMbps:    int32(relay.MaxBandwidthMbps),
-			State:               relayState,
-			ManagementAddr:      relay.ManagementIP,
-			SSHUser:             relay.SSHUser,
-			SSHPort:             relay.SSHPort,
-			MaxSessions:         uint32(relay.MaxSessions),
-			EgressPriceOverride: routing.Nibblin(relay.EgressPriceOverride),
-			MRC:                 routing.Nibblin(relay.MRC),
-			Overage:             routing.Nibblin(relay.Overage),
-			BWRule:              bwRule,
-			ContractTerm:        int32(relay.ContractTerm),
-			Type:                machineType,
-			Seller:              seller,
-			DatabaseID:          relay.DatabaseID,
-			Version:             relay.Version,
+			ID:                            internalID,
+			Name:                          relay.Name,
+			PublicKey:                     relay.PublicKey,
+			Datacenter:                    datacenter,
+			NICSpeedMbps:                  int32(relay.NICSpeedMbps),
+			IncludedBandwidthGB:           int32(relay.IncludedBandwithGB),
+			MaxBandwidthMbps:              int32(relay.MaxBandwidthMbps),
+			State:                         relayState,
+			ManagementAddr:                relay.ManagementIP,
+			SSHUser:                       relay.SSHUser,
+			SSHPort:                       relay.SSHPort,
+			MaxSessions:                   uint32(relay.MaxSessions),
+			EgressPriceOverride:           routing.Nibblin(relay.EgressPriceOverride),
+			MRC:                           routing.Nibblin(relay.MRC),
+			Overage:                       routing.Nibblin(relay.Overage),
+			BWRule:                        bwRule,
+			ContractTerm:                  int32(relay.ContractTerm),
+			Type:                          machineType,
+			Seller:                        seller,
+			DatabaseID:                    relay.DatabaseID,
+			Version:                       relay.Version,
+			DestFirst:                     relay.DestFirst,
+			InternalAddressClientRoutable: relay.InternalAddressClientRoutable,
 		}
 
 		// nullable values follow
@@ -1549,6 +1560,10 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		}
 
 		if addrString == "" {
+			if relay.InternalAddressClientRoutable {
+				return fmt.Errorf("cannot remove internal address while InternalAddressClientRoutable is true")
+			}
+
 			updateSQL.Write([]byte("update relays set (internal_ip, internal_ip_port) = (null, null) "))
 			updateSQL.Write([]byte("where id=$1"))
 			args = append(args, relay.DatabaseID)
@@ -1800,6 +1815,29 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 		updateSQL.Write([]byte("update relays set relay_version=$1 where id=$2"))
 		args = append(args, version, relay.DatabaseID)
 
+	case "DestFirst":
+		destFirst, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean value", value)
+		}
+
+		updateSQL.Write([]byte("update relays set dest_first=$1 where id=$2"))
+		args = append(args, destFirst, relay.DatabaseID)
+
+	case "InternalAddressClientRoutable":
+		internalAddressClientRoutable, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean value", value)
+		}
+
+		if internalAddressClientRoutable && relay.InternalAddr.String() == ":0" {
+			// Enforce that the relay has an valid internal address
+			return fmt.Errorf("relay must have valid internal address before InternalAddressClientRoutable is true")
+		}
+
+		updateSQL.Write([]byte("update relays set internal_address_client_routable=$1 where id=$2"))
+		args = append(args, internalAddressClientRoutable, relay.DatabaseID)
+
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)
 
@@ -1825,35 +1863,37 @@ func (db *SQL) UpdateRelay(ctx context.Context, relayID uint64, field string, va
 }
 
 type sqlRelay struct {
-	ID                  uint64
-	HexID               string
-	Name                string
-	PublicIP            sql.NullString
-	PublicIPPort        sql.NullInt64
-	InternalIP          sql.NullString
-	InternalIPPort      sql.NullInt64
-	BillingSupplier     sql.NullInt64
-	PublicKey           []byte
-	NICSpeedMbps        int64
-	IncludedBandwithGB  int64
-	MaxBandwidthMbps    int64
-	DatacenterID        int64
-	ManagementIP        string
-	SSHUser             string
-	SSHPort             int64
-	State               int64
-	MaxSessions         int64
-	EgressPriceOverride int64
-	MRC                 int64
-	Overage             int64
-	BWRule              int64
-	ContractTerm        int64
-	Notes               sql.NullString
-	StartDate           sql.NullTime
-	EndDate             sql.NullTime
-	MachineType         int64
-	Version             string
-	DatabaseID          int64
+	ID                            uint64
+	HexID                         string
+	Name                          string
+	PublicIP                      sql.NullString
+	PublicIPPort                  sql.NullInt64
+	InternalIP                    sql.NullString
+	InternalIPPort                sql.NullInt64
+	BillingSupplier               sql.NullInt64
+	PublicKey                     []byte
+	NICSpeedMbps                  int64
+	IncludedBandwithGB            int64
+	MaxBandwidthMbps              int64
+	DatacenterID                  int64
+	ManagementIP                  string
+	SSHUser                       string
+	SSHPort                       int64
+	State                         int64
+	MaxSessions                   int64
+	EgressPriceOverride           int64
+	MRC                           int64
+	Overage                       int64
+	BWRule                        int64
+	ContractTerm                  int64
+	Notes                         sql.NullString
+	StartDate                     sql.NullTime
+	EndDate                       sql.NullTime
+	MachineType                   int64
+	Version                       string
+	DestFirst                     bool
+	InternalAddressClientRoutable bool
+	DatabaseID                    int64
 }
 
 // AddRelay adds the provided relay to storage and returns an error if the relay could not be added.
@@ -1875,17 +1915,12 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	relays := db.Relays(ctx)
 
-	existingRelay := false
+	// Check that we don't have a relay with the same Hex ID already
 	for _, relay := range relays {
-		if relay.ID == rid && relay.State != routing.RelayStateDecommissioned {
-			existingRelay = true
-			break
+		if relay.ID == rid {
+			// If a relay with this IP exists already, throw an error
+			return fmt.Errorf("relay %s (%016x) (state: %s) already exists with this IP address. please reuse this relay.", relay.Name, relay.ID, relay.State.String())
 		}
-	}
-
-	// If a relay with this IP exists already and isn't removed, throw an error
-	if existingRelay {
-		return fmt.Errorf("a relay already exists with this IP address. please remove the existing relay before adding a new one under the same IP")
 	}
 
 	var internalIP sql.NullString
@@ -1952,37 +1987,44 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 
 	// field is not null but we also don't want an empty string
 	if r.Version == "" {
-		return fmt.Errorf("relay version can not be an empty string and must be a valid value (e.g. '2.0.6')")
+		return fmt.Errorf("relay version cannot be an empty string and must be a valid value (e.g. '2.0.6')")
+	}
+
+	// flag is not null but should not be true unless internal address is valid
+	if r.InternalAddressClientRoutable && (!internalIP.Valid || !internalIPPort.Valid) {
+		return fmt.Errorf("relay flag InternalAddressClientRoutable cannot be true without valid internal IP")
 	}
 
 	relay := sqlRelay{
-		Name:                r.Name,
-		HexID:               fmt.Sprintf("%016x", rid),
-		PublicIP:            nullablePublicIP,
-		PublicIPPort:        nullablePublicIPPort,
-		InternalIP:          internalIP,
-		InternalIPPort:      internalIPPort,
-		PublicKey:           r.PublicKey,
-		NICSpeedMbps:        int64(r.NICSpeedMbps),
-		IncludedBandwithGB:  int64(r.IncludedBandwidthGB),
-		MaxBandwidthMbps:    int64(r.MaxBandwidthMbps),
-		DatacenterID:        r.Datacenter.DatabaseID,
-		ManagementIP:        r.ManagementAddr,
-		BillingSupplier:     billingSupplier,
-		SSHUser:             r.SSHUser,
-		SSHPort:             r.SSHPort,
-		State:               int64(r.State),
-		MaxSessions:         int64(r.MaxSessions),
-		EgressPriceOverride: int64(r.EgressPriceOverride),
-		MRC:                 int64(r.MRC),
-		Overage:             int64(r.Overage),
-		BWRule:              int64(r.BWRule),
-		ContractTerm:        int64(r.ContractTerm),
-		StartDate:           startDate,
-		EndDate:             endDate,
-		MachineType:         int64(r.Type),
-		Notes:               nullableNotes,
-		Version:             r.Version,
+		Name:                          r.Name,
+		HexID:                         fmt.Sprintf("%016x", rid),
+		PublicIP:                      nullablePublicIP,
+		PublicIPPort:                  nullablePublicIPPort,
+		InternalIP:                    internalIP,
+		InternalIPPort:                internalIPPort,
+		PublicKey:                     r.PublicKey,
+		NICSpeedMbps:                  int64(r.NICSpeedMbps),
+		IncludedBandwithGB:            int64(r.IncludedBandwidthGB),
+		MaxBandwidthMbps:              int64(r.MaxBandwidthMbps),
+		DatacenterID:                  r.Datacenter.DatabaseID,
+		ManagementIP:                  r.ManagementAddr,
+		BillingSupplier:               billingSupplier,
+		SSHUser:                       r.SSHUser,
+		SSHPort:                       r.SSHPort,
+		State:                         int64(r.State),
+		MaxSessions:                   int64(r.MaxSessions),
+		EgressPriceOverride:           int64(r.EgressPriceOverride),
+		MRC:                           int64(r.MRC),
+		Overage:                       int64(r.Overage),
+		BWRule:                        int64(r.BWRule),
+		ContractTerm:                  int64(r.ContractTerm),
+		StartDate:                     startDate,
+		EndDate:                       endDate,
+		MachineType:                   int64(r.Type),
+		Notes:                         nullableNotes,
+		Version:                       r.Version,
+		DestFirst:                     r.DestFirst,
+		InternalAddressClientRoutable: r.InternalAddressClientRoutable,
 	}
 
 	sqlQuery.Write([]byte("insert into relays ("))
@@ -1990,9 +2032,9 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
 	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, "))
-	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version "))
+	sqlQuery.Write([]byte("internal_ip, internal_ip_port, notes, billing_supplier, relay_version, dest_first, internal_address_client_routable"))
 	sqlQuery.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -2025,6 +2067,8 @@ func (db *SQL) AddRelay(ctx context.Context, r routing.Relay) error {
 		relay.Notes,
 		relay.BillingSupplier,
 		relay.Version,
+		relay.DestFirst,
+		relay.InternalAddressClientRoutable,
 	)
 	if err != nil {
 		core.Error("AddRelay() error adding relay: %v", err)
@@ -2149,39 +2193,42 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 	}
 
 	relay := sqlRelay{
-		Name:                r.Name,
-		PublicIP:            publicIP,
-		PublicIPPort:        publicIPPort,
-		InternalIP:          internalIP,
-		InternalIPPort:      internalIPPort,
-		PublicKey:           r.PublicKey,
-		NICSpeedMbps:        int64(r.NICSpeedMbps),
-		IncludedBandwithGB:  int64(r.IncludedBandwidthGB),
-		MaxBandwidthMbps:    int64(r.MaxBandwidthMbps),
-		DatacenterID:        r.Datacenter.DatabaseID,
-		ManagementIP:        r.ManagementAddr,
-		SSHUser:             r.SSHUser,
-		SSHPort:             r.SSHPort,
-		State:               int64(r.State),
-		MaxSessions:         int64(r.MaxSessions),
-		EgressPriceOverride: int64(r.EgressPriceOverride),
-		MRC:                 int64(r.MRC),
-		Overage:             int64(r.Overage),
-		BWRule:              int64(r.BWRule),
-		ContractTerm:        int64(r.ContractTerm),
-		StartDate:           startDate,
-		EndDate:             endDate,
-		MachineType:         int64(r.Type),
-		HexID:               hexID,
+		Name:                          r.Name,
+		PublicIP:                      publicIP,
+		PublicIPPort:                  publicIPPort,
+		InternalIP:                    internalIP,
+		InternalIPPort:                internalIPPort,
+		PublicKey:                     r.PublicKey,
+		NICSpeedMbps:                  int64(r.NICSpeedMbps),
+		IncludedBandwithGB:            int64(r.IncludedBandwidthGB),
+		MaxBandwidthMbps:              int64(r.MaxBandwidthMbps),
+		DatacenterID:                  r.Datacenter.DatabaseID,
+		ManagementIP:                  r.ManagementAddr,
+		SSHUser:                       r.SSHUser,
+		SSHPort:                       r.SSHPort,
+		State:                         int64(r.State),
+		MaxSessions:                   int64(r.MaxSessions),
+		EgressPriceOverride:           int64(r.EgressPriceOverride),
+		MRC:                           int64(r.MRC),
+		Overage:                       int64(r.Overage),
+		BWRule:                        int64(r.BWRule),
+		ContractTerm:                  int64(r.ContractTerm),
+		StartDate:                     startDate,
+		EndDate:                       endDate,
+		MachineType:                   int64(r.Type),
+		HexID:                         hexID,
+		DestFirst:                     r.DestFirst,
+		InternalAddressClientRoutable: r.InternalAddressClientRoutable,
 	}
 
 	sqlQuery.Write([]byte("update relays set ("))
 	sqlQuery.Write([]byte("hex_id, contract_term, display_name, end_date, included_bandwidth_gb, "))
 	sqlQuery.Write([]byte("management_ip, max_sessions, egress_price_override, mrc, overage, port_speed, max_bandwidth_mbps, public_ip, "))
 	sqlQuery.Write([]byte("public_ip_port, public_key, ssh_port, ssh_user, start_date, "))
-	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port "))
+	sqlQuery.Write([]byte("bw_billing_rule, datacenter, machine_type, relay_state, internal_ip, internal_ip_port, "))
+	sqlQuery.Write([]byte("dest_first, internal_address_client_routable"))
 	sqlQuery.Write([]byte(") = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, "))
-	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24) where id = $25"))
+	sqlQuery.Write([]byte("$11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26) where id = $27"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -2211,6 +2258,8 @@ func (db *SQL) SetRelay(ctx context.Context, r routing.Relay) error {
 		relay.State,
 		relay.InternalIP,
 		relay.InternalIPPort,
+		relay.DestFirst,
+		relay.InternalAddressClientRoutable,
 		r.DatabaseID,
 	)
 	if err != nil {
@@ -2690,7 +2739,7 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	querySQL.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
+	querySQL.Write([]byte("select ab_test, acceptable_latency, acceptable_packet_loss, analysis_only, bw_envelope_down_kbps, "))
 	querySQL.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, pro_mode, "))
 	querySQL.Write([]byte("reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, "))
 	querySQL.Write([]byte("packet_loss_sustained from route_shaders where buyer_id = ( "))
@@ -2702,6 +2751,7 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 			&sqlRS.ABTest,
 			&sqlRS.AcceptableLatency,
 			&sqlRS.AcceptablePacketLoss,
+			&sqlRS.AnalysisOnly,
 			&sqlRS.BandwidthEnvelopeDownKbps,
 			&sqlRS.BandwidthEnvelopeUpKbps,
 			&sqlRS.DisableNetworkNext,
@@ -2737,6 +2787,7 @@ func (db *SQL) RouteShader(ctx context.Context, ephemeralBuyerID uint64) (core.R
 	case nil:
 		routeShader := core.RouteShader{
 			DisableNetworkNext:        sqlRS.DisableNetworkNext,
+			AnalysisOnly:              sqlRS.AnalysisOnly,
 			SelectionPercent:          int(sqlRS.SelectionPercent),
 			ABTest:                    sqlRS.ABTest,
 			ProMode:                   sqlRS.ProMode,
@@ -3148,6 +3199,7 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		ABTest:                    rs.ABTest,
 		AcceptableLatency:         int64(rs.AcceptableLatency),
 		AcceptablePacketLoss:      float64(rs.AcceptablePacketLoss),
+		AnalysisOnly:              rs.AnalysisOnly,
 		BandwidthEnvelopeDownKbps: int64(rs.BandwidthEnvelopeDownKbps),
 		BandwidthEnvelopeUpKbps:   int64(rs.BandwidthEnvelopeUpKbps),
 		DisableNetworkNext:        rs.DisableNetworkNext,
@@ -3162,11 +3214,11 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 	}
 
 	sql.Write([]byte("insert into route_shaders ("))
-	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, bw_envelope_down_kbps, "))
+	sql.Write([]byte("ab_test, acceptable_latency, acceptable_packet_loss, analysis_only, bw_envelope_down_kbps, "))
 	sql.Write([]byte("bw_envelope_up_kbps, disable_network_next, latency_threshold, multipath, "))
 	sql.Write([]byte("pro_mode, reduce_latency, reduce_packet_loss, reduce_jitter, selection_percent, packet_loss_sustained, buyer_id"))
-	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, "))
-	sql.Write([]byte("(select id from buyers where sdk_generated_id = $15))"))
+	sql.Write([]byte(") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, "))
+	sql.Write([]byte("(select id from buyers where sdk_generated_id = $16))"))
 
 	result, err := ExecRetry(
 		ctx,
@@ -3175,6 +3227,7 @@ func (db *SQL) AddRouteShader(ctx context.Context, rs core.RouteShader, ephemera
 		routeShader.ABTest,
 		routeShader.AcceptableLatency,
 		routeShader.AcceptablePacketLoss,
+		routeShader.AnalysisOnly,
 		routeShader.BandwidthEnvelopeDownKbps,
 		routeShader.BandwidthEnvelopeUpKbps,
 		routeShader.DisableNetworkNext,
@@ -3240,6 +3293,14 @@ func (db *SQL) UpdateRouteShader(ctx context.Context, ephemeralBuyerID uint64, f
 		updateSQL.Write([]byte("update route_shaders set acceptable_packet_loss=$1 where buyer_id="))
 		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
 		args = append(args, acceptablePacketLoss, int64(ephemeralBuyerID))
+	case "AnalysisOnly":
+		analysisOnly, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("AnalysisOnly: %v is not a valid boolean type (%T)", value, value)
+		}
+		updateSQL.Write([]byte("update route_shaders set analysis_only=$1 where buyer_id="))
+		updateSQL.Write([]byte("(select id from buyers where sdk_generated_id = $2)"))
+		args = append(args, analysisOnly, int64(ephemeralBuyerID))
 	case "BandwidthEnvelopeDownKbps":
 		bandwidthEnvelopeDownKbps, ok := value.(int32)
 		if !ok {

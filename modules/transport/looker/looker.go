@@ -1,12 +1,14 @@
 package looker
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -17,18 +19,18 @@ import (
 )
 
 const (
-	LOOKER_SESSION_TIMEOUT = 86400
-	EMBEDDED_USER_GROUP_ID = 3
-	USAGE_DASH_URL         = "/embed/dashboards-next/11"
-	BASE_URL               = "https://networknextexternal.cloud.looker.com"
-	API_VERSION            = "4.0"
-	API_TIMEOUT            = 300
+	LOOKER_SESSION_TIMEOUT  = 86400
+	EMBEDDED_USER_GROUP_ID  = 3
+	USAGE_DASH_URL          = "/embed/dashboards-next/11"
+	BASE_URL                = "https://networknextexternal.cloud.looker.com"
+	API_VERSION             = "4.0"
+	API_TIMEOUT             = 300
+	LOOKER_SAVES_ROW_LIMIT  = "10"
+	LOOKER_AUTH_URI         = "%s/api/3.1/login?client_id=%s&client_secret=%s"
+	LOOKER_QUERY_RUNNER_URI = "%s/api/3.1/queries/run/json?force_production=true&cache=true"
+	LOOKER_PROD_MODEL       = "network_next_prod"
+	LOOKER_SAVES_VIEW       = "daily_big_saves"
 )
-
-type LookerSave struct {
-	SessionID    int64  `json:"session_id"`
-	CustomerCode string `json:"customer_code"`
-}
 
 type LookerWebhookAttachment struct {
 	Data []LookerSave `json:"data"` // TODO: Potentially break this out into a bunch of different webhook attachment types
@@ -72,6 +74,114 @@ func NewLookerClient(hostURL string, secret string, clientID string, apiSecret s
 		Secret:      secret,
 		APISettings: settings,
 	}, nil
+}
+
+type LookerAuthResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int32  `json:"expires_in"`
+}
+
+func (l *LookerClient) FetchAuthToken() (string, error) {
+	authURL := fmt.Sprintf(LOOKER_AUTH_URI, l.APISettings.BaseUrl, l.APISettings.ClientId, l.APISettings.ClientSecret)
+	req, err := http.NewRequest(http.MethodPost, authURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	client := &http.Client{Timeout: time.Minute}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	authResponse := LookerAuthResponse{}
+	if err = json.Unmarshal(buf.Bytes(), &authResponse); err != nil {
+		return "", err
+	}
+
+	return authResponse.AccessToken, nil
+}
+
+type LookerSave struct {
+	SessionID               int64   `json:"daily_big_saves.session_id"`
+	SaveScore               float64 `json:"daily_big_saves.save_score"`
+	AverageDirectRTT        float64 `json:"daily_big_saves.avg_directrtt"`
+	AverageNextRTT          float64 `json:"daily_big_saves.avg_nextrtt"`
+	AverageDirectPacketLoss float64 `json:"daily_big_saves.avg_directpacketloss"`
+	AverageNextPacketLoss   float64 `json:"daily_big_saves.avg_nextpacketloss"`
+	Duration                float64 `json:"daily_big_saves.duration"`
+}
+
+func (l *LookerClient) RunSavesQuery(customerCode string) ([]LookerSave, error) {
+	saves := []LookerSave{}
+
+	token, err := l.FetchAuthToken()
+	if err != nil {
+		return saves, err
+	}
+
+	requiredFields := []string{
+		LOOKER_SAVES_VIEW + ".date_date",
+		LOOKER_SAVES_VIEW + ".session_id",
+		LOOKER_SAVES_VIEW + ".save_score",
+		LOOKER_SAVES_VIEW + ".avg_directrtt",
+		LOOKER_SAVES_VIEW + ".avg_nextrtt",
+		LOOKER_SAVES_VIEW + ".avg_directpacketloss",
+		LOOKER_SAVES_VIEW + ".avg_nextpacketloss",
+		LOOKER_SAVES_VIEW + ".duration",
+	}
+	sorts := []string{LOOKER_SAVES_VIEW + ".save_score desc 0"}
+	requiredFilters := make(map[string]interface{})
+	rowLimit := LOOKER_SAVES_ROW_LIMIT
+
+	requiredFilters["buyer_info_v2.customer_code"] = customerCode
+	requiredFilters[LOOKER_SAVES_VIEW+".date_date"] = "7 days"
+
+	query := v4.WriteQuery{
+		Model:   LOOKER_PROD_MODEL,
+		View:    LOOKER_SAVES_VIEW + "",
+		Fields:  &requiredFields,
+		Filters: &requiredFilters,
+		Limit:   &rowLimit,
+		Sorts:   &sorts,
+	}
+
+	lookerBody, _ := json.Marshal(query)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf(LOOKER_QUERY_RUNNER_URI, l.APISettings.BaseUrl), bytes.NewBuffer(lookerBody))
+	if err != nil {
+		return saves, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	client := &http.Client{Timeout: time.Minute}
+	resp, err := client.Do(req)
+	if err != nil {
+		return saves, err
+	}
+
+	defer resp.Body.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return saves, err
+	}
+
+	if err = json.Unmarshal(buf.Bytes(), &saves); err != nil {
+		return saves, err
+	}
+
+	return saves, nil
 }
 
 type AnalyticsDashboardCategory struct {
@@ -143,7 +253,7 @@ func (l *LookerClient) FetchCurrentLookerDashboards() ([]LookerDashboard, error)
 	return dashboardList, nil
 }
 
-func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, userID string, customerCode string, origin string) (string, error) {
+func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customerCode string, requestID, origin string) (string, error) {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return "", err
@@ -159,7 +269,7 @@ func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, userID s
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", userID),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
@@ -248,23 +358,21 @@ func BuildLookerURL(urlOptions LookerURLOptions) string {
 	return finalUrl
 }
 
-func (l *LookerClient) GenerateUsageDashboardURL(userID string, customerCode string, origin string) (string, error) {
+func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, requestID string, origin string, dateString string) (string, error) {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return "", err
 	}
 
-	embedURL := ""
-	if origin != "" {
-		embedURL = fmt.Sprintf("%s?embed_domain=%s", USAGE_DASH_URL, origin)
-	} else {
-		embedURL = USAGE_DASH_URL
+	dashURL := fmt.Sprintf("%s?embed_domain=%s", USAGE_DASH_URL, origin)
+	if dateString != "" {
+		dashURL = fmt.Sprintf("%s&Billing+Period=%s", dashURL, dateString)
 	}
 
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", userID),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
@@ -272,7 +380,7 @@ func (l *LookerClient) GenerateUsageDashboardURL(userID string, customerCode str
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(embedURL),
+		EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
 		ForceLogout:     true,
 		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),

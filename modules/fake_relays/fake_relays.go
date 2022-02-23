@@ -146,6 +146,8 @@ func (relay *FakeRelay) sendShutdownRequest() error {
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		relay.relayMetrics.ErrorMetrics.NotOKResponseError.Add(1)
 		return fmt.Errorf("shutdown response was non 200: %v", resp.StatusCode)

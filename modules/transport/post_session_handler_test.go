@@ -120,6 +120,7 @@ func testBillingEntry2() *billing.BillingEntry2 {
 		Latitude:                        rand.Float32(),
 		Longitude:                       rand.Float32(),
 		ClientAddress:                   "127.0.0.1",
+		ServerAddress:                   "127.0.0.2",
 		ISP:                             "ISP",
 		ConnectionType:                  1,
 		PlatformType:                    3,
@@ -174,6 +175,7 @@ func testBillingEntry2() *billing.BillingEntry2 {
 		DatacenterNotEnabled:            false,
 		BuyerNotLive:                    false,
 		StaleRouteMatrix:                false,
+		TryBeforeYouBuy:                 false,
 	}
 }
 

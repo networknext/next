@@ -325,6 +325,10 @@ func (m *InMemory) AddRelay(ctx context.Context, relay routing.Relay) error {
 		return &DoesNotExistError{resourceType: "datacenter", resourceRef: relay.Datacenter.ID}
 	}
 
+	if relay.InternalAddressClientRoutable && relay.InternalAddr.String() == ":0" {
+		return &DoesNotExistError{resourceType: "internalAddr", resourceRef: relay.InternalAddr.String()}
+	}
+
 	m.localRelays = append(m.localRelays, relay)
 	return nil
 }
@@ -818,6 +822,13 @@ func (m *InMemory) UpdateRouteShader(ctx context.Context, buyerID uint64, field 
 		}
 
 		buyer.RouteShader.AcceptablePacketLoss = acceptablePacketLoss
+	case "AnalysisOnly":
+		analysisOnly, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("AnalysisOnly: %v is not a valid boolean type (%T)", value, value)
+		}
+
+		buyer.RouteShader.AnalysisOnly = analysisOnly
 	case "BandwidthEnvelopeDownKbps":
 		bandwidthEnvelopeDownKbps, ok := value.(int32)
 		if !ok {
@@ -968,6 +979,9 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 		}
 
 		if addrString == "" {
+			if relay.InternalAddressClientRoutable {
+				return fmt.Errorf("cannot remove internal address while InternalAddressClientRoutable is true")
+			}
 			relay.InternalAddr = net.UDPAddr{}
 
 		} else {
@@ -1183,6 +1197,27 @@ func (m *InMemory) UpdateRelay(ctx context.Context, relayID uint64, field string
 		}
 
 		relay.Version = version
+
+	case "DestFirst":
+		destFirst, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean value", value)
+		}
+
+		relay.DestFirst = destFirst
+
+	case "InternalAddressClientRoutable":
+		internalAddressClientRoutable, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid boolean value", value)
+		}
+
+		if internalAddressClientRoutable && relay.InternalAddr.String() == ":0" {
+			// Enforce that the relay has an valid internal address
+			return fmt.Errorf("relay must have valid internal address before InternalAddressClientRoutable is true")
+		}
+
+		relay.InternalAddressClientRoutable = internalAddressClientRoutable
 
 	default:
 		return fmt.Errorf("field '%v' does not exist on the routing.Relay type", field)

@@ -463,6 +463,7 @@ type internalConfig struct {
 
 type routeShader struct {
 	DisableNetworkNext        bool
+	AnalysisOnly              bool
 	SelectionPercent          int
 	ABTest                    bool
 	ProMode                   bool
@@ -1607,7 +1608,7 @@ func main() {
 				ShortHelp:  "Get detailed information for the specified buyer",
 				Exec: func(_ context.Context, args []string) error {
 					if len(args) != 1 {
-						handleRunTimeError(fmt.Sprintln("Please provide the seller ID in hex, only."), 0)
+						handleRunTimeError(fmt.Sprintln("Please provide the buyer ID in hex, only."), 0)
 					}
 
 					getBuyerInfo(env, args[0])
@@ -1932,6 +1933,7 @@ The alias is uniquely defined by both entries, so they must be provided. Hex IDs
 
 							addRouteShader(env, buyerID, localjsonrpc.JSRouteShader{
 								DisableNetworkNext:        rs.DisableNetworkNext,
+								AnalysisOnly:              rs.AnalysisOnly,
 								SelectionPercent:          int64(rs.SelectionPercent),
 								ABTest:                    rs.ABTest,
 								ProMode:                   rs.ProMode,
