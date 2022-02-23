@@ -1481,6 +1481,7 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, fullRelaySet map[int32]bool, 
 
 type RouteShader struct {
 	DisableNetworkNext        bool
+	AnalysisOnly              bool
 	SelectionPercent          int
 	ABTest                    bool
 	ProMode                   bool
@@ -1500,6 +1501,7 @@ type RouteShader struct {
 func NewRouteShader() RouteShader {
 	return RouteShader{
 		DisableNetworkNext:        false,
+		AnalysisOnly:              false,
 		SelectionPercent:          100,
 		ABTest:                    false,
 		ReduceLatency:             true,
@@ -1608,7 +1610,7 @@ func EarlyOutDirect(routeShader *RouteShader, routeState *RouteState) bool {
 		return true
 	}
 
-	if routeShader.DisableNetworkNext {
+	if routeShader.DisableNetworkNext || routeShader.AnalysisOnly {
 		routeState.Disabled = true
 		return true
 	}
@@ -2010,7 +2012,7 @@ func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddres
 	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
 
 	var toPortData [2]byte
-	binary.LittleEndian.PutUint16(fromPortData[:], toPort)
+	binary.LittleEndian.PutUint16(toPortData[:], toPort)
 
 	var packetLengthData [4]byte
 	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
@@ -2043,22 +2045,22 @@ func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddres
     output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
 }
 
-func GenerateChonkle(output []byte, magic []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) {
+func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, fromPort uint16, toAddressData []byte, toPort uint16, packetLength int) {
 
 	var fromPortData [2]byte
 	binary.LittleEndian.PutUint16(fromPortData[:], fromPort)
 
 	var toPortData [2]byte
-	binary.LittleEndian.PutUint16(fromPortData[:], toPort)
+	binary.LittleEndian.PutUint16(toPortData[:], toPort)
 
 	var packetLengthData [4]byte
 	binary.LittleEndian.PutUint32(packetLengthData[:], uint32(packetLength))
 
 	hash := fnv.New64a()
 	hash.Write(magic)
-	hash.Write(fromAddress)
+	hash.Write(fromAddressData)
 	hash.Write(fromPortData[:])
-	hash.Write(toAddress)
+	hash.Write(toAddressData)
 	hash.Write(toPortData[:])
 	hash.Write(packetLengthData[:])
 	hashValue := hash.Sum64()
@@ -2176,7 +2178,7 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
     var a [15]byte
     var b [2]byte
     GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
-    GeneratePittle( b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
+    GeneratePittle(b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
     if bytes.Compare(a[0:15], data[1:16]) != 0 {
         return false
     }
@@ -2184,4 +2186,37 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
         return false
     }
     return true;
+}
+
+func GetAddressData(address *net.UDPAddr, addressData []byte, addressPort *uint16, addressBytes *int) {
+
+	// todo
+	*addressPort = 0
+	*addressBytes = 0
+
+	/*
+    next_assert( address );
+    if ( address->type == NEXT_ADDRESS_IPV4 )
+    {
+        address_data[0] = address->data.ipv4[0];
+        address_data[1] = address->data.ipv4[1];
+        address_data[2] = address->data.ipv4[2];
+        address_data[3] = address->data.ipv4[3];
+        *address_bytes = 4;
+    }
+    else if ( address->type == NEXT_ADDRESS_IPV6 )
+    {
+        for ( int i = 0; i < 8; ++i )
+        {
+            address_data[i*2]   = address->data.ipv6[i] >> 8;
+            address_data[i*2+1] = address->data.ipv6[i] & 0xFF;
+        }
+        *address_bytes = 16;
+    }
+    else
+    {
+        *address_bytes = 0;
+    }
+    *address_port = address->port;
+    */
 }
