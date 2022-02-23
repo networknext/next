@@ -85,7 +85,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
 
         if ( next_server_session_upgraded( server, from ) && session_exists )
         {
-            if ( server_events )
+            if ( server_events && !flush )
             {
                 uint64_t event1 = (1<<10);
                 uint64_t event2 = (1<<20);
@@ -98,7 +98,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
                 const double match_values[] = {10.10f, 20.20f, 30.30f};
                 int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
                 next_server_match( server, from, "test match id", match_values, num_match_values );
-                
+
                 match_data_set.insert( address_string );
             }
         }
@@ -238,19 +238,29 @@ int main()
 
     if ( flush )
     {
-        if ( match_data )
+        uint64_t event1 = (1<<10);
+        uint64_t event2 = (1<<20);
+        uint64_t event3 = (1<<30);
+
+        const double match_values[] = {10.10f, 20.20f, 30.30f};
+        int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
+
+        for ( std::map<std::string,uint8_t*>::iterator itor = client_map.begin(); itor != client_map.end(); ++itor )
         {
-            const double match_values[] = {10.10f, 20.20f, 30.30f};
-            int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
+            next_address_t client_address;
+            if ( next_address_parse( &client_address, itor->first.c_str() ) != NEXT_OK )
+                continue;
 
-            for ( std::map<std::string,uint8_t*>::iterator itor = client_map.begin(); itor != client_map.end(); ++itor )
+            if ( server_events )
             {
-                next_address_t client_address;
-                if ( next_address_parse( &client_address, itor->first.c_str() ) != NEXT_OK )
-                    continue;
+                next_server_event( server, &client_address, event1 | event2 | event3 );
+            }
 
+            if ( match_data )
+            {
                 next_server_match( server, &client_address, "test match id", match_values, num_match_values );
             }
+
         }
 
         next_server_flush ( server );

@@ -52,9 +52,8 @@ const BACKEND_MODE_TAGS = 13
 const BACKEND_MODE_DIRECT_STATS = 14
 const BACKEND_MODE_NEXT_STATS = 15
 const BACKEND_MODE_NEAR_RELAY_STATS = 16
-const BACKEND_MODE_SERVER_EVENTS = 17
-const BACKEND_MODE_MATCH_ID = 18
-const BACKEND_MODE_MATCH_VALUES = 19
+const BACKEND_MODE_MATCH_ID = 17
+const BACKEND_MODE_MATCH_VALUES = 18
 
 type Backend struct {
 	mutex           sync.RWMutex
@@ -425,10 +424,8 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 		}
 	}
 
-	if backend.mode == BACKEND_MODE_SERVER_EVENTS {
-		if sessionUpdate.UserFlags > 0 {
-			fmt.Printf("server events %x\n", sessionUpdate.UserFlags)
-		}
+	if sessionUpdate.UserFlags > 0 {
+		fmt.Printf("server events %x\n", sessionUpdate.UserFlags)
 	}
 
 	// Extract ids and addresses into own list to make response
@@ -680,10 +677,6 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "NEXT_STATS" {
 		backend.mode = BACKEND_MODE_NEXT_STATS
-	}
-
-	if os.Getenv("BACKEND_MODE") == "SERVER_EVENTS" {
-		backend.mode = BACKEND_MODE_SERVER_EVENTS
 	}
 
 	if os.Getenv("BACKEND_MODE") == "MATCH_ID" {
