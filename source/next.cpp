@@ -11932,7 +11932,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 entry->previous_server_events = 0;
             }
 
-            if ( entry->flush )
+            if ( entry->flush && !entry->session_update_packet.client_ping_timed_out )
+            {
+                // the session update was sent before client ping timed out flag was set to true, need to resend the packet
+                return;
+            }
+            else if ( entry->flush )
             {
                 entry->session_update_flush_finished = true;
                 server->num_flushed_session_updates++;
