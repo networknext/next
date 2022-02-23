@@ -705,12 +705,10 @@ func (s *AuthService) UpdateUserRoles(r *http.Request, args *RolesArgs, reply *R
 type SetupCompanyAccountArgs struct {
 	CompanyName string `json:"company_name"`
 	CompanyCode string `json:"company_code"`
+	Email       string `json:"email"`
 }
 
-type SetupCompanyAccountReply struct {
-	CompanyName string `json:"company_name"`
-	CompanyCode string `json:"company_code"`
-}
+type SetupCompanyAccountReply struct{}
 
 func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAccountArgs, reply *SetupCompanyAccountReply) error {
 	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
@@ -723,6 +721,13 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
 		err.Data.(*JSONRPCErrorData).MissingField = "CompanyCode"
 		core.Error("SetupCompanyAccount(): %v: missing CompanyCode", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("SetupCompanyAccount(): %v: missing Email", err.Error())
 		return &err
 	}
 
@@ -756,8 +761,7 @@ func (s *AuthService) SetupCompanyAccount(r *http.Request, args *SetupCompanyAcc
 	customer, err := s.Storage.Customer(ctx, args.CompanyCode)
 	if err == nil {
 		// exists, Check if the users domain matches the automatic signup domains
-		email := requestUser.(*jwt.Token).Claims.(jwt.MapClaims)["email"].(string)
-		domain := strings.Split(email, "@")
+		domain := strings.Split(args.Email, "@")
 		if !strings.Contains(customer.AutomaticSignInDomains, domain[1]) {
 			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 			core.Error("SetupCompanyAccount(): %v: User's email domain is not listed in accepted domains", err.Error())
@@ -1188,6 +1192,40 @@ func (s *AuthService) CustomerDownloadedUE4PluginNotifications(r *http.Request, 
 	if err := s.SlackClient.SendInfo(message); err != nil {
 		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
 		core.Error("CustomerDownloadedUE4PluginNotifications(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
+func (s *AuthService) CustomerDownloaded2022WhitePaperNotifications(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerDownloadedWhitePaperNotifications(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerDownloadedWhitePaperNotifications(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s downloaded the 2022 white paper", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s downloaded the 2022 white paper", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :microscope:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerDownloadedWhitePaperNotifications(): %v", err.Error())
 		return &err
 	}
 	return nil
