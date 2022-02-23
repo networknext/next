@@ -383,6 +383,12 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
+	err = authservice.RefreshAuthRolesCache()
+	if err != nil {
+		core.Error("failed to refresh auth role cache: %v", err)
+		return 1
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -473,6 +479,10 @@ func mainReturnWithCode() int {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+
+		if err := opsService.RefreshLookerDashboardCache(); err != nil {
+			core.Error("could not refresh looker dasbhoard cache: %v", err)
+		}
 
 		ticker := time.NewTicker(time.Minute)
 		for {
