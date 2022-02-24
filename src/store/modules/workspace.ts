@@ -13,7 +13,7 @@ export default {
     currentPage: 'map',
     filter: {
       companyCode: '',
-      dateRange: DateFilterType.CURRENT_MONTH
+      dateRange: DateFilterType.LAST_7
     },
     finishedTours: [],
     finishedSignUpTours: [],

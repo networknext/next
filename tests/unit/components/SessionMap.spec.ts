@@ -29,7 +29,7 @@ describe('SessionMap.vue', () => {
       userProfile: newDefaultProfile(),
       filter: {
         companyCode: '',
-        dateRange: DateFilterType.CURRENT_MONTH
+        dateRange: DateFilterType.LAST_7
       },
       killLoops: false,
       isAnonymous: true,
@@ -164,7 +164,7 @@ describe('SessionMap.vue', () => {
   it('checks layers - multiple layers', async () => {
     const store = new Vuex.Store(defaultStore)
     store.commit('UPDATE_IS_ANONYMOUS', false)
-    store.commit('UPDATE_CURRENT_FILTER', { companyCode: 'test', dateRange: DateFilterType.CURRENT_MONTH })
+    store.commit('UPDATE_CURRENT_FILTER', { companyCode: 'test', dateRange: DateFilterType.LAST_7 })
 
     const mapPointsSpy = fetchMapSessionsMock(localVue, true, [
       [0, 0, true, '00000000'],
@@ -184,7 +184,7 @@ describe('SessionMap.vue', () => {
 
     mapPointsSpy.mockReset()
     store.commit('UPDATE_IS_ANONYMOUS', true)
-    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '', dateRange: DateFilterType.CURRENT_MONTH })
+    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '', dateRange: DateFilterType.LAST_7 })
     wrapper.destroy()
   })
 
@@ -202,14 +202,14 @@ describe('SessionMap.vue', () => {
 
     spy = fetchMapSessionsMock(localVue, true, [], 'test')
 
-    const newFilter: Filter = { companyCode: 'test', dateRange: DateFilterType.CURRENT_MONTH }
+    const newFilter: Filter = { companyCode: 'test', dateRange: DateFilterType.LAST_7 }
     store.commit('UPDATE_CURRENT_FILTER', newFilter)
 
     await localVue.nextTick()
 
     expect(spy).toBeCalledTimes(2)
 
-    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '', dateRange: DateFilterType.CURRENT_MONTH })
+    store.commit('UPDATE_CURRENT_FILTER', { companyCode: '', dateRange: DateFilterType.LAST_7 })
 
     spy.mockReset()
 

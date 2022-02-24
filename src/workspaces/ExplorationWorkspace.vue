@@ -50,7 +50,6 @@ import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import BuyerFilter from '@/components/BuyerFilter.vue'
-import DateFilter from '@/components/DateFilter.vue'
 import { ANALYTICS_TRIAL_SIGNUP_RESPONSE } from '@/components/types/Constants'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
 
@@ -65,8 +64,7 @@ import { ErrorTypes } from '@/components/types/ErrorTypes'
 @Component({
   components: {
     Alert,
-    BuyerFilter,
-    DateFilter
+    BuyerFilter
   }
 })
 export default class ExplorationWorkspace extends Vue {

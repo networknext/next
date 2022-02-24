@@ -30,6 +30,9 @@
                     v-model="searchID"
             >
           </div>
+          <div class="col-auto" v-if="$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT)">
+            <LookerDateFilter />
+          </div>
           <div class="col-auto">
             <button id="user-tool-button" class="btn btn-primary" type="submit">
               View Sessions
@@ -50,6 +53,8 @@ import { AlertType } from '@/components/types/AlertTypes'
 import Alert from '@/components/Alert.vue'
 import { NavigationGuardNext, Route } from 'vue-router'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
+import { FeatureEnum } from '@/components/types/FeatureTypes'
+import LookerDateFilter from '@/components/LookerDateFilter.vue'
 
 /**
  * This component holds the workspace elements related to the user tool page in the Portal
@@ -62,6 +67,7 @@ import { ErrorTypes } from '@/components/types/ErrorTypes'
 @Component({
   components: {
     Alert,
+    LookerDateFilter,
     UserSessions
   }
 })
@@ -72,6 +78,7 @@ export default class UserToolWorkspace extends Vue {
     inputAlert: Alert;
   }
 
+  private FeatureEnum: any
   private searchID: string
 
   constructor () {
@@ -92,6 +99,7 @@ export default class UserToolWorkspace extends Vue {
   }
 
   private created () {
+    this.FeatureEnum = FeatureEnum
     this.searchID = this.$route.params.pathMatch || ''
   }
 

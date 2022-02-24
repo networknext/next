@@ -116,7 +116,7 @@ const actions = {
         dispatch('updateAllBuyers', allBuyers)
         const defaultFilter: Filter = {
           companyCode: (userProfile.buyerID === '' || getters.isAdmin) ? '' : userProfile.companyCode,
-          dateRange: DateFilterType.CURRENT_MONTH
+          dateRange: DateFilterType.LAST_7
         }
         dispatch('updateCurrentFilter', defaultFilter)
 

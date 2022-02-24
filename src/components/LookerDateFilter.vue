@@ -9,7 +9,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Prop, Vue } from 'vue-property-decorator'
+import { Component, Vue } from 'vue-property-decorator'
 import { DateFilterType, Filter } from '@/components/types/FilterTypes'
 
 /**
@@ -18,50 +18,37 @@ import { DateFilterType, Filter } from '@/components/types/FilterTypes'
  */
 
 @Component
-export default class DateFilter extends Vue {
-  @Prop({ default: false }) readonly includeCustom!: boolean
-
+export default class LookerDateFilter extends Vue {
   private filterOptions: Array<any>
-  private startDate: string
-  private endDate: string
 
   constructor () {
     super()
     this.filterOptions = []
-    this.startDate = ''
-    this.endDate = ''
   }
 
   private mounted () {
     this.filterOptions = [
       {
-        name: 'Current month',
-        value: DateFilterType.CURRENT_MONTH
+        name: 'Last 7 Days',
+        value: DateFilterType.LAST_7
       },
       {
-        name: 'Last month',
-        value: DateFilterType.LAST_MONTH
+        name: 'Last 14 Days',
+        value: DateFilterType.LAST_14
       },
       {
-        name: 'Last 30 days',
+        name: 'Last 30 Days',
         value: DateFilterType.LAST_30
       },
       {
-        name: 'Last 90 days',
-        value: DateFilterType.LAST_90
+        name: 'Last 60 Days',
+        value: DateFilterType.LAST_60
       },
       {
-        name: 'Year to date',
-        value: DateFilterType.YEAR_TO_DATE
+        name: 'Last 90 Days',
+        value: DateFilterType.LAST_90
       }
     ]
-
-    if (this.includeCustom) {
-      this.filterOptions.push({
-        name: 'Custom range',
-        value: DateFilterType.CUSTOM
-      })
-    }
   }
 
   // TODO: Figure out best way to offer custom date range
@@ -71,7 +58,7 @@ export default class DateFilter extends Vue {
       dateRange: dateRange
     }
 
-    this.$store.commit('UPDATE_CURRENT_FILTER', newFilter)
+    this.$store.dispatch('updateCurrentFilter', newFilter)
   }
 }
 

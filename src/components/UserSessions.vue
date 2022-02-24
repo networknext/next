@@ -82,15 +82,17 @@
           </tr>
         </tbody>
       </table>
-      <div class="float-left" style="padding-bottom: 20px;">
-        <button id="more-sessions-button" class="btn btn-primary" @click="reloadSessions()">
-          Refresh Sessions
-        </button>
-      </div>
-      <div class="float-right" style="padding-bottom: 20px;">
-        <button id="more-sessions-button" class="btn btn-primary" v-if="this.currentPage < MAX_PAGES" @click="fetchMoreSessions()">
-          More Sessions
-        </button>
+      <div v-if="!$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT)">
+        <div class="float-left" style="padding-bottom: 20px;">
+          <button id="more-sessions-button" class="btn btn-primary" @click="reloadSessions()">
+            Refresh Sessions
+          </button>
+        </div>
+        <div class="float-right" style="padding-bottom: 20px;">
+          <button id="more-sessions-button" class="btn btn-primary" v-if="this.currentPage < MAX_PAGES" @click="fetchMoreSessions()">
+            More Sessions
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -100,6 +102,7 @@
 import { Component, Vue } from 'vue-property-decorator'
 import { NavigationGuardNext, Route } from 'vue-router'
 import { MAX_USER_SESSION_PAGES } from './types/Constants'
+import { FeatureEnum } from './types/FeatureTypes'
 
 /**
  * This component displays all of the information related to the user
@@ -109,10 +112,11 @@ import { MAX_USER_SESSION_PAGES } from './types/Constants'
 @Component
 export default class UserSessions extends Vue {
   private sessions: Array<any>
-  private sessionLoop: any
   private showSessions: boolean
   private searchID: string
   private currentPage: number
+  private unwatchFilter: any
+  private FeatureEnum: any
   private MAX_PAGES = MAX_USER_SESSION_PAGES
 
   constructor () {
@@ -120,21 +124,32 @@ export default class UserSessions extends Vue {
     this.searchID = ''
     this.sessions = []
     this.showSessions = false
-    this.sessionLoop = null
     this.currentPage = 0
+    this.FeatureEnum = FeatureEnum
   }
 
   private mounted () {
+    this.unwatchFilter = this.$store.watch(
+      (state: any, getters: any) => {
+        return getters.currentFilter
+      },
+      () => {
+        this.reloadSessions()
+      }
+    )
+
     this.currentPage = 0
     this.searchID = this.$route.params.pathMatch || ''
     if (this.searchID !== '') {
+      console.log('mounted, fetching sessions')
       this.fetchUserSessions()
     }
   }
 
   private beforeRouteUpdate (to: Route, from: Route, next: NavigationGuardNext<Vue>) {
-    if (this.sessionLoop) {
-      clearInterval(this.sessionLoop)
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_LOOKER_BIGTABLE_REPLACEMENT)) {
+      next()
+      return
     }
     this.showSessions = false
     this.searchID = to.params.pathMatch || ''
@@ -146,7 +161,7 @@ export default class UserSessions extends Vue {
   }
 
   private beforeDestroy () {
-    clearInterval(this.sessionLoop)
+    this.unwatchFilter()
   }
 
   private fetchMoreSessions () {
@@ -154,6 +169,7 @@ export default class UserSessions extends Vue {
   }
 
   private reloadSessions () {
+    console.log('In reload sessions.....')
     this.currentPage = 0
     this.showSessions = false
     this.sessions = []
@@ -161,11 +177,13 @@ export default class UserSessions extends Vue {
   }
 
   private fetchUserSessions () {
+    console.log(this.searchID)
     if (this.searchID === '') {
       return
     }
+    console.log('Refreshing sessions....')
 
-    this.$apiService.fetchUserSessions({ user_id: this.searchID, page: this.currentPage })
+    this.$apiService.fetchUserSessions({ user_id: this.searchID, page: this.currentPage, timeframe: this.$store.getters.currentFilter.dateRange })
       .then((response: any) => {
         this.sessions = this.sessions.concat(response.sessions)
         this.currentPage = response.page
