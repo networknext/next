@@ -35,7 +35,7 @@
               SDK v4.0.16
             </a>
             <a
-              id="docs-button"
+              id="ue4-button"
               @click="downloadUE4()"
               class="btn btn-primary m-1 btn-width white-link"
             >
@@ -65,7 +65,7 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <div style="display: inherit;flex-direction: column;" data-intercom="dataReports" data-tour="dataReports">
             <a
-              id="docs-button"
+              id="2021-white-paper-button"
               @click="download2022WhitePaper()"
               class="btn btn-primary m-1 btn-width white-link"
             >
@@ -77,7 +77,7 @@
           </div>
         </div>
         <h5>
-            State of the Internet for Real-Time Games 2022 Report <br />
+          State of the Internet for Real-Time Games 2022 Report <br />
         </h5>
         <div style="font-size: 90%;">Analysis of over 10 million player sessions identifies critical need for session analytics and selective augmented Internet services</div>
       </div>
