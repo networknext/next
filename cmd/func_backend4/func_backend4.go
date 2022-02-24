@@ -579,10 +579,8 @@ func MatchDataHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 
 	if backend.mode == BACKEND_MODE_MATCH_VALUES || backend.mode == BACKEND_MODE_FORCE_RETRY {
-		if matchDataRequest.NumMatchValues > 0 {
-			for i := 0; i < int(matchDataRequest.NumMatchValues); i++ {
-				fmt.Printf("match value %.2f\n", matchDataRequest.MatchValues[i])
-			}
+		for i := 0; i < int(matchDataRequest.NumMatchValues); i++ {
+			fmt.Printf("match value %.2f\n", matchDataRequest.MatchValues[i])
 		}
 	}
 
