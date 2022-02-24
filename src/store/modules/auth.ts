@@ -1,4 +1,4 @@
-import { UserProfile } from '@/components/types/AuthTypes'
+import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { EMAIL_VERIFICATION_URL } from '@/components/types/Constants'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 import { DateFilterType, Filter } from '@/components/types/FilterTypes'
@@ -14,30 +14,6 @@ import Vue from 'vue'
  * TODO: Namespace these
  */
 
-function newDefaultProfile (): UserProfile {
-  const defaultProfile: UserProfile = {
-    auth0ID: '',
-    avatar: '',
-    companyCode: '',
-    companyName: '',
-    buyerID: '',
-    seller: false,
-    domains: [],
-    firstName: '',
-    lastName: '',
-    email: '',
-    idToken: '',
-    verified: false,
-    routeShader: null,
-    pubKey: '',
-    newsletterConsent: false,
-    roles: [],
-    hasAnalytics: false,
-    hasBilling: false,
-    hasTrial: false
-  }
-  return defaultProfile
-}
 const state = {
   userProfile: newDefaultProfile(),
   allBuyers: []
@@ -113,7 +89,7 @@ const actions = {
         userProfile.email = userInformation.email || ''
         userProfile.avatar = userInformation.avatar || ''
 
-        userProfile.buyerID = userInformation.id || userInformation.buyer_id || '' // TODO: remove the ".id" case after deploy
+        userProfile.buyerID = userInformation.buyer_id || ''
         userProfile.seller = userInformation.seller || false
         userProfile.firstName = userInformation.first_name || ''
         userProfile.lastName = userInformation.last_name || ''

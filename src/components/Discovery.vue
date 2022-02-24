@@ -43,29 +43,31 @@ export default class Disccovery extends Vue {
 
   private mounted () {
     // This is only necessary for admins - when the filter changes, grab the new billing URL
-    this.unwatchFilter = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.currentFilter
-      },
-      () => {
-        this.fetchDiscoveryDashboards()
-      }
-    )
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter = this.$store.watch(
+        (state: any, getters: any) => {
+          return getters.currentFilter
+        },
+        () => {
+          this.fetchDiscoveryDashboards()
+        }
+      )
+    }
     this.fetchDiscoveryDashboards()
   }
 
   private beforeDestroy () {
-    this.unwatchFilter()
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter()
+    }
   }
 
   private fetchDiscoveryDashboards () {
     this.$apiService.fetchDiscoveryDashboards({
-      company_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode,
-      origin: window.location.origin
+      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     })
       .then((response: any) => {
         this.urls = response.urls || []
-        console.log(response)
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the discover dashboards')

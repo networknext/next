@@ -20,7 +20,6 @@ export default {
     isTour: false,
     isSignUpTour: false,
     killLoops: false,
-    sessionCountAlertRef: null,
     viewport: null
   },
   getters: {
@@ -31,7 +30,6 @@ export default {
     killLoops: (state: any) => state.killLoops,
     finishedTours: (state: any) => state.finishedTours,
     finishedSignUpTours: (state: any) => state.finishedSignUpTours,
-    sessionCountAlert: (state: any) => state.sessionCountAlertRef,
     currentViewport: (state: any) => state.viewport
   },
   actions: {

@@ -6,8 +6,9 @@ import router from './router'
 import store from './store'
 import 'bootstrap'
 import 'bootstrap/dist/css/bootstrap.min.css'
+import 'uplot/dist/uPlot.min.css'
 import { JSONRPCPlugin } from './plugins/jsonrpc'
-import { AuthPlugin, AuthService } from './plugins/auth'
+import { AuthPlugin } from './plugins/auth'
 import VueGtag from 'vue-gtag'
 import { FlagPlugin } from './plugins/flags'
 import { FeatureEnum, Flag } from './components/types/FeatureTypes'
@@ -88,7 +89,10 @@ const clientID = process.env.VUE_APP_AUTH0_CLIENTID
 const domain = process.env.VUE_APP_AUTH0_DOMAIN
 Vue.use(AuthPlugin, {
   domain: domain,
-  clientID: clientID
+  clientID: clientID,
+  store: store,
+  flagService: Vue.prototype.$flagService,
+  gtagService: Vue.prototype.$gtag
 })
 
 // Setup jsonrpc plugin - This handles all communication with the backend both auth'd and unauth'd

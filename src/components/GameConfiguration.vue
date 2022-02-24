@@ -1,9 +1,19 @@
 <template>
-  <div class="card-body" id="config-page">
+  <div
+    class="card-body"
+    id="config-page"
+    v-if="(
+      $store.getters.isOwner &&
+      $store.getters.userProfile.companyName !== ''
+    ) || $store.getters.isAdmin
+    ">
+    <TermsOfServiceModal v-if="showTOS"/>
     <h5 class="card-title">Game Configuration</h5>
-    <p class="card-text">Manage how your game connects to Network Next.</p>
+    <p class="card-text">
+      Manage how your game connects to Network Next.
+    </p>
     <Alert ref="responseAlert" />
-    <form v-on:submit.prevent="updatePubKey()">
+    <form v-on:submit.prevent="checkTOS()">
       <div class="form-group" id="pubKey">
         <label>Company Name</label>
         <input
@@ -19,7 +29,6 @@
           class="form-control"
           placeholder="Enter your base64-encoded public key"
           id="pubkey-input"
-          :disabled="!$store.getters.isOwner && !$store.getters.isAdmin"
           v-model="pubKey"
         ></textarea>
       </div>
@@ -27,7 +36,7 @@
         id="game-config-button"
         type="submit"
         class="btn btn-primary btn-sm"
-        v-if="$store.getters.isOwner || $store.getters.isAdmin"
+        :disabled="pubKey === ''"
       >Save game configuration</button>
       <p class="text-muted text-small mt-2"></p>
     </form>
@@ -38,8 +47,11 @@
 import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
-import { UserProfile } from '@/components/types/AuthTypes'
+import { newDefaultProfile, UserProfile } from '@/components/types/AuthTypes'
 import { cloneDeep } from 'lodash'
+import { UPDATE_PUBLIC_KEY_SUCCESS } from './types/Constants'
+import { ErrorTypes } from './types/ErrorTypes'
+import TermsOfServiceModal from '@/components/TermsOfServiceModal.vue'
 
 /**
  * This component displays all of the necessary information for the game configuration tab
@@ -53,7 +65,8 @@ import { cloneDeep } from 'lodash'
 
 @Component({
   components: {
-    Alert
+    Alert,
+    TermsOfServiceModal
   }
 })
 export default class GameConfiguration extends Vue {
@@ -64,13 +77,15 @@ export default class GameConfiguration extends Vue {
 
   private companyName: string
   private pubKey: string
+  private showTOS: boolean
   private userProfile: UserProfile
 
   constructor () {
     super()
     this.companyName = ''
     this.pubKey = ''
-    this.userProfile = {} as UserProfile
+    this.showTOS = false
+    this.userProfile = newDefaultProfile()
   }
 
   private mounted () {
@@ -81,6 +96,41 @@ export default class GameConfiguration extends Vue {
     if (this.pubKey === '') {
       this.pubKey = this.userProfile.pubKey || ''
     }
+
+    // TODO: Make a modal events bus rather than using the root application bus
+    this.$root.$on('showTOSModal', this.showTOSModalCallback)
+    this.$root.$on('hideTOSModal', this.hideTOSModalCallback)
+  }
+
+  private beforeDestroy () {
+    this.$root.$off('showTOSModal')
+    this.$root.$off('hideTOSModal')
+  }
+
+  private showTOSModalCallback () {
+    if (!this.showTOS) {
+      this.showTOS = true
+    }
+  }
+
+  private hideTOSModalCallback (accepted: boolean) {
+    if (this.showTOS) {
+      this.showTOS = false
+    }
+
+    if (accepted) {
+      this.updatePubKey()
+    }
+  }
+
+  private checkTOS () {
+    if (this.$store.getters.userProfile.buyerID === '') {
+      // Launch TOS modal
+      this.showTOS = true
+      return
+    }
+
+    this.updatePubKey()
   }
 
   private updatePubKey () {
@@ -88,27 +138,21 @@ export default class GameConfiguration extends Vue {
       .updateGameConfiguration({
         new_public_key: this.pubKey
       })
-      .then((response: any) => {
-        this.userProfile.pubKey = response.public_key
-        this.$store.commit('UPDATE_USER_PROFILE', this.userProfile)
-        this.$refs.responseAlert.setMessage('Updated public key successfully')
+      .then(() => {
+        this.$refs.responseAlert.setMessage(UPDATE_PUBLIC_KEY_SUCCESS)
         this.$refs.responseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
           if (this.$refs.responseAlert) {
             this.$refs.responseAlert.resetAlert()
           }
         }, 5000)
-        this.$apiService.fetchAllBuyers()
-          .then((response: any) => {
-            const allBuyers = response.buyers
-            this.$store.commit('UPDATE_ALL_BUYERS', allBuyers)
-          })
         this.$apiService.sendPublicKeyEnteredSlackNotification({ email: this.$store.getters.userProfile.email, company_name: this.$store.getters.userProfile.companyName, company_code: this.$store.getters.userProfile.companyCode })
+        return this.$authService.refreshToken()
       })
       .catch((error: Error) => {
         console.log('Something went wrong updating the public key')
         console.log(error)
-        this.$refs.responseAlert.setMessage('Failed to update public key')
+        this.$refs.responseAlert.setMessage(ErrorTypes.UPDATE_PUBLIC_KEY_FAILURE)
         this.$refs.responseAlert.setAlertType(AlertType.ERROR)
         setTimeout(() => {
           if (this.$refs.responseAlert) {

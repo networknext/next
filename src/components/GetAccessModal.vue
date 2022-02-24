@@ -5,6 +5,9 @@
         <div class="card modal-container">
           <div class="card-body">
             <div class="card-title">
+              <Alert ref="loginAlert" style="margin-bottom: 1rem;">
+                <router-link to="login">here</router-link> to login manually
+              </Alert>
               <div class="row">
                 <div class="col"></div>
                 <img class="logo-sizing" src="https://storage.googleapis.com/network-next-press-kit/networknext_logo_colour_black_RGB.png" />
@@ -77,7 +80,7 @@
               </div>
               <div v-if="!stepOne" class="form-group">
                 <p style="text-align: center;">
-                  Please enter a company name and website so that our team can learn more about your company to help make your on boarding experience smoother.
+                  Please enter a company name and website so that our team can learn more about your company to help make your onboarding experience smoother.
                 </p>
                 <input
                   type="text"
@@ -145,13 +148,25 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
+import { ErrorTypes } from './types/ErrorTypes'
+import Alert from '@/components/Alert.vue'
+import { AlertType } from './types/AlertTypes'
 
 /**
  * This component opens up a login form modal
  */
 
-@Component
+@Component({
+  components: {
+    Alert
+  }
+})
 export default class GetAccessModal extends Vue {
+  // Register the alert component to access its set methods
+  $refs!: {
+    loginAlert: Alert;
+  }
+
   get hasCharacters () {
     const regex = new RegExp(/([#$%&'*+/=?^!_`{|}~-])/)
     return regex.test(this.password)
@@ -232,25 +247,25 @@ export default class GetAccessModal extends Vue {
   private checkCompanyName (checkLength: boolean) {
     const regex = new RegExp(/^[a-z ,.'-]+$/i)
     this.validCompanyName = !checkLength || (this.companyName.length > 0 && regex.test(this.companyName))
-    this.companyNameError = this.validCompanyName ? '' : 'Please enter a valid company name'
+    this.companyNameError = this.validCompanyName ? '' : ErrorTypes.INVALID_COMPANY_NAME
   }
 
   private checkEmail (checkLength: boolean) {
     const regex = new RegExp(/(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])/)
     this.validEmail = !checkLength || (this.email.length > 0 && regex.test(this.email))
-    this.emailError = this.validEmail ? '' : 'Please enter a valid email address'
+    this.emailError = this.validEmail ? '' : ErrorTypes.INVALID_EMAIL_ADDRESS
   }
 
   private checkFirstName (checkLength: boolean) {
     const regex = new RegExp(/^[a-zA-Z]+$/)
     this.validFirstName = !checkLength || (this.firstName.length > 0 && regex.test(this.firstName))
-    this.firstNameError = this.validFirstName ? '' : 'Please enter a valid first name'
+    this.firstNameError = this.validFirstName ? '' : ErrorTypes.INVALID_FIRST_NAME
   }
 
   private checkLastName (checkLength: boolean) {
     const regex = new RegExp(/^[a-zA-Z]+$/)
     this.validLastName = !checkLength || (this.lastName.length > 0 && regex.test(this.lastName))
-    this.lastNameError = this.validLastName ? '' : 'Please enter a valid last name'
+    this.lastNameError = this.validLastName ? '' : ErrorTypes.INVALID_LAST_NAME
   }
 
   private checkPassword (checkLength: boolean) {
@@ -261,11 +276,11 @@ export default class GetAccessModal extends Vue {
   private checkWebsite (checkLength: boolean) {
     const regex = new RegExp(/((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w]*))?)/)
     this.validWebsite = !checkLength || (this.companyWebsite.length > 0 && regex.test(this.companyWebsite))
-    this.companyWebsiteError = this.validWebsite ? '' : 'Please enter a valid website. IE: https://networknext.com'
+    this.companyWebsiteError = this.validWebsite ? '' : ErrorTypes.INVALID_WEBSITE
   }
 
   private processNewSignup (): void {
-    // TODO: Find a better way of doing this
+    // TODO: Find a better way of doing this - This would normally be handled by a validation library
     this.checkCompanyName(true)
     this.checkFirstName(true)
     this.checkLastName(true)
@@ -287,6 +302,8 @@ export default class GetAccessModal extends Vue {
       .catch((err: Error) => {
         console.log('Something went wrong processing the new sign up information')
         console.log(err)
+        this.$refs.loginAlert.setMessage(ErrorTypes.AUTOMATIC_LOGIN_FAILURE)
+        this.$refs.loginAlert.setAlertType(AlertType.ERROR)
       })
   }
 

@@ -10,13 +10,14 @@ declare module '*.vue' {
     updateAutoSignupDomains (args: any): Promise<any>;
     setupCompanyAccount (args: any): Promise<any>;
     upgradeAccount (args: any): Promise<any>;
+    fetchPortalVersion (): Promise<any>;
     fetchTotalSessionCounts (args: any): Promise<any>;
     fetchMapSessions (args: any): Promise<any>;
     fetchSessionDetails (args: any): Promise<any>;
     fetchTopSessions (args: any): Promise<any>;
     fetchAllBuyers (): Promise<any>;
     fetchUsageSummary(args: any): Promise<any>;
-    fetchAnalyticsSummary(args: any): Promise<any>;
+    fetchAnalyticsDashboards(args: any): Promise<any>;
     fetchDiscoveryDashboards (args: any): Promise<any>;
     fetchSavesDashboard (args: any): Promise<any>;
     fetchUserSessions (args: any): Promise<any>;
@@ -39,6 +40,7 @@ declare module '*.vue' {
     sendSDKDownloadSlackNotification (args: any): Promise<any>;
     sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
     sendUE4DownloadNotifications (args: any): Promise<any>;
+    send2022WhitePaperDownloadNotifications (args: any): Promise<any>;
     startAnalyticsTrial (): Promise<any>;
     processNewSignup (args: any): Promise<any>;
   }

@@ -12,7 +12,7 @@
         <label for="firstName">
           First Name
         </label>
-        <input type="text" class="form-control form-control-sm" id="firstName" v-model="firstName" placeholder="Enter your first name"/>
+        <input type="text" class="form-control form-control-sm" id="firstNameInput" v-model="firstName" placeholder="Enter your first name"/>
         <small v-for="(error, index) in firstNameErrors" :key="index" class="text-danger">
           {{ error }}
           <br/>
@@ -22,7 +22,7 @@
         <label for="lastName">
           Last Name
         </label>
-        <input type="text" class="form-control form-control-sm" id="lastName" v-model="lastName" placeholder="Enter your last name"/>
+        <input type="text" class="form-control form-control-sm" id="lastNameInput" v-model="lastName" placeholder="Enter your last name"/>
         <small v-for="(error, index) in lastNameErrors" :key="index" class="text-danger">
           {{ error }}
           <br/>
@@ -30,13 +30,13 @@
       </div>
       <div class="form-group">
         <div class="form-check">
-          <input type="checkbox" class="form-check-input" id="newsletterConsent" v-model="newsletterConsent"/>
+          <input type="checkbox" class="form-check-input" id="newsletterCheckbox" v-model="newsletterConsent"/>
           <small>
             I would like to receive the Network Next newsletter
           </small>
         </div>
       </div>
-      <button id="account-settings-button" type="submit" class="btn btn-primary btn-sm">
+      <button id="account-details-button" type="submit" class="btn btn-primary btn-sm">
         Update User Details
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -54,7 +54,7 @@
         <label for="companyName">
           Company Name
         </label>
-        <input :disabled="$store.getters.userProfile.companyName !== ''" type="text" class="form-control form-control-sm" id="companyName" v-model="companyName" placeholder="Enter your company name" @change="checkCompanyName()"/>
+        <input :disabled="$store.getters.userProfile.companyName !== ''" type="text" class="form-control form-control-sm" id="companyNameInput" v-model="companyName" placeholder="Enter your company name" />
         <small class="form-text text-muted">
           This is the name of the company that you would like your account to be assigned to. This is not necessary for existing company assignment and is case and white space sensitive.
         </small>
@@ -67,7 +67,7 @@
         <label for="companyCode">
           Company Code
         </label>
-        <input :disabled="$store.getters.userProfile.companyCode !== ''" type="text" class="form-control form-control-sm" id="companyCode" v-model="companyCode" placeholder="Enter your company code" @change="checkCompanyCode()"/>
+        <input :disabled="$store.getters.userProfile.companyCode !== ''" type="text" class="form-control form-control-sm" id="companyCodeInput" v-model="companyCode" placeholder="Enter your company code" />
         <small class="form-text text-muted">
           This is the unique string associated to your company account and to be used in your company's subdomain. To assign this user account to an existing company, type in your companies existing code. Examples: mycompany, my-company, my-company-name
         </small>
@@ -76,7 +76,7 @@
           <br/>
         </small>
       </div>
-      <button v-if="$store.getters.userProfile.companyCode === '' && $store.getters.userProfile.companyName === ''" id="account-settings-button" type="submit" class="btn btn-primary btn-sm">
+      <button v-if="$store.getters.userProfile.companyCode === '' && $store.getters.userProfile.companyName === ''" id="company-details-button" type="submit" class="btn btn-primary btn-sm">
         Setup Company Account
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -142,8 +142,31 @@ export default class AccountSettings extends Vue {
   }
 
   get validCompanyInfo (): boolean {
-    this.checkCompanyName()
-    this.checkCompanyCode()
+    this.companyCodeErrors = []
+    this.companyNameErrors = []
+
+    if (this.companyName === '' && this.companyCode === '') {
+      this.companyCodeErrors.push('If setting up a company account, please enter a company name and code, otherwise please enter a valid company code')
+    }
+
+    if (this.companyName !== '' && this.companyCode === '') {
+      this.companyCodeErrors.push('A company code is required for company creation / assignment')
+    }
+
+    if (this.companyName.length > 256) {
+      this.companyNameErrors.push('Please choose a company name that is at most 256 characters')
+    }
+
+    this.companyCode = this.companyCode.toLowerCase()
+    if (this.companyCode.length > 32) {
+      this.companyCodeErrors.push('Please choose a company code that is at most 32 characters')
+    }
+
+    const regex = new RegExp('^([a-z])+(-?[a-z])*$')
+    if (!regex.test(this.companyCode)) {
+      this.companyCodeErrors.push('Please choose a company code that contains character padded hyphens and no special characters')
+    }
+
     return this.companyNameErrors.length === 0 && this.companyCodeErrors.length === 0
   }
 
@@ -195,6 +218,11 @@ export default class AccountSettings extends Vue {
   }
 
   private mounted () {
+    this.refreshUserData()
+    // this.checkConfirmPassword()
+  }
+
+  private refreshUserData () {
     const userProfile = cloneDeep(this.$store.getters.userProfile)
     this.firstName = userProfile.firstName || ''
     this.lastName = userProfile.lastName || ''
@@ -202,7 +230,6 @@ export default class AccountSettings extends Vue {
 
     this.companyName = userProfile.companyName || ''
     this.companyCode = userProfile.companyCode || ''
-    // this.checkConfirmPassword()
   }
 
   private checkFirstName () {
@@ -238,28 +265,6 @@ export default class AccountSettings extends Vue {
     const regex = new RegExp('([A-Za-z])')
     if (!regex.test(this.lastName)) {
       this.lastNameErrors.push('A valid last name must include at least one letter')
-    }
-  }
-
-  private checkCompanyName () {
-    this.companyNameErrors = []
-    if (this.companyName.length > 256) {
-      this.companyNameErrors.push('Please choose a company name that is at most 256 characters')
-    }
-  }
-
-  private checkCompanyCode () {
-    this.companyCodeErrors = []
-    this.companyCode = this.companyCode.toLowerCase()
-    if (this.companyCode.length === 0) {
-      return
-    }
-    if (this.companyCode.length > 32) {
-      this.companyCodeErrors.push('Please choose a company code that is at most 32 characters')
-    }
-    const regex = new RegExp('^([a-z])+(-?[a-z])*$')
-    if (!regex.test(this.companyCode)) {
-      this.companyCodeErrors.push('Please choose a company code that contains character padded hyphens and no special characters')
     }
   }
 
@@ -340,6 +345,7 @@ export default class AccountSettings extends Vue {
         return this.$authService.refreshToken()
       })
       .then(() => {
+        this.refreshUserData()
         this.$refs.accountResponseAlert.setMessage('Account details updated successfully')
         this.$refs.accountResponseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {
@@ -365,8 +371,12 @@ export default class AccountSettings extends Vue {
   }
 
   private setupCompanyAccount () {
+    if (!this.validCompanyInfo) {
+      return
+    }
+
     // Check for a valid company info form that is not equal to what is currently there. IE someone assigned to a company wants to update their newsletter settings but not change their company info
-    if (!this.validCompanyInfo || (this.$store.getters.userProfile.firstName === '' && this.$store.getters.userProfile.lastName === '')) {
+    if (this.$store.getters.userProfile.firstName === '' && this.$store.getters.userProfile.lastName === '') {
       this.$refs.companyResponseAlert.setMessage('Please update your first and last name before setting up a company account')
       this.$refs.companyResponseAlert.setAlertType(AlertType.ERROR)
       setTimeout(() => {
@@ -378,11 +388,16 @@ export default class AccountSettings extends Vue {
     }
 
     this.$apiService
-      .setupCompanyAccount({ company_name: this.companyName, company_code: this.companyCode })
+      .setupCompanyAccount({
+        email: this.$store.getters.userProfile.email || '',
+        company_name: this.companyName,
+        company_code: this.companyCode
+      })
       .then(() => {
         return this.$authService.refreshToken()
       })
       .then(() => {
+        this.refreshUserData()
         this.$refs.companyResponseAlert.setMessage('Account settings updated successfully')
         this.$refs.companyResponseAlert.setAlertType(AlertType.SUCCESS)
         setTimeout(() => {

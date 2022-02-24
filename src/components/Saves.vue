@@ -1,17 +1,17 @@
 <template>
   <div>
+    <div class="row" v-if="savesDashURL !== ''">
+      <LookerEmbed dashID="savesDash" :dashURL="savesDashURL" />
+    </div>
     <div
       class="spinner-border"
       role="status"
       id="saves-spinner"
-      v-show="savesDashURL === ''"
+      v-show="!showSaves"
     >
       <span class="sr-only">Loading...</span>
     </div>
-    <div v-if="savesDashURL !== ''">
-      <div class="row">
-        <LookerEmbed dashID="savesDash" :dashURL="savesDashURL" />
-      </div>
+    <div v-if="showSaves">
       <hr class="mt-4 mb-4">
       <h5 class="card-title looker-padding">
         Recent Saves
@@ -33,10 +33,16 @@
                 <span>Save Score</span>
               </th>
               <th>
-                <span>RTT Score</span>
+                <span>Average Direct RTT</span>
               </th>
               <th>
-                <span>PL Score</span>
+                <span>Average Next RTT</span>
+              </th>
+              <th>
+                <span>Average Direct Packet Loss</span>
+              </th>
+              <th>
+                <span>Average Next Packet Loss</span>
               </th>
               <th>
                 <span>Duration (Hours)</span>
@@ -64,10 +70,16 @@
                 {{ save.save_score }}
               </td>
               <td>
-                {{ save.rtt_score }}
+                {{ save.average_direct_rtt }}
               </td>
               <td>
-                {{ save.pl_score }}
+                {{ save.average_next_rtt }}
+              </td>
+              <td>
+                {{ save.average_direct_pl }}
+              </td>
+              <td>
+                {{ save.average_next_pl }}
               </td>
               <td>
                 {{ save.duration }}
@@ -82,7 +94,6 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
-import { DateTime } from 'luxon'
 
 import LookerEmbed from '@/components/LookerEmbed.vue'
 
@@ -102,7 +113,6 @@ import LookerEmbed from '@/components/LookerEmbed.vue'
   }
 })
 export default class Saves extends Vue {
-  private dateString: string
   private saves: Array<any>
   private savesDashURL: string
   private showSaves: boolean
@@ -111,55 +121,30 @@ export default class Saves extends Vue {
 
   constructor () {
     super()
-    this.dateString = ''
     this.saves = []
     this.savesDashURL = ''
     this.showSaves = false
   }
 
   private mounted () {
-    const now = DateTime.now()
-    const currentDateString = `${now.year}-${now.month}`
-
-    // Check URL date and set to default if empty
-    this.dateString = this.$route.params.pathMatch || ''
-
-    if (this.dateString !== currentDateString) {
-      const passedInDate = this.dateString.split('-')
-      // check for invalid date
-      if (parseInt(passedInDate[0]) > now.year || (parseInt(passedInDate[0]) === now.year && parseInt(passedInDate[1]) > now.month)) {
-        this.dateString = ''
-      }
+    // This is only necessary for admins - when the filter changes, grab the new billing URL
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter = this.$store.watch(
+        (state: any, getters: any) => {
+          return getters.currentFilter
+        },
+        () => {
+          this.fetchCurrentSavesData()
+        }
+      )
     }
 
-    // This is only necessary for admins - when the filter changes, grab the new billing URL
-    this.unwatchFilter = this.$store.watch(
-      (state: any, getters: any) => {
-        return getters.currentFilter
-      },
-      () => {
-        this.showSaves = false
-        this.fetchCurrentSavesData()
-      }
-    )
-
     this.fetchCurrentSavesData()
-
-    window.addEventListener('message', this.resizeIframes)
   }
 
   private beforeDestroy () {
-    this.unwatchFilter()
-    window.removeEventListener('message', this.resizeIframes)
-  }
-
-  private resizeIframes (event: any) {
-    const iframe = document.getElementById('savesDash') as HTMLIFrameElement
-    if (iframe && event.source === iframe.contentWindow && event.origin === 'https://networknextexternal.cloud.looker.com' && event.data) {
-      const eventData = JSON.parse(event.data)
-      if (eventData.type === 'page:properties:changed') {
-        iframe.height = eventData.height + 50
-      }
+    if (this.$store.getters.isAdmin) {
+      this.unwatchFilter()
     }
   }
 
@@ -179,11 +164,13 @@ export default class Saves extends Vue {
       .then((responses: any) => {
         this.savesDashURL = responses[0].url || ''
         this.saves = responses[1].saves || []
-        this.showSaves = true
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching saves for that date range')
         console.log(error)
+      })
+      .finally(() => {
+        this.showSaves = true
       })
   }
 }

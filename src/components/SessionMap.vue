@@ -8,6 +8,7 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import CustomScreenGridLayer from './CustomScreenGridLayer'
+import { MAX_RETRIES } from './types/Constants'
 
 /* import data1 from '../../test_data/ghost-army-map-points-1.json'
 import data2 from '../../test_data/ghost-army-map-points-2.json'
@@ -31,8 +32,6 @@ import data12 from '../../test_data/ghost-army-map-points-12.json' */
  * TODO: Cleanup component logic
  */
 
-const MAX_RETRIES = 4
-
 @Component({
   name: 'SessionMap'
 })
@@ -44,6 +43,7 @@ export default class SessionMap extends Vue {
   private unwatchFilter: any
   private unwatchKillLoops: any
   private retryCount: number
+  private layers: Array<any>
 
   // private sessions: Array<any>
 
@@ -69,6 +69,7 @@ export default class SessionMap extends Vue {
     }
 
     this.viewState = this.$store.getters.currentViewport
+    this.layers = []
 
     // Use this to test using the canned json files
     /* this.sessions = (data1 as any).result.map_points
@@ -158,7 +159,7 @@ export default class SessionMap extends Vue {
           }
         )
       },
-      layers: [],
+      layers: this.layers,
       getCursor: ({ isHovering, isDragging }: any) => {
         if (isHovering) {
           return 'pointer'
@@ -210,7 +211,7 @@ export default class SessionMap extends Vue {
         const aggregation = 'MEAN'
         const gpuAggregation = navigator.appVersion.indexOf('Win') === -1
 
-        const layers: Array<any> = []
+        this.layers = []
 
         if (direct.length > 0) {
           const directLayer = new CustomScreenGridLayer({
@@ -226,7 +227,7 @@ export default class SessionMap extends Vue {
             aggregation,
             onClick: this.mapPointClickHandler
           })
-          layers.push(directLayer)
+          this.layers.push(directLayer)
         }
 
         // const MAX_SESSIONS = this.sessions.length
@@ -262,11 +263,10 @@ export default class SessionMap extends Vue {
             gpuAggregation,
             onClick: this.mapPointClickHandler
           })
-          layers.push(nnLayer)
+          this.layers.push(nnLayer)
         }
 
-        this.deckGlInstance.setProps({ layers: [] })
-        this.deckGlInstance.setProps({ layers: layers })
+        this.deckGlInstance.setProps({ layers: this.layers })
       })
       .catch((error: Error) => {
         console.log('Something went wrong fetching map points')
@@ -278,10 +278,7 @@ export default class SessionMap extends Vue {
           setTimeout(() => {
             this.restartLoop()
           }, 3000 * this.retryCount)
-        }
-
-        // If the retry count exceeds the max amount of retries we can assume the network is down. Kill all polling loops and display an error message
-        if (this.retryCount >= MAX_RETRIES) {
+        } else {
           this.$store.dispatch('toggleKillLoops', true)
         }
       })

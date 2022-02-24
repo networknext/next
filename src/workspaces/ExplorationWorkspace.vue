@@ -13,7 +13,7 @@
             "
     >
       <h1 class="h2">
-        Exploration
+        Explore
       </h1>
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
@@ -51,7 +51,8 @@ import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import BuyerFilter from '@/components/BuyerFilter.vue'
 import DateFilter from '@/components/DateFilter.vue'
-import { ANALYTICS_TRIAL_SIGNUP_RESPONSE, RELOAD_MESSAGE } from '@/components/types/Constants'
+import { ANALYTICS_TRIAL_SIGNUP_RESPONSE } from '@/components/types/Constants'
+import { ErrorTypes } from '@/components/types/ErrorTypes'
 
 /**
  * This component holds the workspace elements related to the downloads page in the Portal
@@ -69,6 +70,20 @@ import { ANALYTICS_TRIAL_SIGNUP_RESPONSE, RELOAD_MESSAGE } from '@/components/ty
   }
 })
 export default class ExplorationWorkspace extends Vue {
+  get filterBuyerHasAnalytics () {
+    const buyers: Array<any> = this.$store.getters.allBuyers || []
+    const filterCode: string = this.$store.getters.currentFilter.companyCode
+    let foundBuyer = null
+    for (let i = 0; i < buyers.length; i++) {
+      if (buyers[i].company_code === filterCode) {
+        foundBuyer = buyers[i]
+        break
+      }
+    }
+
+    return foundBuyer ? foundBuyer.analytics : false
+  }
+
   // Register the alert component to access its set methods
   $refs!: {
     verifyAlert: Alert;
@@ -89,7 +104,7 @@ export default class ExplorationWorkspace extends Vue {
 
   private showErrorAlert () {
     this.$refs.verifyAlert.toggleSlots(false)
-    this.$refs.verifyAlert.setMessage(RELOAD_MESSAGE)
+    this.$refs.verifyAlert.setMessage(ErrorTypes.SYSTEM_FAILURE)
     this.$refs.verifyAlert.setAlertType(AlertType.ERROR)
   }
 
