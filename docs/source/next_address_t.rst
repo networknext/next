@@ -127,6 +127,9 @@ Anonymizes an address by zeroing the last tuple and port.
 
 	next_address_t address;
 	
-	next_address_parse( &address, "127.0.0.1:8000" );
+	next_address_parse( &address, "127.0.0.1:50000" );
 
 	next_address_anonymize( &address );
+
+	char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+	printf( "the anonymized address is %s\n", next_address_to_string( address, address_buffer ) );

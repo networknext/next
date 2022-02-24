@@ -599,3 +599,6 @@ Gets the address of the server that the client is communicating with.
 .. code-block:: c++
 
 	const next_address_t * server_address = next_client_server_address( client );
+
+	char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+	printf( "the client is connected to %s\n", next_address_to_string( server_address, address_buffer ) );
