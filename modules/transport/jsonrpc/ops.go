@@ -2246,13 +2246,13 @@ func (s *OpsService) UpdateAnalyticsDashboards(r *http.Request, args *UpdateAnal
 }
 
 type AdminDashboard struct {
-	URL  string `json:"url"`
-	Live bool   `json:"live"`
+	URL       string `json:"url"`
+	Live      bool   `json:"live"`
+	Discovery bool   `json:"discovery"`
 }
 
 type FetchAdminDashboardsArgs struct {
 	CompanyCode string `json:"company_code"`
-	Origin      string `json:"origin"`
 }
 
 type FetchAdminDashboardsReply struct {
@@ -2269,19 +2269,12 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 		return &err
 	}
 
-	if args.Origin == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "Origin"
-		core.Error("FetchAdminDashboards(): %v: Origin is required", err.Error())
-		return &err
-	}
-
 	ctx := r.Context()
 
-	user := r.Context().Value(middleware.Keys.UserKey)
+	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchAdminDashboards(): %v", err.Error())
+		core.Error("FetchUsageDashboard(): %v", err.Error())
 		return &err
 	}
 
@@ -2289,7 +2282,7 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchAdminDashboards(): %v: Failed to parse user ID", err.Error())
+		core.Error("FetchUsageDashboard(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
@@ -2308,14 +2301,22 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 			if !ok {
 				reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
 			}
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), requestID, customerCode, args.Origin)
+
+			dashCustomerCode := customerCode
+
+			if s.Env == "local" {
+				dashCustomerCode = "esl"
+			}
+
+			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
 			if err != nil {
 				continue
 			}
 
 			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], AdminDashboard{
-				URL:  url,
-				Live: !dashboard.Category.Admin,
+				URL:       url,
+				Live:      !dashboard.Category.Admin,
+				Discovery: dashboard.Discovery,
 			})
 		}
 	}

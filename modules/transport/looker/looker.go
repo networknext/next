@@ -112,11 +112,13 @@ func (l *LookerClient) FetchAuthToken() (string, error) {
 }
 
 type LookerSave struct {
-	SessionID int64   `json:"daily_big_saves.session_id"`
-	SaveScore float64 `json:"daily_big_saves.save_score"`
-	RTTScore  float64 `json:"daily_big_saves.rtt_score"`
-	PLScore   float64 `json:"daily_big_saves.pl_score"`
-	Duration  float64 `json:"daily_big_saves.duration"`
+	SessionID               int64   `json:"daily_big_saves.session_id"`
+	SaveScore               float64 `json:"daily_big_saves.save_score"`
+	AverageDirectRTT        float64 `json:"daily_big_saves.avg_directrtt"`
+	AverageNextRTT          float64 `json:"daily_big_saves.avg_nextrtt"`
+	AverageDirectPacketLoss float64 `json:"daily_big_saves.avg_directpacketloss"`
+	AverageNextPacketLoss   float64 `json:"daily_big_saves.avg_nextpacketloss"`
+	Duration                float64 `json:"daily_big_saves.duration"`
 }
 
 func (l *LookerClient) RunSavesQuery(customerCode string) ([]LookerSave, error) {
@@ -131,8 +133,10 @@ func (l *LookerClient) RunSavesQuery(customerCode string) ([]LookerSave, error) 
 		LOOKER_SAVES_VIEW + ".date_date",
 		LOOKER_SAVES_VIEW + ".session_id",
 		LOOKER_SAVES_VIEW + ".save_score",
-		LOOKER_SAVES_VIEW + ".rtt_score",
-		LOOKER_SAVES_VIEW + ".pl_score",
+		LOOKER_SAVES_VIEW + ".avg_directrtt",
+		LOOKER_SAVES_VIEW + ".avg_nextrtt",
+		LOOKER_SAVES_VIEW + ".avg_directpacketloss",
+		LOOKER_SAVES_VIEW + ".avg_nextpacketloss",
 		LOOKER_SAVES_VIEW + ".duration",
 	}
 	sorts := []string{LOOKER_SAVES_VIEW + ".save_score desc 0"}
@@ -249,7 +253,7 @@ func (l *LookerClient) FetchCurrentLookerDashboards() ([]LookerDashboard, error)
 	return dashboardList, nil
 }
 
-func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, userID string, customerCode string, origin string) (string, error) {
+func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customerCode string, requestID, origin string) (string, error) {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return "", err
@@ -265,7 +269,7 @@ func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, userID s
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", userID),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
@@ -354,23 +358,21 @@ func BuildLookerURL(urlOptions LookerURLOptions) string {
 	return finalUrl
 }
 
-func (l *LookerClient) GenerateUsageDashboardURL(userID string, customerCode string, origin string) (string, error) {
+func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, requestID string, origin string, dateString string) (string, error) {
 	nonce, err := GenerateRandomString(16)
 	if err != nil {
 		return "", err
 	}
 
-	embedURL := ""
-	if origin != "" {
-		embedURL = fmt.Sprintf("%s?embed_domain=%s", USAGE_DASH_URL, origin)
-	} else {
-		embedURL = USAGE_DASH_URL
+	dashURL := fmt.Sprintf("%s?embed_domain=%s", USAGE_DASH_URL, origin)
+	if dateString != "" {
+		dashURL = fmt.Sprintf("%s&Billing+Period=%s", dashURL, dateString)
 	}
 
 	urlOptions := LookerURLOptions{
 		Host:            l.HostURL,
 		Secret:          l.Secret,
-		ExternalUserId:  fmt.Sprintf("\"%s\"", userID),
+		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
 		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
@@ -378,7 +380,7 @@ func (l *LookerClient) GenerateUsageDashboardURL(userID string, customerCode str
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
-		EmbedURL:        "/login/embed/" + url.QueryEscape(embedURL),
+		EmbedURL:        "/login/embed/" + url.QueryEscape(dashURL),
 		ForceLogout:     true,
 		Nonce:           fmt.Sprintf("\"%s\"", nonce),
 		Time:            time.Now().Unix(),
