@@ -107,3 +107,26 @@ Checks if two addresses are equal
 	const bool addresses_are_equal = next_address_equal( &a, &b );
 
 	printf( "addresses are equal = %s\n", addresses_are_equal ? "yes" : "no" );
+
+next_address_anonymize
+----------------------
+
+Anonymizes an address by zeroing the last tuple and port.
+
+.. code-block:: c++
+
+	void next_address_anonymize( struct next_address_t * address );
+
+**Parameters:**
+
+	- **address** -- Pointer to the address to anonymize.
+
+**Example:**
+
+.. code-block:: c++
+
+	next_address_t address;
+	
+	next_address_parse( &address, "127.0.0.1:8000" );
+
+	next_address_anonymize( &address );
