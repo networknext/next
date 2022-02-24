@@ -540,21 +540,21 @@ Here is how to query it, and print out various interesting values:
 
 	if ( !stats->fallback_to_direct )
 	{
-	    printf( "Upgraded = %s\n", stats->upgraded ? "true" : "false" );
-	    printf( "Committed = %s\n", stats->committed ? "true" : "false" );
-	    printf( "Multipath = %s\n", stats->multipath ? "true" : "false" );
-	    printf( "Reported = %s\n", stats->reported ? "true" : "false" );
+	    printf( " + Upgraded = %s\n", stats->upgraded ? "true" : "false" );
+	    printf( " + Committed = %s\n", stats->committed ? "true" : "false" );
+	    printf( " + Multipath = %s\n", stats->multipath ? "true" : "false" );
+	    printf( " + Reported = %s\n", stats->reported ? "true" : "false" );
 	}
 
-	printf( "Fallback to Direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
+	printf( " + Fallback to Direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
 
-	printf( "High Frequency Pings = %s\n", stats->high_frequency_pings ? "true" : "false" );
+	printf( " + High Frequency Pings = %s\n", stats->high_frequency_pings ? "true" : "false" );
 
-	printf( "Direct Min RTT = %.2fms\n", stats->direct_min_rtt );
-	printf( "Direct Max RTT = %.2fms\n", stats->direct_max_rtt );
-	printf( "Direct Prime RTT = %.2fms\n", stats->direct_prime_rtt );
-	printf( "Direct Jitter = %.2fms\n", stats->direct_jitter );
-	printf( "Direct Packet Loss = %.1f%%\n", stats->direct_packet_loss );
+	printf( " + Direct Min RTT = %.2fms\n", stats->direct_min_rtt );
+	printf( " + Direct Max RTT = %.2fms\n", stats->direct_max_rtt );
+	printf( " + Direct Prime RTT = %.2fms\n", stats->direct_prime_rtt );
+	printf( " + Direct Jitter = %.2fms\n", stats->direct_jitter );
+	printf( " + Direct Packet Loss = %.1f%%\n", stats->direct_packet_loss );
 
 	if ( stats->next )
 	{
@@ -567,14 +567,14 @@ Here is how to query it, and print out various interesting values:
 
 	if ( stats->upgraded && !stats->fallback_to_direct )
 	{
-	    printf( "Packets Sent Client to Server = %" PRId64 "\n", stats->packets_sent_client_to_server );
-	    printf( "Packets Sent Server to Client = %" PRId64 "\n", stats->packets_sent_server_to_client );
-	    printf( "Packets Lost Client to Server = %" PRId64 "\n", stats->packets_lost_client_to_server );
-	    printf( "Packets Lost Server to Client = %" PRId64 "\n", stats->packets_lost_server_to_client );
-	    printf( "Packets Out of Order Client to Server = %" PRId64 "\n", stats->packets_out_of_order_client_to_server );
-	    printf( "Packets Out of Order Server to Client = %" PRId64 "\n", stats->packets_out_of_order_server_to_client );
-	    printf( "Jitter Client to Server = %f\n", stats->jitter_client_to_server );
-	    printf( "Jitter Server to Client = %f\n", stats->jitter_server_to_client );
+	    printf( " + Packets Sent Client to Server = %" PRId64 "\n", stats->packets_sent_client_to_server );
+	    printf( " + Packets Sent Server to Client = %" PRId64 "\n", stats->packets_sent_server_to_client );
+	    printf( " + Packets Lost Client to Server = %" PRId64 "\n", stats->packets_lost_client_to_server );
+	    printf( " + Packets Lost Server to Client = %" PRId64 "\n", stats->packets_lost_server_to_client );
+	    printf( " + Packets Out of Order Client to Server = %" PRId64 "\n", stats->packets_out_of_order_client_to_server );
+	    printf( " + Packets Out of Order Server to Client = %" PRId64 "\n", stats->packets_out_of_order_server_to_client );
+	    printf( " + Jitter Client to Server = %f\n", stats->jitter_client_to_server );
+	    printf( " + Jitter Server to Client = %f\n", stats->jitter_server_to_client );
 	}
 
 next_client_server_address
