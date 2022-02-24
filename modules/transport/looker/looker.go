@@ -374,7 +374,7 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex strin
 		LOOKER_SESSION_SUMMARY_VIEW + ".connection_type",
 		LOOKER_SESSION_SUMMARY_VIEW + ".isp",
 		LOOKER_DATACENTER_INFO_VIEW + ".datacenter_name",
-		// LOOKER_SESSION_SUMMARY_VIEW + ".server_address",
+		LOOKER_SESSION_SUMMARY_VIEW + ".server_address",
 		LOOKER_DATACENTER_INFO_VIEW + ".alias",
 	}
 	sorts := []string{}

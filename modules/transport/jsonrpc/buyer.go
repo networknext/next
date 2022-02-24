@@ -348,7 +348,7 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			}
 
 			reply.Sessions = append(reply.Sessions, UserSession{
-				Timestamp: timeStamp,
+				Timestamp: timeStamp.Add(5 * time.Hour),
 				Meta: transport.SessionMeta{
 					ID:         uint64(session.SessionID),
 					UserHash:   uint64(session.UserHash),
