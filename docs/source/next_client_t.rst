@@ -50,7 +50,7 @@ First define a callback for received packets:
 
 .. code-block:: c++
 
-	void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+	void client_packet_received( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 	{
 	    printf( "client received packet from server (%d bytes)\n", packet_bytes );
 	}
@@ -407,20 +407,21 @@ The client stats struct is defined as follows:
 
 	struct next_client_stats_t
 	{
-	    uint64_t platform_id;
+	    int platform_id;
 	    int connection_type;
-	    bool committed;
-	    bool multipath;
-	    bool flagged;
+	    NEXT_BOOL next;
+	    NEXT_BOOL upgraded;
+	    NEXT_BOOL committed;
+	    NEXT_BOOL multipath;
+	    NEXT_BOOL reported;
+	    NEXT_BOOL fallback_to_direct;
+	    NEXT_BOOL high_frequency_pings;
 	    float direct_min_rtt;
 	    float direct_max_rtt;
-	    float direct_mean_rtt;
+	    float direct_prime_rtt;
 	    float direct_jitter;
 	    float direct_packet_loss;
-	    bool next;
-	    float next_min_rtt;
-	    float next_max_rtt;
-	    float next_mean_rtt;
+	    float next_rtt;
 	    float next_jitter;
 	    float next_packet_loss;
 	    float next_kbps_up;
@@ -429,7 +430,10 @@ The client stats struct is defined as follows:
 	    uint64_t packets_sent_server_to_client;
 	    uint64_t packets_lost_client_to_server;
 	    uint64_t packets_lost_server_to_client;
-	    uint64_t user_flags;
+	    uint64_t packets_out_of_order_client_to_server;
+	    uint64_t packets_out_of_order_server_to_client;
+	    float jitter_client_to_server;
+	    float jitter_server_to_client;
 	};
 
 Here is how to query it, and print out various interesting values:
@@ -534,39 +538,64 @@ Here is how to query it, and print out various interesting values:
 
 	printf( " + Connection = %s (%d)\n", connection, stats->connection_type );
 
-	printf( " + Committed = %s\n", stats->committed ? "yes" : "no" );
+	if ( !stats->fallback_to_direct )
+	{
+	    printf( "Upgraded = %s\n", stats->upgraded ? "true" : "false" );
+	    printf( "Committed = %s\n", stats->committed ? "true" : "false" );
+	    printf( "Multipath = %s\n", stats->multipath ? "true" : "false" );
+	    printf( "Reported = %s\n", stats->reported ? "true" : "false" );
+	}
 
-	printf( " + Multipath = %s\n", stats->multipath ? "yes" : "no" );
+	printf( "Fallback to Direct = %s\n", stats->fallback_to_direct ? "true" : "false" );
 
-	printf( " + Flagged = %s\n", stats->flagged ? "yes" : "no" );
+	printf( "High Frequency Pings = %s\n", stats->high_frequency_pings ? "true" : "false" );
 
-	printf( " + Direct RTT = %.2fms\n", stats->direct_min_rtt );
-	printf( " + Direct Jitter = %.2fms\n", stats->direct_jitter );
-	printf( " + Direct Packet Loss = %.1f%%\n", stats->direct_packet_loss );
+	printf( "Direct Min RTT = %.2fms\n", stats->direct_min_rtt );
+	printf( "Direct Max RTT = %.2fms\n", stats->direct_max_rtt );
+	printf( "Direct Prime RTT = %.2fms\n", stats->direct_prime_rtt );
+	printf( "Direct Jitter = %.2fms\n", stats->direct_jitter );
+	printf( "Direct Packet Loss = %.1f%%\n", stats->direct_packet_loss );
 
 	if ( stats->next )
 	{
-	    printf( " + Next RTT = %.2fms\n", stats->next_min_rtt );
+	    printf( " + Next RTT = %.2fms\n", stats->next_rtt );
 	    printf( " + Next Jitter = %.2fms\n", stats->next_jitter );
 	    printf( " + Next Packet Loss = %.1f%%\n", stats->next_packet_loss );
 	    printf( " + Next Bandwidth Up = %.1fkbps\n", stats->next_kbps_up );
 	    printf( " + Next Bandwidth Down = %.1fkbps\n", stats->next_kbps_down );
 	}
 
-next_client_set_user_flags
+	if ( stats->upgraded && !stats->fallback_to_direct )
+	{
+	    printf( "Packets Sent Client to Server = %" PRId64 "\n", stats->packets_sent_client_to_server );
+	    printf( "Packets Sent Server to Client = %" PRId64 "\n", stats->packets_sent_server_to_client );
+	    printf( "Packets Lost Client to Server = %" PRId64 "\n", stats->packets_lost_client_to_server );
+	    printf( "Packets Lost Server to Client = %" PRId64 "\n", stats->packets_lost_server_to_client );
+	    printf( "Packets Out of Order Client to Server = %" PRId64 "\n", stats->packets_out_of_order_client_to_server );
+	    printf( "Packets Out of Order Server to Client = %" PRId64 "\n", stats->packets_out_of_order_server_to_client );
+	    printf( "Jitter Client to Server = %f\n", stats->jitter_client_to_server );
+	    printf( "Jitter Server to Client = %f\n", stats->jitter_server_to_client );
+	}
+
+next_client_server_address
 --------------------------
 
-Set user flags.
+Gets the address of the server that the client is communicating with.
 
 .. code-block:: c++
 
-	void next_client_set_user_flags( next_client_t * client, uint64_t user_flags );
-
-This feature was added to allow you to define your own set of flags, mapping to important events in *your* game, and pass them up to our backend.
-
-For example, you could define (1<<0) as "low framerate", (1<<1) as "player died", (1<<2) as "large frame hitch" and so on. Then, as we study reported sessions for your player base, our data scientists look for correlations with user flags you specify.
+	const struct next_address_t * next_client_server_address( struct next_client_t * client );
 
 **Parameters:**
 
 	- **client** -- The client instance.
-	- **user_flags** -- The current user flags value as defined by *you*.
+
+**Return value:** 
+
+	A const pointer to the client's server address.
+
+**Example:**
+
+.. code-block:: c++
+
+	const next_address_t * server_address = next_client_server_address( client );
