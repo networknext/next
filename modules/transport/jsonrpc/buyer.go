@@ -77,6 +77,8 @@ type BuyersService struct {
 	BigTable        *storage.BigTable
 	BigTableMetrics *metrics.BigTableMetrics
 
+	UseLooker bool
+
 	BqClient *bigquery.Client
 
 	GithubClient                   *github.Client
@@ -136,8 +138,9 @@ func (s *BuyersService) FlushSessions(r *http.Request, args *FlushSessionsArgs, 
 }
 
 type UserSessionsArgs struct {
-	UserID string `json:"user_id"`
-	Page   int    `json:"page"`
+	UserID    string `json:"user_id"`
+	Page      int    `json:"page"`
+	Timeframe string `json:"timeframe"`
 }
 
 type UserSessionsReply struct {
@@ -325,8 +328,41 @@ func (s *BuyersService) UserSessions(r *http.Request, args *UserSessionsArgs, re
 			}
 		}
 	} else {
-		// This is only for situations where Bigtable isn't being used (local dev)
-		reply.Page = MaxBigTableDays
+		reply.Page = MaxBigTableDays // TODO: Change the name of this
+	}
+
+	if s.UseLooker {
+		// TODO: Add date picker to user tool and add support for multiple userID types (hash, hex, ID)
+		lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, args.Timeframe)
+		if err != nil {
+			core.Error("UserSessions(): %v:", err.Error())
+			err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
+			return &err
+		}
+
+		for _, session := range lookerUserSessions {
+			timeStamp, err := time.Parse("2006-01-02 15:04:05", session.Timestamp)
+			if err != nil {
+				core.Error("UserSessions(): Failed to parse timestamp in UTC: %v:", err.Error())
+				continue
+			}
+
+			reply.Sessions = append(reply.Sessions, UserSession{
+				Timestamp: timeStamp,
+				Meta: transport.SessionMeta{
+					ID:         uint64(session.SessionID),
+					UserHash:   uint64(session.UserHash),
+					Connection: uint8(session.Connection),
+					Location: routing.Location{
+						ISP: session.ISP,
+					},
+					Platform:        uint8(session.Platform),
+					DatacenterName:  session.DatacenterName,
+					DatacenterAlias: session.DatacenterAlias,
+					ServerAddr:      session.ServerAddress,
+				},
+			})
+		}
 	}
 
 	// Sort the sessions by timestamp
@@ -3143,7 +3179,30 @@ func (s *BuyersService) TestLookerUserSessionLookup(r *http.Request, args *TestL
 		return &err
 	}
 
-	lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(args.UserID, args.Timeframe)
+	// Raw user input
+	userID := args.UserID
+
+	// Hex of the userID in case it's a signed decimal hash
+	var hexUserID string
+	{
+		userIDInt, err := strconv.Atoi(userID)
+		if err == nil {
+			// userID was an int that we need to convert to hex and lookup
+			hexUserID = fmt.Sprintf("%016x", userIDInt)
+		}
+	}
+
+	// Hash the ID
+	hash := fnv.New64a()
+	_, err := hash.Write([]byte(userID))
+	if err != nil {
+		err = fmt.Errorf("UserSessions() error writing 64a hash: %v", err)
+		core.Error("%v", err)
+		return err
+	}
+	userHash := fmt.Sprintf("%016x", hash.Sum64())
+
+	lookerUserSessions, err := s.LookerClient.RunUserSessionsLookupQuery(userID, hexUserID, userHash, args.Timeframe)
 	if err != nil {
 		core.Error("TestLookerUserSessionLookup(): %v:", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_UNKNOWN)]
@@ -3160,19 +3219,16 @@ func (s *BuyersService) TestLookerUserSessionLookup(r *http.Request, args *TestL
 		reply.Sessions = append(reply.Sessions, UserSession{
 			Timestamp: timeStamp,
 			Meta: transport.SessionMeta{
-				ID:       uint64(session.SessionID),
-				UserHash: uint64(session.UserHash),
-				// BuyerID:    uint64(session.BuyerID),
+				ID:         uint64(session.SessionID),
+				UserHash:   uint64(session.UserHash),
 				Connection: uint8(session.Connection),
 				Location: routing.Location{
 					ISP: session.ISP,
-					// Latitude:  float32(session.Latitude),
-					// Longitude: float32(session.Longitude),
 				},
 				Platform:        uint8(session.Platform),
 				DatacenterName:  session.DatacenterName,
 				DatacenterAlias: session.DatacenterAlias,
-				// ServerAddr: session.ServerAddress,
+				ServerAddr:      session.ServerAddress,
 			},
 		})
 	}

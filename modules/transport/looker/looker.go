@@ -349,27 +349,23 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 	}, nil
 }
 
-func (l *LookerClient) RunUserSessionsLookupQuery(userID string, timeFrame string) ([]LookerSessionMeta, error) { // Timeframes 7, 10, 30, 60, 90
+func (l *LookerClient) RunUserSessionsLookupQuery(userID string, userIDHex string, userIDHash string, timeFrame string) ([]LookerSessionMeta, error) { // Timeframes 7, 10, 30, 60, 90
 	querySessions := make([]LookerSessionMeta, 0)
-
-	uintID64, err := strconv.ParseUint(userID, 16, 64)
-	if err != nil {
-		return querySessions, err
-	}
-
-	// TODO: If nothing comes back from looker for this ID, try hashing it and try again - similar to bigtable implementation
 
 	queryTimeFrame := timeFrame
 
+	// Set default timeframe
 	if queryTimeFrame == "" {
 		queryTimeFrame = "7 days"
 	}
 
+	// Auth Looker API connection
 	token, err := l.FetchAuthToken()
 	if err != nil {
 		return querySessions, err
 	}
 
+	// Set up required fields (columns from Looker table)
 	requiredFields := []string{
 		LOOKER_SESSION_SUMMARY_VIEW + ".start_timestamp_time",
 		LOOKER_SESSION_SUMMARY_VIEW + ".session_id",
@@ -378,21 +374,57 @@ func (l *LookerClient) RunUserSessionsLookupQuery(userID string, timeFrame strin
 		LOOKER_SESSION_SUMMARY_VIEW + ".connection_type",
 		LOOKER_SESSION_SUMMARY_VIEW + ".isp",
 		LOOKER_DATACENTER_INFO_VIEW + ".datacenter_name",
-		// LOOKER_DATACENTER_INFO_VIEW + ".server_address",
+		// LOOKER_SESSION_SUMMARY_VIEW + ".server_address",
 		LOOKER_DATACENTER_INFO_VIEW + ".alias",
 	}
 	sorts := []string{}
 	requiredFilters := make(map[string]interface{})
 
-	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".user_hash"] = fmt.Sprintf("%d", int64(uintID64))
+	// Add the timeframe to optimize query
 	requiredFilters[LOOKER_SESSION_SUMMARY_VIEW+".start_timestamp_date"] = queryTimeFrame
 
+	filterUserIDs := ""
+
+	// Build User ID filter - User could pass in something that hasn't been hashed yet or isn't in hex so we have to handle those cases
+	if userID != "" {
+		uintID64, err := strconv.ParseUint(userID, 16, 64)
+		if err == nil {
+			filterUserIDs = fmt.Sprintf("${%s.user_hash} = %d", LOOKER_SESSION_SUMMARY_VIEW, int64(uintID64))
+		}
+	}
+
+	if userIDHex != "" {
+		uintID64, err := strconv.ParseUint(userIDHex, 16, 64)
+		if err == nil {
+			if filterUserIDs != "" {
+				filterUserIDs = filterUserIDs + " OR "
+			}
+			filterUserIDs = filterUserIDs + fmt.Sprintf("${%s.user_hash} = %d", LOOKER_SESSION_SUMMARY_VIEW, int64(uintID64))
+		}
+	}
+
+	if userIDHash != "" {
+		uintID64, err := strconv.ParseUint(userIDHash, 16, 64)
+		if err == nil {
+			if filterUserIDs != "" {
+				filterUserIDs = filterUserIDs + " OR "
+			}
+			filterUserIDs = filterUserIDs + fmt.Sprintf("${%s.user_hash} = %d", LOOKER_SESSION_SUMMARY_VIEW, int64(uintID64))
+		}
+	}
+
+	// If none of the passed in user IDs work, return no sessions
+	if filterUserIDs == "" {
+		return querySessions, nil
+	}
+
 	query := v4.WriteQuery{
-		Model:   LOOKER_PROD_MODEL,
-		View:    LOOKER_SESSION_SUMMARY_VIEW,
-		Fields:  &requiredFields,
-		Filters: &requiredFilters,
-		Sorts:   &sorts,
+		Model:            LOOKER_PROD_MODEL,
+		View:             LOOKER_SESSION_SUMMARY_VIEW,
+		Fields:           &requiredFields,
+		Filters:          &requiredFilters,
+		FilterExpression: &filterUserIDs,
+		Sorts:            &sorts,
 	}
 
 	lookerBody, _ := json.Marshal(query)

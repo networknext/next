@@ -257,6 +257,10 @@ ifndef DATACENTERS_CSV
 export DATACENTERS_CSV = ./dist/datacenters.csv
 endif
 
+ifndef FEATURE_LOOKER_BIGTABLE_REPLACEMENT
+export FEATURE_LOOKER_BIGTABLE_REPLACEMENT = true
+endif
+
 # Bigtable emulator must be running before testing bigtable in happy path
 ifndef FEATURE_BIGTABLE
 export FEATURE_BIGTABLE = false
