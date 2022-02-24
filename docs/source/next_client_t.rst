@@ -163,7 +163,7 @@ Check if the client has a session open.
 
 .. code-block:: c++
 
-	bool next_client_is_session_open( next_client_t * client );
+	NEXT_BOOL next_client_is_session_open( next_client_t * client );
 
 **Parameters:**
 
