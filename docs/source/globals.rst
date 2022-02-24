@@ -23,7 +23,7 @@ Configuration struct for the Network Next SDK.
 
 **customer_public_key** - The customer public key as a base64 encoded string.
 
-**customer_private_key** - The customer public key as a base64 encoded string.
+**customer_private_key** - The customer private key as a base64 encoded string.
 
 **socket_send_buffer_size** - The size of the socket send buffer in bytes.
 
@@ -228,7 +228,7 @@ The default log level is info. This includes both info messages and errors, whic
 .. code-block:: c++
 
 	// unleash the kraken!
-	next_set_log_level( NEXT_LOG_LEVEL_DEBUG );
+	next_log_level( NEXT_LOG_LEVEL_DEBUG );
 
 next_log_function
 -----------------
