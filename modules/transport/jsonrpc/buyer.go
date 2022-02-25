@@ -1431,6 +1431,11 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 		return sessionMetasNext[i].DeltaRTT > sessionMetasNext[j].DeltaRTT
 	})
 
+	if len(sessionMetasNext) > TopSessionsSize {
+		sessions = sessionMetasNext[:TopSessionsSize]
+		return sessions, err
+	}
+
 	sort.Slice(sessionMetasDirect, func(i, j int) bool {
 		return sessionMetasDirect[i].DirectRTT > sessionMetasDirect[j].DirectRTT
 	})
