@@ -584,7 +584,7 @@ Gets the address of the server that the client is communicating with.
 
 .. code-block:: c++
 
-	const struct next_address_t * next_client_server_address( struct next_client_t * client );
+	const next_address_t * next_client_server_address( next_client_t * client );
 
 **Parameters:**
 
