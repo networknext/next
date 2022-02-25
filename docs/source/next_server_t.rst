@@ -133,7 +133,7 @@ Gets the address of the server instance.
 
 .. code-block:: c++
 
-	struct next_address_t next_server_address( next_server_t * server );
+	next_address_t next_server_address( next_server_t * server )
 
 **Parameters:**
 

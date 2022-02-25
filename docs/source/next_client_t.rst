@@ -25,7 +25,7 @@ Creates an instance of a client, binding a socket to the specified address and p
 
 	next_client_t * next_client_create( void * context, 
 	                                    const char * bind_address, 
-	                                    void (*packet_received_callback)( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes ),
+	                                    void (*packet_received_callback)( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes ),
 	                                    void (*wake_up_callback)( void * context ) );
 
 **Parameters:**
@@ -50,7 +50,7 @@ First define a callback for received packets:
 
 .. code-block:: c++
 
-	void client_packet_received( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes )
+	void client_packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 	{
 	    printf( "client received packet from server (%d bytes)\n", packet_bytes );
 	}

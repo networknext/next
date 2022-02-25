@@ -115,7 +115,7 @@ Anonymizes an address by zeroing the last tuple and port.
 
 .. code-block:: c++
 
-	void next_address_anonymize( struct next_address_t * address );
+	void next_address_anonymize( next_address_t * address );
 
 **Parameters:**
 
