@@ -215,6 +215,14 @@ bool operator < ( const next_address_t & a, const next_address_t & b)
     return scalar_a < scalar_b;
 }
 
+enum GameEvents
+{
+    GAME_EVENT_RESPAWNED = (1<<0),
+    GAME_EVENT_KNOCKED_OUT = (1<<1),
+    GAME_EVENT_WON_MATCH = (1<<2),
+    GAME_EVENT_LOST_MATCH = (1<<3),
+};
+
 void server_packet_received( next_server_t * server, void * _context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     ServerContext * context = (ServerContext*) _context;
@@ -255,6 +263,12 @@ void server_packet_received( next_server_t * server, void * _context, const next
     else
     {
         itor->second.last_packet_receive_time = next_time();
+
+        // next_server_stats_t stats;
+        // bool session_exists = next_server_stats( server, from, &stats );
+        
+        // if ( next_server_session_upgraded( server, from ) && session_exists && rand() % 1000 == 0 )
+        //     next_server_event( server, from, GameEvents(rand() % 4) | GameEvents(rand() % 4) );
     }
 }
 
@@ -499,6 +513,19 @@ int main()
 
         next_sleep( delta_time );
     }
+
+    // const char * match_id = "this is a unique per-match id to group together players that were online during the same timeframe";
+    // const double match_values[] = {10.0f, 20.0f, 30.0f};
+    // int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
+
+    // ClientMap::iterator itor = server_context.client_map.begin();
+    // while ( itor != server_context.client_map.end() )
+    // {
+    //     next_server_match( server, &itor->second.address, match_id, match_values, num_match_values );
+    //     itor++;
+    // }
+
+    next_server_flush( server );
     
     next_server_destroy( server );
     
