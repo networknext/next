@@ -1381,6 +1381,12 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 	}
 	sessionMetaClient.Flush()
 
+	buyers := s.Storage.Buyers(r.Context())
+	buyerMap := make(map[uint64]routing.Buyer)
+	for _, buyer := range buyers {
+		buyerMap[buyer.ID] = buyer
+	}
+
 	var sessionMetasNext []transport.SessionMeta
 	var sessionMetasDirect []transport.SessionMeta
 	var meta transport.SessionMeta
@@ -1400,11 +1406,10 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 			continue
 		}
 
-		buyer, err := s.Storage.Buyer(r.Context(), meta.BuyerID)
-		if err != nil {
-			err = fmt.Errorf("FetchCurrentTopSessions() failed to fetch buyer: %v", err)
-			core.Error("%v", err)
-			return sessions, err
+		buyer, exists := buyerMap[meta.BuyerID]
+		if !exists {
+			core.Error("FetchCurrentTopSessions() session meta buyer ID %016x does not exist", meta.BuyerID)
+			continue
 		}
 
 		if !middleware.VerifyAllRoles(r, s.SameBuyerRole(buyer.CompanyCode)) && anonymise {
@@ -1425,6 +1430,11 @@ func (s *BuyersService) FetchCurrentTopSessions(r *http.Request, companyCodeFilt
 	sort.Slice(sessionMetasNext, func(i, j int) bool {
 		return sessionMetasNext[i].DeltaRTT > sessionMetasNext[j].DeltaRTT
 	})
+
+	if len(sessionMetasNext) > TopSessionsSize {
+		sessions = sessionMetasNext[:TopSessionsSize]
+		return sessions, err
+	}
 
 	sort.Slice(sessionMetasDirect, func(i, j int) bool {
 		return sessionMetasDirect[i].DirectRTT > sessionMetasDirect[j].DirectRTT
