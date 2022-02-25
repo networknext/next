@@ -670,7 +670,7 @@ Force times out all ongoing sessions.
 
 	void next_server_flush( struct next_server_t * server );
 
-This function blocks for up to 10 seconds to ensure the server sends all session data to the backend.
+This function blocks for up to 10 seconds to ensure the server sends all session and match data to the backend.
 
 All other server calls except *next_server_update* and *next_server_destroy* will be ignored.
 
