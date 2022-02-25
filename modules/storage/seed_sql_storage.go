@@ -529,6 +529,7 @@ func SeedSQLStorage(
 			BandwidthEnvelopeUpKbps:   int32(500),
 			DisableNetworkNext:        false,
 			LatencyThreshold:          int32(0),
+			AnalysisOnly:              true,
 			Multipath:                 true,
 			ProMode:                   false,
 			ReduceLatency:             true,

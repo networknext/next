@@ -1690,13 +1690,14 @@ type BuyerListReply struct {
 }
 
 type buyerAccount struct {
-	CompanyName string `json:"company_name"`
-	CompanyCode string `json:"company_code"`
-	ID          string `json:"id"`
-	IsLive      bool   `json:"is_live"`
-	Analytics   bool   `json:"analytics"`
-	Billing     bool   `json:"billing"`
-	Trial       bool   `json:"trial"`
+	CompanyName  string `json:"company_name"`
+	CompanyCode  string `json:"company_code"`
+	ID           string `json:"id"`
+	IsLive       bool   `json:"is_live"`
+	AnalysisOnly bool   `json:"analysis_only"`
+	Analytics    bool   `json:"analytics"`
+	Billing      bool   `json:"billing"`
+	Trial        bool   `json:"trial"`
 }
 
 func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *BuyerListReply) error {
@@ -1714,13 +1715,14 @@ func (s *BuyersService) Buyers(r *http.Request, args *BuyerListArgs, reply *Buye
 			continue
 		}
 		account := buyerAccount{
-			CompanyName: customer.Name,
-			CompanyCode: b.CompanyCode,
-			ID:          id,
-			IsLive:      b.Live,
-			Analytics:   b.Analytics,
-			Billing:     b.Billing,
-			Trial:       b.Trial,
+			CompanyName:  customer.Name,
+			CompanyCode:  b.CompanyCode,
+			ID:           id,
+			IsLive:       b.Live,
+			AnalysisOnly: b.RouteShader.AnalysisOnly,
+			Analytics:    b.Analytics,
+			Billing:      b.Billing,
+			Trial:        b.Trial,
 		}
 		if middleware.VerifyAllRoles(r, s.SameBuyerRole(b.CompanyCode)) {
 			reply.Buyers = append(reply.Buyers, account)
@@ -3033,6 +3035,7 @@ func (s *BuyersService) FetchCurrentSaves(r *http.Request, args *FetchCurrentSav
 		customerCode = args.CustomerCode
 
 		if s.Env == "local" {
+			// customerCode = "twenty-four-entertainment"
 			customerCode = "esl"
 		}
 	}
@@ -3085,7 +3088,7 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 		customerCode = args.CustomerCode
 
 		if s.Env == "local" {
-			customerCode = "esl"
+			customerCode = "twenty-four-entertainment"
 		}
 	} else {
 		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)

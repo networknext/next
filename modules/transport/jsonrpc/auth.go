@@ -56,20 +56,21 @@ type AccountReply struct {
 }
 
 type account struct {
-	Avatar      string             `json:"avatar"`
-	UserID      string             `json:"user_id"`
-	BuyerID     string             `json:"buyer_id"`
-	Seller      bool               `json:"seller"`
-	CompanyName string             `json:"company_name"`
-	CompanyCode string             `json:"company_code"`
-	FirstName   string             `json:"first_name"`
-	LastName    string             `json:"last_name"`
-	Email       string             `json:"email"`
-	Roles       []*management.Role `json:"roles"`
-	Analytics   bool               `json:"analytics"`
-	Billing     bool               `json:"billing"`
-	Trial       bool               `json:"trial"`
-	Verified    bool               `json:"verified"`
+	Avatar       string             `json:"avatar"`
+	UserID       string             `json:"user_id"`
+	BuyerID      string             `json:"buyer_id"`
+	Seller       bool               `json:"seller"`
+	CompanyName  string             `json:"company_name"`
+	CompanyCode  string             `json:"company_code"`
+	FirstName    string             `json:"first_name"`
+	LastName     string             `json:"last_name"`
+	Email        string             `json:"email"`
+	Roles        []*management.Role `json:"roles"`
+	Analytics    bool               `json:"analytics"`
+	AnalysisOnly bool               `json:"analysis_only"`
+	Billing      bool               `json:"billing"`
+	Trial        bool               `json:"trial"`
+	Verified     bool               `json:"verified"`
 }
 
 func (s *AuthService) AllAccounts(r *http.Request, args *AccountsArgs, reply *AccountsReply) error {
@@ -450,20 +451,21 @@ func newAccount(u *management.User, r []*management.Role, buyer routing.Buyer, c
 	}
 
 	account := account{
-		Avatar:      u.GetPicture(),
-		UserID:      *u.Identities[0].UserID,
-		BuyerID:     buyerID,
-		Seller:      isSeller,
-		CompanyCode: companyCode,
-		CompanyName: companyName,
-		FirstName:   u.GetGivenName(),
-		LastName:    u.GetFamilyName(),
-		Email:       u.GetEmail(),
-		Roles:       roles,
-		Analytics:   buyer.Analytics,
-		Billing:     buyer.Billing,
-		Trial:       buyer.Trial,
-		Verified:    u.GetEmailVerified(),
+		Avatar:       u.GetPicture(),
+		UserID:       *u.Identities[0].UserID,
+		BuyerID:      buyerID,
+		Seller:       isSeller,
+		CompanyCode:  companyCode,
+		CompanyName:  companyName,
+		FirstName:    u.GetGivenName(),
+		LastName:     u.GetFamilyName(),
+		Email:        u.GetEmail(),
+		Roles:        roles,
+		Analytics:    buyer.Analytics,
+		AnalysisOnly: buyer.RouteShader.AnalysisOnly,
+		Billing:      buyer.Billing,
+		Trial:        buyer.Trial,
+		Verified:     u.GetEmailVerified(),
 	}
 
 	return account
