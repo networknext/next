@@ -7,6 +7,7 @@ import (
 
 	"github.com/networknext/backend/modules/billing"
 	"github.com/networknext/backend/modules/core"
+	md "github.com/networknext/backend/modules/match_data"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport/pubsub"
 	"github.com/networknext/backend/modules/vanity"
@@ -18,6 +19,7 @@ type PostSessionHandler struct {
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
 	vanityMetricChannel        chan vanity.VanityMetrics
+	matchDataChannel           chan *md.MatchDataEntry
 	portalPublishers           []pubsub.Publisher
 	portalPublisherIndex       int
 	portalPublishMaxRetries    int
@@ -27,12 +29,13 @@ type PostSessionHandler struct {
 	useVanityMetrics           bool
 	biller2                    billing.Biller
 	featureBilling2            bool
+	matcher                    md.Matcher
 	metrics                    *metrics.PostSessionMetrics
 }
 
 func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
 	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, useVanityMetrics bool, biller2 billing.Biller,
-	featureBilling2 bool, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
+	featureBilling2 bool, matcher md.Matcher, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
 
 	return &PostSessionHandler{
 		numGoroutines:              numGoroutines,
@@ -40,6 +43,7 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
 		vanityMetricChannel:        make(chan vanity.VanityMetrics, chanBufferSize),
+		matchDataChannel:           make(chan *md.MatchDataEntry, chanBufferSize),
 		portalPublishers:           portalPublishers,
 		portalPublishMaxRetries:    portalPublishMaxRetries,
 		vanityPublishers:           vanityPublishers,
@@ -47,6 +51,7 @@ func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishe
 		useVanityMetrics:           useVanityMetrics,
 		biller2:                    biller2,
 		featureBilling2:            featureBilling2,
+		matcher:                    matcher,
 		metrics:                    metrics,
 	}
 }
@@ -71,7 +76,7 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 
 						post.metrics.BillingEntries2Finished.Add(1)
 					case <-ctx.Done():
-						post.biller2.FlushBuffer(ctx)
+						post.biller2.FlushBuffer(context.Background())
 						post.biller2.Close()
 						return
 					}
@@ -181,6 +186,30 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 			}()
 		}
 	}
+
+	for i := 0; i < post.numGoroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case matchData := <-post.matchDataChannel:
+					if err := post.matcher.Match(ctx, matchData); err != nil {
+						core.Error("could not submit match data entry: %v", err)
+						post.metrics.MatchDataEntriesFailure.Add(1)
+						continue
+					}
+
+					post.metrics.MatchDataEntriesFinished.Add(1)
+				case <-ctx.Done():
+					post.matcher.FlushBuffer(context.Background())
+					post.matcher.Close()
+					return
+				}
+			}
+		}()
+	}
 }
 
 func (post *PostSessionHandler) SendBillingEntry2(billingEntry *billing.BillingEntry2) {
@@ -223,6 +252,16 @@ func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEn
 
 }
 
+func (post *PostSessionHandler) SendMatchData(matchData *md.MatchDataEntry) {
+	select {
+	case post.matchDataChannel <- matchData:
+		post.metrics.MatchDataEntriesSent.Add(1)
+	default:
+		post.metrics.MatchDataEntriesBufferFull.Add(1)
+	}
+
+}
+
 func (post *PostSessionHandler) Billing2BufferSize() uint64 {
 	return uint64(len(post.postSessionBilling2Channel))
 }
@@ -237,6 +276,10 @@ func (post *PostSessionHandler) PortalDataBufferSize() uint64 {
 
 func (post *PostSessionHandler) VanityBufferSize() uint64 {
 	return uint64(len(post.vanityMetricChannel))
+}
+
+func (post *PostSessionHandler) MatchDataBufferSize() uint64 {
+	return uint64(len(post.matchDataChannel))
 }
 
 func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pubsub.Topic, data []byte) (int, error) {
