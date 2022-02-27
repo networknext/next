@@ -723,4 +723,32 @@ This function can be called only once per session. You can add up to 64 *match_v
 
 	const char * match_id = "this is a unique match id";
 	const double match_values[] = {10.0f, 20.0f, 30.0f};
-	next_server_match( server, address, match_id, match_values, sizeof(match_values) );
+	int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
+	next_server_match( server, address, match_id, match_values, num_match_values );
+
+next_server_flush
+-----------------
+
+Force times out all ongoing sessions.
+
+.. code-block:: c++
+
+	void next_server_flush( struct next_server_t * server );
+
+This function blocks for up to 10 seconds to ensure the server sends all session and match data to the backend.
+
+All other server calls except *next_server_update* and *next_server_destroy* will be ignored.
+
+Call this function once before calling *next_server_destroy*.
+
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Example:**
+
+.. code-block:: c++
+
+	next_server_flush( server );
+	next_server_destroy( server );
