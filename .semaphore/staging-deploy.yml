@@ -104,5 +104,9 @@ blocks:
           commands:
             - make build-pingdom-artifacts-staging
             - make publish-pingdom-artifacts-staging
+        - name: Match Data
+          commands:
+            - make build-match-data-artifacts-staging
+            - make publish-match-data-artifacts-staging
       secrets:
         - name: google-cloud-platform-staging
