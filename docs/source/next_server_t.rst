@@ -68,7 +68,7 @@ Then, create a server:
 
 .. code-block:: c++
 
-    next_server_t * server = next_server_create( NULL, "0.0.0.0:0", server_packet_received );
+    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:50000", "local", server_packet_received );
     if ( server == NULL )
     {
         printf( "error: failed to create server\n" );
@@ -103,6 +103,10 @@ Gets the port the server socket is bound to.
 
 	uint16_t next_server_port( next_server_t * server );
 
+**Parameters:**
+
+	- **server** -- The server instance.
+
 **Return value:** 
 
 	The port number the server socket is bound to.
@@ -118,9 +122,42 @@ Gets the port the server socket is bound to.
         return 1;
     }
 
-    const uint16_t server_port = next_server_port( client );
+    const uint16_t server_port = next_server_port( server );
 
-    printf( "the client is bound to port %d\n", server_port );
+    printf( "the server is bound to port %d\n", server_port );
+
+next_server_address
+-------------------
+
+Gets the address of the server instance.
+
+.. code-block:: c++
+
+	next_address_t next_server_address( next_server_t * server )
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Return value:** 
+
+	The address of the server.
+
+**Example:**
+
+.. code-block:: c++
+
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:50000", "0.0.0.0:50000", "local", server_packet_received );
+    if ( server == NULL )
+    {
+        printf( "error: failed to create server\n" );
+        return 1;
+    }
+
+    next_address_t server_address = next_server_address( server );
+
+    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    printf( "the server address is %s\n", next_address_to_string( &server_address, address_buffer ) );
 
 next_server_state
 -----------------
@@ -271,6 +308,34 @@ Tags a session for potentially different network optimization parameters.
 
 	next_server_tag_session( server, client_address, "pro" );
 
+next_server_tag_session_multiple
+--------------------------------
+
+Tags a session with multiple tags for potentially different network optimization parameters.
+
+.. code-block:: c++
+
+	void next_server_tag_session_multiple( next_server_t * server, const next_address_t * address, const char ** tags, int num_tags );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to tag.
+
+	- **tags** -- The tags to be applied to the client. Some ideas: "pro", "streamer" or "dev".
+
+	- **num_tags** -- The number of tags to be applied to the client.
+
+**Example:**
+
+.. code-block:: c++
+
+	const char * tags[] = { "pro", "streamer" };
+	const int num_tags = 2;
+
+	next_server_tag_session_multiple( server, client_address, tags, num_tags );
+
 next_server_session_upgraded
 ----------------------------
 
@@ -278,7 +343,7 @@ Checks if a session has been upgraded.
 
 .. code-block:: c++
 
-	bool next_server_session_upgraded( next_server_t * server, const next_address_t * address );
+	NEXT_BOOL next_server_session_upgraded( next_server_t * server, const next_address_t * address );
 
 **Parameters:**
 
