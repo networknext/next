@@ -657,13 +657,15 @@ This function allows you to check if the server has finished determining its dat
 next_server_event
 -----------------
 
-Triggers an event flag to a session for monitoring and analysis purposes.
+Triggers a user-defined event on a session. This event is stored alongside network performance data once every 10 seconds.
+
+You can define up to 64 event flags for your game, one event per bit in the *server_events* bitfield.
+
+Use this function to input in-game events that may be relevant to analytics.
 
 .. code-block:: c++
 
 	void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
-
-You can define up to 64 event flags for your game, one for each bit in the *server_events* bitfield.
 
 **Parameters:**
 
@@ -693,17 +695,19 @@ You can define up to 64 event flags for your game, one for each bit in the *serv
 next_server_match
 -----------------
 
-Assign a match id and various match-related values to a session.
+Associates a session with a match id and set of match values for that session.
+
+Match id can be any unique match id you have.
+
+Match values can include any information that you want to feed into analytics.
+
+For example: win/loss ratio, skill, kill/death ratio, skill, time spent in matchmaker, load time in seconds.
+
+Call this function once per-session at the beginning of each match on the server.
 
 .. code-block:: c++
 
 	void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );
-
-This allows you to link a period of playtime on a server with the session ids for players who were there.
-
-The match data gets sent to our backend, and we can analyze a group of sessions under the same *match_id*.
-
-This function can be called only once per session. You can add up to 64 *match_values*.
 
 **Parameters:**
 	
@@ -711,36 +715,33 @@ This function can be called only once per session. You can add up to 64 *match_v
 
 	- **address** -- The address of the client to assign match data.
 
-	- **match_id** -- The match id assigned to the session. Pass in any unique per-match identifier you have.
+	- **match_id** -- The match id to assign to the session. Pass in any unique per-match identifier you have.
 
 	- **match_values** -- The array of match values for the session.
 
-	- **num_match_values** -- The number of match values.
+	- **num_match_values** -- The number of match values in the array.
 
 **Example:**
 
 .. code-block:: c++
 
 	const char * match_id = "this is a unique match id";
-	const double match_values[] = {10.0f, 20.0f, 30.0f};
-	int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
+	const double match_values[] = {10.0, 20.0, 30.0};
+	int num_match_values = 3;
 	next_server_match( server, address, match_id, match_values, num_match_values );
 
 next_server_flush
 -----------------
 
-Force times out all ongoing sessions.
+Call this to flush all server data before shutting a server down.
 
 .. code-block:: c++
 
 	void next_server_flush( struct next_server_t * server );
 
-This function blocks for up to 10 seconds to ensure the server sends all session and match data to the backend.
+This function blocks for up to 10 seconds to ensure that all session data, server events and match data are recorded.
 
-All other server calls except *next_server_update* and *next_server_destroy* will be ignored.
-
-Call this function once before calling *next_server_destroy*.
-
+After calling this function, destroy the server via *next_server_destroy*.
 
 **Parameters:**
 

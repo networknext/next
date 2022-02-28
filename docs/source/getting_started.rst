@@ -88,8 +88,6 @@ Or pass it in with an environment variable:
 
 Follow :doc:`building_the_sdk` to build the example programs.
 
-IMPORTANT: Make sure to run the server on a public IP address somewhere because it won't work if it's behind NAT.
-
 The server output should look like this:
 
 .. code-block:: console
