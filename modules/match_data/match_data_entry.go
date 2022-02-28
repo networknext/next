@@ -101,15 +101,10 @@ func (entry *MatchDataEntry) Validate() bool {
 		return false
 	}
 
-	// NOTE: we don't validate the DatacenterID and UserHash since that can come in as 0 from the SDK
+	// NOTE: we don't validate the DatacenterID, UserHash, and MatchID since that can come in as 0 from the SDK
 
 	if entry.SessionID == 0 {
 		core.Error("invalid session id")
-		return false
-	}
-
-	if entry.MatchID == 0 {
-		core.Error("invalid match id")
 		return false
 	}
 
@@ -172,7 +167,7 @@ func (entry *MatchDataEntry) Save() (map[string]bigquery.Value, string, error) {
 	if entry.NumMatchValues > 0 {
 		matchValues := make([]bigquery.Value, entry.NumMatchValues)
 		for i := 0; i < int(entry.NumMatchValues); i++ {
-			matchValues[i] = int(entry.MatchValues[i])
+			matchValues[i] = float64(entry.MatchValues[i])
 		}
 		e["matchValues"] = matchValues
 	}
