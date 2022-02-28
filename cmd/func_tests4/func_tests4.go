@@ -2855,9 +2855,9 @@ func test_flush() {
 
 	backendSawSessionUpdate := strings.Contains(backend_stdout.String(), "client ping timed out")
 
-	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server requested flush")
+	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server flush started")
 	serverSawSessionUpdateFlush := strings.Contains(server_stdout.String(), "server flushed session update")
-	serverSawFlushComplete := strings.Contains(server_stdout.String(), "server completed flush")
+	serverSawFlushComplete := strings.Contains(server_stdout.String(), "server flush finished")
 
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawSessionUpdate)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawFlushRequest)
@@ -2921,9 +2921,9 @@ func test_flush_retry() {
 
 	backendSawSessionUpdate := strings.Contains(backend_stdout.String(), "client ping timed out")
 
-	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server requested flush")
+	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server flush started")
 	serverSawSessionUpdateFlush := strings.Contains(server_stdout.String(), "server flushed session update")
-	serverSawFlushComplete := strings.Contains(server_stdout.String(), "server completed flush")
+	serverSawFlushComplete := strings.Contains(server_stdout.String(), "server flush finished")
 
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawSessionUpdate)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, serverSawFlushRequest)
@@ -2993,10 +2993,10 @@ func test_flush_server_events_match_data() {
 
 	serverFlushedServerEvents := strings.Contains(server_stdout.String(), "server flushed events 40100400 to backend")
 	serverAddsMatchData := strings.Contains(server_stdout.String(), "server adds match data")
-	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server requested flush")
+	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server flush started")
 	serverSawSessionUpdateFlush := strings.Contains(server_stdout.String(), "server flushed session update")
 	serverSawMatchDataFlush := strings.Contains(server_stdout.String(), "server flushed match data")
-	serverSawFlushComplete := strings.Contains(server_stdout.String(), "server completed flush")
+	serverSawFlushComplete := strings.Contains(server_stdout.String(), "server flush finished")
 
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchID)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawSessionUpdate)
@@ -3071,10 +3071,10 @@ func test_flush_server_events_match_data_retry() {
 
 	serverFlushedServerEvents := strings.Contains(server_stdout.String(), "server flushed events 40100400 to backend")
 	serverAddsMatchData := strings.Contains(server_stdout.String(), "server adds match data")
-	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server requested flush")
+	serverSawFlushRequest := strings.Contains(server_stdout.String(), "server flush started")
 	serverSawSessionUpdateFlush := strings.Contains(server_stdout.String(), "server flushed session update")
 	serverSawMatchDataFlush := strings.Contains(server_stdout.String(), "server flushed match data")
-	serverSawFlushComplete := strings.Contains(server_stdout.String(), "server completed flush")
+	serverSawFlushComplete := strings.Contains(server_stdout.String(), "server flush finished")
 
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawMatchID)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawSessionUpdate)
