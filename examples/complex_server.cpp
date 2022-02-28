@@ -53,7 +53,7 @@ public:
     Allocator()
     {
         int result = next_mutex_create( &mutex );
-		(void) result;
+        (void) result;
         next_assert( result == NEXT_OK );
         num_allocations = 0;
     }
@@ -214,6 +214,14 @@ bool operator < ( const next_address_t & a, const next_address_t & b)
     scalar_b |= uint64_t(b.port);
     return scalar_a < scalar_b;
 }
+
+enum GameEvents
+{
+    GAME_EVENT_RESPAWNED = (1<<0),
+    GAME_EVENT_KNOCKED_OUT = (1<<1),
+    GAME_EVENT_WON_MATCH = (1<<2),
+    GAME_EVENT_LOST_MATCH = (1<<3),
+};
 
 void server_packet_received( next_server_t * server, void * _context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
@@ -499,6 +507,8 @@ int main()
 
         next_sleep( delta_time );
     }
+
+    next_server_flush( server );
     
     next_server_destroy( server );
     

@@ -68,7 +68,7 @@ Then, create a server:
 
 .. code-block:: c++
 
-    next_server_t * server = next_server_create( NULL, "0.0.0.0:0", server_packet_received );
+    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:50000", "local", server_packet_received );
     if ( server == NULL )
     {
         printf( "error: failed to create server\n" );
@@ -103,6 +103,10 @@ Gets the port the server socket is bound to.
 
 	uint16_t next_server_port( next_server_t * server );
 
+**Parameters:**
+
+	- **server** -- The server instance.
+
 **Return value:** 
 
 	The port number the server socket is bound to.
@@ -118,9 +122,42 @@ Gets the port the server socket is bound to.
         return 1;
     }
 
-    const uint16_t server_port = next_server_port( client );
+    const uint16_t server_port = next_server_port( server );
 
-    printf( "the client is bound to port %d\n", server_port );
+    printf( "the server is bound to port %d\n", server_port );
+
+next_server_address
+-------------------
+
+Gets the address of the server instance.
+
+.. code-block:: c++
+
+	next_address_t next_server_address( next_server_t * server )
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Return value:** 
+
+	The address of the server.
+
+**Example:**
+
+.. code-block:: c++
+
+    next_server_t * server = next_server_create( NULL, "127.0.0.1:50000", "0.0.0.0:50000", "local", server_packet_received );
+    if ( server == NULL )
+    {
+        printf( "error: failed to create server\n" );
+        return 1;
+    }
+
+    next_address_t server_address = next_server_address( server );
+
+    char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    printf( "the server address is %s\n", next_address_to_string( &server_address, address_buffer ) );
 
 next_server_state
 -----------------
@@ -271,6 +308,34 @@ Tags a session for potentially different network optimization parameters.
 
 	next_server_tag_session( server, client_address, "pro" );
 
+next_server_tag_session_multiple
+--------------------------------
+
+Tags a session with multiple tags for potentially different network optimization parameters.
+
+.. code-block:: c++
+
+	void next_server_tag_session_multiple( next_server_t * server, const next_address_t * address, const char ** tags, int num_tags );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to tag.
+
+	- **tags** -- The tags to be applied to the client. Some ideas: "pro", "streamer" or "dev".
+
+	- **num_tags** -- The number of tags to be applied to the client.
+
+**Example:**
+
+.. code-block:: c++
+
+	const char * tags[] = { "pro", "streamer" };
+	const int num_tags = 2;
+
+	next_server_tag_session_multiple( server, client_address, tags, num_tags );
+
 next_server_session_upgraded
 ----------------------------
 
@@ -278,7 +343,7 @@ Checks if a session has been upgraded.
 
 .. code-block:: c++
 
-	bool next_server_session_upgraded( next_server_t * server, const next_address_t * address );
+	NEXT_BOOL next_server_session_upgraded( next_server_t * server, const next_address_t * address );
 
 **Parameters:**
 
@@ -624,3 +689,66 @@ You can define up to 64 event flags for your game, one for each bit in the *serv
 	};
 
 	next_server_event( server, client_address, GAME_EVENT_KNOCKED_OUT | GAME_EVENT_LOST_MATCH );
+
+next_server_match
+-----------------
+
+Assign a match id and various match-related values to a session.
+
+.. code-block:: c++
+
+	void next_server_match( struct next_server_t * server, const struct next_address_t * address, const char * match_id, const double * match_values, int num_match_values );
+
+This allows you to link a period of playtime on a server with the session ids for players who were there.
+
+The match data gets sent to our backend, and we can analyze a group of sessions under the same *match_id*.
+
+This function can be called only once per session. You can add up to 64 *match_values*.
+
+**Parameters:**
+	
+	- **server** -- The server instance.
+
+	- **address** -- The address of the client to assign match data.
+
+	- **match_id** -- The match id assigned to the session. Pass in any unique per-match identifier you have.
+
+	- **match_values** -- The array of match values for the session.
+
+	- **num_match_values** -- The number of match values.
+
+**Example:**
+
+.. code-block:: c++
+
+	const char * match_id = "this is a unique match id";
+	const double match_values[] = {10.0f, 20.0f, 30.0f};
+	int num_match_values = sizeof(match_values) / sizeof(match_values[0]);
+	next_server_match( server, address, match_id, match_values, num_match_values );
+
+next_server_flush
+-----------------
+
+Force times out all ongoing sessions.
+
+.. code-block:: c++
+
+	void next_server_flush( struct next_server_t * server );
+
+This function blocks for up to 10 seconds to ensure the server sends all session and match data to the backend.
+
+All other server calls except *next_server_update* and *next_server_destroy* will be ignored.
+
+Call this function once before calling *next_server_destroy*.
+
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Example:**
+
+.. code-block:: c++
+
+	next_server_flush( server );
+	next_server_destroy( server );

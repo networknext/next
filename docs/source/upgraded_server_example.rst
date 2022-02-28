@@ -88,9 +88,11 @@ Make sure the server gets updated every frame:
 
 	next_server_update( server );
 
-When you have finished using your server, please destroy it:
+When you have finished using your server, please flush and destroy it:
 
 .. code-block:: c++
+
+	next_server_flush( server );
 
 	next_server_destroy( server );
 
