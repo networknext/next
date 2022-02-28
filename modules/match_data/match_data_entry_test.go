@@ -162,14 +162,6 @@ func TestValidateMatchDataEntry(t *testing.T) {
 		assert.False(t, valid)
 	})
 
-	t.Run("match id", func(t *testing.T) {
-		entry := getTestMatchDataEntry()
-		entry.MatchID = 0
-
-		valid := entry.Validate()
-		assert.False(t, valid)
-	})
-
 	t.Run("num match values", func(t *testing.T) {
 		entry := getTestMatchDataEntry()
 		entry.NumMatchValues = -1
