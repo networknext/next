@@ -96,5 +96,9 @@ blocks:
           commands:
             - make build-pingdom-artifacts-prod
             - make publish-pingdom-artifacts-prod
+        - name: Match Data
+          commands:
+            - make build-match-data-artifacts-prod
+            - make publish-match-data-artifacts-prod
       secrets:
         - name: google-cloud-platform-prod
