@@ -6,10 +6,11 @@
 #include "Game.h"
 #include "next.h"
 
-void packet_received(next_client_t* client, void* context, const uint8_t* packet_data, int packet_bytes)
+void packet_received(next_client_t* client, void* context, const next_address_t* from, const uint8_t* packet_data, int packet_bytes)
 {
     (void)client;
     (void)context;
+    (void)from;
     (void)packet_data;
     (void)packet_bytes;
 
