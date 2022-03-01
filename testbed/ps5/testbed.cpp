@@ -63,7 +63,7 @@ int32_t main( int argc, const char * const argv[] )
         exit( 1 );
     }
 
-	next_client_open_session( client, "54.161.150.42:50000" );
+    next_client_open_session( client, "54.161.150.42:50000" );
 
     while ( !quit )
     {
