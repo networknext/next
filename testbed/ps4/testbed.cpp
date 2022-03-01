@@ -26,7 +26,7 @@ void packet_received( next_client_t * client, void * context, const struct next_
     (void) from;
     (void) packet_data;
     (void) packet_bytes;
-    
+
     // ...
 }
 
