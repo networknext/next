@@ -23,11 +23,11 @@ void packet_received( next_client_t * client, void * context, const struct next_
 {
     (void) client;
     (void) context;
-	(void) from;
-	(void) packet_data;
+    (void) from;
+    (void) packet_data;
     (void) packet_bytes;
     
-	// ...
+    // ...
 }
 
 int32_t main( int argc, const char * const argv[] )
@@ -63,7 +63,7 @@ int32_t main( int argc, const char * const argv[] )
         exit( 1 );
     }
 
-	next_client_open_session( client, "34.133.77.37:50000" );
+	next_client_open_session( client, "54.161.150.42:50000" );
 
     while ( !quit )
     {

@@ -19,14 +19,14 @@ size_t sceLibcHeapSize = SCE_LIBC_HEAP_SIZE_EXTENDED_ALLOC_NO_LIMIT;
 
 static volatile int quit = 0;
 
-void packet_received(next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes)
+void packet_received( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client;
-	(void) context;
-	(void) from;
+    (void) context;
+    (void) from;
     (void) packet_data;
     (void) packet_bytes;
-
+    
     // ...
 }
 
