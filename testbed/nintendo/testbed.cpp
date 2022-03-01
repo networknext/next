@@ -13,7 +13,7 @@
 
 const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
 
-void packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+void packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client;
     (void) context;
