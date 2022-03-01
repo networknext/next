@@ -33,12 +33,12 @@ void interrupt_handler( int signal )
     (void) signal; quit = 1;
 }
 
-void client_packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+void client_packet_received( next_client_t * client, void * context, const next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client; (void) context; (void) packet_data; (void) packet_bytes;
 }
 
-const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
+const char * customer_public_key = "UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==";
 
 int main()
 {
@@ -80,7 +80,7 @@ int main()
         return 1;
     }
 
-    next_client_open_session( client, "173.255.241.176:50000" );
+    next_client_open_session( client, "33.133.77.37:50000" );
 
     uint8_t packet_data[32];
     memset( packet_data, 0, sizeof( packet_data ) );
