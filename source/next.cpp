@@ -14087,7 +14087,8 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     return NEXT_TRUE;
 }
 
-NEXT_BOOL next_server_autodetect_finished( next_server_t * server ) {
+NEXT_BOOL next_server_autodetect_finished( next_server_t * server ) 
+{
     next_server_verify_sentinels( server );
 
     if ( server->autodetect_finished ) 
