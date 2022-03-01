@@ -17,6 +17,7 @@ void packet_received( next_client_t * client, void * context, const next_address
 {
     (void) client;
     (void) context;
+    (void) from;
     (void) packet_data;
     (void) packet_bytes;
     // ...
