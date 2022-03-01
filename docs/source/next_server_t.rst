@@ -634,7 +634,7 @@ Determines if the server has finished autodetecting the datacenter name after ca
 
 .. code-block:: c++
 
-	NEXT_BOOL next_server_autodetect_finished( next_server_t * server );
+	NEXT_BOOL next_server_autodetect_finished( struct next_server_t * server );
 
 This function allows you to check if the server has finished determining its datacenter name when the server is hosted in Google Cloud or AWS, or managed by Multiplay.
 
@@ -653,6 +653,35 @@ This function allows you to check if the server has finished determining its dat
 	const bool autodetect_finished = next_server_autodetect_finished( server );
 
 	printf( "server autodetect finished = %s\n", autodetect_finished ? "true" : "false" );
+
+next_server_autodetected_datacenter
+-----------------------------------
+
+Gets the autodetected datacenter name.
+
+.. code-block:: c++
+
+	const char * next_server_autodetected_datacenter( struct next_server_t * server );
+
+**Parameters:**
+
+	- **server** -- The server instance.
+
+**Return value:**
+
+	The name of the autodetected datacenter.
+
+**Example:**
+
+.. code-block:: c++
+
+	const bool autodetect_finished = next_server_autodetect_finished( server );
+
+	if ( autodetect_finished )
+	{
+		const char * autodetected_datacenter = next_server_autodetected_datacenter( server );
+		printf( "server autodetected datacenter = %s\n", autodetected_datacenter );
+	}
 
 next_server_event
 -----------------
