@@ -7,7 +7,11 @@
 #include <string.h>
 #include <kernel.h>
 
-const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
+const char * customer_public_key = "UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==";
+// const char * linux_test_bed_server_gcp = "34.133.77.37";
+// const char * linux_test_bed_server_amazon = "54.161.150.42";
+// const char * windows_test_bed_server_gcp = "35.193.180.236";
+// const char * windows_test_bed_server_amazon = "3.13.23.117";
 
 unsigned int sceLibcHeapExtendedAlloc = 1;
 
@@ -15,19 +19,20 @@ size_t sceLibcHeapSize = SCE_LIBC_HEAP_SIZE_EXTENDED_ALLOC_NO_LIMIT;
 
 static volatile int quit = 0;
 
-void packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+void packet_received( next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes )
 {
     (void) client;
     (void) context;
-    (void) packet_data;
+	(void) from;
+	(void) packet_data;
     (void) packet_bytes;
-
-    // ...
+    
+	// ...
 }
 
 int32_t main( int argc, const char * const argv[] )
 {
-    SceKernelModule next_library = sceKernelLoadStartModule( "/app0/next-ps5-4.0.16.prx", 0, NULL, 0, NULL, NULL );
+    SceKernelModule next_library = sceKernelLoadStartModule( "/app0/next-ps5-4.20.0.prx", 0, NULL, 0, NULL, NULL );
     if ( next_library < 0 )
     {
         printf( "Failed to load next PRX library\n" );
@@ -58,7 +63,7 @@ int32_t main( int argc, const char * const argv[] )
         exit( 1 );
     }
 
-	next_client_open_session( client, "173.255.241.176:50000" );
+	next_client_open_session( client, "34.133.77.37:50000" );
 
     while ( !quit )
     {

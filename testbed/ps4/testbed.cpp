@@ -15,7 +15,7 @@ size_t sceLibcHeapSize = SCE_LIBC_HEAP_SIZE_EXTENDED_ALLOC_NO_LIMIT;
 
 static volatile int quit = 0;
 
-void packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
+void packet_received(next_client_t * client, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes)
 {
     (void) client;
     (void) context;
@@ -27,7 +27,7 @@ void packet_received( next_client_t * client, void * context, const uint8_t * pa
 
 int32_t main( int argc, const char * const argv[] )
 {
-    SceKernelModule next_library = sceKernelLoadStartModule("/app0/next-ps4-4.0.16.prx", 0, NULL, 0, NULL, NULL);
+    SceKernelModule next_library = sceKernelLoadStartModule("/app0/next-ps4-4.20.0.prx", 0, NULL, 0, NULL, NULL);
     if ( next_library < 0 )
     {
         printf( "Failed to load next PRX library\n" );
