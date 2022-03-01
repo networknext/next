@@ -38,25 +38,25 @@ int32_t main( int argc, const char * const argv[] )
         printf( "Failed to load next PRX library\n" );
     }
 
-	next_log_level( NEXT_LOG_LEVEL_NONE );
+    next_log_level( NEXT_LOG_LEVEL_NONE );
 
-	next_config_t config;
-	next_default_config( &config );
-	strncpy_s( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
+    next_config_t config;
+    next_default_config( &config );
+    strncpy_s( config.customer_public_key, customer_public_key, sizeof(config.customer_public_key) - 1 );
 
-	next_init( NULL, &config );
+    next_init( NULL, &config );
 
-	printf( "\nRunning tests...\n\n" );
+    printf( "\nRunning tests...\n\n" );
 
-	next_test();
+    next_test();
 
-	printf( "\nAll tests passed successfully!\n\n" );
+    printf( "\nAll tests passed successfully!\n\n" );
 
-	next_log_level( NEXT_LOG_LEVEL_INFO );
+    next_log_level( NEXT_LOG_LEVEL_INFO );
 
-	printf( "Starting client...\n\n" );
-	
-	next_client_t * client = next_client_create( NULL, "0.0.0.0:0", packet_received, NULL );
+    printf( "Starting client...\n\n" );
+    
+    next_client_t * client = next_client_create( NULL, "0.0.0.0:0", packet_received, NULL );
     if ( !client )
     {
         printf( "error: failed to create network next client" );
@@ -76,9 +76,9 @@ int32_t main( int argc, const char * const argv[] )
         next_sleep( 1.0f / 60.0f );
     }
 
-	printf( "\nShutting down...\n\n" );
-	
-	next_client_destroy( client );
+    printf( "\nShutting down...\n\n" );
+    
+    next_client_destroy( client );
 
     next_term();
 
