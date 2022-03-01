@@ -9,7 +9,7 @@
 
 const char * customer_public_key = "UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==";
 // const char * linux_test_bed_server_gcp = "34.133.77.37";
-// const char * linux_test_bed_server_amazon = "54.161.150.42";
+// const char * linux_test_bed_server_amazon = "3.131.126.86";
 // const char * windows_test_bed_server_gcp = "35.193.180.236";
 // const char * windows_test_bed_server_amazon = "3.13.23.117";
 

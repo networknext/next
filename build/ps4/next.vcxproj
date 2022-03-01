@@ -249,11 +249,8 @@
       </AdditionalLibraryDirectories>
     </Link>
     <Link>
-      <AdditionalDependencies>libScePosix_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a;libSceSecure.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libScePosix_stub_weak.a;libSceRandom_stub_weak.a;libSceSysmodule_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a;libSceSecure.a;</AdditionalDependencies>
     </Link>
-    <Lib>
-      <AdditionalDependencies>libsodium.a</AdditionalDependencies>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ORBIS'">
     <ClCompile>
@@ -265,11 +262,8 @@
       </AdditionalLibraryDirectories>
     </Link>
     <Link>
-      <AdditionalDependencies>libScePosix_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a;libSceSecure.a;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libScePosix_stub_weak.a;libSceRandom_stub_weak.a;libSceSysmodule_stub_weak.a;libSceNet_stub_weak.a;libSceNetCtl_stub_weak.a;libSceSecure.a;</AdditionalDependencies>
     </Link>
-    <Lib>
-      <AdditionalDependencies>libsodium.a</AdditionalDependencies>
-    </Lib>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
