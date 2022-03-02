@@ -32,10 +32,10 @@
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
               />
-              SDK v4.0.16
+              SDK v4.20.0
             </a>
             <a
-              id="docs-button"
+              id="ue4-button"
               @click="downloadUE4()"
               class="btn btn-primary m-1 btn-width white-link"
             >
@@ -43,6 +43,16 @@
                                   class="fa-w-16 fa-fw"
               />
               UE4 Plugin
+            </a>
+            <a
+              id="enet-button"
+              @click="downloadEnet()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <font-awesome-icon icon="download"
+                                  class="fa-w-16 fa-fw"
+              />
+              Enet Support
             </a>
             <a
               id="docs-button"
@@ -65,7 +75,7 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <div style="display: inherit;flex-direction: column;" data-intercom="dataReports" data-tour="dataReports">
             <a
-              id="docs-button"
+              id="2021-white-paper-button"
               @click="download2022WhitePaper()"
               class="btn btn-primary m-1 btn-width white-link"
             >
@@ -77,7 +87,7 @@
           </div>
         </div>
         <h5>
-            State of the Internet for Real-Time Games 2022 Report <br />
+          State of the Internet for Real-Time Games 2022 Whitepaper <br />
         </h5>
         <div style="font-size: 90%;">Analysis of over 10 million player sessions identifies critical need for session analytics and selective augmented Internet services</div>
       </div>
@@ -87,6 +97,8 @@
 
 <script lang="ts">
 import {
+  ENET_DOWNLOAD_EVENT,
+  ENET_DOWNLOAD_URL,
   IMPORTANT_CLICKS_CATEGORY,
   SDK_DOCUMENTATION_EVENT,
   SDK_DOCUMENTATION_URL,
@@ -207,6 +219,15 @@ export default class DownloadsWorkspace extends Vue {
       customer_name: this.$store.getters.userProfile.companyName,
       customer_code: this.$store.getters.userProfile.companyCode
     })
+  }
+
+    private downloadEnet () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(ENET_DOWNLOAD_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(ENET_DOWNLOAD_URL)
   }
 
   private download2022WhitePaper () {
