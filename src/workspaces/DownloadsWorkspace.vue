@@ -228,6 +228,11 @@ export default class DownloadsWorkspace extends Vue {
       })
     }
     window.open(ENET_DOWNLOAD_URL)
+    this.$apiService.sendENetDownloadNotification({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
   }
 
   private download2022WhitePaper () {
