@@ -10,7 +10,7 @@ import VueTour from 'vue-tour'
 import { FlagPlugin } from '@/plugins/flags'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import VueGtag from 'vue-gtag'
-import { SDK_DOCUMENTATION_URL, SDK_DOWNLOAD_URL, UE4_PLUGIN_DOWNLOAD_URL } from '@/components/types/Constants'
+import { SDK_DOCUMENTATION_URL, SDK_DOWNLOAD_URL, UE4_PLUGIN_DOWNLOAD_URL, WHITE_PAPER_DOWNLOAD_EVENT, WHITE_PAPER_DOWNLOAD_URL } from '@/components/types/Constants'
 
 describe('DownloadsWorkspace.vue', () => {
   const localVue = createLocalVue()
@@ -63,6 +63,7 @@ describe('DownloadsWorkspace.vue', () => {
   let spyDownloadSDK: jest.SpyInstance
   let spyDownloadUE4: jest.SpyInstance
   let spyDownloadDocs: jest.SpyInstance
+  let spyWhitePaperDownload: jest.SpyInstance
 
   beforeEach(() => {
     windowSpy = jest.spyOn(window, 'window', 'get')
@@ -80,6 +81,9 @@ describe('DownloadsWorkspace.vue', () => {
     spyDownloadDocs = jest.spyOn(apiService, 'sendDocsViewSlackNotification').mockImplementation(() => {
       return Promise.resolve()
     })
+    spyWhitePaperDownload = jest.spyOn(apiService, 'send2022WhitePaperDownloadNotifications').mockImplementation(() => {
+      return Promise.resolve()
+    })
   })
 
   afterEach(() => {
@@ -87,6 +91,7 @@ describe('DownloadsWorkspace.vue', () => {
     spyDownloadSDK.mockRestore()
     spyDownloadUE4.mockRestore()
     spyDownloadDocs.mockRestore()
+    spyWhitePaperDownload.mockRestore()
   })
 
   // Run bare minimum mount test
@@ -137,6 +142,12 @@ describe('DownloadsWorkspace.vue', () => {
     buttons.at(2).trigger('click')
     expect(windowSpy).toBeCalled()
     expect(spyDownloadDocs).toBeCalled()
+
+    expectedURL = WHITE_PAPER_DOWNLOAD_URL
+
+    buttons.at(3).trigger('click')
+    expect(windowSpy).toBeCalled()
+    expect(spyWhitePaperDownload).toBeCalled()
 
     wrapper.destroy()
   })
