@@ -52,7 +52,7 @@
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
               />
-              Enet Support
+              ENet Support
             </a>
             <a
               id="docs-button"
