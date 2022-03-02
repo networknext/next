@@ -84,7 +84,7 @@
                 $store.getters.currentPage == 'usage' ||
                 $store.getters.currentPage == 'invoice'
             }"
-            v-if="$store.getters.hasBilling && $store.getters.isExplorer"
+            v-if="$store.getters.hasBilling"
           >Usage</router-link>
         </li>
         <li class="nav-item text-nowrap">

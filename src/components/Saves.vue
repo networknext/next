@@ -1,11 +1,11 @@
 <template>
   <div>
-    <div v-if="!$store.getters.isAdmin">
+    <div>
       <div class="card-title" style="text-align: center; padding-top: 1rem;">
         Coming Soon!
       </div>
     </div>
-    <div v-if="$store.getters.isAdmin" style="padding-top: 1rem;">
+    <div v-if="false" style="padding-top: 1rem;"> <!-- TODO: Bring this back eventually -->
       <div
         class="spinner-border"
         role="status"

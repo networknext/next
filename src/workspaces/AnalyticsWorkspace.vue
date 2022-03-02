@@ -24,8 +24,7 @@
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
-      <div class="card-title" style="text-align:center;padding-top:1rem;" v-if="!$store.getters.isAdmin">Coming Soon!</div>
-      <Analytics v-if="$store.getters.isAdmin"/>
+      <div class="card-title" style="text-align:center;padding-top:1rem;">Coming Soon!</div>
     </div>
   </div>
 </template>
