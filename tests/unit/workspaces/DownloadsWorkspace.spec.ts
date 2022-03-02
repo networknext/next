@@ -114,7 +114,7 @@ describe('DownloadsWorkspace.vue', () => {
     expect(buttons.length).toBe(5)
     expect(buttons.at(0).text()).toBe('SDK v4.20')
     expect(buttons.at(1).text()).toBe('UE4 Plugin')
-    expect(buttons.at(2).text()).toBe('Enet Support')
+    expect(buttons.at(2).text()).toBe('ENet Support')
     expect(buttons.at(3).text()).toBe('Documentation')
     expect(buttons.at(4).text()).toBe('Download')
   })
