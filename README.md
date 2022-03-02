@@ -5,3 +5,7 @@
 ## enet + Network Next
 
 Modified version of enet using Network Next to send and receive packets.
+
+#define ENET_NETWORK_NEXT 1 to use Network Next
+
+See client.cpp and server.cpp for usage
