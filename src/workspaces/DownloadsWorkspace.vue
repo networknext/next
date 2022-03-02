@@ -45,6 +45,16 @@
               UE4 Plugin
             </a>
             <a
+              id="enet-button"
+              @click="downloadEnet()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <font-awesome-icon icon="download"
+                                  class="fa-w-16 fa-fw"
+              />
+              Enet Support
+            </a>
+            <a
               id="docs-button"
               @click="downloadDocs()"
               class="btn btn-primary m-1 btn-width white-link"
@@ -87,6 +97,8 @@
 
 <script lang="ts">
 import {
+  ENET_DOWNLOAD_EVENT,
+  ENET_DOWNLOAD_URL,
   IMPORTANT_CLICKS_CATEGORY,
   SDK_DOCUMENTATION_EVENT,
   SDK_DOCUMENTATION_URL,
@@ -207,6 +219,15 @@ export default class DownloadsWorkspace extends Vue {
       customer_name: this.$store.getters.userProfile.companyName,
       customer_code: this.$store.getters.userProfile.companyCode
     })
+  }
+
+    private downloadEnet () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(ENET_DOWNLOAD_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(ENET_DOWNLOAD_URL)
   }
 
   private download2022WhitePaper () {
