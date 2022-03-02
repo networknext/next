@@ -103,5 +103,5 @@ public:
 
     // Callback for packets received from the network next client
 
-    static void OnPacketReceived(next_client_t* client, void* context, const uint8_t* packet_data, int packet_bytes);
+    static void OnPacketReceived(next_client_t* client, void* context, const next_address_t * from, const uint8_t* packet_data, int packet_bytes);
 };
