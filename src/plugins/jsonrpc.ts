@@ -212,6 +212,10 @@ export class JSONRPCService {
     return this.call('AuthService.CustomerDownloaded2022WhitePaperNotifications', args)
   }
 
+  public sendENetDownloadNotification (args: any): Promise<any> {
+    return this.call('AuthService.CustomerDownloadedENetDownloadNotifications', args)
+  }
+
   public startAnalyticsTrial (): Promise<any> {
     return this.call('BuyersService.StartAnalyticsTrial', {})
   }
