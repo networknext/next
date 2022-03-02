@@ -2,7 +2,7 @@
 
 <br>
 
-## enet + Network Next
+## ENet + Network Next
 
 Modified version of enet using Network Next to send and receive packets.
 
