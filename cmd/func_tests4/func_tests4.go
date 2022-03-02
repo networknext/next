@@ -2951,9 +2951,9 @@ func test_flush_retry() {
 	Make sure the backend gets final session updates, match data, and server events from the server with all clients timed out.
 */
 
-func test_flush_server_events_match_data() {
+func test_flush_server_events_and_match_data() {
 
-	fmt.Printf("test_flush_server_events_match_data\n")
+	fmt.Printf("test_flush_server_events_and_match_data\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
@@ -3029,9 +3029,9 @@ func test_flush_server_events_match_data() {
 	Make sure the backend gets final session updates, match data, and server events from the server with all clients timed out after multiple retries.
 */
 
-func test_flush_server_events_match_data_retry() {
+func test_flush_server_events_and_match_data_retry() {
 
-	fmt.Printf("test_flush_server_events_match_data_retry\n")
+	fmt.Printf("test_flush_server_events_and_match_data_retry\n")
 
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
@@ -3148,8 +3148,8 @@ func main() {
 		test_match_data_retry,
 		test_flush,
 		test_flush_retry,
-		test_flush_server_events_match_data,
-		test_flush_server_events_match_data_retry,
+		test_flush_server_events_and_match_data,
+		test_flush_server_events_and_match_data_retry,
 	}
 
 	// If there are command line arguments, use reflection to see what tests to run
