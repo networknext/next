@@ -1231,6 +1231,40 @@ func (s *AuthService) CustomerDownloaded2022WhitePaperNotifications(r *http.Requ
 	return nil
 }
 
+func (s *AuthService) CustomerDownloadedENetDownloadNotifications(r *http.Request, args *CustomerSlackNotification, reply *GenericSlackNotificationReply) error {
+	if middleware.VerifyAnyRole(r, middleware.AnonymousRole, middleware.UnverifiedRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("CustomerDownloadedENetDownloadNotifications(): %v", err.Error())
+		return &err
+	}
+
+	if args.Email == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Email"
+		core.Error("CustomerDownloadedENetDownloadNotifications(): %v", err.Error())
+		return &err
+	}
+
+	message := fmt.Sprintf("%s downloaded ENet", args.Email)
+
+	if args.CustomerName != "" {
+		message = fmt.Sprintf("%s from %s downloaded ENet", args.Email, args.CustomerName)
+	}
+
+	if args.CustomerCode != "" {
+		message += fmt.Sprintf(" - Company Code: %s", args.CustomerCode)
+	}
+
+	message += " :signal_strength:"
+
+	if err := s.SlackClient.SendInfo(message); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_SLACK_FAILURE)]
+		core.Error("CustomerDownloadedENetDownloadNotifications(): %v", err.Error())
+		return &err
+	}
+	return nil
+}
+
 func (s *AuthService) SlackNotification(r *http.Request, args *GenericSlackNotificationArgs, reply *GenericSlackNotificationReply) error {
 	if !middleware.VerifyAllRoles(r, middleware.AdminRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
