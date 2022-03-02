@@ -355,7 +355,7 @@ dev-relay-frontend: build-relay-frontend ## runs a local route matrix selector
 	@PORT=30005 ./dist/relay_frontend
 
 .PHONY: dev-server-backend4
-dev-server-backend4: build-server-backend4 ## runs a local server backend
+dev-server-backend4: build-server-backend4 ## runs a local server backend 4
 	@HTTP_PORT=40000 UDP_PORT=40000 ./dist/server_backend4
 
 .PHONY: dev-relay
@@ -608,7 +608,7 @@ dev-reference-backend4: ## runs a local reference backend4
 	$(GO) run reference/backend4/backend4.go
 
 .PHONY: dev-reference-backend5
-dev-reference-backend5: ## runs a local reference backend4
+dev-reference-backend5: ## runs a local reference backend5
 	$(GO) run reference/backend5/backend5.go
 
 .PHONY: dev-mock-relay
