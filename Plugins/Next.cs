@@ -1,5 +1,3 @@
-#define NEXT_EXPERIMENTAL
-
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
@@ -19,10 +17,11 @@ namespace NetworkNext {
 	  * </summary>
 	  * <param name="clientPtr">the pointer to the client object.</param>
 	  * <param name="ctxPtr">the pointer to the client's context.</param>
+	  * <param name="fromPtr">the pointer to the <see cref="NextAddress"/> that sent the packet to the client.</param>
 	  * <param name="packetDataPtr">the pointer to the packet data received.</param>
 	  * <param name="packetBytes">the number of bytes received in the packet data.</param>
 	*/
-	public delegate void NextClientPacketReceivedCallback(IntPtr clientPtr, IntPtr ctxPtr, IntPtr packetDataPtr, int packetBytes);
+	public delegate void NextClientPacketReceivedCallback(IntPtr clientPtr, IntPtr ctxPtr, IntPtr fromPtr, IntPtr packetDataPtr, int packetBytes);
 
 	/**
 	  * <summary>
@@ -46,7 +45,7 @@ namespace NetworkNext {
 	  * </summary>
 	  * <param name="serverPtr">the pointer to the server object.</param>
 	  * <param name="ctxPtr">the pointer to the server's context.</param>
-	  * <param name="fromPtr">the pointer to the NextAddress that sent the packet to the server.</param>
+	  * <param name="fromPtr">the pointer to the <see cref="NextAddress"/> that sent the packet to the server.</param>
 	  * <param name="packetDataPtr">the pointer to the packet data received.</param>
 	  * <param name="packetBytes">the number of bytes received in the packet data.</param>
 	*/
@@ -217,6 +216,8 @@ namespace NetworkNext {
 
 		public const int NEXT_MAX_TAGS = 8;
 
+		public const int NEXT_MAX_MATCH_VALUES = 64;
+
 		public const int NEXT_DEFAULT_SOCKET_SEND_BUFFER_SIZE = 1000000;
 		public const int NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE = 1000000;
 
@@ -301,7 +302,6 @@ namespace NetworkNext {
 		*	Configuration struct for the Network Next SDK.
 		* </summary>
 		* <value <see cref="ServerBackendHostname"/> - The hostname for the backend the Network Next SDK is talking to. Set to "prod.spacecats.net" by default.</value>
-		* <value <see cref="PingBackendHostname"/> - The hostname for the ping backend the Network Next SDK is talking to. Ignore this experimental field for now.</value>
 		* <value <see cref="CustomerPublicKey"/>- The customer public key as a base64 encoded string.</value>
 		* <value <see cref="CustomerPrivateKey"/>- The customer private key as a base64 encoded string.</value>
 		* <value <see cref="SocketSendBufferSize"/> - The size of the socket send buffer in bytes.</value>
@@ -345,35 +345,42 @@ namespace NetworkNext {
 		* 	<item>
 		*		<description>
 		*			<para>
-						<em>ServerBackendHostname - "prod.spacecats.net" </em>
+						<em>ServerBackendHostname - "prod.spacecats.net"</em>
 		*			</para>
 		*		</description>
 		*	</item>
 		* 	<item>
 		*		<description>
 		*			<para>
-		*				<em>NEXT_LOG_LEVEL_ERROR (1)</em>
+		*				<em>CustomerPublicKey - ""</em>
 		*			</para>
 		*		</description>
 		*	</item>
 		* 	<item>
 		*		<description>
 		*			<para>
-		*				<em>NEXT_LOG_LEVEL_INFO (2)</em>
+		*				<em>CustomerPrivateKey - ""</em>
 		*			</para>
 		*		</description>
 		*	</item>
 		* 	<item>
 		*		<description>
 		*			<para>
-		*				<em>NEXT_LOG_LEVEL_WARN (3)</em>
+		*				<em>SocketSendBufferSize - 1000000</em>
 		*			</para>
 		*		</description>
 		*	</item>
 		* 	<item>
 		*		<description>
 		*			<para>
-		*				<em>NEXT_LOG_LEVEL_DEBUG (4)</em>
+		*				<em>SocketReceiveBufferSize - 1000000</em>
+		*			</para>
+		*		</description>
+		*	</item>
+		*	<item>
+		*		<description>
+		*			<para>
+		*				<em>DisableNetworkNext - false</em>
 		*			</para>
 		*		</description>
 		*	</item>
@@ -383,7 +390,8 @@ namespace NetworkNext {
 		* <code>
 		*	NextConfig config;
 		*	Next.NextDefaultConfig(out config);
-		*	config.CustomerPublicKey = "my_public_key" // make custom changes on top
+		*	config.CustomerPublicKey = "my_public_key"; // replace this with your public key
+		*	Debug.Log(String.Format("default hostname is {0}", config.ServerBackendHostname));
 		* </code>
 		* </example>
 		*/
@@ -437,7 +445,13 @@ namespace NetworkNext {
 		* <example>
 		*	This is how you pass in an empty context and <see cref="NextConfig"/>.
 		* <code>
-		*	Next.NextConfig config = new Next.NextConfig();
+		*	// Get the default configuration
+		*	Next.NextConfig config;
+		*	Next.NextDefaultConfig(out config);
+		*
+		*	// Assign our public key to the configuration
+		*	config.CustomerPublicKey = customerPublicKey;
+		*
 		*	if (Next.NextInit(IntPtr.Zero, ref config) != Next.NEXT_OK)
 		*	{
 		*		Debug.LogError("error: could not initialize network next");
@@ -812,7 +826,7 @@ namespace NetworkNext {
 		*	void Start()
 		*	{
 		*		// Assign our custom assert function
-		*		Next.NextAssertFunction(AssertFunction);
+	    *		Next.NextAssertFunction(AssertFunction);
 		*	}
 		* </code>
 		* </example>
@@ -877,11 +891,9 @@ namespace NetworkNext {
 			Next.next_allocator(mallocFunction, freeFunction);
 		}
 
-		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_userID_string", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		private static extern IntPtr next_userID_string(ulong userID, StringBuilder buffer);
+		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_user_id_string", CharSet = CharSet.Ansi, ExactSpelling = true)]
+		private static extern IntPtr next_user_id_string(ulong userID, StringBuilder buffer);
 
-		// Equivalent of String.Format("{0:x}", userID);
-		// Make sure the capacity is at least 16, otherwise string will be cut short
 		/**
 		* <summary>
 		*	Converts a legacy <see cref="ulong"/> user ID to a string.
@@ -900,7 +912,7 @@ namespace NetworkNext {
 		*/
 		public static string NextUserIDString(ulong userID, int capacity) {
 			StringBuilder buffer = new StringBuilder(capacity);
-			next_userID_string(userID, buffer);
+			Next.next_user_id_string(userID, buffer);
 			return buffer.ToString();
 		}
 
@@ -1019,7 +1031,7 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static string NextAddressToString(ref NextAddress address, int capacity = NEXT_MAX_ADDRESS_STRING_LENGTH) {
-			if (capacity < NEXT_MAX_ADDRESS_STRING_LENGTH)
+			if (capacity > NEXT_MAX_ADDRESS_STRING_LENGTH)
 			{
 				capacity = NEXT_MAX_ADDRESS_STRING_LENGTH;
 			}
@@ -1058,18 +1070,15 @@ namespace NetworkNext {
 
 		/**
 		* <summary>
-		*	Anonymizes a <see cref="NextAddress"/> by clearing the last tuple and port.
+		*	Anonymizes a <see cref="NextAddress"/> by zeroing the last tuple and port.
 		* </summary>
 		* <param name="address">the address to anonymize</param>
 		* <example>
 		* <code>
-		*	Next.NextAddress a;
-		*	Next.NextAddress b;
-		*	Next.NextAddressParse(out a, "127.0.0.1:40000");
-		*	Next.NextAddressParse(out b, "127.0.0.0:0");
-		*	Next.NextAddressAnonymize(ref a);
-		*	bool addressesAreEqual = Next.NextAddressEqual(ref a, ref b);
-		*	Debug.Log(String.Format("addresses are equal = {0}", addressesAreEqual ? "yes" : "no"));
+		*	Next.NextAddress address;
+		*	Next.NextAddressParse(out address, "127.0.0.1:50000");
+		*	Next.NextAddressAnonymize(ref address);
+		*	Debug.Log(String.Format("anonymized address string = {0}", Next.NextAddressString(ref address, Next.NEXT_MAX_ADDRESS_STRING_LENGTH)));
 		* </code>
 		* </example>
 		*/
@@ -1102,7 +1111,9 @@ namespace NetworkNext {
 		* <value <see cref="Reported"/> - If the client has been reported the session as problematic.</value>
 		* <value <see cref="FallbackToDirect"/> - If the client has defaulted to using the public internet (direct) in the event of an error on Network Next.</value>
 		* <value <see cref="HighFrequencyPings"/> - If the client has high frequency pings enabled.</value>
-		* <value <see cref="DirectRTT"/> - The RTT between the client and server on the public interent (direct) route.</value>
+		* <value <see cref="DirectMinRTT"/> - The smallest RTT between the client and server on the public interent (direct) route in the last 10 seconds.</value>
+		* <value <see cref="DirectMaxRTT"/> - The largest RTT between the client and server on the public interent (direct) route in the last 10 seconds.</value>
+		* <value <see cref="DirectPrimeRTT"/> - The second largest RTT between the client and server on the public interent (direct) route in the last 10 seconds. Used for approximating P99 etc.</value>
 		* <value <see cref="DirectJitter"/> - The jitter between the client and server on the public interent (direct) route.</value>
 		* <value <see cref="DirectPacketLoss"/> - The packet loss between the client and server on the public interent (direct) route.</value>
 		* <value <see cref="NextRTT"/> - The RTT between the client and server on the Network Next route.</value>
@@ -1138,7 +1149,9 @@ namespace NetworkNext {
 			public bool FallbackToDirect;
 			[MarshalAs(UnmanagedType.U1)]
 			public bool HighFrequencyPings;
-			public float DirectRTT;
+			public float DirectMinRTT;
+			public float DirectMaxRTT;
+			public float DirectPrimeRTT;
 			public float DirectJitter;
 			public float DirectPacketLoss;
 			public float NextRTT;
@@ -1182,7 +1195,7 @@ namespace NetworkNext {
 		* <code>
 		*	// First define a callback for received packets
 		*	[MonoPInvokeCallback(typeof(NextClientPacketReceivedCallback))]
-		*	static void ClientPacketReceived(IntPtr clientPtr, IntPtr ctxPtr, IntPtr packetDataPtr, int packetBytes)
+		*	static void ClientPacketReceived(IntPtr clientPtr, IntPtr ctxPtr, IntPtr fromPtr, IntPtr packetDataPtr, int packetBytes)
 		*	{
 		*		Debug.Log(String.Format("client received packet from server ({0} bytes)", packetBytes));
 		*	}
@@ -1215,7 +1228,7 @@ namespace NetworkNext {
 		* <summary>
 		*	Destorys a client instance, and the socket it manages internally.
 		* </summary>
-		* <param name="client">the client to destroy. Must be a valid client pointer created by <see cref="NextClientCreate"/></param>
+		* <param name="client">the client to destroy. Must be a valid client pointer created by <see cref="NextClientCreate"/>. Do NOT pass in <see cref="IntPtr.Zero"/> or <see langword="null"/>.</param>
 		* <example>
 		* <code>
 		*	Next.NextClientDestroy(client);
@@ -1647,7 +1660,9 @@ namespace NetworkNext {
 		*	
 		*	sb.AppendFormat("high frequency pings = {0}\n", stats.HighFrequencyPings.ToString());
 		*	
-		*	sb.AppendFormat("direct rtt = {0}ms\n", stats.DirectRTT.ToString("F"));
+		*	sb.AppendFormat("direct min rtt = {0}ms\n", stats.DirectMinRTT.ToString("F"));
+		*	sb.AppendFormat("direct max rtt = {0}ms\n", stats.DirectMaxRTT.ToString("F"));
+		*	sb.AppendFormat("direct prime rtt = {0}ms\n", stats.DirectPrimeRTT.ToString("F"));
 		*	sb.AppendFormat("direct jitter = {0}ms\n", stats.DirectJitter.ToString("F"));
 		*	sb.AppendFormat("direct packet loss = {0}%\n", stats.DirectPacketLoss.ToString("F1"));
 		*	
@@ -1728,7 +1743,10 @@ namespace NetworkNext {
 		* <value <see cref="Reported"/> - If the client has been reported the session as problematic.</value>
 		* <value <see cref="FallbackToDirect"/> - If the client has defaulted to using the public internet (direct) in the event of an error on Network Next.</value>
 		* <value <see cref="HighFrequencyPings"/> - If the client has high frequency pings enabled.</value>
-		* <value <see cref="DirectRTT"/> - The RTT between the client and server on the public interent (direct) route.</value>
+		* <value <see cref="HighFrequencyPings"/> - If the client has high frequency pings enabled.</value>
+		* <value <see cref="DirectMinRTT"/> - The smallest RTT between the client and server on the public interent (direct) route in the last 10 seconds.</value>
+		* <value <see cref="DirectMaxRTT"/> - The largest RTT between the client and server on the public interent (direct) route in the last 10 seconds.</value>
+		* <value <see cref="DirectPrimeRTT"/> - The second largest RTT between the client and server on the public interent (direct) route in the last 10 seconds. Used for approximating P99 etc.</value>
 		* <value <see cref="DirectJitter"/> - The jitter between the client and server on the public interent (direct) route.</value>
 		* <value <see cref="DirectPacketLoss"/> - The packet loss between the client and server on the public interent (direct) route.</value>
 		* <value <see cref="NextRTT"/> - The RTT between the client and server on the Network Next route.</value>
@@ -1765,7 +1783,9 @@ namespace NetworkNext {
 			public bool Reported;
 			[MarshalAs(UnmanagedType.U1)]
 			public bool FallbackToDirect;
-			public float DirectRTT;
+			public float DirectMinRTT;
+			public float DirectMaxRTT;
+			public float DirectPrimeRTT;
 			public float DirectJitter;
 			public float DirectPacketLoss;
 			public float NextRTT;
@@ -1805,16 +1825,16 @@ namespace NetworkNext {
 		* </summary>
 		* <param name="ctxPtr">an optional pointer to context passed to any callbacks made from the server. Pass in <see cref="IntPtr.Zero"/> if not used</param>
 		* <param name="serverAddress>the public IP address and port that clients will connect to</param>
-		* <param name="bindAddress>an address string describing the bind address and port to bind to. Typically "0.0.0.0:[portnum]" is passed in, which binds to any IPv4 interface and lets the system pick a port, for example: "0.0.0.0:50000"</param>
+		* <param name="bindAddress>an address string describing the bind address and port to bind to. Typically "0.0.0.0:[portnum]" is passed in, binding the server socket to any IPv4 interface on a specific port, for example:  "0.0.0.0:50000"</param>
 		* <param name="datacenter">the name of the datacenter that the game server is running in. Please pass in “local” until we work with you to determine the set of datacenters you host servers in</param>
-		* <param name="packetReceivedCallback">called from the same thread that calls <see cref="NextClientUpdate"/>, whenever a packet is received from the client. Required</param>
+		* <param name="packetReceivedCallback">called from the same thread that calls <see cref="NextServerUpdate"/>, whenever a packet is received from the client. Required</param>
 		* <param name="wakeupCallback">optional callback. Pass <see langword="null"/> if not used. Sets a callback function to be called from an internal network next thread when a packet is ready to be received for this server. Intended to let you set an event of your own creation when a packet is ready to receive, making it possible to use Network Next with applications built around traditional select or wait for multiple event style blocking socket loops. Call <see cref="NextServerUpdate"/> to pump received packets to the <paramref name="packetReceivedCallback"> when you wake up on your main thread from your event</param>
 		* <returns>a pointer to the server, or <see cref="IntPtr.Zero"/> if the server could not be created. Typically, <see cref="IntPtr.Zero"/> is only returned when another socket is already bound on the same port, or if an invalid server or bind address is passed in.</returns>
 		* <example>
 		* <code>
 		*	// First define a callback for received packets
 		*	[MonoPInvokeCallback(typeof(NextServerPacketReceivedCallback))]
-		*	static void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr NextAddress, fromPtr, IntPtr packetDataPtr, int packetBytes)
+		*	static void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr, IntPtr packetDataPtr, int packetBytes)
 		*	{
 		*		Next.NextAddress clientAddr = Next.GetNextAddressFromPointer(fromPtr);
 		*		Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("server received packet from client {0} ({0} bytes)", Next.NextAddressToString(ref clientAddr, Next.NEXT_MAX_ADDRESS_STRING_LENGTH), packetBytes));		
@@ -1846,9 +1866,9 @@ namespace NetworkNext {
 
 		/**
 		* <summary>
-		*	Destorys a server instance, and the socket it manages internally.
+		*	Destroys a server instance, and the socket it manages internally.
 		* </summary>
-		* <param name="server">the server to destroy. Must be a valid server pointer created by <see cref="NextServerCreate"/></param>
+		* <param name="server">the server to destroy. Must be a valid server pointer created by <see cref="NextServerCreate"/>. Do NOT pass in <see cref="IntPtr.Zero"/> or <see langword="null"/>.</param>
 		* <example>
 		* <code>
 		*	Next.NextServerDestroy(server);
@@ -1887,6 +1907,36 @@ namespace NetworkNext {
 		public static ushort NextServerPort(IntPtr server)
 		{
 			return Next.next_server_port(server);
+		}
+
+		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_address", CharSet = CharSet.Ansi, ExactSpelling = true)]
+		private static extern IntPtr next_server_address(IntPtr server);
+
+		/**
+		* <summary>
+		*	Gets the address of the server.
+		* </summary>
+		* <param name="server"> the server to get the address of</param>
+		* <returns>the address of the server</param>
+		* <example>
+		* <code>
+		*	// Create a server
+		*	IntPtr server = Next.NextServerCreate(IntPtr.Zero, "127.0.0.1", "0.0.0.0:0", "local" serverPacketReceived, null);
+		*	if (server.Equals(IntPtr.Zero))
+		*	{
+		*		Debug.LogError("error: failed to create server");
+		*		return;
+		*	}
+		*	
+		*	Next.NextAddress serverAddr = Next.NextServerAddress(server);
+		*	Debug.Log(String.Format("the server address is {0}", Next.NextAddressToString(ref serverAddr, Next.NEXT_MAX_ADDRESS_STRING_LENGTH)));
+		* </code>
+		* </example>
+		*/
+		public static NextAddress NextServerAddress(IntPtr server)
+		{
+			IntPtr serverAddrPtr = Next.next_server_address(server);
+			return Next.GetNextAddressFromPointer(serverAddrPtr);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_state", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2097,20 +2147,8 @@ namespace NetworkNext {
 		* <returns><see langword="true"/> if the session has been upgraded, otherwise <see langword="false"/>.</returns>
 		* <example>
 		* <code>
-		*	[MonoPInvokeCallback(typeof(NextServerPacketReceivedCallback))]
-		*	static void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr NextAddress fromPtr, IntPtr packetDataPtr, int packetBytes)
-		*	{
-		*		Next.NextAddress clientAddr = Next.GetNextAddressFromPointer(fromPtr);
-		*		Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("server received packet from client {0} ({0} bytes)", Next.NextAddressToString(ref clientAddr, Next.NEXT_MAX_ADDRESS_STRING_LENGTH), packetBytes));
-		*		// ... verify the player is real ...
-		*		
-		*		if (Next.NextServerSessionUpgraded(serverPtr, fromPtr))
-		*		{
-		*			// Upgrade the session
-		*			ulong sessionID = Next.NextServerUpgradeSession(serverPtr, fromPtr, userID);
-		*			Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, Strint.Format("server upgraded session {0}", sessionID));
-		*		}
-		*	}
+		*	bool upgraded = Next.NextServerSessionUpgraded(server, clientAddrPtr);
+		*	Debug.Log(String.Format("session upgraded = {0}", upgraded ? "true" : "false"));
 		* </code>
 		* </example>
 		*/
@@ -2303,7 +2341,9 @@ namespace NetworkNext {
 		*	
 		*	sb.AppendFormat("fallback to direct = {0}\n", stats.FallbackToDirect.ToString());
 		*	
-		*	sb.AppendFormat("direct rtt = {0}ms\n", stats.DirectRTT.ToString("F"));
+		*	sb.AppendFormat("direct min rtt = {0}ms\n", stats.DirectMinRTT.ToString("F"));
+		*	sb.AppendFormat("direct max rtt = {0}ms\n", stats.DirectMaxRTT.ToString("F"));
+		*	sb.AppendFormat("direct prime rtt = {0}ms\n", stats.DirectPrimeRTT.ToString("F"));
 		*	sb.AppendFormat("direct jitter = {0}ms\n", stats.DirectJitter.ToString("F"));
 		*	sb.AppendFormat("direct packet loss = {0}%\n", stats.DirectPacketLoss.ToString("F1"));
 		*	
@@ -2354,6 +2394,153 @@ namespace NetworkNext {
 		public static void NextServerStats(IntPtr server, IntPtr addressPtr, out ServerStats stats)
 		{
 			Next.next_server_stats(server, addressPtr, out stats);
+		}
+
+		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_autodetect_finished", CharSet = CharSet.Ansi, ExactSpelling = true)]
+		private static extern bool next_server_autodetect_finished(IntPtr server);
+
+		/**
+		* <summary>
+		*	Determines if the server has finished autodetecting the datacenter name after calling <see cref="NextServerCreate"/>.
+		* </summary>
+		* <param name="server">the server pointer</param>
+		* <returns><see langword="true"/> if the server has finished autodetecting its datacenter, otherwise <see langword="false"/>.</returns>
+		* <example>
+		* <code>
+		*	bool autodetectFinished = Next.NextServerAutodetectFinished(server);
+		*	Debug.Log(String.Format("server autodetect finished = {0}", autodetectFinished ? "true" : "false"));
+		* </code>
+		* </example>
+		*/
+		public static bool NextServerAutodetectFinished(IntPtr server)
+		{
+			return Next.next_server_autodetect_finished(server);
+		}
+
+		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_autodetected_datacenter", CharSet = CharSet.Ansi, ExactSpelling = true)]
+		[return: MarshalAs(UnmanagedType.LPStr)]
+		private static extern string next_server_autodetected_datacenter(IntPtr server);
+
+		/**
+		* <summary>
+		*	Gets the autodetected datacenter name.
+		* </summary>
+		* <param name="server">the server pointer</param>
+		* <returns>the name of the autodetected datacenter.</returns>
+		* <example>
+		* <code>
+		*	bool autodetectFinished = Next.NextServerAutodetectFinished(server);
+		*	if (autodetectFinished)
+		*	{
+		*		string autodetectedDatacenter = Next.NextServerAutodetectedDatacenter(server);
+		*		Debug.Log(String.Format("server autodetected datacenter = {0}", autodetectedDatacenter));
+		*	}
+		* </code>
+		* </example>
+		*/
+		public static string NextServerAutodetectedDatacenter(IntPtr server)
+		{
+			return Next.next_server_autodetected_datacenter(server);
+		}
+
+		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_event", CharSet = CharSet.Ansi, ExactSpelling = true)]
+		private static extern void next_server_event(IntPtr server, IntPtr addressPtr, ulong serverEvents);
+
+		/**
+		* <summary>
+		*	Triggers a user-defined event on a session. This event is stored alongside network performance data once every 10 seconds.
+		*	<remarks>
+		*		You can define up to 64 event flags for your game, one event per bit in the <paramref name="serverEvents"/> bitfield.
+		*		Use this function to input in-game events that may be relevant to analytics.
+		*	</remarks>
+		* </summary>
+		* <param name="server">the server pointer</param>
+		* <param name="addressPtr">the pointer to the address of the client that triggered the event</param>
+		* <param name="serverEvents">the bitfield of events that just triggered for the session</param>
+		* <example>
+		* <code>
+		*	[Flags]
+		*	public enum GameEvents : ulong
+		*	{
+		*		Respawned = (1<<0),
+		*		Catch = (1<<1),
+		*		Throw = (1<<2),
+		*		KnockedOut = (1<<3),
+		*		WonMatch = (1<<4),
+		*		LostMatch = (1<<5),
+		*	}
+		*	
+		*	Next.NextServerEvent(server, out clientAddr, GameEvents.KnockedOut | GameEvents.LostMatch);
+		* </code>
+		* </example>
+		*/
+		public static void NextServerEvent(IntPtr server, IntPtr addressPtr, ulong serverEvents)
+		{
+			Next.next_server_event(server, addressPtr, serverEvents);
+		}
+
+		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_match", CharSet = CharSet.Ansi, ExactSpelling = true)]
+		private static extern void next_server_match(IntPtr server, IntPtr addressPtr, [MarshalAs(UnmanagedType.LPStr)] string matchID, double[] matchValues, int numMatchValues);
+
+		/**
+		* <summary>
+		*	Associates a session with a match id and set of match values for that session.
+		*	<remarks>
+		*		Match id can be any unique match id you have.
+		*		Match values can include any information that you want to feed into analytics.
+		*		For example: win/loss ratio, skill, kill/death ratio, skill, time spent in matchmaker, load time in seconds.
+		*		Call this function once per-session at the beginning of each match on the server.
+		*	</remarks>
+		* </summary>
+		* <param name="server">the server pointer</param>
+		* <param name="addressPtr">the pointer to the <see cref="NextAddress"/> of the client to assign match data</param>
+		* <param name="matchID">the match id to assign to the session. Pass in any unique per-match identifier you have</param>
+		* <param name="matchValues">the array of match values for the session</param>
+		* <param name="numMatchValues">the number of match values in the array. Must be less less than or equal to NEXT_MAX_MATCH_VALUES</param>
+		* <example>
+		* <code>
+		*	string matchID = "this is a unique match id";
+		*	double[] matchValues = new double[]{10.0, 20.0, 30.0};
+		*	Next.NextServerMatch(server, clientAddrPtr, matchID, matchValues, matchValues.Length);
+		* </code>
+		* </example>
+		*/
+		public static void NextServerMatch(IntPtr server, IntPtr addressPtr, string matchID, double[] matchValues, int numMatchValues)
+		{
+			if (matchValues.Length > NEXT_MAX_MATCH_VALUES) {
+				double[] maxMatchValues = new double[NEXT_MAX_MATCH_VALUES];
+				for (int i = 0; i < NEXT_MAX_MATCH_VALUES; i++) {
+					maxMatchValues[i] = matchValues[i];
+				}
+				Next.next_server_match(server, addressPtr, matchID, maxMatchValues, NEXT_MAX_MATCH_VALUES);
+				return;
+			}
+
+			Next.next_server_match(server, addressPtr, matchID, matchValues, NEXT_MAX_MATCH_VALUES);
+		}
+
+		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_flush", CharSet = CharSet.Ansi, ExactSpelling = true)]
+		private static extern void next_server_flush(IntPtr server);
+
+		/**
+		* <summary>
+		*	Call this to flush all server data before shutting a server down.
+		*	<remarks>
+		*		This function blocks for up to 10 seconds to ensure that all session data, server events and match data are recorded.
+		*		After calling this function, destroy the server via <see cref="NextServerDestroy"/>.
+		*	</remarks>
+		* </summary>
+		* <param name="server">the server pointer</param>
+		* <example>
+		* <code>
+		*	Next.NextServerFlush(server);
+		*	Next.NextServerDestroy(server);
+		* </code>
+		* </example>
+		*/
+		public static void NextServerFlush(IntPtr server)
+		{
+			Next.next_server_flush(server);
 		}
 
 		#endregion // #region NextServer functions
@@ -2488,99 +2675,6 @@ namespace NetworkNext {
 		}
 
 		#endregion // #region NextMutex functions
-
-		// ----------------------------------------------------------
-
-		// Network Next experimental functions (untested)
-
-		#region Experimental functions
-
-		#if (NEXT_EXPERIMENTAL)
-
-			public const double NEXT_PING_DURATION = 10.0;
-			public const int NEXT_MAX_PING_TOKENS = 256;
-			public const int NEXT_MAX_pingTokenBytes = 256;
-
-			[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_customerID", CharSet = CharSet.Ansi, ExactSpelling = true)]
-			private static extern ulong next_customerID();
-
-			public static ulong NextCustomerID()
-			{
-				return Next.next_customerID();
-			}
-
-			[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_customerPrivateKey", CharSet = CharSet.Ansi, ExactSpelling = true)]
-			private static extern byte[] next_customerPrivateKey();
-
-			public static byte[] NextCustomerPrivateKey()
-			{
-				return Next.next_customerPrivateKey();
-			}
-
-			[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_customer_public_key", CharSet = CharSet.Ansi, ExactSpelling = true)]
-			private static extern byte[] next_customer_public_key();
-
-			public static byte[] NextCustomerPublicKey()
-			{
-				return Next.next_customer_public_key();
-			}
-
-			[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_generate_ping_token", CharSet = CharSet.Ansi, ExactSpelling = true)]
-			private static extern void next_generate_ping_token(ulong customerID, byte[] customerPrivateKey, NextAddress clientAddress, string datacenterName, string userID, out byte[] outPingTokenData, out int outPingTokenBytes);
-
-			public static void NextGeneratePingToken(ulong customerID, byte[] customerPrivateKey, NextAddress clientAddress, string datacenterName, string userID, out byte[] outPingTokenData, out int outPingTokenBytes)
-			{
-				Next.next_generate_ping_token(customerID, customerPrivateKey, clientAddress, datacenterName, userID, out outPingTokenData, out outPingTokenBytes);
-			}
-
-			[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_validate_ping_token", CharSet = CharSet.Ansi, ExactSpelling = true)]
-			private static extern bool next_validate_ping_token(ulong customerID, byte[] customerPrivateKey, NextAddress clientAddress, byte[] pingTokenData, int pingTokenBytes);
-
-			public static bool NextValidatePingToken(ulong customerID, byte[] customerPrivateKey, NextAddress clientAddress, byte[] pingTokenData, int pingTokenBytes)
-			{
-				return Next.next_validate_ping_token(customerID, customerPrivateKey, clientAddress, pingTokenData, pingTokenBytes);
-			}
-
-			public const int NEXT_PING_STATE_RESOLVING_HOSTNAME = 0;
-			public const int NEXT_PING_STATE_SENDING_PINGS = 1;
-			public const int NEXT_PING_STATE_FINISHED = 2;
-			public const int NEXT_PING_STATE_ERROR = 3;
-
-			[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_ping_create", CharSet = CharSet.Ansi, ExactSpelling = true)]
-			private static extern IntPtr next_ping_create(IntPtr ctx, string bind_address, ref byte[] pingTokenData, ref int pingTokenBytes, int num_ping_tokens);
-
-			public static IntPtr NextPingCreate(IntPtr ctx, string bind_address, ref byte[] pingTokenData, ref int pingTokenBytes, int num_ping_tokens)
-			{
-				return Next.next_ping_create(ctx, bind_address, ref pingTokenData, ref pingTokenBytes, num_ping_tokens);
-			}
-
-			[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_ping_destroy", CharSet = CharSet.Ansi, ExactSpelling = true)]
-			private static extern void next_ping_destroy(IntPtr ping);
-
-			public static void NextPingDestroy(IntPtr ping)
-			{
-				Next.next_ping_destroy(ping);
-			}
-
-			[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_ping_update", CharSet = CharSet.Ansi, ExactSpelling = true)]
-			private static extern void next_ping_update(IntPtr ping);
-
-			public static void NextPingUpdate(IntPtr ping)
-			{
-				Next.next_ping_update(ping);
-			}
-
-			[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_ping_state", CharSet = CharSet.Ansi, ExactSpelling = true)]
-			private static extern int next_ping_state(IntPtr ping);
-
-			public static int NextPingState(IntPtr ping)
-			{
-				return Next.next_ping_state(ping);
-			}
-
-		#endif // #if NEXT_EXPERIMENTAL 
-
-		#endregion // #region Experimental functions
 
 		// ----------------------------------------------------------
 
