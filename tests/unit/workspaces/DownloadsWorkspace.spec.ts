@@ -64,6 +64,7 @@ describe('DownloadsWorkspace.vue', () => {
   let spyDownloadUE4: jest.SpyInstance
   let spyDownloadDocs: jest.SpyInstance
   let spyWhitePaperDownload: jest.SpyInstance
+  let spyENetDownload: jest.SpyInstance
 
   beforeEach(() => {
     windowSpy = jest.spyOn(window, 'window', 'get')
@@ -84,6 +85,9 @@ describe('DownloadsWorkspace.vue', () => {
     spyWhitePaperDownload = jest.spyOn(apiService, 'send2022WhitePaperDownloadNotifications').mockImplementation(() => {
       return Promise.resolve()
     })
+    spyENetDownload = jest.spyOn(apiService, 'sendENetDownloadNotification').mockImplementation(() => {
+      return Promise.resolve()
+    })
   })
 
   afterEach(() => {
@@ -92,6 +96,7 @@ describe('DownloadsWorkspace.vue', () => {
     spyDownloadUE4.mockRestore()
     spyDownloadDocs.mockRestore()
     spyWhitePaperDownload.mockRestore()
+    spyENetDownload.mockRestore()
   })
 
   // Run bare minimum mount test
@@ -142,8 +147,8 @@ describe('DownloadsWorkspace.vue', () => {
 
     buttons.at(2).trigger('click')
     expect(windowSpy).toBeCalled()
-    // TODO: Add spy here when backend supports slack notification for this
-  
+    expect(spyENetDownload).toBeCalled()
+
     expectedURL = SDK_DOCUMENTATION_URL
 
     buttons.at(3).trigger('click')

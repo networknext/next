@@ -41,6 +41,7 @@ declare module '*.vue' {
     sendPublicKeyEnteredSlackNotification (args: any): Promise<any>;
     sendUE4DownloadNotifications (args: any): Promise<any>;
     send2022WhitePaperDownloadNotifications (args: any): Promise<any>;
+    sendENetDownloadNotification (args: any): Promise<any>;
     startAnalyticsTrial (): Promise<any>;
     processNewSignup (args: any): Promise<any>;
   }
