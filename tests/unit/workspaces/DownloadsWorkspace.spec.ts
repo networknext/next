@@ -10,7 +10,7 @@ import VueTour from 'vue-tour'
 import { FlagPlugin } from '@/plugins/flags'
 import { JSONRPCPlugin } from '@/plugins/jsonrpc'
 import VueGtag from 'vue-gtag'
-import { SDK_DOCUMENTATION_URL, SDK_DOWNLOAD_URL, UE4_PLUGIN_DOWNLOAD_URL, WHITE_PAPER_DOWNLOAD_EVENT, WHITE_PAPER_DOWNLOAD_URL } from '@/components/types/Constants'
+import { ENET_DOWNLOAD_EVENT, ENET_DOWNLOAD_URL, SDK_DOCUMENTATION_URL, SDK_DOWNLOAD_URL, UE4_PLUGIN_DOWNLOAD_URL, WHITE_PAPER_DOWNLOAD_EVENT, WHITE_PAPER_DOWNLOAD_URL } from '@/components/types/Constants'
 
 describe('DownloadsWorkspace.vue', () => {
   const localVue = createLocalVue()
@@ -111,11 +111,12 @@ describe('DownloadsWorkspace.vue', () => {
 
     const buttons = wrapper.findAll('.btn')
 
-    expect(buttons.length).toBe(4)
-    expect(buttons.at(0).text()).toBe('SDK v4.0.16')
+    expect(buttons.length).toBe(5)
+    expect(buttons.at(0).text()).toBe('SDK v4.20.0')
     expect(buttons.at(1).text()).toBe('UE4 Plugin')
-    expect(buttons.at(2).text()).toBe('Documentation')
-    expect(buttons.at(3).text()).toBe('Download')
+    expect(buttons.at(2).text()).toBe('Enet Support')
+    expect(buttons.at(3).text()).toBe('Documentation')
+    expect(buttons.at(4).text()).toBe('Download')
   })
 
   // Check logic for button clicks
@@ -123,7 +124,7 @@ describe('DownloadsWorkspace.vue', () => {
     const wrapper = shallowMount(DownloadsWorkspace, { localVue, store })
     const buttons = wrapper.findAll('.btn')
 
-    expect(buttons.length).toBe(4)
+    expect(buttons.length).toBe(5)
 
     expectedURL = SDK_DOWNLOAD_URL
 
@@ -137,15 +138,21 @@ describe('DownloadsWorkspace.vue', () => {
     expect(windowSpy).toBeCalled()
     expect(spyDownloadUE4).toBeCalled()
 
-    expectedURL = SDK_DOCUMENTATION_URL
+    expectedURL = ENET_DOWNLOAD_URL
 
     buttons.at(2).trigger('click')
+    expect(windowSpy).toBeCalled()
+    // TODO: Add spy here when backend supports slack notification for this
+  
+    expectedURL = SDK_DOCUMENTATION_URL
+
+    buttons.at(3).trigger('click')
     expect(windowSpy).toBeCalled()
     expect(spyDownloadDocs).toBeCalled()
 
     expectedURL = WHITE_PAPER_DOWNLOAD_URL
 
-    buttons.at(3).trigger('click')
+    buttons.at(4).trigger('click')
     expect(windowSpy).toBeCalled()
     expect(spyWhitePaperDownload).toBeCalled()
 
