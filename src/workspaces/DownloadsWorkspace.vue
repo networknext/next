@@ -32,7 +32,7 @@
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
               />
-              SDK v4.0.16
+              SDK v4.20.0
             </a>
             <a
               id="ue4-button"
