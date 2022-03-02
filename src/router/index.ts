@@ -5,8 +5,7 @@ import store from '@/store'
 import { FeatureEnum } from '@/components/types/FeatureTypes'
 
 import AccountSettings from '@/components/AccountSettings.vue'
-import Analytics from '@/components/Analytics.vue'
-import Discovery from '@/components/Discovery.vue'
+import AnalyticsWorkspace from '@/workspaces/AnalyticsWorkspace.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
 import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
@@ -19,10 +18,11 @@ import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
 import Supply from '@/components/Supply.vue'
-import Usage from '@/components/Usage.vue'
 import UserManagement from '@/components/UserManagement.vue'
 import UserSessions from '@/components/UserSessions.vue'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
+import UsageWorkspace from '@/workspaces/UsageWorkspace.vue'
+import Saves from '@/components/Saves.vue'
 
 Vue.use(VueRouter)
 
@@ -34,30 +34,30 @@ const routes: Array<RouteConfig> = [
     component: DownloadsWorkspace
   },
   {
+    path: '/usage',
+    name: 'usage',
+    component: UsageWorkspace,
+    children: [
+      {
+        path: '*',
+        name: 'invoice'
+      }
+    ]
+  },
+  {
+    path: '/analytics',
+    name: 'analytics',
+    component: AnalyticsWorkspace
+  },
+  {
     path: '/explore',
     name: 'explore',
     component: ExplorationWorkspace,
     children: [
       {
-        path: 'analytics',
-        name: 'analytics',
-        component: Analytics
-      },
-      {
-        path: 'usage',
-        name: 'usage',
-        component: Usage,
-        children: [
-          {
-            path: '*',
-            name: 'invoice'
-          }
-        ]
-      },
-      {
-        path: 'discovery',
-        name: 'discovery',
-        component: Discovery
+        path: 'saves',
+        name: 'saves',
+        component: Saves
       },
       {
         path: 'supply',
@@ -149,38 +149,43 @@ const router = new VueRouter({
 })
 
 const AnonymousRoutes = [
+  'explore',
   'map',
   'sessions',
   'session-details',
   'session-tool',
+  'saves',
   'get-access',
   'login',
   'password-reset'
 ]
 
 const AnonymousPlusRoutes = [
+  'explore',
   'map',
   'sessions',
   'session-details',
   'session-tool',
+  'saves',
   'user-sessions',
   'user-tool'
 ]
 
 const ViewerRoutes = [
+  'explore',
   'map',
   'sessions',
   'session-details',
   'session-tool',
   'user-sessions',
   'user-tool',
+  'saves',
   'downloads',
   'settings',
   'account-settings'
 ]
 
 const ExplorerRoutes = [
-  'explore',
   'usage',
   'invoice',
   'analytics'
@@ -219,7 +224,7 @@ router.onError(() => {
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
 router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
-  const toName = to.name || ''
+  let toName = to.name || ''
   const fromName = from.name || ''
 
   if (toName === '404') {
@@ -243,6 +248,12 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   }
 
   checkMapModal(toName, fromName)
+
+  if (toName === 'explore') {
+    toName = 'saves'
+    next('/explore/saves')
+    return
+  }
 
   // Anonymous filters
   if (store.getters.isAnonymous && AnonymousRoutes.indexOf(toName) !== -1) {

@@ -76,7 +76,7 @@
           <br/>
         </small>
       </div>
-      <button v-if="$store.getters.userProfile.companyCode === '' && $store.getters.userProfile.companyName === ''" id="company-details-button" type="submit" class="btn btn-primary btn-sm">
+      <button id="company-details-button" v-if="$store.getters.userProfile.companyCode === '' && $store.getters.userProfile.companyName === ''" type="submit" class="btn btn-primary btn-sm">
         Setup Company Account
       </button>
       <p class="text-muted text-small mt-2"></p>
@@ -426,11 +426,19 @@ export default class AccountSettings extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-  #account-settings-button {
+  #account-details-button {
     border-color: #009FDF;
     background-color: #009FDF;
   }
-  #account-settings-button:hover {
+  #account-details-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
+  #company-details-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #company-details-button:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
   }

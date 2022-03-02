@@ -13,7 +13,7 @@
             "
     >
       <h1 class="h2">
-        Explore
+        Analytics
       </h1>
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
@@ -24,14 +24,8 @@
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
-      <div class="card-header">
-        <ul class="nav nav-tabs card-header-tabs">
-          <li class="nav-item">
-            <router-link to="/explore/saves" class="nav-link" :class="{ active: $store.getters.currentPage === 'saves'}">Saves</router-link>
-          </li>
-        </ul>
-      </div>
-      <router-view/>
+      <div class="card-title" style="text-align:center;padding-top:1rem;" v-if="!$store.getters.isAdmin">Coming Soon!</div>
+      <Analytics v-if="$store.getters.isAdmin"/>
     </div>
   </div>
 </template>
@@ -41,8 +35,8 @@ import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import BuyerFilter from '@/components/BuyerFilter.vue'
-import DateFilter from '@/components/DateFilter.vue'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
+import Analytics from '../components/Analytics.vue'
 
 /**
  * This component holds the workspace elements related to the downloads page in the Portal
@@ -55,11 +49,11 @@ import { ErrorTypes } from '@/components/types/ErrorTypes'
 @Component({
   components: {
     Alert,
-    BuyerFilter,
-    DateFilter
+    Analytics,
+    BuyerFilter
   }
 })
-export default class ExplorationWorkspace extends Vue {
+export default class AnalyticsWorkspace extends Vue {
   // Register the alert component to access its set methods
   $refs!: {
     verifyAlert: Alert;

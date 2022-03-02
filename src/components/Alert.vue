@@ -1,5 +1,5 @@
 <template>
-  <div :class="[{'alert': true}, className]" role="alert" v-if="alertMessage !== ''">
+  <div :class="[{'alert': true}, className]" role="alert" v-if="alertMessage !== ''" class="flex-wrap">
     {{ alertMessage }}
     <slot v-if="showSlots"></slot>
   </div>

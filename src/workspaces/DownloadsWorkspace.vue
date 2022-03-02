@@ -65,7 +65,7 @@
         <div class="btn-group-vertical btn-group-sm float-right">
           <div style="display: inherit;flex-direction: column;" data-intercom="dataReports" data-tour="dataReports">
             <a
-              id="2021-white-paper-button"
+              id="white-paper-button"
               @click="download2022WhitePaper()"
               class="btn btn-primary m-1 btn-width white-link"
             >
@@ -238,11 +238,27 @@ export default class DownloadsWorkspace extends Vue {
     border-color: #009FDF;
     background-color: #009FDF;
   }
+  #ue4-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #white-paper-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
   #sdk-button:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
   }
   #docs-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
+  #ue4-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
+  #white-paper-button:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
   }
