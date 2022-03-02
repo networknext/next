@@ -147,7 +147,7 @@ bool FNetworkNextSocketClient::SendTo(const uint8* Data, int32 Count, int32& Byt
     return true;
 }
 
-void FNetworkNextSocketClient::OnPacketReceived(next_client_t* client, void* context, const uint8_t* packet_data, int packet_bytes)
+void FNetworkNextSocketClient::OnPacketReceived(next_client_t* client, void* context, const next_address_t * from, const uint8_t* packet_data, int packet_bytes)
 {
     FNetworkNextSocketClient* self = (FNetworkNextSocketClient*)context;
 
