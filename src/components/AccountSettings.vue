@@ -426,11 +426,19 @@ export default class AccountSettings extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
-  #account-settings-button {
+  #account-details-button {
     border-color: #009FDF;
     background-color: #009FDF;
   }
-  #account-settings-button:hover {
+  #account-details-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
+  #company-details-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #company-details-button:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
   }
