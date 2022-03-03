@@ -2614,8 +2614,7 @@ namespace NetworkNext {
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_autodetected_datacenter", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		[return: MarshalAs(UnmanagedType.LPStr)]
-		private static extern string next_server_autodetected_datacenter(IntPtr server);
+		private static extern IntPtr next_server_autodetected_datacenter(IntPtr server);
 
 		/**
 		* <summary>
@@ -2636,7 +2635,7 @@ namespace NetworkNext {
 		*/
 		public static string NextServerAutodetectedDatacenter(IntPtr server)
 		{
-			return next_server_autodetected_datacenter(server);
+			return Marshal.PtrToStringAnsi(next_server_autodetected_datacenter(server));
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_event", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2655,7 +2654,6 @@ namespace NetworkNext {
 		* <param name="serverEvents">the bitfield of events that just triggered for the session</param>
 		* <example>
 		* <code>
-		*	[Flags]
 		*	public enum GameEvents : ulong
 		*	{
 		*		Respawned = (1<<0),
@@ -2666,7 +2664,7 @@ namespace NetworkNext {
 		*		LostMatch = (1<<5),
 		*	}
 		*	
-		*	Next.NextServerEvent(server, out clientAddr, GameEvents.KnockedOut | GameEvents.LostMatch);
+		*	Next.NextServerEvent(server, clientAddrPtr, (ulong)(GameEvents.KnockedOut) | (ulong)(GameEvents.LostMatch));
 		* </code>
 		* </example>
 		*/
