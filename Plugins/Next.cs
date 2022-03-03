@@ -174,6 +174,12 @@ namespace NetworkNext {
 
 		#region Constants defintion
 
+		public enum NEXT_BOOL : int
+		{
+			NEXT_FALSE = 0,
+			NEXT_TRUE = 1,
+		}
+
 		public const int NEXT_OK = 0;
 		public const int NEXT_ERROR = -1;
 
@@ -286,7 +292,37 @@ namespace NetworkNext {
 		*/ 
 		public static ClientStats GetNextClientStatsFromPointer(IntPtr clientStatsPointer)
 		{
-			return (ClientStats)Marshal.PtrToStructure(clientStatsPointer, typeof(ClientStats));
+			ClientStatsInternal internalStats = (ClientStatsInternal)Marshal.PtrToStructure(clientStatsPointer, typeof(ClientStatsInternal));
+			ClientStats stats = new ClientStats();
+			stats.PlatformID = internalStats.PlatformID;
+			stats.ConnectionType = internalStats.ConnectionType;
+			stats.Next = internalStats.Next == NEXT_BOOL.NEXT_TRUE;
+			stats.Upgraded = internalStats.Upgraded == NEXT_BOOL.NEXT_TRUE;
+			stats.Committed = internalStats.Committed == NEXT_BOOL.NEXT_TRUE;
+			stats.Multipath = internalStats.Multipath == NEXT_BOOL.NEXT_TRUE;
+			stats.Reported = internalStats.Reported == NEXT_BOOL.NEXT_TRUE;
+			stats.FallbackToDirect = internalStats.FallbackToDirect == NEXT_BOOL.NEXT_TRUE;
+			stats.HighFrequencyPings = internalStats.HighFrequencyPings == NEXT_BOOL.NEXT_TRUE;
+			stats.DirectMinRTT = internalStats.DirectMinRTT;
+			stats.DirectMinRTT = internalStats.DirectMaxRTT;
+			stats.DirectPrimeRTT = internalStats.DirectPrimeRTT;
+			stats.DirectJitter = internalStats.DirectJitter;
+			stats.DirectPacketLoss = internalStats.DirectPacketLoss;
+			stats.NextRTT = internalStats.NextRTT;
+			stats.NextJitter = internalStats.NextJitter;
+			stats.NextPacketLoss = internalStats.NextPacketLoss;
+			stats.NextKbpsUp = internalStats.NextKbpsUp;
+			stats.NextKbpsDown = internalStats.NextKbpsDown;
+			stats.PacketsSentClientToServer = internalStats.PacketsSentClientToServer;
+			stats.PacketsSentServerToClient = internalStats.PacketsSentServerToClient;
+			stats.PacketsLostClientToServer = internalStats.PacketsLostClientToServer;
+			stats.PacketsLostServerToClient = internalStats.PacketsLostServerToClient;
+			stats.PacketsOutOfOrderClientToServer = internalStats.PacketsOutOfOrderClientToServer;
+			stats.PacketsOutOfOrderServerToClient = internalStats.PacketsOutOfOrderServerToClient;
+			stats.JitterClientToServer = internalStats.JitterClientToServer;
+			stats.JitterServerToClient = internalStats.JitterServerToClient;
+
+			return stats;
 		}
 
 		#endregion // #region Utility functions
@@ -645,7 +681,7 @@ namespace NetworkNext {
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_quiet", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		private static extern void next_quiet(bool flag);
+		private static extern void next_quiet(NEXT_BOOL flag);
 
 		/**
 		* <summary>
@@ -659,7 +695,14 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static void NextQuiet(bool flag) {
-			Next.next_quiet(flag);
+			if (flag)
+			{
+				Next.next_quiet(NEXT_BOOL.NEXT_TRUE);
+			}
+			else
+			{
+				Next.next_quiet(NEXT_BOOL.NEXT_FALSE);
+			}
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_log_level", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -910,7 +953,7 @@ namespace NetworkNext {
 		* </code>
 		* </example>
 		*/
-		public static string NextUserIDString(ulong userID, int capacity) {
+		public static string NextUserIDString(ulong userID, int capacity = 16) {
 			StringBuilder buffer = new StringBuilder(capacity);
 			Next.next_user_id_string(userID, buffer);
 			return buffer.ToString();
@@ -1041,7 +1084,7 @@ namespace NetworkNext {
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_address_equal", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		private static extern bool next_address_equal(ref NextAddress a, ref NextAddress b);
+		private static extern NEXT_BOOL next_address_equal(ref NextAddress a, ref NextAddress b);
 
 		/**
 		* <summary>
@@ -1062,7 +1105,8 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static bool NextAddressEqual(ref NextAddress a, ref NextAddress b) {
-			return Next.next_address_equal(ref a, ref b);
+			NEXT_BOOL equal = Next.next_address_equal(ref a, ref b);
+			return equal == NEXT_BOOL.NEXT_TRUE;
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_address_anonymize", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1135,20 +1179,50 @@ namespace NetworkNext {
 		{
 			public int PlatformID;
 			public int ConnectionType;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool Next;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool Upgraded;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool Committed;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool Multipath;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool Reported;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool FallbackToDirect;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool HighFrequencyPings;
+			public float DirectMinRTT;
+			public float DirectMaxRTT;
+			public float DirectPrimeRTT;
+			public float DirectJitter;
+			public float DirectPacketLoss;
+			public float NextRTT;
+			public float NextJitter;
+			public float NextPacketLoss;
+			public float NextKbpsUp;
+			public float NextKbpsDown;
+			public ulong PacketsSentClientToServer;
+			public ulong PacketsSentServerToClient;
+			public ulong PacketsLostClientToServer;
+			public ulong PacketsLostServerToClient;
+			public ulong PacketsOutOfOrderClientToServer;
+			public ulong PacketsOutOfOrderServerToClient;
+			public float JitterClientToServer;
+			public float JitterServerToClient;
+		}
+
+		/**
+		* <summary>
+		*	Internal version of <see cref="ClientStats"/> to handle <see cref="NEXT_BOOL"/>.
+		* </summary>
+		*/
+		[StructLayout (LayoutKind.Sequential)]
+		private struct ClientStatsInternal
+		{
+			public int PlatformID;
+			public int ConnectionType;
+			public NEXT_BOOL Next;
+			public NEXT_BOOL Upgraded;
+			public NEXT_BOOL Committed;
+			public NEXT_BOOL Multipath;
+			public NEXT_BOOL Reported;
+			public NEXT_BOOL FallbackToDirect;
+			public NEXT_BOOL HighFrequencyPings;
 			public float DirectMinRTT;
 			public float DirectMaxRTT;
 			public float DirectPrimeRTT;
@@ -1312,7 +1386,7 @@ namespace NetworkNext {
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_is_session_open", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		private static extern bool next_client_is_session_open(IntPtr client);
+		private static extern NEXT_BOOL next_client_is_session_open(IntPtr client);
 
 		/**
 		* <summary>
@@ -1329,7 +1403,8 @@ namespace NetworkNext {
 		*/
 		public static bool NextClientIsSessionOpen(IntPtr client)
 		{
-			return Next.next_client_is_session_open(client);
+			NEXT_BOOL open = Next.next_client_is_session_open(client);
+			return open == NEXT_BOOL.NEXT_TRUE;
 		}
 		
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_state", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1773,16 +1848,52 @@ namespace NetworkNext {
 			public ulong UserHash;
 			public int PlatformID;
 			public int ConnectionType;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool Next;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool Committed;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool Multipath;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool Reported;
-			[MarshalAs(UnmanagedType.U1)]
 			public bool FallbackToDirect;
+			public float DirectMinRTT;
+			public float DirectMaxRTT;
+			public float DirectPrimeRTT;
+			public float DirectJitter;
+			public float DirectPacketLoss;
+			public float NextRTT;
+			public float NextJitter;
+			public float NextPacketLoss;
+			public float NextKbpsUp;
+			public float NextKbpsDown;
+			public ulong PacketsSentClientToServer;
+			public ulong PacketsSentServerToClient;
+			public ulong PacketsLostClientToServer;
+			public ulong PacketsLostServerToClient;
+			public ulong PacketsOutOfOrderClientToServer;
+			public ulong PacketsOutOfOrderServerToClient;
+			public float JitterClientToServer;
+			public float JitterServerToClient;
+			public int NumTags;
+			[MarshalAs(UnmanagedType.ByValArray, SizeConst = NEXT_MAX_TAGS)]
+			public ulong[] Tags; 
+		}
+
+		/**
+		* <summary>
+		*	Internal version of <see cref="ServerStats"/> to handle <see cref="NEXT_BOOL"/>.
+		* </summary>
+		*/
+		[StructLayout (LayoutKind.Sequential)]
+		private struct ServerStatsInternal
+		{
+			public NextAddress Address;
+			public ulong SessionID;
+			public ulong UserHash;
+			public int PlatformID;
+			public int ConnectionType;
+			public NEXT_BOOL Next;
+			public NEXT_BOOL Committed;
+			public NEXT_BOOL Multipath;
+			public NEXT_BOOL Reported;
+			public NEXT_BOOL FallbackToDirect;
 			public float DirectMinRTT;
 			public float DirectMaxRTT;
 			public float DirectPrimeRTT;
@@ -2136,7 +2247,7 @@ namespace NetworkNext {
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_session_upgraded", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		private static extern bool next_server_session_upgraded(IntPtr server, IntPtr addressPtr);
+		private static extern NEXT_BOOL next_server_session_upgraded(IntPtr server, IntPtr addressPtr);
 
 		/**
 		* <summary>
@@ -2154,7 +2265,8 @@ namespace NetworkNext {
 		*/
 		public static bool NextServerSessionUpgraded(IntPtr server, IntPtr addressPtr)
 		{
-			return Next.next_server_session_upgraded(server, addressPtr);
+			NEXT_BOOL upgraded = Next.next_server_session_upgraded(server, addressPtr);
+			return upgraded == NEXT_BOOL.NEXT_TRUE;
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_send_packet", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2236,7 +2348,7 @@ namespace NetworkNext {
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_stats", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		private static extern void next_server_stats(IntPtr server, IntPtr addressPtr, out ServerStats stats);
+		private static extern NEXT_BOOL next_server_stats(IntPtr server, IntPtr addressPtr, out ServerStatsInternal stats);
 
 		/**
 		* <summary>
@@ -2257,7 +2369,11 @@ namespace NetworkNext {
 		*	
 		*	// Get the stats for this address
 		*	Next.ServerStats stats;
-		*	Next.NextServerStats(serverPtr, addrPtr, out stats);
+		*	if (!Next.NextServerStats(serverPtr, addrPtr, out stats))
+		*	{
+		*		Next.NextPrintf(Next.NEXT_LOG_LEVEL_DEBUG, "server does not contain a session for the provided address");
+		*		return;
+		*	}
 		*	
 		*	// Release memory for the address pointer
 		*	Marshal.FreeHGlobal(addrPtr);
@@ -2391,13 +2507,52 @@ namespace NetworkNext {
 		* </code>
 		* </example
 		*/
-		public static void NextServerStats(IntPtr server, IntPtr addressPtr, out ServerStats stats)
+		public static bool NextServerStats(IntPtr server, IntPtr addressPtr, out ServerStats stats)
 		{
-			Next.next_server_stats(server, addressPtr, out stats);
+			stats = new ServerStats();
+			ServerStatsInternal internalStats;
+			NEXT_BOOL sessionExists = Next.next_server_stats(server, addressPtr, out internalStats);
+			if (sessionExists == NEXT_BOOL.NEXT_FALSE)
+			{
+				return false;
+			}
+
+			stats.Address = internalStats.Address;
+			stats.SessionID = internalStats.SessionID;
+			stats.UserHash = internalStats.UserHash;
+			stats.PlatformID = internalStats.PlatformID;
+			stats.ConnectionType = internalStats.ConnectionType;
+			stats.Next = internalStats.Next == NEXT_BOOL.NEXT_TRUE;
+			stats.Committed = internalStats.Committed == NEXT_BOOL.NEXT_TRUE;
+			stats.Multipath = internalStats.Multipath == NEXT_BOOL.NEXT_TRUE;
+			stats.Reported = internalStats.Reported == NEXT_BOOL.NEXT_TRUE;
+			stats.FallbackToDirect = internalStats.FallbackToDirect == NEXT_BOOL.NEXT_TRUE;
+			stats.DirectMinRTT = internalStats.DirectMinRTT;
+			stats.DirectMinRTT = internalStats.DirectMaxRTT;
+			stats.DirectPrimeRTT = internalStats.DirectPrimeRTT;
+			stats.DirectJitter = internalStats.DirectJitter;
+			stats.DirectPacketLoss = internalStats.DirectPacketLoss;
+			stats.NextRTT = internalStats.NextRTT;
+			stats.NextJitter = internalStats.NextJitter;
+			stats.NextPacketLoss = internalStats.NextPacketLoss;
+			stats.NextKbpsUp = internalStats.NextKbpsUp;
+			stats.NextKbpsDown = internalStats.NextKbpsDown;
+			stats.PacketsSentClientToServer = internalStats.PacketsSentClientToServer;
+			stats.PacketsSentServerToClient = internalStats.PacketsSentServerToClient;
+			stats.PacketsLostClientToServer = internalStats.PacketsLostClientToServer;
+			stats.PacketsLostServerToClient = internalStats.PacketsLostServerToClient;
+			stats.PacketsOutOfOrderClientToServer = internalStats.PacketsOutOfOrderClientToServer;
+			stats.PacketsOutOfOrderServerToClient = internalStats.PacketsOutOfOrderServerToClient;
+			stats.JitterClientToServer = internalStats.JitterClientToServer;
+			stats.JitterServerToClient = internalStats.JitterServerToClient;
+			stats.NumTags = internalStats.NumTags;
+			stats.Tags = internalStats.Tags;
+
+			return true;			
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_autodetect_finished", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		private static extern bool next_server_autodetect_finished(IntPtr server);
+		private static extern NEXT_BOOL next_server_autodetect_finished(IntPtr server);
 
 		/**
 		* <summary>
@@ -2414,7 +2569,8 @@ namespace NetworkNext {
 		*/
 		public static bool NextServerAutodetectFinished(IntPtr server)
 		{
-			return Next.next_server_autodetect_finished(server);
+			NEXT_BOOL autodetectFinished = Next.next_server_autodetect_finished(server);
+			return autodetectFinished == NEXT_BOOL.NEXT_TRUE;
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_autodetected_datacenter", CharSet = CharSet.Ansi, ExactSpelling = true)]
