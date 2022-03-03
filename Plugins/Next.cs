@@ -361,6 +361,27 @@ namespace NetworkNext {
 			public bool DisableNetworkNext;
 		}
 
+		/**
+		* <summary>
+		*	Internal version of <see cref="NextConfig"/> to handle <see cref="NEXT_BOOL"/>.
+		* </summary>
+		*/
+		[StructLayout (LayoutKind.Sequential, CharSet=CharSet.Ansi)]
+		private struct NextConfigInternal
+		{
+			[MarshalAs(UnmanagedType.ByValTStr, SizeConst = NEXT_MAX_ADDRESS_STRING_LENGTH)]
+			public string ServerBackendHostname;
+			[MarshalAs(UnmanagedType.ByValTStr, SizeConst = NEXT_MAX_ADDRESS_STRING_LENGTH)]
+			public string PingBackendHostname;
+			[MarshalAs(UnmanagedType.ByValTStr, SizeConst = NEXT_MAX_ADDRESS_STRING_LENGTH)]
+			public string CustomerPublicKey;
+			[MarshalAs(UnmanagedType.ByValTStr, SizeConst = NEXT_MAX_ADDRESS_STRING_LENGTH)]
+			public string CustomerPrivateKey;
+			public int SocketSendBufferSize;
+			public int SocketReceiveBufferSize;
+			public NEXT_BOOL DisableNetworkNext;
+		}
+
 		#endregion // #region NextConfig definition
 
 		// Network Next global functions
@@ -368,7 +389,7 @@ namespace NetworkNext {
 		#region Global functions
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_default_config")]
-		private static extern int next_default_config(out NextConfig config);
+		private static extern void next_default_config(out NextConfigInternal config);
 
 		/**
 		* <summary>
@@ -433,11 +454,20 @@ namespace NetworkNext {
 		*/
 		public static void NextDefaultConfig(out NextConfig config)
 		{
-			Next.next_default_config(out config);
+			NextConfigInternal internalConfig;
+			next_default_config(out internalConfig);
+
+			config = new NextConfig();
+			config.ServerBackendHostname = internalConfig.ServerBackendHostname;
+			config.CustomerPublicKey = internalConfig.CustomerPublicKey;
+			config.CustomerPrivateKey = internalConfig.CustomerPrivateKey;
+			config.SocketSendBufferSize = internalConfig.SocketSendBufferSize;
+			config.SocketReceiveBufferSize = internalConfig.SocketReceiveBufferSize;
+			config.DisableNetworkNext = internalConfig.DisableNetworkNext == NEXT_BOOL.NEXT_TRUE;
 		}
 		
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_init", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		private static extern int next_init(IntPtr ctxPtr, ref NextConfig config);
+		private static extern int next_init(IntPtr ctxPtr, ref NextConfigInternal config);
 
 		/**
 		* <summary>
@@ -508,7 +538,18 @@ namespace NetworkNext {
 				config.SocketReceiveBufferSize = NEXT_DEFAULT_SOCKET_RECEIVE_BUFFER_SIZE;
 			}
 
-			return next_init(ctxPtr, ref config);
+			NextConfigInternal internalConfig = new NextConfigInternal();
+			internalConfig.ServerBackendHostname = config.ServerBackendHostname;
+			internalConfig.CustomerPublicKey = config.CustomerPublicKey;
+			internalConfig.CustomerPrivateKey = config.CustomerPrivateKey;
+			internalConfig.SocketSendBufferSize = config.SocketSendBufferSize;
+			internalConfig.SocketReceiveBufferSize = config.SocketReceiveBufferSize;
+			if (config.DisableNetworkNext)
+			{
+				internalConfig.DisableNetworkNext = NEXT_BOOL.NEXT_TRUE;
+			}
+
+			return next_init(ctxPtr, ref internalConfig);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_term")]
@@ -529,7 +570,7 @@ namespace NetworkNext {
 		*/
 		public static void NextTerm()
 		{
-			Next.next_term();
+			next_term();
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_time", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -552,7 +593,7 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static double NextTime() {
-			return Next.next_time();
+			return next_time();
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_sleep", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -576,7 +617,7 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static void NextSleep(double timeSeconds) {
-			Next.next_sleep(timeSeconds);
+			next_sleep(timeSeconds);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_printf", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -640,7 +681,7 @@ namespace NetworkNext {
 				sb.AppendFormat("{0} ", o);
 			}
 
-			Next.next_printf(level, sb.ToString());
+			next_printf(level, sb.ToString());
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "default_assert_function", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -675,7 +716,7 @@ namespace NetworkNext {
 				else if (!condition)
 				{
 					// Use default assert function
-					Next.default_assert_function(condition.ToString(), function, file, line);
+					default_assert_function(condition.ToString(), function, file, line);
 				}
 			#endif // #if UNITY_ASSERTIONS
 		}
@@ -697,11 +738,11 @@ namespace NetworkNext {
 		public static void NextQuiet(bool flag) {
 			if (flag)
 			{
-				Next.next_quiet(NEXT_BOOL.NEXT_TRUE);
+				next_quiet(NEXT_BOOL.NEXT_TRUE);
 			}
 			else
 			{
-				Next.next_quiet(NEXT_BOOL.NEXT_FALSE);
+				next_quiet(NEXT_BOOL.NEXT_FALSE);
 			}
 		}
 
@@ -762,7 +803,7 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static void NextLogLevel(int level) {
-			Next.next_log_level(level);
+			next_log_level(level);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_log_function", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -838,7 +879,7 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static void NextLogFunction(NextLogFunction function) {
-			Next.next_log_function(function);
+			next_log_function(function);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_assert_function", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -875,7 +916,7 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static void NextAssertFunction(NextAssertFunction function) {
-			Next.next_assert_function(function);
+			next_assert_function(function);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_allocator", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -931,7 +972,7 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static void NextAllocator(NextMallocFunction mallocFunction, NextFreeFunction freeFunction) {
-			Next.next_allocator(mallocFunction, freeFunction);
+			next_allocator(mallocFunction, freeFunction);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_user_id_string", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -955,7 +996,7 @@ namespace NetworkNext {
 		*/
 		public static string NextUserIDString(ulong userID, int capacity = 16) {
 			StringBuilder buffer = new StringBuilder(capacity);
-			Next.next_user_id_string(userID, buffer);
+			next_user_id_string(userID, buffer);
 			return buffer.ToString();
 		}
 
@@ -1052,7 +1093,7 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static int NextAddressParse(out NextAddress address, string addressString) {
-			return Next.next_address_parse(out address, addressString);
+			return next_address_parse(out address, addressString);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_address_to_string", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1105,7 +1146,7 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static bool NextAddressEqual(ref NextAddress a, ref NextAddress b) {
-			NEXT_BOOL equal = Next.next_address_equal(ref a, ref b);
+			NEXT_BOOL equal = next_address_equal(ref a, ref b);
 			return equal == NEXT_BOOL.NEXT_TRUE;
 		}
 
@@ -1127,7 +1168,7 @@ namespace NetworkNext {
 		* </example>
 		*/
 		public static void NextAddressAnonymize(ref NextAddress address) {
-			Next.next_address_anonymize(ref address);
+			next_address_anonymize(ref address);
 		}
 
 		#endregion // #region NextAddress functions
@@ -1292,7 +1333,7 @@ namespace NetworkNext {
 		*/
 		public static IntPtr NextClientCreate(IntPtr ctxPtr, string bindAddress, NextClientPacketReceivedCallback packetReceivedCallback, NextWakeupCallback wakeupCallback)
 		{
-			return Next.next_client_create(ctxPtr, bindAddress, packetReceivedCallback, wakeupCallback);
+			return next_client_create(ctxPtr, bindAddress, packetReceivedCallback, wakeupCallback);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_destroy", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1311,7 +1352,7 @@ namespace NetworkNext {
 		*/
 		public static void NextClientDestroy(IntPtr client)
 		{
-			Next.next_client_destroy(client);
+			next_client_destroy(client);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_port", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1343,7 +1384,7 @@ namespace NetworkNext {
 		*/
 		public static ushort NextClientPort(IntPtr client)
 		{
-			return Next.next_client_port(client);
+			return next_client_port(client);
 		}
 		
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_open_session", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1363,7 +1404,7 @@ namespace NetworkNext {
 		*/
 		public static void NextClientOpenSession(IntPtr client, string serverAddress)
 		{
-			Next.next_client_open_session(client, serverAddress);
+			next_client_open_session(client, serverAddress);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_close_session", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1382,7 +1423,7 @@ namespace NetworkNext {
 		*/
 		public static void NextClientCloseSession(IntPtr client)
 		{
-			Next.next_client_close_session(client);
+			next_client_close_session(client);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_is_session_open", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1403,7 +1444,7 @@ namespace NetworkNext {
 		*/
 		public static bool NextClientIsSessionOpen(IntPtr client)
 		{
-			NEXT_BOOL open = Next.next_client_is_session_open(client);
+			NEXT_BOOL open = next_client_is_session_open(client);
 			return open == NEXT_BOOL.NEXT_TRUE;
 		}
 		
@@ -1473,7 +1514,7 @@ namespace NetworkNext {
 		*/
 		public static int NextClientState(IntPtr client)
 		{
-			return Next.next_client_state(client);
+			return next_client_state(client);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_update", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1499,7 +1540,7 @@ namespace NetworkNext {
 		*/
 		public static void NextClientUpdate(IntPtr client)
 		{
-			Next.next_client_update(client);
+			next_client_update(client);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_send_packet", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1532,7 +1573,7 @@ namespace NetworkNext {
 		*/
 		public static void NextClientSendPacket(IntPtr client, byte[] packetData, int packetBytes)
 		{
-			Next.next_client_send_packet(client, packetData, packetBytes);
+			next_client_send_packet(client, packetData, packetBytes);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_send_packet_direct", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1566,7 +1607,7 @@ namespace NetworkNext {
 		*/
 		public static void NextClientSendPacketDirect(IntPtr client, byte[] packetData, int packetBytes)
 		{
-			Next.next_client_send_packet_direct(client, packetData, packetBytes);
+			next_client_send_packet_direct(client, packetData, packetBytes);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_report_session", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1589,7 +1630,7 @@ namespace NetworkNext {
 		*/
 		public static void NextClientReportSession(IntPtr client)
 		{
-			Next.next_client_report_session(client);
+			next_client_report_session(client);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_session_id", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1615,7 +1656,7 @@ namespace NetworkNext {
 		*/
 		public static ulong NextClientSessionID(IntPtr client)
 		{
-			return Next.next_client_session_id(client);
+			return next_client_session_id(client);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_stats", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1770,8 +1811,8 @@ namespace NetworkNext {
 		*/
 		public static ClientStats NextClientStats(IntPtr client)
 		{	
-			IntPtr clientStatsPtr = Next.next_client_stats(client);
-			return Next.GetNextClientStatsFromPointer(clientStatsPtr);
+			IntPtr clientStatsPtr = next_client_stats(client);
+			return GetNextClientStatsFromPointer(clientStatsPtr);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_client_server_address", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1786,8 +1827,8 @@ namespace NetworkNext {
 		*/
 		public static NextAddress NextClientServerAddress(IntPtr client)
 		{	
-			IntPtr serverAddrPtr = Next.next_client_server_address(client);
-			return Next.GetNextAddressFromPointer(serverAddrPtr);
+			IntPtr serverAddrPtr = next_client_server_address(client);
+			return GetNextAddressFromPointer(serverAddrPtr);
 		}
 
 		#endregion #region NextClient functions
@@ -1969,7 +2010,7 @@ namespace NetworkNext {
 		*/
 		public static IntPtr NextServerCreate(IntPtr ctxPtr, string serverAddress, string bindAddress, string datacenter, NextServerPacketReceivedCallback packetReceivedCallback, NextWakeupCallback wakeupCallback)
 		{
-			return Next.next_server_create(ctxPtr, serverAddress, bindAddress, datacenter, packetReceivedCallback, wakeupCallback);
+			return next_server_create(ctxPtr, serverAddress, bindAddress, datacenter, packetReceivedCallback, wakeupCallback);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_destroy", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -1988,7 +2029,7 @@ namespace NetworkNext {
 		*/
 		public static void NextServerDestroy(IntPtr server)
 		{
-			Next.next_server_destroy(server);
+			next_server_destroy(server);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_port", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2017,11 +2058,11 @@ namespace NetworkNext {
 		*/
 		public static ushort NextServerPort(IntPtr server)
 		{
-			return Next.next_server_port(server);
+			return next_server_port(server);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_address", CharSet = CharSet.Ansi, ExactSpelling = true)]
-		private static extern IntPtr next_server_address(IntPtr server);
+		private static extern NextAddress next_server_address(IntPtr server);
 
 		/**
 		* <summary>
@@ -2046,8 +2087,7 @@ namespace NetworkNext {
 		*/
 		public static NextAddress NextServerAddress(IntPtr server)
 		{
-			IntPtr serverAddrPtr = Next.next_server_address(server);
-			return Next.GetNextAddressFromPointer(serverAddrPtr);
+			return next_server_address(server);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_state", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2128,7 +2168,7 @@ namespace NetworkNext {
 		*/
 		public static int NextServerState(IntPtr server)
 		{
-			return Next.next_server_state(server);
+			return next_server_state(server);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_update", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2154,7 +2194,7 @@ namespace NetworkNext {
 		*/
 		public static void NextServerUpdate(IntPtr server)
 		{
-			Next.next_server_update(server);
+			next_server_update(server);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_upgrade_session", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2190,7 +2230,7 @@ namespace NetworkNext {
 		*/
 		public static ulong NextServerUpgradeSession(IntPtr server, IntPtr addressPtr, string userID)
 		{
-			return Next.next_server_upgrade_session(server, addressPtr, userID);
+			return next_server_upgrade_session(server, addressPtr, userID);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_tag_session", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2211,7 +2251,7 @@ namespace NetworkNext {
 		*/
 		public static void NextServerTagSession(IntPtr server, IntPtr addressPtr, string tag)
 		{
-			Next.next_server_tag_session(server, addressPtr, tag);
+			next_server_tag_session(server, addressPtr, tag);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_tag_session_multiple", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2239,11 +2279,11 @@ namespace NetworkNext {
 				for (int i = 0; i < NEXT_MAX_TAGS; i++) {
 					maxTags[i] = tags[i];
 				}
-				Next.next_server_tag_session_multiple(server, addressPtr, maxTags, NEXT_MAX_TAGS);
+				next_server_tag_session_multiple(server, addressPtr, maxTags, NEXT_MAX_TAGS);
 				return;
 			}
 
-			Next.next_server_tag_session_multiple(server, addressPtr, tags, numTags);
+			next_server_tag_session_multiple(server, addressPtr, tags, numTags);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_session_upgraded", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2265,7 +2305,7 @@ namespace NetworkNext {
 		*/
 		public static bool NextServerSessionUpgraded(IntPtr server, IntPtr addressPtr)
 		{
-			NEXT_BOOL upgraded = Next.next_server_session_upgraded(server, addressPtr);
+			NEXT_BOOL upgraded = next_server_session_upgraded(server, addressPtr);
 			return upgraded == NEXT_BOOL.NEXT_TRUE;
 		}
 
@@ -2305,7 +2345,7 @@ namespace NetworkNext {
 		*/
 		public static void NextServerSendPacket(IntPtr server, IntPtr toAddress, byte[] packetData, int packetBytes)
 		{
-			Next.next_server_send_packet(server, toAddress, packetData, packetBytes);
+			next_server_send_packet(server, toAddress, packetData, packetBytes);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_send_packet_direct", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2344,7 +2384,7 @@ namespace NetworkNext {
 		*/
 		public static void NextServerSendPacketDirect(IntPtr server, IntPtr toAddress, byte[] packetData, int packetBytes)
 		{
-			Next.next_server_send_packet_direct(server, toAddress, packetData, packetBytes);
+			next_server_send_packet_direct(server, toAddress, packetData, packetBytes);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_stats", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2511,7 +2551,7 @@ namespace NetworkNext {
 		{
 			stats = new ServerStats();
 			ServerStatsInternal internalStats;
-			NEXT_BOOL sessionExists = Next.next_server_stats(server, addressPtr, out internalStats);
+			NEXT_BOOL sessionExists = next_server_stats(server, addressPtr, out internalStats);
 			if (sessionExists == NEXT_BOOL.NEXT_FALSE)
 			{
 				return false;
@@ -2569,7 +2609,7 @@ namespace NetworkNext {
 		*/
 		public static bool NextServerAutodetectFinished(IntPtr server)
 		{
-			NEXT_BOOL autodetectFinished = Next.next_server_autodetect_finished(server);
+			NEXT_BOOL autodetectFinished = next_server_autodetect_finished(server);
 			return autodetectFinished == NEXT_BOOL.NEXT_TRUE;
 		}
 
@@ -2596,7 +2636,7 @@ namespace NetworkNext {
 		*/
 		public static string NextServerAutodetectedDatacenter(IntPtr server)
 		{
-			return Next.next_server_autodetected_datacenter(server);
+			return next_server_autodetected_datacenter(server);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_event", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2632,7 +2672,7 @@ namespace NetworkNext {
 		*/
 		public static void NextServerEvent(IntPtr server, IntPtr addressPtr, ulong serverEvents)
 		{
-			Next.next_server_event(server, addressPtr, serverEvents);
+			next_server_event(server, addressPtr, serverEvents);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_match", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2668,11 +2708,11 @@ namespace NetworkNext {
 				for (int i = 0; i < NEXT_MAX_MATCH_VALUES; i++) {
 					maxMatchValues[i] = matchValues[i];
 				}
-				Next.next_server_match(server, addressPtr, matchID, maxMatchValues, NEXT_MAX_MATCH_VALUES);
+				next_server_match(server, addressPtr, matchID, maxMatchValues, NEXT_MAX_MATCH_VALUES);
 				return;
 			}
 
-			Next.next_server_match(server, addressPtr, matchID, matchValues, NEXT_MAX_MATCH_VALUES);
+			next_server_match(server, addressPtr, matchID, matchValues, NEXT_MAX_MATCH_VALUES);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_flush", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2696,7 +2736,7 @@ namespace NetworkNext {
 		*/
 		public static void NextServerFlush(IntPtr server)
 		{
-			Next.next_server_flush(server);
+			next_server_flush(server);
 		}
 
 		#endregion // #region NextServer functions
@@ -2748,7 +2788,7 @@ namespace NetworkNext {
 		*/
 		public static int NextMutexCreate(out NextMutex mutex)
 		{
-			return Next.next_mutex_create(out mutex);
+			return next_mutex_create(out mutex);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_mutex_destroy", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2771,7 +2811,7 @@ namespace NetworkNext {
 		*/
 		public static void NextMutexDestroy(ref NextMutex mutex)
 		{
-			Next.next_mutex_destroy(ref mutex);
+			next_mutex_destroy(ref mutex);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_mutex_acquire", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2796,7 +2836,7 @@ namespace NetworkNext {
 		*/
 		public static void NextMutexAcquire(ref NextMutex mutex)
 		{
-			Next.next_mutex_acquire(ref mutex);
+			next_mutex_acquire(ref mutex);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_mutex_release", CharSet = CharSet.Ansi, ExactSpelling = true)]
@@ -2827,7 +2867,7 @@ namespace NetworkNext {
 		*/
 		public static void NextMutexRelease(ref NextMutex mutex)
 		{
-			Next.next_mutex_release(ref mutex);
+			next_mutex_release(ref mutex);
 		}
 
 		#endregion // #region NextMutex functions
@@ -2848,7 +2888,7 @@ namespace NetworkNext {
 		*/
 		public static void NextTest()
 		{
-			Next.next_test();
+			next_test();
 		}
 
 		#endregion // #region UnitTest functions
