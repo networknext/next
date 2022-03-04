@@ -2710,7 +2710,7 @@ namespace NetworkNext {
 				return;
 			}
 
-			next_server_match(server, addressPtr, matchID, matchValues, NEXT_MAX_MATCH_VALUES);
+			next_server_match(server, addressPtr, matchID, matchValues, numMatchValues);
 		}
 
 		[DllImport(dll, CallingConvention = CallingConvention.Cdecl, EntryPoint = "next_server_flush", CharSet = CharSet.Ansi, ExactSpelling = true)]
