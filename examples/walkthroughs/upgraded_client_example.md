@@ -11,7 +11,7 @@ const string customerPublicKey = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVq
 
 These include the bind address for the client socket, the server address to connect to, and the test customer public key we're using in this example. A customer public key is required to enable acceleration by Network Next.
 
-LIke in the simple client example, set up a custom logging function to view the output of the Network Next SDK in the Unity console:
+Like in the simple client example, set up a custom logging function to view the output of the Network Next SDK in the Unity console:
 ```csharp
 // Create custom logging function to output to Unity console
 [MonoPInvokeCallback(typeof(NextLogFunction))]
@@ -63,7 +63,7 @@ Next, define a function to be called when packets are received:
 ```csharp
 // Define packet receive callback function
 [MonoPInvokeCallback(typeof(NextClientPacketReceivedCallback))]
-static void ClientPacketReceived(IntPtr clientPtr, IntPtr ctxPtr, IntPtr packetDataPtr, int packetBytes)
+static void ClientPacketReceived(IntPtr clientPtr, IntPtr ctxPtr, IntPtr fromPtr, IntPtr packetDataPtr, int packetBytes)
 {
     Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("client received packet from server ({0} bytes)", packetBytes));
 }
