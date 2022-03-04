@@ -116,6 +116,9 @@ public class UpgradedServer : MonoBehaviour
 	// These actions should be done in Destroy() rather than when the application quits
 	void OnApplicationQuit()
 	{
+		// Flush the server
+		Next.NextServerFlush(server);
+
 		// Destroy the server
 		Next.NextServerDestroy(server);
 

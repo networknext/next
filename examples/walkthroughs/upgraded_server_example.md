@@ -13,7 +13,7 @@ const string customerPrivateKey = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4Z
 
 This includes the test customer private key we're using in this example. A customer private key is required on the server to enable acceleration by Network Next.
 
-LIke in the simple server example, set up a custom logging function to view the output of the Network Next SDK in the Unity console:
+Like in the simple server example, set up a custom logging function to view the output of the Network Next SDK in the Unity console:
 ```csharp
 // Create custom logging function to output to Unity console
 [MonoPInvokeCallback(typeof(NextLogFunction))]
@@ -115,8 +115,9 @@ Make sure the server gets updated every frame (best done in Unity's `Update()` l
 Next.NextServerUpdate(server);
 ```
 
-When you have finished using your server, destroy it (Unity's `Destroy()` function is a good place to do this):
+When you have finished using your server, flush and destroy it (Unity's `Destroy()` function is a good place to do this):
 ```csharp
+Next.NextServerFlush(server);
 Next.NextServerDestroy(server);
 ```
 

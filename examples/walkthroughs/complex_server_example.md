@@ -4,7 +4,7 @@ In this example we build the kitchen sink version of a server in Unity where we 
 
 We demonstrate:
 
-- Setting the network next log level
+- Setting the Network Next log level
 - Setting a custom log function
 - Setting a custom assert handler
 - Setting a custom allocator
@@ -378,8 +378,11 @@ public void ServerPacketReceived(IntPtr serverPtr, IntPtr ctxPtr, IntPtr fromPtr
 }
 ```        
 
-When you have finished using your server, destroy it and free the memory allocated for all contexts (Unity's `Destroy()` function is a good place to do this):
+When you have finished using your server, flush and destroy it and free the memory allocated for all contexts (Unity's `Destroy()` function is a good place to do this):
 ```csharp
+// Flush the server
+Next.NextServerFlush(server);
+
 // Destroy the server
 Next.NextServerDestroy(server);
 

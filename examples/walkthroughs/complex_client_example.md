@@ -3,7 +3,7 @@
 In this example we build the kitchen sink version of a client in Unity where we show off all the features :)
 
 We demonstrate:
-- Setting the network next log level
+- Setting the Network Next log level
 - Setting a custom log function
 - Setting a custom assert handler
 - Setting a custom allocator
@@ -128,7 +128,7 @@ There are three types of allocations done by the Network Next SDK:
 
 Each of these situations corresponds to what is called a "context" in the Network Next SDK. 
 
-A context is simply a custom struct that you define which is passed in to malloc and free callbacks that we call to perform allocations on behalf of the SDK. The context passed is gives you the flexibility to have a specific memory pool for Network Next (most common), or even to have a completely different allocation pool used for each client and server instance. That's what we're going to do in this example.
+A context is simply a custom struct that you define which is passed in to malloc and free callbacks that we call to perform allocations on behalf of the SDK. The context passed gives you the flexibility to have a specific memory pool for Network Next (most common), or even to have a completely different allocation pool used for each client and server instance. That's what we're going to do in this example.
 
 Let's define a base context that will be used for global allocations:
 ```csharp
@@ -155,7 +155,7 @@ Here we just put a dummy `uint` in the client context and check its value to ver
 ```csharp
 // Define packet receive callback function
 [MonoPInvokeCallback(typeof(NextClientPacketReceivedCallback))]
-static void ClientPacketReceived(IntPtr clientPtr, IntPtr ctxPtr, IntPtr packetDataPtr, int packetBytes)
+static void ClientPacketReceived(IntPtr clientPtr, IntPtr ctxPtr, IntPtr fromPtr, IntPtr packetDataPtr, int packetBytes)
 {
     // Unmarshal the context pointer into the client context to access its fields
     ClientContext ctx = (ClientContext)Marshal.PtrToStructure(ctxPtr, typeof(ClientContext));
@@ -246,7 +246,7 @@ There are four different log levels in Network Next:
 4. NEXT_LOG_LEVEL_WARN (3)
 5. NEXT_LOG_LEVEL_DEBUG (4)
 
-The default log level is NEXT_LOG_LEVEL_INFO, which shows both info and error logs. This is a good default, as these messages are infrequent. Warnings can be more frequent, and aren't important enough to be errors, so are off by default. Debug logs are incredibly spammy and should only be turned on when debugging a specific issue in the Network Next SDK.
+The default log level is NEXT_LOG_LEVEL_INFO, which shows both info and error logs. This is a good default, as these messages are infrequent. Warnings can be more frequent, and aren't important enough to be errors, so they are off by default. Debug logs are incredibly spammy and should only be turned on when debugging a specific issue in the Network Next SDK.
 
 How you handle each of these log levels in the log function callback is up to you. We just pass them in, but depending on the log level we will not call the callback unless the level of the log is <= the current log level value set.
 
@@ -393,7 +393,7 @@ ushort clientPort = Next.NextClientPort(client);
 Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, "client port is ", clientPort.ToString());
 ```        
 
-Finally, the client has been extended to print out all the useful stats you can retrieve from a network next client, once every ten seconds:
+Finally, the client has been extended to print out all the useful stats you can retrieve from a Network Next client, once every ten seconds:
 ```csharp
 // Update is called once per frame
 void Update()
@@ -422,6 +422,7 @@ void Update()
     // ...
 }
 
+// Prints out the client stats to console
 static void PrintClientStats(IntPtr client)
 {
     // ...

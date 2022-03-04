@@ -45,7 +45,7 @@ Next, define a callback function to be called when packets are received:
 ```csharp
 // Define packet receive callback function
 [MonoPInvokeCallback(typeof(NextClientPacketReceivedCallback))]
-static void ClientPacketReceived(IntPtr clientPtr, IntPtr ctxPtr, IntPtr packetDataPtr, int packetBytes)
+static void ClientPacketReceived(IntPtr clientPtr, IntPtr ctxPtr, IntPtr fromPtr, IntPtr packetDataPtr, int packetBytes)
 {
     Next.NextPrintf(Next.NEXT_LOG_LEVEL_INFO, String.Format("client received packet from server ({0} bytes)", packetBytes));
 }
