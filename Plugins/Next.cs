@@ -13,7 +13,7 @@ namespace NetworkNext {
 
 	/**
 	  * <summary>
-	  *		Callback function when a Network Next client receives a packet.
+	  * 	Callback function when a Network Next client receives a packet.
 	  * </summary>
 	  * <param name="clientPtr">the pointer to the client object.</param>
 	  * <param name="ctxPtr">the pointer to the client's context.</param>
@@ -154,9 +154,10 @@ namespace NetworkNext {
 	*	C# Wrapper class for Network Next SDK.
 	* 	Utilizes P/Invoke to call out to unmanaged C++ code.
 	*	<remarks>
-	* 		Every function in next.h is accessible, and utility functions
-	*		are provided to easily convert <see cref="IntPtr"/>s and
-	*		struct fields.
+	*		<para>
+	* 			Every exported function in next.h is accessible, and utility functions
+	*			are provided to easily convert <see cref="IntPtr"/>s and struct fields.
+	*		</para>
 	*	</remarks> 
 	* </summary>
 	*/
@@ -473,9 +474,11 @@ namespace NetworkNext {
 		* <summary>
 		*	Initializes the Network Next SDK.
 		*	<remarks>
-		*		Call this before creating a client or server.
-		*		Note that context is an IntPtr because it is user defined, and thus needs to be marshaled and unmarshaled by the user.
-		*		Reference: https://docs.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.marshal.ptrtostructure?view=net-5.0#System_Runtime_InteropServices_Marshal_PtrToStructure_System_IntPtr_System_Type_
+		*		<para>
+		*			Call this before creating a client or server.
+		*			Note that context is an IntPtr because it is user defined, and thus needs to be marshaled and unmarshaled by the user.
+		*			Reference: https://docs.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.marshal.ptrtostructure?view=net-5.0#System_Runtime_InteropServices_Marshal_PtrToStructure_System_IntPtr_System_Type_
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="ctxPtr">an optional pointer to context passed to overriden malloc and free functions for global allocations. Use <see cref="IntPtr.Zero"/> to pass in empty context</param>
@@ -627,7 +630,10 @@ namespace NetworkNext {
 		* <summary>
 		*	Log level aware printf.
 		*	<remarks>
-		*		To output logs to the Unity console, define your custom <see cref="NextLogFunction"/> callback and assign it using <see cref="NextLogFunction"/>.
+		*		<para>
+		*			To output logs to the Unity console, define your custom <see cref="NextLogFunction"/>
+		*			callback and assign it using <see cref="NextLogFunction"/>.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="level">the log level. Only logs <= the current log level are printed</param>
@@ -691,8 +697,10 @@ namespace NetworkNext {
 		* <summary>
 		*	Assert a condition.
 		*	<remarks>
-		*		This is implemented in C# because we cannot export macro functions from C++.
-		*		Asserts are only ran if the UNITY_ASSERTIONS macro is true.
+		*		<para>
+		*			This is implemented in C# because we cannot export macro functions from C++.
+		*			Asserts are only ran if the UNITY_ASSERTIONS macro is true.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="condiiton">the condition to assert</param>
@@ -726,7 +734,7 @@ namespace NetworkNext {
 
 		/**
 		* <summary>
-		*	Enable/disable network next logs entirely.
+		*	Enable/disable Nextwork Next logs entirely.
 		* </summary>
 		* <example>
 		* <code>
@@ -982,8 +990,10 @@ namespace NetworkNext {
 		* <summary>
 		*	Converts a legacy <see cref="ulong"/> user ID to a string.
 		*	<remarks>
-		*		This is the equivalent of <c>String.Format("{0:x}", userID)</c>.
-		*		Make sure the capacity is at least 16, otherwise the string will be shortened.
+		*		<para>
+		*			This is the equivalent of <c>String.Format("{0:x}", userID)</c>.
+		*			Make sure the capacity is at least 16, otherwise the string will be shortened.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="userID">the user ID to convert to a string</param>
@@ -1013,9 +1023,12 @@ namespace NetworkNext {
 		*	Next Address struct for the Network Next SDK.
 		*	This is a struct that can represent any IPv4 or IPv6 address and port.
 		*	<remarks>
-		*		It’s used when sending and receiving packets. For example, in the server packet received callback, the address of the client is passed to you via this structure.
-		*		The IPv4 and IPv6 addresses share memory to save space.
-		*		Use the <see cref="GetNextAddressIPV4"/> and <see cref="GetNextAddressIPV6"/> utility functions to get the IP.
+		*		<para>
+		*			It’s used when sending and receiving packets. For example, in the server packet received callback, 
+		*			the address of the client is passed to you via this structure.
+		*			The IPv4 and IPv6 addresses share memory to save space.
+		*			Use the <see cref="GetNextAddressIPV4"/> and <see cref="GetNextAddressIPV6"/> utility functions to get the IP.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <value <see cref="IPV4_0"/> - The first component of the IPv4 address.</value>
@@ -1297,8 +1310,10 @@ namespace NetworkNext {
 		* <summary>
 		*	Creates an instance of a client, binding a socket to the specified address and port.
 		*	<remarks>
-		*		The client is kept as a pointer because it is a complex struct to use with P/Invoke.
-		*		Functions exist to get and set any client-related properties.
+		*		<para>
+		*			The client is kept as a pointer because it is a complex struct handled by P/Invoke.
+		*			Functions exist to get and set any client-related properties.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="ctxPtr">an optional pointer to context passed to any callbacks made from the client. Pass in <see cref="IntPtr.Zero"/> if not used</param>
@@ -1362,7 +1377,10 @@ namespace NetworkNext {
 		* <summary>
 		*	Gets the port the client socket is bound to.
 		*	<remarks>
-		*		This makes it possible to look up what specific port the client is bound to when you bind to port zero and the system chooses a port.
+		*		<para>
+		*		This makes it possible to look up what specific port the client is bound
+		*		to when you bind to port zero and the system chooses a port.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="client">the client to get the port of</param>
@@ -1456,8 +1474,9 @@ namespace NetworkNext {
 		*	Gets the state the client is in.
 		* 	<remarks>
 		*		The client is initially in closed state. 
-		*		After <see cref="NextClientOpenSession"/> the client is immediately in open state on success, or error state if something went wrong while opening the session,
-		*		for example, an invalid server address was passed in.
+		*		After <see cref="NextClientOpenSession"/> the client is immediately in 
+		*		an open state on success, or error state if something went wrong while 
+		*		opening the session, for example, an invalid server address was passed in.
 		*	</remarks>
 		* </summary>
 		* <param name="client">the client pointer</param>
@@ -1550,7 +1569,11 @@ namespace NetworkNext {
 		* <summary>
 		*	Sends a packet to the server.
 		*	<remarks>
-		*		Depending on whether this player is accelerated or not, this packet will be sent direct across the public internet, or through Network Next’s network of private networks.
+		*		<para>
+		*			Depending on whether this player is accelerated or not,
+		*			this packet will be sent direct across the public internet,
+		*			or through Network Next’s network of private networks.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="client">the client pointer</param>
@@ -1583,8 +1606,12 @@ namespace NetworkNext {
 		* <summary>
 		*	Sends a packet to the server, forcing the packet to be sent across the public internet.
 		*	<remarks>
-		*		The packet will be sent unaccelerated across the public internet and will not count towards your Network Next bandwidth envelope.
-		*		This can be very useful when you need to send a burst of non-latency sensitive packets, for example, in a load screen.
+		*		<para>
+		*			The packet will be sent unaccelerated across the public internet
+		*			and will not count towards your Network Next bandwidth envelope.
+		*			This can be very useful when you need to send a burst of non-latency
+		*			sensitive packets, for example, in a load screen.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="client">the client pointer</param>
@@ -1617,8 +1644,12 @@ namespace NetworkNext {
 		* <summary>
 		*	Report the session as problematic.
 		*	<remarks>
-		*		This feature was added to support our customers who let players flag bad play sessions in their game UI.
-		*		Call this function when your players complain, and it’s sent to our backend so we can help you track down why!
+		*		<para>
+		*		This feature was added to support our customers who let players 
+		*		flag bad play sessions in their game UI. Call this function when
+		*		your players complain, and it’s sent to our backend so we can 
+		*		help you track down why!
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="client">the client pointer</param>
@@ -1640,13 +1671,17 @@ namespace NetworkNext {
 		* <summary>
 		*	Gets the client session ID.
 		*	<remarks>
-		*		A session ID uniquely identifies each session on Network Next.
-		*		Session IDs are distinct from user IDs. User IDs are unique on a per-user basis, while session IDs are unique for each call to <see cref="NextClientOpenSession"/>.
-		*		A session ID is assigned when the server upgrades the session via <see cref="NextServerUpgradeSession"/>. Until that point the session ID is 0.
+		*		<para>
+		*			A session ID uniquely identifies each session on Network Next.
+		*			Session IDs are distinct from user IDs. User IDs are unique on
+		*			a per-user basis, while session IDs are unique for each call to <see cref="NextClientOpenSession"/>.
+		*			A session ID is assigned when the server upgrades the session 
+		*			via <see cref="NextServerUpgradeSession"/>. Until that point the session ID is 0.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="client">the client pointer</param>
-		* <returns>the session id, if the client has been upgraded, otherwise 0.</returns>
+		* <returns>the session ID, if the client has been upgraded, otherwise 0.</returns>
 		* <example>
 		* <code>
 		*	ulong sessionID = Next.NextClientSessionID(client);
@@ -1971,8 +2006,10 @@ namespace NetworkNext {
 		* <summary>
 		*	Creates an instance of a server, binding a socket to the specified address and port.
 		*	<remarks>
-		*		The server is kept as a pointer because it is a complex struct to use with P/Invoke.
-		*		Functions exist to get and set any server-related properties.
+		*		<para>
+		*			The server is kept as a pointer because it is a complex struct handled by P/Invoke.
+		*			Functions exist to get and set any server-related properties.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="ctxPtr">an optional pointer to context passed to any callbacks made from the server. Pass in <see cref="IntPtr.Zero"/> if not used</param>
@@ -2097,10 +2134,15 @@ namespace NetworkNext {
 		* <summary>
 		*	Gets the state the server is in.
 		* 	<remarks>
-		*		The server is initially in the direct only state.
-		*		If a valid customer private key is setup, the server will first try to resolve the backend hostname, which is "prod.spacecats.net" by default.
-		*		Once the backend hostname is resolved, the server initializes with the backend. When everything works, the server lands in the initialized state and is ready to accelerate players.
-		*		If anything fails, the server falls back to the direct only state, and only serves up direct routes over the public internet.
+		*		<para>
+		*			The server is initially in the direct only state.
+		*			If a valid customer private key is setup, the server will first try to
+		*			resolve the backend hostname, which is "prod.spacecats.net" by default.
+		*			Once the backend hostname is resolved, the server initializes with the 
+		*			backend. When everything works, the server lands in the initialized state
+		*			and is ready to accelerate players. If anything fails, the server falls back
+		*			to the direct only state, and only serves up direct routes over the public internet.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="server">the server pointer</param>
@@ -2264,7 +2306,7 @@ namespace NetworkNext {
 		* <param name="server">the server pointer</param>
 		* <param name="addressPtr">the pointer to the <see cref="NextAddress"/> of the client to be tagged</param>
 		* <param name="tags">the tags to be applied to the client. Some ideas: "pro", "streamer" or "dev"</param>
-		* <param name="numTags">the number of tags to be applied to the client. Must be less less than or equal to NEXT_MAX_TAGS</param>
+		* <param name="numTags">the number of tags to be applied to the client. Must be less less than or equal to <see cref="NEXT_MAX_TAGS"/></param>
 		* <example>
 		* <code>
 		*	string[] tags = new string[]{"pro", "streamer"};
@@ -2316,8 +2358,12 @@ namespace NetworkNext {
 		* <summary>
 		*	Send a packet to a client.
 		* 	<remarks>
-		*		Sends a packet to a client. If the client is upgraded and accelerated by network next, the packet will be sent across our private network of networks.
-		*		Otherwise, the packet will be sent across the public internet.
+		*		<para>
+		*			Sends a packet to a client. If the client is upgraded and
+		*			accelerated by Network Next, the packet will be sent across
+		*			our private network of networks. Otherwise, the packet will
+		*			be sent across the public internet.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="server">the server pointer</param>
@@ -2355,8 +2401,11 @@ namespace NetworkNext {
 		* <summary>
 		*	Send a packet to a client, forcing the packet to be sent over the public internet.
 		* 	<remarks>
-		*		This function is useful when you need to send non-latency sensitive packets to the client, for example, during a load screen.
-		*		Packets sent via this function do not apply to your network next bandwidth envelope.
+		*		<para>
+		*			This function is useful when you need to send non-latency
+		*			sensitive packets to the client, for example, during a load screen.
+		*			Packets sent via this function do not apply to your Network Next bandwidth envelope.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="server">the server pointer</param>
@@ -2645,8 +2694,11 @@ namespace NetworkNext {
 		* <summary>
 		*	Triggers a user-defined event on a session. This event is stored alongside network performance data once every 10 seconds.
 		*	<remarks>
-		*		You can define up to 64 event flags for your game, one event per bit in the <paramref name="serverEvents"/> bitfield.
-		*		Use this function to input in-game events that may be relevant to analytics.
+		*		<para>
+		*			You can define up to 64 event flags for your game, 
+		*			one event per bit in the <paramref name="serverEvents"/> bitfield.
+		*			Use this function to input in-game events that may be relevant to analytics.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="server">the server pointer</param>
@@ -2678,19 +2730,24 @@ namespace NetworkNext {
 
 		/**
 		* <summary>
-		*	Associates a session with a match id and set of match values for that session.
+		*	Associates a session with a match ID and set of match values for that session.
 		*	<remarks>
-		*		Match id can be any unique match id you have.
-		*		Match values can include any information that you want to feed into analytics.
-		*		For example: win/loss ratio, skill, kill/death ratio, skill, time spent in matchmaker, load time in seconds.
-		*		Call this function once per-session at the beginning of each match on the server.
+		*		<para>
+		*			Match ID can be any unique match ID you have.
+		*			Match values can include any information that 
+		*			you want to feed into analytics. For example:
+		*			win/loss ratio, skill, kill/death ratio, skill,
+		*			time spent in matchmaker, load time in seconds.
+		*			Call this function once per-session at the beginning 
+		*			of each match on the server.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="server">the server pointer</param>
 		* <param name="addressPtr">the pointer to the <see cref="NextAddress"/> of the client to assign match data</param>
-		* <param name="matchID">the match id to assign to the session. Pass in any unique per-match identifier you have</param>
+		* <param name="matchID">the match ID to assign to the session. Pass in any unique per-match identifier you have</param>
 		* <param name="matchValues">the array of match values for the session</param>
-		* <param name="numMatchValues">the number of match values in the array. Must be less less than or equal to NEXT_MAX_MATCH_VALUES</param>
+		* <param name="numMatchValues">the number of match values in the array. Must be less less than or equal to <see cref="NEXT_MAX_MATCH_VALUES"/></param>
 		* <example>
 		* <code>
 		*	string matchID = "this is a unique match id";
@@ -2720,8 +2777,12 @@ namespace NetworkNext {
 		* <summary>
 		*	Call this to flush all server data before shutting a server down.
 		*	<remarks>
-		*		This function blocks for up to 10 seconds to ensure that all session data, server events and match data are recorded.
-		*		After calling this function, destroy the server via <see cref="NextServerDestroy"/>.
+		*		<para>
+		*			This function blocks for up to 10 seconds
+		*			to ensure that all session data, server events
+		*			and match data are recorded. After calling this
+		*			function, destroy the server via <see cref="NextServerDestroy"/>.
+		*		</para>
 		*	</remarks>
 		* </summary>
 		* <param name="server">the server pointer</param>
