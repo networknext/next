@@ -374,8 +374,8 @@ func test_passthrough() {
 }
 
 /*
- 	Run a backend but no relays. Make sure that we send and receive all packets direct.
- 	This tests the path where we prefix upgraded session direct packets with [255][sequence]
+	Run a backend but no relays. Make sure that we send and receive all packets direct.
+	This tests the path where we prefix upgraded session direct packets with [255][sequence]
 */
 
 func test_direct_upgraded() {
@@ -413,16 +413,15 @@ func test_direct_upgraded() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] >= 50*60)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] >= 50*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] >= 40*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] >= 40*60)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 50*60)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsSent >= 40*60)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, totalPacketsReceived == totalPacketsSent)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] >= 40*60)
 
 }
 
@@ -2534,39 +2533,39 @@ func main() {
 		// test_passthrough,
 		test_direct_upgraded,
 		/*
-		test_network_next_route,
-		test_fallback_to_direct_backend,
-		test_fallback_to_direct_client_side,
-		test_fallback_to_direct_server_restart,
-		test_disable_on_server,
-		test_disable_on_client,
-		test_route_switching,
-		test_on_off,
-		test_on_on_off,
-		test_reconnect_direct,
-		test_reconnect_direct_no_upgrade,
-		test_reconnect_next,
-		test_connect_to_another_server_direct,
-		test_connect_to_another_server_next,
-		test_multipath,
-		test_multipath_next_packet_loss,
-		test_multipath_fallback_to_direct,
-		test_uncommitted,
-		test_uncommitted_to_committed,
-		test_packet_loss_direct,
-		test_packet_loss_next,
-		test_server_under_load,
-		test_session_update_retry,
-		test_bandwidth_over_limit,
-		test_packet_loss,
-		test_bandwidth,
-		test_jitter,
-		test_tags,
-		test_tags_multi,
-		test_direct_stats,
-		test_next_stats,
-		test_report_session,
-		test_client_ping_timed_out,
+			test_network_next_route,
+			test_fallback_to_direct_backend,
+			test_fallback_to_direct_client_side,
+			test_fallback_to_direct_server_restart,
+			test_disable_on_server,
+			test_disable_on_client,
+			test_route_switching,
+			test_on_off,
+			test_on_on_off,
+			test_reconnect_direct,
+			test_reconnect_direct_no_upgrade,
+			test_reconnect_next,
+			test_connect_to_another_server_direct,
+			test_connect_to_another_server_next,
+			test_multipath,
+			test_multipath_next_packet_loss,
+			test_multipath_fallback_to_direct,
+			test_uncommitted,
+			test_uncommitted_to_committed,
+			test_packet_loss_direct,
+			test_packet_loss_next,
+			test_server_under_load,
+			test_session_update_retry,
+			test_bandwidth_over_limit,
+			test_packet_loss,
+			test_bandwidth,
+			test_jitter,
+			test_tags,
+			test_tags_multi,
+			test_direct_stats,
+			test_next_stats,
+			test_report_session,
+			test_client_ping_timed_out,
 		*/
 	}
 

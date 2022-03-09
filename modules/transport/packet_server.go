@@ -899,7 +899,8 @@ func MarshalPacket5(packetType int, packetObject Packet, from *net.UDPAddr, to *
 	packet := make([]byte, DefaultMaxPacketSize)
 	packet[0] = byte(packetType)
 
-	writeStream, err := encoding.CreateWriteStream(packet[:])
+	packetBuffer := make([]byte, DefaultMaxPacketSize)
+	writeStream, err := encoding.CreateWriteStream(packetBuffer[:])
 	if err != nil {
 		return nil, errors.New("could not create write stream")
 	}
