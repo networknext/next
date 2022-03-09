@@ -1,9 +1,5 @@
 package transport
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
 	"errors"
 	"fmt"
@@ -914,13 +910,8 @@ func MarshalPacket5(packetType int, packetObject Packet, from *net.UDPAddr, to *
 	for i := 0; i < serializeBytes; i++ {
 		packet[16+i] = serializeData[i]
 	}
-	packet = packet[:1+15+serializeBytes+int(C.crypto_sign_BYTES)+2]
 
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&packet[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&packet[16]), C.ulonglong(serializeBytes))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&packet[16+serializeBytes]), nil, (*C.uchar)(&privateKey[0]))
+	packet = crypto.SignPacket5(privateKey[:], packet, serializeBytes)
 
 	var magic [8]byte
 
