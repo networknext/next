@@ -3451,8 +3451,6 @@ void next_address_data( const next_address_t * address, uint8_t * address_data, 
     *address_port = address->port;
 }
 
-// --------------------------------------------------
-
 bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
 {
     if ( data[0] == 0 )
@@ -3469,6 +3467,8 @@ bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, c
         return false;
     return true;
 }
+
+// --------------------------------------------------
 
 int next_write_direct_packet( uint8_t * packet_data, uint8_t open_session_sequence, uint64_t send_sequence, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
@@ -6685,9 +6685,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
         {
-            next_assert( to_address_bytes != 0 );
-            next_assert( to_address_port != 0 );
-
             if ( !next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
             {
                 if ( !next_advanced_packet_filter( packet_data, client->upcoming_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
