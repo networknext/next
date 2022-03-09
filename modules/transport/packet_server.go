@@ -1009,7 +1009,7 @@ type ServerResponsePacket5 struct {
 }
 
 func (packet *ServerResponsePacket5) Serialize(stream encoding.Stream) error {
-	stream.SerializeUint64(&packet.RequestId)
+	stream.SerializeUint64(&packet.RequestID)
 	stream.SerializeBytes(packet.UpcomingMagic[:])
 	stream.SerializeBytes(packet.CurrentMagic[:])
 	stream.SerializeBytes(packet.PreviousMagic[:])
@@ -1068,7 +1068,7 @@ type SessionUpdatePacket5 struct {
 	JitterServerToClient            float32
 }
 
-func (packet *SessionUpdatePacket) Serialize(stream encoding.Stream) error {
+func (packet *SessionUpdatePacket5) Serialize(stream encoding.Stream) error {
 
 	versionMajor := uint32(packet.Version.Major)
 	versionMinor := uint32(packet.Version.Minor)
@@ -1309,14 +1309,14 @@ type SessionData5 struct {
 	DurationOnNext                uint32
 }
 
-func UnmarshalSessionData(sessionData *SessionData5, data []byte) error {
+func UnmarshalSessionData5(sessionData *SessionData5, data []byte) error {
 	if err := sessionData.Serialize(encoding.CreateReadStream(data)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func MarshalSessionData(sessionData *SessionData5) ([]byte, error) {
+func MarshalSessionData5(sessionData *SessionData5) ([]byte, error) {
 	// If we never got around to setting the session data version, set it here so that we can serialize it properly
 	if sessionData.Version == 0 {
 		sessionData.Version = SessionDataVersion5
