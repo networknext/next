@@ -2530,7 +2530,7 @@ type test_function func()
 
 func main() {
 	allTests := []test_function{
-		// test_passthrough,
+		test_passthrough,
 		test_direct_upgraded,
 		/*
 			test_network_next_route,
