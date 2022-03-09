@@ -856,11 +856,35 @@ func main() {
 
 const InitRequestMagic = uint32(0x9083708f)
 const InitRequestVersion = 0
-const UpdateRequestVersion = 3
+const UpdateRequestVersion = 5
 const UpdateResponseVersion = 0
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
 const MaxRelays = 5
+
+func ReadBool(data []byte, index *int, value *bool) bool {
+	if *index+1 > len(data) {
+		return false
+	}
+
+	if data[*index] > 0 {
+		*value = true
+	} else {
+		*value = false
+	}
+
+	*index += 1
+	return true
+}
+
+func ReadUint8(data []byte, index *int, value *uint8) bool {
+	if *index+1 > len(data) {
+		return false
+	}
+	*value = data[*index]
+	*index += 1
+	return true
+}
 
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index+4 > len(data) {
@@ -1036,6 +1060,54 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		statsUpdate.PingStats = append(statsUpdate.PingStats, ping)
 	}
 
+	var sessionCount uint64
+	if !ReadUint64(body, &index, &sessionCount) {
+		fmt.Printf("could not read session count\n")
+		return
+	}
+
+	var shutdown bool
+	if !ReadBool(body, &index, &shutdown) {
+		fmt.Printf("could not read shutdown\n")
+		return
+	}
+
+	var relayVersion string
+	if !ReadString(body, &index, &relayVersion, uint32(32)) {
+		fmt.Printf("could not read relay version\n")
+		return
+	}
+
+	var cpu uint8
+	if !ReadUint8(body, &index, &cpu) {
+		fmt.Printf("could not read cpu\n")
+		return
+	}
+
+	var envelopeUpKbps uint64
+	if !ReadUint64(body, &index, &envelopeUpKbps) {
+		fmt.Printf("could not read envelope up kbps\n")
+		return
+	}
+
+	var envelopeDownKbps uint64
+	if !ReadUint64(body, &index, &envelopeDownKbps) {
+		fmt.Printf("could not read envelope down kbps\n")
+		return
+	}
+
+	var bandwidthSentKbps uint64
+	if !ReadUint64(body, &index, &bandwidthSentKbps) {
+		fmt.Printf("could not read bandwidth sent kbps\n")
+		return
+	}
+
+	var bandwidthRecvKbps uint64
+	if !ReadUint64(body, &index, &bandwidthRecvKbps) {
+		fmt.Printf("could not read bandwidth recv kbps\n")
+		return
+	}
+
 	backend.mutex.Lock()
 	backend.statsDatabase.ProcessStats(statsUpdate)
 	backend.mutex.Unlock()
@@ -1057,10 +1129,18 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	relayData := routing.RelayData{
-		ID:             crypto.HashID(relay_address),
-		Addr:           *udpAddr,
-		PublicKey:      crypto.RelayPublicKey[:],
-		LastUpdateTime: time.Now(),
+		ID:                crypto.HashID(relay_address),
+		Addr:              *udpAddr,
+		PublicKey:         crypto.RelayPublicKey[:],
+		SessionCount:      int(sessionCount),
+		ShuttingDown:      shutdown,
+		LastUpdateTime:    time.Now(),
+		Version:           relayVersion,
+		CPU:               cpu,
+		EnvelopeUpMbps:    float32(float64(envelopeUpKbps) / 1000.0),
+		EnvelopeDownMbps:  float32(float64(envelopeDownKbps) / 1000.0),
+		BandwidthSentMbps: float32(float64(bandwidthSentKbps) / 1000.0),
+		BandwidthRecvMbps: float32(float64(bandwidthRecvKbps) / 1000.0),
 	}
 
 	backend.relayMap.UpdateRelayData(relayData)
