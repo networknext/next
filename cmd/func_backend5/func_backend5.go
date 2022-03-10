@@ -237,13 +237,13 @@ func (backend *Backend) GetNearRelays() []routing.RelayData {
 }
 
 func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-	var initRequest transport.ServerInitRequestPacket5
-	if err := transport.UnmarshalPacket(&initRequest, incoming.Data); err != nil {
+	var initRequest transport.ServerInitRequestPacketSDK5
+	if err := transport.UnmarshalPacketSDK5(&initRequest, incoming.Data); err != nil {
 		fmt.Printf("error: failed to read server init request packet: %v\n", err)
 		return
 	}
 
-	initResponse := &transport.ServerInitResponsePacket5{
+	initResponse := &transport.ServerInitResponsePacketSDK5{
 		RequestID: initRequest.RequestID,
 		Response:  transport.InitResponseOK,
 	}
@@ -252,7 +252,7 @@ func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
 	toAddress := &incoming.From
 
-	initResponseData, err := transport.MarshalPacket5(transport.PacketTypeServerInitResponse5, initResponse, fromAddress, toAddress, crypto.BackendPrivateKey[:])
+	initResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeServerInitResponseSDK5, initResponse, fromAddress, toAddress, crypto.BackendPrivateKey[:])
 	if err != nil {
 		fmt.Printf("error: failed to marshal server init response: %v\n", err)
 		return
@@ -282,13 +282,13 @@ func ServerInitHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 }
 
 func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-	var serverUpdate transport.ServerUpdatePacket5
-	if err := transport.UnmarshalPacket(&serverUpdate, incoming.Data); err != nil {
+	var serverUpdate transport.ServerUpdatePacketSDK5
+	if err := transport.UnmarshalPacketSDK5(&serverUpdate, incoming.Data); err != nil {
 		fmt.Printf("error: failed to read server update packet: %v\n", err)
 		return
 	}
 
-	updateResponse := &transport.ServerResponsePacket5{
+	updateResponse := &transport.ServerResponsePacketSDK5{
 		RequestID: serverUpdate.RequestID,
 	}
 	updateResponse.UpcomingMagic, updateResponse.CurrentMagic, updateResponse.PreviousMagic = GetMagic()
@@ -296,7 +296,7 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
 	toAddress := &incoming.From
 
-	updateResponseData, err := transport.MarshalPacket5(transport.PacketTypeServerResponse5, updateResponse, fromAddress, toAddress, crypto.BackendPrivateKey)
+	updateResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeServerResponseSDK5, updateResponse, fromAddress, toAddress, crypto.BackendPrivateKey)
 	if err != nil {
 		fmt.Printf("error: failed to marshal server response: %v\n", err)
 		return
@@ -325,7 +325,7 @@ func ServerUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	}
 }
 
-func excludeNearRelays(sessionResponse *transport.SessionResponsePacket5, routeState core.RouteState) {
+func excludeNearRelays(sessionResponse *transport.SessionResponsePacketSDK5, routeState core.RouteState) {
 	numExcluded := 0
 	for i := 0; i < int(routeState.NumNearRelays); i++ {
 		if routeState.NearRelayRTT[i] == 255 {
@@ -336,8 +336,8 @@ func excludeNearRelays(sessionResponse *transport.SessionResponsePacket5, routeS
 }
 
 func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
-	var sessionUpdate transport.SessionUpdatePacket5
-	if err := transport.UnmarshalPacket(&sessionUpdate, incoming.Data); err != nil {
+	var sessionUpdate transport.SessionUpdatePacketSDK5
+	if err := transport.UnmarshalPacketSDK5(&sessionUpdate, incoming.Data); err != nil {
 		fmt.Printf("error: failed to read session update packet: %v\n", err)
 		return
 	}
@@ -437,16 +437,16 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	newSession := sessionUpdate.SliceNumber == 0
 
-	var sessionData transport.SessionData5
+	var sessionData transport.SessionDataSDK5
 	if newSession {
-		sessionData.Version = transport.SessionDataVersion5
+		sessionData.Version = transport.SessionDataVersionSDK5
 		sessionData.SessionID = sessionUpdate.SessionID
 		sessionData.SliceNumber = uint32(sessionUpdate.SliceNumber + 1)
 		sessionData.ExpireTimestamp = uint64(time.Now().Unix()) + billing.BillingSliceSeconds
 		sessionData.RouteState.UserID = sessionUpdate.UserHash
 		sessionData.Location = routing.LocationNullIsland
 	} else {
-		if err := transport.UnmarshalSessionData5(&sessionData, sessionUpdate.SessionData[:]); err != nil {
+		if err := transport.UnmarshalSessionDataSDK5(&sessionData, sessionUpdate.SessionData[:]); err != nil {
 			fmt.Printf("could not read session data in session update packet: %v\n", err)
 			return
 		}
@@ -457,7 +457,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	nearRelays := backend.GetNearRelays()
 
-	var sessionResponse *transport.SessionResponsePacket5
+	var sessionResponse *transport.SessionResponsePacketSDK5
 
 	takeNetworkNext := len(nearRelays) > 0
 
@@ -529,7 +529,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	if !takeNetworkNext {
 
 		// direct route
-		sessionResponse = &transport.SessionResponsePacket5{
+		sessionResponse = &transport.SessionResponsePacketSDK5{
 			SessionID:          sessionUpdate.SessionID,
 			SliceNumber:        sessionUpdate.SliceNumber,
 			NumNearRelays:      int32(len(nearRelays)),
@@ -600,7 +600,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 			routeType = routing.RouteTypeNew
 		}
 
-		sessionResponse = &transport.SessionResponsePacket5{
+		sessionResponse = &transport.SessionResponsePacketSDK5{
 			SessionID:          sessionUpdate.SessionID,
 			SliceNumber:        sessionUpdate.SliceNumber,
 			NumNearRelays:      int32(len(nearRelays)),
@@ -624,7 +624,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 
 	excludeNearRelays(sessionResponse, sessionData.RouteState)
 
-	sessionDataBuffer, err := transport.MarshalSessionData5(&sessionData)
+	sessionDataBuffer, err := transport.MarshalSessionDataSDK5(&sessionData)
 	if err != nil {
 		fmt.Printf("error: failed to marshal session data: %v\n", err)
 		return
@@ -640,7 +640,7 @@ func SessionUpdateHandlerFunc(w io.Writer, incoming *transport.UDPPacket) {
 	fromAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", NEXT_SERVER_BACKEND_PORT))
 	toAddress := &incoming.From
 
-	sessionResponseData, err := transport.MarshalPacket5(transport.PacketTypeSessionResponse5, sessionResponse, fromAddress, toAddress, crypto.BackendPrivateKey)
+	sessionResponseData, err := transport.MarshalPacketSDK5(transport.PacketTypeSessionResponseSDK5, sessionResponse, fromAddress, toAddress, crypto.BackendPrivateKey)
 	if err != nil {
 		fmt.Printf("error: failed to marshal session response: %v\n", err)
 		return
@@ -831,11 +831,11 @@ func main() {
 			packet := transport.UDPPacket{From: *fromAddr, Data: data}
 
 			switch packetType {
-			case transport.PacketTypeServerInitRequest5:
+			case transport.PacketTypeServerInitRequestSDK5:
 				ServerInitHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeServerUpdate5:
+			case transport.PacketTypeServerUpdateSDK5:
 				ServerUpdateHandlerFunc(&buffer, &packet)
-			case transport.PacketTypeSessionUpdate5:
+			case transport.PacketTypeSessionUpdateSDK5:
 				SessionUpdateHandlerFunc(&buffer, &packet)
 			default:
 				fmt.Printf("unknown packet type %d\n", packetType)

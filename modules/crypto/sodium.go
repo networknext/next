@@ -73,7 +73,7 @@ func sodiumIsNetworkNextPacket(packetData []byte, hashKey []byte) bool {
 	return true
 }
 
-func sodiumSignPacket5(packetData []byte, serializeBytes int, privateKey []byte) []byte {
+func sodiumSignPacketSDK5(packetData []byte, serializeBytes int, privateKey []byte) []byte {
 	signedPacketData := packetData[:1+15+serializeBytes+int(C.crypto_sign_BYTES)+2]
 
 	var state C.crypto_sign_state
