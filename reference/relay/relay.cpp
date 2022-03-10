@@ -33,6 +33,8 @@
 #define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                        116
 #define RELAY_CONTINUE_TOKEN_BYTES                                17
 #define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                      57
+#define RELAY_PING_TOKEN_BYTES                                    46
+#define RELAY_ENCRYPTED_PING_TOKEN_BYTES                          86
 
 #define RELAY_DIRECTION_CLIENT_TO_SERVER                           0
 #define RELAY_DIRECTION_SERVER_TO_CLIENT                           1
@@ -4951,6 +4953,9 @@ struct relay_t
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
     relay_address_t relay_addresses[MAX_RELAYS];
+    uint8_t upcoming_magic[8];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
     std::atomic<uint64_t> envelope_bandwidth_kbps_up;
     std::atomic<uint64_t> envelope_bandwidth_kbps_down;
     std::atomic<uint64_t> bytes_sent;
@@ -5184,7 +5189,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     uint32_t version = relay_read_uint32( &q );
 
-    const uint32_t update_response_version = 0;
+    const uint32_t update_response_version = 1;
 
     if ( version != update_response_version )
     {
@@ -5235,6 +5240,14 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         return RELAY_ERROR;
     }
 
+    uint8_t upcoming_magic[8];
+    uint8_t current_magic[8];
+    uint8_t previous_magic[8];
+
+    relay_read_bytes( &q, upcoming_magic, 8 );
+    relay_read_bytes( &q, current_magic, 8 );
+    relay_read_bytes( &q, previous_magic, 8 );
+
     relay_platform_mutex_acquire( relay->mutex );
     relay->num_relays = num_relays;
     for ( int i = 0; i < int(num_relays); ++i )
@@ -5243,6 +5256,9 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         relay->relay_addresses[i] = relay_ping_data[i].address;
     }
     relay->relays_dirty = true;
+    memcpy( relay->upcoming_magic, &upcoming_magic, 8 );
+    memcpy( relay->current_magic, &current_magic, 8 );
+    memcpy( relay->previous_magic, &previous_magic, 8 );
     relay_platform_mutex_release( relay->mutex );
 
     return RELAY_OK;
@@ -5839,12 +5855,36 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             relay_address_data_sdk5( &from, from_address_data, &from_address_bytes, &from_address_port );
             relay_address_data_sdk5( &relay->relay_address, to_address_data, &to_address_bytes, &to_address_port );
 
-            uint8_t magic[8];
-            memset( magic, 0, sizeof(magic) );
-            if ( !relay_advanced_packet_filter_sdk5( packet_data, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+            uint8_t upcoming_magic[8];
+            uint8_t current_magic[8];
+            uint8_t previous_magic[8];
+
+            relay_platform_mutex_acquire( relay->mutex );
+            memcpy( &upcoming_magic, relay->upcoming_magic, 8 );
+            memcpy( &current_magic, relay->current_magic, 8 );
+            memcpy( &previous_magic, relay->previous_magic, 8 );
+            relay_platform_mutex_release( relay->mutex );
+
+            // relay_printf( "relay current magic: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
+            //     current_magic[0],
+            //     current_magic[1],
+            //     current_magic[2],
+            //     current_magic[3],
+            //     current_magic[4],
+            //     current_magic[5],
+            //     current_magic[6],
+            //     current_magic[7] );
+
+            if ( !relay_advanced_packet_filter_sdk5( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
             {
-                relay_printf( "relay advanced packet filter dropped packet" );
-                continue;
+                if ( !relay_advanced_packet_filter_sdk5( packet_data, upcoming_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                {
+                    if ( !relay_advanced_packet_filter_sdk5( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                    {
+                        relay_printf( "relay advanced packet filter dropped packet" );
+                        continue;
+                    }
+                }
             }
 
             *packet_data += 16;
@@ -5908,20 +5948,22 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK5 )
             {
-                if ( packet_bytes != 1 + 8 + 8 + 8 + 8 )
+                if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES )
                 {
                     relay_printf( "ignored relay near ping packet. bad packet size (%d)", packet_bytes );
                     continue;
                 }
 
-                const uint8_t * p = packet_data;
-                uint64_t ping_sequence = relay_read_uint64( &p );
-                uint64_t session_id = relay_read_uint64( &p );
+                uint64_t ping_sequence = relay_read_uint64( &packet_data );
+                uint64_t session_id = relay_read_uint64( &packet_data );
 
-                packet_bytes = relay_write_pong_packet_sdk5( packet_data, ping_sequence, session_id, magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port );
+                relay_printf("ping sequence is " PRIx64, ping_sequence);
+                relay_printf("session id is " PRIx64, session_id);
+
+                packet_bytes = relay_write_pong_packet_sdk5( packet_data, ping_sequence, session_id, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port );
 
                 assert( relay_basic_packet_filter_sdk5( packet_data, packet_bytes ) );
-                assert( relay_advanced_packet_filter_sdk5( packet_data, magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+                assert( relay_advanced_packet_filter_sdk5( packet_data, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
 
                 relay_platform_socket_send_packet( relay->socket, &from, packet_data, packet_bytes );
 
