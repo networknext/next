@@ -37,16 +37,16 @@
 #define RELAY_DIRECTION_CLIENT_TO_SERVER                           0
 #define RELAY_DIRECTION_SERVER_TO_CLIENT                           1
 
-#define RELAY_ROUTE_REQUEST_PACKET                               100
-#define RELAY_ROUTE_RESPONSE_PACKET                              101
-#define RELAY_CLIENT_TO_SERVER_PACKET                            102
-#define RELAY_SERVER_TO_CLIENT_PACKET                            103
-#define RELAY_SESSION_PING_PACKET                                104
-#define RELAY_SESSION_PONG_PACKET                                105
-#define RELAY_CONTINUE_REQUEST_PACKET                            106
-#define RELAY_CONTINUE_RESPONSE_PACKET                           107
-#define RELAY_NEAR_PING_PACKET                                   116
-#define RELAY_NEAR_PONG_PACKET                                   117
+#define RELAY_ROUTE_REQUEST_PACKET_SDK4                          100
+#define RELAY_ROUTE_RESPONSE_PACKET_SDK4                         101
+#define RELAY_CLIENT_TO_SERVER_PACKET_SDK4                       102
+#define RELAY_SERVER_TO_CLIENT_PACKET_SDK4                       103
+#define RELAY_SESSION_PING_PACKET_SDK4                           104
+#define RELAY_SESSION_PONG_PACKET_SDK4                           105
+#define RELAY_CONTINUE_REQUEST_PACKET_SDK4                       106
+#define RELAY_CONTINUE_RESPONSE_PACKET_SDK4                      107
+#define RELAY_NEAR_PING_PACKET_SDK4                              116
+#define RELAY_NEAR_PONG_PACKET_SDK4                              117
 
 #define RELAY_ROUTE_REQUEST_PACKET_SDK5                            7
 #define RELAY_ROUTE_RESPONSE_PACKET_SDK5                           8
@@ -2539,7 +2539,7 @@ int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t
         assert( ( sequence & ( 1ULL << 63 ) ) == 0 );
     }
 
-    if ( type == RELAY_SESSION_PING_PACKET || type == RELAY_SESSION_PONG_PACKET || type == RELAY_ROUTE_RESPONSE_PACKET || type == RELAY_CONTINUE_RESPONSE_PACKET )
+    if ( type == RELAY_SESSION_PING_PACKET_SDK4 || type == RELAY_SESSION_PONG_PACKET_SDK4 || type == RELAY_ROUTE_RESPONSE_PACKET_SDK4 || type == RELAY_CONTINUE_RESPONSE_PACKET_SDK4 )
     {
         // second highest bit must be set
         assert( sequence & ( 1ULL << 62 ) );
@@ -2613,7 +2613,7 @@ int relay_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint6
 
     *type = packet_type;
 
-    if ( *type == RELAY_SESSION_PING_PACKET || *type == RELAY_SESSION_PONG_PACKET || *type == RELAY_ROUTE_RESPONSE_PACKET || *type == RELAY_CONTINUE_RESPONSE_PACKET )
+    if ( *type == RELAY_SESSION_PING_PACKET_SDK4 || *type == RELAY_SESSION_PONG_PACKET_SDK4 || *type == RELAY_ROUTE_RESPONSE_PACKET_SDK4 || *type == RELAY_CONTINUE_RESPONSE_PACKET_SDK4 )
     {
         // second highest bit must be set
         assert( packet_sequence & ( 1ULL << 62 ) );
@@ -2667,7 +2667,7 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
         }
     }
 
-    if ( packet_type == RELAY_SESSION_PING_PACKET || packet_type == RELAY_SESSION_PONG_PACKET || packet_type == RELAY_ROUTE_RESPONSE_PACKET || packet_type == RELAY_CONTINUE_RESPONSE_PACKET )
+    if ( packet_type == RELAY_SESSION_PING_PACKET_SDK4 || packet_type == RELAY_SESSION_PONG_PACKET_SDK4 || packet_type == RELAY_ROUTE_RESPONSE_PACKET_SDK4 || packet_type == RELAY_CONTINUE_RESPONSE_PACKET_SDK4 )
     {
         // second highest bit must be set
         assert( packet_sequence & ( 1ULL << 62 ) );
@@ -4482,7 +4482,7 @@ static void test_header()
         uint64_t session_id = 0x12313131;
         uint8_t session_version = 0x12;
 
-        check( relay_write_header( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET, sequence, session_id, session_version, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_write_header( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK4, sequence, session_id, session_version, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
 
         uint8_t read_type = 0;
         uint64_t read_sequence = 0;
@@ -4491,7 +4491,7 @@ static void test_header()
 
         check( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &read_type, &read_sequence, &read_session_id, &read_session_version, buffer, sizeof( buffer ) ) == RELAY_OK );
 
-        check( read_type == RELAY_CLIENT_TO_SERVER_PACKET );
+        check( read_type == RELAY_CLIENT_TO_SERVER_PACKET_SDK4 );
         check( read_sequence == sequence );
         check( read_session_id == session_id );
         check( read_session_version == session_version );
@@ -4505,7 +4505,7 @@ static void test_header()
         uint64_t session_id = 0x12313131;
         uint8_t session_version = 0x12;
 
-        check( relay_write_header( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET, sequence, session_id, session_version, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_write_header( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK4, sequence, session_id, session_version, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
 
         uint8_t read_type = 0;
         uint64_t read_sequence = 0;
@@ -4514,7 +4514,7 @@ static void test_header()
 
         check( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &read_type, &read_sequence, &read_session_id, &read_session_version, buffer, sizeof( buffer ) ) == RELAY_OK );
 
-        check( read_type == RELAY_SERVER_TO_CLIENT_PACKET );
+        check( read_type == RELAY_SERVER_TO_CLIENT_PACKET_SDK4 );
         check( read_sequence == sequence );
         check( read_session_id == session_id );
         check( read_session_version == session_version );
@@ -5292,6 +5292,18 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         relay->bytes_received += packet_bytes;
 
         int packet_id = packet_data[0];
+        bool sdk4_packet;
+        bool sdk5_packet;
+
+        if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK4 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK4 )
+        {
+            sdk4_packet = true;
+        }
+
+        if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK5 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK5 )
+        {
+            sdk5_packet = true;
+        }
 
         if ( packet_id == RELAY_PING_PACKET && packet_bytes == 1 + 8 )
         {
@@ -5307,7 +5319,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             relay_manager_process_pong( relay->relay_manager, &from, sequence );
             relay_platform_mutex_release( relay->mutex );
         }
-        else if ( packet_id == RELAY_ROUTE_REQUEST_PACKET )
+        else if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK4 )
         {
             if ( packet_bytes < int( 1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
             {
@@ -5355,13 +5367,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             relay_platform_mutex_release( relay->mutex );
 
-            packet_data[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET;
+            packet_data[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET_SDK4;
 
             relay_platform_socket_send_packet( relay->socket, &token.next_address, packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
 
             relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
         }
-        else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET )
+        else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET_SDK4 )
         {
             if ( packet_bytes != RELAY_HEADER_BYTES )
             {
@@ -5420,7 +5432,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET )
+        else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET_SDK4 )
         {
             if ( packet_bytes < int( 1 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
             {
@@ -5470,13 +5482,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             session->expire_timestamp = token.expire_timestamp;
 
-            packet_data[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET;
+            packet_data[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES] = RELAY_CONTINUE_REQUEST_PACKET_SDK4;
 
             relay_platform_socket_send_packet( relay->socket, &session->next_address, packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
 
             relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
         }
-        else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET )
+        else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET_SDK4 )
         {
             if ( packet_bytes != RELAY_HEADER_BYTES )
             {
@@ -5534,7 +5546,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET )
+        else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET_SDK4 )
         {
             if ( packet_bytes <= RELAY_HEADER_BYTES )
             {
@@ -5598,7 +5610,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET )
+        else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET_SDK4 )
         {
             if ( packet_bytes <= RELAY_HEADER_BYTES )
             {
@@ -5662,7 +5674,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_id == RELAY_SESSION_PING_PACKET )
+        else if ( packet_id == RELAY_SESSION_PING_PACKET_SDK4 )
         {
             if ( packet_bytes != RELAY_HEADER_BYTES + 8 )
             {
@@ -5720,7 +5732,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_id == RELAY_SESSION_PONG_PACKET )
+        else if ( packet_id == RELAY_SESSION_PONG_PACKET_SDK4 )
         {
             if ( packet_bytes != RELAY_HEADER_BYTES + 8 )
             {
@@ -5778,7 +5790,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             relay->bytes_sent += packet_bytes;
         }
-        else if ( packet_id == RELAY_NEAR_PING_PACKET )
+        else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK4 )
         {
             if ( packet_bytes != 1 + 8 + 8 + 8 + 8 )
             {
@@ -5786,7 +5798,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 continue;
             }
 
-            packet_data[0] = RELAY_NEAR_PONG_PACKET;
+            packet_data[0] = RELAY_NEAR_PONG_PACKET_SDK4;
 
             relay_platform_socket_send_packet( relay->socket, &from, packet_data, packet_bytes - 16 );
 
