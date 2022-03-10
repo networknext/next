@@ -20,7 +20,9 @@
 
 #define RELAY_MTU                                               1300
 
-#define RELAY_HEADER_BYTES                                        34
+#define RELAY_HEADER_BYTES_SDK4                                   34
+
+#define RELAY_HEADER_BYTES_SDK5                                   33
 
 #define RELAY_ADDRESS_BYTES                                       19
 #define RELAY_ADDRESS_BUFFER_SAFETY                               32
@@ -33,8 +35,9 @@
 #define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                        116
 #define RELAY_CONTINUE_TOKEN_BYTES                                17
 #define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                      57
-#define RELAY_PING_TOKEN_BYTES                                    46
-#define RELAY_ENCRYPTED_PING_TOKEN_BYTES                          86
+
+#define RELAY_PING_TOKEN_BYTES_SDK5                               46
+#define RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5                     86
 
 #define RELAY_DIRECTION_CLIENT_TO_SERVER                           0
 #define RELAY_DIRECTION_SERVER_TO_CLIENT                           1
@@ -2522,7 +2525,7 @@ int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t
 {
     assert( private_key );
     assert( buffer );
-    assert( RELAY_HEADER_BYTES <= buffer_length );
+    assert( RELAY_HEADER_BYTES_SDK4 <= buffer_length );
 
     (void) buffer_length;
 
@@ -2581,7 +2584,7 @@ int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t
 
     buffer += encrypted_length;
 
-    assert( int( buffer - start ) == RELAY_HEADER_BYTES );
+    assert( int( buffer - start ) == RELAY_HEADER_BYTES_SDK4 );
 
     return RELAY_OK;
 }
@@ -2593,7 +2596,7 @@ int relay_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint6
 
     assert( buffer );
 
-    if ( buffer_length < RELAY_HEADER_BYTES )
+    if ( buffer_length < RELAY_HEADER_BYTES_SDK4 )
         return RELAY_ERROR;
 
     packet_type = relay_read_uint8( &buffer );
@@ -2639,7 +2642,7 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
     assert( private_key );
     assert( buffer );
 
-    if ( buffer_length < RELAY_HEADER_BYTES )
+    if ( buffer_length < RELAY_HEADER_BYTES_SDK4 )
     {
         // todo
         printf( "packet too small\n" );
@@ -3225,6 +3228,8 @@ int relay_write_pong_packet_sdk5( uint8_t * packet_data, uint64_t ping_sequence,
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_NEAR_PONG_PACKET_SDK5 );
     uint8_t * a = p; p += 15;
+    uint8_t header[RELAY_HEADER_BYTES_SDK5];
+    relay_write_bytes( &p, header, RELAY_HEADER_BYTES_SDK5);
     relay_write_uint64( &p, ping_sequence );
     relay_write_uint64( &p, session_id );
     uint8_t * b = p; p += 2;
@@ -5407,7 +5412,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET_SDK4 )
             {
-                if ( packet_bytes != RELAY_HEADER_BYTES )
+                if ( packet_bytes != RELAY_HEADER_BYTES_SDK4 )
                 {
                     relay_printf( "ignored route response packet. wrong packet size (%d)", packet_bytes );
                     continue;
@@ -5522,7 +5527,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET_SDK4 )
             {
-                if ( packet_bytes != RELAY_HEADER_BYTES )
+                if ( packet_bytes != RELAY_HEADER_BYTES_SDK4 )
                 {
                     relay_printf( "ignored continue response packet. bad packet size (%d)", packet_bytes );
                     continue;
@@ -5580,13 +5585,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET_SDK4 )
             {
-                if ( packet_bytes <= RELAY_HEADER_BYTES )
+                if ( packet_bytes <= RELAY_HEADER_BYTES_SDK4 )
                 {
                     relay_printf( "ignored client to server packet. packet too small (%d)", packet_bytes );
                     continue;
                 }
 
-                if ( packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
+                if ( packet_bytes > RELAY_HEADER_BYTES_SDK4 + RELAY_MTU )
                 {
                     relay_printf( "ignored client to server packet. packet too big (%d)", packet_bytes );
                     continue;
@@ -5644,13 +5649,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET_SDK4 )
             {
-                if ( packet_bytes <= RELAY_HEADER_BYTES )
+                if ( packet_bytes <= RELAY_HEADER_BYTES_SDK4 )
                 {
                     relay_printf( "ignored server to client packet. packet too small (%d)", packet_bytes );
                     continue;
                 }
 
-                if ( packet_bytes > RELAY_HEADER_BYTES + RELAY_MTU )
+                if ( packet_bytes > RELAY_HEADER_BYTES_SDK4 + RELAY_MTU )
                 {
                     relay_printf( "ignored server to client packet. packet too big (%d)", packet_bytes );
                     continue;
@@ -5708,7 +5713,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_SESSION_PING_PACKET_SDK4 )
             {
-                if ( packet_bytes != RELAY_HEADER_BYTES + 8 )
+                if ( packet_bytes != RELAY_HEADER_BYTES_SDK4 + 8 )
                 {
                     relay_printf( "ignored session ping packet. bad packet size (%d)", packet_bytes );
                     continue;
@@ -5766,7 +5771,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_SESSION_PONG_PACKET_SDK4 )
             {
-                if ( packet_bytes != RELAY_HEADER_BYTES + 8 )
+                if ( packet_bytes != RELAY_HEADER_BYTES_SDK4 + 8 )
                 {
                     relay_printf( "ignored session pong packet. bad packet size (%d)", packet_bytes );
                     continue;
@@ -5887,7 +5892,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 }
             }
 
-            *packet_data += 16;
+            const uint8_t * p = packet_data;
+            p += 16;
             packet_bytes -= 18;
 
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK5 )
@@ -5948,24 +5954,22 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK5 )
             {
-                if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES )
+                if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 )
                 {
                     relay_printf( "ignored relay near ping packet. bad packet size (%d)", packet_bytes );
                     continue;
                 }
 
-                uint64_t ping_sequence = relay_read_uint64( &packet_data );
-                uint64_t session_id = relay_read_uint64( &packet_data );
+                uint64_t ping_sequence = relay_read_uint64( &p );
+                uint64_t session_id = relay_read_uint64( &p );
 
-                relay_printf("ping sequence is " PRIx64, ping_sequence);
-                relay_printf("session id is " PRIx64, session_id);
+                uint8_t pong_packet[RELAY_MAX_PACKET_BYTES];
+                packet_bytes = relay_write_pong_packet_sdk5( pong_packet, ping_sequence, session_id, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port );
 
-                packet_bytes = relay_write_pong_packet_sdk5( packet_data, ping_sequence, session_id, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port );
+                assert( relay_basic_packet_filter_sdk5( pong_packet, packet_bytes ) );
+                assert( relay_advanced_packet_filter_sdk5( pong_packet, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
 
-                assert( relay_basic_packet_filter_sdk5( packet_data, packet_bytes ) );
-                assert( relay_advanced_packet_filter_sdk5( packet_data, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
-
-                relay_platform_socket_send_packet( relay->socket, &from, packet_data, packet_bytes );
+                relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
 
                 relay->bytes_sent += packet_bytes;
             }
