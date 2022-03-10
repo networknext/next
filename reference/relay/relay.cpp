@@ -48,6 +48,17 @@
 #define RELAY_NEAR_PING_PACKET                                   116
 #define RELAY_NEAR_PONG_PACKET                                   117
 
+#define RELAY_ROUTE_REQUEST_PACKET_SDK5                            7
+#define RELAY_ROUTE_RESPONSE_PACKET_SDK5                           8
+#define RELAY_CLIENT_TO_SERVER_PACKET_SDK5                         9
+#define RELAY_SERVER_TO_CLIENT_PACKET_SDK5                        10
+#define RELAY_SESSION_PING_PACKET_SDK5                            11
+#define RELAY_SESSION_PONG_PACKET_SDK5                            12
+#define RELAY_CONTINUE_REQUEST_PACKET_SDK5                        13
+#define RELAY_CONTINUE_RESPONSE_PACKET_SDK5                       14
+#define RELAY_NEAR_PING_PACKET_SDK5                               18
+#define RELAY_NEAR_PONG_PACKET_SDK5                               19
+
 #define RELAY_PING_HISTORY_ENTRY_COUNT                           256
 
 #define RELAY_PING_TIME                                          0.1
