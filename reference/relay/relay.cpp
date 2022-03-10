@@ -3239,6 +3239,19 @@ int relay_write_pong_packet_sdk5( uint8_t * packet_data, uint64_t ping_sequence,
     return packet_length;
 }
 
+int relay_write_route_request_packet_sdk5( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+{
+    uint8_t * p = packet_data;
+    relay_write_uint8( &p, RELAY_ROUTE_REQUEST_PACKET_SDK5 );
+    uint8_t * a = p; p += 15;
+    relay_write_bytes( &p, token_data, token_bytes );
+    uint8_t * b = p; p += 2;
+    int packet_length = p - packet_data;
+    relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_pittle_sdk5( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    return packet_length;
+}
+
 // --------------------------------------------------------------------------
 
 #define MAX_RELAYS 1024
@@ -5870,16 +5883,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             memcpy( &previous_magic, relay->previous_magic, 8 );
             relay_platform_mutex_release( relay->mutex );
 
-            // relay_printf( "relay current magic: %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x",
-            //     current_magic[0],
-            //     current_magic[1],
-            //     current_magic[2],
-            //     current_magic[3],
-            //     current_magic[4],
-            //     current_magic[5],
-            //     current_magic[6],
-            //     current_magic[7] );
-
             if ( !relay_advanced_packet_filter_sdk5( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
             {
                 if ( !relay_advanced_packet_filter_sdk5( packet_data, upcoming_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
@@ -5892,13 +5895,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 }
             }
 
-            const uint8_t * p = packet_data;
-            p += 16;
             packet_bytes -= 18;
 
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK5 )
             {
-                /*
                 if ( packet_bytes < int( 1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {
                     relay_printf( "ignoring route request. bad packet size (%d)", packet_bytes );
@@ -5906,6 +5906,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 }
 
                 uint8_t * p = packet_data;
+                p += 16;
                 relay_route_token_t token;
                 if ( relay_read_encrypted_route_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
                 {
@@ -5945,12 +5946,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 }
                 relay_platform_mutex_release( relay->mutex );
 
-                packet_data[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES] = RELAY_ROUTE_REQUEST_PACKET_SDK5;
+                const uint8_t * token_data = p + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
 
-                relay_platform_socket_send_packet( relay->socket, &token.next_address, packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
+                uint8_t route_request_packet[RELAY_MAX_PACKET_BYTES];
+                packet_bytes = relay_write_route_request_packet_sdk5( route_request_packet, token_data, packet_bytes, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port );
 
-                relay->bytes_sent += packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
-                */
+                relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
+
+                relay->bytes_sent += packet_bytes;
             }
             else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK5 )
             {
@@ -5959,6 +5962,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_printf( "ignored relay near ping packet. bad packet size (%d)", packet_bytes );
                     continue;
                 }
+
+                const uint8_t * p = packet_data;
+                p += 16;
 
                 uint64_t ping_sequence = relay_read_uint64( &p );
                 uint64_t session_id = relay_read_uint64( &p );
