@@ -7000,7 +7000,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         packet_data += 16;
         packet_bytes -= 18;
 
-        if ( packet_bytes != NEXT_HEADER_BYTES + 2 )
+        if ( packet_bytes != NEXT_HEADER_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. bad packet size" );
             return;
@@ -7015,12 +7015,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         const uint8_t pending_route_session_version = client->route_manager->route_data.pending_route_session_version;
         next_platform_mutex_release( &client->route_manager_mutex );
 
-        uint8_t packet_type = 0;
         uint64_t packet_sequence = 0;
         uint64_t packet_session_id = 0;
         uint8_t packet_session_version = 0;
 
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_id, &packet_sequence, &packet_session_id, &packet_session_version, route_private_key, packet_data, packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. could not read header" );
             return;
@@ -7051,8 +7050,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", clean_sequence, replay_protection->most_recent_sequence );
             return;
         }
-
-        next_assert( packet_type == NEXT_ROUTE_RESPONSE_PACKET );
 
         if ( packet_session_id != pending_route_session_id )
         {
@@ -7162,12 +7159,11 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        uint8_t packet_type = 0;
         uint64_t packet_sequence = 0;
         uint64_t packet_session_id = 0;
         uint8_t packet_session_version = 0;
 
-        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
+        if ( next_read_header( NEXT_DIRECTION_SERVER_TO_CLIENT, packet_id, &packet_sequence, &packet_session_id, &packet_session_version, current_route_private_key, packet_data, packet_bytes ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. could not read header" );
             return;
@@ -12937,7 +12933,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_ROUTE_REQUEST_PACKET )
     {
-        if ( packet_bytes != NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES + 2 )
+        packet_data += 16;
+        packet_bytes -= 18;
+
+        if ( packet_bytes != NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. wrong size" );
             return;
