@@ -2521,7 +2521,7 @@ int relay_read_encrypted_continue_token( uint8_t ** buffer, relay_continue_token
 
 // --------------------------------------------------------------------------
 
-int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
+int relay_write_header_sdk4( int direction, uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
 {
     assert( private_key );
     assert( buffer );
@@ -2589,7 +2589,7 @@ int relay_write_header( int direction, uint8_t type, uint64_t sequence, uint64_t
     return RELAY_OK;
 }
 
-int relay_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
+int relay_peek_header_sdk4( int direction, uint8_t * type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
 {
     uint8_t packet_type;
     uint64_t packet_sequence;
@@ -2637,7 +2637,7 @@ int relay_peek_header( int direction, uint8_t * type, uint64_t * sequence, uint6
     return RELAY_OK;
 }
 
-int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
+int relay_verify_header_sdk4( int direction, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
 {
     assert( private_key );
     assert( buffer );
@@ -2704,6 +2704,192 @@ int relay_verify_header( int direction, const uint8_t * private_key, uint8_t * b
 
     int result = crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 18, &decrypted_length, NULL,
                                                             buffer + 18, (unsigned long long) crypto_aead_chacha20poly1305_IETF_ABYTES,
+                                                            additional, (unsigned long long) additional_length,
+                                                            nonce, private_key );
+
+    if ( result != 0 )
+    {
+        // todo
+        printf( "failed to decrypt\n" );
+        return RELAY_ERROR;
+    }
+
+    return RELAY_OK;
+}
+
+// -------------------------------------------------------------
+
+int relay_write_header_sdk5( int direction, uint8_t type, uint64_t sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * buffer )
+{
+    assert( private_key );
+    assert( buffer );
+
+    uint8_t * start = buffer;
+
+    (void) start;
+
+    if ( direction == RELAY_DIRECTION_SERVER_TO_CLIENT )
+    {
+        // high bit must be set
+        assert( sequence & ( 1ULL << 63 ) );
+    }
+    else
+    {
+        // high bit must be clear
+        assert( ( sequence & ( 1ULL << 63 ) ) == 0 );
+    }
+
+    if ( type == RELAY_SESSION_PING_PACKET_SDK5 || type == RELAY_SESSION_PONG_PACKET_SDK5 || type == RELAY_ROUTE_RESPONSE_PACKET_SDK5 || type == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
+    {
+        // second highest bit must be set
+        assert( sequence & ( 1ULL << 62 ) );
+    }
+    else
+    {
+        // second highest bit must be clear
+        assert( ( sequence & ( 1ULL << 62 ) ) == 0 );
+    }
+
+    relay_write_uint64( &buffer, sequence );
+
+    uint8_t * additional = buffer;
+    const int additional_length = 8 + 1;
+
+    relay_write_uint64( &buffer, session_id );
+    relay_write_uint8( &buffer, session_version );
+
+    uint8_t nonce[12];
+    {
+        uint8_t * p = nonce;
+        relay_write_uint32( &p, type );
+        relay_write_uint64( &p, sequence );
+    }
+
+    unsigned long long encrypted_length = 0;
+
+    int result = crypto_aead_chacha20poly1305_ietf_encrypt( buffer, &encrypted_length,
+                                                            buffer, 0,
+                                                            additional, (unsigned long long) additional_length,
+                                                            NULL, nonce, private_key );
+
+    if ( result != 0 )
+        return RELAY_ERROR;
+
+    buffer += encrypted_length;
+
+    assert( int( buffer - start ) == RELAY_HEADER_BYTES_SDK5 );
+
+    return RELAY_OK;
+}
+
+int relay_peek_header_sdk5( int direction, int packet_type, uint64_t * sequence, uint64_t * session_id, uint8_t * session_version, const uint8_t * buffer, int buffer_length )
+{
+    uint64_t packet_sequence;
+
+    assert( buffer );
+
+    if ( buffer_length < RELAY_HEADER_BYTES_SDK5 )
+        return RELAY_ERROR;
+
+    packet_sequence = relay_read_uint64( &buffer );
+
+    if ( direction == RELAY_DIRECTION_SERVER_TO_CLIENT )
+    {
+        // high bit must be set
+        if ( !( packet_sequence & ( 1ULL << 63 ) ) )
+            return RELAY_ERROR;
+    }
+    else
+    {
+        // high bit must be clear
+        if ( packet_sequence & ( 1ULL << 63 ) )
+            return RELAY_ERROR;
+    }
+
+    // if ( *type == RELAY_SESSION_PING_PACKET_SDK5 || *type == RELAY_SESSION_PONG_PACKET_SDK5 || *type == RELAY_ROUTE_RESPONSE_PACKET_SDK5 || *type == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
+    if ( packet_type == RELAY_SESSION_PING_PACKET_SDK5 || packet_type == RELAY_SESSION_PONG_PACKET_SDK5 || packet_type == RELAY_ROUTE_RESPONSE_PACKET_SDK5 || packet_type == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
+    {
+        // second highest bit must be set
+        assert( packet_sequence & ( 1ULL << 62 ) );
+    }
+    else
+    {
+        // second highest bit must be clear
+        assert( ( packet_sequence & ( 1ULL << 62 ) ) == 0 );
+    }
+
+    *sequence = packet_sequence;
+    *session_id = relay_read_uint64( &buffer );
+    *session_version = relay_read_uint8( &buffer );
+
+    return RELAY_OK;
+}
+
+int relay_verify_header_sdk5( int direction, int packet_type, const uint8_t * private_key, uint8_t * buffer, int buffer_length )
+{
+    assert( private_key );
+    assert( buffer );
+
+    if ( buffer_length < RELAY_HEADER_BYTES_SDK5 )
+    {
+        // todo
+        printf( "packet too small\n" );
+        return RELAY_ERROR;
+    }
+
+    const uint8_t * p = buffer;
+
+    uint64_t packet_sequence = relay_read_uint64( &p );
+
+    if ( direction == RELAY_DIRECTION_SERVER_TO_CLIENT )
+    {
+        // high bit must be set
+        if ( !( packet_sequence & ( 1ULL <<  63) ) )
+        {
+            return RELAY_ERROR;
+        }
+    }
+    else
+    {
+        // high bit must be clear
+        if ( packet_sequence & ( 1ULL << 63 ) )
+        {
+            return RELAY_ERROR;
+        }
+    }
+
+    if ( packet_type == RELAY_SESSION_PING_PACKET_SDK5 || packet_type == RELAY_SESSION_PONG_PACKET_SDK5 || packet_type == RELAY_ROUTE_RESPONSE_PACKET_SDK5 || packet_type == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
+    {
+        // second highest bit must be set
+        assert( packet_sequence & ( 1ULL << 62 ) );
+    }
+    else
+    {
+        // second highest bit must be clear
+        assert( ( packet_sequence & ( 1ULL << 62 ) ) == 0 );
+    }
+
+    const uint8_t * additional = p;
+
+    const int additional_length = 8 + 1;
+
+    uint64_t packet_session_id = relay_read_uint64( &p );
+    uint8_t packet_session_version = relay_read_uint8( &p );
+
+    (void) packet_session_id;
+    (void) packet_session_version;
+
+    uint8_t nonce[12];
+    {
+        uint8_t * q = nonce;
+        relay_write_uint32( &q, packet_type );
+        relay_write_uint64( &q, packet_sequence );
+    }
+
+    unsigned long long decrypted_length;
+
+    int result = crypto_aead_chacha20poly1305_ietf_decrypt( buffer + 17, &decrypted_length, NULL,
+                                                            buffer + 17, (unsigned long long) crypto_aead_chacha20poly1305_IETF_ABYTES,
                                                             additional, (unsigned long long) additional_length,
                                                             nonce, private_key );
 
@@ -3249,6 +3435,23 @@ int relay_write_route_request_packet_sdk5( uint8_t * packet_data, const uint8_t 
     int packet_length = p - packet_data;
     relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
     relay_generate_pittle_sdk5( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    return packet_length;
+}
+
+int relay_write_route_response_packet_sdk5( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+{
+    uint8_t * p = packet_data;
+    relay_write_uint8( &p, RELAY_ROUTE_RESPONSE_PACKET_SDK5 );
+    uint8_t * a = p; p += 15;
+    uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
+    send_sequence |= uint64_t(1) << 63;
+    send_sequence |= uint64_t(1) << 62;
+    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_ROUTE_RESPONSE_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+        return 0;
+    uint8_t * c = p; p += 2;
+    int packet_length = p - packet_data;
+    relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_pittle_sdk5( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
     return packet_length;
 }
 
@@ -4504,7 +4707,7 @@ static void test_continue_token()
     check( input_token.session_id == output_token.session_id );
 }
 
-static void test_header()
+static void test_header_sdk4()
 {
     uint8_t private_key[crypto_box_SECRETKEYBYTES];
 
@@ -4518,21 +4721,21 @@ static void test_header()
         uint64_t session_id = 0x12313131;
         uint8_t session_version = 0x12;
 
-        check( relay_write_header( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK4, sequence, session_id, session_version, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_write_header_sdk4( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK4, sequence, session_id, session_version, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
 
         uint8_t read_type = 0;
         uint64_t read_sequence = 0;
         uint64_t read_session_id = 0;
         uint8_t read_session_version = 0;
 
-        check( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &read_type, &read_sequence, &read_session_id, &read_session_version, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_peek_header_sdk4( RELAY_DIRECTION_CLIENT_TO_SERVER, &read_type, &read_sequence, &read_session_id, &read_session_version, buffer, sizeof( buffer ) ) == RELAY_OK );
 
         check( read_type == RELAY_CLIENT_TO_SERVER_PACKET_SDK4 );
         check( read_sequence == sequence );
         check( read_session_id == session_id );
         check( read_session_version == session_version );
 
-        check( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_verify_header_sdk4( RELAY_DIRECTION_CLIENT_TO_SERVER, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
     }
 
     // server -> client
@@ -4541,21 +4744,72 @@ static void test_header()
         uint64_t session_id = 0x12313131;
         uint8_t session_version = 0x12;
 
-        check( relay_write_header( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK4, sequence, session_id, session_version, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_write_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK4, sequence, session_id, session_version, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
 
         uint8_t read_type = 0;
         uint64_t read_sequence = 0;
         uint64_t read_session_id = 0;
         uint8_t read_session_version = 0;
 
-        check( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &read_type, &read_sequence, &read_session_id, &read_session_version, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_peek_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, &read_type, &read_sequence, &read_session_id, &read_session_version, buffer, sizeof( buffer ) ) == RELAY_OK );
 
         check( read_type == RELAY_SERVER_TO_CLIENT_PACKET_SDK4 );
         check( read_sequence == sequence );
         check( read_session_id == session_id );
         check( read_session_version == session_version );
 
-        check( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+        check( relay_verify_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, private_key, buffer, sizeof( buffer ) ) == RELAY_OK );
+    }
+}
+
+static void test_header_sdk5()
+{
+    uint8_t private_key[crypto_box_SECRETKEYBYTES];
+
+    relay_random_bytes( private_key, crypto_box_SECRETKEYBYTES );
+
+    uint8_t buffer[RELAY_MTU];
+
+    // client -> server
+    {
+        uint64_t sequence = 123123130131LL;
+        uint64_t session_id = 0x12313131;
+        uint8_t session_version = 0x12;
+
+        check( relay_write_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK5, sequence, session_id, session_version, private_key, buffer ) == RELAY_OK );
+
+        uint64_t read_sequence = 0;
+        uint64_t read_session_id = 0;
+        uint8_t read_session_version = 0;
+
+        check( relay_peek_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK5, &read_sequence, &read_session_id, &read_session_version, buffer, RELAY_HEADER_BYTES_SDK5 ) == RELAY_OK );
+
+        check( read_sequence == sequence );
+        check( read_session_id == session_id );
+        check( read_session_version == session_version );
+
+        check( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK5, private_key, buffer, RELAY_HEADER_BYTES_SDK5 ) == RELAY_OK );
+    }
+
+    // server -> client
+    {
+        uint64_t sequence = 123123130131LL | ( 1ULL << 63 );
+        uint64_t session_id = 0x12313131;
+        uint8_t session_version = 0x12;
+
+        check( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, sequence, session_id, session_version, private_key, buffer ) == RELAY_OK );
+
+        uint64_t read_sequence = 0;
+        uint64_t read_session_id = 0;
+        uint8_t read_session_version = 0;
+
+        check( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, &read_sequence, &read_session_id, &read_session_version, buffer, RELAY_HEADER_BYTES_SDK5 ) == RELAY_OK );
+
+        check( read_sequence == sequence );
+        check( read_session_id == session_id );
+        check( read_session_version == session_version );
+
+        check( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, private_key, buffer, RELAY_HEADER_BYTES_SDK5 ) == RELAY_OK );
     }
 }
 
@@ -4908,7 +5162,8 @@ void relay_test()
     RUN_TEST( test_bandwidth_limiter );
     RUN_TEST( test_route_token );
     RUN_TEST( test_continue_token );
-    RUN_TEST( test_header );
+    RUN_TEST( test_header_sdk4 );
+    RUN_TEST( test_header_sdk5 );
     RUN_TEST( test_base64 );
     RUN_TEST( test_fnv1a );
     RUN_TEST( test_pittle );
@@ -5435,7 +5690,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint64_t sequence;
                 uint64_t session_id;
                 uint8_t session_version;
-                if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_peek_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored route response packet. could not peek header" );
                     continue;
@@ -5470,7 +5725,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_verify_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored route response packet. header did not verify" );
                     continue;
@@ -5550,7 +5805,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint64_t sequence;
                 uint64_t session_id;
                 uint8_t session_version;
-                if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_peek_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored continue response packet. could not peek header" );
                     continue;
@@ -5584,7 +5839,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_verify_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored continue response packet. could not verify header" );
                     continue;
@@ -5614,7 +5869,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint64_t sequence;
                 uint64_t session_id;
                 uint8_t session_version;
-                if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_peek_header_sdk4( RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored client to server packet. could not peek header" );
                     continue;
@@ -5648,7 +5903,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                if ( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_verify_header_sdk4( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored client to server packet. could not verify header" );
                     continue;
@@ -5678,7 +5933,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint64_t sequence;
                 uint64_t session_id;
                 uint8_t session_version;
-                if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_peek_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored server to client packet. could not peek header" );
                     continue;
@@ -5712,7 +5967,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_verify_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored server to client packet. could not verify header" );
                     continue;
@@ -5736,7 +5991,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint64_t sequence;
                 uint64_t session_id;
                 uint8_t session_version;
-                if ( relay_peek_header( RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_peek_header_sdk4( RELAY_DIRECTION_CLIENT_TO_SERVER, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored session ping packet. could not peek header" );
                     continue;
@@ -5770,7 +6025,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                if ( relay_verify_header( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_verify_header_sdk4( RELAY_DIRECTION_CLIENT_TO_SERVER, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored session ping packet. could not verify header" );
                     continue;
@@ -5794,7 +6049,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint64_t sequence;
                 uint64_t session_id;
                 uint8_t session_version;
-                if ( relay_peek_header( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_peek_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, &type, &sequence, &session_id, &session_version, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored session pong packet. could not peek header" );
                     continue;
@@ -5828,7 +6083,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                if ( relay_verify_header( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
+                if ( relay_verify_header_sdk4( RELAY_DIRECTION_SERVER_TO_CLIENT, session->private_key, packet_data, packet_bytes ) != RELAY_OK )
                 {
                     relay_printf( "ignored session pong packet. could not verify header" );
                     continue;
@@ -5899,7 +6154,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK5 )
             {
-                if ( packet_bytes < int( 1 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
+                if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
                 {
                     relay_printf( "ignoring route request. bad packet size (%d)", packet_bytes );
                     continue;
@@ -5946,14 +6201,124 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 }
                 relay_platform_mutex_release( relay->mutex );
 
-                const uint8_t * token_data = p + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
+                const uint8_t * token_data = p;
+                int token_bytes = packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
+
+                uint8_t next_address_data[32];
+                uint16_t next_address_port;
+                int next_address_bytes;
+
+                relay_address_data_sdk5( &token.next_address, next_address_data, &next_address_bytes, &next_address_port );
 
                 uint8_t route_request_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_route_request_packet_sdk5( route_request_packet, token_data, packet_bytes, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port );
+                packet_bytes = relay_write_route_request_packet_sdk5( route_request_packet, token_data, token_bytes, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port );
+                
+                assert( relay_basic_packet_filter_sdk5( route_request_packet, packet_bytes ) );
+                assert( relay_advanced_packet_filter_sdk5( route_request_packet, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
                 relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
                 relay->bytes_sent += packet_bytes;
+            }
+            else if ( packet_id == RELAY_ROUTE_RESPONSE_PACKET_SDK5 )
+            {
+                if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
+                {
+                    relay_printf( "ignored route response packet. wrong packet size (%d)", packet_bytes );
+                    continue;
+                }
+
+                uint8_t * p = packet_data;
+                p += 16;
+
+                const uint8_t * const_p = p;
+
+                // uint8_t type;
+                uint64_t sequence;
+                uint64_t session_id;
+                uint8_t session_version;
+                if ( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
+                {
+                    relay_printf( "ignored route response packet. could not peek header" );
+                    continue;
+                }
+
+                uint64_t hash = session_id ^ session_version;
+
+                relay_platform_mutex_acquire( relay->mutex );
+                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_platform_mutex_release( relay->mutex );
+
+                if ( !session )
+                {
+                    relay_printf( "ignored route response packet. could not find session" );
+                    continue;
+                }
+
+                if ( session->expire_timestamp < relay_timestamp( relay ) )
+                {
+                    relay_printf( "ignored route response packet. expired" );
+                    relay_platform_mutex_acquire( relay->mutex );
+                    relay->sessions->erase(hash);
+                    relay_platform_mutex_release( relay->mutex );
+                    continue;
+                }
+
+                uint64_t clean_sequence = relay_clean_sequence( sequence );
+
+                if ( clean_sequence <= session->server_to_client_sequence )
+                {
+                    relay_printf( "ignored route response packet. packet already received (%d <= %d)", clean_sequence, session->server_to_client_sequence );
+                    continue;
+                }
+
+                if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
+                {
+                    relay_printf( "ignored route response packet. header did not verify" );
+                    continue;
+                }
+
+                session->server_to_client_sequence = clean_sequence;
+
+                uint8_t prev_address_data[32];
+                uint16_t prev_address_port;
+                int prev_address_bytes;
+
+                relay_address_data_sdk5( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
+
+                uint8_t route_response_packet[RELAY_MAX_PACKET_BYTES];
+                packet_bytes = relay_write_route_response_packet_sdk5( route_response_packet, sequence, session_id, session_version, session->private_key, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+
+                assert( relay_basic_packet_filter_sdk5( route_response_packet, packet_bytes ) );
+                assert( relay_advanced_packet_filter_sdk5( route_response_packet, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+
+                relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
+
+                relay->bytes_sent += packet_bytes;
+            }
+            else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET_SDK5 )
+            {
+                relay_printf( "received RELAY_CONTINUE_REQUEST_PACKET_SDK5" );
+            }
+            else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
+            {
+                relay_printf( "received RELAY_CONTINUE_RESPONSE_PACKET_SDK5" );
+            }
+            else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET_SDK5 )
+            {
+                relay_printf( "received RELAY_CLIENT_TO_SERVER_PACKET_SDK5" );
+            }
+            else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET_SDK5 )
+            {
+                relay_printf( "received RELAY_SERVER_TO_CLIENT_PACKET_SDK5" );
+            }
+            else if ( packet_id == RELAY_SESSION_PING_PACKET_SDK5 )
+            {
+                relay_printf( "received RELAY_SESSION_PING_PACKET_SDK5" );
+            }
+            else if ( packet_id == RELAY_SESSION_PONG_PACKET_SDK5 )
+            {
+                relay_printf( "received RELAY_SESSION_PONG_PACKET_SDK5" );
             }
             else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK5 )
             {
