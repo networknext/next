@@ -218,8 +218,10 @@ function checkMapModal (toName: string, fromName: string) {
 }
 
 router.onError(() => {
-  updateCurrentPage('map')
-  router.push('/map')
+  if (router.currentRoute.fullPath !== '/map') {
+    updateCurrentPage('map')
+    router.push('/map')
+  }
 })
 
 // Catch all for routes. This can be used for a lot of different things like separating anon portal from authorized portal etc
@@ -227,10 +229,20 @@ router.beforeEach((to: Route, from: Route, next: NavigationGuardNext<Vue>) => {
   let toName = to.name || ''
   const fromName = from.name || ''
 
+  if (to.fullPath === '/') {
+    router.push('/map')
+    return
+  }
+
+  if (to.fullPath === router.currentRoute.fullPath) {
+    return
+  }
+
   if (toName === '404') {
     next(new Error('Route does not exist'))
     return
   }
+
   // Email is verified - catch this event, refresh the user's token and go to the map
   if (to.query.message === 'Your email was verified. You can continue using the application.') {
     // TODO: refreshToken returns a promise that should be used to optimize page loads. Look into how this effects routing
