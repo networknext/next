@@ -32,7 +32,7 @@
               <font-awesome-icon icon="download"
                                   class="fa-w-16 fa-fw"
               />
-              SDK v4.0.16
+              SDK v4.20
             </a>
             <a
               id="ue4-button"
@@ -43,6 +43,16 @@
                                   class="fa-w-16 fa-fw"
               />
               UE4 Plugin
+            </a>
+            <a
+              id="enet-button"
+              @click="downloadEnet()"
+              class="btn btn-primary m-1 btn-width white-link"
+            >
+              <font-awesome-icon icon="download"
+                                  class="fa-w-16 fa-fw"
+              />
+              ENet Support
             </a>
             <a
               id="docs-button"
@@ -87,6 +97,8 @@
 
 <script lang="ts">
 import {
+  ENET_DOWNLOAD_EVENT,
+  ENET_DOWNLOAD_URL,
   IMPORTANT_CLICKS_CATEGORY,
   SDK_DOCUMENTATION_EVENT,
   SDK_DOCUMENTATION_URL,
@@ -209,6 +221,20 @@ export default class DownloadsWorkspace extends Vue {
     })
   }
 
+  private downloadEnet () {
+    if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
+      this.$gtag.event(ENET_DOWNLOAD_EVENT, {
+        event_category: IMPORTANT_CLICKS_CATEGORY
+      })
+    }
+    window.open(ENET_DOWNLOAD_URL)
+    this.$apiService.sendENetDownloadNotification({
+      email: this.$store.getters.userProfile.email,
+      customer_name: this.$store.getters.userProfile.companyName,
+      customer_code: this.$store.getters.userProfile.companyCode
+    })
+  }
+
   private download2022WhitePaper () {
     if (this.$flagService.isEnabled(FeatureEnum.FEATURE_ANALYTICS)) {
       this.$gtag.event(WHITE_PAPER_DOWNLOAD_EVENT, {
@@ -238,10 +264,6 @@ export default class DownloadsWorkspace extends Vue {
     border-color: #009FDF;
     background-color: #009FDF;
   }
-  #ue4-button {
-    border-color: #009FDF;
-    background-color: #009FDF;
-  }
   #white-paper-button {
     border-color: #009FDF;
     background-color: #009FDF;
@@ -254,11 +276,27 @@ export default class DownloadsWorkspace extends Vue {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
   }
-  #ue4-button:hover {
+  #enet-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #enet-button:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
   }
+  #white-paper-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
   #white-paper-button:hover {
+    border-color: rgb(0, 139, 194);
+    background-color: rgb(0, 139, 194);
+  }
+  #ue4-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #ue4-button:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);
   }
