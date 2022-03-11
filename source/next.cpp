@@ -11998,7 +11998,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
         return NULL;
     }
 
-    uint8_t packet_type = 0;
+    uint8_t packet_type = NEXT_CLIENT_TO_SERVER_PACKET;
     uint64_t packet_sequence = 0;
     uint64_t packet_session_id = 0;
     uint8_t packet_session_version = 0;
