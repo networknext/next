@@ -3432,6 +3432,8 @@ int relay_write_route_response_packet_sdk5( uint8_t * packet_data, uint64_t send
     send_sequence |= uint64_t(1) << 62;
     if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_ROUTE_RESPONSE_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_ROUTE_RESPONSE_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
+        return 0;
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
     relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
@@ -3451,6 +3453,8 @@ int relay_write_client_to_server_packet_sdk5( uint8_t * packet_data, uint64_t se
     uint8_t * a = p; p += 15;
     uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
     if ( relay_write_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+        return 0;
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
         return 0;
     relay_write_bytes( &p, game_packet_data, game_packet_bytes ); 
     uint8_t * c = p; p += 2;
