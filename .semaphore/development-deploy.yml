@@ -40,10 +40,6 @@ blocks:
           commands:
             - make build-api-artifacts-dev
             - make publish-api-artifacts-dev
-        - name: Vanity
-          commands:
-            - make build-vanity-artifacts-dev
-            - make publish-vanity-artifacts-dev
         - name: Portal
           commands:
             - make build-portal-artifacts-dev
