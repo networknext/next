@@ -1533,7 +1533,7 @@ func BuildPostRouteRelayData(state *SessionHandlerState) {
 	/*
 		Build information about the relays involved in the current route.
 
-		This data is sent to the portal, billing and the vanity metrics system.
+		This data is sent to the portal, and billing system.
 	*/
 
 	for i := int32(0); i < state.Input.RouteNumRelays; i++ {
@@ -2009,7 +2009,7 @@ func SessionUpdateHandlerFunc(
 			Session post *always* runs at the end of this function
 
 			It writes and sends the response packet back to the sender,
-			and sends session data to billing, vanity metrics and the portal.
+			and sends session data to billing and the portal.
 		*/
 
 		defer SessionPost(&state)
