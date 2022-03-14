@@ -89,7 +89,7 @@
         <h5>
           State of the Internet for Real-Time Games 2022 Whitepaper <br />
         </h5>
-        <div style="font-size: 90%;">Analysis of over 10 million player sessions identifies critical need for session analytics and selective augmented Internet services</div>
+        <div style="font-size: 90%;">Analysis of over 10 million unique players identifies critical need for session analytics and selective augmented Internet services</div>
       </div>
     </div>
   </div>
@@ -261,6 +261,10 @@ export default class DownloadsWorkspace extends Vue {
     background-color: #009FDF;
   }
   #docs-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
+  #white-paper-button {
     border-color: #009FDF;
     background-color: #009FDF;
   }

@@ -153,12 +153,13 @@ describe('NavBar.vue', () => {
     expect(versionSpy).toBeCalledTimes(1)
 
     const links = wrapper.findAll('router-link-stub')
-    expect(links.length).toBe(5)
+    expect(links.length).toBe(6)
     expect(links.at(0).text()).toBe('Map')
     expect(links.at(1).text()).toBe('Sessions')
     expect(links.at(2).text()).toBe('Session Tool')
-    expect(links.at(3).text()).toBe('Log in')
-    expect(links.at(4).text()).toBe('Get Access')
+    expect(links.at(3).text()).toBe('Explore')
+    expect(links.at(4).text()).toBe('Log in')
+    expect(links.at(5).text()).toBe('Get Access')
 
     store.commit('UPDATE_IS_ANONYMOUS', false)
 
@@ -187,11 +188,12 @@ describe('NavBar.vue', () => {
     expect(versionSpy).toBeCalledTimes(1)
 
     const links = wrapper.findAll('router-link-stub')
-    expect(links.length).toBe(4)
+    expect(links.length).toBe(5)
     expect(links.at(0).text()).toBe('Map')
     expect(links.at(1).text()).toBe('Sessions')
     expect(links.at(2).text()).toBe('Session Tool')
     expect(links.at(3).text()).toBe('User Tool')
+    expect(links.at(4).text()).toBe('Explore')
 
     const emailIndicator = wrapper.find('#email-indicator')
     expect(emailIndicator.exists()).toBeTruthy()
@@ -223,13 +225,14 @@ describe('NavBar.vue', () => {
     expect(versionSpy).toBeCalledTimes(1)
 
     const links = wrapper.findAll('router-link-stub')
-    expect(links.length).toBe(6)
+    expect(links.length).toBe(7)
     expect(links.at(0).text()).toBe('Map')
     expect(links.at(1).text()).toBe('Sessions')
     expect(links.at(2).text()).toBe('Session Tool')
     expect(links.at(3).text()).toBe('User Tool')
     expect(links.at(4).text()).toBe('Downloads')
     expect(links.at(5).text()).toBe('Settings')
+    expect(links.at(6).text()).toBe('Explore')
 
     const logoutButton = wrapper.find('#logout-button')
     expect(logoutButton.exists()).toBeTruthy()
@@ -257,14 +260,15 @@ describe('NavBar.vue', () => {
     expect(versionSpy).toBeCalledTimes(1)
 
     const links = wrapper.findAll('router-link-stub')
-    expect(links.length).toBe(7)
+    expect(links.length).toBe(8)
     expect(links.at(0).text()).toBe('Map')
     expect(links.at(1).text()).toBe('Sessions')
     expect(links.at(2).text()).toBe('Session Tool')
     expect(links.at(3).text()).toBe('User Tool')
     expect(links.at(4).text()).toBe('Downloads')
-    expect(links.at(5).text()).toBe('Explore')
-    expect(links.at(6).text()).toBe('Settings')
+    expect(links.at(5).text()).toBe('Settings')
+    expect(links.at(6).text()).toBe('Usage')
+    expect(links.at(7).text()).toBe('Explore')
 
     const logoutButton = wrapper.find('#logout-button')
     expect(logoutButton.exists()).toBeTruthy()
@@ -294,13 +298,14 @@ describe('NavBar.vue', () => {
     expect(versionSpy).toBeCalledTimes(1)
 
     const links = wrapper.findAll('router-link-stub')
-    expect(links.length).toBe(6)
+    expect(links.length).toBe(7)
     expect(links.at(0).text()).toBe('Map')
     expect(links.at(1).text()).toBe('Sessions')
     expect(links.at(2).text()).toBe('Session Tool')
     expect(links.at(3).text()).toBe('User Tool')
     expect(links.at(4).text()).toBe('Downloads')
     expect(links.at(5).text()).toBe('Settings')
+    expect(links.at(6).text()).toBe('Explore')
 
     const notificationBell = wrapper.find('#notification-bell')
     expect(notificationBell.exists()).toBeTruthy()

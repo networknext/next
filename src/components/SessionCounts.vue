@@ -1,8 +1,8 @@
 <template>
   <div
-    class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom"
+    class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom"
   >
-    <h1 class="count-header" v-if="showCount" data-test="currentPage">
+    <h1 class="count-header" v-if="showCount" data-test="currentPage" style="max-width: 80%;">
       {{ $store.getters.currentPage[0].toUpperCase() + $store.getters.currentPage.slice(1) }}&nbsp;
       <span
         class="badge badge-dark"
@@ -13,7 +13,7 @@
         data-test="nnSessions"
       >{{ totalSessionsReply.onNN.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') }} on Network Next</span>
     </h1>
-    <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
+    <div class="mb-2 mb-md-0 align-items-center pl-4 pr-4" style="max-width: 50%">
       <Alert ref="sessionCountAlert">
         <a href="#" @click="$refs.sessionCountAlert.resendVerificationEmail()">
           Resend email
