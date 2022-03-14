@@ -39,8 +39,6 @@ This is a monorepo that contains the Network Next backend.
 	3. Ghost Army (`make deploy-ghost-army-prod`)
 	----
 	1. Billing (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
-	----
-	1. API (Rolling Replace, Maximum Surge 2, Maximum Unavailable 0, Minimum Wait Time 0)
 	---- 
 	1. Server Backend 4 (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
 		- Note: there is a 1 hour connection drain on server backend instances to reduce fallbacks to direct.

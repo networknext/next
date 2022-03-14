@@ -39,7 +39,6 @@ type StagingConfig struct {
 	RelayFrontend   StagingServiceConfig `json:"relay_frontend"`
 	RelayPusher     StagingServiceConfig `json:"relay_pusher"`
 	PortalCruncher  StagingServiceConfig `json:"portal_cruncher"`
-	Api             StagingServiceConfig `json:"api"`
 	AnalyticsPusher StagingServiceConfig `json:"analytics_pusher"`
 	Analytics       StagingServiceConfig `json:"analytics"`
 	Billing         StagingServiceConfig `json:"billing"`
@@ -80,11 +79,6 @@ var DefaultStagingConfig = StagingConfig{
 	PortalCruncher: StagingServiceConfig{
 		Cores: 10,
 		Count: 4,
-	},
-
-	Api: StagingServiceConfig{
-		Cores: 1,
-		Count: -1,
 	},
 
 	AnalyticsPusher: StagingServiceConfig{
@@ -650,11 +644,8 @@ func createInstanceGroups(config StagingConfig) []InstanceGroup {
 	instanceGroups = append(instanceGroups, NewUnmanagedInstanceGroup("analytics-pusher", config.AnalyticsPusher))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-gateway-mig", false, config.RelayGateway))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("relay-frontend-mig", false, config.RelayFrontend))
-	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("api-mig", false, config.Api))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("analytics-mig", false, config.Analytics))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("billing", false, config.Billing))
-	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-mig", false, config.Beacon))
-	// instanceGroups = append(instanceGroups, NewManagedInstanceGroup("beacon-inserter-mig", false, config.BeaconInserter))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-backend-mig", false, config.PortalBackend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("portal-frontend-mig", false, config.PortalFrontend))
 	instanceGroups = append(instanceGroups, NewManagedInstanceGroup("server-backend-mig", true, config.ServerBackend))

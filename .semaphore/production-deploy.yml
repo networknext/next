@@ -36,10 +36,6 @@ blocks:
           commands:
             - make build-analytics-artifacts-prod
             - make publish-analytics-artifacts-prod
-        - name: API
-          commands:
-            - make build-api-artifacts-prod
-            - make publish-api-artifacts-prod
         - name: Portal
           commands:
             - make build-portal-artifacts-prod

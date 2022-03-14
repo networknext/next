@@ -44,10 +44,6 @@ blocks:
           commands:
             - make build-analytics-artifacts-staging
             - make publish-analytics-artifacts-staging
-        - name: API
-          commands:
-            - make build-api-artifacts-staging
-            - make publish-api-artifacts-staging
         - name: Portal
           commands:
             - make build-portal-artifacts-staging
