@@ -6,32 +6,19 @@
               flex-wrap
               flex-md-nowrap
               align-items-center
-              pt-3
-              pb-2
               mb-3
-              border-bottom
             "
     >
-      <h1 class="h2">
-        Explore
-      </h1>
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
       </div>
-      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 400px;">
+      <div class="btn-toolbar mb-2 mb-md-0 flex-grow-1" style="max-width: 400px;" v-if="$store.getters.isAdmin">
         <div class="mr-auto"></div>
-        <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" :liveOnly="false"/>
+        <BuyerFilter :includeAll="false" :liveOnly="false"/>
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
-      <div class="card-header">
-        <ul class="nav nav-tabs card-header-tabs">
-          <li class="nav-item">
-            <router-link to="/explore/saves" class="nav-link" :class="{ active: $store.getters.currentPage === 'saves'}">Saves</router-link>
-          </li>
-        </ul>
-      </div>
-      <router-view/>
+      <Usage />
     </div>
   </div>
 </template>
@@ -41,8 +28,8 @@ import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import BuyerFilter from '@/components/BuyerFilter.vue'
-import DateFilter from '@/components/DateFilter.vue'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
+import Usage from '@/components/Usage.vue'
 
 /**
  * This component holds the workspace elements related to the downloads page in the Portal
@@ -56,10 +43,10 @@ import { ErrorTypes } from '@/components/types/ErrorTypes'
   components: {
     Alert,
     BuyerFilter,
-    DateFilter
+    Usage
   }
 })
-export default class ExplorationWorkspace extends Vue {
+export default class UsageWorkspace extends Vue {
   // Register the alert component to access its set methods
   $refs!: {
     verifyAlert: Alert;

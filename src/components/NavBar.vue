@@ -8,7 +8,7 @@
           <img class="logo-fit" src="../assets/logo.png" />
         </div>
       </a>
-      <ul class="navbar-nav px-3 w-100 mr-auto">
+      <ul class="navbar-nav mr-auto">
         <li class="nav-item text-nowrap">
           <router-link
             to="/map"
@@ -63,20 +63,6 @@
         </li>
         <li class="nav-item text-nowrap">
           <router-link
-            to="/explore"
-            class="nav-link"
-            :class="{
-              active:
-                $store.getters.currentPage == 'analytics' ||
-                $store.getters.currentPage === 'invoice' ||
-                $store.getters.currentPage == 'usage' ||
-                $store.getters.currentPage == 'discovery'
-            }"
-            v-if="($store.getters.hasBilling || $store.getters.hasAnalytics) && $store.getters.isExplorer"
-          >Explore</router-link>
-        </li>
-        <li class="nav-item text-nowrap">
-          <router-link
             to="/settings"
             class="nav-link"
             :class="{
@@ -89,9 +75,40 @@
             v-if="!$store.getters.isAnonymous && !$store.getters.isAnonymousPlus"
           >Settings</router-link>
         </li>
-      </ul>
-      <ul class="navbar-nav px-3 w-100" v-if="portalVersion !== ''">
-        <li class="nav-item text-nowrap" style="color: #9a9da0;">{{ portalVersion }}</li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/usage"
+            class="nav-link"
+            :class="{
+              active:
+                $store.getters.currentPage == 'usage' ||
+                $store.getters.currentPage == 'invoice'
+            }"
+            v-if="$store.getters.hasBilling"
+          >Usage</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/analytics"
+            class="nav-link"
+            :class="{
+              active:
+                $store.getters.currentPage == 'analytics'
+            }"
+            v-if="$store.getters.hasAnalytics"
+          >Analytics</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
+            to="/explore"
+            class="nav-link"
+            :class="{
+              active:
+                $store.getters.currentPage == 'saves' ||
+                $store.getters.currentPage == 'supply'
+            }"
+          >Explore</router-link>
+        </li>
       </ul>
       <ul class="navbar-nav px-2" v-if="$store.getters.isOwner || $store.getters.isAdmin">
         <a style="cursor: pointer;" @click="openNotificationsModal()">
@@ -107,7 +124,11 @@
         </a>
       </ul>
       <ul class="navbar-nav px-1" v-if="!$store.getters.isAnonymous">
-        <li id="email-indicator" class="nav-item text-nowrap" style="color: white;">
+        <li id="email-indicator" class="nav-item text-nowrap" style="color: white;"
+          data-toggle="tooltip"
+          data-placement="right"
+          :title="$store.getters.isAdmin ? portalVersion : $store.getters.userProfile.email "
+        >
           {{ $store.getters.userProfile.email || "" }}
         </li>
       </ul>

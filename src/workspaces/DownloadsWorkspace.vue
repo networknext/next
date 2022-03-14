@@ -264,6 +264,10 @@ export default class DownloadsWorkspace extends Vue {
     border-color: #009FDF;
     background-color: #009FDF;
   }
+  #white-paper-button {
+    border-color: #009FDF;
+    background-color: #009FDF;
+  }
   #sdk-button:hover {
     border-color: rgb(0, 139, 194);
     background-color: rgb(0, 139, 194);

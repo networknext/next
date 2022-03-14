@@ -76,7 +76,7 @@
           <br/>
         </small>
       </div>
-      <button v-if="$store.getters.userProfile.companyCode === '' && $store.getters.userProfile.companyName === ''" id="company-details-button" type="submit" class="btn btn-primary btn-sm">
+      <button id="company-details-button" v-if="$store.getters.userProfile.companyCode === '' && $store.getters.userProfile.companyName === ''" type="submit" class="btn btn-primary btn-sm">
         Setup Company Account
       </button>
       <p class="text-muted text-small mt-2"></p>
