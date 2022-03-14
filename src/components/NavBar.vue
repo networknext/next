@@ -19,6 +19,16 @@
         </li>
         <li class="nav-item text-nowrap">
           <router-link
+            to="/saves"
+            class="nav-link"
+            :class="{
+              active:
+                $store.getters.currentPage == 'saves'
+            }"
+          >Saves</router-link>
+        </li>
+        <li class="nav-item text-nowrap">
+          <router-link
             to="/sessions"
             class="nav-link"
             data-intercom="sessions"
@@ -97,17 +107,6 @@
             }"
             v-if="$store.getters.hasAnalytics"
           >Analytics</router-link>
-        </li>
-        <li class="nav-item text-nowrap">
-          <router-link
-            to="/explore"
-            class="nav-link"
-            :class="{
-              active:
-                $store.getters.currentPage == 'saves' ||
-                $store.getters.currentPage == 'supply'
-            }"
-          >Explore</router-link>
         </li>
       </ul>
       <ul class="navbar-nav px-2" v-if="$store.getters.isOwner || $store.getters.isAdmin">
