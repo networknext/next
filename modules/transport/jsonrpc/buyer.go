@@ -2694,7 +2694,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	user := ctx.Value(middleware.Keys.UserKey)
 	if user == nil {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchUsageDashboard(): %v", err.Error())
+		core.Error("FetchAnalyticsDashboards(): %v", err.Error())
 		return &err
 	}
 
@@ -2702,7 +2702,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	requestID, ok := claims["sub"].(string)
 	if !ok {
 		err := JSONRPCErrorCodes[int(ERROR_JWT_PARSE_FAILURE)]
-		core.Error("FetchUsageDashboard(): %v: Failed to parse user ID", err.Error())
+		core.Error("FetchAnalyticsDashboards(): %v: Failed to parse user ID", err.Error())
 		return &err
 	}
 
