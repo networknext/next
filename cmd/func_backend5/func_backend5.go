@@ -637,7 +637,7 @@ func main() {
 
 	go WebServer()
 
-	fmt.Printf("started functional backend on ports %d and %d\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
+	fmt.Printf("started functional backend on ports %d and %d (sdk5)\n", NEXT_RELAY_BACKEND_PORT, NEXT_SERVER_BACKEND_PORT)
 
 	lc := net.ListenConfig{
 		Control: func(network string, address string, c syscall.RawConn) error {
@@ -971,6 +971,5 @@ func WebServer() {
 	router := mux.NewRouter()
 	router.HandleFunc("/relay_update", RelayUpdateHandler).Methods("POST")
 	router.HandleFunc("/near", NearHandler).Methods("GET")
-	fmt.Printf("WebServer\n")
 	http.ListenAndServe(fmt.Sprintf(":%d", NEXT_RELAY_BACKEND_PORT), router)
 }

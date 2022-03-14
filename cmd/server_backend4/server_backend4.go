@@ -402,7 +402,7 @@ func mainReturnWithCode() int {
 		}()
 	}
 
-	// Setup feature config for billing and vanity metrics
+	// Setup feature config for billing
 	var featureConfig config.Config
 	envVarConfig := config.NewEnvVarConfig([]config.Feature{
 		{
@@ -410,12 +410,6 @@ func mainReturnWithCode() int {
 			Enum:        config.FEATURE_BILLING2,
 			Value:       true,
 			Description: "Inserts BillingEntry2 types to Google Pub/Sub",
-		},
-		{
-			Name:        "FEATURE_VANITY_METRIC",
-			Enum:        config.FEATURE_VANITY_METRIC,
-			Value:       false,
-			Description: "Vanity metrics for fast aggregate statistic lookup",
 		},
 	})
 	featureConfig = envVarConfig
@@ -569,42 +563,11 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	// Determine if should use vanity metrics
-	useVanityMetrics := featureConfig.FeatureEnabled(config.FEATURE_VANITY_METRIC)
-
-	// Start vanity metrics publisher
-	vanityPublishers := make([]pubsub.Publisher, 0)
-	{
-		vanityMetricHosts := envvar.GetList("FEATURE_VANITY_METRIC_HOSTS", []string{"tcp://127.0.0.1:6666"})
-
-		postVanityMetricSendBufferSize, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE", 1000000)
-		if err != nil {
-			core.Error("invalid FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE: %v", err)
-			return 1
-		}
-
-		for _, host := range vanityMetricHosts {
-			vanityPublisher, err := pubsub.NewVanityMetricPublisher(host, postVanityMetricSendBufferSize)
-			if err != nil {
-				core.Error("could not create vanity metric publisher: %v", err)
-				return 1
-			}
-
-			vanityPublishers = append(vanityPublishers, vanityPublisher)
-		}
-	}
-
-	postVanityMetricMaxRetries, err := envvar.GetInt("FEATURE_VANITY_METRIC_POST_MAX_RETRIES", 10)
-	if err != nil {
-		core.Error("invalid FEATURE_VANITY_METRIC_POST_MAX_RETRIES: %v", err)
-		return 1
-	}
-
 	// Create a post session handler to handle the post process of session updates.
 	// This way, we can quickly return from the session update handler and not spawn a
 	// ton of goroutines if things get backed up.
 	var wgPostSession sync.WaitGroup
-	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, vanityPublishers, postVanityMetricMaxRetries, useVanityMetrics, biller2, featureBilling2, matcher, backendMetrics.PostSessionMetrics)
+	postSessionHandler := transport.NewPostSessionHandler(numPostSessionGoroutines, postSessionBufferSize, portalPublishers, postSessionPortalMaxRetries, biller2, featureBilling2, matcher, backendMetrics.PostSessionMetrics)
 	go postSessionHandler.StartProcessing(ctx, &wgPostSession)
 
 	// Create a server tracker to keep track of which servers are sending updates to this backend
@@ -812,16 +775,11 @@ func mainReturnWithCode() int {
 				newStatusData.PostSessionPortalEntriesSent = int(backendMetrics.PostSessionMetrics.PortalEntriesSent.Value())
 				newStatusData.PostSessionPortalEntriesFinished = int(backendMetrics.PostSessionMetrics.PortalEntriesFinished.Value())
 				newStatusData.PostSessionPortalBufferFull = int(backendMetrics.PostSessionMetrics.PortalBufferFull.Value())
-				newStatusData.PostSessionVanityMetricsSent = int(backendMetrics.PostSessionMetrics.VanityMetricsSent.Value())
-				newStatusData.PostSessionVanityMetricsFinished = int(backendMetrics.PostSessionMetrics.VanityMetricsFinished.Value())
-				newStatusData.PostSessionVanityBufferFull = int(backendMetrics.PostSessionMetrics.VanityBufferFull.Value())
 				newStatusData.PostSessionMatchDataEntriesSent = int(backendMetrics.PostSessionMetrics.MatchDataEntriesSent.Value())
 				newStatusData.PostSessionMatchDataEntriesFinished = int(backendMetrics.PostSessionMetrics.MatchDataEntriesFinished.Value())
 				newStatusData.PostSessionMatchDataEntriesBufferFull = int(backendMetrics.PostSessionMetrics.MatchDataEntriesBufferFull.Value())
 				newStatusData.PostSessionBilling2Failure = int(backendMetrics.PostSessionMetrics.Billing2Failure.Value())
 				newStatusData.PostSessionPortalFailure = int(backendMetrics.PostSessionMetrics.PortalFailure.Value())
-				newStatusData.PostSessionVanityMarshalFailure = int(backendMetrics.PostSessionMetrics.VanityMarshalFailure.Value())
-				newStatusData.PostSessionVanityTransmitFailure = int(backendMetrics.PostSessionMetrics.VanityTransmitFailure.Value())
 				newStatusData.PostSessionMatchDataEntriesFailure = int(backendMetrics.PostSessionMetrics.MatchDataEntriesFailure.Value())
 
 				// Billing Metrics
