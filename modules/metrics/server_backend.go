@@ -95,16 +95,11 @@ type ServerBackendStatus struct {
 	PostSessionPortalEntriesSent          int `json:"post_session_portal_entries_sent"`
 	PostSessionPortalEntriesFinished      int `json:"post_session_portal_entries_finished"`
 	PostSessionPortalBufferFull           int `json:"post_session_portal_buffer_full"`
-	PostSessionVanityMetricsSent          int `json:"post_session_vanity_metrics_sent"`
-	PostSessionVanityMetricsFinished      int `json:"post_session_vanity_metrics_finished"`
-	PostSessionVanityBufferFull           int `json:"post_session_vanity_buffer_full"`
 	PostSessionMatchDataEntriesSent       int `json:"post_session_match_data_entries_sent"`
 	PostSessionMatchDataEntriesFinished   int `json:"post_session_match_data_entries_finished"`
 	PostSessionMatchDataEntriesBufferFull int `json:"post_session_match_data_entries_buffer_full"`
 	PostSessionBilling2Failure            int `json:"post_session_billing_2_failure"`
 	PostSessionPortalFailure              int `json:"post_session_portal_failure"`
-	PostSessionVanityMarshalFailure       int `json:"post_session_vanity_marshal_failure"`
-	PostSessionVanityTransmitFailure      int `json:"post_session_vanity_transmit_failure"`
 	PostSessionMatchDataEntriesFailure    int `json:"post_session_match_data_entries_failure"`
 
 	// Billing Metrics
