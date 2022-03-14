@@ -389,7 +389,6 @@ var ServiceStatusList = []string{
 	"RelayGateway",
 	"RelayPusher",
 	"ServerBackend",
-	"Vanity",
 	"RelayDashboardAnalysis",
 }
 
@@ -550,11 +549,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 				values = reflect.ValueOf(status)
 			case "ServerBackend":
 				var status metrics.ServerBackendStatus
-				json.Unmarshal(b, &status)
-				fields = reflect.TypeOf(status)
-				values = reflect.ValueOf(status)
-			case "Vanity":
-				var status metrics.VanityStatus
 				json.Unmarshal(b, &status)
 				fields = reflect.TypeOf(status)
 				values = reflect.ValueOf(status)
