@@ -145,12 +145,6 @@ func mainReturnWithCode() int {
 		return 1
 	}
 
-	apiMIGName := envvar.Get("API_MIG_NAME", "")
-	if apiMIGName == "" {
-		core.Error("API_MIG_NAME not set")
-		return 1
-	}
-
 	serverBackendMIGName := envvar.Get("SERVER_BACKEND_MIG_NAME", "")
 	if serverBackendMIGName == "" {
 		core.Error("SERVER_BACKEND_MIG_NAME not set")
@@ -623,14 +617,6 @@ func mainReturnWithCode() int {
 				} else {
 					// Add the gateway mig instance names to the list
 					databaseInstanceNames = append(databaseInstanceNames, relayGatewayMIGInstanceNames...)
-				}
-
-				apiMIGInstanceNames, err := getMIGInstanceNames(gcpProjectID, apiMIGName)
-				if err != nil {
-					core.Error("failed to fetch api mig instance names: %v", err)
-				} else {
-					// Add the gateway mig instance names to the list
-					databaseInstanceNames = append(databaseInstanceNames, apiMIGInstanceNames...)
 				}
 
 				if err := gcpStorage.CopyFromBucketToRemote(ctx, databaseBinFileName, databaseInstanceNames, databaseBinFileOutputLocation); err != nil {
