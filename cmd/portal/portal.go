@@ -614,12 +614,6 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		apiURI := envvar.Get("API_URI", "")
-		if apiURI == "" {
-			core.Error("API_URI not set")
-			return 1
-		}
-
 		billingMIG := envvar.Get("BILLING_MIG", "")
 		if billingMIG == "" {
 			core.Error("BILLING_MIG not set")
@@ -674,22 +668,9 @@ func mainReturnWithCode() int {
 			return 1
 		}
 
-		vanityURI := envvar.Get("VANITY_URI", "")
-		if vanityURI == "" {
-			core.Error("VANITY_URI not set")
-			return 1
-		}
-
-		mondayApiKey := envvar.Get("MONDAY_API_KEY", "")
-		if mondayApiKey == "" {
-			core.Error("MONDAY_API_KEY not set")
-			return 1
-		}
-
 		s.RegisterService(&jsonrpc.RelayFleetService{
 			AnalyticsMIG:       analyticsMIG,
 			AnalyticsPusherURI: analyticsPusherURI,
-			ApiURI:             apiURI,
 			BillingMIG:         billingMIG,
 			PingdomURI:         pingdomURI,
 			PortalBackendMIG:   portalBackendMIG,
@@ -699,10 +680,8 @@ func mainReturnWithCode() int {
 			RelayGatewayURI:    relayGatewayURI,
 			RelayPusherURI:     relayPusherURI,
 			ServerBackendMIG:   serverBackendMIG,
-			VanityURI:          vanityURI,
 			Storage:            db,
 			Env:                env,
-			MondayApiKey:       mondayApiKey,
 		}, "")
 
 		s.RegisterService(&jsonrpc.LiveServerService{}, "")

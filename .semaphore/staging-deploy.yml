@@ -48,10 +48,6 @@ blocks:
           commands:
             - make build-api-artifacts-staging
             - make publish-api-artifacts-staging
-        - name: Vanity
-          commands:
-            - make build-vanity-artifacts-staging
-            - make publish-vanity-artifacts-staging
         - name: Portal
           commands:
             - make build-portal-artifacts-staging

@@ -36,7 +36,6 @@ const (
 type RelayFleetService struct {
 	AnalyticsMIG       string
 	AnalyticsPusherURI string
-	ApiURI             string
 	BillingMIG         string
 	PingdomURI         string
 	PortalBackendMIG   string
@@ -46,10 +45,8 @@ type RelayFleetService struct {
 	RelayGatewayURI    string
 	RelayPusherURI     string
 	ServerBackendMIG   string
-	VanityURI          string
 	Storage            storage.Storer
 	Env                string
-	MondayApiKey       string
 }
 
 // RelayFleetEntry represents a line in the CSV file provided
@@ -254,8 +251,6 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
 	case "AnalyticsPusher":
 		serviceURI = fmt.Sprintf("http://%s/status", rfs.AnalyticsPusherURI)
-	case "Api":
-		serviceURI = fmt.Sprintf("https://%s/status", rfs.ApiURI)
 	case "Billing":
 		healthyInstanceName, err := rfs.GetHealthyInstanceInMIG(rfs.BillingMIG)
 		if err != nil {
@@ -302,8 +297,6 @@ func (rfs *RelayFleetService) GetServiceURI(serviceName string) (string, error) 
 			return serviceURI, err
 		}
 		serviceURI = fmt.Sprintf("http://%s/status", instanceInternalIP)
-	case "Vanity":
-		serviceURI = fmt.Sprintf("http://%s/status", rfs.VanityURI)
 	default:
 		err = fmt.Errorf("service %s does not exist", serviceName)
 	}
@@ -396,7 +389,6 @@ var ServiceStatusList = []string{
 	"RelayGateway",
 	"RelayPusher",
 	"ServerBackend",
-	"Vanity",
 	"RelayDashboardAnalysis",
 }
 
@@ -560,11 +552,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 				json.Unmarshal(b, &status)
 				fields = reflect.TypeOf(status)
 				values = reflect.ValueOf(status)
-			case "Vanity":
-				var status metrics.VanityStatus
-				json.Unmarshal(b, &status)
-				fields = reflect.TypeOf(status)
-				values = reflect.ValueOf(status)
 			default:
 				err := fmt.Errorf("AdminFrontPage() service %s does not have status", args.ServiceName)
 				core.Error("%v", err)
@@ -590,7 +577,6 @@ func (rfs *RelayFleetService) AdminFrontPage(r *http.Request, args *AdminFrontPa
 	}
 
 	reply.ServiceNameList = ServiceStatusList
-	reply.MondayApiKey = rfs.MondayApiKey
 
 	return nil
 }

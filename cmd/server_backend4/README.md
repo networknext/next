@@ -41,14 +41,12 @@ Debug logs are available by setting `NEXT_DEBUG_LOGS=1`. Otherwise, only error l
 
 - `FEATURE_BILLING2`: the feature flag for enabling billing2 entries to be written and submitted
 - `PUBSUB_EMULATOR_HOST`: an IP and port to connect to a running pubsub emulator
-- `FEATURE_VANITY_METRIC`: the feature flag for enabling sending vanity metrics
 
 
 #### Required for Cloud Environment
 
 - `GOOGLE_PROJECT_ID`: The GCP project ID for the environment the service is being run in
 - `PORTAL_CRUNCHER_HOSTS`: a TCP hostname for the portal cruncher VM. Make sure this is an internal IP address
-- `FEATURE_VANITY_METRIC_HOSTS`: a TCP hostname for the vanity metric VM. Make sure this is an internal IP address
 - `REDIS_HOST_MULTIPATH_VETO`: a redis IP and port to connect to store multipath veto data
 
 #### Optional
@@ -78,8 +76,6 @@ Debug logs are available by setting `NEXT_DEBUG_LOGS=1`. Otherwise, only error l
 - `WRITE_BUFFER`: The size of the write buffer for a socket connection. Default `100000`
 - `UDP_PORT`: The port to listen for UDP packets on from the game server. Default `40000`
 - `HTTP_PORT`: The port to listen for HTTP requests. Default `40001`
-- `FEATURE_VANITY_METRIC_POST_SEND_BUFFER_SIZE`: The size of the ZeroMQ buffer for vanity metrics. Default `1000000`
-- `FEATURE_VANITY_METRIC_POST_MAX_RETRIES`: The number of times to retry on a post session vanity update before dropping the vanity data. Default `10`
 - `FEATURE_ENABLE_PPROF`: The feature flag for enabling the pprof http endpoint. Default `false`
 - `MATRIX_STALE_DURATION`: The amount of time before a route matrix is considered stale. Default `20s`
 - `METADATA_SYNC_INTERVAL`: The frequency at which to sync the metadata value for shutting down the HTTP server for connection drain. Default `1m`
