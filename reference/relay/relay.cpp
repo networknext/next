@@ -3463,18 +3463,24 @@ int relay_write_client_to_server_packet_sdk5( uint8_t * packet_data, uint64_t se
     return packet_length;
 }
 
-int relay_write_session_ping_packet_sdk5( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+int relay_write_session_ping_packet_sdk5( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
+    assert( packet_data );
+    assert( private_key );
     uint8_t * p = packet_data;
     relay_write_uint8( &p, RELAY_SESSION_PING_PACKET_SDK5 );
     uint8_t * a = p; p += 15;
+    uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
+    send_sequence |= uint64_t(1) << 62;
+    if ( relay_write_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_SESSION_PING_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+        return 0;
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_SESSION_PING_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
+        return 0;
     relay_write_uint64( &p, ping_sequence );
-    relay_write_uint64( &p, session_id );
-    relay_write_bytes( &p, ping_token, RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 );
-    uint8_t * b = p; p += 2;
+    uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
     relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
-    relay_generate_pittle_sdk5( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_pittle_sdk5( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
     return packet_length;
 }
 
@@ -5227,6 +5233,55 @@ void test_client_to_server_packet_sdk5()
     }
 }
 
+void test_session_ping_packet_sdk5()
+{
+    uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        relay_random_bytes( magic, 8 );
+        relay_random_bytes( from_address, 4 );
+        relay_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
+
+        uint64_t send_sequence = i + 1000;
+        uint64_t session_id = 0x12314141LL;
+        uint8_t session_version = uint8_t(i%256);
+        uint8_t private_key[crypto_box_SECRETKEYBYTES];
+        relay_random_bytes( private_key, crypto_box_SECRETKEYBYTES );
+
+        uint64_t ping_sequence = i;
+        int packet_bytes = relay_write_session_ping_packet_sdk5( packet_data, send_sequence, session_id, session_version, private_key, ping_sequence, magic, from_address, 4, from_port, to_address, 4, to_port );
+
+        check( packet_bytes > 0 );
+
+        check( relay_basic_packet_filter_sdk5( packet_data, packet_bytes ) );
+        check( relay_advanced_packet_filter_sdk5( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+
+        check( packet_data[0] == RELAY_SESSION_PING_PACKET_SDK5 );
+
+        uint64_t read_packet_sequence = 0;
+        uint64_t read_packet_session_id = 0;
+        uint8_t read_packet_session_version = 0;
+
+        uint8_t * read_packet_data = packet_data + 16;
+        int read_packet_bytes = packet_bytes - 16;
+
+        check( relay_peek_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_SESSION_PING_PACKET_SDK5, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, read_packet_data, read_packet_bytes ) == RELAY_OK );
+
+        check( read_packet_sequence == ( send_sequence | (1LL<<62) ) );
+        check( read_packet_session_id == session_id );
+        check( read_packet_session_version == session_version );
+
+        check( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_SESSION_PING_PACKET_SDK5, private_key, read_packet_data, read_packet_bytes ) == RELAY_OK );
+        
+    }
+}
+
 void relay_test()
 {
     printf( "\nRunning relay tests:\n\n" );
@@ -5271,6 +5326,7 @@ void relay_test()
 #endif // #if RELAY_PLATFORM_HAS_IPV6
     RUN_TEST( test_relay_manager );
     RUN_TEST( test_client_to_server_packet_sdk5 );
+    RUN_TEST( test_session_ping_packet_sdk5 );
 
     printf( "\n" );
 
@@ -6237,7 +6293,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 {
                     if ( !relay_advanced_packet_filter_sdk5( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
                     {
-                        relay_printf( "relay advanced packet filter dropped packet" );
+                        relay_printf( "relay advanced packet filter dropped packet (packet type %d)", packet_id );
                         continue;
                     }
                 }
@@ -6495,29 +6551,80 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_SESSION_PING_PACKET_SDK5 )
             {
-                if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 )
+                if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 + 8 )
                 {
                     relay_printf( "ignored session ping packet. bad packet size (%d)", packet_bytes );
                     continue;
                 }
+                
+                uint8_t * p = packet_data;
+                p += 16;
 
-                const uint8_t * const_p = packet_data;
-                const_p += 16;
+                const uint8_t * const_p = p;
 
+                uint64_t sequence;
+                uint64_t session_id;
+                uint8_t session_version;
+                if ( relay_peek_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
+                {
+                    relay_printf( "ignored session ping packet. could not peek header" );
+                    continue;
+                }
+
+                uint64_t hash = session_id ^ session_version;
+
+                relay_platform_mutex_acquire( relay->mutex );
+                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_platform_mutex_release( relay->mutex );
+                if ( !session )
+                {
+                    relay_printf( "ignored session ping packet. session does not exist" );
+                    continue;
+                }
+
+                if ( session->expire_timestamp < relay_timestamp( relay ) )
+                {
+                    relay_printf( "ignored session ping packet. session expired" );
+                    relay_platform_mutex_acquire( relay->mutex );
+                    relay->sessions->erase(hash);
+                    relay_platform_mutex_release( relay->mutex );
+                    continue;
+                }
+
+                uint64_t clean_sequence = relay_clean_sequence( sequence );
+
+                if ( clean_sequence <= session->client_to_server_sequence )
+                {
+                    relay_printf( "ignored session ping packet. already received (%d <= %d)", int(clean_sequence), int(session->client_to_server_sequence) );
+                    continue;
+                }
+
+                if ( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
+                {
+                    relay_printf( "ignored session ping packet. could not verify header" );
+                    continue;
+                }
+
+                session->client_to_server_sequence = clean_sequence;
+
+                const_p += RELAY_HEADER_BYTES_SDK5;
                 uint64_t ping_sequence = relay_read_uint64( &const_p );
-                uint64_t session_id = relay_read_uint64( &const_p );
-                uint8_t ping_token[RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5];
-                relay_read_bytes( &p, ping_token, RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 );
+
+                uint8_t next_address_data[32];
+                uint16_t next_address_port;
+                int next_address_bytes;
+
+                relay_address_data_sdk5( &session->next_address, next_address_data, &next_address_bytes, &next_address_port );
 
                 uint8_t session_ping_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_session_ping_packet_sdk5( session_ping_packet, ping_token, ping_sequence, session_id, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port );
-
+                packet_bytes = relay_write_session_ping_packet_sdk5( session_ping_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port );
+                
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter_sdk5( session_ping_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter_sdk5( session_ping_packet, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter_sdk5( session_ping_packet, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
-                    relay_platform_socket_send_packet( relay->socket, &from, session_ping_packet, packet_bytes );
+                    relay_platform_socket_send_packet( relay->socket, &session->next_address, session_ping_packet, packet_bytes );
 
                     relay->bytes_sent += packet_bytes;
                 }
