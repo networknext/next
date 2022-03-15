@@ -2806,7 +2806,6 @@ int relay_peek_header_sdk5( int direction, int packet_type, uint64_t * sequence,
             return RELAY_ERROR;
     }
 
-    // if ( *type == RELAY_SESSION_PING_PACKET_SDK5 || *type == RELAY_SESSION_PONG_PACKET_SDK5 || *type == RELAY_ROUTE_RESPONSE_PACKET_SDK5 || *type == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
     if ( packet_type == RELAY_SESSION_PING_PACKET_SDK5 || packet_type == RELAY_SESSION_PONG_PACKET_SDK5 || packet_type == RELAY_ROUTE_RESPONSE_PACKET_SDK5 || packet_type == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
     {
         // second highest bit must be set
@@ -3461,6 +3460,21 @@ int relay_write_client_to_server_packet_sdk5( uint8_t * packet_data, uint64_t se
     int packet_length = p - packet_data;
     relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
     relay_generate_pittle_sdk5( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    return packet_length;
+}
+
+int relay_write_session_ping_packet_sdk5( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, uint64_t session_id, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+{
+    uint8_t * p = packet_data;
+    relay_write_uint8( &p, RELAY_SESSION_PING_PACKET_SDK5 );
+    uint8_t * a = p; p += 15;
+    relay_write_uint64( &p, ping_sequence );
+    relay_write_uint64( &p, session_id );
+    relay_write_bytes( &p, ping_token, RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 );
+    uint8_t * b = p; p += 2;
+    int packet_length = p - packet_data;
+    relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_pittle_sdk5( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
     return packet_length;
 }
 
@@ -6481,7 +6495,32 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_SESSION_PING_PACKET_SDK5 )
             {
-                relay_printf( "received RELAY_SESSION_PING_PACKET_SDK5" );
+                if ( packet_bytes != 8 + 8 + RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 )
+                {
+                    relay_printf( "ignored session ping packet. bad packet size (%d)", packet_bytes );
+                    continue;
+                }
+
+                const uint8_t * const_p = packet_data;
+                const_p += 16;
+
+                uint64_t ping_sequence = relay_read_uint64( &const_p );
+                uint64_t session_id = relay_read_uint64( &const_p );
+                uint8_t ping_token[RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5];
+                relay_read_bytes( &p, ping_token, RELAY_ENCRYPTED_PING_TOKEN_BYTES_SDK5 );
+
+                uint8_t session_ping_packet[RELAY_MAX_PACKET_BYTES];
+                packet_bytes = relay_write_session_ping_packet_sdk5( session_ping_packet, ping_token, ping_sequence, session_id, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port );
+
+                if ( packet_bytes > 0 )
+                {
+                    assert( relay_basic_packet_filter_sdk5( session_ping_packet, packet_bytes ) );
+                    assert( relay_advanced_packet_filter_sdk5( session_ping_packet, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+
+                    relay_platform_socket_send_packet( relay->socket, &from, session_ping_packet, packet_bytes );
+
+                    relay->bytes_sent += packet_bytes;
+                }
             }
             else if ( packet_id == RELAY_SESSION_PONG_PACKET_SDK5 )
             {
