@@ -13130,7 +13130,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_PING_PACKET )
     {
-        if ( packet_bytes != NEXT_HEADER_BYTES + 8 + 8 + 2 )
+        packet_data += 16;
+        packet_bytes -= 18;
+
+        if ( packet_bytes != NEXT_HEADER_BYTES + 8 )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. bad packet size" );            
             return;
