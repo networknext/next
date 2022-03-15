@@ -4837,8 +4837,8 @@ static void test_header_sdk5()
         uint64_t send_sequence = i + 1000;
         uint64_t session_id = 0x12313131;
         uint8_t session_version = uint8_t(i%256);
-        uint8_t private_key[crypto_box_SECRETKEYBYTES];
-        relay_random_bytes( private_key, crypto_box_SECRETKEYBYTES );
+        uint8_t private_key[crypto_aead_chacha20poly1305_KEYBYTES];
+        relay_random_bytes( private_key, crypto_aead_chacha20poly1305_KEYBYTES );
 
         // client -> server
         {
