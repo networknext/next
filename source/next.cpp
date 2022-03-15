@@ -7317,7 +7317,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         packet_data += 16;
         packet_bytes -= 18;
 
-        const uint8_t * p = packet_data + NEXT_HEADER_BYTES; 
+        const uint8_t * p = packet_data;
 
         uint64_t ping_sequence = next_read_uint64( &p );
         uint64_t ping_session_id = next_read_uint64( &p );
