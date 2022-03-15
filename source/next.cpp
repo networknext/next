@@ -5547,7 +5547,7 @@ int next_read_header( int direction, int packet_type, uint64_t * sequence, uint6
 
     if ( direction == NEXT_DIRECTION_SERVER_TO_CLIENT )
     {
-        if ( !( packet_sequence & ( 1ULL << 63) ) )
+        if ( !( packet_sequence & ( 1ULL << 63 ) ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "high bit must be set" );
             return NEXT_ERROR;
@@ -5564,7 +5564,7 @@ int next_read_header( int direction, int packet_type, uint64_t * sequence, uint6
 
     if ( packet_type == NEXT_PING_PACKET || packet_type == NEXT_PONG_PACKET || packet_type == NEXT_ROUTE_RESPONSE_PACKET || packet_type == NEXT_CONTINUE_RESPONSE_PACKET )
     {
-        if ( !( packet_sequence & ( 1ULL << 62) ) )
+        if ( !( packet_sequence & ( 1ULL << 62 ) ) )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "second highest bit must be set" );
             return NEXT_ERROR;
@@ -6019,17 +6019,12 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     next_assert( *packet_bytes < NEXT_MAX_PACKET_BYTES );
 }
 
-bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence )
+bool next_route_manager_process_server_to_client_packet( next_route_manager_t * route_manager, uint8_t packet_type, uint8_t * packet_data, int packet_bytes, uint64_t * payload_sequence )
 {
     next_route_manager_verify_sentinels( route_manager );
 
     next_assert( packet_data );
     next_assert( payload_sequence );
-
-    uint8_t packet_type = packet_data[0];
-
-    packet_data += 16;
-    packet_bytes -= 18;
 
     uint64_t packet_sequence = 0;
     uint64_t packet_session_id = 0;
@@ -6084,7 +6079,7 @@ bool next_route_manager_process_server_to_client_packet( next_route_manager_t * 
 
     *payload_sequence = packet_sequence;
 
-    int payload_bytes = packet_bytes - NEXT_HEADER_BYTES - 2;
+    int payload_bytes = packet_bytes - NEXT_HEADER_BYTES;
 
     if ( payload_bytes > NEXT_MTU )
     {
@@ -7216,7 +7211,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t payload_sequence = 0;
 
         next_platform_mutex_acquire( &client->route_manager_mutex );
-        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, packet_data, packet_bytes, &payload_sequence );
+        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, packet_id, packet_data, packet_bytes, &payload_sequence );
         next_platform_mutex_release( &client->route_manager_mutex );
 
         if ( !result )
@@ -7279,7 +7274,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         uint64_t payload_sequence = 0;
  
         next_platform_mutex_acquire( &client->route_manager_mutex );
-        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, packet_data, packet_bytes, &payload_sequence );
+        const bool result = next_route_manager_process_server_to_client_packet( client->route_manager, packet_id, packet_data, packet_bytes, &payload_sequence );
         next_platform_mutex_release( &client->route_manager_mutex );
 
         if ( !result )
@@ -11985,20 +11980,19 @@ inline int next_sequence_greater_than( uint8_t s1, uint8_t s2 )
            ( ( s1 < s2 ) && ( s2 - s1  > 128 ) );
 }
 
-next_session_entry_t * next_server_internal_process_client_to_server_packet( next_server_internal_t * server, uint8_t * packet_data, int packet_bytes )
+next_session_entry_t * next_server_internal_process_client_to_server_packet( next_server_internal_t * server, uint8_t packet_type, uint8_t * packet_data, int packet_bytes )
 {
     next_assert( server );
     next_assert( packet_data );
 
     next_server_internal_verify_sentinels( server );
 
-    if ( packet_bytes <= NEXT_HEADER_BYTES + 2 )
+    if ( packet_bytes <= NEXT_HEADER_BYTES )
     {
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet is too small to be valid" );
         return NULL;
     }
 
-    uint8_t packet_type = NEXT_CLIENT_TO_SERVER_PACKET;
     uint64_t packet_sequence = 0;
     uint64_t packet_session_id = 0;
     uint8_t packet_session_version = 0;
@@ -13094,13 +13088,16 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CLIENT_TO_SERVER_PACKET )
     {
-        if ( packet_bytes <= NEXT_HEADER_BYTES + 2 )
+        packet_data += 16;
+        packet_bytes -= 18;
+
+        if ( packet_bytes <= NEXT_HEADER_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet too small to be valid" );
             return;
         }
 
-        next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_data, packet_bytes );
+        next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_id, packet_data, packet_bytes );
         if ( !entry )
         {
             // IMPORTANT: There is no need to log this case, because next_server_internal_process_client_to_server_packet already
@@ -13112,7 +13109,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_server_notify_packet_received_t * notify = (next_server_notify_packet_received_t*) next_malloc( server->context, sizeof( next_server_notify_packet_received_t ) );
         notify->type = NEXT_SERVER_NOTIFY_PACKET_RECEIVED;
         notify->from = entry->address;
-        notify->packet_bytes = packet_bytes - NEXT_HEADER_BYTES - 2;
+        notify->packet_bytes = packet_bytes - NEXT_HEADER_BYTES;
         next_assert( notify->packet_bytes > 0 );
         next_assert( notify->packet_bytes <= NEXT_MTU );
         memcpy( notify->packet_data, packet_data + NEXT_HEADER_BYTES, size_t(notify->packet_bytes) );
@@ -13139,7 +13136,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_data, packet_bytes );
+        next_session_entry_t * entry = next_server_internal_process_client_to_server_packet( server, packet_id, packet_data, packet_bytes );
         if ( !entry )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored next ping packet. did not verify" );
