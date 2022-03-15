@@ -5815,17 +5815,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
         relay->bytes_received += packet_bytes;
 
         int packet_id = packet_data[0];
-        bool sdk4_packet;
-        bool sdk5_packet;
-
-        if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK4 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK4 )
-        {
-            sdk4_packet = true;
-        }
-        else if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK5 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK5 )
-        {
-            sdk5_packet = true;
-        }
 
         if ( packet_id == RELAY_PING_PACKET && packet_bytes == 1 + 8 )
         {
@@ -5841,7 +5830,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             relay_manager_process_pong( relay->relay_manager, &from, sequence );
             relay_platform_mutex_release( relay->mutex );
         }
-        else if ( sdk4_packet )
+        else if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK4 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK4 )
         {
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK4 )
             {
@@ -6329,7 +6318,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay->bytes_sent += packet_bytes - 16;
             }
         }
-        else if ( sdk5_packet )
+        else if ( packet_id >= RELAY_ROUTE_REQUEST_PACKET_SDK5 && packet_id <= RELAY_NEAR_PONG_PACKET_SDK5 )
         {
             if ( !relay_basic_packet_filter_sdk5( packet_data, packet_bytes ))
             {
