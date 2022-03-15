@@ -295,6 +295,8 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 	return nil
 }
 
+// TODO: Remove these functions and use AddNewCustomerAccount VVVVVVVVVV
+
 type JSAddCustomerArgs struct {
 	Code                   string `json:"code"`
 	Name                   string `json:"name"`
@@ -348,6 +350,163 @@ func (s *OpsService) AddCustomer(r *http.Request, args *AddCustomerArgs, reply *
 		core.Error("%v", err)
 		return err
 	}
+	return nil
+}
+
+// TODO: Remove these functions and use AddNewCustomerAccount ^^^^^^^^^^^^^^
+
+type AddNewCustomerAccountArgs struct {
+	Name    string   `json:"name"`
+	Code    string   `json:"code"`
+	Domains []string `json:"domains"`
+}
+
+type AddNewCustomerAccountReply struct{}
+
+func (s *OpsService) AddNewCustomerAccount(r *http.Request, args *AddNewCustomerAccountArgs, reply *AddNewCustomerAccountReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("AddNewCustomerAccount(): %v", err.Error())
+		return &err
+	}
+
+	if args.Name == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Name"
+		core.Error("AddNewCustomerAccount(): %v", err.Error())
+		return &err
+	}
+
+	if args.Code == "" {
+		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
+		err.Data.(*JSONRPCErrorData).MissingField = "Code"
+		core.Error("AddNewCustomerAccount(): %v", err.Error())
+		return &err
+	}
+
+	customer := routing.Customer{
+		Name:                   args.Name,
+		Code:                   args.Code,
+		AutomaticSignInDomains: strings.Join(args.Domains, ", "),
+	}
+
+	if err := s.Storage.AddCustomer(r.Context(), customer); err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		core.Error("AddNewCustomerAccount(): %v", err.Error())
+		return &err
+	}
+
+	return nil
+}
+
+type UpdateCustomerAccountArgs struct {
+	ID      int32    `json:"id"`
+	Name    string   `json:"name"`
+	Domains []string `json:"domains"`
+}
+
+type UpdateCustomerAccountReply struct{}
+
+func (s *OpsService) UpdateCustomerAccount(r *http.Request, args *UpdateCustomerAccountArgs, reply *UpdateCustomerAccountReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("UpdateNewCustomerAccount(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	customer, err := s.Storage.CustomerByID(ctx, int64(args.ID))
+	if err != nil {
+		core.Error("UpdateCustomerAccount(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+
+	}
+
+	// TODO: Figure out if we want to support changing customer code - would require deleting and reconstructing customer account
+	// TODO: These update functions really should be using the database ID
+
+	wasError := false
+	if customer.Name != args.Name && args.Name != "" {
+		if err := s.Storage.UpdateCustomer(ctx, customer.Code, "Name", args.Name); err != nil {
+			core.Error("UpdateCustomerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	domains := strings.Join(args.Domains, ", ")
+
+	if customer.AutomaticSignInDomains != domains {
+		if err := s.Storage.UpdateCustomer(ctx, customer.Code, "AutomaticSigninDomains", domains); err != nil {
+			core.Error("UpdateCustomerAccount(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if wasError {
+		core.Error("UpdateCustomerAccount(): %v", err.Error())
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		return &err
+	}
+
+	return nil
+}
+
+type FetchCustomerInformationArgs struct {
+	CustomerCode string `json:"customer_code"`
+}
+
+type FetchCustomerInformationReply struct {
+	Code          string `json:"code"`
+	Name          string `json:"name"`
+	BuyerID       string `json:"buyer_id"`
+	IsLive        bool   `json:"is_live"`
+	AnalyticsOnly bool   `json:"analytics_only"`
+	HasAnalytics  bool   `json:"premium_analytics"`
+	HasBilling    bool   `json:"show_billing"`
+	PublicKey     string `json:"public_key"`
+	SellerID      string `json:"seller_id"`
+	DatabaseID    int32  `json:"id"`
+	Domains       string `json:"domains"`
+}
+
+func (s *OpsService) FetchCustomerInformation(r *http.Request, args *FetchCustomerInformationArgs, reply *FetchCustomerInformationReply) error {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
+		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
+		core.Error("Customer(): %v", err.Error())
+		return &err
+	}
+
+	ctx := r.Context()
+
+	customer, err := s.Storage.Customer(ctx, args.CustomerCode)
+	if err != nil {
+		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+		core.Error("FetchCustomerInformation(): %v", err.Error())
+		return &err
+	}
+
+	reply.Name = customer.Name
+	reply.Code = customer.Code
+	reply.DatabaseID = int32(customer.DatabaseID)
+	reply.Domains = customer.AutomaticSignInDomains
+
+	buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customer.Code)
+	if err == nil && buyer.CompanyCode != "" {
+		reply.BuyerID = buyer.HexID
+		reply.IsLive = buyer.Live
+		reply.AnalyticsOnly = buyer.RouteShader.AnalysisOnly
+		reply.PublicKey = buyer.EncodedPublicKey()
+		reply.HasAnalytics = buyer.Analytics
+		reply.HasBilling = buyer.Billing
+	}
+
+	seller, err := s.Storage.SellerWithCompanyCode(ctx, customer.Code)
+	if err == nil && seller.CompanyCode != "" {
+		reply.SellerID = seller.CompanyCode
+	}
+
 	return nil
 }
 
