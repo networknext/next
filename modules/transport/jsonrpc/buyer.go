@@ -2753,7 +2753,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 			// Hacky work around for local
 			if isAdmin && (s.Env == "local") {
-				dashCustomerCode = "esl"
+				dashCustomerCode = "twenty-four-entertainment"
 			}
 
 			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
