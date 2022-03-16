@@ -3477,6 +3477,8 @@ int relay_write_server_to_client_packet_sdk5( uint8_t * packet_data, uint64_t se
     send_sequence |= uint64_t(1) << 63;
     if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
         return 0;
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
+        return 0;
     relay_write_bytes( &p, game_packet_data, game_packet_bytes ); 
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
