@@ -2753,7 +2753,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 			// Hacky work around for local
 			if isAdmin && (s.Env == "local") {
-				dashCustomerCode = "esl"
+				dashCustomerCode = "twenty-four-entertainment"
 			}
 
 			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
@@ -2996,45 +2996,21 @@ type FetchCurrentSavesReply struct {
 }
 
 func (s *BuyersService) FetchCurrentSaves(r *http.Request, args *FetchCurrentSavesArgs, reply *FetchCurrentSavesReply) error {
-	ctx := r.Context()
 	reply.Saves = make([]SavedSession, 0)
 
+	ctx := r.Context()
+	customerCode := args.CustomerCode
 	isAdmin := middleware.VerifyAllRoles(r, middleware.AdminRole)
-	if !isAdmin && !middleware.VerifyAnyRole(r, middleware.ExplorerRole) {
+
+	requestCustomer, ok := ctx.Value(middleware.Keys.CustomerKey).(string)
+	if ((customerCode != requestCustomer) || (!ok && customerCode != "")) && !isAdmin {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchCurrentSaves(): %v", err.Error())
 		return &err
 	}
 
-	customerCode := ""
-	if !isAdmin {
-		ok := false
-		customerCode, ok = ctx.Value(middleware.Keys.CustomerKey).(string)
-		if !ok || customerCode == "" {
-			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-			return &err
-		}
-
-		buyer, err := s.Storage.BuyerWithCompanyCode(ctx, customerCode)
-		if err != nil {
-			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
-			return &err
-		}
-
-		if !buyer.Analytics {
-			err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
-			core.Error("FetchDiscoveryDashboards(): %v", err.Error())
-			return &err
-		}
-	} else {
-		// Admin's will be able to see any company's discovery dashboards
-		customerCode = args.CustomerCode
-
-		if s.Env == "local" {
-			customerCode = "esl"
-		}
+	if (s.Env == "local" || s.Env == "dev") && isAdmin {
+		customerCode = "twenty-four-entertainment"
 	}
 
 	saves, err := s.LookerClient.RunSavesQuery(customerCode)
