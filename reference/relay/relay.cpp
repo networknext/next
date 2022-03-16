@@ -3440,6 +3440,38 @@ int relay_write_route_response_packet_sdk5( uint8_t * packet_data, uint64_t send
     return packet_length;
 }
 
+int relay_write_continue_request_packet_sdk5( uint8_t * packet_data, const uint8_t * token_data, int token_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+{
+    uint8_t * p = packet_data;
+    relay_write_uint8( &p, RELAY_CONTINUE_REQUEST_PACKET_SDK5 );
+    uint8_t * a = p; p += 15;
+    relay_write_bytes( &p, token_data, token_bytes );
+    uint8_t * b = p; p += 2;
+    int packet_length = p - packet_data;
+    relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_pittle_sdk5( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    return packet_length;
+}
+
+int relay_write_continue_response_packet_sdk5( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+{
+    uint8_t * p = packet_data;
+    relay_write_uint8( &p, RELAY_CONTINUE_RESPONSE_PACKET_SDK5 );
+    uint8_t * a = p; p += 15;
+    uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
+    send_sequence |= uint64_t(1) << 63;
+    send_sequence |= uint64_t(1) << 62;
+    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_CONTINUE_RESPONSE_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+        return 0;
+    if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_CONTINUE_RESPONSE_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
+        return 0;
+    uint8_t * c = p; p += 2;
+    int packet_length = p - packet_data;
+    relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_pittle_sdk5( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    return packet_length;
+}
+
 int relay_write_client_to_server_packet_sdk5( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     assert( packet_data );
@@ -6648,16 +6680,159 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                    relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
 
-                   relay->bytes_sent += packet_bytes; 
+                   relay->bytes_sent += packet_bytes;
                 }
             }
             else if ( packet_id == RELAY_CONTINUE_REQUEST_PACKET_SDK5 )
             {
-                relay_printf( "received RELAY_CONTINUE_REQUEST_PACKET_SDK5" );
+                if ( packet_bytes < int( RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
+                {
+                    relay_printf( "ignoring continue request. bad packet size (%d)", packet_bytes );
+                    continue;
+                }
+
+                uint8_t * p = packet_data;
+                p += 16;
+                relay_continue_token_t token;
+                if ( relay_read_encrypted_continue_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
+                {
+                    relay_printf( "ignoring continue request. could not read continue token" );
+                    continue;
+                }
+
+                if ( token.expire_timestamp < relay_timestamp( relay ) )
+                {
+                    relay_printf( "ignored continue request. token expired" );
+                    continue;
+                }
+
+                uint64_t hash = token.session_id ^ token.session_version;
+
+                relay_platform_mutex_acquire( relay->mutex );
+                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_platform_mutex_release( relay->mutex );
+
+                if ( !session )
+                {
+                    relay_printf( "ignored continue request. could not find session" );
+                    continue;
+                }
+
+                if ( session->expire_timestamp < relay_timestamp( relay ) )
+                {
+                    relay_printf( "ignored continue request. session expired" );
+                    relay_platform_mutex_acquire( relay->mutex );
+                    relay->sessions->erase(hash);
+                    relay_platform_mutex_release( relay->mutex );
+                    continue;
+                }
+
+                if ( session->expire_timestamp != token.expire_timestamp )
+                {
+                    printf( "session continued: %" PRIx64 ".%d\n", token.session_id, token.session_version );
+                }
+
+                session->expire_timestamp = token.expire_timestamp;
+
+                const uint8_t * token_data = p;
+                int token_bytes = packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
+
+                uint8_t next_address_data[32];
+                uint16_t next_address_port;
+                int next_address_bytes;
+
+                relay_address_data_sdk5( &session->next_address, next_address_data, &next_address_bytes, &next_address_port );
+
+                uint8_t continue_request_packet[RELAY_MAX_PACKET_BYTES];
+                packet_bytes = relay_write_continue_request_packet_sdk5( continue_request_packet, token_data, token_bytes, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port );
+                
+                if ( packet_bytes > 0 )
+                {
+                    assert( relay_basic_packet_filter_sdk5( continue_request_packet, packet_bytes ) );
+                    assert( relay_advanced_packet_filter_sdk5( continue_request_packet, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+
+                    relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
+
+                    relay->bytes_sent += packet_bytes;
+                }
             }
             else if ( packet_id == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 )
             {
-                relay_printf( "received RELAY_CONTINUE_RESPONSE_PACKET_SDK5" );
+                if ( packet_bytes != RELAY_HEADER_BYTES_SDK5 )
+                {
+                    relay_printf( "ignored continue response packet. wrong packet size (%d)", packet_bytes );
+                    continue;
+                }
+
+                uint8_t * p = packet_data;
+                p += 16;
+
+                const uint8_t * const_p = p;
+
+                uint64_t sequence;
+                uint64_t session_id;
+                uint8_t session_version;
+                if ( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
+                {
+                    relay_printf( "ignored continue response packet. could not peek header" );
+                    continue;
+                }
+
+                uint64_t hash = session_id ^ session_version;
+
+                relay_platform_mutex_acquire( relay->mutex );
+                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_platform_mutex_release( relay->mutex );
+
+                if ( !session )
+                {
+                    relay_printf( "ignored continue response packet. could not find session" );
+                    continue;
+                }
+
+                if ( session->expire_timestamp < relay_timestamp( relay ) )
+                {
+                    relay_printf( "ignored continue response packet. expired" );
+                    relay_platform_mutex_acquire( relay->mutex );
+                    relay->sessions->erase(hash);
+                    relay_platform_mutex_release( relay->mutex );
+                    continue;
+                }
+
+                uint64_t clean_sequence = relay_clean_sequence( sequence );
+
+                if ( clean_sequence <= session->server_to_client_sequence )
+                {
+                    relay_printf( "ignored continue response packet. packet already received (%d <= %d)", clean_sequence, session->server_to_client_sequence );
+                    continue;
+                }
+
+                if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
+                {
+                    relay_printf( "ignored continue response packet. header did not verify" );
+                    continue;
+                }
+
+                session->server_to_client_sequence = clean_sequence;
+
+                uint8_t prev_address_data[32];
+                uint16_t prev_address_port;
+                int prev_address_bytes;
+
+                relay_address_data_sdk5( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
+
+                uint8_t continue_response_packet[RELAY_MAX_PACKET_BYTES];
+                packet_bytes = relay_write_continue_response_packet_sdk5( continue_response_packet, sequence, session_id, session_version, session->private_key, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+
+                if ( packet_bytes > 0 )
+                {
+                   assert( relay_basic_packet_filter_sdk5( continue_response_packet, packet_bytes ) );
+                   assert( relay_advanced_packet_filter_sdk5( continue_response_packet, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+
+                   relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
+
+                   relay->bytes_sent += packet_bytes;
+                }
             }
             else if ( packet_id == RELAY_CLIENT_TO_SERVER_PACKET_SDK5 )
             {
