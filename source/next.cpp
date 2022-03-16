@@ -14645,7 +14645,7 @@ void next_server_send_packet( next_server_t * server, const next_address_t * to_
             int to_address_bytes;
 
             next_address_data( &server->address, from_address_data, &from_address_bytes, &from_address_port );
-            next_address_data( to_address, to_address_data, &to_address_bytes, &to_address_port );
+            next_address_data( &session_address, to_address_data, &to_address_bytes, &to_address_port );
 
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
             
