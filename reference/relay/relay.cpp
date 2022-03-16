@@ -5798,7 +5798,7 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
 
     const uint32_t update_response_version = 1;
 
-    if ( version != update_response_version )
+    if ( version > update_response_version )
     {
         // relay_printf( "\nerror: bad relay update response version. expected %d, got %d\n\n", update_response_version, version );
         return RELAY_ERROR;
@@ -5851,9 +5851,12 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
 
-    relay_read_bytes( &q, upcoming_magic, 8 );
-    relay_read_bytes( &q, current_magic, 8 );
-    relay_read_bytes( &q, previous_magic, 8 );
+    if ( version >= 1 )
+    {
+        relay_read_bytes( &q, upcoming_magic, 8 );
+        relay_read_bytes( &q, current_magic, 8 );
+        relay_read_bytes( &q, previous_magic, 8 );
+    }
 
     relay_platform_mutex_acquire( relay->mutex );
     relay->num_relays = num_relays;
