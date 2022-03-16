@@ -5256,8 +5256,6 @@ static void test_relay_manager()
     relay_manager_destroy( manager );
 }
 
-// TODO: add tests for all sdk5 packets
-
 void test_route_request_packet_sdk5()
 {
     uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
@@ -5335,6 +5333,79 @@ void test_route_response_packet_sdk5()
     }
 }
 
+void test_continue_request_packet_sdk5()
+{
+    uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        relay_random_bytes( magic, 8 );
+        relay_random_bytes( from_address, 4 );
+        relay_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
+        uint8_t token_data[256];
+        int token_bytes = rand() % sizeof(token_data);
+        for ( int i = 0; i < token_bytes; i++ ) { token_data[i] = uint8_t( rand() % 256 ); }
+        int packet_bytes = relay_write_continue_request_packet_sdk5( packet_data, token_data, token_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+        check( packet_bytes >= 0 );
+        check( relay_basic_packet_filter_sdk5( packet_data, packet_bytes ) );
+        check( relay_advanced_packet_filter_sdk5( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+        check( packet_data[0] == RELAY_CONTINUE_REQUEST_PACKET_SDK5 );
+        check( memcmp( packet_data + 16, token_data, token_bytes ) == 0 );
+    }
+}
+
+void test_continue_response_packet_sdk5()
+{
+    uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        relay_random_bytes( magic, 8 );
+        relay_random_bytes( from_address, 4 );
+        relay_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
+
+        uint64_t send_sequence = i + 1000;
+        uint64_t session_id = 0x12314141LL;
+        uint8_t session_version = uint8_t(i%256);
+        uint8_t private_key[crypto_aead_chacha20poly1305_KEYBYTES];
+        relay_random_bytes( private_key, crypto_aead_chacha20poly1305_KEYBYTES );
+
+        int packet_bytes = relay_write_continue_response_packet_sdk5( packet_data, send_sequence, session_id, session_version, private_key, magic, from_address, 4, from_port, to_address, 4, to_port );
+
+        check( packet_bytes > 0 );
+
+        check( relay_basic_packet_filter_sdk5( packet_data, packet_bytes ) );
+        check( relay_advanced_packet_filter_sdk5( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+
+        check( packet_data[0] == RELAY_CONTINUE_RESPONSE_PACKET_SDK5 );
+
+        uint64_t read_packet_sequence = 0;
+        uint64_t read_packet_session_id = 0;
+        uint8_t read_packet_session_version = 0;
+
+        uint8_t * read_packet_data = packet_data + 16;
+        int read_packet_bytes = packet_bytes - 18;
+
+        check( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_CONTINUE_RESPONSE_PACKET_SDK5, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, read_packet_data, read_packet_bytes ) == RELAY_OK );
+
+        check( read_packet_sequence == ( send_sequence | 0xC000000000000000LL ) );
+        check( read_packet_session_id == session_id );
+        check( read_packet_session_version == session_version );
+
+        check( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_CONTINUE_RESPONSE_PACKET_SDK5, private_key, read_packet_data, read_packet_bytes ) == RELAY_OK );
+    }
+}
+
 void test_client_to_server_packet_sdk5()
 {
     uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
@@ -5383,6 +5454,59 @@ void test_client_to_server_packet_sdk5()
         check( read_packet_session_version == session_version );
 
         check( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK5, private_key, read_packet_data, read_packet_bytes ) == RELAY_OK );
+    }
+}
+
+void test_server_to_client_packet_sdk5()
+{
+    uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        relay_random_bytes( magic, 8 );
+        relay_random_bytes( from_address, 4 );
+        relay_random_bytes( to_address, 4 );
+        uint16_t from_port = uint16_t( i + 1000000 );
+        uint16_t to_port = uint16_t( i + 5000 );
+
+        uint64_t send_sequence = i + 1000;
+        uint64_t session_id = 0x12314141LL;
+        uint8_t session_version = uint8_t(i%256);
+        uint8_t private_key[crypto_aead_chacha20poly1305_KEYBYTES];
+        relay_random_bytes( private_key, crypto_aead_chacha20poly1305_KEYBYTES );
+
+        uint8_t game_packet_data[RELAY_MTU];
+        int game_packet_bytes = rand() % RELAY_MTU;
+        for ( int i = 0; i < game_packet_bytes; i++ ) { game_packet_data[i] = uint8_t( rand() % 256 ); }
+
+        int packet_bytes = relay_write_server_to_client_packet_sdk5( packet_data, send_sequence, session_id, session_version, private_key, game_packet_data, game_packet_bytes, magic, from_address, 4, from_port, to_address, 4, to_port );
+
+        check( packet_bytes > 0 );
+
+        check( relay_basic_packet_filter_sdk5( packet_data, packet_bytes ) );
+        check( relay_advanced_packet_filter_sdk5( packet_data, magic, from_address, 4, from_port, to_address, 4, to_port, packet_bytes ) );
+
+        check( packet_data[0] == RELAY_SERVER_TO_CLIENT_PACKET_SDK5 );
+
+        check( memcmp( packet_data + 1 + 15 + RELAY_HEADER_BYTES_SDK5, game_packet_data, game_packet_bytes ) == 0 );
+
+        uint64_t read_packet_sequence = 0;
+        uint64_t read_packet_session_id = 0;
+        uint8_t read_packet_session_version = 0;
+
+        uint8_t * read_packet_data = packet_data + 16;
+        int read_packet_bytes = packet_bytes - 18;
+
+        check( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, &read_packet_sequence, &read_packet_session_id, &read_packet_session_version, read_packet_data, read_packet_bytes ) == RELAY_OK );
+
+        check( read_packet_sequence == ( send_sequence | (0x1LL<< 63) ) );
+        check( read_packet_session_id == session_id );
+        check( read_packet_session_version == session_version );
+
+        check( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, private_key, read_packet_data, read_packet_bytes ) == RELAY_OK );
     }
 }
 
@@ -5564,7 +5688,10 @@ void relay_test()
     RUN_TEST( test_relay_manager );
     RUN_TEST( test_route_request_packet_sdk5 );
     RUN_TEST( test_route_response_packet_sdk5 );
+    RUN_TEST( test_continue_request_packet_sdk5 );
+    RUN_TEST( test_continue_response_packet_sdk5 );
     RUN_TEST( test_client_to_server_packet_sdk5 );
+    RUN_TEST( test_server_to_client_packet_sdk5 );
     RUN_TEST( test_session_ping_packet_sdk5 );
     RUN_TEST( test_session_pong_packet_sdk5 );
     RUN_TEST( test_pong_packet_sdk5 );
