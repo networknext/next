@@ -3463,6 +3463,28 @@ int relay_write_client_to_server_packet_sdk5( uint8_t * packet_data, uint64_t se
     return packet_length;
 }
 
+int relay_write_server_to_client_packet_sdk5( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
+{
+    assert( packet_data );
+    assert( private_key );
+    assert( game_packet_data );
+    assert( game_packet_bytes >= 0 );
+    assert( game_packet_bytes <= RELAY_MTU );
+    uint8_t * p = packet_data;
+    relay_write_uint8( &p, RELAY_SERVER_TO_CLIENT_PACKET_SDK5 );
+    uint8_t * a = p; p += 15;
+    uint8_t * b = p; p += RELAY_HEADER_BYTES_SDK5;
+    send_sequence |= uint64_t(1) << 63;
+    if ( relay_write_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, send_sequence, session_id, session_version, private_key, b ) != RELAY_OK )
+        return 0;
+    relay_write_bytes( &p, game_packet_data, game_packet_bytes ); 
+    uint8_t * c = p; p += 2;
+    int packet_length = p - packet_data;
+    relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_pittle_sdk5( c, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    return packet_length;
+}
+
 int relay_write_session_ping_packet_sdk5( uint8_t * packet_data, uint64_t send_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
     assert( packet_data );
@@ -6699,15 +6721,16 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 relay_replay_protection_advance_sequence( &session->replay_protection_client_to_server, clean_sequence );
 
+                const_p += RELAY_HEADER_BYTES_SDK5;
+                int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES_SDK5;
+                uint8_t game_packet_data[game_packet_bytes];
+                relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
+
                 uint8_t next_address_data[32];
                 uint16_t next_address_port;
                 int next_address_bytes;
 
                 relay_address_data_sdk5( &session->next_address, next_address_data, &next_address_bytes, &next_address_port );
-
-                const uint8_t * game_packet_data = p;
-                game_packet_data += RELAY_HEADER_BYTES_SDK5;
-                int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES_SDK5;
 
                 uint8_t client_to_server_packet[RELAY_MAX_PACKET_BYTES];
                 packet_bytes = relay_write_client_to_server_packet_sdk5( client_to_server_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port );
@@ -6724,7 +6747,91 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
             else if ( packet_id == RELAY_SERVER_TO_CLIENT_PACKET_SDK5 )
             {
-                relay_printf( "received RELAY_SERVER_TO_CLIENT_PACKET_SDK5" );
+                if ( packet_bytes <= RELAY_HEADER_BYTES_SDK5 )
+                {
+                    relay_printf( "ignored server to client packet. packet too small (%d)", packet_bytes );
+                    continue;
+                }
+
+                if ( packet_bytes > RELAY_HEADER_BYTES_SDK5 + RELAY_MTU )
+                {
+                    relay_printf( "ignored server to client packet. packet too big (%d)", packet_bytes );
+                    continue;
+                }
+
+                uint8_t * p = packet_data;
+                p += 16;
+
+                const uint8_t * const_p = p;
+
+                uint64_t sequence;
+                uint64_t session_id;
+                uint8_t session_version;
+                if ( relay_peek_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, &sequence, &session_id, &session_version, const_p, packet_bytes ) != RELAY_OK )
+                {
+                    relay_printf( "ignored server to client packet. could not peek header" );
+                    continue;
+                }
+
+                uint64_t hash = session_id ^ session_version;
+
+                relay_platform_mutex_acquire( relay->mutex );
+                relay_session_t * session = (*(relay->sessions))[hash];
+                relay_platform_mutex_release( relay->mutex );
+                if ( !session )
+                {
+                    relay_printf( "ignored server to client packet. could not find session" );
+                    continue;
+                }
+
+                if ( session->expire_timestamp < relay_timestamp( relay ) )
+                {
+                    relay_printf( "ignored server to client packet. session expired" );
+                    relay_platform_mutex_acquire( relay->mutex );
+                    relay->sessions->erase(hash);
+                    relay_platform_mutex_release( relay->mutex );
+                    continue;
+                }
+
+                uint64_t clean_sequence = relay_clean_sequence( sequence );
+
+                if ( relay_replay_protection_already_received( &session->replay_protection_server_to_client, clean_sequence ) )
+                {
+                    relay_printf( "ignored server to client packet. already received" );
+                    continue;
+                }
+
+                if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, packet_id, session->private_key, p, packet_bytes ) != RELAY_OK )
+                {
+                    relay_printf( "ignored server to client packet. could not verify header" );
+                    continue;
+                }
+
+                relay_replay_protection_advance_sequence( &session->replay_protection_server_to_client, clean_sequence );
+
+                const_p += RELAY_HEADER_BYTES_SDK5;
+                int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES_SDK5;
+                uint8_t game_packet_data[game_packet_bytes];
+                relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
+
+                uint8_t prev_address_data[32];
+                uint16_t prev_address_port;
+                int prev_address_bytes;
+
+                relay_address_data_sdk5( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
+
+                uint8_t server_to_client_packet[RELAY_MAX_PACKET_BYTES];
+                packet_bytes = relay_write_server_to_client_packet_sdk5( server_to_client_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+
+                if ( packet_bytes > 0 )
+                {
+                   assert( relay_basic_packet_filter_sdk5( server_to_client_packet, packet_bytes ) );
+                   assert( relay_advanced_packet_filter_sdk5( server_to_client_packet, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+
+                   relay_platform_socket_send_packet( relay->socket, &session->prev_address, server_to_client_packet, packet_bytes );
+
+                   relay->bytes_sent += packet_bytes;
+                }
             }
             else if ( packet_id == RELAY_SESSION_PING_PACKET_SDK5 )
             {
