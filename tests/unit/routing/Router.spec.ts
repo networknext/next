@@ -61,12 +61,13 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/explore/saves')
+    assertNoErrorRouting('/saves')
 
-    expect(router.currentRoute.fullPath).toEqual('/explore/saves')
-    assertNoErrorRouting('/user-tool')
+    expect(router.currentRoute.fullPath).toEqual('/saves')
 
     // Illegal Routes
+    assertNoErrorRouting('/user-tool')
+
     expect(router.currentRoute.fullPath).toEqual('/login?redirectURI=%2Fuser-tool')
 
     assertNoErrorRouting('/user-tool')
@@ -135,9 +136,9 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/explore/saves')
+    assertNoErrorRouting('/saves')
 
-    expect(router.currentRoute.fullPath).toEqual('/explore/saves')
+    expect(router.currentRoute.fullPath).toEqual('/saves')
 
     assertNoErrorRouting('/user-tool')
 
@@ -207,9 +208,9 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/explore/saves')
+    assertNoErrorRouting('/saves')
 
-    expect(router.currentRoute.fullPath).toEqual('/explore/saves')
+    expect(router.currentRoute.fullPath).toEqual('/saves')
 
     assertNoErrorRouting('/user-tool')
 
@@ -282,9 +283,9 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/explore/saves')
+    assertNoErrorRouting('/saves')
 
-    expect(router.currentRoute.fullPath).toEqual('/explore/saves')
+    expect(router.currentRoute.fullPath).toEqual('/saves')
 
     assertNoErrorRouting('/user-tool')
 
@@ -357,9 +358,9 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/explore/saves')
+    assertNoErrorRouting('/saves')
 
-    expect(router.currentRoute.fullPath).toEqual('/explore/saves')
+    expect(router.currentRoute.fullPath).toEqual('/saves')
 
     assertNoErrorRouting('/user-tool')
 
@@ -433,9 +434,9 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/explore/saves')
+    assertNoErrorRouting('/saves')
 
-    expect(router.currentRoute.fullPath).toEqual('/explore/saves')
+    expect(router.currentRoute.fullPath).toEqual('/saves')
 
     assertNoErrorRouting('/user-tool')
 
@@ -510,9 +511,9 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/explore/saves')
+    assertNoErrorRouting('/saves')
 
-    expect(router.currentRoute.fullPath).toEqual('/explore/saves')
+    expect(router.currentRoute.fullPath).toEqual('/saves')
 
     assertNoErrorRouting('/user-tool')
 
@@ -588,9 +589,9 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/explore/saves')
+    assertNoErrorRouting('/saves')
 
-    expect(router.currentRoute.fullPath).toEqual('/explore/saves')
+    expect(router.currentRoute.fullPath).toEqual('/saves')
 
     assertNoErrorRouting('/user-tool')
 
@@ -664,9 +665,9 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/explore/saves')
+    assertNoErrorRouting('/saves')
 
-    expect(router.currentRoute.fullPath).toEqual('/explore/saves')
+    expect(router.currentRoute.fullPath).toEqual('/saves')
 
     assertNoErrorRouting('/user-tool')
 

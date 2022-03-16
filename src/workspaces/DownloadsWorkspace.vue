@@ -70,8 +70,8 @@
             Network Next SDK
         </h5>
       </div>
-      <hr />
-      <div class="card-body">
+      <hr v-if="false" />
+      <div class="card-body" v-if="false">
         <div class="btn-group-vertical btn-group-sm float-right">
           <div style="display: inherit;flex-direction: column;" data-intercom="dataReports" data-tour="dataReports">
             <a

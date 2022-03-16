@@ -7,7 +7,7 @@ import { FeatureEnum } from '@/components/types/FeatureTypes'
 import AccountSettings from '@/components/AccountSettings.vue'
 import AnalyticsWorkspace from '@/workspaces/AnalyticsWorkspace.vue'
 import DownloadsWorkspace from '@/workspaces/DownloadsWorkspace.vue'
-import ExplorationWorkspace from '@/workspaces/ExplorationWorkspace.vue'
+import SavesWorkspace from '@/workspaces/SavesWorkspace.vue'
 import GameConfiguration from '@/components/GameConfiguration.vue'
 import GetAccessModal from '@/components/GetAccessModal.vue'
 import LoginModal from '@/components/LoginModal.vue'
@@ -17,12 +17,10 @@ import SessionDetails from '@/components/SessionDetails.vue'
 import SessionToolWorkspace from '@/workspaces/SessionToolWorkspace.vue'
 import SessionsWorkspace from '@/workspaces/SessionsWorkspace.vue'
 import SettingsWorkspace from '@/workspaces/SettingsWorkspace.vue'
-import Supply from '@/components/Supply.vue'
 import UserManagement from '@/components/UserManagement.vue'
 import UserSessions from '@/components/UserSessions.vue'
 import UserToolWorkspace from '@/workspaces/UserToolWorkspace.vue'
 import UsageWorkspace from '@/workspaces/UsageWorkspace.vue'
-import Saves from '@/components/Saves.vue'
 
 Vue.use(VueRouter)
 
@@ -50,21 +48,9 @@ const routes: Array<RouteConfig> = [
     component: AnalyticsWorkspace
   },
   {
-    path: '/explore',
-    name: 'explore',
-    component: ExplorationWorkspace,
-    children: [
-      {
-        path: 'saves',
-        name: 'saves',
-        component: Saves
-      },
-      {
-        path: 'supply',
-        name: 'supply',
-        component: Supply
-      }
-    ]
+    path: '/saves',
+    name: 'saves',
+    component: SavesWorkspace
   },
   {
     path: '/get-access',
@@ -149,7 +135,6 @@ const router = new VueRouter({
 })
 
 const AnonymousRoutes = [
-  'explore',
   'map',
   'sessions',
   'session-details',
@@ -161,7 +146,6 @@ const AnonymousRoutes = [
 ]
 
 const AnonymousPlusRoutes = [
-  'explore',
   'map',
   'sessions',
   'session-details',
@@ -172,7 +156,6 @@ const AnonymousPlusRoutes = [
 ]
 
 const ViewerRoutes = [
-  'explore',
   'map',
   'sessions',
   'session-details',
@@ -186,9 +169,10 @@ const ViewerRoutes = [
 ]
 
 const ExplorerRoutes = [
+  'analytics',
   'usage',
   'invoice',
-  'analytics'
+  'saves'
 ]
 
 const OwnerRoutes = [
@@ -199,7 +183,6 @@ const OwnerRoutes = [
 // Add or remove these to open up beta features
 const BetaRoutes = [
   'discovery',
-  'saves',
   'supply'
 ]
 

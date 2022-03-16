@@ -13,7 +13,7 @@
             "
     >
       <h1 class="h2">
-        Explore
+        Saves
       </h1>
       <div class="mb-2 mb-md-0 flex-grow-1 align-items-center pl-4 pr-4">
         <Alert ref="verifyAlert"></Alert>
@@ -24,14 +24,7 @@
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
-      <div class="card-header">
-        <ul class="nav nav-tabs card-header-tabs">
-          <li class="nav-item">
-            <router-link to="/explore/saves" class="nav-link" :class="{ active: $store.getters.currentPage === 'saves'}">Saves</router-link>
-          </li>
-        </ul>
-      </div>
-      <router-view/>
+      <Saves />
     </div>
   </div>
 </template>
@@ -41,7 +34,7 @@ import { Component, Vue } from 'vue-property-decorator'
 import Alert from '@/components/Alert.vue'
 import { AlertType } from '@/components/types/AlertTypes'
 import BuyerFilter from '@/components/BuyerFilter.vue'
-import DateFilter from '@/components/DateFilter.vue'
+import Saves from '@/components/Saves.vue'
 import { ErrorTypes } from '@/components/types/ErrorTypes'
 
 /**
@@ -56,10 +49,10 @@ import { ErrorTypes } from '@/components/types/ErrorTypes'
   components: {
     Alert,
     BuyerFilter,
-    DateFilter
+    Saves
   }
 })
-export default class ExplorationWorkspace extends Vue {
+export default class SavesWorkspace extends Vue {
   // Register the alert component to access its set methods
   $refs!: {
     verifyAlert: Alert;
