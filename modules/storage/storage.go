@@ -24,7 +24,7 @@ type Storer interface {
 	SetCustomer(ctx context.Context, customer routing.Customer) error
 
 	// UpdateCustomer modifies the givien field for the specified buyer
-	UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error
+	UpdateCustomer(ctx context.Context, customerCode string, field string, value interface{}) error
 
 	// Buyer gets a copy of a buyer with the specified buyer ID,
 	// and returns an empty buyer and an error if a buyer with that ID doesn't exist in storage.
@@ -229,6 +229,9 @@ type Storer interface {
 
 	// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
 	GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
+
+	// GetAnalyticsDashboardByID get looker dashboard by id
+	GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerID int64) ([]looker.AnalyticsDashboard, error)
 
 	// GetAnalyticsDashboardByID get looker dashboard by id
 	GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.AnalyticsDashboard, error)
