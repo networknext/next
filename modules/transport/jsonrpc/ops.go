@@ -55,19 +55,20 @@ type BuyersReply struct {
 }
 
 type buyer struct {
-	CompanyName         string `json:"company_name"`
-	CompanyCode         string `json:"company_code"`
-	ShortName           string `json:"short_name"`
-	ID                  uint64 `json:"id"`
-	HexID               string `json:"hexID"`
+	CompanyName         string `json:"company_name,omitempty"`
+	CompanyCode         string `json:"company_code,omitempty"`
+	ShortName           string `json:"short_name,omitempty"`
+	ID                  uint64 `json:"id,omitempty"`
+	HexID               string `json:"hexID,omitempty"`
 	Live                bool   `json:"live"`
 	Debug               bool   `json:"debug"`
 	Analytics           bool   `json:"analytics"`
+	AnalysisOnly        bool   `json:"analysis_only"`
 	Billing             bool   `json:"billing"`
 	Trial               bool   `json:"trial"`
-	ExoticLocationFee   string `json:"exotic_location_fee"`
-	StandardLocationFee string `json:"standard_location_fee"`
-	LookerSeats         int64  `json:"looker_seats"`
+	ExoticLocationFee   string `json:"exotic_location_fee,omitempty"`
+	StandardLocationFee string `json:"standard_location_fee,omitempty"`
+	LookerSeats         int64  `json:"looker_seats,omitempty"`
 }
 
 func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersReply) error {
@@ -94,6 +95,7 @@ func (s *OpsService) Buyers(r *http.Request, args *BuyersArgs, reply *BuyersRepl
 			Live:                b.Live,
 			Debug:               b.Debug,
 			Analytics:           b.Analytics,
+			AnalysisOnly:        b.RouteShader.AnalysisOnly,
 			Billing:             b.Billing,
 			Trial:               b.Trial,
 			ExoticLocationFee:   fmt.Sprintf("%f", b.ExoticLocationFee),
@@ -256,7 +258,9 @@ type customer struct {
 	Code                   string `json:"code"`
 	AutomaticSignInDomains string `json:"automaticSigninDomains"`
 	BuyerID                string `json:"buyer_id"`
+	Buyer                  buyer  `json:"buyer,omitempty"`
 	SellerID               string `json:"seller_id"`
+	Seller                 seller `json:"seller,omitempty"`
 }
 
 func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *CustomersReply) error {
@@ -277,16 +281,26 @@ func (s *OpsService) Customers(r *http.Request, args *CustomersArgs, reply *Cust
 		seller, _ := s.Storage.SellerWithCompanyCode(r.Context(), c.Code)
 
 		if buyer.ID != 0 {
-			buyerID = fmt.Sprintf("%x", buyer.ID)
+			buyerID = fmt.Sprintf("%016x", buyer.ID)
 		}
 
-		reply.Customers = append(reply.Customers, customer{
+		customerEntry := customer{
 			Name:                   c.Name,
 			Code:                   c.Code,
 			AutomaticSignInDomains: c.AutomaticSignInDomains,
 			BuyerID:                buyerID,
 			SellerID:               seller.ID,
-		})
+		}
+
+		if buyerID != "" {
+			customerEntry.Buyer.Analytics = buyer.Analytics
+			customerEntry.Buyer.AnalysisOnly = buyer.RouteShader.AnalysisOnly
+			customerEntry.Buyer.Billing = buyer.Billing
+			customerEntry.Buyer.Debug = buyer.Debug
+			customerEntry.Buyer.Live = buyer.Live
+		}
+
+		reply.Customers = append(reply.Customers, customerEntry)
 	}
 
 	sort.Slice(reply.Customers, func(i int, j int) bool {
