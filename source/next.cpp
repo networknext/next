@@ -7120,7 +7120,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         packet_data += 16;
         packet_bytes -= 18;
 
-        if ( packet_bytes != NEXT_HEADER_BYTES + 2 )
+        if ( packet_bytes != NEXT_HEADER_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored continue response packet from relay. bad packet size" );
             return;
