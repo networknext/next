@@ -169,7 +169,7 @@ export default class Saves extends Vue {
     }
 
     Promise.all(promises)
-      .then((responses: any) => {
+      .then((responses: Array<any>) => {
         this.saves = responses[0].saves || []
         this.savesDashURL = responses.length > 1 ? responses[1].url : ''
       })
