@@ -168,7 +168,7 @@ const ViewerRoutes = [
 const ExplorerRoutes = [
   'analytics',
   'usage',
-  'invoice',
+  'invoice'
 ]
 
 const OwnerRoutes = [
