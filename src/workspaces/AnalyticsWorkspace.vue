@@ -24,7 +24,7 @@
       </div>
     </div>
     <div class="card" style="margin-bottom: 250px;">
-      <div class="card-title" style="text-align:center;padding-top:1rem;">Coming Soon!</div>
+      <Analytics />
     </div>
   </div>
 </template>

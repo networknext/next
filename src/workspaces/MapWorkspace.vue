@@ -1,5 +1,5 @@
 <template>
-  <SessionMap/>
+  <SessionMap />
 </template>
 
 <script lang="ts">
