@@ -139,7 +139,6 @@ const AnonymousRoutes = [
   'sessions',
   'session-details',
   'session-tool',
-  'saves',
   'get-access',
   'login',
   'password-reset'
@@ -150,7 +149,6 @@ const AnonymousPlusRoutes = [
   'sessions',
   'session-details',
   'session-tool',
-  'saves',
   'user-sessions',
   'user-tool'
 ]
@@ -162,7 +160,6 @@ const ViewerRoutes = [
   'session-tool',
   'user-sessions',
   'user-tool',
-  'saves',
   'downloads',
   'settings',
   'account-settings'
@@ -172,7 +169,6 @@ const ExplorerRoutes = [
   'analytics',
   'usage',
   'invoice',
-  'saves'
 ]
 
 const OwnerRoutes = [
@@ -183,6 +179,7 @@ const OwnerRoutes = [
 // Add or remove these to open up beta features
 const BetaRoutes = [
   'discovery',
+  'saves',
   'supply'
 ]
 

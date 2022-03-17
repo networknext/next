@@ -61,11 +61,12 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
+    // Illegal Routes
+
     assertNoErrorRouting('/saves')
 
-    expect(router.currentRoute.fullPath).toEqual('/saves')
+    expect(router.currentRoute.fullPath).toEqual('/login?redirectURI=%2Fsaves')
 
-    // Illegal Routes
     assertNoErrorRouting('/user-tool')
 
     expect(router.currentRoute.fullPath).toEqual('/login?redirectURI=%2Fuser-tool')
@@ -136,10 +137,6 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/saves')
-
-    expect(router.currentRoute.fullPath).toEqual('/saves')
-
     assertNoErrorRouting('/user-tool')
 
     expect(router.currentRoute.fullPath).toEqual('/user-tool')
@@ -149,6 +146,10 @@ describe('Router Rules', () => {
     expect(router.currentRoute.fullPath).toEqual('/user-tool/00000000')
 
     // Illegal Routes
+
+    assertNoErrorRouting('/saves')
+
+    expect(router.currentRoute.fullPath).toEqual('/map')
 
     assertErrorRouting('/downloads')
 
@@ -208,10 +209,6 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/saves')
-
-    expect(router.currentRoute.fullPath).toEqual('/saves')
-
     assertNoErrorRouting('/user-tool')
 
     expect(router.currentRoute.fullPath).toEqual('/user-tool')
@@ -233,6 +230,11 @@ describe('Router Rules', () => {
     expect(router.currentRoute.fullPath).toEqual('/settings/account')
 
     // Illegal Routes
+
+    assertNoErrorRouting('/saves')
+
+    expect(router.currentRoute.fullPath).toEqual('/map')
+
     assertErrorRouting('/usage')
 
     expect(router.currentRoute.fullPath).toEqual('/map')
@@ -283,10 +285,6 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/saves')
-
-    expect(router.currentRoute.fullPath).toEqual('/saves')
-
     assertNoErrorRouting('/user-tool')
 
     expect(router.currentRoute.fullPath).toEqual('/user-tool')
@@ -316,6 +314,11 @@ describe('Router Rules', () => {
     expect(router.currentRoute.fullPath).toEqual('/settings/users')
 
     // Illegal Routes
+
+    assertNoErrorRouting('/saves')
+
+    expect(router.currentRoute.fullPath).toEqual('/map')
+
     assertErrorRouting('/usage')
 
     expect(router.currentRoute.fullPath).toEqual('/map')
@@ -358,10 +361,6 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/saves')
-
-    expect(router.currentRoute.fullPath).toEqual('/saves')
-
     assertNoErrorRouting('/user-tool')
 
     expect(router.currentRoute.fullPath).toEqual('/user-tool')
@@ -383,6 +382,11 @@ describe('Router Rules', () => {
     expect(router.currentRoute.fullPath).toEqual('/settings/account')
 
     // Illegal Routes
+
+    assertNoErrorRouting('/saves')
+
+    expect(router.currentRoute.fullPath).toEqual('/map')
+
     assertErrorRouting('/usage')
 
     expect(router.currentRoute.fullPath).toEqual('/map')
@@ -434,10 +438,6 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/saves')
-
-    expect(router.currentRoute.fullPath).toEqual('/saves')
-
     assertNoErrorRouting('/user-tool')
 
     expect(router.currentRoute.fullPath).toEqual('/user-tool')
@@ -467,6 +467,10 @@ describe('Router Rules', () => {
     expect(router.currentRoute.fullPath).toEqual('/usage/2021-08')
 
     // Illegal Routes
+
+    assertNoErrorRouting('/saves')
+
+    expect(router.currentRoute.fullPath).toEqual('/map')
 
     assertErrorRouting('/analytics')
 
@@ -511,10 +515,6 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/saves')
-
-    expect(router.currentRoute.fullPath).toEqual('/saves')
-
     assertNoErrorRouting('/user-tool')
 
     expect(router.currentRoute.fullPath).toEqual('/user-tool')
@@ -540,6 +540,10 @@ describe('Router Rules', () => {
     expect(router.currentRoute.fullPath).toEqual('/analytics')
 
     // Illegal Routes
+
+    assertNoErrorRouting('/saves')
+
+    expect(router.currentRoute.fullPath).toEqual('/map')
 
     assertErrorRouting('/usage')
 
@@ -589,10 +593,6 @@ describe('Router Rules', () => {
 
     expect(router.currentRoute.fullPath).toEqual('/session-tool/00000000')
 
-    assertNoErrorRouting('/saves')
-
-    expect(router.currentRoute.fullPath).toEqual('/saves')
-
     assertNoErrorRouting('/user-tool')
 
     expect(router.currentRoute.fullPath).toEqual('/user-tool')
@@ -626,6 +626,10 @@ describe('Router Rules', () => {
     expect(router.currentRoute.fullPath).toEqual('/usage/2021-08')
 
     // Illegal Routes
+
+    assertNoErrorRouting('/saves')
+
+    expect(router.currentRoute.fullPath).toEqual('/map')
 
     assertErrorRouting('/settings/game-config')
 
