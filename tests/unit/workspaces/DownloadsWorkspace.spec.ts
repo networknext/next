@@ -156,13 +156,11 @@ describe('DownloadsWorkspace.vue', () => {
     expect(spyDownloadDocs).toBeCalled()
 
     /*
-
       expectedURL = WHITE_PAPER_DOWNLOAD_URL
 
       buttons.at(4).trigger('click')
       expect(windowSpy).toBeCalled()
       expect(spyWhitePaperDownload).toBeCalled()
-
     */
 
     wrapper.destroy()
