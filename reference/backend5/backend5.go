@@ -307,7 +307,8 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPor
 }
 
 func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
-	addressData := address.IP[12:16] // todo: hack
+	// this works only for IPv4
+	addressData := address.IP[12:16]
 	addressPort := uint16(address.Port)
 	return addressData, addressPort
 }
@@ -1010,8 +1011,6 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	key := relay_address
-
-	// todo: crypto check here
 
 	backend.mutex.RLock()
 	_, ok := backend.relayDatabase[key]
@@ -2272,7 +2271,6 @@ func ParseAddress(input string) *net.UDPAddr {
 	address := &net.UDPAddr{}
 	ip_string, port_string, err := net.SplitHostPort(input)
 	if err != nil {
-		// todo: do we need to truncate the IP here?
 		address.IP = net.ParseIP(input)
 		address.Port = 0
 		return address
@@ -2971,27 +2969,6 @@ func main() {
 				fmt.Printf("error: failed to send session response packet: %v\n", err)
 				continue
 			}
-
-			// todo: unfuck
-			/*
-			response, err := WriteBackendPacket(NEXT_BACKEND_SESSION_RESPONSE_PACKET, sessionResponse, backendPrivateKey[:])
-			if err != nil {
-				fmt.Printf( "error: could not write session response packet: %v\n", err)
-				continue
-			}
-
-			if !BasicPacketFilter(response[:], len(response)) {
-				panic("basic packet filter failed on session response?")
-			}
-
-			// todo: advanced packet filter
-
-			_, err = connection.WriteToUDP(response, from)
-			if err != nil {
-				fmt.Printf("error: failed to send session response packet: %v\n", err)
-				continue
-			}
-			*/
 		}
 	}
 }

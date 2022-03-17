@@ -1576,6 +1576,11 @@ func (m *InMemory) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id in
 	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByCategoryID not implemented in InMemory storer")
 }
 
+func (m *InMemory) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerID int64) ([]looker.AnalyticsDashboard, error) {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByCustomerID not implemented in InMemory storer")
+}
+
 // GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
 func (m *InMemory) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)

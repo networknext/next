@@ -25,7 +25,6 @@ This is a monorepo that contains the Network Next backend.
 7. Manually trigger a rolling update in google cloud on each managed instance group you want to update to latest code. Follow the instructions and deployment process in [Production Release](#Production-Release) to ensure nothing goes wrong when deploying your changes to prod.
 8. The relay backend VMs are deployed with the make tool via `make deploy-relay-backend-dev-1` and `make deploy-relay-backend-dev-2`. Wait 5 - 10 minutes between each deploy to avoid sessions falling back to direct.
 9. The portal crunchers VMs are deployed with the make tool via `make deploy-portal-crunchers-dev`.
-10. The vanity metric VMs are deployd with the make tools via `make deploy-vanity-dev`.
 
 ### Production Release
 
@@ -40,9 +39,6 @@ This is a monorepo that contains the Network Next backend.
 	3. Ghost Army (`make deploy-ghost-army-prod`)
 	----
 	1. Billing (Rolling Replace, Maximum Surge 5, Maximum Unavailable 1, Minimum Wait Time 0)
-	----
-	1. API (Rolling Replace, Maximum Surge 2, Maximum Unavailable 0, Minimum Wait Time 0)
-	2. Vanity (`make deploy-vanity-prod`)
 	---- 
 	1. Server Backend 4 (Rolling Replace, Maximum Surge 8, Maximum Unavailable 0, Minimum Wait Time 0)
 		- Note: there is a 1 hour connection drain on server backend instances to reduce fallbacks to direct.

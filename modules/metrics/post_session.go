@@ -14,11 +14,6 @@ type PostSessionMetrics struct {
 	PortalBufferLength    Gauge
 	PortalBufferFull      Counter
 
-	VanityMetricsSent     Counter
-	VanityMetricsFinished Counter
-	VanityBufferLength    Gauge
-	VanityBufferFull      Counter
-
 	MatchDataEntriesSent         Counter
 	MatchDataEntriesFinished     Counter
 	MatchDataEntriesBufferLength Gauge
@@ -26,8 +21,6 @@ type PostSessionMetrics struct {
 
 	Billing2Failure         Counter
 	PortalFailure           Counter
-	VanityMarshalFailure    Counter
-	VanityTransmitFailure   Counter
 	MatchDataEntriesFailure Counter
 }
 
@@ -41,18 +34,12 @@ var EmptyPostSessionMetrics = PostSessionMetrics{
 	PortalEntriesFinished:        &EmptyCounter{},
 	PortalBufferLength:           &EmptyGauge{},
 	PortalBufferFull:             &EmptyCounter{},
-	VanityMetricsSent:            &EmptyCounter{},
-	VanityMetricsFinished:        &EmptyCounter{},
-	VanityBufferLength:           &EmptyGauge{},
-	VanityBufferFull:             &EmptyCounter{},
 	MatchDataEntriesSent:         &EmptyCounter{},
 	MatchDataEntriesFinished:     &EmptyCounter{},
 	MatchDataEntriesBufferLength: &EmptyGauge{},
 	MatchDataEntriesBufferFull:   &EmptyCounter{},
 	Billing2Failure:              &EmptyCounter{},
 	PortalFailure:                &EmptyCounter{},
-	VanityMarshalFailure:         &EmptyCounter{},
-	VanityTransmitFailure:        &EmptyCounter{},
 	MatchDataEntriesFailure:      &EmptyCounter{},
 }
 
@@ -166,72 +153,6 @@ func NewPostSessionMetrics(ctx context.Context, handler Handler, serviceName str
 		ID:          "post_session_update.portal_failure",
 		Unit:        "errors",
 		Description: "The number of portal entries that failed to be sent to the portal_cruncher service.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.VanityMetricsSent, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Metrics Sent",
-		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_metrics_sent",
-		Unit:        "entries",
-		Description: "The number of billing entries sent to the post session vanity metrics channel.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.VanityMetricsFinished, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Metrics Finished",
-		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_metrics_finished",
-		Unit:        "metrics",
-		Description: "The number of vanity metric structs finished pushing onto ZeroMQ.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.VanityBufferLength, err = handler.NewGauge(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Metrics Length",
-		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_metrics_length",
-		Unit:        "entries",
-		Description: "The number of billing entries for vanity metrics in queue waiting to be sent.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.VanityBufferFull, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Buffer Full",
-		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_buffer_full",
-		Unit:        "entries",
-		Description: "The number of billing entries dropped because the vanity queue was full.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.VanityMarshalFailure, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Marshal Failure",
-		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_marshal_failure",
-		Unit:        "errors",
-		Description: "The number of entries for vanity metrics that failed to be marshaled.",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	m.VanityTransmitFailure, err = handler.NewCounter(ctx, &Descriptor{
-		DisplayName: "Post Session Update Vanity Transmit Failure",
-		ServiceName: serviceName,
-		ID:          "post_session_update.vanity_transmit_failure",
-		Unit:        "errors",
-		Description: "The number of marshaled vanity metrics that failed to be pushed onto ZeroMQ.",
 	})
 	if err != nil {
 		return nil, err

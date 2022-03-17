@@ -10,7 +10,6 @@ import (
 	md "github.com/networknext/backend/modules/match_data"
 	"github.com/networknext/backend/modules/metrics"
 	"github.com/networknext/backend/modules/transport/pubsub"
-	"github.com/networknext/backend/modules/vanity"
 )
 
 type PostSessionHandler struct {
@@ -18,37 +17,29 @@ type PostSessionHandler struct {
 	postSessionBilling2Channel chan *billing.BillingEntry2
 	sessionPortalCountsChannel chan *SessionCountData
 	sessionPortalDataChannel   chan *SessionPortalData
-	vanityMetricChannel        chan vanity.VanityMetrics
 	matchDataChannel           chan *md.MatchDataEntry
 	portalPublishers           []pubsub.Publisher
 	portalPublisherIndex       int
 	portalPublishMaxRetries    int
-	vanityPublishers           []pubsub.Publisher
-	vanityPublisherIndex       int
-	vanityPublishMaxRetries    int
-	useVanityMetrics           bool
 	biller2                    billing.Biller
 	featureBilling2            bool
 	matcher                    md.Matcher
 	metrics                    *metrics.PostSessionMetrics
 }
 
-func NewPostSessionHandler(numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
-	vanityPublishers []pubsub.Publisher, vanityPublishMaxRetries int, useVanityMetrics bool, biller2 billing.Biller,
-	featureBilling2 bool, matcher md.Matcher, metrics *metrics.PostSessionMetrics) *PostSessionHandler {
+func NewPostSessionHandler(
+	numGoroutines int, chanBufferSize int, portalPublishers []pubsub.Publisher, portalPublishMaxRetries int,
+	biller2 billing.Biller, featureBilling2 bool, matcher md.Matcher, metrics *metrics.PostSessionMetrics,
+) *PostSessionHandler {
 
 	return &PostSessionHandler{
 		numGoroutines:              numGoroutines,
 		postSessionBilling2Channel: make(chan *billing.BillingEntry2, chanBufferSize),
 		sessionPortalCountsChannel: make(chan *SessionCountData, chanBufferSize),
 		sessionPortalDataChannel:   make(chan *SessionPortalData, chanBufferSize),
-		vanityMetricChannel:        make(chan vanity.VanityMetrics, chanBufferSize),
 		matchDataChannel:           make(chan *md.MatchDataEntry, chanBufferSize),
 		portalPublishers:           portalPublishers,
 		portalPublishMaxRetries:    portalPublishMaxRetries,
-		vanityPublishers:           vanityPublishers,
-		vanityPublishMaxRetries:    vanityPublishMaxRetries,
-		useVanityMetrics:           useVanityMetrics,
 		biller2:                    biller2,
 		featureBilling2:            featureBilling2,
 		matcher:                    matcher,
@@ -145,48 +136,6 @@ func (post *PostSessionHandler) StartProcessing(ctx context.Context, wg *sync.Wa
 		}()
 	}
 
-	if post.useVanityMetrics {
-
-		for i := 0; i < post.numGoroutines; i++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-
-				for {
-					select {
-					case extractedMetrics := <-post.vanityMetricChannel:
-						// Check if received empty struct (signifies not on Next)
-						emptyVanity := vanity.VanityMetrics{}
-						if extractedMetrics == emptyVanity {
-							// If not on Next, no need to send the metric
-							continue
-						}
-
-						// Marshal the metrics
-						metricBinary, err := extractedMetrics.MarshalBinary()
-						if err != nil {
-							core.Error("could not marshal vanity metric: %v", err)
-							post.metrics.VanityMarshalFailure.Add(1)
-							continue
-						}
-
-						// Push the data over ZeroMQ
-						_, err = post.TransmitVanityMetrics(ctx, pubsub.TopicVanityMetricData, metricBinary)
-						if err != nil {
-							core.Error("could not update vanity metrics: %v", err)
-							post.metrics.VanityTransmitFailure.Add(1)
-							continue
-						}
-
-						post.metrics.VanityMetricsFinished.Add(1)
-					case <-ctx.Done():
-						return
-					}
-				}
-			}()
-		}
-	}
-
 	for i := 0; i < post.numGoroutines; i++ {
 		wg.Add(1)
 		go func() {
@@ -242,16 +191,6 @@ func (post *PostSessionHandler) SendPortalData(sessionPortalData *SessionPortalD
 
 }
 
-func (post *PostSessionHandler) SendVanityMetric(billingEntry *billing.BillingEntry2) {
-	select {
-	case post.vanityMetricChannel <- post.ExtractVanityMetrics(billingEntry):
-		post.metrics.VanityMetricsSent.Add(1)
-	default:
-		post.metrics.VanityBufferFull.Add(1)
-	}
-
-}
-
 func (post *PostSessionHandler) SendMatchData(matchData *md.MatchDataEntry) {
 	select {
 	case post.matchDataChannel <- matchData:
@@ -272,10 +211,6 @@ func (post *PostSessionHandler) PortalCountBufferSize() uint64 {
 
 func (post *PostSessionHandler) PortalDataBufferSize() uint64 {
 	return uint64(len(post.sessionPortalDataChannel))
-}
-
-func (post *PostSessionHandler) VanityBufferSize() uint64 {
-	return uint64(len(post.vanityMetricChannel))
 }
 
 func (post *PostSessionHandler) MatchDataBufferSize() uint64 {
@@ -325,82 +260,4 @@ func (post *PostSessionHandler) TransmitPortalData(ctx context.Context, topic pu
 	post.portalPublisherIndex = (post.portalPublisherIndex + 1) % len(post.portalPublishers)
 	return byteCount, nil
 
-}
-
-func (post *PostSessionHandler) TransmitVanityMetrics(ctx context.Context, topic pubsub.Topic, data []byte) (int, error) {
-	var byteCount int
-	var err error
-
-	for i := range post.vanityPublishers {
-		var retryCount int
-
-		// Calculate the index of the vanity publisher to use for this iteration
-		index := (post.vanityPublisherIndex + i) % len(post.vanityPublishers)
-
-		for retryCount < post.vanityPublishMaxRetries+1 { // only retry so many times
-			byteCount, err = post.vanityPublishers[index].Publish(ctx, topic, data)
-			if err != nil {
-				switch err.(type) {
-				case *pubsub.ErrRetry:
-					retryCount++
-					continue
-				default:
-					return 0, err
-				}
-			}
-
-			retryCount = -1
-			break
-		}
-
-		// We published the message, break out
-		if retryCount < post.vanityPublishMaxRetries {
-			break
-		}
-
-		// If we've hit the retry limit, try again using another vanity publisher.
-		// If this is the last iteration and we still can't publish the message, error out.
-		if i == len(post.vanityPublishers)-1 {
-			return byteCount, errors.New("exceeded retry count on vanity metric data")
-		}
-	}
-
-	// If we've successfully published the message, increment the vanity publisher index
-	// so that we evenly distribute the load across each publisher.
-	post.vanityPublisherIndex = (post.vanityPublisherIndex + 1) % len(post.vanityPublishers)
-	return byteCount, nil
-}
-
-func (post *PostSessionHandler) ExtractVanityMetrics(billingEntry *billing.BillingEntry2) vanity.VanityMetrics {
-	if billingEntry.Next {
-		latencyReduced := 0
-		if billingEntry.RTTReduction {
-			latencyReduced = 1
-		}
-
-		packetLossReduced := 0
-		if billingEntry.PacketLossReduction {
-			packetLossReduced = 1
-		}
-
-		jitterReduced := 0
-		if billingEntry.DirectJitter-billingEntry.NextJitter > 0 {
-			jitterReduced = 1
-		}
-
-		vm := vanity.VanityMetrics{
-			BuyerID:                 billingEntry.BuyerID,
-			UserHash:                billingEntry.UserHash,
-			SessionID:               billingEntry.SessionID,
-			Timestamp:               uint64(billingEntry.Timestamp),
-			SlicesAccelerated:       uint64(1),
-			SlicesLatencyReduced:    uint64(latencyReduced),
-			SlicesPacketLossReduced: uint64(packetLossReduced),
-			SlicesJitterReduced:     uint64(jitterReduced),
-		}
-
-		return vm
-	}
-
-	return vanity.VanityMetrics{}
 }
