@@ -18,7 +18,7 @@
         The most impressive saves that occured in the last week
       </p>
       <div class="table-responsive table-no-top-line looker-padding">
-        <table class="table table-sm table-striped table-hover">
+        <table class="table table-sm" :class="{'table-striped': saves.length > 0, 'table-hover': saves.length > 0}">
           <thead>
             <tr>
               <th>
