@@ -25,6 +25,7 @@
               active:
                 $store.getters.currentPage == 'saves'
             }"
+            v-if="false"
           >Saves</router-link>
         </li>
         <li class="nav-item text-nowrap">
