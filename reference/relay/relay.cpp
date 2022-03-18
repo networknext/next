@@ -6659,6 +6659,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 }
             }
 
+            uint8_t * p = packet_data;
+            p += 16;
+
             packet_bytes -= 18;
 
             if ( packet_id == RELAY_ROUTE_REQUEST_PACKET_SDK5 )
@@ -6669,8 +6672,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                uint8_t * p = packet_data;
-                p += 16;
                 relay_route_token_t token;
                 if ( relay_read_encrypted_route_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
                 {
@@ -6739,9 +6740,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_printf( "ignored route response packet. wrong packet size (%d)", packet_bytes );
                     continue;
                 }
-
-                uint8_t * p = packet_data;
-                p += 16;
 
                 const uint8_t * const_p = p;
 
@@ -6818,8 +6816,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                uint8_t * p = packet_data;
-                p += 16;
                 relay_continue_token_t token;
                 if ( relay_read_encrypted_continue_token( &p, &token, relay->router_public_key, relay->relay_private_key ) != RELAY_OK )
                 {
@@ -6890,9 +6886,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_printf( "ignored continue response packet. wrong packet size (%d)", packet_bytes );
                     continue;
                 }
-
-                uint8_t * p = packet_data;
-                p += 16;
 
                 const uint8_t * const_p = p;
 
@@ -6974,9 +6967,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_printf( "ignored client to server packet. packet too big (%d)", packet_bytes );
                     continue;
                 }
-
-                uint8_t * p = packet_data;
-                p += 16;
 
                 const uint8_t * const_p = p;
 
@@ -7063,9 +7053,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                uint8_t * p = packet_data;
-                p += 16;
-
                 const uint8_t * const_p = p;
 
                 uint64_t sequence;
@@ -7144,9 +7131,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_printf( "ignored session ping packet. bad packet size (%d)", packet_bytes );
                     continue;
                 }
-                
-                uint8_t * p = packet_data;
-                p += 16;
 
                 const uint8_t * const_p = p;
 
@@ -7225,9 +7209,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                uint8_t * p = packet_data;
-                p += 16;
-
                 const uint8_t * const_p = p;
 
                 uint64_t sequence;
@@ -7305,9 +7286,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     relay_printf( "ignored relay near ping packet. bad packet size (%d)", packet_bytes );
                     continue;
                 }
-
-                const uint8_t * p = packet_data;
-                p += 16;
 
                 uint64_t ping_sequence = relay_read_uint64( &p );
                 uint64_t session_id = relay_read_uint64( &p );
