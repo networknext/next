@@ -1174,64 +1174,64 @@ func test_reconnect_next() {
 
 }
 
-// /*
-// 	Make sure a client can connect direct to one server, and then connect direct to another without problems.
-// */
+/*
+	Make sure a client can connect direct to one server, and then connect direct to another without problems.
+*/
 
-// func test_connect_to_another_server_direct() {
+func test_connect_to_another_server_direct() {
 
-// 	fmt.Printf("test_connect_to_another_server_direct\n")
+	fmt.Printf("test_connect_to_another_server_direct\n")
 
-// 	clientConfig := &ClientConfig{}
-// 	clientConfig.duration = 60.0
-// 	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
-// 	clientConfig.connect_time = 30.0
-// 	clientConfig.connect_address = "127.0.0.1:32203"
+	clientConfig := &ClientConfig{}
+	clientConfig.duration = 60.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig.connect_time = 30.0
+	clientConfig.connect_address = "127.0.0.1:32203"
 
-// 	client_cmd, client_stdout, client_stderr := client(clientConfig)
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
-// 	serverConfig1 := &ServerConfig{}
-// 	serverConfig1.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
-// 	server_1_cmd, _ := server(serverConfig1)
+	serverConfig1 := &ServerConfig{}
+	serverConfig1.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	server_1_cmd, _ := server(serverConfig1)
 
-// 	serverConfig2 := &ServerConfig{}
-// 	serverConfig2.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
-// 	serverConfig2.server_address = "127.0.0.1"
-// 	serverConfig2.server_port = 32203
-// 	server_2_cmd, server_stdout := server(serverConfig2)
+	serverConfig2 := &ServerConfig{}
+	serverConfig2.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig2.server_address = "127.0.0.1"
+	serverConfig2.server_port = 32203
+	server_2_cmd, server_stdout := server(serverConfig2)
 
-// 	backend_cmd, backend_stdout := backend("DEFAULT")
+	backend_cmd, backend_stdout := backend("DEFAULT")
 
-// 	client_cmd.Wait()
+	client_cmd.Wait()
 
-// 	server_1_cmd.Process.Signal(os.Interrupt)
-// 	server_2_cmd.Process.Signal(os.Interrupt)
-// 	backend_cmd.Process.Signal(os.Interrupt)
+	server_1_cmd.Process.Signal(os.Interrupt)
+	server_2_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
 
-// 	server_1_cmd.Wait()
-// 	server_2_cmd.Wait()
-// 	backend_cmd.Wait()
+	server_1_cmd.Wait()
+	server_2_cmd.Wait()
+	backend_cmd.Wait()
 
-// 	client_counters := read_client_counters(client_stderr.String())
+	client_counters := read_client_counters(client_stderr.String())
 
-// 	backendSawClientBandwidthOverLimit := strings.Contains(backend_stdout.String(), "client bandwidth over limit")
-// 	backendSawServerBandwidthOverLimit := strings.Contains(backend_stdout.String(), "server bandwidth over limit")
+	backendSawClientBandwidthOverLimit := strings.Contains(backend_stdout.String(), "client bandwidth over limit")
+	backendSawServerBandwidthOverLimit := strings.Contains(backend_stdout.String(), "server bandwidth over limit")
 
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawClientBandwidthOverLimit == false)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawServerBandwidthOverLimit == false)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 2)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 2)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 2)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 3500)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 3500)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawClientBandwidthOverLimit == false)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawServerBandwidthOverLimit == false)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 2)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 2)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 2)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 3500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 3500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
 
-// }
+}
 
 // /*
 // 	Make sure a client can connect over network next to one server, and then connect to another server over network next.
@@ -2541,8 +2541,8 @@ func main() {
 		// test_on_on_off,
 		// test_reconnect_direct,
 		// test_reconnect_direct_no_upgrade,
-		test_reconnect_next,
-		// test_connect_to_another_server_direct,
+		// test_reconnect_next,
+		test_connect_to_another_server_direct,
 		// test_connect_to_another_server_next,
 		// test_multipath,
 		// test_multipath_next_packet_loss,
