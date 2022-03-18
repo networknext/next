@@ -3703,16 +3703,16 @@ func (db *SQL) UpdateBuyer(ctx context.Context, ephemeralBuyerID uint64, field s
 	return nil
 }
 
-func (db *SQL) UpdateCustomer(ctx context.Context, customerID string, field string, value interface{}) error {
+func (db *SQL) UpdateCustomer(ctx context.Context, customerCode string, field string, value interface{}) error {
 	var updateSQL bytes.Buffer
 	var args []interface{}
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	customer, err := db.Customer(ctx, customerID)
+	customer, err := db.Customer(ctx, customerCode)
 	if err != nil {
-		return &DoesNotExistError{resourceType: "customer", resourceRef: fmt.Sprintf("%016x", customerID)}
+		return &DoesNotExistError{resourceType: "customer", resourceRef: customerCode}
 	}
 
 	switch field {
@@ -4372,6 +4372,58 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 	}
 
 	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	return dashboards, nil
+}
+
+// GetAnalyticsDashboardsByCategoryID get all looker dashboards by customer
+func (db *SQL) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerID int64) ([]looker.AnalyticsDashboard, error) {
+	var sql bytes.Buffer
+	var categoryID int64
+	dashboard := looker.AnalyticsDashboard{}
+	dashboards := []looker.AnalyticsDashboard{}
+
+	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("from analytics_dashboards where customer_id = $1 order by id desc"))
+
+	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
+	defer cancel()
+
+	rows, err := QueryMultipleRowsRetry(ctx, db, sql, customerID)
+	if err != nil {
+		core.Error("GetAnalyticsDashboardsByCategoryID(): QueryMultipleRowsRetry returned an error: %v", err)
+		return []looker.AnalyticsDashboard{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err = rows.Scan(
+			&dashboard.ID,
+			&dashboard.Name,
+			&dashboard.LookerID,
+			&dashboard.Discovery,
+			&customerID,
+			&categoryID,
+		)
+		if err != nil {
+			core.Error("GetAnalyticsDashboardsByCategoryID(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		if err != nil {
+			core.Error("GetAnalyticsDashboardsByCategoryID(): error parsing returned row: %v", err)
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		category, err := db.GetAnalyticsDashboardCategoryByID(ctx, categoryID)
+		if err != nil {
+			return []looker.AnalyticsDashboard{}, err
+		}
+
+		dashboard.Category = category
+
+		dashboards = append(dashboards, dashboard)
+	}
+
 	return dashboards, nil
 }
 

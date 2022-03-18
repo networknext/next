@@ -2843,6 +2843,222 @@ int relay_base64_decode_string( const char * input, char * output, size_t output
 
 // ---------------------------------------------------------------
 
+typedef uint64_t relay_fnv_t;
+
+void relay_fnv_init( relay_fnv_t * fnv )
+{
+    *fnv = 0xCBF29CE484222325;
+}
+
+void relay_fnv_write( relay_fnv_t * fnv, const uint8_t * data, size_t size )
+{
+    for ( size_t i = 0; i < size; i++ )
+    {
+        (*fnv) ^= data[i];
+        (*fnv) *= 0x00000100000001B3;
+    }
+}
+
+uint64_t relay_fnv_finalize( relay_fnv_t * fnv )
+{
+    return *fnv;
+}
+
+uint64_t relay_hash_string( const char * string )
+{
+    relay_fnv_t fnv;
+    relay_fnv_init( &fnv );
+    relay_fnv_write( &fnv, (uint8_t *)( string ), strlen( string ) );
+    return relay_fnv_finalize( &fnv );
+}
+
+// ---------------------------------------------------------------
+
+static void relay_generate_pittle_sdk5( uint8_t * output, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
+{
+    assert( output );
+    assert( from_address );
+    assert( from_address_bytes > 0 );
+    assert( to_address );
+    assert( to_address_bytes >= 0 );
+    assert( packet_length > 0 );
+#if RELAY_BIG_ENDIAN
+    relay_bswap( from_port );
+    relay_bswap( to_port );
+    relay_bswap( packet_length );
+#endif // #if RELAY_BIG_ENDIAN
+    uint16_t sum = 0;
+    for ( int i = 0; i < from_address_bytes; ++i ) { sum += uint8_t(from_address[i]); }
+    const char * from_port_data = (const char*) &from_port;
+    sum += uint8_t(from_port_data[0]);
+    sum += uint8_t(from_port_data[1]);
+    for ( int i = 0; i < to_address_bytes; ++i ) { sum += uint8_t(to_address[i]); }
+    const char * to_port_data = (const char*) &to_port;    
+    sum += uint8_t(to_port_data[0]);
+    sum += uint8_t(to_port_data[1]);
+    const char * packet_length_data = (const char*) &packet_length;
+    sum += uint8_t(packet_length_data[0]);
+    sum += uint8_t(packet_length_data[1]);
+    sum += uint8_t(packet_length_data[2]);
+    sum += uint8_t(packet_length_data[3]);
+#if RELAY_BIG_ENDIAN
+    relay_bswap( sum );
+#endif // #if RELAY_BIG_ENDIAN
+    const char * sum_data = (const char*) &sum;
+    output[0] = 1 | ( uint8_t(sum_data[0]) ^ uint8_t(sum_data[1]) ^ 193 );
+    output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
+}
+
+static void relay_generate_chonkle_sdk5( uint8_t * output, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
+{
+    assert( output );
+    assert( magic );
+    assert( from_address );
+    assert( from_address_bytes >= 0 );
+    assert( to_address );
+    assert( to_address_bytes >= 0 );
+    assert( packet_length > 0 );
+#if RELAY_BIG_ENDIAN
+    relay_bswap( from_port );
+    relay_bswap( to_port );
+    relay_bswap( packet_length );
+#endif // #if RELAY_BIG_ENDIAN
+    relay_fnv_t fnv;
+    relay_fnv_init( &fnv );
+    relay_fnv_write( &fnv, magic, 8 );
+    relay_fnv_write( &fnv, from_address, from_address_bytes );
+    relay_fnv_write( &fnv, (const uint8_t*) &from_port, 2 );
+    relay_fnv_write( &fnv, to_address, to_address_bytes );
+    relay_fnv_write( &fnv, (const uint8_t*) &to_port, 2 );
+    relay_fnv_write( &fnv, (const uint8_t*) &packet_length, 4 );
+    uint64_t hash = relay_fnv_finalize( &fnv );
+#if RELAY_BIG_ENDIAN
+    relay_bswap( hash );
+#endif // #if RELAY_BIG_ENDIAN
+    const char * data = (const char*) &hash;
+    output[0] = ( ( data[6] & 0xC0 ) >> 6 ) + 42;
+    output[1] = ( data[3] & 0x1F ) + 200;
+    output[2] = ( ( data[2] & 0xFC ) >> 2 ) + 5;
+    output[3] = data[0];
+    output[4] = ( data[2] & 0x03 ) + 78;
+    output[5] = ( data[4] & 0x7F ) + 96;
+    output[6] = ( ( data[1] & 0xFC ) >> 2 ) + 100;
+    if ( ( data[7] & 1 ) == 0 ) { output[7] = 79; } else { output[7] = 7; }
+    if ( ( data[4] & 0x80 ) == 0 ) { output[8] = 37; } else { output[8] = 83; }
+    output[9] = ( data[5] & 0x07 ) + 124;
+    output[10] = ( ( data[1] & 0xE0 ) >> 5 ) + 175;
+    output[11] = ( data[6] & 0x3F ) + 33;
+    const int value = ( data[1] & 0x03 ); 
+    if ( value == 0 ) { output[12] = 97; } else if ( value == 1 ) { output[12] = 5; } else if ( value == 2 ) { output[12] = 43; } else { output[12] = 13; }
+    output[13] = ( ( data[5] & 0xF8 ) >> 3 ) + 210;   
+    output[14] = ( ( data[7] & 0xFE ) >> 1 ) + 17;
+}
+
+bool relay_basic_packet_filter_sdk5( const uint8_t * data, int packet_length )
+{
+    if ( packet_length == 0 )
+        return false;
+
+    if ( data[0] == 0 )
+        return true;
+
+    if ( packet_length < 18 )
+        return false;
+
+    if ( data[0] < 0x01 || data[0] > 0x63 )
+        return false;
+
+    if ( data[1] < 0x2A || data[1] > 0x2D )
+        return false;
+
+    if ( data[2] < 0xC8 || data[2] > 0xE7 )
+        return false;
+
+    if ( data[3] < 0x05 || data[3] > 0x44 )
+        return false;
+
+    if ( data[5] < 0x4E || data[5] > 0x51 )
+        return false;
+
+    if ( data[6] < 0x60 || data[6] > 0xDF )
+        return false;
+
+    if ( data[7] < 0x64 || data[7] > 0xE3 )
+        return false;
+
+    if ( data[8] != 0x07 && data[8] != 0x4F )
+        return false;
+
+    if ( data[9] != 0x25 && data[9] != 0x53 )
+        return false;
+    
+    if ( data[10] < 0x7C || data[10] > 0x83 )
+        return false;
+
+    if ( data[11] < 0xAF || data[11] > 0xB6 )
+        return false;
+
+    if ( data[12] < 0x21 || data[12] > 0x60 )
+        return false;
+
+    if ( data[13] != 0x61 && data[13] != 0x05 && data[13] != 0x2B && data[13] != 0x0D )
+        return false;
+
+    if ( data[14] < 0xD2 || data[14] > 0xF1 )
+        return false;
+
+    if ( data[15] < 0x11 || data[15] > 0x90 )
+        return false;
+
+    return true;
+}
+
+void relay_address_data_sdk5( const relay_address_t * address, uint8_t * address_data, int * address_bytes, uint16_t * address_port )
+{
+    assert( address );
+    if ( address->type == RELAY_ADDRESS_IPV4 )
+    {
+        address_data[0] = address->data.ipv4[0];
+        address_data[1] = address->data.ipv4[1];
+        address_data[2] = address->data.ipv4[2];
+        address_data[3] = address->data.ipv4[3];
+        *address_bytes = 4;
+    }
+    else if ( address->type == RELAY_ADDRESS_IPV6 )
+    {
+        for ( int i = 0; i < 8; ++i )
+        {
+            address_data[i*2]   = address->data.ipv6[i] >> 8;
+            address_data[i*2+1] = address->data.ipv6[i] & 0xFF;
+        }
+        *address_bytes = 16;
+    }
+    else
+    {
+        *address_bytes = 0;
+    }
+    *address_port = address->port;
+}
+
+bool relay_advanced_packet_filter_sdk5( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
+{
+    if ( data[0] == 0 )
+        return true;
+    if ( packet_length < 18 )
+        return false;
+    uint8_t a[15];
+    uint8_t b[2];
+    relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    relay_generate_pittle_sdk5( b, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
+    if ( memcmp( a, data + 1, 15 ) != 0 )
+        return false;
+    if ( memcmp( b, data + packet_length - 2, 2 ) != 0 )
+        return false;
+    return true;
+}
+
+// ---------------------------------------------------------------
+
 struct relay_route_stats_t
 {
     float rtt;
@@ -4307,6 +4523,12 @@ static void test_base64()
     check( relay_base64_decode_string( encoded, decoded, 10 ) == 0 );
 }
 
+void test_fnv1a()
+{
+    uint64_t hash = relay_hash_string( "local" );
+    check( hash == 0x249f1fb6f3a680e8ULL );
+}
+
 static void test_relay_manager()
 {
     const int MaxRelays = 64;
@@ -4415,6 +4637,7 @@ void relay_test()
     RUN_TEST( test_continue_token );
     RUN_TEST( test_header );
     RUN_TEST( test_base64 );
+    RUN_TEST( test_fnv1a );
     RUN_TEST( test_relay_manager );
 
     printf( "\n" );

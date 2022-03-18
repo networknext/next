@@ -2448,6 +2448,11 @@ func (fs *Firestore) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id 
 	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByCategoryID not implemented in Firestore storer")
 }
 
+func (fs *Firestore) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerID int64) ([]looker.AnalyticsDashboard, error) {
+	dashboards := make([]looker.AnalyticsDashboard, 0)
+	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByCustomerID not implemented in Firestore storer")
+}
+
 // GetAnalyticsDashboardsByCategoryLabel get all looker dashboards by category label
 func (fs *Firestore) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label string) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
