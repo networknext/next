@@ -6862,7 +6862,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 session->expire_timestamp = token.expire_timestamp;
 
                 const uint8_t * token_data = p;
-                int token_bytes = packet_bytes - RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
+                int token_bytes = packet_bytes - RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
 
                 uint8_t next_address_data[32];
                 uint16_t next_address_port;
