@@ -5114,17 +5114,17 @@ void test_advanced_packet_filter()
     check( pass == 0 );
 }
 
-// TODO: figure out why this test fails certain checks
 void test_address_data_none()
 {
     relay_address_t address;
-    // check( address.type == RELAY_ADDRESS_NONE );
+    memset( &address, 0, sizeof( relay_address_t ) );
+    check( address.type == RELAY_ADDRESS_NONE );
     uint8_t address_data[32];
     int address_bytes = 0;
     uint16_t address_port = 0;
     relay_address_data_sdk5( &address, address_data, &address_bytes, &address_port );
     check( address_bytes == 0 );
-    // check( address_port == 0 );
+    check( address_port == 0 );
 }
 
 void test_address_data_ipv4()
