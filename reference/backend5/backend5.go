@@ -720,7 +720,7 @@ type SessionData struct {
 	Route           []uint64
 }
 
-func (packet SessionData) Serialize(stream Stream) error {
+func (packet *SessionData) Serialize(stream Stream) error {
 
 	stream.SerializeBits(&packet.Version, 8)
 	if stream.IsReading() && packet.Version != SessionDataVersion {
