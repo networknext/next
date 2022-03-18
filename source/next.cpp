@@ -16511,6 +16511,7 @@ void test_passthrough()
 void test_address_data_none()
 {
     next_address_t address;
+    memset( &address, 0, sizeof( next_address_t ) );
     next_check( address.type == NEXT_ADDRESS_NONE );
     uint8_t address_data[32];
     int address_bytes = 0;
