@@ -6628,14 +6628,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             }
 
             uint8_t from_address_data[32];
-            uint8_t to_address_data[32];
+            uint8_t relay_address_data[32];
             uint16_t from_address_port;
-            uint16_t to_address_port;
+            uint16_t relay_address_port;
             int from_address_bytes;
-            int to_address_bytes;
+            int relay_address_bytes;
 
             relay_address_data_sdk5( &from, from_address_data, &from_address_bytes, &from_address_port );
-            relay_address_data_sdk5( &relay->relay_address, to_address_data, &to_address_bytes, &to_address_port );
+            relay_address_data_sdk5( &relay->relay_address, relay_address_data, &relay_address_bytes, &relay_address_port );
 
             uint8_t upcoming_magic[8];
             uint8_t current_magic[8];
@@ -6647,11 +6647,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
             memcpy( &previous_magic, relay->previous_magic, 8 );
             relay_platform_mutex_release( relay->mutex );
 
-            if ( !relay_advanced_packet_filter_sdk5( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+            if ( !relay_advanced_packet_filter_sdk5( packet_data, current_magic, from_address_data, from_address_bytes, from_address_port, relay_address_data, relay_address_bytes, relay_address_port, packet_bytes ) )
             {
-                if ( !relay_advanced_packet_filter_sdk5( packet_data, upcoming_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                if ( !relay_advanced_packet_filter_sdk5( packet_data, upcoming_magic, from_address_data, from_address_bytes, from_address_port, relay_address_data, relay_address_bytes, relay_address_port, packet_bytes ) )
                 {
-                    if ( !relay_advanced_packet_filter_sdk5( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
+                    if ( !relay_advanced_packet_filter_sdk5( packet_data, previous_magic, from_address_data, from_address_bytes, from_address_port, relay_address_data, relay_address_bytes, relay_address_port, packet_bytes ) )
                     {
                         relay_printf( "relay advanced packet filter dropped packet (packet type %d)", packet_id );
                         continue;
@@ -6720,12 +6720,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_address_data_sdk5( &token.next_address, next_address_data, &next_address_bytes, &next_address_port );
 
                 uint8_t route_request_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_route_request_packet_sdk5( route_request_packet, token_data, token_bytes, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_route_request_packet_sdk5( route_request_packet, token_data, token_bytes, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port );
                 
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter_sdk5( route_request_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter_sdk5( route_request_packet, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter_sdk5( route_request_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
                     relay_platform_socket_send_packet( relay->socket, &token.next_address, route_request_packet, packet_bytes );
 
@@ -6798,12 +6798,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_address_data_sdk5( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
 
                 uint8_t route_response_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_route_response_packet_sdk5( route_response_packet, sequence, session_id, session_version, session->private_key, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_route_response_packet_sdk5( route_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port );
 
                 if ( packet_bytes > 0 )
                 {
                    assert( relay_basic_packet_filter_sdk5( route_response_packet, packet_bytes ) );
-                   assert( relay_advanced_packet_filter_sdk5( route_response_packet, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                   assert( relay_advanced_packet_filter_sdk5( route_response_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
                    relay_platform_socket_send_packet( relay->socket, &session->prev_address, route_response_packet, packet_bytes );
 
@@ -6871,12 +6871,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_address_data_sdk5( &session->next_address, next_address_data, &next_address_bytes, &next_address_port );
 
                 uint8_t continue_request_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_continue_request_packet_sdk5( continue_request_packet, token_data, token_bytes, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_continue_request_packet_sdk5( continue_request_packet, token_data, token_bytes, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port );
                 
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter_sdk5( continue_request_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter_sdk5( continue_request_packet, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter_sdk5( continue_request_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
                     relay_platform_socket_send_packet( relay->socket, &session->next_address, continue_request_packet, packet_bytes );
 
@@ -6949,12 +6949,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_address_data_sdk5( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
 
                 uint8_t continue_response_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_continue_response_packet_sdk5( continue_response_packet, sequence, session_id, session_version, session->private_key, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_continue_response_packet_sdk5( continue_response_packet, sequence, session_id, session_version, session->private_key, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port );
 
                 if ( packet_bytes > 0 )
                 {
                    assert( relay_basic_packet_filter_sdk5( continue_response_packet, packet_bytes ) );
-                   assert( relay_advanced_packet_filter_sdk5( continue_response_packet, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                   assert( relay_advanced_packet_filter_sdk5( continue_response_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
                    relay_platform_socket_send_packet( relay->socket, &session->prev_address, continue_response_packet, packet_bytes );
 
@@ -7037,12 +7037,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_address_data_sdk5( &session->next_address, next_address_data, &next_address_bytes, &next_address_port );
 
                 uint8_t client_to_server_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_client_to_server_packet_sdk5( client_to_server_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_client_to_server_packet_sdk5( client_to_server_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port );
 
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter_sdk5( client_to_server_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter_sdk5( client_to_server_packet, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter_sdk5( client_to_server_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
                     relay_platform_socket_send_packet( relay->socket, &session->next_address, client_to_server_packet, packet_bytes );
 
@@ -7125,12 +7125,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_address_data_sdk5( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
 
                 uint8_t server_to_client_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_server_to_client_packet_sdk5( server_to_client_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_server_to_client_packet_sdk5( server_to_client_packet, sequence, session_id, session_version, session->private_key, game_packet_data, game_packet_bytes, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port );
 
                 if ( packet_bytes > 0 )
                 {
                    assert( relay_basic_packet_filter_sdk5( server_to_client_packet, packet_bytes ) );
-                   assert( relay_advanced_packet_filter_sdk5( server_to_client_packet, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                   assert( relay_advanced_packet_filter_sdk5( server_to_client_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
                    relay_platform_socket_send_packet( relay->socket, &session->prev_address, server_to_client_packet, packet_bytes );
 
@@ -7205,12 +7205,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_address_data_sdk5( &session->next_address, next_address_data, &next_address_bytes, &next_address_port );
 
                 uint8_t session_ping_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_session_ping_packet_sdk5( session_ping_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port );
+                packet_bytes = relay_write_session_ping_packet_sdk5( session_ping_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port );
                 
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter_sdk5( session_ping_packet, packet_bytes ) );
-                    assert( relay_advanced_packet_filter_sdk5( session_ping_packet, current_magic, to_address_data, to_address_bytes, to_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
+                    assert( relay_advanced_packet_filter_sdk5( session_ping_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port, packet_bytes ) );
 
                     relay_platform_socket_send_packet( relay->socket, &session->next_address, session_ping_packet, packet_bytes );
 
@@ -7286,12 +7286,12 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 relay_address_data_sdk5( &session->prev_address, prev_address_data, &prev_address_bytes, &prev_address_port );
 
                 uint8_t session_pong_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_session_pong_packet_sdk5( session_pong_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port );
+                packet_bytes = relay_write_session_pong_packet_sdk5( session_pong_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port );
 
                 if ( packet_bytes > 0 )
                 {
                    assert( relay_basic_packet_filter_sdk5( session_pong_packet, packet_bytes ) );
-                   assert( relay_advanced_packet_filter_sdk5( session_pong_packet, current_magic, to_address_data, to_address_bytes, to_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
+                   assert( relay_advanced_packet_filter_sdk5( session_pong_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, prev_address_data, prev_address_bytes, prev_address_port, packet_bytes ) );
 
                    relay_platform_socket_send_packet( relay->socket, &session->prev_address, session_pong_packet, packet_bytes );
 
@@ -7313,10 +7313,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint64_t session_id = relay_read_uint64( &p );
 
                 uint8_t pong_packet[RELAY_MAX_PACKET_BYTES];
-                packet_bytes = relay_write_pong_packet_sdk5( pong_packet, ping_sequence, session_id, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port );
+                packet_bytes = relay_write_pong_packet_sdk5( pong_packet, ping_sequence, session_id, current_magic, relay_address_data, relay_address_bytes, relay_address_port, from_address_data, from_address_bytes, from_address_port );
 
                 assert( relay_basic_packet_filter_sdk5( pong_packet, packet_bytes ) );
-                assert( relay_advanced_packet_filter_sdk5( pong_packet, current_magic, to_address_data, to_address_bytes, to_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+                assert( relay_advanced_packet_filter_sdk5( pong_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
 
                 relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
 
