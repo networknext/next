@@ -857,7 +857,7 @@ func main() {
 const InitRequestMagic = uint32(0x9083708f)
 const InitRequestVersion = 0
 const UpdateRequestVersion = 5
-const UpdateResponseVersion = 0
+const UpdateResponseVersion = 1
 const MaxRelayAddressLength = 256
 const RelayTokenBytes = 32
 const MaxRelays = 5
@@ -1147,6 +1147,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 
 	backend.mutex.Unlock()
 
+	magicUpcoming, magicCurrent, magicPrevious := GetMagic()
+
 	responseData := make([]byte, 10*1024)
 
 	index = 0
@@ -1161,6 +1163,12 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		WriteUint64(responseData, &index, relaysToPing[i].ID)
 		WriteString(responseData, &index, relaysToPing[i].Address, MaxRelayAddressLength)
 	}
+
+	WriteBytes(responseData, &index, magicUpcoming[:], 8)
+
+	WriteBytes(responseData, &index, magicCurrent[:], 8)
+
+	WriteBytes(responseData, &index, magicPrevious[:], 8)
 
 	responseLength := index
 
