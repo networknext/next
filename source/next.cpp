@@ -12064,9 +12064,14 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     }
     else
     {
-        const bool current_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+        bool current_route_ok = false;
+        bool previous_route_ok = false;
 
-        const bool previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+        if ( entry->has_current_route )
+            current_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->current_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
+        
+        if ( entry->has_previous_route )
+            previous_route_ok = next_read_header( NEXT_DIRECTION_CLIENT_TO_SERVER, packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->previous_route_private_key, packet_data, packet_bytes ) == NEXT_OK;
 
         if ( !current_route_ok && !previous_route_ok )
         {
