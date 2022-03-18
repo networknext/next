@@ -7287,8 +7287,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                     continue;
                 }
 
-                uint64_t ping_sequence = relay_read_uint64( &p );
-                uint64_t session_id = relay_read_uint64( &p );
+                const uint8_t * const_p = p;
+
+                uint64_t ping_sequence = relay_read_uint64( &const_p );
+                uint64_t session_id = relay_read_uint64( &const_p );
 
                 uint8_t pong_packet[RELAY_MAX_PACKET_BYTES];
                 packet_bytes = relay_write_pong_packet_sdk5( pong_packet, ping_sequence, session_id, current_magic, relay_address_data, relay_address_bytes, relay_address_port, from_address_data, from_address_bytes, from_address_port );
