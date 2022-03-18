@@ -13011,7 +13011,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_CONTINUE_REQUEST_PACKET )
     {
-        if ( packet_bytes != NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES + 2 )
+        packet_data += 16;
+        packet_bytes -= 18;
+
+        if ( packet_bytes != NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet. wrong size" );
             return;
@@ -13070,7 +13073,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         uint8_t response_data[NEXT_MAX_PACKET_BYTES];
 
-        int response_bytes = next_write_continue_response_packet( packet_data, session_send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
+        int response_bytes = next_write_continue_response_packet( response_data, session_send_sequence, entry->session_id, entry->current_route_session_version, entry->current_route_private_key, server->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
 
         next_assert( response_bytes > 0 );
 
