@@ -1505,133 +1505,133 @@ func test_multipath_fallback_to_direct() {
 
 }
 
-// /*
-// 	Put the backend into a mode where it sets "committed" flag to false in routes returned to the SDK.
-// 	Verify that the SDK gets network next routes, but doesn't actually send packets across them if committed is false.
-// */
+/*
+	Put the backend into a mode where it sets "committed" flag to false in routes returned to the SDK.
+	Verify that the SDK gets network next routes, but doesn't actually send packets across them if committed is false.
+*/
 
-// func test_uncommitted() {
+func test_uncommitted() {
 
-// 	fmt.Printf("test_uncommitted\n")
+	fmt.Printf("test_uncommitted\n")
 
-// 	clientConfig := &ClientConfig{}
-// 	clientConfig.duration = 60.0
-// 	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig := &ClientConfig{}
+	clientConfig.duration = 60.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
-// 	client_cmd, client_stdout, client_stderr := client(clientConfig)
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
-// 	serverConfig := &ServerConfig{}
-// 	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig := &ServerConfig{}
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
-// 	server_cmd, server_stdout := server(serverConfig)
+	server_cmd, server_stdout := server(serverConfig)
 
-// 	relay_1_cmd, _ := relay()
-// 	relay_2_cmd, _ := relay()
-// 	relay_3_cmd, _ := relay()
+	relay_1_cmd, _ := relay()
+	relay_2_cmd, _ := relay()
+	relay_3_cmd, _ := relay()
 
-// 	backend_cmd, backend_stdout := backend("UNCOMMITTED")
+	backend_cmd, backend_stdout := backend("UNCOMMITTED")
 
-// 	client_cmd.Wait()
+	client_cmd.Wait()
 
-// 	server_cmd.Process.Signal(os.Interrupt)
-// 	backend_cmd.Process.Signal(os.Interrupt)
-// 	relay_1_cmd.Process.Signal(os.Interrupt)
-// 	relay_2_cmd.Process.Signal(os.Interrupt)
-// 	relay_3_cmd.Process.Signal(os.Interrupt)
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_1_cmd.Process.Signal(os.Interrupt)
+	relay_2_cmd.Process.Signal(os.Interrupt)
+	relay_3_cmd.Process.Signal(os.Interrupt)
 
-// 	server_cmd.Wait()
-// 	backend_cmd.Wait()
-// 	relay_1_cmd.Wait()
-// 	relay_2_cmd.Wait()
-// 	relay_3_cmd.Wait()
+	server_cmd.Wait()
+	backend_cmd.Wait()
+	relay_1_cmd.Wait()
+	relay_2_cmd.Wait()
+	relay_3_cmd.Wait()
 
-// 	client_counters := read_client_counters(client_stderr.String())
+	client_counters := read_client_counters(client_stderr.String())
 
-// 	backendSawClientBandwidthOverLimit := strings.Contains(backend_stdout.String(), "client bandwidth over limit")
-// 	backendSawServerBandwidthOverLimit := strings.Contains(backend_stdout.String(), "server bandwidth over limit")
+	backendSawClientBandwidthOverLimit := strings.Contains(backend_stdout.String(), "client bandwidth over limit")
+	backendSawServerBandwidthOverLimit := strings.Contains(backend_stdout.String(), "server bandwidth over limit")
 
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawClientBandwidthOverLimit == false)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawServerBandwidthOverLimit == false)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 3500)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 3500)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawClientBandwidthOverLimit == false)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawServerBandwidthOverLimit == false)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 3500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 3500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
 
-// }
+}
 
-// /*
-// 	Test that the SDK is able to transition from uncommitted to comitted state.
-// 	This is what we use to implement "try before you buy" feature in the backend, eg. get a route, trial it first for a slice or more
-// 	before actually sending packets over network next. This test makes sure that packets are actually sent over network next after
-// 	we transition from committed = false to committed = true for a session.
-// */
+/*
+	Test that the SDK is able to transition from uncommitted to comitted state.
+	This is what we use to implement "try before you buy" feature in the backend, eg. get a route, trial it first for a slice or more
+	before actually sending packets over network next. This test makes sure that packets are actually sent over network next after
+	we transition from committed = false to committed = true for a session.
+*/
 
-// func test_uncommitted_to_committed() {
+func test_uncommitted_to_committed() {
 
-// 	fmt.Printf("test_uncommitted_to_committed\n")
+	fmt.Printf("test_uncommitted_to_committed\n")
 
-// 	clientConfig := &ClientConfig{}
-// 	clientConfig.duration = 60.0
-// 	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
+	clientConfig := &ClientConfig{}
+	clientConfig.duration = 60.0
+	clientConfig.customer_public_key = "leN7D7+9vr24uT4f1Ba8PEEvIQA/UkGZLlT+sdeLRHKsVqaZq723Zw=="
 
-// 	client_cmd, client_stdout, client_stderr := client(clientConfig)
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
-// 	serverConfig := &ServerConfig{}
-// 	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
+	serverConfig := &ServerConfig{}
+	serverConfig.customer_private_key = "leN7D7+9vr3TEZexVmvbYzdH1hbpwBvioc6y1c9Dhwr4ZaTkEWyX2Li5Ph/UFrw8QS8hAD9SQZkuVP6x14tEcqxWppmrvbdn"
 
-// 	server_cmd, server_stdout := server(serverConfig)
+	server_cmd, server_stdout := server(serverConfig)
 
-// 	relay_1_cmd, _ := relay()
-// 	relay_2_cmd, _ := relay()
-// 	relay_3_cmd, _ := relay()
+	relay_1_cmd, _ := relay()
+	relay_2_cmd, _ := relay()
+	relay_3_cmd, _ := relay()
 
-// 	backend_cmd, backend_stdout := backend("UNCOMMITTED_TO_COMMITTED")
+	backend_cmd, backend_stdout := backend("UNCOMMITTED_TO_COMMITTED")
 
-// 	client_cmd.Wait()
+	client_cmd.Wait()
 
-// 	server_cmd.Process.Signal(os.Interrupt)
-// 	backend_cmd.Process.Signal(os.Interrupt)
-// 	relay_1_cmd.Process.Signal(os.Interrupt)
-// 	relay_2_cmd.Process.Signal(os.Interrupt)
-// 	relay_3_cmd.Process.Signal(os.Interrupt)
+	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_1_cmd.Process.Signal(os.Interrupt)
+	relay_2_cmd.Process.Signal(os.Interrupt)
+	relay_3_cmd.Process.Signal(os.Interrupt)
 
-// 	server_cmd.Wait()
-// 	backend_cmd.Wait()
-// 	relay_1_cmd.Wait()
-// 	relay_2_cmd.Wait()
-// 	relay_3_cmd.Wait()
+	server_cmd.Wait()
+	backend_cmd.Wait()
+	relay_1_cmd.Wait()
+	relay_2_cmd.Wait()
+	relay_3_cmd.Wait()
 
-// 	client_counters := read_client_counters(client_stderr.String())
+	client_counters := read_client_counters(client_stderr.String())
 
-// 	backendSawClientBandwidthOverLimit := strings.Contains(backend_stdout.String(), "client bandwidth over limit")
-// 	backendSawServerBandwidthOverLimit := strings.Contains(backend_stdout.String(), "server bandwidth over limit")
+	backendSawClientBandwidthOverLimit := strings.Contains(backend_stdout.String(), "client bandwidth over limit")
+	backendSawServerBandwidthOverLimit := strings.Contains(backend_stdout.String(), "server bandwidth over limit")
 
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawClientBandwidthOverLimit == false)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawServerBandwidthOverLimit == false)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]+client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 3500)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]+client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 3500)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
-// 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawClientBandwidthOverLimit == false)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, backendSawServerBandwidthOverLimit == false)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_OPEN_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_UPGRADE_SESSION] == 1)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_FALLBACK_TO_DIRECT] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_DIRECT]+client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 3500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT]+client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 3500)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_MULTIPATH] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] == 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] == 0)
 
-// }
+}
 
 // /*
 // 	Simulate packet loss between the client, server and backend.
@@ -2544,11 +2544,11 @@ func main() {
 		// test_reconnect_next,
 		// test_connect_to_another_server_direct,
 		// test_connect_to_another_server_next,
-		test_multipath,
-		test_multipath_next_packet_loss,
-		test_multipath_fallback_to_direct,
-		// test_uncommitted,
-		// test_uncommitted_to_committed,
+		// test_multipath,
+		// test_multipath_next_packet_loss,
+		// test_multipath_fallback_to_direct,
+		test_uncommitted,
+		test_uncommitted_to_committed,
 		// test_packet_loss_direct,
 		// test_packet_loss_next,
 		// test_server_under_load,
