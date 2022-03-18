@@ -263,8 +263,8 @@ describe('NavBar.vue', () => {
     expect(links.at(2).text()).toBe('Session Tool')
     expect(links.at(3).text()).toBe('User Tool')
     expect(links.at(4).text()).toBe('Downloads')
-    expect(links.at(5).text()).toBe('Explore')
-    expect(links.at(6).text()).toBe('Settings')
+    expect(links.at(5).text()).toBe('Settings')
+    expect(links.at(6).text()).toBe('Usage')
 
     const logoutButton = wrapper.find('#logout-button')
     expect(logoutButton.exists()).toBeTruthy()
