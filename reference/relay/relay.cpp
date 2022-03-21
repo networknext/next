@@ -7295,12 +7295,15 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
                 uint8_t pong_packet[RELAY_MAX_PACKET_BYTES];
                 packet_bytes = relay_write_pong_packet_sdk5( pong_packet, ping_sequence, session_id, current_magic, relay_address_data, relay_address_bytes, relay_address_port, from_address_data, from_address_bytes, from_address_port );
 
-                assert( relay_basic_packet_filter_sdk5( pong_packet, packet_bytes ) );
-                assert( relay_advanced_packet_filter_sdk5( pong_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
+                if ( packet_bytes > 0 )
+                {
+                    assert( relay_basic_packet_filter_sdk5( pong_packet, packet_bytes ) );
+                    assert( relay_advanced_packet_filter_sdk5( pong_packet, current_magic, relay_address_data, relay_address_bytes, relay_address_port, from_address_data, from_address_bytes, from_address_port, packet_bytes ) );
 
-                relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
+                    relay_platform_socket_send_packet( relay->socket, &from, pong_packet, packet_bytes );
 
-                relay->bytes_sent += packet_bytes;
+                    relay->bytes_sent += packet_bytes;
+                }
             }
         }
     }
