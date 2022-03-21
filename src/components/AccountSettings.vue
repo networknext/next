@@ -162,7 +162,7 @@ export default class AccountSettings extends Vue {
       this.companyCodeErrors.push('Please choose a company code that is at most 32 characters')
     }
 
-    const regex = new RegExp('^([a-z])+(-?[a-z])*$')
+    const regex = new RegExp('^([a-z]|[0-9])+(-?([a-z]|[0-9]))*$')
     if (!regex.test(this.companyCode)) {
       this.companyCodeErrors.push('Please choose a company code that contains character padded hyphens and no special characters')
     }
