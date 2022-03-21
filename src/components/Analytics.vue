@@ -79,8 +79,9 @@ export default class Analytics extends Vue {
   }
 
   private fetchAnalyticsDashboards () {
+    const customerCode = this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
     this.$apiService.fetchAnalyticsDashboards({
-      customer_code: this.$store.getters.isAdmin ? this.$store.getters.currentFilter.companyCode : this.$store.getters.userProfile.companyCode
+      customer_code: customerCode
     })
       .then((response: any) => {
         this.dashboards = response.dashboards || []
@@ -88,21 +89,23 @@ export default class Analytics extends Vue {
           return
         }
         this.tabs = Object.keys(this.dashboards)
-        this.tabs.sort((a: any, b: any) => {
-          if (a === 'General') {
-            return -1
-          }
+        if (customerCode === 'madbyte-games') {
+          this.tabs = [
+            'Summary',
+            'Acceleration Results',
+            'AB Test Results',
+            'Average Latency by Country',
+            'Unique Players by Country'
+          ]
+          console.log('Customer Tabs list: ')
+          console.log(this.tabs)
+        } else {
+          this.tabs.sort((a: any, b: any) => {
+            return a < b ? -1 : 1
+          })
+        }
 
-          if (b === 'General') {
-            return 1
-          }
-
-          if (a === b) {
-            return 0
-          }
-
-          return a < b ? -1 : 1
-        })
+        console.log(this.tabs)
 
         this.selectedTabIndex = 0
         this.urls = this.dashboards[this.tabs[0]]
