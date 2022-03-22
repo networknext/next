@@ -105,8 +105,6 @@ export default class Analytics extends Vue {
           })
         }
 
-        console.log(this.tabs)
-
         this.selectedTabIndex = 0
         this.urls = this.dashboards[this.tabs[0]]
       })
