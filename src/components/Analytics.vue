@@ -94,18 +94,13 @@ export default class Analytics extends Vue {
             'Summary',
             'Acceleration Results',
             'AB Test Results',
-            'Average Latency by Country',
-            'Unique Players by Country'
+            'Country Analysis'
           ]
-          console.log('Customer Tabs list: ')
-          console.log(this.tabs)
         } else {
           this.tabs.sort((a: any, b: any) => {
             return a < b ? -1 : 1
           })
         }
-
-        console.log(this.tabs)
 
         this.selectedTabIndex = 0
         this.urls = this.dashboards[this.tabs[0]]
