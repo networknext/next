@@ -2420,9 +2420,10 @@ func (s *OpsService) UpdateAnalyticsDashboard(r *http.Request, args *UpdateAnaly
 }
 
 type AdminDashboard struct {
-	Category looker.AnalyticsDashboardCategory `json:"category"`
-	Priority int32                             `json:"priority"`
-	URL      string                            `json:"url"`
+	URL       string `json:"url"`
+	Live      bool   `json:"live"`
+	Discovery bool   `json:"discovery"`
+	Priority  int32  `json:"priority"`
 }
 
 type FetchAdminDashboardsArgs struct {
@@ -2430,14 +2431,15 @@ type FetchAdminDashboardsArgs struct {
 }
 
 type FetchAdminDashboardsReply struct {
-	Dashboards []AdminDashboard `json:"dashboards"`
+	Dashboards map[string][]AdminDashboard `json:"dashboards"`
+	Labels     []string                    `json:"labels"`
 }
 
 // TODO: turn this back on later this week (Friday Aug 20th 2021 - Waiting on Tapan to finalize dash and add automatic buyer filtering)
 func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashboardsArgs, reply *FetchAdminDashboardsReply) error {
-	reply.Dashboards = make([]AdminDashboard, 0)
+	reply.Dashboards = make(map[string][]AdminDashboard, 0)
 
-	if !middleware.VerifyAnyRole(r, middleware.AdminRole) {
+	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OwnerRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchAdminDashboards(): %v", err.Error())
 		return &err
@@ -2469,8 +2471,16 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 		return &err
 	}
 
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+
 	for _, dashboard := range dashboards {
 		if dashboard.CustomerCode == customerCode {
+			_, ok := reply.Dashboards[dashboard.Category.Label]
+			if !ok {
+				reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
+				categories = append(categories, dashboard.Category)
+			}
+
 			dashCustomerCode := customerCode
 
 			if s.Env == "local" {
@@ -2482,12 +2492,28 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 				continue
 			}
 
-			reply.Dashboards = append(reply.Dashboards, AdminDashboard{
-				Category: dashboard.Category,
-				Priority: dashboard.Priority,
-				URL:      url,
+			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], AdminDashboard{
+				URL:       url,
+				Live:      !dashboard.Category.Admin,
+				Discovery: dashboard.Discovery,
 			})
 		}
+	}
+
+	// TODO: Clean this up
+	reply.Labels = make([]string, 0)
+
+	for _, dashboard := range dashboards {
+		if dashboard.CustomerCode == customerCode {
+		}
+	}
+
+	sort.Slice(categories, func(i int, j int) bool {
+		return categories[i].Priority > categories[j].Priority
+	})
+
+	for _, category := range categories {
+		reply.Labels = append(reply.Labels, category.Label)
 	}
 
 	return nil
