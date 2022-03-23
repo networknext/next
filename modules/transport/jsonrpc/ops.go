@@ -2500,13 +2500,7 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 		}
 	}
 
-	// TODO: Clean this up
 	reply.Labels = make([]string, 0)
-
-	for _, dashboard := range dashboards {
-		if dashboard.CustomerCode == customerCode {
-		}
-	}
 
 	sort.Slice(categories, func(i int, j int) bool {
 		return categories[i].Priority > categories[j].Priority
