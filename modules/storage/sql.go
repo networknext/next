@@ -3956,7 +3956,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
 
-	sql.Write([]byte("select id, tab_label, premium, admin_only, seller_only "))
+	sql.Write([]byte("select id, order_priority, tab_label, premium, admin_only, seller_only "))
 	sql.Write([]byte("from analytics_dashboard_categories"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -3972,6 +3972,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 	for rows.Next() {
 		err = rows.Scan(
 			&category.ID,
+			&category.Order,
 			&category.Label,
 			&category.Premium,
 			&category.Admin,
@@ -3985,7 +3986,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 		categories = append(categories, category)
 	}
 
-	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].Order > categories[j].Order })
 	return categories, nil
 }
 
@@ -3995,7 +3996,7 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]lo
 	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
 
-	sql.Write([]byte("select id, tab_label, premium, seller_only "))
+	sql.Write([]byte("select id, order_priority, tab_label, premium, seller_only "))
 	sql.Write([]byte("from analytics_dashboard_categories where premium = true"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4011,6 +4012,7 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]lo
 	for rows.Next() {
 		err = rows.Scan(
 			&category.ID,
+			&category.Order,
 			&category.Label,
 			&category.Premium,
 			&category.Seller,
@@ -4023,7 +4025,7 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]lo
 		categories = append(categories, category)
 	}
 
-	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].Order > categories[j].Order })
 	return categories, nil
 }
 
@@ -4033,7 +4035,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looke
 	category := looker.AnalyticsDashboardCategory{}
 	categories := make([]looker.AnalyticsDashboardCategory, 0)
 
-	sql.Write([]byte("select id, tab_label, premium, seller_only "))
+	sql.Write([]byte("select id, order_priority, tab_label, premium, seller_only "))
 	sql.Write([]byte("from analytics_dashboard_categories where premium = false"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4049,6 +4051,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looke
 	for rows.Next() {
 		err = rows.Scan(
 			&category.ID,
+			&category.Order,
 			&category.Label,
 			&category.Premium,
 			&category.Seller,
@@ -4061,7 +4064,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looke
 		categories = append(categories, category)
 	}
 
-	sort.Slice(categories, func(i int, j int) bool { return categories[i].ID < categories[j].ID })
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].Order > categories[j].Order })
 	return categories, nil
 }
 
@@ -4074,7 +4077,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) 
 	category := looker.AnalyticsDashboardCategory{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, tab_label, premium, admin_only, seller_only from analytics_dashboard_categories where id = $1"))
+	querySQL.Write([]byte("select id, order_priority, tab_label, premium, admin_only, seller_only from analytics_dashboard_categories where id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -4083,6 +4086,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) 
 		row = db.Client.QueryRowContext(ctx, querySQL.String(), id)
 		err = row.Scan(
 			&category.ID,
+			&category.Order,
 			&category.Label,
 			&category.Premium,
 			&category.Admin,
@@ -4120,7 +4124,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 	category := looker.AnalyticsDashboardCategory{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, tab_label, premium, admin_only, seller_only from analytics_dashboard_categories where tab_label = $1"))
+	querySQL.Write([]byte("select id, order_priority, tab_label, premium, admin_only, seller_only from analytics_dashboard_categories where tab_label = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -4129,6 +4133,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 		row = db.Client.QueryRowContext(ctx, querySQL.String(), label)
 		err = row.Scan(
 			&category.ID,
+			&category.Order,
 			&category.Label,
 			&category.Premium,
 			&category.Admin,
@@ -4158,19 +4163,19 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool, isSeller bool) error {
+func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, order int32, label string, isAdmin bool, isPremium bool, isSeller bool) error {
 	var sql bytes.Buffer
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	sql.Write([]byte("insert into analytics_dashboard_categories (tab_label, premium, admin_only, seller_only) values ($1, $2, $3, $4)"))
+	sql.Write([]byte("insert into analytics_dashboard_categories (order_priority, tab_label, premium, admin_only, seller_only) values ($1, $2, $3, $4, $5)"))
 
 	result, err := ExecRetry(
 		ctx,
 		db,
 		sql,
-		label, isPremium, isAdmin, isSeller,
+		order, label, isPremium, isAdmin, isSeller,
 	)
 	if err != nil {
 		core.Error("AddAnalyticsDashboardCategory() error adding analytics dashboard category: %v", err)
@@ -4262,6 +4267,14 @@ func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int6
 	defer cancel()
 
 	switch field {
+	case "Order":
+		orderLevel, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int32 or empty", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboard_categories set order_priority=$1 where id=$2"))
+		args = append(args, orderLevel, id)
+
 	case "Label":
 		label, ok := value.(string)
 		if !ok || label == "" {
@@ -4326,7 +4339,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4342,6 +4355,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4371,7 +4385,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 		}
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4382,7 +4396,7 @@ func (db *SQL) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerI
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards where customer_id = $1 order by id desc"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4398,6 +4412,7 @@ func (db *SQL) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerI
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4424,6 +4439,7 @@ func (db *SQL) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerI
 		dashboards = append(dashboards, dashboard)
 	}
 
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4435,7 +4451,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards where category_id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4451,6 +4467,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4478,7 +4495,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 		dashboards = append(dashboards, dashboard)
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4490,7 +4507,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4506,6 +4523,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4536,7 +4554,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 		}
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4548,7 +4566,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.Anal
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4564,6 +4582,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.Anal
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4593,7 +4612,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.Anal
 		}
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4605,7 +4624,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Analyti
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards where discovery = false"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4621,6 +4640,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Analyti
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4650,7 +4670,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Analyti
 		}
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4662,7 +4682,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.An
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards where discovery = true"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4678,6 +4698,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.An
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4705,7 +4726,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.An
 		dashboards = append(dashboards, dashboard)
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4717,7 +4738,7 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDa
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4733,6 +4754,7 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDa
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4760,7 +4782,7 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDa
 		dashboards = append(dashboards, dashboard)
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4772,7 +4794,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 	dashboard := looker.AnalyticsDashboard{}
 	dashboards := []looker.AnalyticsDashboard{}
 
-	sql.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
+	sql.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id "))
 	sql.Write([]byte("from analytics_dashboards where looker_dashboard_id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4788,6 +4810,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4815,7 +4838,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 		dashboards = append(dashboards, dashboard)
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].ID < dashboards[j].ID })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4830,7 +4853,7 @@ func (db *SQL) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.
 	dashboard := looker.AnalyticsDashboard{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id from analytics_dashboards where id = $1"))
+	querySQL.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id from analytics_dashboards where id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -4839,6 +4862,7 @@ func (db *SQL) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.
 		row = db.Client.QueryRowContext(ctx, querySQL.String(), id)
 		err = row.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4892,7 +4916,7 @@ func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (lo
 	dashboard := looker.AnalyticsDashboard{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id from analytics_dashboards where dashboard_name = $1"))
+	querySQL.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id from analytics_dashboards where dashboard_name = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -4901,6 +4925,7 @@ func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (lo
 		row = db.Client.QueryRowContext(ctx, querySQL.String(), name)
 		err = row.Scan(
 			&dashboard.ID,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4944,19 +4969,19 @@ func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (lo
 }
 
 // AddAnalyticsDashboard adds a new dashboard
-func (db *SQL) AddAnalyticsDashboard(ctx context.Context, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
+func (db *SQL) AddAnalyticsDashboard(ctx context.Context, order int32, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
 	var sql bytes.Buffer
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
 
-	sql.Write([]byte("insert into analytics_dashboards (dashboard_name, looker_dashboard_id, discovery, customer_id, category_id) values ($1, $2, $3, $4, $5)"))
+	sql.Write([]byte("insert into analytics_dashboards (order_priority, dashboard_name, looker_dashboard_id, discovery, customer_id, category_id) values ($1, $2, $3, $4, $5, $6)"))
 
 	result, err := ExecRetry(
 		ctx,
 		db,
 		sql,
-		name, lookerID, isDiscover, customerID, categoryID,
+		order, name, lookerID, isDiscover, customerID, categoryID,
 	)
 	if err != nil {
 		core.Error("AddAnalyticsDashboard() error adding analytics dashboard category: %v", err)
@@ -5080,6 +5105,13 @@ func (db *SQL) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field
 	defer cancel()
 
 	switch field {
+	case "Order":
+		orderLevel, ok := value.(int32)
+		if !ok {
+			return fmt.Errorf("%v is not a valid int32 or is empty", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboards set order_priority=$1 where id=$2"))
+		args = append(args, orderLevel, id)
 	case "Name":
 		name, ok := value.(string)
 		if !ok || name == "" {
