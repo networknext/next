@@ -48,7 +48,7 @@ export default class Analytics extends Vue {
   private domain: string
   private selectedTabIndex: number
   private tabs: Array<string>
-  private urls: Array<string>
+  private urls: Array<any>
 
   constructor () {
     super()
@@ -85,25 +85,11 @@ export default class Analytics extends Vue {
     })
       .then((response: any) => {
         this.dashboards = response.dashboards || []
-        if (this.dashboards.length === 0) {
-          return
-        }
-        this.tabs = Object.keys(this.dashboards)
-        if (customerCode === 'madbyte-games') {
-          this.tabs = [
-            'Summary',
-            'Acceleration Results',
-            'AB Test Results',
-            'Country Analysis'
-          ]
-        } else {
-          this.tabs.sort((a: any, b: any) => {
-            return a < b ? -1 : 1
-          })
-        }
+        this.tabs = response.labels || []
 
         this.selectedTabIndex = 0
-        this.urls = this.dashboards[this.tabs[0]]
+
+        this.urls = this.dashboards[this.tabs[this.selectedTabIndex]]
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the analytics dashboard categories')
@@ -125,7 +111,14 @@ export default class Analytics extends Vue {
     })
       .then((response: any) => {
         this.dashboards = response.dashboards || []
-        this.urls = this.dashboards[this.tabs[index]]
+        this.tabs = response.labels || []
+
+        // If a tab is deleted in the admin tool before this tab switch, the selectedIndex could be greater than the number of new tabs
+        if (this.selectedTabIndex > this.tabs.length) {
+          this.selectedTabIndex = 0
+        }
+
+        this.urls = this.dashboards[this.tabs[this.selectedTabIndex]]
       })
       .catch((error: Error) => {
         console.log('There was an issue refreshing the analytics dashboards')
