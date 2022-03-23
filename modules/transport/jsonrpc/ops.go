@@ -2030,11 +2030,11 @@ func (s *OpsService) FetchAnalyticsDashboardCategory(r *http.Request, args *Fetc
 }
 
 type AddAnalyticsDashboardCategoryArgs struct {
-	Priority int32  `json:"priority"`
-	Label    string `json:"label"`
-	Premium  bool   `json:"premium"`
-	Admin    bool   `json:"admin"`
-	Seller   bool   `json:"seller"`
+	Order   int32  `json:"order"`
+	Label   string `json:"label"`
+	Premium bool   `json:"premium"`
+	Admin   bool   `json:"admin"`
+	Seller  bool   `json:"seller"`
 }
 
 type AddAnalyticsDashboardCategoryReply struct{}
@@ -2053,7 +2053,7 @@ func (s *OpsService) AddAnalyticsDashboardCategory(r *http.Request, args *AddAna
 		return &err
 	}
 
-	if err := s.Storage.AddAnalyticsDashboardCategory(r.Context(), args.Priority, args.Label, args.Admin, args.Premium, args.Seller); err != nil {
+	if err := s.Storage.AddAnalyticsDashboardCategory(r.Context(), args.Order, args.Label, args.Admin, args.Premium, args.Seller); err != nil {
 		core.Error("AddAnalyticsDashboardCategory(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
@@ -2103,12 +2103,12 @@ func (s *OpsService) DeleteAnalyticsDashboardCategory(r *http.Request, args *Del
 }
 
 type UpdateAnalyticsDashboardCategoryArgs struct {
-	ID       int32  `json:"id"`
-	Priority int32  `json:"priority"`
-	Label    string `json:"label"`
-	Premium  bool   `json:"premium"`
-	Admin    bool   `json:"admin"`
-	Seller   bool   `json:"seller"`
+	ID      int32  `json:"id"`
+	Order   int32  `json:"order"`
+	Label   string `json:"label"`
+	Premium bool   `json:"premium"`
+	Admin   bool   `json:"admin"`
+	Seller  bool   `json:"seller"`
 }
 
 type UpdateAnalyticsDashboardCategoryReply struct{}
@@ -2152,8 +2152,8 @@ func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *Upd
 		}
 	}
 
-	if category.Priority != args.Priority {
-		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Priority", args.Priority); err != nil {
+	if category.Order != args.Order {
+		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Order", args.Order); err != nil {
 			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
 			wasError = true
 		}
@@ -2184,7 +2184,7 @@ func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *Upd
 
 type AnalyticsDashboard struct {
 	ID       int32  `json:"id"`
-	Priority int32  `json:"priority"`
+	Order    int32  `json:"order"`
 	Category string `json:"category"`
 	Customer string `json:"customer"`
 	LookerID int32  `json:"looker_id"`
@@ -2222,7 +2222,7 @@ func (s *OpsService) FetchAnalyticsDashboardList(r *http.Request, args *FetchAna
 		if args.CustomerCode == "" || dashboard.CustomerCode == args.CustomerCode {
 			reply.Dashboards = append(reply.Dashboards, AnalyticsDashboard{
 				ID:       int32(dashboard.ID),
-				Priority: dashboard.Priority,
+				Order:    dashboard.Order,
 				LookerID: int32(dashboard.LookerID),
 				Category: dashboard.Category.Label,
 				Customer: dashboard.CustomerCode,
@@ -2240,7 +2240,7 @@ type FetchAnalyticsDashboardInformationArgs struct {
 
 type FetchAnalyticsDashboardInformationReply struct {
 	ID           int32                             `json:"id"`
-	Priority     int32                             `json:"priority"`
+	Order        int32                             `json:"order"`
 	Name         string                            `json:"name"`
 	CustomerCode string                            `json:"customer_code"`
 	Category     looker.AnalyticsDashboardCategory `json:"category"`
@@ -2262,7 +2262,7 @@ func (s *OpsService) FetchAnalyticsDashboardInformation(r *http.Request, args *F
 	}
 
 	reply.ID = int32(dashboard.ID)
-	reply.Priority = dashboard.Priority
+	reply.Order = dashboard.Order
 	reply.Name = dashboard.Name
 	reply.CustomerCode = dashboard.CustomerCode
 	reply.Category = dashboard.Category
@@ -2271,7 +2271,7 @@ func (s *OpsService) FetchAnalyticsDashboardInformation(r *http.Request, args *F
 }
 
 type AddAnalyticsDashboardArgs struct {
-	Priority     int32  `json:"priority"`
+	Order        int32  `json:"order"`
 	Name         string `json:"name"`
 	LookerID     int32  `json:"looker_id"`
 	Discovery    bool   `json:"discovery"`
@@ -2311,7 +2311,7 @@ func (s *OpsService) AddAnalyticsDashboard(r *http.Request, args *AddAnalyticsDa
 		return &err
 	}
 
-	if err := s.Storage.AddAnalyticsDashboard(ctx, args.Priority, args.Name, int64(args.LookerID), args.Discovery, customer.DatabaseID, int64(args.CategoryID)); err != nil {
+	if err := s.Storage.AddAnalyticsDashboard(ctx, args.Order, args.Name, int64(args.LookerID), args.Discovery, customer.DatabaseID, int64(args.CategoryID)); err != nil {
 		core.Error("AddAnalyticsDashboard(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
@@ -2344,7 +2344,7 @@ func (s *OpsService) DeleteAnalyticsDashboard(r *http.Request, args *DeleteAnaly
 
 type UpdateAnalyticsDashboardArgs struct {
 	ID         int32  `json:"id"`
-	Priority   int32  `json:"priority"`
+	Order      int32  `json:"order"`
 	Name       string `json:"name"`
 	LookerID   int32  `json:"looker_id"`
 	CategoryID int32  `json:"category_id"`
@@ -2388,8 +2388,8 @@ func (s *OpsService) UpdateAnalyticsDashboard(r *http.Request, args *UpdateAnaly
 		}
 	}
 
-	if dashboard.Priority != args.Priority {
-		if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, id, "Priority", args.Priority); err != nil {
+	if dashboard.Order != args.Order {
+		if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, id, "Order", args.Order); err != nil {
 			core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 			wasError = true
 		}
@@ -2423,7 +2423,7 @@ type AdminDashboard struct {
 	URL       string `json:"url"`
 	Live      bool   `json:"live"`
 	Discovery bool   `json:"discovery"`
-	Priority  int32  `json:"priority"`
+	Order     int32  `json:"order"`
 }
 
 type FetchAdminDashboardsArgs struct {
@@ -2503,7 +2503,7 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 	reply.Labels = make([]string, 0)
 
 	sort.Slice(categories, func(i int, j int) bool {
-		return categories[i].Priority > categories[j].Priority
+		return categories[i].Order > categories[j].Order
 	})
 
 	for _, category := range categories {

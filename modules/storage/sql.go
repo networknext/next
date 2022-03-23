@@ -3972,7 +3972,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 	for rows.Next() {
 		err = rows.Scan(
 			&category.ID,
-			&category.Priority,
+			&category.Order,
 			&category.Label,
 			&category.Premium,
 			&category.Admin,
@@ -3986,7 +3986,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 		categories = append(categories, category)
 	}
 
-	sort.Slice(categories, func(i int, j int) bool { return categories[i].Priority > categories[j].Priority })
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].Order > categories[j].Order })
 	return categories, nil
 }
 
@@ -4012,7 +4012,7 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]lo
 	for rows.Next() {
 		err = rows.Scan(
 			&category.ID,
-			&category.Priority,
+			&category.Order,
 			&category.Label,
 			&category.Premium,
 			&category.Seller,
@@ -4025,7 +4025,7 @@ func (db *SQL) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]lo
 		categories = append(categories, category)
 	}
 
-	sort.Slice(categories, func(i int, j int) bool { return categories[i].Priority > categories[j].Priority })
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].Order > categories[j].Order })
 	return categories, nil
 }
 
@@ -4051,7 +4051,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looke
 	for rows.Next() {
 		err = rows.Scan(
 			&category.ID,
-			&category.Priority,
+			&category.Order,
 			&category.Label,
 			&category.Premium,
 			&category.Seller,
@@ -4064,7 +4064,7 @@ func (db *SQL) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looke
 		categories = append(categories, category)
 	}
 
-	sort.Slice(categories, func(i int, j int) bool { return categories[i].Priority > categories[j].Priority })
+	sort.Slice(categories, func(i int, j int) bool { return categories[i].Order > categories[j].Order })
 	return categories, nil
 }
 
@@ -4086,7 +4086,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) 
 		row = db.Client.QueryRowContext(ctx, querySQL.String(), id)
 		err = row.Scan(
 			&category.ID,
-			&category.Priority,
+			&category.Order,
 			&category.Label,
 			&category.Premium,
 			&category.Admin,
@@ -4133,7 +4133,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 		row = db.Client.QueryRowContext(ctx, querySQL.String(), label)
 		err = row.Scan(
 			&category.ID,
-			&category.Priority,
+			&category.Order,
 			&category.Label,
 			&category.Premium,
 			&category.Admin,
@@ -4163,7 +4163,7 @@ func (db *SQL) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label s
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, priority int32, label string, isAdmin bool, isPremium bool, isSeller bool) error {
+func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, order int32, label string, isAdmin bool, isPremium bool, isSeller bool) error {
 	var sql bytes.Buffer
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4175,7 +4175,7 @@ func (db *SQL) AddAnalyticsDashboardCategory(ctx context.Context, priority int32
 		ctx,
 		db,
 		sql,
-		priority, label, isPremium, isAdmin, isSeller,
+		order, label, isPremium, isAdmin, isSeller,
 	)
 	if err != nil {
 		core.Error("AddAnalyticsDashboardCategory() error adding analytics dashboard category: %v", err)
@@ -4267,13 +4267,13 @@ func (db *SQL) UpdateAnalyticsDashboardCategoryByID(ctx context.Context, id int6
 	defer cancel()
 
 	switch field {
-	case "Priority":
-		priorityLevel, ok := value.(int32)
+	case "Order":
+		orderLevel, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("%v is not a valid int32 or empty", value)
 		}
 		updateSQL.Write([]byte("update analytics_dashboard_categories set order_priority=$1 where id=$2"))
-		args = append(args, priorityLevel, id)
+		args = append(args, orderLevel, id)
 
 	case "Label":
 		label, ok := value.(string)
@@ -4355,7 +4355,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4385,7 +4385,7 @@ func (db *SQL) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.Analyt
 		}
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Priority > dashboards[j].Priority })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4412,7 +4412,7 @@ func (db *SQL) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerI
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4439,7 +4439,7 @@ func (db *SQL) GetAnalyticsDashboardsByCustomerID(ctx context.Context, customerI
 		dashboards = append(dashboards, dashboard)
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Priority > dashboards[j].Priority })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4467,7 +4467,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4495,7 +4495,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryID(ctx context.Context, id int64)
 		dashboards = append(dashboards, dashboard)
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Priority > dashboards[j].Priority })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4523,7 +4523,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4554,7 +4554,7 @@ func (db *SQL) GetAnalyticsDashboardsByCategoryLabel(ctx context.Context, label 
 		}
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Priority > dashboards[j].Priority })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4582,7 +4582,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.Anal
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4612,7 +4612,7 @@ func (db *SQL) GetPremiumAnalyticsDashboards(ctx context.Context) ([]looker.Anal
 		}
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Priority > dashboards[j].Priority })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4640,7 +4640,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Analyti
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4670,7 +4670,7 @@ func (db *SQL) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.Analyti
 		}
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Priority > dashboards[j].Priority })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4698,7 +4698,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.An
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4726,7 +4726,7 @@ func (db *SQL) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.An
 		dashboards = append(dashboards, dashboard)
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Priority > dashboards[j].Priority })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4754,7 +4754,7 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDa
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4782,7 +4782,7 @@ func (db *SQL) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDa
 		dashboards = append(dashboards, dashboard)
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Priority > dashboards[j].Priority })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4810,7 +4810,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 	for rows.Next() {
 		err = rows.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4838,7 +4838,7 @@ func (db *SQL) GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) 
 		dashboards = append(dashboards, dashboard)
 	}
 
-	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Priority > dashboards[j].Priority })
+	sort.Slice(dashboards, func(i int, j int) bool { return dashboards[i].Order > dashboards[j].Order })
 	return dashboards, nil
 }
 
@@ -4862,7 +4862,7 @@ func (db *SQL) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.
 		row = db.Client.QueryRowContext(ctx, querySQL.String(), id)
 		err = row.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4925,7 +4925,7 @@ func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (lo
 		row = db.Client.QueryRowContext(ctx, querySQL.String(), name)
 		err = row.Scan(
 			&dashboard.ID,
-			&dashboard.Priority,
+			&dashboard.Order,
 			&dashboard.Name,
 			&dashboard.LookerID,
 			&dashboard.Discovery,
@@ -4969,7 +4969,7 @@ func (db *SQL) GetAnalyticsDashboardByName(ctx context.Context, name string) (lo
 }
 
 // AddAnalyticsDashboard adds a new dashboard
-func (db *SQL) AddAnalyticsDashboard(ctx context.Context, priority int32, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
+func (db *SQL) AddAnalyticsDashboard(ctx context.Context, order int32, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
 	var sql bytes.Buffer
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
@@ -4981,7 +4981,7 @@ func (db *SQL) AddAnalyticsDashboard(ctx context.Context, priority int32, name s
 		ctx,
 		db,
 		sql,
-		priority, name, lookerID, isDiscover, customerID, categoryID,
+		order, name, lookerID, isDiscover, customerID, categoryID,
 	)
 	if err != nil {
 		core.Error("AddAnalyticsDashboard() error adding analytics dashboard category: %v", err)
@@ -5105,13 +5105,13 @@ func (db *SQL) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field
 	defer cancel()
 
 	switch field {
-	case "Priority":
-		priorityLevel, ok := value.(int32)
+	case "Order":
+		orderLevel, ok := value.(int32)
 		if !ok {
 			return fmt.Errorf("%v is not a valid int32 or is empty", value)
 		}
 		updateSQL.Write([]byte("update analytics_dashboards set order_priority=$1 where id=$2"))
-		args = append(args, priorityLevel, id)
+		args = append(args, orderLevel, id)
 	case "Name":
 		name, ok := value.(string)
 		if !ok || name == "" {

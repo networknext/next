@@ -185,17 +185,17 @@ func (l *LookerClient) RunSavesQuery(customerCode string) ([]LookerSave, error) 
 }
 
 type AnalyticsDashboardCategory struct {
-	ID       int64  `json:"id"`
-	Priority int32  `json:"priority"`
-	Label    string `json:"label"`
-	Premium  bool   `json:"premium"`
-	Admin    bool   `json:"admin"`
-	Seller   bool   `json:"seller"`
+	ID      int64  `json:"id"`
+	Order   int32  `json:"order"`
+	Label   string `json:"label"`
+	Premium bool   `json:"premium"`
+	Admin   bool   `json:"admin"`
+	Seller  bool   `json:"seller"`
 }
 
 type AnalyticsDashboard struct {
 	ID           int64                      `json:"id"`
-	Priority     int32                      `json:"priority"`
+	Order        int32                      `json:"order"`
 	Name         string                     `json:"name"`
 	Discovery    bool                       `json:"discovery"`
 	LookerID     int64                      `json:"looker_id"`

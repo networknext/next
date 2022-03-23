@@ -2772,7 +2772,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 	reply.Labels = make([]string, 0)
 
 	sort.Slice(categories, func(i int, j int) bool {
-		return categories[i].Priority > categories[j].Priority
+		return categories[i].Order > categories[j].Order
 	})
 
 	for _, category := range categories {
