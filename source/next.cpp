@@ -45,13 +45,6 @@
 #endif // #if !NEXT_DEVELOPMENT
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
 
-#if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_HOSTNAME  "prod5.losangelesfreewaysatnight.com"
-#else // #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_HOSTNAME   "dev5.losangelesfreewaysatnight.com"
-#endif // #if !NEXT_DEVELOPMENT
-#define NEXT_PING_BACKEND_PORT                                    "40100"
-
 #define NEXT_MAX_PACKET_BYTES                                        4096
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
@@ -427,8 +420,7 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
-// todo
-#define NEXT_ENABLE_MEMORY_CHECKS 1
+// #define NEXT_ENABLE_MEMORY_CHECKS 0
 
 #if NEXT_ENABLE_MEMORY_CHECKS
 
@@ -1043,7 +1035,8 @@ uint64_t next_datacenter_id( const char * name )
 uint64_t next_protocol_version()
 {
 #if !NEXT_DEVELOPMENT
-    return next_hash_string( NEXT_VERSION_FULL );
+	#define VERSION_STRING(major,minor) #major #minor
+    return next_hash_string( VERSION_STRING(NEXT_VERSION_MAJOR_INT, NEXT_VERSION_MINOR_INT) );
 #else // #if !NEXT_DEVELOPMENT
     return 0;
 #endif // #if !NEXT_DEVELOPMENT
@@ -3458,8 +3451,6 @@ void next_address_data( const next_address_t * address, uint8_t * address_data, 
     *address_port = address->port;
 }
 
-// --------------------------------------------------
-
 bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port, int packet_length )
 {
     if ( data[0] == 0 )
@@ -3476,6 +3467,8 @@ bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, c
         return false;
     return true;
 }
+
+// --------------------------------------------------
 
 int next_write_direct_packet( uint8_t * packet_data, uint8_t open_session_sequence, uint64_t send_sequence, const uint8_t * game_packet_data, int game_packet_bytes, const uint8_t * magic, const uint8_t * from_address, int from_address_bytes, uint16_t from_port, const uint8_t * to_address, int to_address_bytes, uint16_t to_port )
 {
@@ -4101,10 +4094,12 @@ void * next_global_context = NULL;
 struct next_config_internal_t
 {
     char server_backend_hostname[256];
-    uint64_t customer_id;
+    uint64_t client_customer_id;
+    uint64_t server_customer_id;
     uint8_t customer_public_key[NEXT_CRYPTO_SIGN_PUBLICKEYBYTES];
     uint8_t customer_private_key[NEXT_CRYPTO_SIGN_SECRETKEYBYTES];
     bool valid_customer_private_key;
+    bool valid_customer_public_key;
     int socket_send_buffer_size;
     int socket_receive_buffer_size;
     bool disable_network_next;
@@ -4168,9 +4163,10 @@ int next_init( void * context, next_config_t * config_in )
         if ( next_base64_decode_data( customer_public_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
             const uint8_t * p = decode_buffer;
-            config.customer_id = next_read_uint64( &p );
+            config.client_customer_id = next_read_uint64( &p );
             memcpy( config.customer_public_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_PUBLICKEYBYTES );
             next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer public key: \"%s\"", customer_public_key );
+            config.valid_customer_public_key = true;
         }
         else
         {
@@ -4195,7 +4191,7 @@ int next_init( void * context, next_config_t * config_in )
         if ( customer_private_key && next_base64_decode_data( customer_private_key, decode_buffer, sizeof(decode_buffer) ) == sizeof(decode_buffer) )
         {
             const uint8_t * p = decode_buffer;
-            config.customer_id = next_read_uint64( &p );
+            config.server_customer_id = next_read_uint64( &p );
             memcpy( config.customer_private_key, decode_buffer + 8, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
             config.valid_customer_private_key = true;
             next_printf( NEXT_LOG_LEVEL_INFO, "found valid customer private key" );
@@ -4207,6 +4203,15 @@ int next_init( void * context, next_config_t * config_in )
                 next_printf( NEXT_LOG_LEVEL_ERROR, "customer private key is invalid: \"%s\"", customer_private_key );
             }
         }
+    }
+
+    if ( config.valid_customer_private_key && config.valid_customer_public_key && config.client_customer_id != config.server_customer_id )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "mismatch between client and server customer id. please check the private and public keys are part of the same keypair!" );
+        config.valid_customer_public_key = false;
+        config.valid_customer_private_key = false;
+        memset( config.customer_public_key, 0, sizeof(config.customer_public_key) );
+        memset( config.customer_private_key, 0, sizeof(config.customer_private_key) );
     }
 
     strncpy( config.server_backend_hostname, config_in ? config_in->server_backend_hostname : NEXT_SERVER_BACKEND_HOSTNAME, sizeof(config.server_backend_hostname) );
@@ -4965,18 +4970,8 @@ void next_relay_manager_exclude( next_relay_manager_t * manager, bool * near_rel
     memcpy( manager->relay_excluded, near_relay_excluded, sizeof(manager->relay_excluded) );
 }
 
-void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket )
+void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platform_socket_t * socket, uint64_t session_id, const uint8_t * magic, const next_address_t * client_external_address )
 {
-    // todo: we need session id passed in as a parameter
-    uint64_t session_id = 0;
-
-    // todo: we need magic passed in as a parameter
-    uint8_t magic[8];
-    memset( magic, 0, sizeof(magic) );
-
-    // todo: we need the client external address passed in as a paremeter
-    next_address_t client_external_address;
-
     next_relay_manager_verify_sentinels( manager );
 
     if ( manager->disable_pings )
@@ -4999,7 +4994,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
         {
             uint64_t ping_sequence = next_ping_history_ping_sent( &manager->relay_ping_history[i], next_time() );
 
-            // todo: we need the ping token here
+            // for the moment pass in a dummy ping token
             uint8_t ping_token[1024];
             memset( ping_token, 0, sizeof(ping_token) );
 
@@ -5010,7 +5005,7 @@ void next_relay_manager_send_pings( next_relay_manager_t * manager, next_platfor
             int from_address_bytes;
             int to_address_bytes;
 
-            next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+            next_address_data( client_external_address, from_address_data, &from_address_bytes, &from_address_port );
             next_address_data( &manager->relay_addresses[i], to_address_data, &to_address_bytes, &to_address_port );
 
             int packet_bytes = next_write_relay_ping_packet( packet_data, ping_token, ping_sequence, session_id, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
@@ -5816,15 +5811,8 @@ void next_route_manager_direct_route( next_route_manager_t * route_manager, bool
     route_manager->route_data.current_route = false;
 }
 
-void next_route_manager_begin_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
+void next_route_manager_begin_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key, const uint8_t * magic, const next_address_t * client_external_address )
 {
-    // todo: we need magic passed in as a parameter
-    uint8_t magic[8];
-    memset( magic, 0, sizeof(magic) );
-
-    // todo: we need the client external address passed in as a parameter
-    next_address_t client_external_address;
-
     next_route_manager_verify_sentinels( route_manager );
 
     next_assert( tokens );
@@ -5868,7 +5856,7 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     int from_address_bytes;
     int to_address_bytes;
 
-    next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( client_external_address, from_address_data, &from_address_bytes, &from_address_port );
     next_address_data( &route_token.next_address, to_address_data, &to_address_bytes, &to_address_port );
 
     route_manager->route_data.pending_route_request_packet_bytes = next_write_route_request_packet( route_manager->route_data.pending_route_request_packet_data, token_data, token_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
@@ -5886,15 +5874,8 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     (void) packet_bytes;
 }
 
-void next_route_manager_continue_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
+void next_route_manager_continue_next_route( next_route_manager_t * route_manager, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key, const uint8_t * magic, const next_address_t * client_external_address )
 {
-    // todo: we need magic passed in as a parameter
-    uint8_t magic[8];
-    memset( magic, 0, sizeof(magic) );
-
-    // todo: we need the client external address passed in as a paremeter
-    next_address_t client_external_address;
-
     next_route_manager_verify_sentinels( route_manager );
 
     next_assert( tokens );
@@ -5939,7 +5920,7 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     int from_address_bytes;
     int to_address_bytes;
 
-    next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( client_external_address, from_address_data, &from_address_bytes, &from_address_port );
     next_address_data( &route_manager->route_data.current_route_next_address, to_address_data, &to_address_bytes, &to_address_port );
 
     const uint8_t * token_data = tokens + NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES;
@@ -5962,7 +5943,7 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     next_printf( NEXT_LOG_LEVEL_INFO, "client continues route (%s)", committed ? "committed" : "uncommitted" );
 }
 
-void next_route_manager_update( next_route_manager_t * route_manager, int update_type, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key )
+void next_route_manager_update( next_route_manager_t * route_manager, int update_type, bool committed, int num_tokens, uint8_t * tokens, const uint8_t * public_key, const uint8_t * private_key, const uint8_t * magic, const next_address_t * client_external_address )
 {
     next_route_manager_verify_sentinels( route_manager );
 
@@ -5975,11 +5956,11 @@ void next_route_manager_update( next_route_manager_t * route_manager, int update
     }
     else if ( update_type == NEXT_UPDATE_TYPE_ROUTE )
     {
-        next_route_manager_begin_next_route( route_manager, committed, num_tokens, tokens, public_key, private_key );
+        next_route_manager_begin_next_route( route_manager, committed, num_tokens, tokens, public_key, private_key, magic, client_external_address );
     }
     else if ( update_type == NEXT_UPDATE_TYPE_CONTINUE )
     {
-        next_route_manager_continue_next_route( route_manager, committed, num_tokens, tokens, public_key, private_key );
+        next_route_manager_continue_next_route( route_manager, committed, num_tokens, tokens, public_key, private_key, magic, client_external_address );
     }
 }
 
@@ -6001,15 +5982,8 @@ bool next_route_manager_committed( next_route_manager_t * route_manager )
     return route_manager->route_data.current_route && route_manager->route_data.current_route_committed;
 }
 
-void next_route_manager_prepare_send_packet( next_route_manager_t * route_manager, uint64_t sequence, next_address_t * to, const uint8_t * payload_data, int payload_bytes, uint8_t * packet_data, int * packet_bytes )
+void next_route_manager_prepare_send_packet( next_route_manager_t * route_manager, uint64_t sequence, next_address_t * to, const uint8_t * payload_data, int payload_bytes, uint8_t * packet_data, int * packet_bytes, const uint8_t * magic, const next_address_t * client_external_address )
 {
-    // todo: we need magic passed in as a parameter
-    uint8_t magic[8];
-    memset( magic, 0, sizeof(magic) );
-
-    // todo: we need the client external address passed in as a parameter
-    next_address_t client_external_address;
-
     next_route_manager_verify_sentinels( route_manager );
 
     next_assert( route_manager->route_data.current_route );
@@ -6028,7 +6002,7 @@ void next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
     int from_address_bytes;
     int to_address_bytes;
 
-    next_address_data( &client_external_address, from_address_data, &from_address_bytes, &from_address_port );
+    next_address_data( client_external_address, from_address_data, &from_address_bytes, &from_address_port );
     next_address_data( to, to_address_data, &to_address_bytes, &to_address_port );
 
     *packet_bytes = next_write_client_to_server_packet( packet_data, sequence, route_manager->route_data.current_route_session_id, route_manager->route_data.current_route_session_version, route_manager->route_data.current_route_private_key, payload_data, payload_bytes, magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port );
@@ -6474,7 +6448,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     next_printf( NEXT_LOG_LEVEL_INFO, "client sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "client buyer id is %" PRIx64, next_global_config.customer_id );
+    next_printf( NEXT_LOG_LEVEL_INFO, "client buyer id is %" PRIx64, next_global_config.client_customer_id );
 
     next_address_t bind_address;
     if ( next_address_parse( &bind_address, bind_address_string ) != NEXT_OK )
@@ -6711,9 +6685,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
 
         if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
         {
-            next_assert( to_address_bytes != 0 );
-            next_assert( to_address_port != 0 );
-
             if ( !next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
             {
                 if ( !next_advanced_packet_filter( packet_data, client->upcoming_magic, from_address_data, from_address_bytes, from_address_port, to_address_data, to_address_bytes, to_address_port, packet_bytes ) )
@@ -7453,7 +7424,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             }
 
             next_platform_mutex_acquire( &client->route_manager_mutex );
-            next_route_manager_update( client->route_manager, packet.update_type, packet.committed, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key );
+            next_route_manager_update( client->route_manager, packet.update_type, packet.committed, packet.num_tokens, packet.tokens, next_router_public_key, client->client_route_private_key, client->current_magic, &client->client_external_address );
             fallback_to_direct = client->route_manager->fallback_to_direct;
             next_platform_mutex_release( &client->route_manager_mutex );
 
@@ -8088,7 +8059,7 @@ void next_client_internal_send_pings_to_near_relays( next_client_internal_t * cl
     if ( client->fallback_to_direct )
         return;
 
-    next_relay_manager_send_pings( client->near_relay_manager, client->socket );
+    next_relay_manager_send_pings( client->near_relay_manager, client->socket, client->session_id, client->current_magic, &client->client_external_address );
 }
 
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client )
@@ -8652,7 +8623,7 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
 
             next_platform_mutex_acquire( &client->internal->route_manager_mutex );
-            next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes );
+            next_route_manager_prepare_send_packet( client->internal->route_manager, send_sequence, &next_to, packet_data, packet_bytes, next_packet_data, &next_packet_bytes, client->current_magic, &client->client_external_address );
             next_platform_mutex_release( &client->internal->route_manager_mutex );
 
             next_platform_socket_send_packet( client->internal->socket, &next_to, next_packet_data, next_packet_bytes );
@@ -10993,7 +10964,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
 
 static next_platform_thread_return_t NEXT_PLATFORM_THREAD_FUNC next_server_internal_resolve_hostname_thread_function( void * context );
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
 bool next_autodetect_google( char * output )
 {
@@ -11001,13 +10972,25 @@ bool next_autodetect_google( char * output )
     char buffer[1024*10];
 
     // are we running in google cloud?
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "/bin/ls /usr/bin | grep google_ 2>/dev/null", "r");
+    file = popen( "/bin/ls /usr/bin | grep google_ 2>/dev/null", "r" );
     if ( file == NULL ) 
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run ls" );
         return false;
     }
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    file = _popen( "dir \"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\" | findstr gcloud", "r" );
+    if ( file == NULL ) 
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run dir" );
+        return false;
+    }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     bool in_gcp = false;
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
@@ -11016,7 +10999,16 @@ bool next_autodetect_google( char * output )
         in_gcp = true;
         break;
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // we are not running in google cloud :(
 
@@ -11030,12 +11022,27 @@ bool next_autodetect_google( char * output )
 
     char zone[256];
     zone[0] = '\0';
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    
     file = popen( "curl \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
     }
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    file = _popen( "powershell Invoke-RestMethod -Uri http://metadata.google.internal/computeMetadata/v1/instance/zone -Headers @{'Metadata-Flavor' = 'Google'} -TimeoutSec 10", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
+        return false;
+    }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS 
+
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         int length = strlen( buffer );
@@ -11088,7 +11095,16 @@ bool next_autodetect_google( char * output )
 
         break;
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // we couldn't work out which zone we are in :(
 
@@ -11100,13 +11116,28 @@ bool next_autodetect_google( char * output )
 
     // look up google zone -> network next datacenter via mapping in google cloud storage "google.txt" file
 
-    bool found = false;
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     file = popen( "curl https://storage.googleapis.com/network-next-sdk/google.txt --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
     }
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    file = _popen( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/google.txt -TimeoutSec 10", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
+        return false;
+    }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS 
+
+    bool found = false;
+
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         const char * separators = ",\n\r";
@@ -11131,7 +11162,16 @@ bool next_autodetect_google( char * output )
             break;
         }
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     return found;
 }
@@ -11147,12 +11187,27 @@ bool next_autodetect_amazon( char * output )
 
     char azid[256];
     azid[0] = '\0';
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     file = popen( "curl \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 2 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
     }
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    file = _popen ( "powershell Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/placement/availability-zone-id -TimeoutSec 2", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
+        return false;
+    }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         if ( strstr( buffer, "-az" ) == NULL )
@@ -11174,7 +11229,16 @@ bool next_autodetect_amazon( char * output )
 
         break;
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     // we are probably not in AWS :(
 
@@ -11186,13 +11250,28 @@ bool next_autodetect_amazon( char * output )
 
     // look up AZID -> network next datacenter via mapping in google cloud storage "amazon.txt" file
 
-    bool found = false;
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     file = popen( "curl https://storage.googleapis.com/network-next-sdk/amazon.txt --max-time 10 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
         return false;
     }
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    file = _popen ( "powershell Invoke-RestMethod -Uri https://storage.googleapis.com/network-next-sdk/amazon.txt -TimeoutSec 10", "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
+        return false;
+    }
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+
+    bool found = false;
+
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
         const char * separators = ",\n\r";
@@ -11217,12 +11296,23 @@ bool next_autodetect_amazon( char * output )
             break;
         }
     }
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     pclose( file );
+
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    _pclose( file );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
     return found;
 }
 
 // --------------------------------------------------------------------------------------------------------------
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
@@ -11457,9 +11547,13 @@ bool next_autodetect_multiplay( const char * input_datacenter, const char * addr
     return found;
 }
 
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
 bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output )
 {
-    // we need linux + curl to do any autodetect. bail if we don't have it
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    // we need curl to do any autodetect. bail if we don't have it
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: looking for curl" );
 
@@ -11473,6 +11567,23 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: curl exists" );
 
+#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    // we need access to powershell and Invoke-RestMethod to do any autodetect. bail if we don't have it
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: looking for powershell Invoke-RestMethod" );
+
+    int result = system( "powershell Invoke-RestMethod -? > NUL 2>&1" );
+
+    if ( result > 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: powershell Invoke-RestMethod not found" );
+        return false;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: powershell Invoke-RestMethod exists" );
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+    
     // google cloud
 
     bool google_result = next_autodetect_google( output );
@@ -11491,16 +11602,23 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     // multiplay
 
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
     bool multiplay_result = next_autodetect_multiplay( input_datacenter, public_address, output );
     if ( multiplay_result )
     {
         return true;
     }
 
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    (void) input_datacenter;
+    (void) public_address;
+
     return false;
 }
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
 void next_server_internal_resolve_hostname( next_server_internal_t * server )
 {
@@ -11545,7 +11663,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_assert( bind_address_string );
     next_assert( datacenter_string );
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.customer_id );
+    next_printf( NEXT_LOG_LEVEL_INFO, "server buyer id is %" PRIx64, next_global_config.server_customer_id );
 
     const char * server_address_override = next_platform_getenv( "NEXT_SERVER_ADDRESS" );
     if ( server_address_override )
@@ -11591,7 +11709,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     next_server_internal_verify_sentinels( server );
 
     server->context = context;
-    server->customer_id = next_global_config.customer_id;
+    server->customer_id = next_global_config.server_customer_id;
     memcpy( server->customer_private_key, next_global_config.customer_private_key, NEXT_CRYPTO_SIGN_SECRETKEYBYTES );
     server->valid_customer_private_key = next_global_config.valid_customer_private_key;
 
@@ -12361,8 +12479,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         }
     }
 
-    // todo: this is wrong. what is the correct test here?
-    /*
     // don't process network next packets until the server is initialized
 
     if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
@@ -12370,7 +12486,6 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored network next packet because it is not initialized" );
         return;
     }
-    */
 
     // direct packet
 
