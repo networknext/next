@@ -262,7 +262,7 @@ func (fs *Firestore) Customer(ctx context.Context, code string) (routing.Custome
 }
 
 func (fs *Firestore) CustomerByID(ctx context.Context, id int64) (routing.Customer, error) {
-	return routing.Customer{}, fmt.Errorf("AddAnalyticsDashboard not implemented in Firestore storer")
+	return routing.Customer{}, fmt.Errorf("CustomerByID not implemented in Firestore storer")
 }
 
 func (fs *Firestore) Customers(ctx context.Context) []routing.Customer {
@@ -2422,7 +2422,7 @@ func (fs *Firestore) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, l
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (fs *Firestore) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool, isSeller bool) error {
+func (fs *Firestore) AddAnalyticsDashboardCategory(ctx context.Context, priority int32, label string, isAdmin bool, isPremium bool, isSeller bool) error {
 	return fmt.Errorf("AddAnalyticsDashboardCategory not implemented in Firestore storer")
 }
 
@@ -2508,7 +2508,7 @@ func (fs *Firestore) GetAnalyticsDashboardByName(ctx context.Context, name strin
 }
 
 // AddAnalyticsDashboard adds a new dashboard
-func (fs *Firestore) AddAnalyticsDashboard(ctx context.Context, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
+func (fs *Firestore) AddAnalyticsDashboard(ctx context.Context, priority int32, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
 	return fmt.Errorf("AddAnalyticsDashboard not implemented in Firestore storer")
 }
 
