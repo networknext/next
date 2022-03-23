@@ -63,28 +63,6 @@ TODO
 
 	--------------
 
-	Audit for Robin's fund.
-
-	--------------
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	--------------
-
 	Idea, challenge response encoded in ping/pong packets, eg. some sort of data passed back in the pong, expected to be passed back to the relay in the next ping...
 
 	--------------

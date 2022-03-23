@@ -153,6 +153,10 @@
 #define NEXT_PLATFORM_HAS_IPV6 1
 #endif // #if NEXT_PLATFORM != NEXT_PLATFORM_PS4 && NEXT_PLATFORM != NEXT_PLATFORM_PS5 && NEXT_PLATFORM != NEXT_PLATFORM_SWITCH
 
+#if NEXT_PLATFORM != NEXT_PLATFORM_XBOX_ONE && NEXT_PLATFORM != NEXT_PLATFORM_GDK
+#define NEXT_PLATFORM_CAN_RUN_SERVER 1
+#endif // #if NEXT_PLATFORM != NEXT_PLATFORM_XBOX_ONE && NEXT_PLATFORM != NEXT_PLATFORM_GDK
+
 // -----------------------------------------
 
 struct next_config_t
@@ -259,7 +263,7 @@ struct next_client_stats_t
 // -----------------------------------------
 
 #define NEXT_CLIENT_STATE_CLOSED        0
-#define NEXT_CLIENT_STATE_OPEN          1                               
+#define NEXT_CLIENT_STATE_OPEN          1
 #define NEXT_CLIENT_STATE_ERROR         2
 
 struct next_client_t;

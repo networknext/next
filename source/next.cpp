@@ -9808,7 +9808,7 @@ struct NextBackendSessionUpdatePacket
         }
 
         // IMPORTANT: Anonymize the client address before sending it up to our backend
-        // This ensures that we are fully compliant with the GDRP and there is zero risk
+        // This ensures that we are fully compliant with the GDPR and there is zero risk
         // the address will be accidentally stored or intecepted in transit
         if ( Stream::IsWriting )
         {
@@ -19334,6 +19334,8 @@ void test_anonymize_address_ipv6()
 
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
 
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+
 static uint64_t test_passthrough_packets_client_packets_received;
 static uint64_t test_passthrough_packets_server_packets_received;
 
@@ -19476,6 +19478,8 @@ void test_wake_up()
     next_check( test_wake_up_server_woke_up );
 }
 
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
@@ -19586,8 +19590,10 @@ void next_test()
 #if defined(NEXT_PLATFORM_HAS_IPV6)
         RUN_TEST( test_anonymize_address_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
         RUN_TEST( test_passthrough_packets );
         RUN_TEST( test_wake_up );
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
     }
 }
 
