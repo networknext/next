@@ -332,26 +332,6 @@ struct next_server_stats_t
 #define NEXT_SERVER_STATE_INITIALIZING              1
 #define NEXT_SERVER_STATE_INITIALIZED               2
 
-/*
-player caught ball
-player throws ball
-player gets hit
-player dies
-player passes 
-player damages another player
-player knocks out another player
-player respawned
-player dodged
-player assist 
-player rage quit
-player team round won (blowout/regular)
-player team round lost (blowout/regular)
-player team round draw
-player team match won
-player team match lost
-player team match draw
-*/
-
 struct next_server_t;
 
 NEXT_EXPORT_FUNC struct next_server_t * next_server_create( void * context, const char * server_address, const char * bind_address, const char * datacenter, void (*packet_received_callback)( struct next_server_t * server, void * context, const struct next_address_t * from, const uint8_t * packet_data, int packet_bytes ), void (*wake_up_callback)( void * context ) );
