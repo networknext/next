@@ -371,7 +371,9 @@ NEXT_EXPORT_FUNC void next_server_send_packet_direct( struct next_server_t * ser
 
 NEXT_EXPORT_FUNC NEXT_BOOL next_server_stats( struct next_server_t * server, const struct next_address_t * address, struct next_server_stats_t * stats );
 
-NEXT_EXPORT_FUNC NEXT_BOOL next_server_autodetect_finished( next_server_t * server );
+NEXT_EXPORT_FUNC NEXT_BOOL next_server_autodetect_finished( struct next_server_t * server );
+
+NEXT_EXPORT_FUNC const char * next_server_autodetected_datacenter( struct next_server_t * server );
 
 NEXT_EXPORT_FUNC void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events );
 

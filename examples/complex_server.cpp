@@ -491,11 +491,19 @@ int main()
 
     const double delta_time = 0.25;
 
+    bool printed_datacenter = false;
+
     while ( !quit )
     {
         next_server_update( server );
 
         update_client_timeouts( &server_context );
+
+    	if ( !printed_datacenter && next_server_autodetect_finished( server ) )
+    	{
+    		next_printf( NEXT_LOG_LEVEL_INFO, "server autodetected datacenter: %s", next_server_autodetected_datacenter( server ) );
+    		printed_datacenter = true;
+    	}
 
         accumulator += delta_time;
 

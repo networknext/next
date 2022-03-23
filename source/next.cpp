@@ -455,10 +455,11 @@ next_platform_mutex_helper_t::~next_platform_mutex_helper_t()
 
 // -------------------------------------------------------------
 
-bool next_platform_getenv_bool(const char *name)
+bool next_platform_getenv_bool(const char * name )
 {
-    const char *v = next_platform_getenv(name);
-    if (v != NULL && v[0]) {
+    const char * v = next_platform_getenv( name );
+    if ( v != NULL && v[0] ) 
+    {
         return v[0] == '1' || v[0] == 't' || v[0] == 'T';
     }
     return false;
@@ -10262,7 +10263,7 @@ struct next_server_notify_failed_to_resolve_hostname_t : public next_server_noti
 
 struct next_server_notify_autodetect_finished_t : public next_server_notify_t
 {
-    // ...
+    char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
 };
 
 struct next_server_notify_flush_finished_t : public next_server_notify_t
@@ -10453,7 +10454,7 @@ bool next_autodetect_google( char * output )
 
     while ( fgets( buffer, sizeof(buffer), file ) != NULL ) 
     {
-        int length = strlen( buffer );
+        size_t length = strlen( buffer );
         if ( length < 10 )
         {
             continue;
@@ -10473,7 +10474,7 @@ bool next_autodetect_google( char * output )
         }
 
         bool found = false;
-        int index = length - 1;
+        size_t index = length - 1;
         while ( index > 10 && length  )
         {
             if ( buffer[index] == '/' )
@@ -10491,7 +10492,7 @@ bool next_autodetect_google( char * output )
 
         strcpy( zone, buffer + index + 1 );
 
-        int zone_length = strlen(zone);
+        size_t zone_length = strlen(zone);
         index = zone_length - 1;
         while ( index > 0 && ( zone[index] == '\n' || zone[index] == '\r' ) )
         {
@@ -10625,8 +10626,8 @@ bool next_autodetect_amazon( char * output )
 
         strcpy( azid, buffer );
 
-        int azid_length = strlen(azid);
-        int index = azid_length - 1;
+        size_t azid_length = strlen(azid);
+        size_t index = azid_length - 1;
         while ( index > 0 && ( azid[index] == '\n' || azid[index] == '\r' ) )
         {
             azid[index] = '\0';
@@ -13065,6 +13066,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         server->datacenter_id = next_datacenter_id( server->datacenter_name );
         next_printf( NEXT_LOG_LEVEL_INFO, "server datacenter is '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
         next_server_notify_autodetect_finished_t * notify = (next_server_notify_autodetect_finished_t*) next_malloc( server->context, sizeof( next_server_notify_autodetect_finished_t ) );
+        strncpy( notify->autodetect_datacenter, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         notify->type = NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED;
         {
             next_platform_mutex_guard( &server->notify_mutex );
@@ -13462,6 +13464,7 @@ struct next_server_t
     next_address_t address;
     uint16_t bound_port;
     bool autodetect_finished;
+    char autodetect_datacenter[NEXT_MAX_DATACENTER_NAME_LENGTH];
     bool flushing;
     bool flushed;
 
@@ -13687,6 +13690,8 @@ void next_server_update( next_server_t * server )
 
             case NEXT_SERVER_NOTIFY_AUTODETECT_FINISHED:
             {
+                next_server_notify_autodetect_finished_t * autodetect_finished = (next_server_notify_autodetect_finished_t*) notify;
+                strncpy( server->autodetect_datacenter, autodetect_finished->autodetect_datacenter, NEXT_MAX_DATACENTER_NAME_LENGTH );
                 server->autodetect_finished = true;
             }
             break;
@@ -14086,7 +14091,8 @@ NEXT_BOOL next_server_stats( next_server_t * server, const next_address_t * addr
     return NEXT_TRUE;
 }
 
-NEXT_BOOL next_server_autodetect_finished( next_server_t * server ) {
+NEXT_BOOL next_server_autodetect_finished( next_server_t * server ) 
+{
     next_server_verify_sentinels( server );
 
     if ( server->autodetect_finished ) 
@@ -14095,6 +14101,13 @@ NEXT_BOOL next_server_autodetect_finished( next_server_t * server ) {
     }
 
     return NEXT_FALSE;
+}
+
+const char * next_server_autodetected_datacenter( next_server_t * server )
+{
+    next_server_verify_sentinels( server );
+
+    return server->autodetect_datacenter;
 }
 
 void next_server_event( struct next_server_t * server, const struct next_address_t * address, uint64_t server_events )
