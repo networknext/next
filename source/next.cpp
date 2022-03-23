@@ -9020,7 +9020,7 @@ struct NextBackendSessionUpdatePacket
         }
 
         // IMPORTANT: Anonymize the client address before sending it up to our backend
-        // This ensures that we are fully compliant with the GDRP and there is zero risk
+        // This ensures that we are fully compliant with the GDPR and there is zero risk
         // the address will be accidentally stored or intecepted in transit
         if ( Stream::IsWriting )
         {
@@ -17450,6 +17450,8 @@ static void test_jitter_tracker()
     next_check( tracker.jitter <= 0.000001 );
 }
 
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
+
 static bool client_woke_up = false;
 static bool server_woke_up = false;
 
@@ -17509,6 +17511,8 @@ static void test_wake_up()
     next_check( client_woke_up );
     next_check( server_woke_up );
 }
+
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
 
 void test_anonymize_address_ipv4()
 {
@@ -17623,7 +17627,9 @@ void next_test()
     RUN_TEST( test_packet_loss_tracker );
     RUN_TEST( test_out_of_order_tracker );
     RUN_TEST( test_jitter_tracker );
+#if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
     RUN_TEST( test_wake_up );
+#endif // #if defined(NEXT_PLATFORM_CAN_RUN_SERVER)
     RUN_TEST( test_anonymize_address_ipv4 );
 #if defined(NEXT_PLATFORM_HAS_IPV6)
     RUN_TEST( test_anonymize_address_ipv6 );
