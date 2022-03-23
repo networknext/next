@@ -14,7 +14,7 @@ using namespace Windows::UI::Core;
 using namespace Windows::Foundation;
 using namespace DirectX;
 
-const char * customer_public_key = "M/NxwbhSaPjUHES+kePTWD9TFA0bga1kubG+3vg0rTx/3sQoFgMB1w==";
+const char * customer_public_key = "UoFYERKJnCt18mU53IsWzlEXD2pYD9yd+TiZiq9+cMF9cHG4kMwRtw==";
 
 void packet_received( next_client_t * client, void * context, const uint8_t * packet_data, int packet_bytes )
 {
@@ -127,7 +127,7 @@ public:
 		if ( !client)
 			return;
 
-        next_client_open_session( client, "173.255.241.176:50000" );
+        next_client_open_session( client, "34.71.204.33:50000" );
 
         while ( !exit )
         {

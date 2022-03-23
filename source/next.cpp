@@ -19702,7 +19702,9 @@ void next_test()
         RUN_TEST( test_anonymize_address_ipv6 );
 #endif // #if defined(NEXT_PLATFORM_HAS_IPV6)
         RUN_TEST( test_passthrough_packets );
+#if !defined(NEXT_PLATFORM_XBOX_ONE) && !defined(NEXT_PLATFORM_XBOX_SERIES_X) || !defined(NEXT_PLATFORM_GDK)
         RUN_TEST( test_wake_up );
+#endif // !defined(NEXT_PLATFORM_XBOX_ONE) && !defined(NEXT_PLATFORM_XBOX_SERIES_X) || !defined(NEXT_PLATFORM_XBOX_GDK)
     }
 }
 
