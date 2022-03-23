@@ -111,6 +111,13 @@ export default class Analytics extends Vue {
     })
       .then((response: any) => {
         this.dashboards = response.dashboards || []
+        this.tabs = response.labels || []
+
+        // If a tab is deleted in the admin tool before this tab switch, the selectedIndex could be greater than the number of new tabs
+        if (this.selectedTabIndex > this.tabs.length) {
+          this.selectedTabIndex = 0
+        }
+
         this.urls = this.dashboards[this.tabs[this.selectedTabIndex]]
       })
       .catch((error: Error) => {
