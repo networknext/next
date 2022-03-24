@@ -2030,11 +2030,11 @@ func (s *OpsService) FetchAnalyticsDashboardCategory(r *http.Request, args *Fetc
 }
 
 type AddAnalyticsDashboardCategoryArgs struct {
-	Order   int32  `json:"order"`
-	Label   string `json:"label"`
-	Premium bool   `json:"premium"`
-	Admin   bool   `json:"admin"`
-	Seller  bool   `json:"seller"`
+	Order            int32  `json:"order"`
+	Label            string `json:"label"`
+	Premium          bool   `json:"premium"`
+	Admin            bool   `json:"admin"`
+	ParentCategoryID int32  `json:"parent_category_id"`
 }
 
 type AddAnalyticsDashboardCategoryReply struct{}
@@ -2053,7 +2053,7 @@ func (s *OpsService) AddAnalyticsDashboardCategory(r *http.Request, args *AddAna
 		return &err
 	}
 
-	if err := s.Storage.AddAnalyticsDashboardCategory(r.Context(), args.Order, args.Label, args.Admin, args.Premium, args.Seller); err != nil {
+	if err := s.Storage.AddAnalyticsDashboardCategory(r.Context(), args.Order, args.Label, args.Admin, args.Premium, int64(args.ParentCategoryID)); err != nil {
 		core.Error("AddAnalyticsDashboardCategory(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
@@ -2166,13 +2166,6 @@ func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *Upd
 		}
 	}
 
-	if category.Seller != args.Seller {
-		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Seller", args.Seller); err != nil {
-			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
-			wasError = true
-		}
-	}
-
 	if wasError {
 		core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
@@ -2183,12 +2176,15 @@ func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *Upd
 }
 
 type AnalyticsDashboard struct {
-	ID       int32  `json:"id"`
-	Order    int32  `json:"order"`
-	Category string `json:"category"`
-	Customer string `json:"customer"`
-	LookerID int32  `json:"looker_id"`
-	Name     string `json:"name"`
+	ID          int32  `json:"id"`
+	Order       int32  `json:"order"`
+	Category    string `json:"category"`
+	SubCategory string `json:"sub_category"`
+	Customer    string `json:"customer"`
+	LookerID    int32  `json:"looker_id"`
+	Name        string `json:"name"`
+	AdminOnly   bool   `json:"admin_only"`
+	Premium     bool   `json:"premium"`
 }
 
 type FetchAnalyticsDashboardListArgs struct {
@@ -2220,13 +2216,32 @@ func (s *OpsService) FetchAnalyticsDashboardList(r *http.Request, args *FetchAna
 	for _, dashboard := range dashboards {
 		// TODO: This can be replaced with a better storage call
 		if args.CustomerCode == "" || dashboard.CustomerCode == args.CustomerCode {
+			parentCategory := looker.AnalyticsDashboardCategory{}
+			childCategory := looker.AnalyticsDashboardCategory{}
+
+			// If the dashboard has a valid parent category ID, find with ID and use that as the parent otherwise use the dashboard's category
+			if dashboard.Category.ParentCategoryID != -1 {
+				parentCategory, err = s.Storage.GetAnalyticsDashboardCategoryByID(ctx, dashboard.Category.ParentCategoryID)
+				if err != nil {
+					core.Error("FetchAnalyticsDashboardList(): %v", err.Error())
+					err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+					return &err
+				}
+				childCategory = dashboard.Category
+			} else {
+				parentCategory = dashboard.Category
+			}
+
 			reply.Dashboards = append(reply.Dashboards, AnalyticsDashboard{
-				ID:       int32(dashboard.ID),
-				Order:    dashboard.Order,
-				LookerID: int32(dashboard.LookerID),
-				Category: dashboard.Category.Label,
-				Customer: dashboard.CustomerCode,
-				Name:     dashboard.Name,
+				ID:          int32(dashboard.ID),
+				Order:       dashboard.Order,
+				LookerID:    int32(dashboard.LookerID),
+				Category:    parentCategory.Label,
+				SubCategory: childCategory.Label,
+				Customer:    dashboard.CustomerCode,
+				Name:        dashboard.Name,
+				AdminOnly:   dashboard.Admin,
+				Premium:     dashboard.Premium,
 			})
 		}
 	}
@@ -2273,6 +2288,8 @@ func (s *OpsService) FetchAnalyticsDashboardInformation(r *http.Request, args *F
 type AddAnalyticsDashboardArgs struct {
 	Order        int32  `json:"order"`
 	Name         string `json:"name"`
+	AdminOnly    bool   `json:"admin_only"`
+	Premium      bool   `json:"premium"`
 	LookerID     int32  `json:"looker_id"`
 	Discovery    bool   `json:"discovery"`
 	CustomerCode string `json:"customer_code"`
@@ -2311,7 +2328,7 @@ func (s *OpsService) AddAnalyticsDashboard(r *http.Request, args *AddAnalyticsDa
 		return &err
 	}
 
-	if err := s.Storage.AddAnalyticsDashboard(ctx, args.Order, args.Name, int64(args.LookerID), args.Discovery, customer.DatabaseID, int64(args.CategoryID)); err != nil {
+	if err := s.Storage.AddAnalyticsDashboard(ctx, args.Order, args.Name, args.AdminOnly, args.Premium, int64(args.LookerID), customer.DatabaseID, int64(args.CategoryID)); err != nil {
 		core.Error("AddAnalyticsDashboard(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
@@ -2420,10 +2437,9 @@ func (s *OpsService) UpdateAnalyticsDashboard(r *http.Request, args *UpdateAnaly
 }
 
 type AdminDashboard struct {
-	URL       string `json:"url"`
-	Live      bool   `json:"live"`
-	Discovery bool   `json:"discovery"`
-	Order     int32  `json:"order"`
+	URL   string `json:"url"`
+	Live  bool   `json:"live"`
+	Order int32  `json:"order"`
 }
 
 type FetchAdminDashboardsArgs struct {
@@ -2493,9 +2509,8 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 			}
 
 			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], AdminDashboard{
-				URL:       url,
-				Live:      !dashboard.Category.Admin,
-				Discovery: dashboard.Discovery,
+				URL:  url,
+				Live: !dashboard.Category.Admin,
 			})
 		}
 	}
