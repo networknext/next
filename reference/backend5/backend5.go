@@ -875,6 +875,21 @@ func RouteChanged(previous []uint64, current []uint64) bool {
 
 // -----------------------------------------------------------
 
+func ReadBool(data []byte, index *int, value *bool) bool {
+	if *index+1 > len(data) {
+		return false
+	}
+
+	if data[*index] > 0 {
+		*value = true
+	} else {
+		*value = false
+	}
+
+	*index += 1
+	return true
+}
+
 func ReadUint32(data []byte, index *int, value *uint32) bool {
 	if *index+4 > len(data) {
 		return false
