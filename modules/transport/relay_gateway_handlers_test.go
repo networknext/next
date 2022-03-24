@@ -101,7 +101,7 @@ func TestGatewayRelayUpdate_UnmarshalFailure(t *testing.T) {
 
 	updateRequest := &transport.RelayUpdateRequest{
 		Version:      5,
-		RelayVersion: "2.0.9",
+		RelayVersion: "2.0.10",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -130,7 +130,7 @@ func TestGatewayRelayUpdate_ExceedMaxRelays(t *testing.T) {
 
 	updateRequest := &transport.RelayUpdateRequest{
 		Version:      5,
-		RelayVersion: "2.0.9",
+		RelayVersion: "2.0.10",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 		PingStats:    make([]routing.RelayStatsPing, transport.MaxRelays+1),
@@ -160,7 +160,7 @@ func TestGatewayRelayUpdate_RelayNotFound(t *testing.T) {
 
 	updateRequest := &transport.RelayUpdateRequest{
 		Version:      5,
-		RelayVersion: "2.0.9",
+		RelayVersion: "2.0.10",
 		Address:      *addr,
 		Token:        make([]byte, crypto.KeySize),
 	}
@@ -195,7 +195,7 @@ func TestGatewayRelayUpdate_Success(t *testing.T) {
 			Name: "seller name",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.0.10",
 	}
 
 	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1})
@@ -251,7 +251,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_NotSameSeller(t *testing.T) {
 			Name: "seller name 1",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.0.10",
 	}
 
 	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
@@ -273,7 +273,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_NotSameSeller(t *testing.T) {
 			Name: "seller name 2",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.0.10",
 	}
 
 	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1, relay2})
@@ -333,7 +333,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_NoInternalIP(t *testing.T) {
 			Name: "seller name 1",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.0.10",
 	}
 
 	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
@@ -352,7 +352,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_NoInternalIP(t *testing.T) {
 			Name: "seller name 1",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.0.10",
 	}
 
 	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1, relay2})
@@ -412,7 +412,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_Success(t *testing.T) {
 			Name: "seller name 1",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.0.10",
 	}
 
 	addr2, err := net.ResolveUDPAddr("udp", "127.0.0.2:40000")
@@ -434,7 +434,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_Success(t *testing.T) {
 			Name: "seller name 1",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.0.10",
 	}
 
 	addr3, err := net.ResolveUDPAddr("udp", "127.0.0.3:40000")
@@ -456,7 +456,7 @@ func TestGatewayRelayUpdate_PingInternalAddr_Success(t *testing.T) {
 			Name: "seller name 2",
 		},
 		State:   routing.RelayStateEnabled,
-		Version: "2.0.9",
+		Version: "2.0.10",
 	}
 
 	config := getGatewayRelayUpdateHandlerConfig(t, []routing.Relay{relay1, relay2, relay3})

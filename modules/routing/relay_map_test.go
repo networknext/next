@@ -30,7 +30,7 @@ func testRelayData(t *testing.T) *routing.RelayData {
 	relay.SessionCount = rand.Int()
 	relay.ShuttingDown = false
 	relay.LastUpdateTime = time.Unix(rand.Int63(), 0)
-	relay.Version = "2.0.9"
+	relay.Version = "2.0.10"
 	relay.CPU = uint8(rand.Int())
 	relay.NICSpeedMbps = int32(1000)
 	relay.MaxBandwidthMbps = int32(900)
