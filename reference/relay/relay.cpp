@@ -3094,7 +3094,7 @@ static void relay_generate_pittle_sdk5( uint8_t * output, const uint8_t * from_a
     sum += uint8_t(from_port_data[0]);
     sum += uint8_t(from_port_data[1]);
     for ( int i = 0; i < to_address_bytes; ++i ) { sum += uint8_t(to_address[i]); }
-    const char * to_port_data = (const char*) &to_port;    
+    const char * to_port_data = (const char*) &to_port;
     sum += uint8_t(to_port_data[0]);
     sum += uint8_t(to_port_data[1]);
     const char * packet_length_data = (const char*) &packet_length;
@@ -3149,9 +3149,9 @@ static void relay_generate_chonkle_sdk5( uint8_t * output, const uint8_t * magic
     output[9] = ( data[5] & 0x07 ) + 124;
     output[10] = ( ( data[1] & 0xE0 ) >> 5 ) + 175;
     output[11] = ( data[6] & 0x3F ) + 33;
-    const int value = ( data[1] & 0x03 ); 
+    const int value = ( data[1] & 0x03 );
     if ( value == 0 ) { output[12] = 97; } else if ( value == 1 ) { output[12] = 5; } else if ( value == 2 ) { output[12] = 43; } else { output[12] = 13; }
-    output[13] = ( ( data[5] & 0xF8 ) >> 3 ) + 210;   
+    output[13] = ( ( data[5] & 0xF8 ) >> 3 ) + 210;
     output[14] = ( ( data[7] & 0xFE ) >> 1 ) + 17;
 }
 
@@ -3192,7 +3192,7 @@ bool relay_basic_packet_filter_sdk5( const uint8_t * data, int packet_length )
 
     if ( data[9] != 0x25 && data[9] != 0x53 )
         return false;
-    
+
     if ( data[10] < 0x7C || data[10] > 0x83 )
         return false;
 
@@ -3487,7 +3487,7 @@ int relay_write_client_to_server_packet_sdk5( uint8_t * packet_data, uint64_t se
         return 0;
     if ( relay_verify_header_sdk5( RELAY_DIRECTION_CLIENT_TO_SERVER, RELAY_CLIENT_TO_SERVER_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
         return 0;
-    relay_write_bytes( &p, game_packet_data, game_packet_bytes ); 
+    relay_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
     relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
@@ -3511,7 +3511,7 @@ int relay_write_server_to_client_packet_sdk5( uint8_t * packet_data, uint64_t se
         return 0;
     if ( relay_verify_header_sdk5( RELAY_DIRECTION_SERVER_TO_CLIENT, RELAY_SERVER_TO_CLIENT_PACKET_SDK5, private_key, b, RELAY_HEADER_BYTES_SDK5 ) != RELAY_OK )
         return 0;
-    relay_write_bytes( &p, game_packet_data, game_packet_bytes ); 
+    relay_write_bytes( &p, game_packet_data, game_packet_bytes );
     uint8_t * c = p; p += 2;
     int packet_length = p - packet_data;
     relay_generate_chonkle_sdk5( a, magic, from_address, from_address_bytes, from_port, to_address, to_address_bytes, to_port, packet_length );
@@ -4885,7 +4885,7 @@ static void test_header_sdk4()
 
 static void test_header_sdk5()
 {
-    
+
     uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
     for (uint64_t i = 0; i < iterations; ++i )
@@ -5005,7 +5005,7 @@ void test_abi()
     magic[5] = 6;
     magic[6] = 7;
     magic[7] = 8;
-    
+
     uint8_t from_address[4];
     from_address[0] = 1;
     from_address[1] = 2;
@@ -5022,14 +5022,14 @@ void test_abi()
     uint16_t to_port = 5000;
 
     int packet_length = 1000;
-    
+
     relay_generate_pittle_sdk5( output, from_address, 4, from_port, to_address, 4, to_port, packet_length );
 
     check( output[0] == 71 );
     check( output[1] == 201 );
 
     relay_generate_chonkle_sdk5( output, magic, from_address, 4, from_port, to_address, 4, to_port, packet_length );
-    
+
     check( output[0] == 45 );
     check( output[1] == 203 );
     check( output[2] == 67 );
@@ -5077,7 +5077,7 @@ void test_basic_packet_filter()
             output[j] = uint8_t( rand() % 256 );
         }
         if ( relay_basic_packet_filter_sdk5( output, rand() % sizeof(output) ) )
-        {            
+        {
             pass++;
         }
     }
@@ -6030,6 +6030,9 @@ int relay_update( CURL * curl, const char * hostname, const uint8_t * relay_toke
         return RELAY_ERROR;
     }
 
+    char target_version[RELAY_MAX_VERSION_STRING_LENGTH];
+    relay_read_string( &q, target_version, RELAY_MAX_VERSION_STRING_LENGTH);
+
     uint8_t upcoming_magic[8];
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
@@ -6722,7 +6725,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 uint8_t route_request_packet[RELAY_MAX_PACKET_BYTES];
                 packet_bytes = relay_write_route_request_packet_sdk5( route_request_packet, token_data, token_bytes, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port );
-                
+
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter_sdk5( route_request_packet, packet_bytes ) );
@@ -6868,7 +6871,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 uint8_t continue_request_packet[RELAY_MAX_PACKET_BYTES];
                 packet_bytes = relay_write_continue_request_packet_sdk5( continue_request_packet, token_data, token_bytes, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port );
-                
+
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter_sdk5( continue_request_packet, packet_bytes ) );
@@ -7190,7 +7193,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                 uint8_t session_ping_packet[RELAY_MAX_PACKET_BYTES];
                 packet_bytes = relay_write_session_ping_packet_sdk5( session_ping_packet, sequence, session_id, session_version, session->private_key, ping_sequence, current_magic, relay_address_data, relay_address_bytes, relay_address_port, next_address_data, next_address_bytes, next_address_port );
-                
+
                 if ( packet_bytes > 0 )
                 {
                     assert( relay_basic_packet_filter_sdk5( session_ping_packet, packet_bytes ) );
@@ -7276,7 +7279,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC receive_thread_
 
                    relay_platform_socket_send_packet( relay->socket, &session->prev_address, session_pong_packet, packet_bytes );
 
-                   relay->bytes_sent += packet_bytes; 
+                   relay->bytes_sent += packet_bytes;
                 }
             }
             else if ( packet_id == RELAY_NEAR_PING_PACKET_SDK5 )
@@ -7584,16 +7587,16 @@ int main( int argc, const char ** argv )
 
         relay_platform_mutex_acquire( relay.mutex );
         auto iter = relay.sessions->begin();
-        while ( iter != relay.sessions->end() ) 
+        while ( iter != relay.sessions->end() )
         {
-            if ( iter->second && iter->second->expire_timestamp < relay_timestamp( &relay ) ) 
+            if ( iter->second && iter->second->expire_timestamp < relay_timestamp( &relay ) )
             {
                 printf( "session destroyed: %" PRIx64 ".%d\n", iter->second->session_id, iter->second->session_version );
                 relay.envelope_bandwidth_kbps_up -= iter->second->kbps_up;
                 relay.envelope_bandwidth_kbps_down -= iter->second->kbps_down;
                 iter = relay.sessions->erase( iter );
-            } 
-            else 
+            }
+            else
             {
                 iter++;
             }
