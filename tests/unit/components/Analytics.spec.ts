@@ -10,11 +10,11 @@ export interface AnalyticsDashboards {
   [tab: string]: Array<string>;
 }
 
-function fetchAnalyticsDashboardsMock (vueInstance: VueConstructor<any>, success: boolean, dashboards: AnalyticsDashboards, customerCode: string): jest.SpyInstance<any, unknown[]> {
+function fetchAnalyticsDashboardsMock (vueInstance: VueConstructor<any>, success: boolean, dashboards: AnalyticsDashboards, labels: Array<string>, customerCode: string): jest.SpyInstance<any, unknown[]> {
   return jest.spyOn(vueInstance.prototype.$apiService, 'fetchAnalyticsDashboards').mockImplementation((args: any) => {
     expect(args.customer_code).toBe(customerCode)
 
-    return success ? Promise.resolve({ dashboards: dashboards }) : Promise.reject(new Error('fetchAnalyticsDashboardsMock Mock Error'))
+    return success ? Promise.resolve({ dashboards: dashboards, labels: labels }) : Promise.reject(new Error('fetchAnalyticsDashboardsMock Mock Error'))
   })
 }
 
@@ -53,7 +53,7 @@ describe('Analytics.vue', () => {
   // Run bare minimum mount test
   it('mounts the component successfully', async () => {
     const store = new Vuex.Store(defaultStore)
-    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {}, '')
+    const analyticDashSpy = fetchAnalyticsDashboardsMock(localVue, true, {}, [], '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -75,7 +75,7 @@ describe('Analytics.vue', () => {
       General: [
         '127.0.0.1'
       ]
-    }, '')
+    }, ['General'], '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -108,7 +108,7 @@ describe('Analytics.vue', () => {
         '127.0.0.1',
         '127.0.0.2'
       ]
-    }, '')
+    }, ['General'], '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -144,7 +144,7 @@ describe('Analytics.vue', () => {
       Platform: [
         '127.0.0.2'
       ]
-    }, '')
+    }, ['General', 'Platform'], '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -180,7 +180,7 @@ describe('Analytics.vue', () => {
       General: [
         '127.0.0.2'
       ]
-    }, '')
+    }, ['Platform', 'General'], '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -191,16 +191,16 @@ describe('Analytics.vue', () => {
 
     const tabs = wrapper.findAll('li')
     expect(tabs.length).toBe(2)
-    expect(tabs.at(0).text()).toBe('General')
-    expect(tabs.at(1).text()).toBe('Platform')
+    expect(tabs.at(0).text()).toBe('Platform')
+    expect(tabs.at(1).text()).toBe('General')
 
     const selectedTab = wrapper.findAll('.blue-accent')
     expect(selectedTab.length).toBe(1)
-    expect(selectedTab.at(0).text()).toBe('General')
+    expect(selectedTab.at(0).text()).toBe('Platform')
 
     const dashboards = wrapper.findAll('lookerembed-stub')
     expect(dashboards.length).toBe(1)
-    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.2')
+    expect(dashboards.at(0).attributes('dashurl')).toBe('127.0.0.1')
 
     wrapper.destroy()
 
@@ -216,7 +216,7 @@ describe('Analytics.vue', () => {
       Platform: [
         '127.0.0.2'
       ]
-    }, '')
+    }, ['General', 'Platform'], '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
@@ -266,7 +266,7 @@ describe('Analytics.vue', () => {
         '127.0.0.3',
         '127.0.0.4'
       ]
-    }, '')
+    }, ['General', 'Platform'], '')
 
     const wrapper = shallowMount(Analytics, { localVue, store })
     expect(wrapper.exists()).toBeTruthy()
