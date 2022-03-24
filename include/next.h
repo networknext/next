@@ -153,6 +153,10 @@
 #define NEXT_PLATFORM_HAS_IPV6 1
 #endif // #if NEXT_PLATFORM != NEXT_PLATFORM_PS4 && NEXT_PLATFORM != NEXT_PLATFORM_PS5 && NEXT_PLATFORM != NEXT_PLATFORM_SWITCH
 
+#if NEXT_PLATFORM != NEXT_PLATFORM_XBOX_ONE && NEXT_PLATFORM != NEXT_PLATFORM_GDK
+#define NEXT_PLATFORM_CAN_RUN_SERVER 1
+#endif // #if NEXT_PLATFORM != NEXT_PLATFORM_XBOX_ONE && NEXT_PLATFORM != NEXT_PLATFORM_GDK
+
 // -----------------------------------------
 
 struct next_config_t
@@ -259,7 +263,7 @@ struct next_client_stats_t
 // -----------------------------------------
 
 #define NEXT_CLIENT_STATE_CLOSED        0
-#define NEXT_CLIENT_STATE_OPEN          1                               
+#define NEXT_CLIENT_STATE_OPEN          1
 #define NEXT_CLIENT_STATE_ERROR         2
 
 struct next_client_t;
@@ -331,26 +335,6 @@ struct next_server_stats_t
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
 #define NEXT_SERVER_STATE_INITIALIZING              1
 #define NEXT_SERVER_STATE_INITIALIZED               2
-
-/*
-player caught ball
-player throws ball
-player gets hit
-player dies
-player passes 
-player damages another player
-player knocks out another player
-player respawned
-player dodged
-player assist 
-player rage quit
-player team round won (blowout/regular)
-player team round lost (blowout/regular)
-player team round draw
-player team match won
-player team match lost
-player team match draw
-*/
 
 struct next_server_t;
 
