@@ -1550,7 +1550,7 @@ func (m *InMemory) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, lab
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (m *InMemory) AddAnalyticsDashboardCategory(ctx context.Context, label string, isAdmin bool, isPremium bool, isSeller bool) error {
+func (m *InMemory) AddAnalyticsDashboardCategory(ctx context.Context, priority int32, label string, isAdmin bool, isPremium bool, isSeller bool) error {
 	return fmt.Errorf("AddAnalyticsDashboardCategory not implemented in InMemory storer")
 }
 
@@ -1636,7 +1636,7 @@ func (m *InMemory) GetAnalyticsDashboardByName(ctx context.Context, name string)
 }
 
 // AddAnalyticsDashboard adds a new dashboard
-func (m *InMemory) AddAnalyticsDashboard(ctx context.Context, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
+func (m *InMemory) AddAnalyticsDashboard(ctx context.Context, priority int32, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
 	return fmt.Errorf("AddAnalyticsDashboard not implemented in InMemory storer")
 }
 
