@@ -2676,6 +2676,7 @@ type FetchAnalyticsDashboardsArgs struct {
 
 type FetchAnalyticsDashboardsReply struct {
 	Dashboards map[string][]string `json:"dashboards"`
+	Labels     []string            `json:"labels"`
 }
 
 func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAnalyticsDashboardsArgs, reply *FetchAnalyticsDashboardsReply) error {
@@ -2740,6 +2741,8 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 		return &err
 	}
 
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+
 	// TODO: This functionality should be broken out into storage calls - FreeDashboardsByCustomerCode, PremiumDashboardsByCustomerCode, etc
 	// Loop through all dashboards and pull out the dashboards specific to the customer that they have permission to see (premium vs free)
 	for _, dashboard := range dashboards {
@@ -2747,6 +2750,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 			_, ok := reply.Dashboards[dashboard.Category.Label]
 			if !ok {
 				reply.Dashboards[dashboard.Category.Label] = make([]string, 0)
+				categories = append(categories, dashboard.Category)
 			}
 
 			dashCustomerCode := customerCode
@@ -2763,6 +2767,16 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 
 			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], url)
 		}
+	}
+
+	reply.Labels = make([]string, 0)
+
+	sort.Slice(categories, func(i int, j int) bool {
+		return categories[i].Order > categories[j].Order
+	})
+
+	for _, category := range categories {
+		reply.Labels = append(reply.Labels, category.Label)
 	}
 
 	return nil
