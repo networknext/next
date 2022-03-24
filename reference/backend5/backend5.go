@@ -10,9 +10,11 @@ package main
 import "C"
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"io/ioutil"
@@ -28,8 +30,6 @@ import (
 	"sync"
 	"time"
 	"unsafe"
-	"bytes"
-	"errors"
 
 	"github.com/gorilla/mux"
 )
@@ -83,9 +83,10 @@ const NEXT_FLAGS_COUNT = 12
 const NEXT_RELAY_INIT_REQUEST_MAGIC = uint32(0x9083708f)
 const NEXT_RELAY_INIT_REQUEST_VERSION = 0
 const NEXT_RELAY_INIT_RESPONSE_VERSION = 0
-const NEXT_RELAY_UPDATE_REQUEST_VERSION = 0
-const NEXT_RELAY_UPDATE_RESPONSE_VERSION = 0
+const NEXT_RELAY_UPDATE_REQUEST_VERSION = 5
+const NEXT_RELAY_UPDATE_RESPONSE_VERSION = 1
 const NEXT_MAX_RELAY_ADDRESS_LENGTH = 256
+const NEXT_MAX_RELAY_VERSION_STRING_LENGTH = 32
 const NEXT_RELAY_TOKEN_BYTES = 32
 const NEXT_MAX_RELAYS = 1024
 
@@ -154,30 +155,30 @@ func GeneratePittle(output []byte, fromAddress []byte, fromPort uint16, toAddres
 
 	sum := uint16(0)
 
-    for i := 0; i < len(fromAddress); i++ {
-    	sum += uint16(fromAddress[i])
-    }
+	for i := 0; i < len(fromAddress); i++ {
+		sum += uint16(fromAddress[i])
+	}
 
-    sum += uint16(fromPortData[0])
-    sum += uint16(fromPortData[1])
+	sum += uint16(fromPortData[0])
+	sum += uint16(fromPortData[1])
 
-    for i := 0; i < len(toAddress); i++ {
-    	sum += uint16(toAddress[i])
-    }
+	for i := 0; i < len(toAddress); i++ {
+		sum += uint16(toAddress[i])
+	}
 
-    sum += uint16(toPortData[0])
-    sum += uint16(toPortData[1])
+	sum += uint16(toPortData[0])
+	sum += uint16(toPortData[1])
 
-    sum += uint16(packetLengthData[0])
-    sum += uint16(packetLengthData[1])
-    sum += uint16(packetLengthData[2])
-    sum += uint16(packetLengthData[3])
+	sum += uint16(packetLengthData[0])
+	sum += uint16(packetLengthData[1])
+	sum += uint16(packetLengthData[2])
+	sum += uint16(packetLengthData[3])
 
 	var sumData [2]byte
 	binary.LittleEndian.PutUint16(sumData[:], sum)
 
-    output[0] = 1 | ( sumData[0] ^ sumData[1] ^ 193 );
-    output[1] = 1 | ( ( 255 - output[0] ) ^ 113 );
+	output[0] = 1 | (sumData[0] ^ sumData[1] ^ 193)
+	output[1] = 1 | ((255 - output[0]) ^ 113)
 }
 
 func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, fromPort uint16, toAddressData []byte, toPort uint16, packetLength int) {
@@ -203,107 +204,107 @@ func GenerateChonkle(output []byte, magic []byte, fromAddressData []byte, fromPo
 	var data [8]byte
 	binary.LittleEndian.PutUint64(data[:], uint64(hashValue))
 
-    output[0] = ( ( data[6] & 0xC0 ) >> 6 ) + 42
-    output[1] = ( data[3] & 0x1F ) + 200
-    output[2] = ( ( data[2] & 0xFC ) >> 2 ) + 5
-    output[3] = data[0]
-    output[4] = ( data[2] & 0x03 ) + 78
-    output[5] = ( data[4] & 0x7F ) + 96
-    output[6] = ( ( data[1] & 0xFC ) >> 2 ) + 100
-    if ( data[7] & 1 ) == 0 { 
-    	output[7] = 79
-    } else { 
-    	output[7] = 7 
-    }
-    if ( data[4] & 0x80 ) == 0 {
-    	output[8] = 37
-    } else { 
-    	output[8] = 83
-    }
-    output[9] = ( data[5] & 0x07 ) + 124
-    output[10] = ( ( data[1] & 0xE0 ) >> 5 ) + 175
-    output[11] = ( data[6] & 0x3F ) + 33
-    value := ( data[1] & 0x03 ); 
-    if value == 0 { 
-    	output[12] = 97
-    } else if value == 1 { 
-    	output[12] = 5
-    } else if value == 2 { 
-    	output[12] = 43
-    } else { 
-    	output[12] = 13
-    }
-    output[13] = ( ( data[5] & 0xF8 ) >> 3 ) + 210
-    output[14] = ( ( data[7] & 0xFE ) >> 1 ) + 17
+	output[0] = ((data[6] & 0xC0) >> 6) + 42
+	output[1] = (data[3] & 0x1F) + 200
+	output[2] = ((data[2] & 0xFC) >> 2) + 5
+	output[3] = data[0]
+	output[4] = (data[2] & 0x03) + 78
+	output[5] = (data[4] & 0x7F) + 96
+	output[6] = ((data[1] & 0xFC) >> 2) + 100
+	if (data[7] & 1) == 0 {
+		output[7] = 79
+	} else {
+		output[7] = 7
+	}
+	if (data[4] & 0x80) == 0 {
+		output[8] = 37
+	} else {
+		output[8] = 83
+	}
+	output[9] = (data[5] & 0x07) + 124
+	output[10] = ((data[1] & 0xE0) >> 5) + 175
+	output[11] = (data[6] & 0x3F) + 33
+	value := (data[1] & 0x03)
+	if value == 0 {
+		output[12] = 97
+	} else if value == 1 {
+		output[12] = 5
+	} else if value == 2 {
+		output[12] = 43
+	} else {
+		output[12] = 13
+	}
+	output[13] = ((data[5] & 0xF8) >> 3) + 210
+	output[14] = ((data[7] & 0xFE) >> 1) + 17
 }
 
 func BasicPacketFilter(data []byte, packetLength int) bool {
-    if packetLength < 18 {
-    	return false
-    }
-    if data[0] < 0x01 || data[0] > 0x63 {
-    	return false
-    }
-    if data[1] < 0x2A || data[1] > 0x2D {
-        return false
-    }
-    if data[2] < 0xC8 || data[2] > 0xE7 {
-        return false
-    }
-    if data[3] < 0x05 || data[3] > 0x44 {
-        return false
-    }
-    if data[5] < 0x4E || data[5] > 0x51 {
-        return false
-    }
-    if data[6] < 0x60 || data[6] > 0xDF {
-        return false
-    }
-    if data[7] < 0x64 || data[7] > 0xE3 {
-        return false
-    }
-    if data[8] != 0x07 && data[8] != 0x4F {
-        return false
-    }
-    if data[9] != 0x25 && data[9] != 0x53 {
-        return false
-    }
-    if data[10] < 0x7C || data[10] > 0x83 {
-        return false
-    }
-    if data[11] < 0xAF || data[11] > 0xB6 {
-        return false
-    }
-    if data[12] < 0x21 || data[12] > 0x60 {
-        return false
-    }
-    if data[13] != 0x61 && data[13] != 0x05 && data[13] != 0x2B && data[13] != 0x0D {
-        return false
-    }
-    if data[14] < 0xD2 || data[14] > 0xF1 {
-        return false
-    }
-    if data[15] < 0x11 || data[15] > 0x90 {
-        return false
-    }
-    return true
+	if packetLength < 18 {
+		return false
+	}
+	if data[0] < 0x01 || data[0] > 0x63 {
+		return false
+	}
+	if data[1] < 0x2A || data[1] > 0x2D {
+		return false
+	}
+	if data[2] < 0xC8 || data[2] > 0xE7 {
+		return false
+	}
+	if data[3] < 0x05 || data[3] > 0x44 {
+		return false
+	}
+	if data[5] < 0x4E || data[5] > 0x51 {
+		return false
+	}
+	if data[6] < 0x60 || data[6] > 0xDF {
+		return false
+	}
+	if data[7] < 0x64 || data[7] > 0xE3 {
+		return false
+	}
+	if data[8] != 0x07 && data[8] != 0x4F {
+		return false
+	}
+	if data[9] != 0x25 && data[9] != 0x53 {
+		return false
+	}
+	if data[10] < 0x7C || data[10] > 0x83 {
+		return false
+	}
+	if data[11] < 0xAF || data[11] > 0xB6 {
+		return false
+	}
+	if data[12] < 0x21 || data[12] > 0x60 {
+		return false
+	}
+	if data[13] != 0x61 && data[13] != 0x05 && data[13] != 0x2B && data[13] != 0x0D {
+		return false
+	}
+	if data[14] < 0xD2 || data[14] > 0xF1 {
+		return false
+	}
+	if data[15] < 0x11 || data[15] > 0x90 {
+		return false
+	}
+	return true
 }
 
 func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, fromPort uint16, toAddress []byte, toPort uint16, packetLength int) bool {
-    if packetLength < 18 {
-        return false;
-    }
-    var a [15]byte
-    var b [2]byte
-    GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
-    GeneratePittle( b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
-    if bytes.Compare(a[0:15], data[1:16]) != 0 {
-        return false
-    }
-    if bytes.Compare(b[0:2], data[packetLength-2:packetLength]) != 0 {
-        return false
-    }
-    return true;
+	if packetLength < 18 {
+		return false
+	}
+	var a [15]byte
+	var b [2]byte
+	GenerateChonkle(a[:], magic, fromAddress, fromPort, toAddress, toPort, packetLength)
+	GeneratePittle(b[:], fromAddress, fromPort, toAddress, toPort, packetLength)
+	if bytes.Compare(a[0:15], data[1:16]) != 0 {
+		return false
+	}
+	if bytes.Compare(b[0:2], data[packetLength-2:packetLength]) != 0 {
+		return false
+	}
+	return true
 }
 
 func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16) {
@@ -314,7 +315,7 @@ func GetAddressData(address *net.UDPAddr, addressBuffer []byte) ([]byte, uint16)
 }
 
 type Serializable interface {
-    Serialize(Stream) error
+	Serialize(Stream) error
 }
 
 func WriteBackendPacket(packetType int, packetObject Serializable, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
@@ -344,7 +345,7 @@ func WriteBackendPacket(packetType int, packetObject Serializable, from *net.UDP
 	C.crypto_sign_update(&state, (*C.uchar)(&packet[16]), C.ulonglong(serializeBytes))
 	C.crypto_sign_final_create(&state, (*C.uchar)(&packet[16+serializeBytes]), nil, (*C.uchar)(&privateKey[0]))
 
-	var magic [8]byte 
+	var magic [8]byte
 
 	var fromAddressBuffer [32]byte
 	var toAddressBuffer [32]byte
@@ -354,9 +355,9 @@ func WriteBackendPacket(packetType int, packetObject Serializable, from *net.UDP
 
 	packetLength := len(packet)
 
-    GenerateChonkle(packet[1:], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
+	GenerateChonkle(packet[1:], magic[:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
 
-    GeneratePittle(packet[packetLength-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
+	GeneratePittle(packet[packetLength-2:], fromAddressData, fromAddressPort, toAddressData, toAddressPort, packetLength)
 
 	return packet, nil
 }
@@ -385,10 +386,10 @@ func (packet *NextBackendServerInitRequestPacket) Serialize(stream Stream) error
 // -------------------------------------------------------------------------------------
 
 type NextBackendServerInitResponsePacket struct {
-	RequestId uint64
-	Response  uint32
+	RequestId     uint64
+	Response      uint32
 	UpcomingMagic [8]byte
-	CurrentMagic [8]byte
+	CurrentMagic  [8]byte
 	PreviousMagic [8]byte
 }
 
@@ -720,7 +721,7 @@ type SessionData struct {
 	Route           []uint64
 }
 
-func (packet SessionData) Serialize(stream Stream) error {
+func (packet *SessionData) Serialize(stream Stream) error {
 
 	stream.SerializeBits(&packet.Version, 8)
 	if stream.IsReading() && packet.Version != SessionDataVersion {
@@ -1045,6 +1046,21 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 
+	var sessionCount uint64
+	if !ReadUint64(body, &index, &sessionCount) {
+		return
+	}
+
+	var shutdown bool
+	if !ReadBool(body, &index, &shutdown) {
+		return
+	}
+
+	var relayVersion string
+	if !ReadString(body, &index, &relayVersion, NEXT_MAX_RELAY_VERSION_STRING_LENGTH) {
+		return
+	}
+
 	relayEntry := RelayEntry{}
 	relayEntry.name = relay_address
 	relayEntry.id = GetRelayId(relay_address)
@@ -1070,6 +1086,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 	backend.mutex.Unlock()
 
+	magicUpcoming, magicCurrent, magicPrevious := getMagic()
+
 	responseData := make([]byte, 10*1024)
 
 	index = 0
@@ -1084,6 +1102,14 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 		WriteUint64(responseData, &index, relaysToPing[i].id)
 		WriteString(responseData, &index, relaysToPing[i].address, NEXT_MAX_RELAY_ADDRESS_LENGTH)
 	}
+
+	WriteString(responseData, &index, relayVersion, NEXT_MAX_RELAY_VERSION_STRING_LENGTH)
+
+	WriteBytes(responseData, &index, magicUpcoming[:], 8)
+
+	WriteBytes(responseData, &index, magicCurrent[:], 8)
+
+	WriteBytes(responseData, &index, magicPrevious[:], 8)
 
 	responseLength := index
 
@@ -2602,7 +2628,7 @@ func main() {
 		{
 			to := receiveAddress
 
-			var magic [8]byte 
+			var magic [8]byte
 
 			var fromAddressBuffer [32]byte
 			var toAddressBuffer [32]byte
@@ -2618,7 +2644,7 @@ func main() {
 
 		packetType := packetData[0]
 
-		packetData = packetData[16:len(packetData)-2]
+		packetData = packetData[16 : len(packetData)-2]
 		packetBytes -= 18
 
 		if packetType == NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET {
@@ -2634,14 +2660,14 @@ func main() {
 			initResponse := NextBackendServerInitResponsePacket{}
 			initResponse.RequestId = serverInitRequest.RequestId
 			initResponse.Response = NEXT_SERVER_INIT_RESPONSE_OK
-			initResponse.UpcomingMagic, initResponse.CurrentMagic, initResponse.PreviousMagic  = getMagic()
+			initResponse.UpcomingMagic, initResponse.CurrentMagic, initResponse.PreviousMagic = getMagic()
 
 			toAddress := from
 			fromAddress := sendAddress
 
 			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET, initResponse, fromAddress, toAddress, backendPrivateKey[:])
 			if err != nil {
-				fmt.Printf( "error: could not write server init response packet: %v\n", err)
+				fmt.Printf("error: could not write server init response packet: %v\n", err)
 				continue
 			}
 
@@ -2698,14 +2724,14 @@ func main() {
 
 			updateResponse := NextBackendServerResponsePacket{}
 			updateResponse.RequestId = serverUpdate.RequestId
-			updateResponse.UpcomingMagic, updateResponse.CurrentMagic, updateResponse.PreviousMagic  = getMagic()
+			updateResponse.UpcomingMagic, updateResponse.CurrentMagic, updateResponse.PreviousMagic = getMagic()
 
 			toAddress := from
 			fromAddress := sendAddress
 
 			response, err := WriteBackendPacket(NEXT_BACKEND_SERVER_RESPONSE_PACKET, updateResponse, fromAddress, toAddress, backendPrivateKey[:])
 			if err != nil {
-				fmt.Printf( "error: could not write server response packet: %v\n", err)
+				fmt.Printf("error: could not write server response packet: %v\n", err)
 				continue
 			}
 
@@ -2939,7 +2965,7 @@ func main() {
 
 			response, err := WriteBackendPacket(NEXT_BACKEND_SESSION_RESPONSE_PACKET, sessionResponse, fromAddress, toAddress, backendPrivateKey[:])
 			if err != nil {
-				fmt.Printf( "error: could not write session response packet: %v\n", err)
+				fmt.Printf("error: could not write session response packet: %v\n", err)
 				continue
 			}
 
