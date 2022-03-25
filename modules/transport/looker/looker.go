@@ -266,9 +266,9 @@ func (l *LookerClient) RunSessionLookupQuery(sessionID string, timeFrame string)
 		LOOKER_BILLING2_VIEW + ".route_diversity",
 		LOOKER_BILLING2_VIEW + ".next",
 		LOOKER_BILLING2_VIEW + ".multipath",
-		LOOKER_BILLING2_VIEW + ".try_before_you_buy",
+		// LOOKER_BILLING2_VIEW + ".try_before_you_buy",
 	}
-	sorts = []string{}
+	sorts = []string{LOOKER_BILLING2_VIEW + ".timestamp_time"}
 	requiredFilters = make(map[string]interface{})
 
 	requiredFilters[LOOKER_BILLING2_VIEW+".session_id"] = fmt.Sprintf("%d", int64(uintID64))

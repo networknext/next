@@ -3330,7 +3330,8 @@ func (s *BuyersService) TestLookerSessionLookup(r *http.Request, args *TestLooke
 				// PacketLoss: slice.PredictedPacketLoss,
 			},
 			Envelope: routing.Envelope{
-				Up: slice.EnvelopeUp,
+				Up:   slice.EnvelopeUp,
+				Down: slice.EnvelopeDown,
 			},
 			RouteDiversity:    uint32(slice.RouteDiversity),
 			OnNetworkNext:     strings.ToLower(slice.OnNetworkNext) == "yes", // Looker forces these to be strings - yes or no
