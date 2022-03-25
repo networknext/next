@@ -23,9 +23,7 @@
         <BuyerFilter v-if="$store.getters.isAdmin" :includeAll="false" :liveOnly="false"/>
       </div>
     </div>
-    <div class="card" style="margin-bottom: 250px;">
-      <Analytics />
-    </div>
+    <Analytics />
   </div>
 </template>
 

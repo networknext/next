@@ -1,24 +1,16 @@
 <template>
-  <div class="card-body">
-    <h5 class="card-title">
-      Analytic Dashboards (Beta)
-    </h5>
-    <p class="card-text">
-      Currated dashboards that provide a look into your data. This feature is in beta and will be receiving continuous updates.
-    </p>
-    <div class="card" v-if="tabs.length > 0">
-      <div class="card-body">
-        <div class="row border-bottom mb-3">
-          <ul>
-            <li :class="{ 'blue-accent': tabIndex === selectedTabIndex }" v-for="(tab, tabIndex) in tabs" :key="tabIndex" @click="selectTab(tabIndex)">
-              <a>{{ tab }}</a>
-            </li>
-          </ul>
-        </div>
-        <div class="row" v-for="(url, urlIndex) in urls" :key="urlIndex">
-          <Alert ref="failureAlert"/>
-          <LookerEmbed :dashURL="url" dashID="analyticsDash" />
-        </div>
+  <div class="card" style="margin-bottom: 250px;">
+    <div class="card-header">
+      <ul class="nav nav-tabs card-header-tabs">
+        <li class="nav-item" v-for="(tab, tabIndex) in tabs" :key="tabIndex" @click="selectTab(tabIndex)">
+          <a class="nav-link" :class="{ active: selectedTabIndex === tabIndex }">{{ tab }}</a>
+        </li>
+      </ul>
+    </div>
+    <div class="card-body">
+      <div class="row" v-for="(dashboard, urlIndex) in tabDashboards" :key="urlIndex">
+        <Alert ref="failureAlert"/>
+        <LookerEmbed :dashURL="dashboard" dashID="analyticsDash" />
       </div>
     </div>
   </div>
@@ -48,14 +40,14 @@ export default class Analytics extends Vue {
   private domain: string
   private selectedTabIndex: number
   private tabs: Array<string>
-  private urls: Array<any>
+  private tabDashboards: Array<any>
 
   constructor () {
     super()
     this.domain = window.location.origin
     this.selectedTabIndex = -1
     this.tabs = []
-    this.urls = []
+    this.tabDashboards = []
   }
 
   private mounted () {
@@ -89,7 +81,7 @@ export default class Analytics extends Vue {
 
         this.selectedTabIndex = 0
 
-        this.urls = this.dashboards[this.tabs[this.selectedTabIndex]]
+        this.tabDashboards = this.dashboards[this.tabs[this.selectedTabIndex]]
       })
       .catch((error: Error) => {
         console.log('There was an issue fetching the analytics dashboard categories')
@@ -118,7 +110,7 @@ export default class Analytics extends Vue {
           this.selectedTabIndex = 0
         }
 
-        this.urls = this.dashboards[this.tabs[this.selectedTabIndex]]
+        this.tabDashboards = this.dashboards[this.tabs[this.selectedTabIndex]]
       })
       .catch((error: Error) => {
         console.log('There was an issue refreshing the analytics dashboards')
@@ -136,7 +128,7 @@ export default class Analytics extends Vue {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped lang="scss">
-  ul {
+  .sub-ul {
     list-style-type: none;
     margin-left: 1rem;
     margin-bottom: 0;
@@ -146,11 +138,11 @@ export default class Analytics extends Vue {
     overflow: hidden;
   }
 
-  li {
+  .sub-li {
     float: left;
   }
 
-  li:hover {
+  .sub-li:hover {
     border-top: 1px solid transparent;
     border-left: 1px solid transparent;
     border-right: 1px solid transparent;
@@ -159,7 +151,7 @@ export default class Analytics extends Vue {
     border-color: #e9ecef #e9ecef #dee2e6;
   }
 
-  li a {
+  .sub-link {
     display: block;
     text-align: center;
     padding: 16px;
