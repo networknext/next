@@ -274,8 +274,8 @@ func (l *LookerClient) BuildGeneralPortalLookerURLWithDashID(id string, customer
 		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards", "download_without_limit", "clear_cache_refresh"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_prod"},                                                                                 // TODO: This may or may not need to change
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
@@ -377,8 +377,8 @@ func (l *LookerClient) GenerateUsageDashboardURL(customerCode string, requestID 
 		ExternalUserId:  fmt.Sprintf("\"%s\"", requestID),
 		GroupsIds:       []int{EMBEDDED_USER_GROUP_ID},
 		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards", "download_without_limit", "clear_cache_refresh"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_prod"},                                                                                 // TODO: This may or may not need to change
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
@@ -412,8 +412,8 @@ func (l *LookerClient) GenerateLookerTrialURL(requestID string) string {
 		LastName:        "",
 		GroupsIds:       make([]int, 0),
 		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: Verify these are final
-		Models:          []string{"networknext_pbl"},                                 // TODO: Verify these are final
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards", "download_without_limit", "clear_cache_refresh"}, // TODO: Verify these are final
+		Models:          []string{"networknext_pbl"},                                                                                  // TODO: Verify these are final
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   3600,
