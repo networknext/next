@@ -341,6 +341,7 @@ func mainReturnWithCode() int {
 	}
 
 	opsService := jsonrpc.OpsService{
+		Env:                  env,
 		Release:              tag,
 		BuildTime:            buildtime,
 		Storage:              db,

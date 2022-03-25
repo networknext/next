@@ -2756,7 +2756,7 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 			dashCustomerCode := customerCode
 
 			// Hacky work around for local
-			if isAdmin && (s.Env == "local") {
+			if s.Env == "local" {
 				dashCustomerCode = "twenty-four-entertainment"
 			}
 
@@ -2925,8 +2925,8 @@ func (s *BuyersService) FetchDiscoveryDashboards(r *http.Request, args *FetchDis
 			dashCustomerCode := customerCode
 
 			// Hacky work around for local
-			if isAdmin && (s.Env == "local") {
-				dashCustomerCode = "esl"
+			if s.Env == "local" {
+				dashCustomerCode = "twenty-four-entertainment"
 			}
 
 			lookerURL, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
@@ -3108,8 +3108,8 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 		ExternalUserId:  fmt.Sprintf("\"%s\"", "Embed User"),
 		GroupsIds:       []int{EmbeddedUserGroupID},
 		ExternalGroupId: "",
-		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards"}, // TODO: This may or may not need to change
-		Models:          []string{"networknext_prod"},                                // TODO: This may or may not need to change
+		Permissions:     []string{"access_data", "see_looks", "see_user_dashboards", "download_without_limit", "clear_cache_refresh"}, // TODO: This may or may not need to change
+		Models:          []string{"networknext_prod"},                                                                                 // TODO: This may or may not need to change
 		AccessFilters:   make(map[string]map[string]interface{}),
 		UserAttributes:  make(map[string]interface{}),
 		SessionLength:   LOOKER_SESSION_TIMEOUT,
