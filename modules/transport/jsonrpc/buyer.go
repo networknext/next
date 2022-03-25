@@ -2756,9 +2756,11 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 			dashCustomerCode := customerCode
 
 			// Hacky work around for local
-			if isAdmin && (s.Env == "local") {
+			if s.Env == "local" {
 				dashCustomerCode = "twenty-four-entertainment"
 			}
+
+			fmt.Println(dashCustomerCode)
 
 			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
 			if err != nil {
@@ -2833,7 +2835,7 @@ func (s *BuyersService) FetchUsageDashboard(r *http.Request, args *FetchUsageDas
 
 		// Hacky work around for local
 		if s.Env == "local" {
-			customerCode = "esl"
+			customerCode = "twenty-four-entertainment"
 		}
 	}
 
@@ -2984,7 +2986,7 @@ func (s *BuyersService) FetchSavesDashboard(r *http.Request, args *FetchSavesDas
 		customerCode = args.CustomerCode
 
 		if s.Env == "local" {
-			customerCode = "esl"
+			customerCode = "twenty-four-entertainment"
 		}
 	} else {
 		buyer, err := s.Storage.BuyerWithCompanyCode(r.Context(), customerCode)
