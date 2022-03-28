@@ -2760,8 +2760,6 @@ func (s *BuyersService) FetchAnalyticsDashboards(r *http.Request, args *FetchAna
 				dashCustomerCode = "twenty-four-entertainment"
 			}
 
-			fmt.Println(dashCustomerCode)
-
 			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
 			if err != nil {
 				continue
