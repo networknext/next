@@ -2397,18 +2397,6 @@ func (fs *Firestore) GetAnalyticsDashboardCategories(ctx context.Context) ([]loo
 	return categories, fmt.Errorf("GetAnalyticsDashboardCategories not implemented in Firestore storer")
 }
 
-// GetPremiumAnalyticsDashboardCategories returns all premium Looker dashboard categories
-func (fs *Firestore) GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
-	categories := make([]looker.AnalyticsDashboardCategory, 0)
-	return categories, fmt.Errorf("GetPremiumAnalyticsDashboardCategories not implemented in Firestore storer")
-}
-
-// GetFreeAnalyticsDashboardCategories returns all free Looker dashboard categories
-func (fs *Firestore) GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error) {
-	categories := make([]looker.AnalyticsDashboardCategory, 0)
-	return categories, fmt.Errorf("GetFreeAnalyticsDashboardCategories not implemented in Firestore storer")
-}
-
 // GetAnalyticsDashboardCategories returns all Looker dashboard categories
 func (fs *Firestore) GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) (looker.AnalyticsDashboardCategory, error) {
 	category := looker.AnalyticsDashboardCategory{}
@@ -2422,7 +2410,7 @@ func (fs *Firestore) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, l
 }
 
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (fs *Firestore) AddAnalyticsDashboardCategory(ctx context.Context, priority int32, label string, isAdmin bool, isPremium bool, isSeller bool) error {
+func (fs *Firestore) AddAnalyticsDashboardCategory(ctx context.Context, priority int32, label string, isAdmin bool, isPremium bool, parentCategoryID int64) error {
 	return fmt.Errorf("AddAnalyticsDashboardCategory not implemented in Firestore storer")
 }
 
@@ -2471,12 +2459,6 @@ func (fs *Firestore) GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.A
 	return dashboards, fmt.Errorf("GetFreeAnalyticsDashboards not implemented in Firestore storer")
 }
 
-// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
-func (fs *Firestore) GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
-	dashboards := make([]looker.AnalyticsDashboard, 0)
-	return dashboards, fmt.Errorf("GetDiscoveryAnalyticsDashboards not implemented in Firestore storer")
-}
-
 // GetAdminAnalyticsDashboards get all admin looker dashboards
 func (fs *Firestore) GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
@@ -2489,7 +2471,7 @@ func (fs *Firestore) GetAnalyticsDashboardsByLookerID(ctx context.Context, id st
 	return dashboards, fmt.Errorf("GetAnalyticsDashboardsByLookerID not implemented in Firestore storer")
 }
 
-// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+// GetAnalyticsDashboards get all looker dashboards
 func (fs *Firestore) GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error) {
 	dashboards := make([]looker.AnalyticsDashboard, 0)
 	return dashboards, fmt.Errorf("GetAnalyticsDashboards not implemented in Firestore storer")
@@ -2508,7 +2490,7 @@ func (fs *Firestore) GetAnalyticsDashboardByName(ctx context.Context, name strin
 }
 
 // AddAnalyticsDashboard adds a new dashboard
-func (fs *Firestore) AddAnalyticsDashboard(ctx context.Context, priority int32, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error {
+func (fs *Firestore) AddAnalyticsDashboard(ctx context.Context, priority int32, name string, adminOnly bool, premium bool, lookerID int64, customerID int64, categoryID int64) error {
 	return fmt.Errorf("AddAnalyticsDashboard not implemented in Firestore storer")
 }
 
