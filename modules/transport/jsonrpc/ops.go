@@ -2257,6 +2257,8 @@ type FetchAnalyticsDashboardInformationReply struct {
 	ID           int32                             `json:"id"`
 	Order        int32                             `json:"order"`
 	Name         string                            `json:"name"`
+	AdminOnly    bool                              `json:"admin_only"`
+	Premium      bool                              `json:"premium"`
 	CustomerCode string                            `json:"customer_code"`
 	Category     looker.AnalyticsDashboardCategory `json:"category"`
 	LookerID     int32                             `json:"looker_id"`
@@ -2279,9 +2281,12 @@ func (s *OpsService) FetchAnalyticsDashboardInformation(r *http.Request, args *F
 	reply.ID = int32(dashboard.ID)
 	reply.Order = dashboard.Order
 	reply.Name = dashboard.Name
+	reply.AdminOnly = dashboard.Admin
+	reply.Premium = dashboard.Premium
 	reply.CustomerCode = dashboard.CustomerCode
 	reply.Category = dashboard.Category
 	reply.LookerID = int32(dashboard.LookerID)
+
 	return nil
 }
 
@@ -2365,6 +2370,8 @@ type UpdateAnalyticsDashboardArgs struct {
 	Name       string `json:"name"`
 	LookerID   int32  `json:"looker_id"`
 	CategoryID int32  `json:"category_id"`
+	AdminOnly  bool   `json:"admin_only"`
+	Premium    bool   `json:"premium"`
 }
 
 type UpdateAnalyticsDashboardReply struct{}
@@ -2422,6 +2429,20 @@ func (s *OpsService) UpdateAnalyticsDashboard(r *http.Request, args *UpdateAnaly
 
 	if int64(dashboard.Category.ID) != int64(args.CategoryID) {
 		if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, id, "Category", int64(args.CategoryID)); err != nil {
+			core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if dashboard.Admin != args.AdminOnly {
+		if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, id, "Admin", args.AdminOnly); err != nil {
+			core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
+			wasError = true
+		}
+	}
+
+	if dashboard.Premium != args.Premium {
+		if err := s.Storage.UpdateAnalyticsDashboardByID(ctx, id, "Premium", args.Premium); err != nil {
 			core.Error("UpdateAnalyticsDashboards(): %v", err.Error())
 			wasError = true
 		}

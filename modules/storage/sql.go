@@ -4746,7 +4746,7 @@ func (db *SQL) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.
 	dashboard := looker.AnalyticsDashboard{}
 	retryCount := 0
 
-	querySQL.Write([]byte("select id, order_priority, dashboard_name, looker_dashboard_id, customer_id, category_id from analytics_dashboards where id = $1"))
+	querySQL.Write([]byte("select id, order_priority, dashboard_name, admin_only, premium, looker_dashboard_id, customer_id, category_id from analytics_dashboards where id = $1"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
 	defer cancel()
@@ -4757,6 +4757,8 @@ func (db *SQL) GetAnalyticsDashboardByID(ctx context.Context, id int64) (looker.
 			&dashboard.ID,
 			&dashboard.Order,
 			&dashboard.Name,
+			&dashboard.Admin,
+			&dashboard.Premium,
 			&dashboard.LookerID,
 			&customerID,
 			&categoryID,
@@ -5019,13 +5021,21 @@ func (db *SQL) UpdateAnalyticsDashboardByID(ctx context.Context, id int64, field
 		updateSQL.Write([]byte("update analytics_dashboards set looker_dashboard_id=$1 where id=$2"))
 		args = append(args, dashID, id)
 
-	case "Discovery":
-		isDiscovery, ok := value.(bool)
+	case "Admin":
+		isAdmin, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("%v is not a valid bool value", value)
 		}
-		updateSQL.Write([]byte("update analytics_dashboards set discovery=$1 where id=$2"))
-		args = append(args, isDiscovery, id)
+		updateSQL.Write([]byte("update analytics_dashboards set admin_only=$1 where id=$2"))
+		args = append(args, isAdmin, id)
+
+	case "Premium":
+		isPremium, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("%v is not a valid bool value", value)
+		}
+		updateSQL.Write([]byte("update analytics_dashboards set premium=$1 where id=$2"))
+		args = append(args, isPremium, id)
 
 	case "CustomerCode":
 		customerCode, ok := value.(string)
