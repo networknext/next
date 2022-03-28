@@ -182,12 +182,6 @@ type Storer interface {
 	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
 	GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error)
 
-	// GetPremiumAnalyticsDashboardCategories returns all Looker dashboard categories
-	GetPremiumAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error)
-
-	// GetFreeAnalyticsDashboardCategories returns all Looker dashboard categories
-	GetFreeAnalyticsDashboardCategories(ctx context.Context) ([]looker.AnalyticsDashboardCategory, error)
-
 	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
 	GetAnalyticsDashboardCategoryByID(ctx context.Context, id int64) (looker.AnalyticsDashboardCategory, error)
 
@@ -195,7 +189,7 @@ type Storer interface {
 	GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) (looker.AnalyticsDashboardCategory, error)
 
 	// AddAnalyticsDashboardCategory adds a new dashboard category
-	AddAnalyticsDashboardCategory(ctx context.Context, priority int32, label string, isAdmin bool, isPremium bool, isSeller bool) error
+	AddAnalyticsDashboardCategory(ctx context.Context, order int32, label string, isAdmin bool, isPremium bool, parentCategoryID int64) error
 
 	// RemoveAnalyticsDashboardCategory remove a dashboard category by ID
 	RemoveAnalyticsDashboardCategoryByID(ctx context.Context, id int64) error
@@ -218,16 +212,13 @@ type Storer interface {
 	// GetFreeAnalyticsDashboards get all free looker dashboards
 	GetFreeAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
 
-	// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
-	GetDiscoveryAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
-
 	// GetAdminAnalyticsDashboards get all admin looker dashboards
 	GetAdminAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
 
 	// GetAnalyticsDashboardByLookerID get looker dashboard by looker id
 	GetAnalyticsDashboardsByLookerID(ctx context.Context, id string) ([]looker.AnalyticsDashboard, error)
 
-	// GetDiscoveryAnalyticsDashboards get all discovery looker dashboards
+	// GetAnalyticsDashboards get all looker dashboards
 	GetAnalyticsDashboards(ctx context.Context) ([]looker.AnalyticsDashboard, error)
 
 	// GetAnalyticsDashboardByID get looker dashboard by id
@@ -240,7 +231,7 @@ type Storer interface {
 	GetAnalyticsDashboardByName(ctx context.Context, name string) (looker.AnalyticsDashboard, error)
 
 	// AddAnalyticsDashboard adds a new dashboard
-	AddAnalyticsDashboard(ctx context.Context, priority int32, name string, lookerID int64, isDiscover bool, customerID int64, categoryID int64) error
+	AddAnalyticsDashboard(ctx context.Context, order int32, name string, adminOnly bool, premium bool, lookerID int64, customerID int64, categoryID int64) error
 
 	// RemoveAnalyticsDashboardByID remove looker dashboard by id
 	RemoveAnalyticsDashboardByID(ctx context.Context, id int64) error

@@ -177,7 +177,8 @@ create table analytics_dashboard_categories (
   tab_label varchar not null unique,
   premium boolean not null,
   admin_only boolean not null,
-  seller_only boolean not null
+  parent_category_id integer null,
+  constraint fk_parent_category_id foreign key (parent_category_id) references analytics_dashboard_categories(id)
 );
 
 create table analytics_dashboards (
@@ -185,7 +186,8 @@ create table analytics_dashboards (
   order_priority integer not null default 0,
   dashboard_name varchar not null,
   looker_dashboard_id integer not null,
-  discovery boolean not null,
+  premium boolean not null,
+  admin_only boolean not null,
   customer_id integer not null,
   category_id integer not null,
   constraint fk_customer_id foreign key (customer_id) references customers(id),
