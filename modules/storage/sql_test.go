@@ -1875,9 +1875,9 @@ func TestAnalyticsDashboards(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond) // allow time for sync functions to complete
 	assert.NoError(t, err)
 
-	dashbaords, err := db.GetAnalyticsDashboards(ctx)
+	dashboards, err := db.GetAnalyticsDashboards(ctx)
 	assert.NoError(t, err)
-	for _, dashboard := range dashbaords {
+	for _, dashboard := range dashboards {
 		err := db.RemoveAnalyticsDashboardByID(ctx, dashboard.ID)
 		assert.NoError(t, err)
 	}
@@ -1885,7 +1885,15 @@ func TestAnalyticsDashboards(t *testing.T) {
 	categories, err := db.GetAnalyticsDashboardCategories(ctx)
 	assert.NoError(t, err)
 	for _, category := range categories {
-		err := db.RemoveAnalyticsDashboardCategoryByID(ctx, category.ID)
+		subCategories, err := db.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, category.ID)
+		assert.NoError(t, err)
+
+		for _, category := range subCategories {
+			err := db.RemoveAnalyticsDashboardCategoryByID(ctx, category.ID)
+			assert.NoError(t, err)
+		}
+
+		err = db.RemoveAnalyticsDashboardCategoryByID(ctx, category.ID)
 		assert.NoError(t, err)
 	}
 
@@ -1954,7 +1962,7 @@ func TestAnalyticsDashboards(t *testing.T) {
 		dashboardCategories, err := db.GetAnalyticsDashboardCategories(ctx)
 		assert.NoError(t, err)
 
-		err = db.AddAnalyticsDashboard(ctx, dashboard.Order, dashboard.Name, false, false, dashboard.LookerID, customers[0].DatabaseID, dashboardCategories[0].ID)
+		err = db.AddAnalyticsDashboard(ctx, dashboard.Order, dashboard.Name, false, true, dashboard.LookerID, customers[0].DatabaseID, dashboardCategories[0].ID)
 		assert.NoError(t, err)
 
 		dashboards, err := db.GetAnalyticsDashboards(ctx)
