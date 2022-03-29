@@ -1975,65 +1975,96 @@ func (s *OpsService) UpdateDatacenter(r *http.Request, args *UpdateDatacenterArg
 type FetchAnalyticsDashboardCategoriesArgs struct{}
 
 type FetchAnalyticsDashboardCategoriesReply struct {
-	Categories []looker.AnalyticsDashboardCategory `json:"categories"`
+	Categories    []looker.AnalyticsDashboardCategory            `json:"categories"`
+	SubCategories map[string][]looker.AnalyticsDashboardCategory `json:"sub_categories"`
 }
 
 func (s *OpsService) FetchAnalyticsDashboardCategories(r *http.Request, args *FetchAnalyticsDashboardCategoriesArgs, reply *FetchAnalyticsDashboardCategoriesReply) error {
+	reply.Categories = make([]looker.AnalyticsDashboardCategory, 0)
+	reply.SubCategories = make(map[string][]looker.AnalyticsDashboardCategory)
+
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchAnalyticsDashboardCategories(): %v", err.Error())
 		return &err
 	}
 
-	categories, err := s.Storage.GetAnalyticsDashboardCategories(r.Context())
+	ctx := r.Context()
+
+	categories, err := s.Storage.GetAnalyticsDashboardCategories(ctx)
 	if err != nil {
 		core.Error("FetchAnalyticsDashboardCategories(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
 
-	reply.Categories = categories
+	// Filter out all parent categories and build a map to their children
+	for _, category := range categories {
+		if category.ParentCategoryID == -1 {
+			reply.Categories = append(reply.Categories, category)
+
+			_, ok := reply.SubCategories[category.Label]
+			if !ok {
+				reply.SubCategories[category.Label] = make([]looker.AnalyticsDashboardCategory, 0)
+			}
+
+			subCategories, err := s.Storage.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, category.ID)
+			if err != nil {
+				core.Error("FetchAnalyticsDashboardCategory(): %v", err.Error())
+			}
+
+			reply.SubCategories[category.Label] = subCategories
+		}
+	}
+
 	return nil
 }
 
 type FetchAnalyticsDashboardCategoryArgs struct {
-	Label string `json:"label"`
+	ID int32 `json:"id"`
 }
 
 type FetchAnalyticsDashboardCategoryReply struct {
-	Category looker.AnalyticsDashboardCategory `json:"category"`
+	Category      looker.AnalyticsDashboardCategory   `json:"category"`
+	SubCategories []looker.AnalyticsDashboardCategory `json:"sub_categories"`
 }
 
 func (s *OpsService) FetchAnalyticsDashboardCategory(r *http.Request, args *FetchAnalyticsDashboardCategoryArgs, reply *FetchAnalyticsDashboardCategoryReply) error {
+	reply.SubCategories = make([]looker.AnalyticsDashboardCategory, 0)
+
 	if !middleware.VerifyAnyRole(r, middleware.AdminRole, middleware.OpsRole) {
 		err := JSONRPCErrorCodes[int(ERROR_INSUFFICIENT_PRIVILEGES)]
 		core.Error("FetchAnalyticsDashboardCategory(): %v", err.Error())
 		return &err
 	}
 
-	if args.Label == "" {
-		err := JSONRPCErrorCodes[int(ERROR_MISSING_FIELD)]
-		err.Data.(*JSONRPCErrorData).MissingField = "Label"
-		core.Error("FetchAnalyticsDashboardCategory(): %v: Label is required", err.Error())
-		return &err
-	}
+	ctx := r.Context()
 
-	category, err := s.Storage.GetAnalyticsDashboardCategoryByLabel(r.Context(), args.Label)
+	category, err := s.Storage.GetAnalyticsDashboardCategoryByID(ctx, int64(args.ID))
 	if err != nil {
 		core.Error("FetchAnalyticsDashboardCategory(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
 	}
 
-	reply.Category = category
+	// If the category is a parent category, look for sub categories (-1 determines a parent category)
+	if category.ParentCategoryID < 0 {
+		subCategories, err := s.Storage.GetAnalyticsDashboardSubCategoriesByCategoryID(ctx, category.ID)
+		if err != nil {
+			core.Error("FetchAnalyticsDashboardCategory(): %v", err.Error())
+		}
+
+		reply.Category = category
+		reply.SubCategories = subCategories
+		return nil
+	}
+
 	return nil
 }
 
 type AddAnalyticsDashboardCategoryArgs struct {
 	Order            int32  `json:"order"`
 	Label            string `json:"label"`
-	Premium          bool   `json:"premium"`
-	Admin            bool   `json:"admin"`
 	ParentCategoryID int32  `json:"parent_category_id"`
 }
 
@@ -2053,7 +2084,7 @@ func (s *OpsService) AddAnalyticsDashboardCategory(r *http.Request, args *AddAna
 		return &err
 	}
 
-	if err := s.Storage.AddAnalyticsDashboardCategory(r.Context(), args.Order, args.Label, args.Admin, args.Premium, int64(args.ParentCategoryID)); err != nil {
+	if err := s.Storage.AddAnalyticsDashboardCategory(r.Context(), args.Order, args.Label, int64(args.ParentCategoryID)); err != nil {
 		core.Error("AddAnalyticsDashboardCategory(): %v", err.Error())
 		err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
 		return &err
@@ -2145,22 +2176,8 @@ func (s *OpsService) UpdateAnalyticsDashboardCategory(r *http.Request, args *Upd
 		}
 	}
 
-	if category.Admin != args.Admin {
-		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Admin", args.Admin); err != nil {
-			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
-			wasError = true
-		}
-	}
-
 	if category.Order != args.Order {
 		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Order", args.Order); err != nil {
-			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
-			wasError = true
-		}
-	}
-
-	if category.Premium != args.Premium {
-		if err := s.Storage.UpdateAnalyticsDashboardCategoryByID(ctx, int64(args.ID), "Premium", args.Premium); err != nil {
 			core.Error("UpdateAnalyticsDashboardCategory(): %v", err.Error())
 			wasError = true
 		}
@@ -2512,27 +2529,29 @@ func (s *OpsService) FetchAdminDashboards(r *http.Request, args *FetchAdminDashb
 
 	for _, dashboard := range dashboards {
 		if dashboard.CustomerCode == customerCode {
-			_, ok := reply.Dashboards[dashboard.Category.Label]
-			if !ok {
-				reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
-				categories = append(categories, dashboard.Category)
+			if dashboard.Category.ParentCategoryID < 0 {
+				_, ok := reply.Dashboards[dashboard.Category.Label]
+				if !ok {
+					reply.Dashboards[dashboard.Category.Label] = make([]AdminDashboard, 0)
+					categories = append(categories, dashboard.Category)
+				}
+
+				dashCustomerCode := customerCode
+
+				if s.Env == "local" {
+					dashCustomerCode = "twenty-four-entertainment"
+				}
+
+				url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
+				if err != nil {
+					continue
+				}
+
+				reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], AdminDashboard{
+					URL:  url,
+					Live: !dashboard.Admin,
+				})
 			}
-
-			dashCustomerCode := customerCode
-
-			if s.Env == "local" {
-				dashCustomerCode = "twenty-four-entertainment"
-			}
-
-			url, err := s.LookerClient.BuildGeneralPortalLookerURLWithDashID(fmt.Sprintf("%d", dashboard.LookerID), dashCustomerCode, requestID, r.Header.Get("Origin"))
-			if err != nil {
-				continue
-			}
-
-			reply.Dashboards[dashboard.Category.Label] = append(reply.Dashboards[dashboard.Category.Label], AdminDashboard{
-				URL:  url,
-				Live: !dashboard.Category.Admin,
-			})
 		}
 	}
 
