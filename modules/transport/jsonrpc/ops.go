@@ -2132,6 +2132,21 @@ func (s *OpsService) DeleteAnalyticsDashboardCategory(r *http.Request, args *Del
 	}
 
 	for _, subCategory := range subCategories {
+		subDashboards, err := s.Storage.GetAnalyticsDashboardsByCategoryID(ctx, subCategory.ID)
+		if err != nil {
+			core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
+			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+			return &err
+		}
+
+		for _, d := range subDashboards {
+			if err := s.Storage.RemoveAnalyticsDashboardByID(ctx, d.ID); err != nil {
+				core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
+				err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
+				return &err
+			}
+		}
+
 		if err := s.Storage.RemoveAnalyticsDashboardCategoryByID(ctx, subCategory.ID); err != nil {
 			core.Error("DeleteAnalyticsDashboardCategory(): %v", err.Error())
 			err := JSONRPCErrorCodes[int(ERROR_STORAGE_FAILURE)]
