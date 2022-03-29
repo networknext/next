@@ -2409,8 +2409,13 @@ func (fs *Firestore) GetAnalyticsDashboardCategoryByLabel(ctx context.Context, l
 	return category, fmt.Errorf("GetAnalyticsDashboardCategoryByLabel not implemented in Firestore storer")
 }
 
+func (fs *Firestore) GetAnalyticsDashboardSubCategoriesByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboardCategory, error) {
+	categories := make([]looker.AnalyticsDashboardCategory, 0)
+	return categories, fmt.Errorf("GetAnalyticsDashboardSubCategoriesByCategoryID not implemented in Firestore storer")
+}
+
 // AddAnalyticsDashboardCategory adds a new dashboard category
-func (fs *Firestore) AddAnalyticsDashboardCategory(ctx context.Context, priority int32, label string, isAdmin bool, isPremium bool, parentCategoryID int64) error {
+func (fs *Firestore) AddAnalyticsDashboardCategory(ctx context.Context, priority int32, label string, parentCategoryID int64) error {
 	return fmt.Errorf("AddAnalyticsDashboardCategory not implemented in Firestore storer")
 }
 
