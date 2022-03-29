@@ -3958,7 +3958,7 @@ func (db *SQL) GetAnalyticsDashboardCategories(ctx context.Context) ([]looker.An
 
 	parentCategoryID := sql.NullInt64{}
 
-	sqlBuffer.Write([]byte("select id, order_priority, tab_label, parent_category_id ")) // TODO: Remove admin_only, and premium after dashboard transfer is complete
+	sqlBuffer.Write([]byte("select id, order_priority, tab_label, parent_category_id "))
 	sqlBuffer.Write([]byte("from analytics_dashboard_categories"))
 
 	ctx, cancel := context.WithTimeout(ctx, SQL_TIMEOUT)
