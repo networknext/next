@@ -188,8 +188,6 @@ type AnalyticsDashboardCategory struct {
 	ID               int64  `json:"id"`
 	Order            int32  `json:"order"`
 	Label            string `json:"label"`
-	Premium          bool   `json:"premium"`
-	Admin            bool   `json:"admin"`
 	ParentCategoryID int64  `json:"parent_category_id"`
 }
 

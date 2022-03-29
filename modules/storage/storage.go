@@ -188,8 +188,10 @@ type Storer interface {
 	// GetAnalyticsDashboardCategories returns all Looker dashboard categories
 	GetAnalyticsDashboardCategoryByLabel(ctx context.Context, label string) (looker.AnalyticsDashboardCategory, error)
 
+	GetAnalyticsDashboardSubCategoriesByCategoryID(ctx context.Context, id int64) ([]looker.AnalyticsDashboardCategory, error)
+
 	// AddAnalyticsDashboardCategory adds a new dashboard category
-	AddAnalyticsDashboardCategory(ctx context.Context, order int32, label string, isAdmin bool, isPremium bool, parentCategoryID int64) error
+	AddAnalyticsDashboardCategory(ctx context.Context, order int32, label string, parentCategoryID int64) error
 
 	// RemoveAnalyticsDashboardCategory remove a dashboard category by ID
 	RemoveAnalyticsDashboardCategoryByID(ctx context.Context, id int64) error
