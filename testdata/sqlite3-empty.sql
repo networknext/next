@@ -188,6 +188,7 @@ create table analytics_dashboards (
   looker_dashboard_id integer not null,
   premium boolean not null,
   admin_only boolean not null,
+  discovery boolean not null,
   customer_id integer not null,
   category_id integer not null,
   constraint fk_customer_id foreign key (customer_id) references customers(id),
